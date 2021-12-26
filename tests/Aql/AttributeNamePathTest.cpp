@@ -51,16 +51,26 @@ TEST(AttributeNamePathTest, size) {
 }
 
 TEST(AttributeNamePathTest, type) {
-  ASSERT_EQ(AttributeNamePath::Type::IdAttribute, AttributeNamePath("_id").type());
-  ASSERT_EQ(AttributeNamePath::Type::KeyAttribute, AttributeNamePath("_key").type());
-  ASSERT_EQ(AttributeNamePath::Type::FromAttribute, AttributeNamePath("_from").type());
-  ASSERT_EQ(AttributeNamePath::Type::ToAttribute, AttributeNamePath("_to").type());
-  ASSERT_EQ(AttributeNamePath::Type::SingleAttribute, AttributeNamePath("_rev").type());
-  ASSERT_EQ(AttributeNamePath::Type::SingleAttribute, AttributeNamePath("peter").type());
-  ASSERT_EQ(AttributeNamePath::Type::SingleAttribute, AttributeNamePath("").type());
-  ASSERT_EQ(AttributeNamePath::Type::SingleAttribute, AttributeNamePath("key").type());
-  ASSERT_EQ(AttributeNamePath::Type::SingleAttribute, AttributeNamePath("id").type());
-  ASSERT_EQ(AttributeNamePath::Type::SingleAttribute, AttributeNamePath("1").type());
+  ASSERT_EQ(AttributeNamePath::Type::IdAttribute,
+            AttributeNamePath("_id").type());
+  ASSERT_EQ(AttributeNamePath::Type::KeyAttribute,
+            AttributeNamePath("_key").type());
+  ASSERT_EQ(AttributeNamePath::Type::FromAttribute,
+            AttributeNamePath("_from").type());
+  ASSERT_EQ(AttributeNamePath::Type::ToAttribute,
+            AttributeNamePath("_to").type());
+  ASSERT_EQ(AttributeNamePath::Type::SingleAttribute,
+            AttributeNamePath("_rev").type());
+  ASSERT_EQ(AttributeNamePath::Type::SingleAttribute,
+            AttributeNamePath("peter").type());
+  ASSERT_EQ(AttributeNamePath::Type::SingleAttribute,
+            AttributeNamePath("").type());
+  ASSERT_EQ(AttributeNamePath::Type::SingleAttribute,
+            AttributeNamePath("key").type());
+  ASSERT_EQ(AttributeNamePath::Type::SingleAttribute,
+            AttributeNamePath("id").type());
+  ASSERT_EQ(AttributeNamePath::Type::SingleAttribute,
+            AttributeNamePath("1").type());
   ASSERT_EQ(AttributeNamePath::Type::MultiAttribute,
             AttributeNamePath(std::vector<std::string>{"a", "b"}).type());
 }
@@ -201,7 +211,8 @@ TEST(AttributeNamePathTest, reverse) {
 
   ASSERT_EQ(
       AttributeNamePath(std::vector<std::string>{"ab", "cde", "fgh", "ihj"}),
-      AttributeNamePath(std::vector<std::string>{"ihj", "fgh", "cde", "ab"}).reverse());
+      AttributeNamePath(std::vector<std::string>{"ihj", "fgh", "cde", "ab"})
+          .reverse());
 }
 
 TEST(AttributeNamePathTest, shortenTo) {
@@ -211,27 +222,33 @@ TEST(AttributeNamePathTest, shortenTo) {
   ASSERT_EQ(AttributeNamePath(), AttributeNamePath("abc").shortenTo(0));
 
   ASSERT_EQ(AttributeNamePath(std::vector<std::string>{}),
-            AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}).shortenTo(0));
+            AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"})
+                .shortenTo(0));
   ASSERT_EQ(AttributeNamePath(std::vector<std::string>{"a"}),
-            AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}).shortenTo(1));
+            AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"})
+                .shortenTo(1));
   ASSERT_EQ(AttributeNamePath(std::vector<std::string>{"a", "b"}),
-            AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}).shortenTo(2));
+            AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"})
+                .shortenTo(2));
   ASSERT_EQ(AttributeNamePath(std::vector<std::string>{"a", "b", "c"}),
-            AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}).shortenTo(3));
+            AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"})
+                .shortenTo(3));
   ASSERT_EQ(AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}),
-            AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}).shortenTo(4));
+            AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"})
+                .shortenTo(4));
   ASSERT_EQ(AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}),
-            AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}).shortenTo(5));
+            AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"})
+                .shortenTo(5));
   ASSERT_EQ(AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}),
-            AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"}).shortenTo(1000));
+            AttributeNamePath(std::vector<std::string>{"a", "b", "c", "d"})
+                .shortenTo(1000));
 }
 
 TEST(AttributeNamePathTest, commonPrefixLength) {
   ASSERT_EQ(1, AttributeNamePath::commonPrefixLength(AttributeNamePath("abc"),
                                                      AttributeNamePath("abc")));
-  ASSERT_EQ(0,
-            AttributeNamePath::commonPrefixLength(AttributeNamePath("abc"),
-                                                  AttributeNamePath("piff")));
+  ASSERT_EQ(0, AttributeNamePath::commonPrefixLength(
+                   AttributeNamePath("abc"), AttributeNamePath("piff")));
   ASSERT_EQ(0, AttributeNamePath::commonPrefixLength(AttributeNamePath("a"),
                                                      AttributeNamePath("b")));
 

@@ -37,13 +37,16 @@ namespace methods {
 /// Common code for TTL statistics and mode
 struct Ttl {
   // return the TTL feature statistics
-  static arangodb::Result getStatistics(TtlFeature&, arangodb::velocypack::Builder& out);
+  static arangodb::Result getStatistics(TtlFeature&,
+                                        arangodb::velocypack::Builder& out);
 
   // return the TTL feature's current properties
-  static arangodb::Result getProperties(TtlFeature&, arangodb::velocypack::Builder& out);
+  static arangodb::Result getProperties(TtlFeature&,
+                                        arangodb::velocypack::Builder& out);
 
   // set the TTL feature's current properties
-  static arangodb::Result setProperties(TtlFeature&, arangodb::velocypack::Slice properties,
+  static arangodb::Result setProperties(TtlFeature&,
+                                        arangodb::velocypack::Slice properties,
                                         arangodb::velocypack::Builder& out);
 };
 }  // namespace methods

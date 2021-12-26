@@ -28,7 +28,8 @@
 
 namespace arangodb {
 
-class MaxMapCountFeature final : public application_features::ApplicationFeature {
+class MaxMapCountFeature final
+    : public application_features::ApplicationFeature {
  public:
   explicit MaxMapCountFeature(application_features::ApplicationServer& server);
 

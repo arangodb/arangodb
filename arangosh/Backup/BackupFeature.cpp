@@ -67,8 +67,9 @@ const arangodb::Result ErrorMalformedJsonResponse = {
     TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
 
 /// @brief check whether HTTP response is valid, complete, and not an error
-arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& client,
-                                   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> const& response) {
+arangodb::Result checkHttpResponse(
+    arangodb::httpclient::SimpleHttpClient& client,
+    std::unique_ptr<arangodb::httpclient::SimpleHttpResult> const& response) {
   using arangodb::basics::StringUtils::concatT;
   using arangodb::basics::StringUtils::itoa;
   if (response == nullptr || !response->isComplete()) {
@@ -83,20 +84,24 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
     try {
       bodyBuilder = response->getBodyVelocyPack();
       arangodb::velocypack::Slice error = bodyBuilder->slice();
-      if (!error.isNone() && error.hasKey(arangodb::StaticStrings::ErrorMessage)) {
-        errorNum = ErrorCode{
-            error.get(arangodb::StaticStrings::ErrorNum).getNumericValue<int>()};
-        errorMsg = error.get(arangodb::StaticStrings::ErrorMessage).copyString();
+      if (!error.isNone() &&
+          error.hasKey(arangodb::StaticStrings::ErrorMessage)) {
+        errorNum = ErrorCode{error.get(arangodb::StaticStrings::ErrorNum)
+                                 .getNumericValue<int>()};
+        errorMsg =
+            error.get(arangodb::StaticStrings::ErrorMessage).copyString();
       }
     } catch (...) {
     }
-    return {errorNum, concatT("got invalid response from server: HTTP ",
-                              itoa(response->getHttpReturnCode()), ": ", errorMsg)};
+    return {errorNum,
+            concatT("got invalid response from server: HTTP ",
+                    itoa(response->getHttpReturnCode()), ": ", errorMsg)};
   }
   return {TRI_ERROR_NO_ERROR};
 }
 
-arangodb::Result getUptime(arangodb::httpclient::SimpleHttpClient& client, double& uptime) {
+arangodb::Result getUptime(arangodb::httpclient::SimpleHttpClient& client,
+                           double& uptime) {
   arangodb::Result result;
 
   std::string const url = "/_admin/statistics";
@@ -142,7 +147,8 @@ arangodb::Result getUptime(arangodb::httpclient::SimpleHttpClient& client, doubl
 }
 
 arangodb::Result waitForRestart(arangodb::ClientManager& clientManager,
-                                double originalUptime, double maxWaitForRestart) {
+                                double originalUptime,
+                                double maxWaitForRestart) {
   arangodb::Result result;
 
   auto start = std::chrono::high_resolution_clock::now();
@@ -162,7 +168,8 @@ arangodb::Result waitForRestart(arangodb::ClientManager& clientManager,
   while (timeSinceStart() < maxWaitForRestart) {
     std::unique_ptr<arangodb::httpclient::SimpleHttpClient> client;
     try {
-      result = clientManager.getConnectedClient(client, true, false, false, true, 0);
+      result =
+          clientManager.getConnectedClient(client, true, false, false, true, 0);
       if (result.ok() && client != nullptr) {
         double uptime = 0.0;
         result = ::getUptime(*client, uptime);
@@ -171,12 +178,14 @@ arangodb::Result waitForRestart(arangodb::ClientManager& clientManager,
               << "...server back up and running!";
           return result;
         }
-        // server still down, or still up prior to restart; fall through, wait, retry
+        // server still down, or still up prior to restart; fall through, wait,
+        // retry
       }
     } catch (arangodb::basics::Exception const& ex) {
       return {ex.code(), ex.what()};
     } catch (std::exception const& ex) {
-      return {TRI_ERROR_INTERNAL, std::string("Caught exception: ") + ex.what()};
+      return {TRI_ERROR_INTERNAL,
+              std::string("Caught exception: ") + ex.what()};
     } catch (...) {
       return {TRI_ERROR_INTERNAL, "Caught unknown exception."};
     }
@@ -262,7 +271,8 @@ arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
         LOG_TOPIC("43212", INFO, arangodb::Logger::BACKUP)
             << "      number of DBServers: " << meta.get()._nrDBServers;
         LOG_TOPIC("12533", INFO, arangodb::Logger::BACKUP)
-            << "      number of available pieces: " << meta.get()._nrPiecesPresent;
+            << "      number of available pieces: "
+            << meta.get()._nrPiecesPresent;
         if (!meta.get()._serverId.empty()) {
           LOG_TOPIC("11112", INFO, arangodb::Logger::BACKUP)
               << "      serverId: " << meta.get()._serverId;
@@ -288,8 +298,9 @@ arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
   return result;
 }
 
-arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
-                               arangodb::BackupFeature::Options const& options) {
+arangodb::Result executeCreate(
+    arangodb::httpclient::SimpleHttpClient& client,
+    arangodb::BackupFeature::Options const& options) {
   arangodb::Result result;
 
   std::string const url = "/_admin/backup/create";
@@ -307,7 +318,8 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
   }
   std::string const body = bodyBuilder.slice().toJson();
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-      client.request(arangodb::rest::RequestType::POST, url, body.c_str(), body.size()));
+      client.request(arangodb::rest::RequestType::POST, url, body.c_str(),
+                     body.size()));
   result = ::checkHttpResponse(client, response);
   if (result.fail()) {
     return result;
@@ -355,7 +367,8 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
   }
 
   LOG_TOPIC("c4d37", INFO, arangodb::Logger::BACKUP)
-      << "Backup succeeded. Generated identifier '" << identifier.copyString() << "'";
+      << "Backup succeeded. Generated identifier '" << identifier.copyString()
+      << "'";
   VPackSlice sizeInBytes = resultObject.get("sizeInBytes");
   VPackSlice nrFiles = resultObject.get("nrFiles");
   if (sizeInBytes.isInteger() && nrFiles.isInteger()) {
@@ -390,7 +403,8 @@ arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
   }
   std::string const body = bodyBuilder.slice().toJson();
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-      client.request(arangodb::rest::RequestType::POST, url, body.c_str(), body.size()));
+      client.request(arangodb::rest::RequestType::POST, url, body.c_str(),
+                     body.size()));
   result = ::checkHttpResponse(client, response);
   if (result.fail()) {
     return result;
@@ -422,14 +436,16 @@ arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
   }
 
   if (!cluster && options.maxWaitForRestart > 0.0) {
-    result = ::waitForRestart(clientManager, originalUptime, options.maxWaitForRestart);
+    result = ::waitForRestart(clientManager, originalUptime,
+                              options.maxWaitForRestart);
   }
 
   return result;
 }
 
-arangodb::Result executeDelete(arangodb::httpclient::SimpleHttpClient& client,
-                               arangodb::BackupFeature::Options const& options) {
+arangodb::Result executeDelete(
+    arangodb::httpclient::SimpleHttpClient& client,
+    arangodb::BackupFeature::Options const& options) {
   arangodb::Result result;
 
   std::string const url = "/_admin/backup/delete";
@@ -440,7 +456,8 @@ arangodb::Result executeDelete(arangodb::httpclient::SimpleHttpClient& client,
   }
   std::string const body = bodyBuilder.slice().toJson();
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-      client.request(arangodb::rest::RequestType::POST, url, body.c_str(), body.size()));
+      client.request(arangodb::rest::RequestType::POST, url, body.c_str(),
+                     body.size()));
   result = ::checkHttpResponse(client, response);
   if (result.fail()) {
     return result;
@@ -502,9 +519,9 @@ struct TransferType {
   }
 };
 
-arangodb::Result executeStatusQuery(arangodb::httpclient::SimpleHttpClient& client,
-                                    arangodb::BackupFeature::Options const& options,
-                                    TransferType::type type) {
+arangodb::Result executeStatusQuery(
+    arangodb::httpclient::SimpleHttpClient& client,
+    arangodb::BackupFeature::Options const& options, TransferType::type type) {
   arangodb::Result result;
 
   std::string const url = TransferType::asAdminPath(type);
@@ -519,7 +536,8 @@ arangodb::Result executeStatusQuery(arangodb::httpclient::SimpleHttpClient& clie
 
   std::string const body = bodyBuilder.slice().toJson();
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-      client.request(arangodb::rest::RequestType::POST, url, body.c_str(), body.size()));
+      client.request(arangodb::rest::RequestType::POST, url, body.c_str(),
+                     body.size()));
   result = ::checkHttpResponse(client, response);
   if (result.fail()) {
     return result;
@@ -570,7 +588,8 @@ arangodb::Result executeStatusQuery(arangodb::httpclient::SimpleHttpClient& clie
 
       if (server.value.hasKey("ErrorMessage")) {
         LOG_TOPIC("3c3c4", ERR, arangodb::Logger::BACKUP)
-            << "ErrorMessage: " << server.value.get("ErrorMessage").copyString();
+            << "ErrorMessage: "
+            << server.value.get("ErrorMessage").copyString();
       }
     }
   } else {
@@ -584,9 +603,9 @@ arangodb::Result executeStatusQuery(arangodb::httpclient::SimpleHttpClient& clie
   return result;
 }
 
-arangodb::Result executeInitiateTransfer(arangodb::httpclient::SimpleHttpClient& client,
-                                         arangodb::BackupFeature::Options const& options,
-                                         TransferType::type type) {
+arangodb::Result executeInitiateTransfer(
+    arangodb::httpclient::SimpleHttpClient& client,
+    arangodb::BackupFeature::Options const& options, TransferType::type type) {
   arangodb::Result result;
 
   // Load configuration file
@@ -595,7 +614,8 @@ arangodb::Result executeInitiateTransfer(arangodb::httpclient::SimpleHttpClient&
   result = arangodb::basics::catchVoidToResult([&options, &configFile]() {
     std::string configFileSource =
         arangodb::basics::FileUtils::slurp(options.rcloneConfigFile);
-    auto configFileParsed = arangodb::velocypack::Parser::fromJson(configFileSource);
+    auto configFileParsed =
+        arangodb::velocypack::Parser::fromJson(configFileSource);
     configFile.swap(configFileParsed);
   });
 
@@ -614,7 +634,8 @@ arangodb::Result executeInitiateTransfer(arangodb::httpclient::SimpleHttpClient&
   }
   std::string const body = bodyBuilder.slice().toJson();
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-      client.request(arangodb::rest::RequestType::POST, url, body.c_str(), body.size()));
+      client.request(arangodb::rest::RequestType::POST, url, body.c_str(),
+                     body.size()));
   result = ::checkHttpResponse(client, response);
   if (result.fail()) {
     return result;
@@ -637,7 +658,8 @@ arangodb::Result executeInitiateTransfer(arangodb::httpclient::SimpleHttpClient&
   }
   TRI_ASSERT(resultObject.isObject());
 
-  std::string transferId = resultObject.get(TransferType::asJsonId(type)).copyString();
+  std::string transferId =
+      resultObject.get(TransferType::asJsonId(type)).copyString();
 
   LOG_TOPIC("a9597", INFO, arangodb::Logger::BACKUP)
       << "Backup initiated, use ";
@@ -648,9 +670,9 @@ arangodb::Result executeInitiateTransfer(arangodb::httpclient::SimpleHttpClient&
   return result;
 }
 
-arangodb::Result executeTransfer(arangodb::httpclient::SimpleHttpClient& client,
-                                 arangodb::BackupFeature::Options const& options,
-                                 TransferType::type type) {
+arangodb::Result executeTransfer(
+    arangodb::httpclient::SimpleHttpClient& client,
+    arangodb::BackupFeature::Options const& options, TransferType::type type) {
   if (!options.statusId.empty()) {
     // This is a status query
     return executeStatusQuery(client, options, type);
@@ -664,8 +686,11 @@ arangodb::Result executeTransfer(arangodb::httpclient::SimpleHttpClient& client,
 
 namespace arangodb {
 
-BackupFeature::BackupFeature(application_features::ApplicationServer& server, int& exitCode)
-    : ApplicationFeature(server, BackupFeature::featureName()), _clientManager{server, Logger::BACKUP}, _exitCode{exitCode} {
+BackupFeature::BackupFeature(application_features::ApplicationServer& server,
+                             int& exitCode)
+    : ApplicationFeature(server, BackupFeature::featureName()),
+      _clientManager{server, Logger::BACKUP},
+      _exitCode{exitCode} {
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<ClientFeature>();
@@ -683,7 +708,8 @@ std::string BackupFeature::operationList(std::string const& separator) {
   return basics::StringUtils::join(operations, separator);
 }
 
-void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
+void BackupFeature::collectOptions(
+    std::shared_ptr<options::ProgramOptions> options) {
   using arangodb::options::BooleanParameter;
   using arangodb::options::DiscreteValuesParameter;
   using arangodb::options::DoubleParameter;
@@ -693,11 +719,13 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   using arangodb::options::UInt64Parameter;
   using arangodb::options::VectorParameter;
 
-  options->addOption("--operation",
-                     "operation to perform (may be specified as positional "
-                     "argument without '--operation')",
-                     new DiscreteValuesParameter<StringParameter>(&_options.operation, ::Operations),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption(
+      "--operation",
+      "operation to perform (may be specified as positional "
+      "argument without '--operation')",
+      new DiscreteValuesParameter<StringParameter>(&_options.operation,
+                                                   ::Operations),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--allow-inconsistent",
@@ -735,31 +763,35 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
       new DoubleParameter(&_options.maxWaitForRestart));
 
 #ifdef USE_ENTERPRISE
-  options->addOption("--status-id",
-                     "returns the status of a transfer process "
-                     "(upload/download operation)",
-                     new StringParameter(&_options.statusId),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise,
-                                                         arangodb::options::Flags::Command));
+  options->addOption(
+      "--status-id",
+      "returns the status of a transfer process "
+      "(upload/download operation)",
+      new StringParameter(&_options.statusId),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise,
+                                          arangodb::options::Flags::Command));
 
   options->addOption("--rclone-config-file",
                      "filename of the Rclone configuration file used for"
                      "file transfer (upload/download operation)",
                      new StringParameter(&_options.rcloneConfigFile),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise));
+                     arangodb::options::makeDefaultFlags(
+                         arangodb::options::Flags::Enterprise));
 
   options->addOption("--remote-path",
                      "remote Rclone path of directory used to store or "
                      "receive backups (upload/download operation)",
                      new StringParameter(&_options.remoteDirectory),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise));
+                     arangodb::options::makeDefaultFlags(
+                         arangodb::options::Flags::Enterprise));
 
-  options->addOption("--abort",
-                     "abort transfer with given status-id "
-                     "(upload/download operation)",
-                     new BooleanParameter(&_options.abort),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise,
-                                                         arangodb::options::Flags::Command));
+  options->addOption(
+      "--abort",
+      "abort transfer with given status-id "
+      "(upload/download operation)",
+      new BooleanParameter(&_options.abort),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise,
+                                          arangodb::options::Flags::Command));
 
   options->addOption(
       "--force",
@@ -768,11 +800,13 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
       "presence of intermediate commits! Use it with great care and only "
       "if you really need a consistent backup at all costs (create operation)",
       new BooleanParameter(&_options.abortTransactionsIfNeeded),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise));
+      arangodb::options::makeDefaultFlags(
+          arangodb::options::Flags::Enterprise));
 #endif
   /*
     options->addSection(
-        "remote", "Options detailing a remote connection to use for operations");
+        "remote", "Options detailing a remote connection to use for
+    operations");
 
     options->addOption("--remote.credentials",
                        "the credentials used for the remote endpoint",
@@ -784,7 +818,8 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   */
 }
 
-void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
+void BackupFeature::validateOptions(
+    std::shared_ptr<options::ProgramOptions> options) {
   using namespace arangodb::application_features;
 
   auto const& positionals = options->processingResult()._positionals;
@@ -823,7 +858,8 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 
   if (_options.operation == ::OperationCreate) {
     if (!_options.label.empty()) {
-      std::regex re = std::regex("^([a-zA-Z0-9\\._\\-]+)$", std::regex::ECMAScript);
+      std::regex re =
+          std::regex("^([a-zA-Z0-9\\._\\-]+)$", std::regex::ECMAScript);
       if (!std::regex_match(_options.label, re)) {
         LOG_TOPIC("7829b", FATAL, Logger::BACKUP)
             << "--label value may only contain numbers, letters, periods, "
@@ -840,7 +876,8 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
     }
   }
 
-  if (_options.operation == ::OperationDelete || _options.operation == ::OperationRestore) {
+  if (_options.operation == ::OperationDelete ||
+      _options.operation == ::OperationRestore) {
     if (_options.identifier.empty()) {
       LOG_TOPIC("e83ef", FATAL, Logger::BACKUP)
           << "must specify a backup via --identifier";
@@ -858,7 +895,8 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
     }
   }
 #ifdef USE_ENTERPRISE
-  if (_options.operation == ::OperationUpload || _options.operation == ::OperationDownload) {
+  if (_options.operation == ::OperationUpload ||
+      _options.operation == ::OperationDownload) {
     if (_options.statusId.empty() == _options.identifier.empty()) {
       // Either both or none are set
       LOG_TOPIC("2d0fa", FATAL, Logger::BACKUP)
@@ -875,7 +913,8 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
     }
 
     if (!_options.identifier.empty()) {
-      if (_options.rcloneConfigFile.empty() || _options.remoteDirectory.empty()) {
+      if (_options.rcloneConfigFile.empty() ||
+          _options.remoteDirectory.empty()) {
         LOG_TOPIC("6063d", FATAL, Logger::BACKUP)
             << "for data transfer --rclone-config-file"
                " and --remote-path must be set";

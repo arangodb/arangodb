@@ -96,7 +96,8 @@ std::string Utils::baseUrl(std::string const& prefix) {
 
 ErrorCode Utils::resolveShard(ClusterInfo& ci, WorkerConfig const* config,
                               std::string const& collectionName,
-                              std::string const& shardKey, VPackStringRef vertexKey,
+                              std::string const& shardKey,
+                              VPackStringRef vertexKey,
                               std::string& responsibleShard) {
   if (!ServerState::instance()->isRunningInCluster()) {
     responsibleShard = collectionName;
@@ -124,6 +125,7 @@ ErrorCode Utils::resolveShard(ClusterInfo& ci, WorkerConfig const* config,
   partial.add(shardKey, VPackValuePair(vertexKey.data(), vertexKey.size(),
                                        VPackValueType::String));
   partial.close();
-  //  LOG_TOPIC("00a5c", INFO, Logger::PREGEL) << "Partial doc: " << partial.toJson();
+  //  LOG_TOPIC("00a5c", INFO, Logger::PREGEL) << "Partial doc: " <<
+  //  partial.toJson();
   return info->getResponsibleShard(partial.slice(), false, responsibleShard);
 }

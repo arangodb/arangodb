@@ -29,27 +29,27 @@ namespace arangodb {
 namespace velocypack {
 namespace deserializer::utilities {
 
-template <typename T>
+template<typename T>
 struct identity_factory {
   using constructed_type = T;
   T operator()(T t) const { return t; }
 };
 
-template <typename P>
+template<typename P>
 struct make_unique_factory {
   using constructed_type = std::unique_ptr<P>;
 
-  template <typename... S>
+  template<typename... S>
   auto operator()(S&&... s) -> constructed_type {
     return std::make_unique<P>(std::forward<S>(s)...);
   }
 };
 
-template <typename T>
+template<typename T>
 struct constructor_factory {
   using constructed_type = T;
 
-  template <typename... S>
+  template<typename... S>
   T operator()(S&&... s) const {
     static_assert(detail::gadgets::is_braces_constructible_v<T, S...>,
                   "the type is not constructable with the given types");
@@ -57,11 +57,11 @@ struct constructor_factory {
   }
 };
 
-template <typename F>
+template<typename F>
 struct visiting_factory {
   using constructed_type = typename F::constructed_type;
 
-  template <typename... S>
+  template<typename... S>
   auto operator()(std::variant<S...>&& s) const {
     return std::visit(
         [](auto&& p) {
@@ -72,17 +72,17 @@ struct visiting_factory {
   }
 };
 
-template <typename T, typename P>
+template<typename T, typename P>
 struct constructing_deserializer {
   using constructed_type = T;
   using plan = P;
   using factory = constructor_factory<T>;
 };
 
-template <auto value>
+template<auto value>
 struct member_extractor;
 
-template <typename A, typename B, A B::*ptr>
+template<typename A, typename B, A B::*ptr>
 struct member_extractor<ptr> {
   static A& exec(B& b) { return b.*ptr; }
 
@@ -90,7 +90,7 @@ struct member_extractor<ptr> {
 };
 
 struct not_empty_validator {
-  template <typename C>
+  template<typename C>
   auto operator()(C&& c) -> std::optional<deserialize_error> {
     if (c.empty()) {
       return deserialize_error{"must not be empty"};
@@ -99,9 +99,9 @@ struct not_empty_validator {
   }
 };
 
-template <typename>
+template<typename>
 using always_false = std::false_type;
-template <typename T>
+template<typename T>
 constexpr bool always_false_v = always_false<T>::value;
 
 }  // namespace deserializer::utilities

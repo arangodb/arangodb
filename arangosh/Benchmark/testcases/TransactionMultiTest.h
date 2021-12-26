@@ -50,8 +50,9 @@ struct TransactionMultiTest : public Benchmark<TransactionMultiTest> {
 
   void tearDown() override {}
 
-  void buildRequest(size_t threadNumber, size_t threadCounter, size_t globalCounter,
-                    BenchmarkOperation::RequestData& requestData) const override {
+  void buildRequest(
+      size_t threadNumber, size_t threadCounter, size_t globalCounter,
+      BenchmarkOperation::RequestData& requestData) const override {
     requestData.url = "/_api/transaction";
     requestData.type = rest::RequestType::POST;
     size_t mod = globalCounter % 2;

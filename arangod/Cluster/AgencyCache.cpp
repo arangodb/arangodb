@@ -39,7 +39,8 @@ DECLARE_GAUGE(arangodb_agency_cache_callback_number, uint64_t,
               "Current number of entries in agency cache callbacks table");
 
 AgencyCache::AgencyCache(application_features::ApplicationServer& server,
-                         AgencyCallbackRegistry& callbackRegistry, ErrorCode shutdownCode)
+                         AgencyCallbackRegistry& callbackRegistry,
+                         ErrorCode shutdownCode)
     : Thread(server, "AgencyCache"),
       _commitIndex(0),
       _readDB(server, nullptr, "readDB"),
@@ -50,7 +51,8 @@ AgencyCache::AgencyCache(application_features::ApplicationServer& server,
       _callbacksCount(_server.getFeature<MetricsFeature>().add(
           arangodb_agency_cache_callback_number{})) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  TRI_ASSERT(_shutdownCode == TRI_ERROR_NO_ERROR || _shutdownCode == TRI_ERROR_SHUTTING_DOWN);
+  TRI_ASSERT(_shutdownCode == TRI_ERROR_NO_ERROR ||
+             _shutdownCode == TRI_ERROR_SHUTTING_DOWN);
 #else
   TRI_ASSERT(_shutdownCode == TRI_ERROR_SHUTTING_DOWN);
 #endif
@@ -112,7 +114,8 @@ query_t AgencyCache::dump() const {
 }
 
 // Get Builder from readDB, mainly /Plan /Current
-std::tuple<query_t, index_t> AgencyCache::read(std::vector<std::string> const& paths) const {
+std::tuple<query_t, index_t> AgencyCache::read(
+    std::vector<std::string> const& paths) const {
   auto query = std::make_shared<arangodb::velocypack::Builder>();
   {
     VPackArrayBuilder outer(query.get());
@@ -136,9 +139,11 @@ futures::Future<arangodb::Result> AgencyCache::waitFor(index_t index) {
   if (index <= _commitIndex) {
     return futures::makeFuture(arangodb::Result());
   }
-  // intentionally don't release _storeLock here until we have inserted the promise
+  // intentionally don't release _storeLock here until we have inserted the
+  // promise
   std::lock_guard w(_waitLock);
-  return _waiting.emplace(index, futures::Promise<arangodb::Result>())->second.getFuture();
+  return _waiting.emplace(index, futures::Promise<arangodb::Result>())
+      ->second.getFuture();
 }
 
 index_t AgencyCache::index() const {
@@ -155,7 +160,8 @@ std::unordered_set<std::string> AgencyCache::reInitPlan() {
   std::unordered_set<std::string> planChanges =
       server().getFeature<ClusterFeature>().allDatabases();  // local databases
   // And everything under /arango/Plan/Databases:
-  auto keys = _readDB.nodePtr(AgencyCommHelper::path(PLAN) + "/" + DATABASES)->keys();
+  auto keys =
+      _readDB.nodePtr(AgencyCommHelper::path(PLAN) + "/" + DATABASES)->keys();
   for (auto const& dbname : keys) {
     planChanges.emplace(dbname);
   }
@@ -163,11 +169,10 @@ std::unordered_set<std::string> AgencyCache::reInitPlan() {
   return planChanges;
 }
 
-void AgencyCache::handleCallbacksNoLock(VPackSlice slice,
-                                        std::unordered_set<uint64_t>& uniq,
-                                        std::vector<uint64_t>& toCall,
-                                        std::unordered_set<std::string>& planChanges,
-                                        std::unordered_set<std::string>& currentChanges) {
+void AgencyCache::handleCallbacksNoLock(
+    VPackSlice slice, std::unordered_set<uint64_t>& uniq,
+    std::vector<uint64_t>& toCall, std::unordered_set<std::string>& planChanges,
+    std::unordered_set<std::string>& currentChanges) {
   if (!slice.isObject()) {
     LOG_TOPIC("31514", DEBUG, Logger::CLUSTER)
         << "Cannot handle callback on non-object " << slice.toJson();
@@ -218,15 +223,19 @@ void AgencyCache::handleCallbacksNoLock(VPackSlice slice,
             r.compare(0, strlen(PLAN_VERSION), PLAN_VERSION) == 0) {
           continue;
         } else if (rs > strlen(PLAN_COLLECTIONS) &&  // Plan/Collections
-                   r.compare(0, strlen(PLAN_COLLECTIONS), PLAN_COLLECTIONS) == 0) {
+                   r.compare(0, strlen(PLAN_COLLECTIONS), PLAN_COLLECTIONS) ==
+                       0) {
           auto tmp = r.substr(strlen(PLAN_COLLECTIONS));
           planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
         } else if (rs > strlen(PLAN_REPLICATED_LOGS) &&  // Plan/ReplicatedLogs
-                   r.compare(0, strlen(PLAN_REPLICATED_LOGS), PLAN_REPLICATED_LOGS) == 0) {
+                   r.compare(0, strlen(PLAN_REPLICATED_LOGS),
+                             PLAN_REPLICATED_LOGS) == 0) {
           auto tmp = r.substr(strlen(PLAN_REPLICATED_LOGS));
           planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
-        } else if (rs > strlen(PLAN_COLLECTION_GROUPS) &&  // Plan/CollectionGroups
-                   r.compare(0, strlen(PLAN_COLLECTION_GROUPS), PLAN_COLLECTION_GROUPS) == 0) {
+        } else if (rs > strlen(
+                            PLAN_COLLECTION_GROUPS) &&  // Plan/CollectionGroups
+                   r.compare(0, strlen(PLAN_COLLECTION_GROUPS),
+                             PLAN_COLLECTION_GROUPS) == 0) {
           auto tmp = r.substr(strlen(PLAN_COLLECTION_GROUPS));
           planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
         } else if (rs > strlen(PLAN_DATABASES) &&  // Plan/Databases
@@ -243,25 +252,31 @@ void AgencyCache::handleCallbacksNoLock(VPackSlice slice,
           planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
         } else if (r == "Plan/Databases" || r == "Plan/Collections" ||
                    r == "Plan/Views" || r == "Plan/Analyzers" || r == "Plan") {
-          // !! Check documentation of the function before making changes here !!
+          // !! Check documentation of the function before making changes here
+          // !!
           planChanges = reInitPlan();
         } else {
           planChanges.emplace();  // "" to indicate non database
         }
-      } else if (rs > strlen(CURRENT) && r.compare(0, strlen(CURRENT), CURRENT) == 0) {
+      } else if (rs > strlen(CURRENT) &&
+                 r.compare(0, strlen(CURRENT), CURRENT) == 0) {
         if (rs >= strlen(CURRENT_VERSION) &&  // Current/Version is ignored
             r.compare(0, strlen(CURRENT_VERSION), CURRENT_VERSION) == 0) {
           continue;
         } else if (rs > strlen(CURRENT_COLLECTIONS) &&  // Current/Collections
-                   r.compare(0, strlen(CURRENT_COLLECTIONS), CURRENT_COLLECTIONS) == 0) {
+                   r.compare(0, strlen(CURRENT_COLLECTIONS),
+                             CURRENT_COLLECTIONS) == 0) {
           auto tmp = r.substr(strlen(CURRENT_COLLECTIONS));
           currentChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
         } else if (rs > strlen(CURRENT_DATABASES) &&  // Current/Databases
-                   r.compare(0, strlen(CURRENT_DATABASES), CURRENT_DATABASES) == 0) {
+                   r.compare(0, strlen(CURRENT_DATABASES), CURRENT_DATABASES) ==
+                       0) {
           auto tmp = r.substr(strlen(CURRENT_DATABASES));
           currentChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
-        } else if (rs > strlen(CURRENT_REPLICATED_LOGS) &&  // Current/ReplicatedLogs
-                   r.compare(0, strlen(CURRENT_REPLICATED_LOGS), CURRENT_REPLICATED_LOGS) == 0) {
+        } else if (
+            rs > strlen(CURRENT_REPLICATED_LOGS) &&  // Current/ReplicatedLogs
+            r.compare(0, strlen(CURRENT_REPLICATED_LOGS),
+                      CURRENT_REPLICATED_LOGS) == 0) {
           auto tmp = r.substr(strlen(CURRENT_REPLICATED_LOGS));
           currentChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
         } else {
@@ -352,7 +367,8 @@ void AgencyCache::run() {
         auto ret =
             sendTransaction()
                 .thenValue([&](AsyncAgencyCommResult&& rb) {
-                  if (!rb.ok() || rb.statusCode() != arangodb::fuerte::StatusOK) {
+                  if (!rb.ok() ||
+                      rb.statusCode() != arangodb::fuerte::StatusOK) {
                     // Error response, this includes client timeout
                     increaseWaitTime();
                     LOG_TOPIC("9a93e", DEBUG, Logger::CLUSTER)
@@ -371,7 +387,8 @@ void AgencyCache::run() {
                   VPackSlice rs = slc.get("result");
                   TRI_ASSERT(rs.hasKey("commitIndex"));
                   TRI_ASSERT(rs.get("commitIndex").isNumber());
-                  index_t commitIndex = rs.get("commitIndex").getNumber<uint64_t>();
+                  index_t commitIndex =
+                      rs.get("commitIndex").getNumber<uint64_t>();
                   VPackSlice firstIndexSlice = rs.get("firstIndex");
                   if (!firstIndexSlice.isNumber()) {
                     // Nothing happened at all, server timeout
@@ -406,7 +423,8 @@ void AgencyCache::run() {
 
                         {
                           std::lock_guard g(_callbacksLock);
-                          handleCallbacksNoLock(i.get("query"), uniq, toCall, pc, cc);
+                          handleCallbacksNoLock(i.get("query"), uniq, toCall,
+                                                pc, cc);
                         }
 
                         for (auto const& i : pc) {
@@ -429,7 +447,8 @@ void AgencyCache::run() {
                     for (auto const& i : pc) {
                       _planChanges.emplace(_commitIndex, i);
                     }
-                    // !! Check documentation of the function before making changes here !!
+                    // !! Check documentation of the function before making
+                    // changes here !!
                     _commitIndex = commitIndex;
                     _lastSnapshot = commitIndex;
                     _initialized.store(true, std::memory_order_relaxed);
@@ -444,12 +463,15 @@ void AgencyCache::run() {
                   }
                   return futures::makeFuture();
                 })
-                .thenError<VPackException>([&increaseWaitTime](VPackException const& e) {
-                  LOG_TOPIC("9a9f3", ERR, Logger::CLUSTER)
-                      << "Failed to parse poll result from agency: " << e.what();
-                  increaseWaitTime();
-                })
-                .thenError<std::exception>([&increaseWaitTime](std::exception const& e) {
+                .thenError<VPackException>(
+                    [&increaseWaitTime](VPackException const& e) {
+                      LOG_TOPIC("9a9f3", ERR, Logger::CLUSTER)
+                          << "Failed to parse poll result from agency: "
+                          << e.what();
+                      increaseWaitTime();
+                    })
+                .thenError<std::exception>([&increaseWaitTime](
+                                               std::exception const& e) {
                   LOG_TOPIC("9a9e3", ERR, Logger::CLUSTER)
                       << "Failed to get poll result from agency: " << e.what();
                   increaseWaitTime();
@@ -484,7 +506,8 @@ void AgencyCache::triggerWaiting(index_t commitIndex) {
     if (pit->first > commitIndex) {
       break;
     }
-    auto pp = std::make_shared<futures::Promise<Result>>(std::move(pit->second));
+    auto pp =
+        std::make_shared<futures::Promise<Result>>(std::move(pit->second));
     if (scheduler && !this->isStopping()) {
       scheduler->queue(RequestLane::CLUSTER_INTERNAL,
                        [pp] { pp->setValue(Result()); });
@@ -496,9 +519,11 @@ void AgencyCache::triggerWaiting(index_t commitIndex) {
 }
 
 /// Register local callback
-Result AgencyCache::registerCallback(std::string const& key, uint64_t const& id) {
+Result AgencyCache::registerCallback(std::string const& key,
+                                     uint64_t const& id) {
   std::string const ckey = Store::normalize(AgencyCommHelper::path(key));
-  LOG_TOPIC("67bb8", DEBUG, Logger::CLUSTER) << "Registering callback for " << ckey;
+  LOG_TOPIC("67bb8", DEBUG, Logger::CLUSTER)
+      << "Registering callback for " << ckey;
 
   size_t size = 0;
   {
@@ -512,16 +537,19 @@ Result AgencyCache::registerCallback(std::string const& key, uint64_t const& id)
   LOG_TOPIC("31415", TRACE, Logger::CLUSTER)
       << "Registered callback for key " << ckey << " with id " << id
       << ", callbacks: " << size;
-  // this method always returns ok, except in case of OOM (in this case it will throw).
-  // to keep some API compatibility with AgencyCallbackRegistry::registerCallback(...),
-  // we make this function return a Result, too, even though it is not really needed here
+  // this method always returns ok, except in case of OOM (in this case it will
+  // throw). to keep some API compatibility with
+  // AgencyCallbackRegistry::registerCallback(...), we make this function return
+  // a Result, too, even though it is not really needed here
   return {};
 }
 
 /// Unregister local callback
-void AgencyCache::unregisterCallback(std::string const& key, uint64_t const& id) {
+void AgencyCache::unregisterCallback(std::string const& key,
+                                     uint64_t const& id) {
   std::string const ckey = Store::normalize(AgencyCommHelper::path(key));
-  LOG_TOPIC("cc768", DEBUG, Logger::CLUSTER) << "Unregistering callback for " << ckey;
+  LOG_TOPIC("cc768", DEBUG, Logger::CLUSTER)
+      << "Unregistering callback for " << ckey;
 
   size_t size = 0;
   {
@@ -587,7 +615,8 @@ void AgencyCache::beginShutdown() {
     auto cb = _callbackRegistry.getCallback(callbackId);
     if (cb != nullptr) {
       LOG_TOPIC("76bb8", DEBUG, Logger::CLUSTER)
-          << "Agency callback " << callbackId << " has been triggered. refetching!";
+          << "Agency callback " << callbackId
+          << " has been triggered. refetching!";
       try {
         cb->refetchAndUpdate(true, false);
       } catch (arangodb::basics::Exception const& e) {
@@ -605,7 +634,8 @@ bool AgencyCache::has(std::string const& path) const {
   return _readDB.has(AgencyCommHelper::path(path));
 }
 
-std::vector<bool> AgencyCache::has(std::vector<std::string> const& paths) const {
+std::vector<bool> AgencyCache::has(
+    std::vector<std::string> const& paths) const {
   std::vector<bool> ret;
   ret.reserve(paths.size());
   std::shared_lock g(_storeLock);
@@ -615,13 +645,15 @@ std::vector<bool> AgencyCache::has(std::vector<std::string> const& paths) const 
   return ret;
 }
 
-void AgencyCache::invokeCallbackNoLock(uint64_t id, std::string const& key) const {
+void AgencyCache::invokeCallbackNoLock(uint64_t id,
+                                       std::string const& key) const {
   auto cb = _callbackRegistry.getCallback(id);
   if (cb != nullptr) {
     try {
       cb->refetchAndUpdate(true, false);
       LOG_TOPIC("76aa8", DEBUG, Logger::CLUSTER)
-          << "Agency callback " << id << " has been triggered. refetching " << key;
+          << "Agency callback " << id << " has been triggered. refetching "
+          << key;
     } catch (arangodb::basics::Exception const& e) {
       LOG_TOPIC("c3091", WARN, Logger::AGENCYCOMM)
           << "Error executing callback: " << e.message();
@@ -646,20 +678,23 @@ void AgencyCache::invokeAllCallbacks() const {
   invokeCallbacks(toCall);
 }
 
-void AgencyCache::clearChanged(std::string const& what, consensus::index_t const& doneIndex) {
+void AgencyCache::clearChanged(std::string const& what,
+                               consensus::index_t const& doneIndex) {
   std::shared_lock g(_storeLock);
-  decltype(_planChanges)& changes = (what == PLAN) ? _planChanges : _currentChanges;
+  decltype(_planChanges)& changes =
+      (what == PLAN) ? _planChanges : _currentChanges;
   if (!changes.empty()) {
     changes.erase(changes.begin(), changes.upper_bound(doneIndex));
   }
 }
 
-AgencyCache::change_set_t AgencyCache::changedSince(std::string const& what,
-                                                    consensus::index_t const& last) const {
+AgencyCache::change_set_t AgencyCache::changedSince(
+    std::string const& what, consensus::index_t const& last) const {
   static std::vector<std::string> const planGoodies(
       {AgencyCommHelper::path(PLAN_ANALYZERS) + "/",
        AgencyCommHelper::path(PLAN_COLLECTIONS) + "/",
-       AgencyCommHelper::path(PLAN_DATABASES) + "/", AgencyCommHelper::path(PLAN_VIEWS) + "/",
+       AgencyCommHelper::path(PLAN_DATABASES) + "/",
+       AgencyCommHelper::path(PLAN_VIEWS) + "/",
        AgencyCommHelper::path(PLAN_COLLECTION_GROUPS) + "/",
        AgencyCommHelper::path(PLAN_REPLICATED_LOGS) + "/"});
   static std::vector<std::string> const currentGoodies(
@@ -671,24 +706,28 @@ AgencyCache::change_set_t AgencyCache::changedSince(std::string const& what,
   std::unordered_map<std::string, query_t> db_res;
   query_t rest_res = nullptr;
 
-  std::vector<std::string> const& goodies = (what == PLAN) ? planGoodies : currentGoodies;
+  std::vector<std::string> const& goodies =
+      (what == PLAN) ? planGoodies : currentGoodies;
   std::unordered_set<std::string> databases;
 
   std::shared_lock g(_storeLock);
 
-  decltype(_planChanges) const& changes = (what == PLAN) ? _planChanges : _currentChanges;
+  decltype(_planChanges) const& changes =
+      (what == PLAN) ? _planChanges : _currentChanges;
 
-  auto tmp = _readDB.nodePtr()->hasAsUInt(AgencyCommHelper::path(what) + "/" + VERSION);
+  auto tmp = _readDB.nodePtr()->hasAsUInt(AgencyCommHelper::path(what) + "/" +
+                                          VERSION);
   uint64_t version = tmp.value_or(0);
 
   if (last < _lastSnapshot || last == 0) {
-    // we will get here when we call this with a "last" index value that is less than
-    // the index of the last snapshot we got. in this case our changeset needs to
-    // contain all databases.
-    // in addition, in case the "last" value is 0, this is the initial call,
-    // and we need to handle this in a special way, too.
+    // we will get here when we call this with a "last" index value that is less
+    // than the index of the last snapshot we got. in this case our changeset
+    // needs to contain all databases. in addition, in case the "last" value is
+    // 0, this is the initial call, and we need to handle this in a special way,
+    // too.
     get_rest = true;
-    auto keys = _readDB.nodePtr(AgencyCommHelper::path(what) + "/" + DATABASES)->keys();
+    auto keys =
+        _readDB.nodePtr(AgencyCommHelper::path(what) + "/" + DATABASES)->keys();
     databases.reserve(keys.size());
     for (auto& i : keys) {
       databases.emplace(std::move(i));
@@ -708,12 +747,14 @@ AgencyCache::change_set_t AgencyCache::changedSince(std::string const& what,
     } else {
       LOG_TOPIC("d5734", DEBUG, Logger::CLUSTER)
           << "no changed databases since " << last;
-      return change_set_t(_commitIndex, version, std::move(db_res), std::move(rest_res));
+      return change_set_t(_commitIndex, version, std::move(db_res),
+                          std::move(rest_res));
     }
   }
 
   if (databases.empty()) {
-    return change_set_t(_commitIndex, version, std::move(db_res), std::move(rest_res));
+    return change_set_t(_commitIndex, version, std::move(db_res),
+                        std::move(rest_res));
   }
 
   auto query = std::make_shared<arangodb::velocypack::Builder>();
@@ -729,7 +770,8 @@ AgencyCache::change_set_t AgencyCache::changedSince(std::string const& what,
             }
           }
         }
-        auto [entry, created] = db_res.try_emplace(i, std::make_shared<VPackBuilder>());
+        auto [entry, created] =
+            db_res.try_emplace(i, std::make_shared<VPackBuilder>());
         if (created) {
           _readDB.read(query, entry->second);
         } else {
@@ -744,14 +786,13 @@ AgencyCache::change_set_t AgencyCache::changedSince(std::string const& what,
   }
 
   if (get_rest) {  // All the rest, i.e. All keys excluding the usual suspects
-    static std::vector<std::string> const exc{"Analyzers", "Collections",
-                                              "Databases", "Views",
-                                              "ReplicatedLogs"};
+    static std::vector<std::string> const exc{
+        "Analyzers", "Collections", "Databases", "Views", "ReplicatedLogs"};
     auto keys = _readDB.nodePtr(AgencyCommHelper::path(what))->keys();
     keys.erase(std::remove_if(std::begin(keys), std::end(keys),
                               [&](auto const& x) {
-                                return std::find(std::begin(exc), std::end(exc), x) !=
-                                       std::end(exc);
+                                return std::find(std::begin(exc), std::end(exc),
+                                                 x) != std::end(exc);
                               }),
                std::end(keys));
     {
@@ -767,7 +808,8 @@ AgencyCache::change_set_t AgencyCache::changedSince(std::string const& what,
     }
   }
 
-  return change_set_t(_commitIndex, version, std::move(db_res), std::move(rest_res));
+  return change_set_t(_commitIndex, version, std::move(db_res),
+                      std::move(rest_res));
 }
 
 namespace std {

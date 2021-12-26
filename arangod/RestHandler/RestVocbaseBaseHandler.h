@@ -159,7 +159,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief generates document not found error message, no transaction info
   void generateDocumentNotFound(std::string const& /* collection name */,
                                 std::string const& /* document key */) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
 
   /// @brief generates not implemented
@@ -169,13 +170,15 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   void generateForbidden();
 
   /// @brief generates conflict error
-  void generateConflictError(arangodb::OperationResult const&, bool precFailed = false);
+  void generateConflictError(arangodb::OperationResult const&,
+                             bool precFailed = false);
 
   /// @brief generates not modified
   void generateNotModified(RevisionId);
 
   /// @brief generates first entry from a result set
-  void generateDocument(arangodb::velocypack::Slice const& input, bool generateBody,
+  void generateDocument(arangodb::velocypack::Slice const& input,
+                        bool generateBody,
                         arangodb::velocypack::Options const* options = nullptr);
 
   /// @brief generate an error message for a transaction error, this method
@@ -204,12 +207,13 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
    * @return A freshly created transaction for the given collection with proper
    * locking or a leased transaction.
    */
-  std::unique_ptr<transaction::Methods> createTransaction(std::string const& cname,
-                                                          AccessMode::Type mode,
-                                                          OperationOptions const& opOptions) const;
+  std::unique_ptr<transaction::Methods> createTransaction(
+      std::string const& cname, AccessMode::Type mode,
+      OperationOptions const& opOptions) const;
 
   /// @brief create proper transaction context, including the proper IDs
-  std::shared_ptr<transaction::Context> createTransactionContext(AccessMode::Type mode) const;
+  std::shared_ptr<transaction::Context> createTransactionContext(
+      AccessMode::Type mode) const;
 
  protected:
   /// @brief request context

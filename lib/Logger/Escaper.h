@@ -49,11 +49,13 @@ struct UnicodeCharsEscaper {  //\u +4 digits
 class GeneralEscaper {
  public:
   virtual ~GeneralEscaper() = default;
-  virtual size_t determineOutputBufferSize(std::string const& message) const = 0;
-  virtual void writeIntoOutputBuffer(std::string const& message, char*& buffer) = 0;
+  virtual size_t determineOutputBufferSize(
+      std::string const& message) const = 0;
+  virtual void writeIntoOutputBuffer(std::string const& message,
+                                     char*& buffer) = 0;
 };
 
-template <typename ControlCharHandler, typename UnicodeCharHandler>
+template<typename ControlCharHandler, typename UnicodeCharHandler>
 class Escaper : public GeneralEscaper {
  private:
   ControlCharHandler _controlHandler;
@@ -62,7 +64,8 @@ class Escaper : public GeneralEscaper {
  public:
   size_t determineOutputBufferSize(std::string const& message) const override;
 
-  void writeIntoOutputBuffer(std::string const& message, char*& buffer) override;
+  void writeIntoOutputBuffer(std::string const& message,
+                             char*& buffer) override;
 };
 
 }  // namespace arangodb

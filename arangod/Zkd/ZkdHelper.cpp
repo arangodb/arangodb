@@ -98,7 +98,8 @@ zkd::byte_string zkd::operator"" _bss(const char* str, std::size_t len) {
   return byte_string{reinterpret_cast<const std::byte*>(str), len};
 }
 
-zkd::BitReader::BitReader(zkd::BitReader::iterator begin, zkd::BitReader::iterator end)
+zkd::BitReader::BitReader(zkd::BitReader::iterator begin,
+                          zkd::BitReader::iterator end)
     : _current(begin), _end(end) {}
 
 auto zkd::BitReader::next() -> std::optional<zkd::Bit> {
@@ -219,7 +220,8 @@ auto zkd::RandomBitManipulator::bits() const -> std::size_t {
   return 8 * _ref.size();
 }
 
-auto zkd::interleave(std::vector<zkd::byte_string> const& vec) -> zkd::byte_string {
+auto zkd::interleave(std::vector<zkd::byte_string> const& vec)
+    -> zkd::byte_string {
   std::size_t max_size = 0;
   std::vector<BitReader> reader;
   reader.reserve(vec.size());
@@ -268,8 +270,9 @@ break_loops:
   return result;
 }
 
-auto zkd::compareWithBox(byte_string_view cur, byte_string_view min, byte_string_view max,
-                         std::size_t dimensions) -> std::vector<CompareResult> {
+auto zkd::compareWithBox(byte_string_view cur, byte_string_view min,
+                         byte_string_view max, std::size_t dimensions)
+    -> std::vector<CompareResult> {
   if (dimensions == 0) {
     auto msg = std::string{"dimensions argument to "};
     msg += __func__;
@@ -353,8 +356,10 @@ auto zkd::testInBox(byte_string_view cur, byte_string_view min,
   BitReader min_reader(min);
   BitReader max_reader(max);
 
-  ::arangodb::containers::SmallVector<std::pair<bool, bool>>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<std::pair<bool, bool>> isLargerLowerThanMinMax{a};
+  ::arangodb::containers::SmallVector<
+      std::pair<bool, bool>>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<std::pair<bool, bool>>
+      isLargerLowerThanMinMax{a};
   isLargerLowerThanMinMax.resize(dimensions);
 
   unsigned dim = 0;
@@ -396,7 +401,8 @@ auto zkd::testInBox(byte_string_view cur, byte_string_view min,
 }
 
 auto zkd::getNextZValue(byte_string_view cur, byte_string_view min,
-                        byte_string_view max, std::vector<CompareResult>& cmpResult)
+                        byte_string_view max,
+                        std::vector<CompareResult>& cmpResult)
     -> std::optional<byte_string> {
   auto result = byte_string{cur};
 
@@ -450,7 +456,8 @@ auto zkd::getNextZValue(byte_string_view cur, byte_string_view min,
 
   // Calculate the next bit position in dimension `dim` (regarding dims)
   // after `bitPos`
-  auto const nextGreaterBitInDim = [dims](std::size_t const bitPos, std::size_t const dim) {
+  auto const nextGreaterBitInDim = [dims](std::size_t const bitPos,
+                                          std::size_t const dim) {
     auto const posRem = bitPos % dims;
     auto const posFloor = bitPos - posRem;
     auto const result = dim > posRem ? (posFloor + dim) : posFloor + dims + dim;
@@ -474,7 +481,8 @@ auto zkd::getNextZValue(byte_string_view cur, byte_string_view min,
           resultManipulator.setBit(i, Bit::ZERO);
         }
       } else {
-        // “set all bits of dim with bit positions >  changeBP  to  the  minimum of  the  query  box  in  this dim”
+        // “set all bits of dim with bit positions >  changeBP  to  the  minimum
+        // of  the  query  box  in  this dim”
         for (std::size_t i = nextGreaterBitInDim(changeBP, dim);
              i < resultManipulator.bits(); i += dims) {
           resultManipulator.setBit(i, minReader.getBit(i));
@@ -491,7 +499,7 @@ auto zkd::getNextZValue(byte_string_view cur, byte_string_view min,
   return result;
 }
 
-template <typename T>
+template<typename T>
 auto zkd::to_byte_string_fixed_length(T v) -> zkd::byte_string {
   byte_string result;
   static_assert(std::is_integral_v<T>);
@@ -517,14 +525,19 @@ auto zkd::to_byte_string_fixed_length(T v) -> zkd::byte_string {
   return result;
 }
 
-template auto zkd::to_byte_string_fixed_length<uint64_t>(uint64_t) -> zkd::byte_string;
-template auto zkd::to_byte_string_fixed_length<int64_t>(int64_t) -> zkd::byte_string;
-template auto zkd::to_byte_string_fixed_length<uint32_t>(uint32_t) -> zkd::byte_string;
-template auto zkd::to_byte_string_fixed_length<int32_t>(int32_t) -> zkd::byte_string;
+template auto zkd::to_byte_string_fixed_length<uint64_t>(uint64_t)
+    -> zkd::byte_string;
+template auto zkd::to_byte_string_fixed_length<int64_t>(int64_t)
+    -> zkd::byte_string;
+template auto zkd::to_byte_string_fixed_length<uint32_t>(uint32_t)
+    -> zkd::byte_string;
+template auto zkd::to_byte_string_fixed_length<int32_t>(int32_t)
+    -> zkd::byte_string;
 
 inline constexpr auto fp_infinity_expo_biased = (1u << 11) - 1;
 inline constexpr auto fp_denorm_expo_biased = 0;
-inline constexpr auto fp_min_expo_biased = std::numeric_limits<double>::min_exponent - 1;
+inline constexpr auto fp_min_expo_biased =
+    std::numeric_limits<double>::min_exponent - 1;
 
 auto zkd::destruct_double(double x) -> floating_point {
   TRI_ASSERT(!std::isnan(x));
@@ -591,12 +604,13 @@ auto zkd::construct_double(floating_point const& fp) -> double {
   return std::ldexp(base, exp);
 }
 
-std::ostream& zkd::operator<<(std::ostream& os, struct floating_point const& fp) {
+std::ostream& zkd::operator<<(std::ostream& os,
+                              struct floating_point const& fp) {
   os << (fp.positive ? "p" : "n") << fp.exp << "E" << fp.base;
   return os;
 }
 
-template <>
+template<>
 void zkd::into_bit_writer_fixed_length<double>(BitWriter& bw, double x) {
   auto [p, exp, base] = destruct_double(x);
 
@@ -611,14 +625,14 @@ void zkd::into_bit_writer_fixed_length<double>(BitWriter& bw, double x) {
   bw.write_big_endian_bits(base, 52);
 }
 
-template <>
+template<>
 auto zkd::to_byte_string_fixed_length<double>(double x) -> byte_string {
   BitWriter bw;
   zkd::into_bit_writer_fixed_length(bw, x);
   return std::move(bw).str();
 }
 
-template <>
+template<>
 auto zkd::from_bit_reader_fixed_length<double>(BitReader& r) -> double {
   bool isPositive = r.next_or_zero() == Bit::ONE;
 
@@ -632,7 +646,7 @@ auto zkd::from_bit_reader_fixed_length<double>(BitReader& r) -> double {
   return construct_double({isPositive, exp, base});
 }
 
-template <typename T>
+template<typename T>
 auto zkd::from_byte_string_fixed_length(byte_string_view bs) -> T {
   T result = 0;
   static_assert(std::is_integral_v<T>);
@@ -647,15 +661,17 @@ auto zkd::from_byte_string_fixed_length(byte_string_view bs) -> T {
   return result;
 }
 
-template auto zkd::from_byte_string_fixed_length<uint64_t>(byte_string_view) -> uint64_t;
+template auto zkd::from_byte_string_fixed_length<uint64_t>(byte_string_view)
+    -> uint64_t;
 
-template <>
+template<>
 auto zkd::from_byte_string_fixed_length<double>(byte_string_view bs) -> double {
   BitReader r(bs);
   return from_bit_reader_fixed_length<double>(r);
 }
 
-std::ostream& operator<<(std::ostream& ostream, zkd::byte_string const& string) {
+std::ostream& operator<<(std::ostream& ostream,
+                         zkd::byte_string const& string) {
   return ::operator<<(ostream, byte_string_view{string});
 }
 
@@ -674,7 +690,8 @@ std::ostream& operator<<(std::ostream& ostream, byte_string_view string) {
   return ostream;
 }
 
-std::ostream& zkd::operator<<(std::ostream& ostream, zkd::CompareResult const& cr) {
+std::ostream& zkd::operator<<(std::ostream& ostream,
+                              zkd::CompareResult const& cr) {
   ostream << "CR{";
   ostream << "flag=" << cr.flag;
   ostream << ", saveMin=" << cr.saveMin;

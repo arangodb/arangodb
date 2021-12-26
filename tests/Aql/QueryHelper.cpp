@@ -53,7 +53,8 @@ auto vpackHasNoneRecursive(VPackSlice slice) -> bool {
   if (slice.isObject()) {
     auto iter = VPackObjectIterator(slice);
     return std::any_of(iter.begin(), iter.end(), [](auto pair) {
-      return vpackHasNoneRecursive(pair.key) || vpackHasNoneRecursive(pair.value);
+      return vpackHasNoneRecursive(pair.key) ||
+             vpackHasNoneRecursive(pair.value);
     });
   }
 
@@ -71,7 +72,8 @@ void arangodb::tests::aql::AssertQueryResultToSlice(QueryResult const& result,
   EXPECT_FALSE(vpackHasNoneRecursive(result.data->slice()));
   ASSERT_EQ(expected.length(), resultSlice.length()) << resultSlice.toJson();
   for (VPackValueLength i = 0; i < expected.length(); ++i) {
-    EXPECT_TRUE(basics::VelocyPackHelper::equal(resultSlice.at(i), expected.at(i), false))
+    EXPECT_TRUE(basics::VelocyPackHelper::equal(resultSlice.at(i),
+                                                expected.at(i), false))
         << "Line " << i << ": " << resultSlice.at(i).toJson()
         << " (found) != " << expected.at(i).toJson();
   }
@@ -82,7 +84,8 @@ void arangodb::tests::aql::AssertQueryHasResult(TRI_vocbase_t& database,
                                                 VPackSlice expected) {
   auto const bindParameters = VPackParser::fromJson("{ }");
   SCOPED_TRACE("Query: " + query);
-  auto queryResult = arangodb::tests::executeQuery(database, query, bindParameters);
+  auto queryResult =
+      arangodb::tests::executeQuery(database, query, bindParameters);
   AssertQueryResultToSlice(queryResult, expected);
 }
 
@@ -91,7 +94,8 @@ void arangodb::tests::aql::AssertQueryFailsWith(TRI_vocbase_t& database,
                                                 ErrorCode errorNumber) {
   auto const bindParameters = VPackParser::fromJson("{ }");
   SCOPED_TRACE("Query: " + query);
-  auto queryResult = arangodb::tests::executeQuery(database, query, bindParameters);
+  auto queryResult =
+      arangodb::tests::executeQuery(database, query, bindParameters);
   EXPECT_FALSE(queryResult.ok()) << "Should yield error number " << errorNumber;
   EXPECT_EQ(queryResult.errorNumber(), errorNumber)
       << "Returned message: " << queryResult.errorMessage();

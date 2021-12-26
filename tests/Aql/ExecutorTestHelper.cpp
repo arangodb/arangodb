@@ -28,14 +28,16 @@
 
 using namespace arangodb::tests::aql;
 
-auto asserthelper::AqlValuesAreIdentical(AqlValue const& lhs, AqlValue const& rhs) -> bool {
+auto asserthelper::AqlValuesAreIdentical(AqlValue const& lhs,
+                                         AqlValue const& rhs) -> bool {
   velocypack::Options vpackOptions;
   return AqlValue::Compare(&vpackOptions, lhs, rhs, true) == 0;
 }
 
-auto asserthelper::RowsAreIdentical(SharedAqlItemBlockPtr actual, size_t actualRow,
-                                    SharedAqlItemBlockPtr expected, size_t expectedRow,
-                                    std::optional<std::vector<RegisterId>> const& onlyCompareRegisters)
+auto asserthelper::RowsAreIdentical(
+    SharedAqlItemBlockPtr actual, size_t actualRow,
+    SharedAqlItemBlockPtr expected, size_t expectedRow,
+    std::optional<std::vector<RegisterId>> const& onlyCompareRegisters)
     -> bool {
   if (onlyCompareRegisters) {
     if (actual->numRegisters() < onlyCompareRegisters->size()) {
@@ -50,10 +52,8 @@ auto asserthelper::RowsAreIdentical(SharedAqlItemBlockPtr actual, size_t actualR
   }
 
   for (RegisterId::value_t reg = 0; reg < expected->numRegisters(); ++reg) {
-    auto const& x =
-        actual->getValueReference(actualRow, onlyCompareRegisters
-                                                 ? onlyCompareRegisters->at(reg)
-                                                 : reg);
+    auto const& x = actual->getValueReference(
+        actualRow, onlyCompareRegisters ? onlyCompareRegisters->at(reg) : reg);
     auto const& y = expected->getValueReference(expectedRow, reg);
     if (!AqlValuesAreIdentical(x, y)) {
       // At least one value mismatched
@@ -64,10 +64,10 @@ auto asserthelper::RowsAreIdentical(SharedAqlItemBlockPtr actual, size_t actualR
   return true;
 }
 
-auto asserthelper::ValidateAqlValuesAreEqual(SharedAqlItemBlockPtr actual,
-                                             size_t actualRow, RegisterId actualRegister,
-                                             SharedAqlItemBlockPtr expected, size_t expectedRow,
-                                             RegisterId expectedRegister) -> void {
+auto asserthelper::ValidateAqlValuesAreEqual(
+    SharedAqlItemBlockPtr actual, size_t actualRow, RegisterId actualRegister,
+    SharedAqlItemBlockPtr expected, size_t expectedRow,
+    RegisterId expectedRegister) -> void {
   velocypack::Options vpackOptions;
   auto const& x = actual->getValueReference(actualRow, actualRegister);
   auto const& y = expected->getValueReference(expectedRow, expectedRegister);
@@ -77,9 +77,9 @@ auto asserthelper::ValidateAqlValuesAreEqual(SharedAqlItemBlockPtr actual,
       << y.slice().toJson(&vpackOptions);
 }
 
-auto asserthelper::ValidateBlocksAreEqual(SharedAqlItemBlockPtr actual,
-                                          SharedAqlItemBlockPtr expected,
-                                          std::optional<std::vector<RegisterId>> const& onlyCompareRegisters)
+auto asserthelper::ValidateBlocksAreEqual(
+    SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected,
+    std::optional<std::vector<RegisterId>> const& onlyCompareRegisters)
     -> void {
   ASSERT_NE(expected, nullptr);
   ASSERT_NE(actual, nullptr);
@@ -92,12 +92,14 @@ auto asserthelper::ValidateBlocksAreEqual(SharedAqlItemBlockPtr actual,
     EXPECT_EQ(actual->numRegisters(), expected->numRegisters());
   }
 
-  for (size_t row = 0; row < (std::min)(actual->numRows(), expected->numRows()); ++row) {
+  for (size_t row = 0; row < (std::min)(actual->numRows(), expected->numRows());
+       ++row) {
     // Compare registers
     for (RegisterId::value_t reg = 0; reg < outRegs; ++reg) {
       RegisterId actualRegister =
           onlyCompareRegisters ? onlyCompareRegisters->at(reg) : reg;
-      ValidateAqlValuesAreEqual(actual, row, actualRegister, expected, row, reg);
+      ValidateAqlValuesAreEqual(actual, row, actualRegister, expected, row,
+                                reg);
     }
     // Compare shadowRows
     EXPECT_EQ(actual->isShadowRow(row), expected->isShadowRow(row));
@@ -110,17 +112,20 @@ auto asserthelper::ValidateBlocksAreEqual(SharedAqlItemBlockPtr actual,
 }
 
 auto asserthelper::ValidateBlocksAreEqualUnordered(
-    SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected, std::size_t numRowsNotContained,
-    std::optional<std::vector<RegisterId>> const& onlyCompareRegisters) -> void {
+    SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected,
+    std::size_t numRowsNotContained,
+    std::optional<std::vector<RegisterId>> const& onlyCompareRegisters)
+    -> void {
   std::unordered_set<size_t> matchedRows{};
-  return ValidateBlocksAreEqualUnordered(actual, expected, matchedRows,
-                                         numRowsNotContained, onlyCompareRegisters);
+  return ValidateBlocksAreEqualUnordered(
+      actual, expected, matchedRows, numRowsNotContained, onlyCompareRegisters);
 }
 
 auto asserthelper::ValidateBlocksAreEqualUnordered(
     SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected,
     std::unordered_set<size_t>& matchedRows, std::size_t numRowsNotContained,
-    std::optional<std::vector<RegisterId>> const& onlyCompareRegisters) -> void {
+    std::optional<std::vector<RegisterId>> const& onlyCompareRegisters)
+    -> void {
   ASSERT_NE(expected, nullptr);
   ASSERT_NE(actual, nullptr);
   EXPECT_FALSE(actual->hasShadowRows())
@@ -142,9 +147,11 @@ auto asserthelper::ValidateBlocksAreEqualUnordered(
 
   matchedRows.clear();
 
-  for (size_t expectedRow = 0; expectedRow < expected->numRows(); ++expectedRow) {
+  for (size_t expectedRow = 0; expectedRow < expected->numRows();
+       ++expectedRow) {
     for (size_t actualRow = 0; actualRow < actual->numRows(); ++actualRow) {
-      if (RowsAreIdentical(actual, actualRow, expected, expectedRow, onlyCompareRegisters)) {
+      if (RowsAreIdentical(actual, actualRow, expected, expectedRow,
+                           onlyCompareRegisters)) {
         auto const& [unused, inserted] = matchedRows.emplace(expectedRow);
         if (inserted) {
           // one is enough, but do not match the same rows twice
@@ -157,7 +164,8 @@ auto asserthelper::ValidateBlocksAreEqualUnordered(
   if (matchedRows.size() + numRowsNotContained < expected->numRows()) {
     // Did not find all rows.
     // This is for reporting only:
-    for (size_t expectedRow = 0; expectedRow < expected->numRows(); ++expectedRow) {
+    for (size_t expectedRow = 0; expectedRow < expected->numRows();
+         ++expectedRow) {
       if (matchedRows.find(expectedRow) == matchedRows.end()) {
         InputAqlItemRow missing(expected, expectedRow);
         velocypack::Options vpackOptions;

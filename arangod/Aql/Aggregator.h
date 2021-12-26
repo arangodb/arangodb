@@ -44,7 +44,8 @@ struct Aggregator {
 
   struct Factory {
     virtual ~Factory() = default;
-    virtual std::unique_ptr<Aggregator> operator()(velocypack::Options const*) const = 0;
+    virtual std::unique_ptr<Aggregator> operator()(
+        velocypack::Options const*) const = 0;
     virtual void createInPlace(void*, velocypack::Options const*) const = 0;
     virtual std::size_t getAggregatorSize() const = 0;
   };
@@ -65,9 +66,9 @@ struct Aggregator {
                                                     std::string const& type);
 
   /// @brief creates an aggregator from a velocypack slice
-  static std::unique_ptr<Aggregator> fromVPack(velocypack::Options const*,
-                                               arangodb::velocypack::Slice const&,
-                                               char const* nameAttribute);
+  static std::unique_ptr<Aggregator> fromVPack(
+      velocypack::Options const*, arangodb::velocypack::Slice const&,
+      char const* nameAttribute);
 
   /// @brief return a pointer to an aggregator factory for an aggregator type
   /// throws if the aggregator cannot be found

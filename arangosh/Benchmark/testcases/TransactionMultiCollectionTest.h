@@ -32,7 +32,8 @@
 
 namespace arangodb::arangobench {
 
-struct TransactionMultiCollectionTest : public Benchmark<TransactionMultiCollectionTest> {
+struct TransactionMultiCollectionTest
+    : public Benchmark<TransactionMultiCollectionTest> {
   static std::string name() { return "multi-collection"; }
 
   TransactionMultiCollectionTest(BenchFeature& arangobench)
@@ -49,8 +50,9 @@ struct TransactionMultiCollectionTest : public Benchmark<TransactionMultiCollect
 
   void tearDown() override {}
 
-  void buildRequest(size_t threadNumber, size_t threadCounter, size_t globalCounter,
-                    BenchmarkOperation::RequestData& requestData) const override {
+  void buildRequest(
+      size_t threadNumber, size_t threadCounter, size_t globalCounter,
+      BenchmarkOperation::RequestData& requestData) const override {
     requestData.url = "/_api/transaction";
     requestData.type = rest::RequestType::POST;
     using namespace arangodb::velocypack;
@@ -70,7 +72,8 @@ struct TransactionMultiCollectionTest : public Benchmark<TransactionMultiCollect
       if (i > 0) {
         actionValue += ", ";
       }
-      actionValue += std::string("value") + std::to_string(i) + ": " + std::to_string(i);
+      actionValue +=
+          std::string("value") + std::to_string(i) + ": " + std::to_string(i);
     }
     actionValue += " }; c1.save(doc); c2.save(doc); }";
     requestData.payload.add("action", Value(actionValue));

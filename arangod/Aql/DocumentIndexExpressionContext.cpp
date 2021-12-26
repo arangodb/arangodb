@@ -29,11 +29,14 @@ using namespace arangodb::aql;
 DocumentIndexExpressionContext::DocumentIndexExpressionContext(
     arangodb::transaction::Methods& trx, QueryContext& query,
     AqlFunctionsInternalCache& cache,
-    AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy), void const* ctx)
-    : QueryExpressionContext(trx, query, cache), _getValue(getValue), _ctx(ctx) {}
+    AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
+    void const* ctx)
+    : QueryExpressionContext(trx, query, cache),
+      _getValue(getValue),
+      _ctx(ctx) {}
 
-AqlValue DocumentIndexExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
-                                                          bool& mustDestroy) const {
+AqlValue DocumentIndexExpressionContext::getVariableValue(
+    Variable const* variable, bool doCopy, bool& mustDestroy) const {
   mustDestroy = doCopy;  // as we are copying
   return _getValue(_ctx, variable, doCopy);
 }

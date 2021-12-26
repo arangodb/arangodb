@@ -95,7 +95,8 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   // set, then the root block of the stored query must be a ScatterBlock
   // and the shard ID is given as an additional argument to the ScatterBlock's
   // special API.
-  RestStatus useQuery(std::string const& operation, std::string const& idString);
+  RestStatus useQuery(std::string const& operation,
+                      std::string const& idString);
 
  private:
   // POST method for /_api/aql/setup (internal)
@@ -124,7 +125,8 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   void setupClusterQuery();
 
   // handle for useQuery
-  RestStatus handleUseQuery(std::string const&, arangodb::velocypack::Slice const);
+  RestStatus handleUseQuery(std::string const&,
+                            arangodb::velocypack::Slice const);
 
   // handle query finalization for all engines
   RestStatus handleFinishQuery(std::string const& idString);

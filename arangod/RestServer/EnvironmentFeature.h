@@ -30,7 +30,8 @@ namespace application_features {
 class ApplicationServer;
 }
 
-class EnvironmentFeature final : public application_features::ApplicationFeature {
+class EnvironmentFeature final
+    : public application_features::ApplicationFeature {
  public:
   explicit EnvironmentFeature(application_features::ApplicationServer& server);
 

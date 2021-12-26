@@ -54,7 +54,7 @@
 namespace arangodb {
 
 // C++ wrapper for the hash function:
-template <class T, uint64_t Seed>
+template<class T, uint64_t Seed>
 class HashWithSeed {
  public:
   uint64_t operator()(T const& t) const noexcept {
@@ -65,7 +65,7 @@ class HashWithSeed {
   }
 };
 
-template <class Key>
+template<class Key>
 class RocksDBCuckooIndexEstimator {
   // Note that the following has to be a power of two and at least 4!
   static constexpr uint32_t kSlotsPerBucket = 4;
@@ -142,12 +142,14 @@ class RocksDBCuckooIndexEstimator {
  public:
   explicit RocksDBCuckooIndexEstimator(uint64_t size);
 
-  explicit RocksDBCuckooIndexEstimator(arangodb::velocypack::StringRef serialized);
+  explicit RocksDBCuckooIndexEstimator(
+      arangodb::velocypack::StringRef serialized);
 
   ~RocksDBCuckooIndexEstimator();
 
   RocksDBCuckooIndexEstimator(RocksDBCuckooIndexEstimator const&) = delete;
-  RocksDBCuckooIndexEstimator& operator=(RocksDBCuckooIndexEstimator const&) = delete;
+  RocksDBCuckooIndexEstimator& operator=(RocksDBCuckooIndexEstimator const&) =
+      delete;
 
   enum SerializeFormat : char {
     // Estimators are serialized in the following way:
@@ -282,10 +284,12 @@ class RocksDBCuckooIndexEstimator {
   rocksdb::SequenceNumber applyUpdates(rocksdb::SequenceNumber commitSeq);
 
   uint64_t memoryUsage() const {
-    return sizeof(RocksDBCuckooIndexEstimator) + _slotAllocSize + _counterAllocSize;
+    return sizeof(RocksDBCuckooIndexEstimator) + _slotAllocSize +
+           _counterAllocSize;
   }
 
-  Slot findSlotNoCuckoo(uint64_t pos1, uint64_t pos2, uint16_t fp, bool& found) const {
+  Slot findSlotNoCuckoo(uint64_t pos1, uint64_t pos2, uint16_t fp,
+                        bool& found) const {
     found = false;
     Slot s = findSlotNoCuckoo(pos1, fp, found);
     if (found) {
@@ -442,7 +446,8 @@ class RocksDBCuckooIndexEstimator {
   }
 
   uint32_t* findCounter(uint64_t pos, uint64_t slot) const {
-    TRI_ASSERT(kCounterSize * (pos * kSlotsPerBucket + slot) <= _counterAllocSize);
+    TRI_ASSERT(kCounterSize * (pos * kSlotsPerBucket + slot) <=
+               _counterAllocSize);
     char* address = _counters + kCounterSize * (pos * kSlotsPerBucket + slot);
     return reinterpret_cast<uint32_t*>(address);
   }
@@ -455,7 +460,8 @@ class RocksDBCuckooIndexEstimator {
   uint16_t keyToFingerprint(Key const& k) const {
     uint64_t hashfp = _fingerprint(k);
     uint16_t fingerprint =
-        (uint16_t)((hashfp ^ (hashfp >> 16) ^ (hashfp >> 32) ^ (hashfp >> 48)) & 0xFFFF);
+        (uint16_t)((hashfp ^ (hashfp >> 16) ^ (hashfp >> 32) ^ (hashfp >> 48)) &
+                   0xFFFF);
     return (fingerprint ? fingerprint : 1);
   }
 

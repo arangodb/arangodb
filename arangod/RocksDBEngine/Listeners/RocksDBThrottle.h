@@ -72,11 +72,14 @@ class RocksDBThrottle : public rocksdb::EventListener {
                   uint64_t lowerBoundBps);
   virtual ~RocksDBThrottle();
 
-  void OnFlushBegin(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) override;
+  void OnFlushBegin(rocksdb::DB* db,
+                    const rocksdb::FlushJobInfo& flush_job_info) override;
 
-  void OnFlushCompleted(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) override;
+  void OnFlushCompleted(rocksdb::DB* db,
+                        const rocksdb::FlushJobInfo& flush_job_info) override;
 
-  void OnCompactionCompleted(rocksdb::DB* db, const rocksdb::CompactionJobInfo& ci) override;
+  void OnCompactionCompleted(rocksdb::DB* db,
+                             const rocksdb::CompactionJobInfo& ci) override;
 
   void SetFamilies(std::vector<rocksdb::ColumnFamilyHandle*>& Families) {
     _families = Families;

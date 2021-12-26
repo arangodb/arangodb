@@ -45,20 +45,22 @@
 
 using namespace arangodb;
 
-template <typename CMP = geo_index::DocumentsAscending>
+template<typename CMP = geo_index::DocumentsAscending>
 class RDBNearIterator final : public IndexIterator {
  public:
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
   RDBNearIterator(LogicalCollection* collection, transaction::Methods* trx,
                   RocksDBGeoIndex const* index, geo::QueryParams&& params)
       : IndexIterator(collection, trx, ReadOwnWrites::no),
-        // geo index never needs to observe own writes since it cannot be used for an UPSERT subquery
+        // geo index never needs to observe own writes since it cannot be used
+        // for an UPSERT subquery
         _index(index),
         _near(std::move(params)) {
     RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(trx);
     _iter = mthds->NewIterator(_index->columnFamily(), {});
     TRI_ASSERT(_index->columnFamily()->GetID() ==
-               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex)
+               RocksDBColumnFamilyManager::get(
+                   RocksDBColumnFamilyManager::Family::GeoIndex)
                    ->GetID());
     estimateDensity();
   }
@@ -66,7 +68,7 @@ class RDBNearIterator final : public IndexIterator {
   char const* typeName() const override { return "geo-index-iterator"; }
 
   /// internal retrieval loop
-  template <typename F>
+  template<typename F>
   inline bool nextToken(F&& cb, size_t limit) {
     if (_near.isDone()) {
       // we already know that no further results will be returned by the index
@@ -100,13 +102,16 @@ class RDBNearIterator final : public IndexIterator {
                        [&](LocalDocumentId const&, VPackSlice doc) {
                          geo::FilterType const ft = _near.filterType();
                          if (ft != geo::FilterType::NONE) {  // expensive test
-                           geo::ShapeContainer const& filter = _near.filterShape();
-                           TRI_ASSERT(filter.type() != geo::ShapeContainer::Type::EMPTY);
+                           geo::ShapeContainer const& filter =
+                               _near.filterShape();
+                           TRI_ASSERT(filter.type() !=
+                                      geo::ShapeContainer::Type::EMPTY);
                            geo::ShapeContainer test;
                            Result res = _index->shape(doc, test);
                            TRI_ASSERT(res.ok());  // this should never fail here
                            if (res.fail() ||
-                               (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
+                               (ft == geo::FilterType::CONTAINS &&
+                                !filter.contains(&test)) ||
                                (ft == geo::FilterType::INTERSECTS &&
                                 !filter.intersects(&test))) {
                              result = false;
@@ -143,7 +148,8 @@ class RDBNearIterator final : public IndexIterator {
                            Result res = _index->shape(doc, test);
                            TRI_ASSERT(res.ok());  // this should never fail here
                            if (res.fail() ||
-                               (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
+                               (ft == geo::FilterType::CONTAINS &&
+                                !filter.contains(&test)) ||
                                (ft == geo::FilterType::INTERSECTS &&
                                 !filter.intersects(&test))) {
                              result = false;
@@ -186,9 +192,8 @@ class RDBNearIterator final : public IndexIterator {
     for (size_t i = 0; i < scan.size(); i++) {
       geo::Interval const& it = scan[i];
       TRI_ASSERT(it.range_min <= it.range_max);
-      RocksDBKeyBounds bds =
-          RocksDBKeyBounds::GeoIndex(_index->objectId(), it.range_min.id(),
-                                     it.range_max.id());
+      RocksDBKeyBounds bds = RocksDBKeyBounds::GeoIndex(
+          _index->objectId(), it.range_min.id(), it.range_max.id());
 
       // intervals are sorted and likely consecutive, try to avoid seeks
       // by checking whether we are in the range already
@@ -205,11 +210,13 @@ class RDBNearIterator final : public IndexIterator {
         } else {  // cursor is positioned below min range key
           TRI_ASSERT(cmp->Compare(_iter->key(), bds.start()) < 0);
           int k = 10;  // try to catch the range
-          while (k > 0 && _iter->Valid() && cmp->Compare(_iter->key(), bds.start()) < 0) {
+          while (k > 0 && _iter->Valid() &&
+                 cmp->Compare(_iter->key(), bds.start()) < 0) {
             _iter->Next();
             --k;
           }
-          seek = !_iter->Valid() || (cmp->Compare(_iter->key(), bds.start()) < 0);
+          seek =
+              !_iter->Valid() || (cmp->Compare(_iter->key(), bds.start()) < 0);
         }
       }
 
@@ -239,7 +246,8 @@ class RDBNearIterator final : public IndexIterator {
     S2CellId cell = S2CellId(_near.origin());
 
     RocksDBKeyLeaser key(_trx);
-    key->constructGeoIndexValue(_index->objectId(), cell.id(), LocalDocumentId(1));
+    key->constructGeoIndexValue(_index->objectId(), cell.id(),
+                                LocalDocumentId(1));
     _iter->Seek(key->string());
     if (!_iter->Valid()) {
       _iter->SeekForPrev(key->string());
@@ -259,7 +267,8 @@ RocksDBGeoIndex::RocksDBGeoIndex(IndexId iid, LogicalCollection& collection,
                                  arangodb::velocypack::Slice const& info,
                                  std::string const& typeName)
     : RocksDBIndex(iid, collection, info,
-                   RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex),
+                   RocksDBColumnFamilyManager::get(
+                       RocksDBColumnFamilyManager::Family::GeoIndex),
                    false),
       geo_index::Index(info, _fields),
       _typeName(typeName) {
@@ -270,13 +279,15 @@ RocksDBGeoIndex::RocksDBGeoIndex(IndexId iid, LogicalCollection& collection,
 }
 
 /// @brief return a JSON representation of the index
-void RocksDBGeoIndex::toVelocyPack(VPackBuilder& builder,
-                                   std::underlying_type<arangodb::Index::Serialize>::type flags) const {
+void RocksDBGeoIndex::toVelocyPack(
+    VPackBuilder& builder,
+    std::underlying_type<arangodb::Index::Serialize>::type flags) const {
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
   _coverParams.toVelocyPack(builder);
-  builder.add("geoJson", VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
+  builder.add("geoJson",
+              VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
   builder.close();
 }
 
@@ -304,13 +315,13 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
     return idRef == std::to_string(_iid.id());
   }
 
-  if (_unique != basics::VelocyPackHelper::getBooleanValue(info, arangodb::StaticStrings::IndexUnique,
-                                                           false)) {
+  if (_unique != basics::VelocyPackHelper::getBooleanValue(
+                     info, arangodb::StaticStrings::IndexUnique, false)) {
     return false;
   }
 
-  if (_sparse != basics::VelocyPackHelper::getBooleanValue(info, arangodb::StaticStrings::IndexSparse,
-                                                           true)) {
+  if (_sparse != basics::VelocyPackHelper::getBooleanValue(
+                     info, arangodb::StaticStrings::IndexSparse, true)) {
     return false;
   }
 
@@ -326,7 +337,8 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
   }
 
   if (n == 1) {
-    bool gj1 = basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
+    bool gj1 =
+        basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
     bool gj2 = _variant == geo_index::Index::Variant::GEOJSON;
     if (gj1 != gj2) {
       return false;
@@ -344,7 +356,8 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
     }
     arangodb::velocypack::StringRef in(f);
     TRI_ParseAttributeString(in, translate, true);
-    if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate, false)) {
+    if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate,
+                                                      false)) {
       return false;
     }
   }
@@ -358,7 +371,8 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
     ReadOwnWrites readOwnWrites) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(readOwnWrites == ReadOwnWrites::no);  // geo index never needs to observe own writes
+  TRI_ASSERT(readOwnWrites ==
+             ReadOwnWrites::no);  // geo index never needs to observe own writes
 
   geo::QueryParams params;
   params.sorted = opts.sorted;
@@ -395,7 +409,8 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
 
 /// internal insert function, set batch or trx before calling
 Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
-                               LocalDocumentId const& documentId, velocypack::Slice doc,
+                               LocalDocumentId const& documentId,
+                               velocypack::Slice doc,
                                arangodb::OperationOptions const& /*options*/,
                                bool /*performChecks*/) {
   // covering and centroid of coordinate / polygon / ...
@@ -444,7 +459,8 @@ Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
 
 /// internal remove function, set batch or trx before calling
 Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
-                               LocalDocumentId const& documentId, velocypack::Slice doc) {
+                               LocalDocumentId const& documentId,
+                               velocypack::Slice doc) {
   Result res;
 
   // covering and centroid of coordinate / polygon / ...
@@ -470,7 +486,8 @@ Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
   for (S2CellId cell : cells) {
     key->constructGeoIndexValue(objectId(), cell.id(), documentId);
     rocksdb::Status s =
-        mthd->Delete(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex),
+        mthd->Delete(RocksDBColumnFamilyManager::get(
+                         RocksDBColumnFamilyManager::Family::GeoIndex),
                      key.ref());
     if (!s.ok()) {
       res.reset(rocksutils::convertStatus(s, rocksutils::index));

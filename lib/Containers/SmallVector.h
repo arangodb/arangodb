@@ -30,8 +30,10 @@
 namespace arangodb {
 namespace containers {
 
-template <class T, std::size_t BufSize = 64, std::size_t ElementAlignment = alignof(T)>
-using SmallVector = std::vector<T, detail::short_alloc<T, BufSize, ElementAlignment>>;
+template<class T, std::size_t BufSize = 64,
+         std::size_t ElementAlignment = alignof(T)>
+using SmallVector =
+    std::vector<T, detail::short_alloc<T, BufSize, ElementAlignment>>;
 
 }  // namespace containers
 }  // namespace arangodb

@@ -67,10 +67,13 @@ extern const char* ARGV0;  // defined in main.cpp
 
 class SortLimitTest
     : public ::testing::TestWithParam<bool>,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME, arangodb::LogLevel::ERR> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME,
+                                            arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
+  std::vector<
+      std::pair<arangodb::application_features::ApplicationFeature&, bool>>
+      features;
 
   std::unique_ptr<TRI_vocbase_t> vocbase;
   std::vector<arangodb::velocypack::Builder> insertedDocs;
@@ -78,10 +81,12 @@ class SortLimitTest
   SortLimitTest() : server() {
     arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
     arangodb::ClusterEngine::Mocking = true;
-    arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
+    arangodb::RandomGenerator::initialize(
+        arangodb::RandomGenerator::RandomType::MERSENNE);
 
-    vocbase = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                              testDBInfo(server.server()));
+    vocbase = std::make_unique<TRI_vocbase_t>(
+        TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+        testDBInfo(server.server()));
 
     CreateCollection();
   }
@@ -90,7 +95,8 @@ class SortLimitTest
 
   auto doFullCount() -> bool { return GetParam(); }
 
-  auto buildOptions(std::string rules) -> std::shared_ptr<arangodb::velocypack::Builder> {
+  auto buildOptions(std::string rules)
+      -> std::shared_ptr<arangodb::velocypack::Builder> {
     if (doFullCount()) {
       return arangodb::velocypack::Parser::fromJson(
           "{\"optimizer\": {\"rules\": [" + rules + "]}, \"fullCount\": true}");
@@ -102,10 +108,11 @@ class SortLimitTest
   std::string sorterType(TRI_vocbase_t& vocbase, std::string const& queryString,
                          std::string rules = "") {
     auto options = buildOptions(rules);
-    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-    auto query =
-        arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(queryString), nullptr,
-                                     arangodb::aql::QueryOptions(options->slice()));
+    auto ctx =
+        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+    auto query = arangodb::aql::Query::create(
+        ctx, arangodb::aql::QueryString(queryString), nullptr,
+        arangodb::aql::QueryOptions(options->slice()));
 
     auto result = query->explain();
     VPackSlice nodes = result.data->slice().get("nodes");
@@ -125,14 +132,16 @@ class SortLimitTest
     return strategy;
   }
 
-  void verifyExpectedResults(TRI_vocbase_t& vocbase, std::string const& queryString,
+  void verifyExpectedResults(TRI_vocbase_t& vocbase,
+                             std::string const& queryString,
                              std::vector<size_t> const& expected,
                              size_t fullCount, std::string rules = "") {
     auto options = buildOptions(rules);
-    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-    auto query =
-        arangodb::aql::Query::create(ctx, arangodb::aql::QueryString(queryString), nullptr,
-                                     arangodb::aql::QueryOptions(options->slice()));
+    auto ctx =
+        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+    auto query = arangodb::aql::Query::create(
+        ctx, arangodb::aql::QueryString(queryString), nullptr,
+        arangodb::aql::QueryOptions(options->slice()));
     arangodb::aql::QueryResult result;
 
     while (true) {
@@ -159,8 +168,10 @@ class SortLimitTest
           << resolved.toJson();
       i++;
     }
-    auto actualFullCount = arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
-        result.extra->slice(), std::vector<std::string>{"stats", "fullCount"}, 0);
+    auto actualFullCount =
+        arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
+            result.extra->slice(),
+            std::vector<std::string>{"stats", "fullCount"}, 0);
     if (doFullCount()) {
       EXPECT_EQ(actualFullCount, fullCount);
     } else {

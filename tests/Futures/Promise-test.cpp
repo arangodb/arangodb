@@ -38,7 +38,7 @@ auto makeInvalid() {
   EXPECT_FALSE(invalid.valid());
   return invalid;
 }
-template <typename T>
+template<typename T>
 constexpr typename std::decay<T>::type copy(T&& value) noexcept(
     noexcept(typename std::decay<T>::type(std::forward<T>(value)))) {
   return std::forward<T>(value);

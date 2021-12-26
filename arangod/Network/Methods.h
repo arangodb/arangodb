@@ -37,7 +37,7 @@
 
 namespace arangodb {
 namespace velocypack {
-template <typename T>
+template<typename T>
 class Buffer;
 class Slice;
 }  // namespace velocypack
@@ -79,7 +79,8 @@ struct Response {
 
   /// @brief steal the response from here. this may return a unique_ptr
   /// containing a nullptr. it is the caller's responsibility to check that.
-  [[nodiscard]] std::unique_ptr<arangodb::fuerte::Response> stealResponse() noexcept;
+  [[nodiscard]] std::unique_ptr<arangodb::fuerte::Response>
+  stealResponse() noexcept;
 
   [[nodiscard]] bool ok() const {
     return fuerte::Error::NoError == this->error;
@@ -101,8 +102,9 @@ struct Response {
   ///   - the fuerte error, if there was a connectivity error.
   [[nodiscard]] Result combinedResult() const;
 
-  [[nodiscard]] std::string destinationShard() const;  /// @brief shardId or empty
-  [[nodiscard]] std::string serverId() const;          /// @brief server ID
+  [[nodiscard]] std::string destinationShard()
+      const;                                   /// @brief shardId or empty
+  [[nodiscard]] std::string serverId() const;  /// @brief server ID
 
  public:
   DestinationId destination;
@@ -129,9 +131,10 @@ struct RequestOptions {
   bool skipScheduler = false;  // do not use Scheduler queue
   RequestLane continuationLane = RequestLane::CONTINUATION;
 
-  template <typename K, typename V>
+  template<typename K, typename V>
   RequestOptions& param(K&& key, V&& val) {
-    this->parameters.insert_or_assign(std::forward<K>(key), std::forward<V>(val));
+    this->parameters.insert_or_assign(std::forward<K>(key),
+                                      std::forward<V>(val));
     return *this;
   }
 };
@@ -154,11 +157,12 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId destination,
 FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
                            arangodb::fuerte::RestVerb type, std::string path,
                            velocypack::Buffer<uint8_t> payload = {},
-                           RequestOptions const& options = {}, Headers headers = {});
+                           RequestOptions const& options = {},
+                           Headers headers = {});
 
-using Sender =
-    std::function<FutureRes(DestinationId const&, arangodb::fuerte::RestVerb, std::string const&,
-                            velocypack::Buffer<uint8_t>, RequestOptions const& options, Headers)>;
+using Sender = std::function<FutureRes(
+    DestinationId const&, arangodb::fuerte::RestVerb, std::string const&,
+    velocypack::Buffer<uint8_t>, RequestOptions const& options, Headers)>;
 
 }  // namespace network
 }  // namespace arangodb

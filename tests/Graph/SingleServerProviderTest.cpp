@@ -89,12 +89,14 @@ class SingleServerProviderTest : public ::testing::Test {
 
     // We now have collections "v" and "e"
     query = singleServer->getQuery("RETURN 1", {"v", "e"});
-    _trx = std::make_unique<arangodb::transaction::Methods>(query->newTrxContext());
+    _trx = std::make_unique<arangodb::transaction::Methods>(
+        query->newTrxContext());
 
     auto edgeIndexHandle = singleServer->getEdgeIndexHandle("e");
     _tmpVar = singleServer->generateTempVar(query.get());
 
-    auto indexCondition = singleServer->buildOutboundCondition(query.get(), _tmpVar);
+    auto indexCondition =
+        singleServer->buildOutboundCondition(query.get(), _tmpVar);
     _varNode = ::InitializeReference(*query->ast(), *_tmpVar);
 
     std::vector<IndexAccessor> usedIndexes{};
@@ -105,27 +107,30 @@ class SingleServerProviderTest : public ::testing::Test {
                                            nullptr, std::nullopt, 0});
 
     _expressionContext =
-        std::make_unique<arangodb::aql::FixedVarExpressionContext>(*_trx, *query, _functionsCache);
-    BaseProviderOptions opts(_tmpVar,
-                             std::make_pair(std::move(usedIndexes),
-                                            std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
-                             *_expressionContext.get(), _emptyShardMap);
+        std::make_unique<arangodb::aql::FixedVarExpressionContext>(
+            *_trx, *query, _functionsCache);
+    BaseProviderOptions opts(
+        _tmpVar,
+        std::make_pair(
+            std::move(usedIndexes),
+            std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
+        *_expressionContext.get(), _emptyShardMap);
     return {*query.get(), std::move(opts), _resourceMonitor};
   }
 
   /*
    * generates a condition #TMP._key == '<toMatch>'
    */
-  std::unique_ptr<aql::Expression> conditionKeyMatches(std::string const& toMatch) {
+  std::unique_ptr<aql::Expression> conditionKeyMatches(
+      std::string const& toMatch) {
     auto expectedKey =
         query->ast()->createNodeValueString(toMatch.c_str(), toMatch.length());
-    auto keyAccess =
-        query->ast()->createNodeAttributeAccess(_varNode,
-                                                StaticStrings::KeyString.c_str(),
-                                                StaticStrings::KeyString.length());
+    auto keyAccess = query->ast()->createNodeAttributeAccess(
+        _varNode, StaticStrings::KeyString.c_str(),
+        StaticStrings::KeyString.length());
     // This condition cannot be fulfilled
-    auto condition = query->ast()->createNodeBinaryOperator(aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ,
-                                                            keyAccess, expectedKey);
+    auto condition = query->ast()->createNodeBinaryOperator(
+        aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ, keyAccess, expectedKey);
     return std::make_unique<aql::Expression>(query->ast(), condition);
   }
 };

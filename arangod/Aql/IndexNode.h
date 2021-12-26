@@ -49,12 +49,14 @@ class Expression;
 class Projections;
 struct NonConstExpressionContainer;
 
-template <typename T>
+template<typename T>
 struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
 
 /// @brief class IndexNode
-class IndexNode : public ExecutionNode, public DocumentProducingNode, public CollectionAccessingNode {
+class IndexNode : public ExecutionNode,
+                  public DocumentProducingNode,
+                  public CollectionAccessingNode {
   friend class ExecutionBlock;
 
  public:
@@ -89,7 +91,8 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -128,21 +131,26 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
     Variable const* var;
   };
 
-  using IndexValuesVars = std::pair<IndexId, std::unordered_map<Variable const*, size_t>>;
+  using IndexValuesVars =
+      std::pair<IndexId, std::unordered_map<Variable const*, size_t>>;
 
-  using IndexValuesRegisters = std::pair<IndexId, std::unordered_map<size_t, RegisterId>>;
+  using IndexValuesRegisters =
+      std::pair<IndexId, std::unordered_map<size_t, RegisterId>>;
 
   using IndexVarsInfo =
-      std::unordered_map<std::vector<arangodb::basics::AttributeName> const*, IndexVariable>;
+      std::unordered_map<std::vector<arangodb::basics::AttributeName> const*,
+                         IndexVariable>;
 
-  void setLateMaterialized(aql::Variable const* docIdVariable, IndexId commonIndexId,
+  void setLateMaterialized(aql::Variable const* docIdVariable,
+                           IndexId commonIndexId,
                            IndexVarsInfo const& indexVariables);
 
   void setProjections(arangodb::aql::Projections projections);
 
  protected:
   /// @brief export to VelocyPack
-  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override final;
 
  private:
   NonConstExpressionContainer initializeOnce() const;

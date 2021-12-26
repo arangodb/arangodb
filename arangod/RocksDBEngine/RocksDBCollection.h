@@ -57,7 +57,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   ~RocksDBCollection();
 
-  arangodb::Result updateProperties(VPackSlice const& slice, bool doSync) override;
+  arangodb::Result updateProperties(VPackSlice const& slice,
+                                    bool doSync) override;
 
   virtual PhysicalCollection* clone(LogicalCollection& logical) const override;
 
@@ -81,20 +82,22 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   /// @brief Drop an index with the given iid.
   bool dropIndex(IndexId iid) override;
-  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
-                                                ReadOwnWrites readOwnWrites) const override;
-  std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const override;
+  std::unique_ptr<IndexIterator> getAllIterator(
+      transaction::Methods* trx, ReadOwnWrites readOwnWrites) const override;
+  std::unique_ptr<IndexIterator> getAnyIterator(
+      transaction::Methods* trx) const override;
 
-  std::unique_ptr<ReplicationIterator> getReplicationIterator(ReplicationIterator::Ordering,
-                                                              uint64_t batchId) override;
-  std::unique_ptr<ReplicationIterator> getReplicationIterator(ReplicationIterator::Ordering,
-                                                              transaction::Methods&) override;
+  std::unique_ptr<ReplicationIterator> getReplicationIterator(
+      ReplicationIterator::Ordering, uint64_t batchId) override;
+  std::unique_ptr<ReplicationIterator> getReplicationIterator(
+      ReplicationIterator::Ordering, transaction::Methods&) override;
 
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  Result truncate(transaction::Methods& trx, OperationOptions& options) override;
+  Result truncate(transaction::Methods& trx,
+                  OperationOptions& options) override;
 
   /// @brief returns the LocalDocumentId and the revision id for the document
   /// with the specified key.
@@ -115,41 +118,47 @@ class RocksDBCollection final : public RocksDBMetaCollection {
               ReadOwnWrites readOwnWrites) const override;
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
-                    ManagedDocumentResult& result, ReadOwnWrites readOwnWrites) const override;
+                    ManagedDocumentResult& result,
+                    ReadOwnWrites readOwnWrites) const override;
 
-  Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
+  Result insert(arangodb::transaction::Methods* trx,
+                arangodb::velocypack::Slice newSlice,
                 arangodb::ManagedDocumentResult& resultMdr,
                 OperationOptions& options) override;
 
-  Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
+  Result update(arangodb::transaction::Methods* trx,
+                arangodb::velocypack::Slice newSlice,
                 ManagedDocumentResult& resultMdr, OperationOptions& options,
                 ManagedDocumentResult& previousMdr) override;
 
-  Result replace(transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
+  Result replace(transaction::Methods* trx,
+                 arangodb::velocypack::Slice newSlice,
                  ManagedDocumentResult& resultMdr, OperationOptions& options,
                  ManagedDocumentResult& previousMdr) override;
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                ManagedDocumentResult& previous, OperationOptions& options) override;
+                ManagedDocumentResult& previous,
+                OperationOptions& options) override;
 
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                ManagedDocumentResult& previous, OperationOptions& options) override;
+                ManagedDocumentResult& previous,
+                OperationOptions& options) override;
 
   inline bool cacheEnabled() const { return _cacheEnabled; }
 
   bool hasDocuments() override;
 
  private:
-  [[nodiscard]] Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                              RevisionId expectedRev, ManagedDocumentResult& previous,
+  [[nodiscard]] Result remove(transaction::Methods& trx,
+                              LocalDocumentId documentId,
+                              RevisionId expectedRev,
+                              ManagedDocumentResult& previous,
                               OperationOptions& options);
 
-  [[nodiscard]] Result performUpdateOrReplace(transaction::Methods* trx,
-                                              velocypack::Slice newSlice,
-                                              ManagedDocumentResult& resultMdr,
-                                              OperationOptions& options,
-                                              ManagedDocumentResult& previousMdr,
-                                              bool isUpdate);
+  [[nodiscard]] Result performUpdateOrReplace(
+      transaction::Methods* trx, velocypack::Slice newSlice,
+      ManagedDocumentResult& resultMdr, OperationOptions& options,
+      ManagedDocumentResult& previousMdr, bool isUpdate);
 
   /// @brief return engine-specific figures
   void figuresSpecific(bool details, velocypack::Builder&) override;
@@ -177,7 +186,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                                   OperationOptions const& options,
                                   RevisionId const& revisionId) const;
 
-  arangodb::Result modifyDocument(transaction::Methods* trx, RocksDBSavePoint& savepoint,
+  arangodb::Result modifyDocument(transaction::Methods* trx,
+                                  RocksDBSavePoint& savepoint,
                                   LocalDocumentId const& oldDocumentId,
                                   arangodb::velocypack::Slice const& oldDoc,
                                   LocalDocumentId const& newDocumentId,
@@ -190,9 +200,11 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   /// @param fillCache fill cache with found document
   arangodb::Result lookupDocumentVPack(transaction::Methods* trx,
                                        LocalDocumentId const& documentId,
-                                       rocksdb::PinnableSlice& ps, bool readCache,
-                                       bool fillCache, ReadOwnWrites readOwnWrites) const;
-  Result lookupDocumentVPack(transaction::Methods*, LocalDocumentId const& documentId,
+                                       rocksdb::PinnableSlice& ps,
+                                       bool readCache, bool fillCache,
+                                       ReadOwnWrites readOwnWrites) const;
+  Result lookupDocumentVPack(transaction::Methods*,
+                             LocalDocumentId const& documentId,
                              IndexIterator::DocumentCallback const& cb,
                              bool withCache, ReadOwnWrites readOwnWrites) const;
 

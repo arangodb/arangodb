@@ -43,7 +43,8 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   VPackSlice coordID = params.get(Utils::coordinatorIdKey);
   VPackSlice vertexShardMap = params.get(Utils::vertexShardsKey);
   VPackSlice edgeShardMap = params.get(Utils::edgeShardsKey);
-  VPackSlice edgeCollectionRestrictions = params.get(Utils::edgeCollectionRestrictionsKey);
+  VPackSlice edgeCollectionRestrictions =
+      params.get(Utils::edgeCollectionRestrictionsKey);
   VPackSlice execNum = params.get(Utils::executionNumberKey);
   VPackSlice collectionPlanIdMap = params.get(Utils::collectionPlanIdMapKey);
   VPackSlice globalShards = params.get(Utils::globalShardListKey);
@@ -66,7 +67,8 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   size_t maxP = PregelFeature::availableParallelism();
   _parallelism = std::max<size_t>(1, std::min<size_t>(maxP / 4, 16));
   if (parallel.isInteger()) {
-    _parallelism = std::min<size_t>(std::max<size_t>(1, parallel.getUInt()), maxP);
+    _parallelism =
+        std::min<size_t>(std::max<size_t>(1, parallel.getUInt()), maxP);
   }
 
   // list of all shards, equal on all workers. Used to avoid storing strings of
@@ -81,7 +83,8 @@ void WorkerConfig::updateConfig(VPackSlice params) {
 
   // To access information based on a user defined collection name we need the
   for (auto it : VPackObjectIterator(collectionPlanIdMap)) {
-    _collectionPlanIdMap.try_emplace(it.key.copyString(), it.value.copyString());
+    _collectionPlanIdMap.try_emplace(it.key.copyString(),
+                                     it.value.copyString());
   }
 
   // Ordered list of shards for each vertex collection on the CURRENT db server
@@ -125,12 +128,14 @@ void WorkerConfig::updateConfig(VPackSlice params) {
       for (VPackSlice shardSlice : VPackArrayIterator(pair.value)) {
         shards.push_back(shardSlice.copyString());
       }
-      _edgeCollectionRestrictions.try_emplace(std::move(cname), std::move(shards));
+      _edgeCollectionRestrictions.try_emplace(std::move(cname),
+                                              std::move(shards));
     }
   }
 }
 
-std::vector<ShardID> const& WorkerConfig::edgeCollectionRestrictions(ShardID const& shard) const {
+std::vector<ShardID> const& WorkerConfig::edgeCollectionRestrictions(
+    ShardID const& shard) const {
   auto it = _edgeCollectionRestrictions.find(shard);
   if (it != _edgeCollectionRestrictions.end()) {
     return (*it).second;

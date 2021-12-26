@@ -44,7 +44,7 @@ class Methods;
 class RocksDBPrimaryIndex final : public RocksDBIndex {
   friend class RocksDBPrimaryIndexEqIterator;
   friend class RocksDBPrimaryIndexInIterator;
-  template <bool reverse>
+  template<bool reverse>
   friend class RocksDBPrimaryIndexRangeIterator;
   friend class RocksDBAllIndexIterator;
   friend class RocksDBAnyIndexIterator;
@@ -67,20 +67,24 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   bool isSorted() const override { return true; }
 
-  std::vector<std::vector<arangodb::basics::AttributeName>> const& coveredFields() const override;
+  std::vector<std::vector<arangodb::basics::AttributeName>> const&
+  coveredFields() const override;
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(arangodb::velocypack::StringRef const& =
-                                 arangodb::velocypack::StringRef()) const override {
+  double selectivityEstimate(
+      arangodb::velocypack::StringRef const& =
+          arangodb::velocypack::StringRef()) const override {
     return 1.0;
   }
 
   void load() override;
 
-  void toVelocyPack(VPackBuilder&, std::underlying_type<Index::Serialize>::type) const override;
+  void toVelocyPack(VPackBuilder&, std::underlying_type<Index::Serialize>::type)
+      const override;
 
-  LocalDocumentId lookupKey(transaction::Methods* trx, arangodb::velocypack::StringRef key,
+  LocalDocumentId lookupKey(transaction::Methods* trx,
+                            arangodb::velocypack::StringRef key,
                             ReadOwnWrites readOwnWrites) const;
 
   /// @brief reads a revision id from the primary index
@@ -91,25 +95,29 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   /// the case for older collections
   /// in this case the caller must fetch the revision id from the actual
   /// document
-  bool lookupRevision(transaction::Methods* trx, arangodb::velocypack::StringRef key,
-                      LocalDocumentId& id, RevisionId& revisionId, ReadOwnWrites) const;
+  bool lookupRevision(transaction::Methods* trx,
+                      arangodb::velocypack::StringRef key, LocalDocumentId& id,
+                      RevisionId& revisionId, ReadOwnWrites) const;
 
   Index::FilterCosts supportsFilterCondition(
       std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-      arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
+      arangodb::aql::AstNode const* node,
+      arangodb::aql::Variable const* reference,
       size_t itemsInIndex) const override;
 
-  Index::SortCosts supportsSortCondition(arangodb::aql::SortCondition const* node,
-                                         arangodb::aql::Variable const* reference,
-                                         size_t itemsInIndex) const override;
+  Index::SortCosts supportsSortCondition(
+      arangodb::aql::SortCondition const* node,
+      arangodb::aql::Variable const* reference,
+      size_t itemsInIndex) const override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
       transaction::Methods* trx, arangodb::aql::AstNode const* node,
       arangodb::aql::Variable const* reference,
       IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites) override;
 
-  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
-                                              arangodb::aql::Variable const* reference) const override;
+  arangodb::aql::AstNode* specializeCondition(
+      arangodb::aql::AstNode* node,
+      arangodb::aql::Variable const* reference) const override;
 
   /// @brief returns whether the document can be inserted into the primary index
   /// (or if there will be a conflict)
@@ -128,18 +136,21 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice doc) override;
+                LocalDocumentId const& documentId,
+                velocypack::Slice doc) override;
 
   Result update(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& oldDocumentId, velocypack::Slice oldDoc,
                 LocalDocumentId const& newDocumentId, velocypack::Slice newDoc,
-                OperationOptions const& /*options*/, bool /*performChecks*/) override;
+                OperationOptions const& /*options*/,
+                bool /*performChecks*/) override;
 
  private:
   /// @brief test if the specified key (keySlice) already exists.
   /// if it exists and the key exists, lock it for updates!
   Result probeKey(transaction::Methods& trx, RocksDBMethods* mthd,
-                  RocksDBKeyLeaser const& key, arangodb::velocypack::Slice keySlice,
+                  RocksDBKeyLeaser const& key,
+                  arangodb::velocypack::Slice keySlice,
                   OperationOptions const& options, bool insert);
 
   /// @brief create the iterator, for a single attribute, IN operator
@@ -156,7 +167,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   /// @brief populate the keys builder with the keys from the array, in either
   /// forward or backward order
-  void fillInLookupValues(transaction::Methods*, arangodb::velocypack::Builder& keys,
+  void fillInLookupValues(transaction::Methods*,
+                          arangodb::velocypack::Builder& keys,
                           arangodb::aql::AstNode const* values, bool ascending,
                           bool isId) const;
 
@@ -165,7 +177,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                      arangodb::aql::AstNode const* valNode, bool isId) const;
 
  private:
-  std::vector<std::vector<arangodb::basics::AttributeName>> const _coveredFields;
+  std::vector<std::vector<arangodb::basics::AttributeName>> const
+      _coveredFields;
 
   bool const _isRunningInCluster;
 };

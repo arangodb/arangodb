@@ -56,7 +56,8 @@ class VariableGenerator {
   void visit(std::function<void(Variable*)> const&);
 
   /// @brief return a map of all variable ids with their names
-  std::unordered_map<VariableId, std::string const> variables(bool includeTemporaries) const;
+  std::unordered_map<VariableId, std::string const> variables(
+      bool includeTemporaries) const;
 
   /// @brief generate a variable
   Variable* createVariable(std::string name, bool isUserDefined);

@@ -41,7 +41,8 @@ using namespace arangodb::aql;
 
 /// @brief checks if a V8 exception has occurred and throws an appropriate C++
 /// exception from it if so
-void V8Executor::HandleV8Error(v8::TryCatch& tryCatch, v8::Handle<v8::Value>& result,
+void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
+                               v8::Handle<v8::Value>& result,
                                arangodb::basics::StringBuffer* const buffer,
                                bool duringCompile) {
   ISOLATE;
@@ -63,28 +64,33 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch, v8::Handle<v8::Value>& re
     if (tryCatch.Exception()->IsObject()) {
       // cast the exception to an object
 
-      v8::Handle<v8::Array> objValue = v8::Handle<v8::Array>::Cast(tryCatch.Exception());
+      v8::Handle<v8::Array> objValue =
+          v8::Handle<v8::Array>::Cast(tryCatch.Exception());
       v8::Handle<v8::String> errorNum =
           TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::ErrorNum);
       v8::Handle<v8::String> errorMessage =
           TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::ErrorMessage);
 
-      TRI_Utf8ValueNFC stacktrace(isolate, tryCatch.StackTrace(context).FromMaybe(
-                                               v8::Local<v8::Value>()));
+      TRI_Utf8ValueNFC stacktrace(
+          isolate,
+          tryCatch.StackTrace(context).FromMaybe(v8::Local<v8::Value>()));
 
       if (TRI_HasProperty(context, isolate, objValue, errorNum) &&
           TRI_HasProperty(context, isolate, objValue, errorMessage)) {
         v8::Handle<v8::Value> errorNumValue =
             objValue->Get(context, errorNum).FromMaybe(v8::Local<v8::Value>());
         v8::Handle<v8::Value> errorMessageValue =
-            objValue->Get(context, errorMessage).FromMaybe(v8::Local<v8::Value>());
+            objValue->Get(context, errorMessage)
+                .FromMaybe(v8::Local<v8::Value>());
 
         // found something that looks like an ArangoError
         if ((errorNumValue->IsNumber() || errorNumValue->IsNumberObject()) &&
-            (errorMessageValue->IsString() || errorMessageValue->IsStringObject())) {
-          auto errorCode =
-              ErrorCode{static_cast<int>(TRI_ObjectToInt64(isolate, errorNumValue))};
-          std::string errorMessage(TRI_ObjectToString(isolate, errorMessageValue));
+            (errorMessageValue->IsString() ||
+             errorMessageValue->IsStringObject())) {
+          auto errorCode = ErrorCode{
+              static_cast<int>(TRI_ObjectToInt64(isolate, errorNumValue))};
+          std::string errorMessage(
+              TRI_ObjectToString(isolate, errorMessageValue));
 
           if (*stacktrace && stacktrace.length() > 0) {
             errorMessage += "\nstacktrace of offending AQL function: ";
@@ -101,7 +107,8 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch, v8::Handle<v8::Value>& re
       if (buffer) {
         // std::string script(buffer->c_str(), buffer->length());
         LOG_TOPIC("98afd", ERR, arangodb::Logger::FIXME)
-            << details << " " << Logger::CHARS(buffer->c_str(), buffer->length());
+            << details << " "
+            << Logger::CHARS(buffer->c_str(), buffer->length());
         details += "\nSee log for more details";
       }
       if (*stacktrace && stacktrace.length() > 0) {

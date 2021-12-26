@@ -39,7 +39,8 @@ class ShapeContainer;
 namespace iresearch {
 
 struct GeoOptions {
-  static constexpr int32_t MAX_CELLS = S2RegionCoverer::Options::kDefaultMaxCells;
+  static constexpr int32_t MAX_CELLS =
+      S2RegionCoverer::Options::kDefaultMaxCells;
   static constexpr int32_t MIN_LEVEL = 0;
   static constexpr int32_t MAX_LEVEL = S2CellId::kMaxLevel;
 
@@ -61,8 +62,10 @@ inline S2RegionTermIndexer::Options S2Options(GeoOptions const& opts) {
   return s2opts;
 }
 
-bool parseShape(velocypack::Slice slice, geo::ShapeContainer& shape, bool onlyPoint);
-bool parsePoint(velocypack::Slice latSlice, velocypack::Slice lngSlice, S2LatLng& out);
+bool parseShape(velocypack::Slice slice, geo::ShapeContainer& shape,
+                bool onlyPoint);
+bool parsePoint(velocypack::Slice latSlice, velocypack::Slice lngSlice,
+                S2LatLng& out);
 
 void toVelocyPack(velocypack::Builder& builder, S2LatLng const& point);
 

@@ -106,21 +106,26 @@ static void HUPHandler(int) {
   }
 }
 
-SupervisorFeature::SupervisorFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Supervisor"), _supervisor(false), _clientPid(0) {
+SupervisorFeature::SupervisorFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature(server, "Supervisor"),
+      _supervisor(false),
+      _clientPid(0) {
   setOptional(true);
   startsAfter<GreetingsFeaturePhase>();
   startsAfter<DaemonFeature>();
 }
 
-void SupervisorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--supervisor",
-                     "background the server, starts a supervisor",
-                     new BooleanParameter(&_supervisor),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+void SupervisorFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
+  options->addOption(
+      "--supervisor", "background the server, starts a supervisor",
+      new BooleanParameter(&_supervisor),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
-void SupervisorFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void SupervisorFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> options) {
   if (_supervisor) {
     try {
       DaemonFeature& daemon = server().getFeature<DaemonFeature>();
@@ -229,7 +234,8 @@ void SupervisorFeature::daemonize() {
             if (t < MIN_TIME_ALIVE_IN_SEC) {
               LOG_TOPIC("9db96", ERR, Logger::STARTUP)
                   << "child process " << _clientPid
-                  << " terminated unexpectedly, exit status " << WEXITSTATUS(status)
+                  << " terminated unexpectedly, exit status "
+                  << WEXITSTATUS(status)
                   << ". the child process only survived for " << t
                   << " seconds. this is lower than the minimum threshold value "
                      "of "
@@ -240,7 +246,8 @@ void SupervisorFeature::daemonize() {
               done = true;
             } else {
               LOG_TOPIC("1ae4a", ERR, Logger::STARTUP)
-                  << "child process " << _clientPid << " terminated unexpectedly, exit status "
+                  << "child process " << _clientPid
+                  << " terminated unexpectedly, exit status "
                   << WEXITSTATUS(status) << ". " << restartMessage;
 
               done = false;
@@ -267,8 +274,9 @@ void SupervisorFeature::daemonize() {
 
               if (t < MIN_TIME_ALIVE_IN_SEC) {
                 LOG_TOPIC("4a3a6", ERR, Logger::STARTUP)
-                    << "child process " << _clientPid << " terminated unexpectedly, signal "
-                    << s << " (" << arangodb::signals::name(s)
+                    << "child process " << _clientPid
+                    << " terminated unexpectedly, signal " << s << " ("
+                    << arangodb::signals::name(s)
                     << "). the child process only survived for " << t
                     << " seconds. this is lower than the minimum threshold "
                        "value of "
@@ -280,7 +288,8 @@ void SupervisorFeature::daemonize() {
 #ifdef WCOREDUMP
                 if (WCOREDUMP(status)) {
                   LOG_TOPIC("195c5", WARN, Logger::STARTUP)
-                      << "child process " << _clientPid << " also produced a core dump";
+                      << "child process " << _clientPid
+                      << " also produced a core dump";
                 }
 #endif
               } else {

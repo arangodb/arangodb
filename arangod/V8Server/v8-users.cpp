@@ -49,7 +49,8 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 /// @return a collection exists in database or a wildcard was specified
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::Result existsCollection(v8::Isolate* isolate, std::string const& database,
+arangodb::Result existsCollection(v8::Isolate* isolate,
+                                  std::string const& database,
                                   std::string const& collection) {
   TRI_GET_GLOBALS();
   if (!v8g->_server.hasFeature<arangodb::DatabaseFeature>()) {
@@ -325,7 +326,8 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_GrantCollection(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_GrantCollection(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -377,7 +379,8 @@ static void JS_GrantCollection(v8::FunctionCallbackInfo<v8::Value> const& args) 
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_RevokeCollection(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_RevokeCollection(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -423,7 +426,8 @@ static void JS_RevokeCollection(v8::FunctionCallbackInfo<v8::Value> const& args)
 }
 
 // create/update (value != null) or delete (value == null)
-static void JS_UpdateConfigData(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_UpdateConfigData(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsString()) {
@@ -451,8 +455,8 @@ static void JS_UpdateConfigData(v8::FunctionCallbackInfo<v8::Value> const& args)
   }
 
   Result r = um->updateUser(username, [&](auth::User& u) {
-    VPackBuilder updated =
-        velocypack::Collection::merge(u.configData(), merge.slice(), true, true);
+    VPackBuilder updated = velocypack::Collection::merge(
+        u.configData(), merge.slice(), true, true);
     u.setConfigData(std::move(updated));
     return TRI_ERROR_NO_ERROR;
   });
@@ -545,8 +549,9 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
           if (lvl != auth::Level::NONE) {  // hide non accessible collections
             result
-                ->Set(context, TRI_V8_STD_STRING(isolate, vocbase.name()),
-                      TRI_V8_STD_STRING(isolate, auth::convertFromAuthLevel(lvl)))
+                ->Set(
+                    context, TRI_V8_STD_STRING(isolate, vocbase.name()),
+                    TRI_V8_STD_STRING(isolate, auth::convertFromAuthLevel(lvl)))
                 .FromMaybe(false);
           }
         });
@@ -592,26 +597,42 @@ void TRI_InitV8Users(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(0);
 
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "save"), JS_SaveUser);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "replace"), JS_ReplaceUser);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "update"), JS_UpdateUser);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "remove"), JS_RemoveUser);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "document"), JS_GetUser);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "reload"), JS_ReloadAuthData);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "save"),
+                       JS_SaveUser);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "replace"),
+                       JS_ReplaceUser);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "update"),
+                       JS_UpdateUser);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "remove"),
+                       JS_RemoveUser);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "document"),
+                       JS_GetUser);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "reload"),
+                       JS_ReloadAuthData);
   TRI_AddMethodVocbase(isolate, rt,
-                       TRI_V8_ASCII_STRING(isolate, "grantDatabase"), JS_GrantDatabase);
+                       TRI_V8_ASCII_STRING(isolate, "grantDatabase"),
+                       JS_GrantDatabase);
   TRI_AddMethodVocbase(isolate, rt,
-                       TRI_V8_ASCII_STRING(isolate, "revokeDatabase"), JS_RevokeDatabase);
+                       TRI_V8_ASCII_STRING(isolate, "revokeDatabase"),
+                       JS_RevokeDatabase);
   TRI_AddMethodVocbase(isolate, rt,
-                       TRI_V8_ASCII_STRING(isolate, "grantCollection"), JS_GrantCollection);
+                       TRI_V8_ASCII_STRING(isolate, "grantCollection"),
+                       JS_GrantCollection);
   TRI_AddMethodVocbase(isolate, rt,
-                       TRI_V8_ASCII_STRING(isolate, "revokeCollection"), JS_RevokeCollection);
+                       TRI_V8_ASCII_STRING(isolate, "revokeCollection"),
+                       JS_RevokeCollection);
   TRI_AddMethodVocbase(isolate, rt,
-                       TRI_V8_ASCII_STRING(isolate, "updateConfigData"), JS_UpdateConfigData);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "configData"), JS_GetConfigData);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "permission"), JS_GetPermission);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "currentUser"), JS_CurrentUser);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "isAuthActive"), JS_AuthIsActive);
+                       TRI_V8_ASCII_STRING(isolate, "updateConfigData"),
+                       JS_UpdateConfigData);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "configData"),
+                       JS_GetConfigData);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "permission"),
+                       JS_GetPermission);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "currentUser"),
+                       JS_CurrentUser);
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "isAuthActive"),
+                       JS_AuthIsActive);
 
   v8g->UsersTempl.Reset(isolate, rt);
   // ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoUsersCtor"));
@@ -623,7 +644,7 @@ void TRI_InitV8Users(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
   v8::Handle<v8::Object> aa =
       rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   if (!aa.IsEmpty()) {
-    TRI_AddGlobalVariableVocbase(isolate,
-                                 TRI_V8_ASCII_STRING(isolate, "ArangoUsers"), aa);
+    TRI_AddGlobalVariableVocbase(
+        isolate, TRI_V8_ASCII_STRING(isolate, "ArangoUsers"), aa);
   }
 }

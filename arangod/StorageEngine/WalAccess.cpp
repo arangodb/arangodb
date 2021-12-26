@@ -35,31 +35,35 @@ bool WalAccessContext::shouldHandleDB(TRI_voc_tick_t dbid) const {
 }
 
 /// @brief check if view should be handled, might already be deleted
-bool WalAccessContext::shouldHandleView(TRI_voc_tick_t dbid, DataSourceId vid) const {
+bool WalAccessContext::shouldHandleView(TRI_voc_tick_t dbid,
+                                        DataSourceId vid) const {
   if (dbid == 0 || vid.empty() || !shouldHandleDB(dbid)) {
     return false;
   }
 
   if (_filter.vocbase == 0 ||
-      (_filter.vocbase == dbid && (_filter.collection.empty() || _filter.collection == vid))) {
+      (_filter.vocbase == dbid &&
+       (_filter.collection.empty() || _filter.collection == vid))) {
     return true;
   }
   return false;
 }
 
 /// @brief Check if collection is in filter, will load collection
-bool WalAccessContext::shouldHandleCollection(TRI_voc_tick_t dbid, DataSourceId cid) {
+bool WalAccessContext::shouldHandleCollection(TRI_voc_tick_t dbid,
+                                              DataSourceId cid) {
   if (dbid == 0 || cid.empty() || !shouldHandleDB(dbid)) {
     return false;
   }
   if (_filter.vocbase == 0 ||
-      (_filter.vocbase == dbid && (_filter.collection.empty() || _filter.collection == cid))) {
+      (_filter.vocbase == dbid &&
+       (_filter.collection.empty() || _filter.collection == cid))) {
     LogicalCollection* collection = loadCollection(dbid, cid);
     if (collection == nullptr) {
       return false;
     }
-    return !TRI_ExcludeCollectionReplication(collection->name(), _filter.includeSystem,
-                                             _filter.includeFoxxQueues);
+    return !TRI_ExcludeCollectionReplication(
+        collection->name(), _filter.includeSystem, _filter.includeFoxxQueues);
   }
   return false;
 }
@@ -70,7 +74,8 @@ TRI_vocbase_t* WalAccessContext::loadVocbase(TRI_voc_tick_t dbid) {
   auto const& it = _vocbases.find(dbid);
 
   if (it == _vocbases.end()) {
-    TRI_vocbase_t* vocbase = _server.getFeature<DatabaseFeature>().useDatabase(dbid);
+    TRI_vocbase_t* vocbase =
+        _server.getFeature<DatabaseFeature>().useDatabase(dbid);
     if (vocbase != nullptr) {
       auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
       _vocbases.try_emplace(dbid, *vocbase);
@@ -82,13 +87,15 @@ TRI_vocbase_t* WalAccessContext::loadVocbase(TRI_voc_tick_t dbid) {
   }
 }
 
-LogicalCollection* WalAccessContext::loadCollection(TRI_voc_tick_t dbid, DataSourceId cid) {
+LogicalCollection* WalAccessContext::loadCollection(TRI_voc_tick_t dbid,
+                                                    DataSourceId cid) {
   TRI_ASSERT(dbid != 0);
   TRI_ASSERT(cid.isSet());
   TRI_vocbase_t* vocbase = loadVocbase(dbid);
   if (vocbase != nullptr) {
     try {
-      auto it = _collectionCache.try_emplace(cid, CollectionGuard(vocbase, cid)).first;
+      auto it = _collectionCache.try_emplace(cid, CollectionGuard(vocbase, cid))
+                    .first;
       return it->second.collection();
     } catch (...) {
       // weglaecheln

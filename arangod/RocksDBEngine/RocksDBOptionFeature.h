@@ -48,9 +48,11 @@ class ProgramOptions;
 // that are never activated at the same time take options set
 // in this feature
 
-class RocksDBOptionFeature final : public application_features::ApplicationFeature {
+class RocksDBOptionFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit RocksDBOptionFeature(application_features::ApplicationServer& server);
+  explicit RocksDBOptionFeature(
+      application_features::ApplicationServer& server);
   ~RocksDBOptionFeature() = default;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -115,7 +117,8 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   std::unique_ptr<RocksDBVPackComparator> _vpackCmp;
 
   /// per column family write buffer limits
-  std::array<uint64_t, RocksDBColumnFamilyManager::numberOfColumnFamilies> _maxWriteBufferNumberCf;
+  std::array<uint64_t, RocksDBColumnFamilyManager::numberOfColumnFamilies>
+      _maxWriteBufferNumberCf;
 
   bool _minWriteBufferNumberToMergeTouched;
 };

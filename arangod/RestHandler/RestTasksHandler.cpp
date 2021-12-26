@@ -44,13 +44,15 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-RestTasksHandler::RestTasksHandler(application_features::ApplicationServer& server,
-                                   GeneralRequest* request, GeneralResponse* response)
+RestTasksHandler::RestTasksHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestTasksHandler::execute() {
   if (!server().isEnabled<V8DealerFeature>()) {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                  TRI_ERROR_NOT_IMPLEMENTED,
                   "JavaScript operations are disabled");
     return RestStatus::DONE;
   }
@@ -75,7 +77,8 @@ RestStatus RestTasksHandler::execute() {
       break;
     }
     default: {
-      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                    TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     }
   }
   return RestStatus::DONE;
@@ -181,19 +184,20 @@ void RestTasksHandler::registerTask(bool byId) {
 
   // job id
   if (id.empty()) {
-    id = VelocyPackHelper::getStringValue(body, "id",
-                                          std::to_string(TRI_NewServerSpecificTick()));
+    id = VelocyPackHelper::getStringValue(
+        body, "id", std::to_string(TRI_NewServerSpecificTick()));
   }
 
   // job name
   std::string name =
       VelocyPackHelper::getStringValue(body, "name", "user-defined task");
 
-  bool isSystem =
-      VelocyPackHelper::getBooleanValue(body, StaticStrings::DataSourceSystem, false);
+  bool isSystem = VelocyPackHelper::getBooleanValue(
+      body, StaticStrings::DataSourceSystem, false);
 
   // offset in seconds into period or from now on if no period
-  double offset = VelocyPackHelper::getNumericValue<double>(body, "offset", 0.0);
+  double offset =
+      VelocyPackHelper::getNumericValue<double>(body, "offset", 0.0);
 
   // period in seconds & count
   double period = 0.0;

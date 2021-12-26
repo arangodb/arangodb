@@ -47,13 +47,15 @@ double ReplicationTimeoutFeature::upperLimit = 3600.0;  // used to be 120.0
 // reboot id is increased. As a consequence, the connection is aborted and we
 // run into an error anyway. This is when a follower will be dropped.
 
-ReplicationTimeoutFeature::ReplicationTimeoutFeature(application_features::ApplicationServer& server)
+ReplicationTimeoutFeature::ReplicationTimeoutFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, "ReplicationTimeout") {
   setOptional(true);
   startsAfter<application_features::DatabaseFeaturePhase>();
 }
 
-void ReplicationTimeoutFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void ReplicationTimeoutFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
   options->addOption("--cluster.synchronous-replication-timeout-minimum",
                      "all synchronous replication timeouts will be at least "
                      "this value (in seconds)",
@@ -79,7 +81,8 @@ void ReplicationTimeoutFeature::collectOptions(std::shared_ptr<ProgramOptions> o
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
-void ReplicationTimeoutFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void ReplicationTimeoutFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> options) {
   if (upperLimit < lowerLimit) {
     LOG_TOPIC("8a9f3", WARN, Logger::CONFIG)
         << "--cluster.synchronous-replication-timeout-maximum must be at least "

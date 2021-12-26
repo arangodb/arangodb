@@ -103,28 +103,32 @@ struct AttributeName {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ParseAttributeString(arangodb::velocypack::StringRef const& input,
-                              std::vector<AttributeName>& result, bool allowExpansion);
+                              std::vector<AttributeName>& result,
+                              bool allowExpansion);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Parse an input string into attribute names and expansion flags
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ParseAttributeString(std::string const& input,
-                              std::vector<AttributeName>& result, bool allowExpansion);
+                              std::vector<AttributeName>& result,
+                              bool allowExpansion);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Parse an input string into attribute names and expansion flags
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ParseAttributeString(std::string_view input,
-                              std::vector<AttributeName>& result, bool allowExpansion);
+                              std::vector<AttributeName>& result,
+                              bool allowExpansion);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transform a vector of AttributeNames back into a string
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AttributeNamesToString(std::vector<AttributeName> const& input,
-                                std::string& result, bool excludeExpansion = false);
+                                std::string& result,
+                                bool excludeExpansion = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Tests if this AttributeName uses an expansion operator
@@ -133,16 +137,18 @@ void TRI_AttributeNamesToString(std::vector<AttributeName> const& input,
 bool TRI_AttributeNamesHaveExpansion(std::vector<AttributeName> const& input);
 
 std::ostream& operator<<(std::ostream&, arangodb::basics::AttributeName const&);
-std::ostream& operator<<(std::ostream&, std::vector<arangodb::basics::AttributeName> const&);
+std::ostream& operator<<(std::ostream&,
+                         std::vector<arangodb::basics::AttributeName> const&);
 
 }  // namespace basics
 }  // namespace arangodb
 
 namespace std {
 
-template <>
+template<>
 struct hash<std::vector<arangodb::basics::AttributeName>> {
-  size_t operator()(std::vector<arangodb::basics::AttributeName> const& value) const {
+  size_t operator()(
+      std::vector<arangodb::basics::AttributeName> const& value) const {
     size_t hash = 0xdeadbeef;
     for (auto const& it : value) {
       hash = it.hash(hash);
@@ -151,10 +157,11 @@ struct hash<std::vector<arangodb::basics::AttributeName>> {
   }
 };
 
-template <>
+template<>
 struct equal_to<std::vector<arangodb::basics::AttributeName>> {
-  bool operator()(std::vector<arangodb::basics::AttributeName> const& lhs,
-                  std::vector<arangodb::basics::AttributeName> const& rhs) const {
+  bool operator()(
+      std::vector<arangodb::basics::AttributeName> const& lhs,
+      std::vector<arangodb::basics::AttributeName> const& rhs) const {
     size_t const n = lhs.size();
     if (n != rhs.size()) {
       return false;

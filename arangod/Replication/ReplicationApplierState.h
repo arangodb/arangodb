@@ -74,7 +74,8 @@ struct ReplicationApplierState {
 
   /// performs initial sync or running tailing syncer
   bool isActive() const {
-    return (_phase == ActivityPhase::INITIAL || _phase == ActivityPhase::TAILING);
+    return (_phase == ActivityPhase::INITIAL ||
+            _phase == ActivityPhase::TAILING);
   }
 
   /// performs initial sync or running tailing syncer

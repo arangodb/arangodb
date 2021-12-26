@@ -72,11 +72,13 @@ class QueryRegistry {
   /// is thrown.
   void* openEngine(EngineId eid, EngineType type);
   ExecutionEngine* openExecutionEngine(EngineId eid) {
-    return static_cast<ExecutionEngine*>(openEngine(eid, EngineType::Execution));
+    return static_cast<ExecutionEngine*>(
+        openEngine(eid, EngineType::Execution));
   }
 
   traverser::BaseEngine* openGraphEngine(EngineId eid) {
-    return static_cast<traverser::BaseEngine*>(openEngine(eid, EngineType::Graph));
+    return static_cast<traverser::BaseEngine*>(
+        openEngine(eid, EngineType::Graph));
   }
 
   /// @brief close, return a query to the registry, if the query is not found,
@@ -131,7 +133,8 @@ class QueryRegistry {
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo final {
     /// @brief constructor for a regular query entry
-    QueryInfo(std::shared_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard);
+    QueryInfo(std::shared_ptr<ClusterQuery> query, double ttl,
+              cluster::CallbackGuard guard);
 
     /// @brief constructor for a tombstone entry
     explicit QueryInfo(ErrorCode errorCode, double ttl);
@@ -162,9 +165,15 @@ class QueryRegistry {
     EngineInfo& operator=(EngineInfo&& other) = delete;
 
     EngineInfo(ExecutionEngine* en, QueryInfo* qi)
-        : _engine(en), _queryInfo(qi), _type(EngineType::Execution), _isOpen(false) {}
+        : _engine(en),
+          _queryInfo(qi),
+          _type(EngineType::Execution),
+          _isOpen(false) {}
     EngineInfo(traverser::BaseEngine* en, QueryInfo* qi)
-        : _engine(en), _queryInfo(qi), _type(EngineType::Graph), _isOpen(false) {}
+        : _engine(en),
+          _queryInfo(qi),
+          _type(EngineType::Graph),
+          _isOpen(false) {}
 
     void* _engine;
     QueryInfo* _queryInfo;
@@ -174,7 +183,9 @@ class QueryRegistry {
 
   /// @brief _queries, the actual map of maps for the registry
   /// maps from vocbase name to list queries
-  std::unordered_map<std::string, std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>> _queries;
+  std::unordered_map<std::string,
+                     std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>>
+      _queries;
 
   std::unordered_map<EngineId, EngineInfo> _engines;
 

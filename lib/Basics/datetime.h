@@ -34,19 +34,21 @@
 
 namespace arangodb {
 
-using tp_sys_clock_ms =
-    std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds>;
+using tp_sys_clock_ms = std::chrono::time_point<std::chrono::system_clock,
+                                                std::chrono::milliseconds>;
 
 using d_sys_clock_ms = std::chrono::duration<std::chrono::milliseconds>;
 
 namespace basics {
-bool parseDateTime(arangodb::velocypack::StringRef dateTime, tp_sys_clock_ms& date_tp);
+bool parseDateTime(arangodb::velocypack::StringRef dateTime,
+                   tp_sys_clock_ms& date_tp);
 
 bool regexIsoDuration(arangodb::velocypack::StringRef isoDuration,
                       std::match_results<char const*>& durationParts);
 
 /// @brief formats a date(time) value according to formatString
-std::string formatDate(std::string const& formatString, tp_sys_clock_ms const& dateValue);
+std::string formatDate(std::string const& formatString,
+                       tp_sys_clock_ms const& dateValue);
 
 struct ParsedDuration {
   int years = 0;
@@ -59,6 +61,7 @@ struct ParsedDuration {
   int milliseconds = 0;
 };
 
-bool parseIsoDuration(arangodb::velocypack::StringRef duration, ParsedDuration& output);
+bool parseIsoDuration(arangodb::velocypack::StringRef duration,
+                      ParsedDuration& output);
 }  // namespace basics
 }  // namespace arangodb

@@ -70,9 +70,9 @@ TEST_P(IResearchQueryComplexBooleanTest, test) {
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -95,16 +95,16 @@ TEST_P(IResearchQueryComplexBooleanTest, test) {
     resource /= std::string_view(arangodb::tests::testResourceDir);
     resource /= std::string_view("simple_sequential.json");
 
-    auto builder =
-        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+    auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
+        resource.u8string());
     auto slice = builder.slice();
     ASSERT_TRUE(slice.isArray());
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -140,10 +140,9 @@ TEST_P(IResearchQueryComplexBooleanTest, test) {
         "version": %u }
     }})";
 
-    auto viewDefinition =
-        irs::string_utils::to_string(viewDefinitionTemplate,
-                                     static_cast<uint32_t>(linkVersion()),
-                                     static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition = irs::string_utils::to_string(
+        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()),
+        static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
     EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
@@ -183,12 +182,18 @@ TEST_P(IResearchQueryComplexBooleanTest, test) {
         insertedDocs[22].slice(),  // STARTS_WITH does not match, PHRASE matches
         insertedDocs[24].slice(),  // STARTS_WITH does not match, PHRASE matches
         insertedDocs[29].slice(),  // STARTS_WITH does not match, PHRASE matches
-        insertedDocs[36].slice(),  // STARTS_WITH matches (duplicate term), PHRASE does not match
-        insertedDocs[37].slice(),  // STARTS_WITH matches (duplicate term), PHRASE does not match
-        insertedDocs[6].slice(),  // STARTS_WITH matches (unique term), PHRASE does not match
-        insertedDocs[9].slice(),  // STARTS_WITH matches (unique term), PHRASE does not match
-        insertedDocs[26].slice(),  // STARTS_WITH matches (unique term), PHRASE does not match
-        insertedDocs[31].slice(),  // STARTS_WITH matches (unique term), PHRASE does not match
+        insertedDocs[36].slice(),  // STARTS_WITH matches (duplicate term),
+                                   // PHRASE does not match
+        insertedDocs[37].slice(),  // STARTS_WITH matches (duplicate term),
+                                   // PHRASE does not match
+        insertedDocs[6].slice(),   // STARTS_WITH matches (unique term), PHRASE
+                                   // does not match
+        insertedDocs[9].slice(),   // STARTS_WITH matches (unique term), PHRASE
+                                   // does not match
+        insertedDocs[26].slice(),  // STARTS_WITH matches (unique term), PHRASE
+                                   // does not match
+        insertedDocs[31].slice(),  // STARTS_WITH matches (unique term), PHRASE
+                                   // does not match
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -204,8 +209,8 @@ TEST_P(IResearchQueryComplexBooleanTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -233,8 +238,8 @@ TEST_P(IResearchQueryComplexBooleanTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -269,8 +274,8 @@ TEST_P(IResearchQueryComplexBooleanTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -300,8 +305,8 @@ TEST_P(IResearchQueryComplexBooleanTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -322,19 +327,34 @@ TEST_P(IResearchQueryComplexBooleanTest, test) {
         insertedDocs[28].slice(), insertedDocs[30].slice(),
         insertedDocs[32].slice(), insertedDocs[33].slice(),
         insertedDocs[34].slice(), insertedDocs[35].slice(),
-        insertedDocs[24].slice(),  // STARTS_WITH does not match, PHRASE matches, EXISTS does not match
-        insertedDocs[29].slice(),  // STARTS_WITH does not match, PHRASE matches, EXISTS does not match
-        insertedDocs[7].slice(),  // STARTS_WITH does not match, PHRASE matches, EXISTS matches
-        insertedDocs[8].slice(),  // STARTS_WITH does not match, PHRASE matches, EXISTS matches
-        insertedDocs[13].slice(),  // STARTS_WITH does not match, PHRASE matches, EXISTS matches
-        insertedDocs[19].slice(),  // STARTS_WITH does not match, PHRASE matches, EXISTS matches
-        insertedDocs[22].slice(),  // STARTS_WITH does not match, PHRASE matches, EXISTS matches
-        insertedDocs[36].slice(),  // STARTS_WITH matches (duplicate term), PHRASE does not match, EXISTS does not match
-        insertedDocs[37].slice(),  // STARTS_WITH matches (duplicate term), PHRASE does not match, EXISTS does not match
-        insertedDocs[26].slice(),  // STARTS_WITH matches (unique term), PHRASE does not match, EXISTS does not match
-        insertedDocs[31].slice(),  // STARTS_WITH matches (unique term), PHRASE does not match, EXISTS does not match
-        insertedDocs[6].slice(),  // STARTS_WITH matches (unique term), PHRASE does not match, EXISTS matches
-        insertedDocs[9].slice(),  // STARTS_WITH matches (unique term), PHRASE does not match, EXISTS matches
+        insertedDocs[24].slice(),  // STARTS_WITH does not match, PHRASE
+                                   // matches, EXISTS does not match
+        insertedDocs[29].slice(),  // STARTS_WITH does not match, PHRASE
+                                   // matches, EXISTS does not match
+        insertedDocs[7].slice(),  // STARTS_WITH does not match, PHRASE matches,
+                                  // EXISTS matches
+        insertedDocs[8].slice(),  // STARTS_WITH does not match, PHRASE matches,
+                                  // EXISTS matches
+        insertedDocs[13].slice(),  // STARTS_WITH does not match, PHRASE
+                                   // matches, EXISTS matches
+        insertedDocs[19].slice(),  // STARTS_WITH does not match, PHRASE
+                                   // matches, EXISTS matches
+        insertedDocs[22].slice(),  // STARTS_WITH does not match, PHRASE
+                                   // matches, EXISTS matches
+        insertedDocs[36].slice(),  // STARTS_WITH matches (duplicate term),
+                                   // PHRASE does not match, EXISTS does not
+                                   // match
+        insertedDocs[37].slice(),  // STARTS_WITH matches (duplicate term),
+                                   // PHRASE does not match, EXISTS does not
+                                   // match
+        insertedDocs[26].slice(),  // STARTS_WITH matches (unique term), PHRASE
+                                   // does not match, EXISTS does not match
+        insertedDocs[31].slice(),  // STARTS_WITH matches (unique term), PHRASE
+                                   // does not match, EXISTS does not match
+        insertedDocs[6].slice(),   // STARTS_WITH matches (unique term), PHRASE
+                                   // does not match, EXISTS matches
+        insertedDocs[9].slice(),   // STARTS_WITH matches (unique term), PHRASE
+                                   // does not match, EXISTS matches
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,

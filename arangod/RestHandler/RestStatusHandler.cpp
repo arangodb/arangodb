@@ -60,12 +60,14 @@ using namespace arangodb::rest;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestStatusHandler::RestStatusHandler(application_features::ApplicationServer& server,
-                                     GeneralRequest* request, GeneralResponse* response)
+RestStatusHandler::RestStatusHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestStatusHandler::execute() {
-  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security =
+      server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here
@@ -88,7 +90,9 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
   result.add("server", VPackValue("arango"));
   result.add("version", VPackValue(ARANGODB_VERSION));
 
-  result.add("pid", VPackValue(static_cast<TRI_vpack_pid_t>(Thread::currentProcessId())));
+  result.add(
+      "pid",
+      VPackValue(static_cast<TRI_vpack_pid_t>(Thread::currentProcessId())));
 
 #ifdef USE_ENTERPRISE
   result.add("license", VPackValue("enterprise"));
@@ -97,7 +101,10 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
 #endif
 
   auto& serverFeature = server().getFeature<ServerFeature>();
-  result.add("mode", VPackValue(serverFeature.operationModeString()));  // to be deprecated - 3.3 compat
+  result.add(
+      "mode",
+      VPackValue(serverFeature
+                     .operationModeString()));  // to be deprecated - 3.3 compat
   result.add("operationMode", VPackValue(serverFeature.operationModeString()));
   result.add("foxxApi", VPackValue(!security.isFoxxApiDisabled()));
 
@@ -119,9 +126,11 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
     result.add("serverInfo", VPackValue(VPackValueType::Object));
 
     result.add("maintenance", VPackValue(serverState->isMaintenance()));
-    result.add("role", VPackValue(ServerState::roleToString(serverState->getRole())));
-    result.add("writeOpsEnabled",
-               VPackValue(!serverState->readOnly()));  // to be deprecated - 3.3 compat
+    result.add("role",
+               VPackValue(ServerState::roleToString(serverState->getRole())));
+    result.add(
+        "writeOpsEnabled",
+        VPackValue(!serverState->readOnly()));  // to be deprecated - 3.3 compat
     result.add("readOnly", VPackValue(serverState->readOnly()));
 
     if (!serverState->isSingleServer()) {
@@ -134,8 +143,9 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
         result.add("address", VPackValue(serverState->getEndpoint()));
         result.add("serverId", VPackValue(serverState->getId()));
 
-        result.add("state",
-                   VPackValue(ServerState::stateToString(serverState->getState())));
+        result.add(
+            "state",
+            VPackValue(ServerState::stateToString(serverState->getState())));
       }
     }
 
@@ -217,7 +227,8 @@ RestStatus RestStatusHandler::executeOverview() {
     result.add("role", VPackValue(ServerState::roleToString(role)));
 
     if (role == ServerState::ROLE_COORDINATOR) {
-      AgencyCache& agencyCache = server().getFeature<ClusterFeature>().agencyCache();
+      AgencyCache& agencyCache =
+          server().getFeature<ClusterFeature>().agencyCache();
       auto [b, i] = agencyCache.get("arango/Plan");
 
       VPackSlice planSlice = b->slice().get(
@@ -232,7 +243,8 @@ RestStatus RestStatusHandler::executeOverview() {
         }
         if (planSlice.hasKey("DBServers")) {
           auto dbservers = planSlice.get("DBServers");
-          buffer.appendHex(static_cast<uint32_t>(VPackObjectIterator(dbservers).size()));
+          buffer.appendHex(
+              static_cast<uint32_t>(VPackObjectIterator(dbservers).size()));
         }
       } else {
         buffer.appendHex(static_cast<uint32_t>(0xFFFF));
@@ -274,7 +286,8 @@ RestStatus RestStatusHandler::executeOverview() {
     }
   }
 
-  auto const res = TRI_DeflateStringBuffer(buffer.stringBuffer(), buffer.size());
+  auto const res =
+      TRI_DeflateStringBuffer(buffer.stringBuffer(), buffer.size());
 
   if (res != TRI_ERROR_NO_ERROR) {
     result.add("hash", VPackValue(buffer.c_str()));

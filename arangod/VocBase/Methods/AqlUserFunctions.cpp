@@ -53,10 +53,12 @@ using namespace arangodb;
 namespace {
 // Must not start with `_`, may contain alphanumerical characters, should have
 // at least one set of double colons followed by more alphanumerical characters.
-std::regex const funcRegEx("[a-zA-Z0-9][a-zA-Z0-9_]*(::[a-zA-Z0-9_]+)+", std::regex::ECMAScript);
+std::regex const funcRegEx("[a-zA-Z0-9][a-zA-Z0-9_]*(::[a-zA-Z0-9_]+)+",
+                           std::regex::ECMAScript);
 
 // we may filter less restrictive:
-std::regex const funcFilterRegEx("[a-zA-Z0-9_]+(::[a-zA-Z0-9_]*)*", std::regex::ECMAScript);
+std::regex const funcFilterRegEx("[a-zA-Z0-9_]+(::[a-zA-Z0-9_]*)*",
+                                 std::regex::ECMAScript);
 
 bool isValidFunctionName(std::string const& testName) {
   return std::regex_match(testName, funcRegEx);
@@ -67,7 +69,8 @@ bool isValidFunctionNameFilter(std::string const& testName) {
 }
 
 void reloadAqlUserFunctions(application_features::ApplicationServer& server) {
-  if (server.hasFeature<V8DealerFeature>() && server.isEnabled<V8DealerFeature>() &&
+  if (server.hasFeature<V8DealerFeature>() &&
+      server.isEnabled<V8DealerFeature>() &&
       server.getFeature<V8DealerFeature>().isEnabled()) {
     std::string const def("reloadAql");
     server.getFeature<V8DealerFeature>().addGlobalContextMethod(def);
@@ -76,7 +79,8 @@ void reloadAqlUserFunctions(application_features::ApplicationServer& server) {
 
 }  // namespace
 
-Result arangodb::unregisterUserFunction(TRI_vocbase_t& vocbase, std::string const& functionName) {
+Result arangodb::unregisterUserFunction(TRI_vocbase_t& vocbase,
+                                        std::string const& functionName) {
   if (functionName.empty() || !isValidFunctionNameFilter(functionName)) {
     return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME,
                   std::string("error deleting AQL user function: '") +
@@ -117,9 +121,9 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t& vocbase, std::string cons
   return res;
 }
 
-Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase,
-                                              std::string const& functionFilterPrefix,
-                                              int& deleteCount) {
+Result arangodb::unregisterUserFunctionsGroup(
+    TRI_vocbase_t& vocbase, std::string const& functionFilterPrefix,
+    int& deleteCount) {
   deleteCount = 0;
 
   if (functionFilterPrefix.empty()) {
@@ -135,7 +139,8 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase,
   std::string uc(functionFilterPrefix);
   basics::StringUtils::toupperInPlace(uc);
 
-  if ((uc.length() < 2) || (uc[uc.length() - 1] != ':') || (uc[uc.length() - 2] != ':')) {
+  if ((uc.length() < 2) || (uc[uc.length() - 1] != ':') ||
+      (uc[uc.length() - 2] != ':')) {
     uc += "::";
   }
 
@@ -151,9 +156,9 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase,
       "REMOVE { _key: fn._key} in @@col RETURN 1");
 
   {
-    auto query =
-        arangodb::aql::Query::create(transaction::V8Context::CreateWhenRequired(vocbase, true),
-                                     arangodb::aql::QueryString(aql), std::move(binds));
+    auto query = arangodb::aql::Query::create(
+        transaction::V8Context::CreateWhenRequired(vocbase, true),
+        arangodb::aql::QueryString(aql), std::move(binds));
     aql::QueryResult queryResult = query->executeSync();
 
     if (queryResult.result.fail()) {
@@ -177,14 +182,16 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase,
   return Result();
 }
 
-Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice userFunction,
+Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase,
+                                      velocypack::Slice userFunction,
                                       bool& replacedExisting) {
   replacedExisting = false;
 
   Result res;
 
   auto& server = vocbase.server();
-  if (!server.hasFeature<V8DealerFeature>() || !server.isEnabled<V8DealerFeature>() ||
+  if (!server.hasFeature<V8DealerFeature>() ||
+      !server.isEnabled<V8DealerFeature>() ||
       !server.getFeature<V8DealerFeature>().isEnabled()) {
     return res.reset(TRI_ERROR_DISABLED,
                      "JavaScript operations are not available");
@@ -235,7 +242,8 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
 
     JavaScriptSecurityContext securityContext =
         JavaScriptSecurityContext::createRestrictedContext();
-    V8ConditionalContextGuard contextGuard(res, isolate, &vocbase, securityContext);
+    V8ConditionalContextGuard contextGuard(res, isolate, &vocbase,
+                                           securityContext);
 
     if (res.fail()) {
       return res;
@@ -249,16 +257,16 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
     {
       v8::TryCatch tryCatch(isolate);
 
-      result = TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
-                                           TRI_V8_STD_STRING(isolate, testCode),
-                                           TRI_V8_ASCII_STRING(isolate,
-                                                               "userFunction"),
-                                           false);
+      result = TRI_ExecuteJavaScriptString(
+          isolate, isolate->GetCurrentContext(),
+          TRI_V8_STD_STRING(isolate, testCode),
+          TRI_V8_ASCII_STRING(isolate, "userFunction"), false);
 
       if (result.IsEmpty() || !result->IsFunction() || tryCatch.HasCaught()) {
         if (tryCatch.HasCaught()) {
           res.reset(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
-                    std::string(TRI_errno_string(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE)) +
+                    std::string(TRI_errno_string(
+                        TRI_ERROR_QUERY_FUNCTION_INVALID_CODE)) +
                         ": " + TRI_StringifyV8Exception(isolate, &tryCatch));
 
           if (!tryCatch.CanContinue()) {
@@ -270,7 +278,8 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
           }
         } else {
           res.reset(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
-                    std::string(TRI_errno_string(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE)));
+                    std::string(TRI_errno_string(
+                        TRI_ERROR_QUERY_FUNCTION_INVALID_CODE)));
         }
       }
     }
@@ -342,7 +351,8 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
     std::string uc(functionFilterPrefix);
     basics::StringUtils::toupperInPlace(uc);
 
-    if ((uc.length() < 2) || (uc[uc.length() - 1] != ':') || (uc[uc.length() - 2] != ':')) {
+    if ((uc.length() < 2) || (uc[uc.length() - 1] != ':') ||
+        (uc[uc.length() - 2] != ':')) {
       uc += "::";
     }
 
@@ -355,9 +365,9 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
   binds->add("@col", VPackValue(StaticStrings::AqlFunctionsCollection));
   binds->close();
 
-  auto query =
-      arangodb::aql::Query::create(transaction::V8Context::CreateWhenRequired(vocbase, true),
-                                   arangodb::aql::QueryString(aql), std::move(binds));
+  auto query = arangodb::aql::Query::create(
+      transaction::V8Context::CreateWhenRequired(vocbase, true),
+      arangodb::aql::QueryString(aql), std::move(binds));
   aql::QueryResult queryResult = query->executeSync();
 
   if (queryResult.result.fail()) {

@@ -108,10 +108,12 @@ std::string_view metricType(std::string_view type, bool v2) {
 namespace arangodb {
 namespace statistics {
 
-std::initializer_list<double> const BytesReceivedDistributionCuts{250, 1000, 2000,
-                                                                  5000, 10000};
-std::initializer_list<double> const BytesSentDistributionCuts{250, 1000, 2000, 5000, 10000};
-std::initializer_list<double> const ConnectionTimeDistributionCuts{0.1, 1.0, 60.0};
+std::initializer_list<double> const BytesReceivedDistributionCuts{
+    250, 1000, 2000, 5000, 10000};
+std::initializer_list<double> const BytesSentDistributionCuts{250, 1000, 2000,
+                                                              5000, 10000};
+std::initializer_list<double> const ConnectionTimeDistributionCuts{0.1, 1.0,
+                                                                   60.0};
 std::initializer_list<double> const RequestTimeDistributionCuts{
     0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 5.0, 15.0, 30.0};
 
@@ -245,7 +247,8 @@ DECLARE_GAUGE(arangodb_v8_context_min, double,
 
 namespace {
 // local_name: {"prometheus_name", "type", "help"}
-auto const statStrings = std::map<std::string_view, std::vector<std::string_view>>{
+auto const statStrings = std::map<std::string_view,
+                                  std::vector<std::string_view>>{
     {"bytesReceived",
      {"arangodb_client_connection_statistics_bytes_received", "histogram",
       "Bytes received for a request"}},
@@ -420,9 +423,11 @@ auto const statStrings = std::map<std::string_view, std::vector<std::string_view
 // Connect legacy statistics with metrics definitions for automatic checks
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 using StatBuilder =
-    std::unordered_map<std::string_view, std::unique_ptr<metrics::Builder const> const>;
-auto makeStatBuilder(std::initializer_list<std::pair<std::string_view, metrics::Builder const* const>> initList)
-    -> StatBuilder {
+    std::unordered_map<std::string_view,
+                       std::unique_ptr<metrics::Builder const> const>;
+auto makeStatBuilder(std::initializer_list<
+                     std::pair<std::string_view, metrics::Builder const* const>>
+                         initList) -> StatBuilder {
   auto unomap = StatBuilder{};
   unomap.reserve(initList.size());
   for (auto const& it : initList) {
@@ -431,18 +436,24 @@ auto makeStatBuilder(std::initializer_list<std::pair<std::string_view, metrics::
   return unomap;
 }
 auto const statBuilder = makeStatBuilder({
-    {"bytesReceived", new arangodb_client_connection_statistics_bytes_received()},
+    {"bytesReceived",
+     new arangodb_client_connection_statistics_bytes_received()},
     {"bytesSent", new arangodb_client_connection_statistics_bytes_sent()},
-    {"minorPageFaults", new arangodb_process_statistics_minor_page_faults_total()},
-    {"majorPageFaults", new arangodb_process_statistics_major_page_faults_total()},
+    {"minorPageFaults",
+     new arangodb_process_statistics_minor_page_faults_total()},
+    {"majorPageFaults",
+     new arangodb_process_statistics_major_page_faults_total()},
     {"userTime", new arangodb_process_statistics_user_time()},
     {"systemTime", new arangodb_process_statistics_system_time()},
     {"numberOfThreads", new arangodb_process_statistics_number_of_threads()},
     {"residentSize", new arangodb_process_statistics_resident_set_size()},
-    {"residentSizePercent", new arangodb_process_statistics_resident_set_size_percent()},
+    {"residentSizePercent",
+     new arangodb_process_statistics_resident_set_size_percent()},
     {"virtualSize", new arangodb_process_statistics_virtual_memory_size()},
-    {"clientHttpConnections", new arangodb_client_connection_statistics_client_connections()},
-    {"connectionTime", new arangodb_client_connection_statistics_connection_time()},
+    {"clientHttpConnections",
+     new arangodb_client_connection_statistics_client_connections()},
+    {"connectionTime",
+     new arangodb_client_connection_statistics_connection_time()},
     {"connectionTimeCount", nullptr},
     {"connectionTimeSum", nullptr},
     {"totalTime", new arangodb_client_connection_statistics_total_time()},
@@ -457,18 +468,30 @@ auto const statBuilder = makeStatBuilder({
     {"ioTime", new arangodb_client_connection_statistics_io_time()},
     {"ioTimeCount", nullptr},
     {"ioTimeSum", nullptr},
-    {"httpReqsTotal", new arangodb_http_request_statistics_total_requests_total()},
-    {"httpReqsSuperuser", new arangodb_http_request_statistics_superuser_requests_total()},
-    {"httpReqsUser", new arangodb_http_request_statistics_user_requests_total()},
-    {"httpReqsAsync", new arangodb_http_request_statistics_async_requests_total()},
-    {"httpReqsDelete", new arangodb_http_request_statistics_http_delete_requests_total()},
-    {"httpReqsGet", new arangodb_http_request_statistics_http_get_requests_total()},
-    {"httpReqsHead", new arangodb_http_request_statistics_http_head_requests_total()},
-    {"httpReqsOptions", new arangodb_http_request_statistics_http_options_requests_total()},
-    {"httpReqsPatch", new arangodb_http_request_statistics_http_patch_requests_total()},
-    {"httpReqsPost", new arangodb_http_request_statistics_http_post_requests_total()},
-    {"httpReqsPut", new arangodb_http_request_statistics_http_put_requests_total()},
-    {"httpReqsOther", new arangodb_http_request_statistics_other_http_requests_total()},
+    {"httpReqsTotal",
+     new arangodb_http_request_statistics_total_requests_total()},
+    {"httpReqsSuperuser",
+     new arangodb_http_request_statistics_superuser_requests_total()},
+    {"httpReqsUser",
+     new arangodb_http_request_statistics_user_requests_total()},
+    {"httpReqsAsync",
+     new arangodb_http_request_statistics_async_requests_total()},
+    {"httpReqsDelete",
+     new arangodb_http_request_statistics_http_delete_requests_total()},
+    {"httpReqsGet",
+     new arangodb_http_request_statistics_http_get_requests_total()},
+    {"httpReqsHead",
+     new arangodb_http_request_statistics_http_head_requests_total()},
+    {"httpReqsOptions",
+     new arangodb_http_request_statistics_http_options_requests_total()},
+    {"httpReqsPatch",
+     new arangodb_http_request_statistics_http_patch_requests_total()},
+    {"httpReqsPost",
+     new arangodb_http_request_statistics_http_post_requests_total()},
+    {"httpReqsPut",
+     new arangodb_http_request_statistics_http_put_requests_total()},
+    {"httpReqsOther",
+     new arangodb_http_request_statistics_other_http_requests_total()},
     {"uptime", new arangodb_server_statistics_server_uptime_total()},
     {"physicalSize", new arangodb_server_statistics_physical_memory()},
     {"cores", new arangodb_server_statistics_cpu_cores()},
@@ -564,7 +587,8 @@ class StatisticsThread final : public Thread {
 // --SECTION--                                                 StatisticsFeature
 // -----------------------------------------------------------------------------
 
-StatisticsFeature::StatisticsFeature(application_features::ApplicationServer& server)
+StatisticsFeature::StatisticsFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Statistics"),
       _statistics(true),
       _statisticsHistory(true),
@@ -577,7 +601,8 @@ StatisticsFeature::StatisticsFeature(application_features::ApplicationServer& se
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool foundError = false;
   for (auto const& it : statBuilder) {
-    if (auto const& statIt = statStrings.find(it.first); statIt != statStrings.end()) {
+    if (auto const& statIt = statStrings.find(it.first);
+        statIt != statStrings.end()) {
       if (it.second != nullptr) {
         auto const& builder = *it.second;
         auto const& stat = statIt->second;
@@ -626,7 +651,8 @@ StatisticsFeature::StatisticsFeature(application_features::ApplicationServer& se
 
 StatisticsFeature::~StatisticsFeature() = default;
 
-void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void StatisticsFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("server.disable-statistics", "server.statistics");
 
   options->addOption("--server.statistics",
@@ -637,7 +663,8 @@ void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
       ->addOption("--server.statistics-history",
                   "turn storing statistics in database on or off",
                   new BooleanParameter(&_statisticsHistory),
-                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic))
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Dynamic))
       .setIntroducedIn(30409)
       .setIntroducedIn(30501);
 
@@ -646,12 +673,14 @@ void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
           "--server.statistics-all-databases",
           "provide cluster statistics in web interface in all databases",
           new BooleanParameter(&_statisticsAllDatabases),
-          arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
-                                       arangodb::options::Flags::OnCoordinator))
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30800);
 }
 
-void StatisticsFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void StatisticsFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> options) {
   if (!_statistics) {
     // turn ourselves off
     disable();
@@ -694,7 +723,8 @@ void StatisticsFeature::start() {
   }
 
   // force history disable on Agents
-  if (arangodb::ServerState::instance()->isAgent() && !_statisticsHistoryTouched) {
+  if (arangodb::ServerState::instance()->isAgent() &&
+      !_statisticsHistoryTouched) {
     _statisticsHistory = false;
   }
 
@@ -736,7 +766,8 @@ void StatisticsFeature::stop() {
   _statisticsWorker.reset();
 }
 
-VPackBuilder StatisticsFeature::fillDistribution(statistics::Distribution const& dist) {
+VPackBuilder StatisticsFeature::fillDistribution(
+    statistics::Distribution const& dist) {
   VPackBuilder builder;
   builder.openObject();
 
@@ -754,11 +785,10 @@ VPackBuilder StatisticsFeature::fillDistribution(statistics::Distribution const&
   return builder;
 }
 
-void StatisticsFeature::appendHistogram(std::string& result,
-                                        statistics::Distribution const& dist,
-                                        std::string const& label,
-                                        std::initializer_list<std::string> const& les,
-                                        bool v2) {
+void StatisticsFeature::appendHistogram(
+    std::string& result, statistics::Distribution const& dist,
+    std::string const& label, std::initializer_list<std::string> const& les,
+    bool v2) {
   using StringUtils::concatT;
 
   VPackBuilder tmp = fillDistribution(dist);
@@ -787,7 +817,8 @@ void StatisticsFeature::appendHistogram(std::string& result,
   }
 }
 
-void StatisticsFeature::appendMetric(std::string& result, std::string const& val,
+void StatisticsFeature::appendMetric(std::string& result,
+                                     std::string const& val,
                                      std::string const& label, bool v2) {
   using StringUtils::concatT;
   auto const& stat = statStrings.at(label);
@@ -803,21 +834,25 @@ void StatisticsFeature::appendMetric(std::string& result, std::string const& val
   result += concatT("\n", name, " ", val, "\n");
 }
 
-void StatisticsFeature::toPrometheus(std::string& result, double const& now, bool v2) {
+void StatisticsFeature::toPrometheus(std::string& result, double const& now,
+                                     bool v2) {
   ProcessInfo info = TRI_ProcessInfoSelf();
   uint64_t rss = static_cast<uint64_t>(info._residentSize);
   double rssp = 0;
 
   if (PhysicalMemory::getValue() != 0) {
-    rssp = static_cast<double>(rss) / static_cast<double>(PhysicalMemory::getValue());
+    rssp = static_cast<double>(rss) /
+           static_cast<double>(PhysicalMemory::getValue());
   }
 
   ServerStatistics const& serverInfo =
       server().getFeature<MetricsFeature>().serverStatistics();
 
   // processStatistics()
-  appendMetric(result, std::to_string(info._minorPageFaults), "minorPageFaults", v2);
-  appendMetric(result, std::to_string(info._majorPageFaults), "majorPageFaults", v2);
+  appendMetric(result, std::to_string(info._minorPageFaults), "minorPageFaults",
+               v2);
+  appendMetric(result, std::to_string(info._majorPageFaults), "majorPageFaults",
+               v2);
   if (info._scClkTck != 0) {  // prevent division by zero
     appendMetric(result,
                  std::to_string(static_cast<double>(info._userTime) /
@@ -828,7 +863,8 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now, boo
                                 static_cast<double>(info._scClkTck)),
                  "systemTime", v2);
   }
-  appendMetric(result, std::to_string(info._numberThreads), "numberOfThreads", v2);
+  appendMetric(result, std::to_string(info._numberThreads), "numberOfThreads",
+               v2);
   appendMetric(result, std::to_string(rss), "residentSize", v2);
   appendMetric(result, std::to_string(rssp), "residentSizePercent", v2);
   appendMetric(result, std::to_string(info._virtualSize), "virtualSize", v2);
@@ -840,10 +876,12 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now, boo
   CpuUsageFeature& cpuUsage = server().getFeature<CpuUsageFeature>();
   if (cpuUsage.isEnabled()) {
     auto snapshot = cpuUsage.snapshot();
-    appendMetric(result, std::to_string(snapshot.userPercent()), "userPercent", v2);
+    appendMetric(result, std::to_string(snapshot.userPercent()), "userPercent",
+                 v2);
     appendMetric(result, std::to_string(snapshot.systemPercent()),
                  "systemPercent", v2);
-    appendMetric(result, std::to_string(snapshot.idlePercent()), "idlePercent", v2);
+    appendMetric(result, std::to_string(snapshot.idlePercent()), "idlePercent",
+                 v2);
     appendMetric(result, std::to_string(snapshot.iowaitPercent()),
                  "iowaitPercent", v2);
   }
@@ -853,7 +891,8 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now, boo
     ConnectionStatistics::getSnapshot(connectionStats);
 
     RequestStatistics::Snapshot requestStats;
-    RequestStatistics::getSnapshot(requestStats, stats::RequestStatisticsSource::ALL);
+    RequestStatistics::getSnapshot(requestStats,
+                                   stats::RequestStatisticsSource::ALL);
 
     // _clientStatistics()
     appendMetric(result, std::to_string(connectionStats.httpConnections.get()),
@@ -890,39 +929,48 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now, boo
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::DELETE_REQ].get()),
         "httpReqsDelete", v2);
-    appendMetric(result,
-                 std::to_string(
-                     connectionStats.methodRequests[(int)RequestType::GET].get()),
-                 "httpReqsGet", v2);
-    appendMetric(result,
-                 std::to_string(
-                     connectionStats.methodRequests[(int)RequestType::HEAD].get()),
-                 "httpReqsHead", v2);
-    appendMetric(result,
-                 std::to_string(
-                     connectionStats.methodRequests[(int)RequestType::OPTIONS].get()),
-                 "httpReqsOptions", v2);
-    appendMetric(result,
-                 std::to_string(
-                     connectionStats.methodRequests[(int)RequestType::PATCH].get()),
-                 "httpReqsPatch", v2);
-    appendMetric(result,
-                 std::to_string(
-                     connectionStats.methodRequests[(int)RequestType::POST].get()),
-                 "httpReqsPost", v2);
-    appendMetric(result,
-                 std::to_string(
-                     connectionStats.methodRequests[(int)RequestType::PUT].get()),
-                 "httpReqsPut", v2);
-    appendMetric(result,
-                 std::to_string(
-                     connectionStats.methodRequests[(int)RequestType::ILLEGAL].get()),
-                 "httpReqsOther", v2);
+    appendMetric(
+        result,
+        std::to_string(
+            connectionStats.methodRequests[(int)RequestType::GET].get()),
+        "httpReqsGet", v2);
+    appendMetric(
+        result,
+        std::to_string(
+            connectionStats.methodRequests[(int)RequestType::HEAD].get()),
+        "httpReqsHead", v2);
+    appendMetric(
+        result,
+        std::to_string(
+            connectionStats.methodRequests[(int)RequestType::OPTIONS].get()),
+        "httpReqsOptions", v2);
+    appendMetric(
+        result,
+        std::to_string(
+            connectionStats.methodRequests[(int)RequestType::PATCH].get()),
+        "httpReqsPatch", v2);
+    appendMetric(
+        result,
+        std::to_string(
+            connectionStats.methodRequests[(int)RequestType::POST].get()),
+        "httpReqsPost", v2);
+    appendMetric(
+        result,
+        std::to_string(
+            connectionStats.methodRequests[(int)RequestType::PUT].get()),
+        "httpReqsPut", v2);
+    appendMetric(
+        result,
+        std::to_string(
+            connectionStats.methodRequests[(int)RequestType::ILLEGAL].get()),
+        "httpReqsOther", v2);
     appendMetric(result, std::to_string(connectionStats.totalRequests.get()),
                  "httpReqsTotal", v2);
-    appendMetric(result, std::to_string(connectionStats.totalRequestsSuperuser.get()),
+    appendMetric(result,
+                 std::to_string(connectionStats.totalRequestsSuperuser.get()),
                  "httpReqsSuperuser", v2);
-    appendMetric(result, std::to_string(connectionStats.totalRequestsUser.get()),
+    appendMetric(result,
+                 std::to_string(connectionStats.totalRequestsUser.get()),
                  "httpReqsUser", v2);
   }
 
@@ -943,8 +991,9 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now, boo
   result += "\n";
 }
 
-Result StatisticsFeature::getClusterSystemStatistics(TRI_vocbase_t& vocbase, double start,
-                                                     arangodb::velocypack::Builder& result) const {
+Result StatisticsFeature::getClusterSystemStatistics(
+    TRI_vocbase_t& vocbase, double start,
+    arangodb::velocypack::Builder& result) const {
   if (!ServerState::instance()->isCoordinator()) {
     return {TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR};
   }
@@ -985,9 +1034,9 @@ Result StatisticsFeature::getClusterSystemStatistics(TRI_vocbase_t& vocbase, dou
   result.openObject();
   {
     buildBindVars(StaticStrings::Statistics15Collection);
-    auto query =
-        arangodb::aql::Query::create(transaction::StandaloneContext::Create(*sysVocbase),
-                                     arangodb::aql::QueryString(stats15Query), bindVars);
+    auto query = arangodb::aql::Query::create(
+        transaction::StandaloneContext::Create(*sysVocbase),
+        arangodb::aql::QueryString(stats15Query), bindVars);
 
     query->queryOptions().cache = false;
     query->queryOptions().skipAudit = true;
@@ -1003,9 +1052,9 @@ Result StatisticsFeature::getClusterSystemStatistics(TRI_vocbase_t& vocbase, dou
 
   {
     buildBindVars(StaticStrings::StatisticsCollection);
-    auto query =
-        arangodb::aql::Query::create(transaction::StandaloneContext::Create(*sysVocbase),
-                                     arangodb::aql::QueryString(statsSamplesQuery), bindVars);
+    auto query = arangodb::aql::Query::create(
+        transaction::StandaloneContext::Create(*sysVocbase),
+        arangodb::aql::QueryString(statsSamplesQuery), bindVars);
 
     query->queryOptions().cache = false;
     query->queryOptions().skipAudit = true;

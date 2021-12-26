@@ -56,18 +56,18 @@ class MasterContext {
   /// current global edge count, might change after each gss
   inline uint64_t edgeCount() const { return _edgeCount; }
 
-  template <typename T>
+  template<typename T>
   inline void aggregate(std::string const& name, T const& value) {
     T const* ptr = &value;
     _aggregators->aggregate(name, ptr);
   }
 
-  template <typename T>
+  template<typename T>
   inline const T* getAggregatedValue(std::string const& name) {
     return (const T*)_aggregators->getAggregatedValue(name);
   }
 
-  template <typename T>
+  template<typename T>
   inline void setAggregatedValue(std::string const& name, T const& value) {
     // FIXME refactor the aggregators, this whole API is horrible
     arangodb::velocypack::Builder b;
@@ -80,7 +80,7 @@ class MasterContext {
     _aggregators->setAggregatedValues(b.slice());
   }
 
-  template <typename T>
+  template<typename T>
   inline T* getAggregator(std::string const& name) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     return dynamic_cast<T*>(_aggregators->getAggregator(name));

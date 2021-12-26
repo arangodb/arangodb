@@ -58,7 +58,7 @@ auto mergeInto(VarSet& target, VarSet const& source) {
 }
 }  // namespace
 
-template <class T>
+template<class T>
 bool VarUsageFinderT<T>::before(T* en) {
   // count the type of node found
   en->plan()->increaseCounter(en->getType());
@@ -93,7 +93,7 @@ bool VarUsageFinderT<T>::before(T* en) {
   return false;
 }
 
-template <class T>
+template<class T>
 void VarUsageFinderT<T>::after(T* en) {
   switch (en->getType()) {
     case ExecutionNode::SUBQUERY_START: {
@@ -121,7 +121,7 @@ void VarUsageFinderT<T>::after(T* en) {
   en->setVarUsageValid();
 }
 
-template <class T>
+template<class T>
 bool VarUsageFinderT<T>::enterSubquery(T*, T* subqueryRootNode) {
   VarUsageFinderT subfinder(_varSetBy);
   // The subquery needs only the topmost varsValid entry, it must not see

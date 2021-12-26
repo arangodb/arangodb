@@ -40,10 +40,10 @@ namespace aql {
  *        Executor only, the AqlCallStack is used to transport information
  *        for outer subqueries.
  *        At the very beginning of the query this Stack has exactly one
- *        CallList entry, which defines what should be done on the outermost query.
- *        If we now enter a spliced subquery, there will be another CallList
- *        added on top of this stack. If we leave the spliced subquery, the topmost
- *        CallList will be removed.
+ *        CallList entry, which defines what should be done on the outermost
+ * query. If we now enter a spliced subquery, there will be another CallList
+ *        added on top of this stack. If we leave the spliced subquery, the
+ * topmost CallList will be removed.
  *
  *        Using this stack, we can transport all necessary calls from the outer
  *        subqueries to the Executors that need to produce data for them.

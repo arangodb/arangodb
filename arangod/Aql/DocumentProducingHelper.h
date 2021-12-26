@@ -57,12 +57,12 @@ class QueryContext;
 
 struct DocumentProducingFunctionContext {
  public:
-  DocumentProducingFunctionContext(InputAqlItemRow const& inputRow,
-                                   OutputAqlItemRow* outputRow, RegisterId outputRegister,
-                                   bool produceResult, aql::QueryContext& query,
-                                   transaction::Methods& trx, Expression* filter,
-                                   arangodb::aql::Projections const& projections,
-                                   bool allowCoveringIndexOptimization, bool checkUniqueness);
+  DocumentProducingFunctionContext(
+      InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
+      RegisterId outputRegister, bool produceResult, aql::QueryContext& query,
+      transaction::Methods& trx, Expression* filter,
+      arangodb::aql::Projections const& projections,
+      bool allowCoveringIndexOptimization, bool checkUniqueness);
 
   DocumentProducingFunctionContext() = delete;
 
@@ -76,11 +76,13 @@ struct DocumentProducingFunctionContext {
 
   transaction::Methods* getTrxPtr() const noexcept;
 
-  std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept;
+  std::vector<size_t> const& getCoveringIndexAttributePositions()
+      const noexcept;
 
   bool getAllowCoveringIndexOptimization() const noexcept;
 
-  void setAllowCoveringIndexOptimization(bool allowCoveringIndexOptimization) noexcept;
+  void setAllowCoveringIndexOptimization(
+      bool allowCoveringIndexOptimization) noexcept;
 
   void incrScanned() noexcept;
 
@@ -100,7 +102,8 @@ struct DocumentProducingFunctionContext {
 
   bool checkFilter(velocypack::Slice slice);
 
-  bool checkFilter(AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
+  bool checkFilter(AqlValue (*getValue)(void const* ctx, Variable const* var,
+                                        bool doCopy),
                    void const* filterContext);
 
   void reset();
@@ -152,23 +155,28 @@ struct WithProjectionsNotCoveredByIndex {};
 struct DocumentCopy {};
 }  // namespace DocumentProducingCallbackVariant
 
-template <bool checkUniqueness, bool skip>
-IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
-                                            DocumentProducingFunctionContext& context);
+template<bool checkUniqueness, bool skip>
+IndexIterator::DocumentCallback getCallback(
+    DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
+    DocumentProducingFunctionContext& context);
 
-template <bool checkUniqueness, bool skip>
-IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex,
-                                            DocumentProducingFunctionContext& context);
+template<bool checkUniqueness, bool skip>
+IndexIterator::DocumentCallback getCallback(
+    DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex,
+    DocumentProducingFunctionContext& context);
 
-template <bool checkUniqueness, bool skip>
-IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::DocumentCopy,
-                                            DocumentProducingFunctionContext& context);
+template<bool checkUniqueness, bool skip>
+IndexIterator::DocumentCallback getCallback(
+    DocumentProducingCallbackVariant::DocumentCopy,
+    DocumentProducingFunctionContext& context);
 
-template <bool checkUniqueness>
-IndexIterator::LocalDocumentIdCallback getNullCallback(DocumentProducingFunctionContext& context);
+template<bool checkUniqueness>
+IndexIterator::LocalDocumentIdCallback getNullCallback(
+    DocumentProducingFunctionContext& context);
 
-template <bool checkUniqueness, bool skip>
-IndexIterator::DocumentCallback buildDocumentCallback(DocumentProducingFunctionContext& context);
+template<bool checkUniqueness, bool skip>
+IndexIterator::DocumentCallback buildDocumentCallback(
+    DocumentProducingFunctionContext& context);
 
 }  // namespace aql
 }  // namespace arangodb

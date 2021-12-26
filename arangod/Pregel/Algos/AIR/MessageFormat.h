@@ -38,7 +38,8 @@ struct MessageFormat : public message_format {
   MessageFormat();
 
   void unwrapValue(VPackSlice s, MessageData& message) const override;
-  void addValue(VPackBuilder& arrayBuilder, MessageData const& message) const override;
+  void addValue(VPackBuilder& arrayBuilder,
+                MessageData const& message) const override;
 };
 
 }  // namespace accumulators

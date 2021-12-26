@@ -54,9 +54,9 @@ void SnappyStringAppendSink::Append(const char* bytes, size_t n) {
   output.append(bytes, n);
 }
 
-MerkleTreeSnappySource::MerkleTreeSnappySource(std::uint64_t numberOfShards,
-                                               std::uint64_t allocationSize,
-                                               arangodb::containers::MerkleTreeBase::Data const& data)
+MerkleTreeSnappySource::MerkleTreeSnappySource(
+    std::uint64_t numberOfShards, std::uint64_t allocationSize,
+    arangodb::containers::MerkleTreeBase::Data const& data)
     : numberOfShards(numberOfShards),
       data(data),
       bytesRead(0),
@@ -72,8 +72,9 @@ char const* MerkleTreeSnappySource::Peek(size_t* len) {
   }
 
   TRI_ASSERT(bytesRead >= arangodb::containers::MerkleTreeBase::MetaSize);
-  std::uint64_t shard = (bytesRead - arangodb::containers::MerkleTreeBase::MetaSize) /
-                        arangodb::containers::MerkleTreeBase::ShardSize;
+  std::uint64_t shard =
+      (bytesRead - arangodb::containers::MerkleTreeBase::MetaSize) /
+      arangodb::containers::MerkleTreeBase::ShardSize;
   std::uint64_t offsetInShard =
       (bytesRead - arangodb::containers::MerkleTreeBase::MetaSize) %
       arangodb::containers::MerkleTreeBase::ShardSize;
@@ -85,7 +86,8 @@ char const* MerkleTreeSnappySource::Peek(size_t* len) {
       // which consists of one shard that is completely empty
       return ::emptyShard.data() + offsetInShard;
     }
-    return reinterpret_cast<char const*>(data.shards[shard].get()) + offsetInShard;
+    return reinterpret_cast<char const*>(data.shards[shard].get()) +
+           offsetInShard;
   }
   // no more data
   *len = 0;

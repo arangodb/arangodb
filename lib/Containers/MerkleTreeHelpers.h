@@ -46,8 +46,9 @@ class SnappyStringAppendSink : public snappy::Sink {
 /// @brief helper class for compressing a Merkle tree using Snappy
 class MerkleTreeSnappySource : public snappy::Source {
  public:
-  explicit MerkleTreeSnappySource(std::uint64_t numberOfShards, std::uint64_t allocationSize,
-                                  arangodb::containers::MerkleTreeBase::Data const& data);
+  explicit MerkleTreeSnappySource(
+      std::uint64_t numberOfShards, std::uint64_t allocationSize,
+      arangodb::containers::MerkleTreeBase::Data const& data);
 
   size_t Available() const override;
 

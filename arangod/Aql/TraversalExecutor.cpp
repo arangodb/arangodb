@@ -43,7 +43,9 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     std::unique_ptr<Traverser>&& traverser,
     std::unordered_map<OutputName, RegisterId, OutputNameHash> registerMapping,
     std::string fixedSource, RegisterId inputRegister,
-    std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables, Ast* ast)
+    std::vector<std::pair<Variable const*, RegisterId>>
+        filterConditionVariables,
+    Ast* ast)
     : _traverser(std::move(traverser)),
       _registerMapping(std::move(registerMapping)),
       _fixedSource(std::move(fixedSource)),
@@ -54,7 +56,8 @@ TraversalExecutorInfos::TraversalExecutorInfos(
   // _fixedSource XOR _inputRegister
   // note: _fixedSource can be the empty string here
   TRI_ASSERT(_fixedSource.empty() ||
-             (!_fixedSource.empty() && _inputRegister.value() == RegisterId::maxRegisterId));
+             (!_fixedSource.empty() &&
+              _inputRegister.value() == RegisterId::maxRegisterId));
   // All Nodes are located in the AST it cannot be non existing.
   TRI_ASSERT(_ast != nullptr);
 }
@@ -137,12 +140,15 @@ RegisterId TraversalExecutorInfos::getInputRegister() const {
   return _inputRegister;
 }
 
-std::vector<std::pair<Variable const*, RegisterId>> const& TraversalExecutorInfos::filterConditionVariables() const {
+std::vector<std::pair<Variable const*, RegisterId>> const&
+TraversalExecutorInfos::filterConditionVariables() const {
   return _filterConditionVariables;
 }
 
 TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos), _inputRow{CreateInvalidInputRowHint{}}, _traverser(infos.traverser()) {
+    : _infos(infos),
+      _inputRow{CreateInvalidInputRowHint{}},
+      _traverser(infos.traverser()) {
   // reset the traverser, so that no residual state is left in it. This is
   // important because the TraversalExecutor is sometimes reconstructed (in
   // place) with the same TraversalExecutorInfos as before. Those infos contain
@@ -198,7 +204,8 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
 
     // No output is requested from the register plan. We still need
     // to copy the inputRow for the query to yield correct results.
-    if (!_infos.useVertexOutput() && !_infos.useEdgeOutput() && !_infos.usePathOutput()) {
+    if (!_infos.useVertexOutput() && !_infos.useEdgeOutput() &&
+        !_infos.usePathOutput()) {
       output.copyRow(_inputRow);
     }
 
@@ -218,7 +225,8 @@ auto TraversalExecutor::doSkip(AqlCall& call) -> size_t {
   return skip;
 }
 
-auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input,
+                                    OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   TraversalStats stats;
   ExecutorState state{ExecutorState::HASMORE};
@@ -252,7 +260,8 @@ auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItem
   return {state, stats, AqlCall{}};
 }
 
-auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input,
+                                      AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   TraversalStats stats{};
   auto skipped = size_t{0};
@@ -325,7 +334,8 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
       AqlValue const& in = _inputRow.getValue(_infos.getInputRegister());
       if (in.isObject()) {
         try {
-          sourceString = _traverser.options()->trx()->extractIdString(in.slice());
+          sourceString =
+              _traverser.options()->trx()->extractIdString(in.slice());
         } catch (...) {
           // on purpose ignore this error.
         }

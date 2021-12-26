@@ -55,7 +55,8 @@ class UnsortedGatherExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = false;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     // This (inputSizeRestrictsOutputSize) could be set to true, but its
     // usefulness would be limited.
     // We either can only use it for the last dependency, in which case it's
@@ -66,7 +67,8 @@ class UnsortedGatherExecutor {
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = MultiDependencySingleRowFetcher;
-  // TODO I should probably implement custom Infos, we don't need distributeId().
+  // TODO I should probably implement custom Infos, we don't need
+  // distributeId().
   using Infos = IdExecutorInfos;
   using Stats = NoStats;
 
@@ -83,7 +85,8 @@ class UnsortedGatherExecutor {
    *   Stats: Stats gerenated here
    *   AqlCallSet: Request to upstream
    */
-  [[nodiscard]] auto produceRows(typename Fetcher::DataRange& input, OutputAqlItemRow& output)
+  [[nodiscard]] auto produceRows(typename Fetcher::DataRange& input,
+                                 OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCallSet>;
 
   /**
@@ -97,7 +100,8 @@ class UnsortedGatherExecutor {
    *   size_t: Number of rows skipped
    *   AqlCallSet: Request to upstream
    */
-  [[nodiscard]] auto skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
+  [[nodiscard]] auto skipRowsRange(typename Fetcher::DataRange& input,
+                                   AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet>;
 
  private:

@@ -300,7 +300,8 @@ static std::shared_ptr<VPackBuilder> runEnforceReplication(Node const& snap) {
 
 static void checkSupervisionJob(VPackSlice v, std::string const& type,
                                 std::string const& database,
-                                std::string const& coll, std::string const& shard) {
+                                std::string const& coll,
+                                std::string const& shard) {
   EXPECT_TRUE(v.isObject());
   EXPECT_EQ(v["creator"].copyString(), "supervision");
   EXPECT_EQ(v["type"].copyString(), type);
@@ -356,16 +357,19 @@ TEST_F(SupervisionTestClass, schedule_addfollower_rf_3) {
   checkSupervisionJob(v, "addFollower", "database", "123", "s1");
 }
 
-static std::unordered_map<std::string, std::string> tableOfJobs(VPackSlice envelope) {
+static std::unordered_map<std::string, std::string> tableOfJobs(
+    VPackSlice envelope) {
   std::unordered_map<std::string, std::string> res;
   for (auto const& p : VPackObjectIterator(envelope)) {
-    res.emplace(std::pair(p.value.get("collection").copyString(), p.key.copyString()));
+    res.emplace(
+        std::pair(p.value.get("collection").copyString(), p.key.copyString()));
   }
   return res;
 }
 
 TEST_F(SupervisionTestClass, schedule_addfollower_bad_server) {
-  _snapshot.getOrCreate("/Supervision/Health/follower1") = createNode(R"=("FAILED")=");
+  _snapshot.getOrCreate("/Supervision/Health/follower1") =
+      createNode(R"=("FAILED")=");
 
   std::shared_ptr<VPackBuilder> envelope = runEnforceReplication(_snapshot);
   VPackSlice todo = envelope->slice();
@@ -388,7 +392,8 @@ TEST_F(SupervisionTestClass, no_remove_follower_loop) {
       createNode(R"=(["leader", "follower1", "follower2", "follower3"])=");
   _snapshot.getOrCreate("/Current/Collections/database/123/s1/servers") =
       createNode(R"=(["leader", "follower1", "follower2"])=");
-  _snapshot.getOrCreate("/Supervision/Health/follower1") = createNode(R"=("FAILED")=");
+  _snapshot.getOrCreate("/Supervision/Health/follower1") =
+      createNode(R"=("FAILED")=");
   std::shared_ptr<VPackBuilder> envelope = runEnforceReplication(_snapshot);
   VPackSlice content = envelope->slice();
   EXPECT_EQ(content.length(), 1);
@@ -419,7 +424,8 @@ TEST_F(SupervisionTestClass, no_remove_follower_loop_distributeshardslike) {
   EXPECT_EQ(content.length(), 0);
 }
 
-static void makeHotbackupTransferJob(Node& snapshot, size_t year, size_t id, char const* job) {
+static void makeHotbackupTransferJob(Node& snapshot, size_t year, size_t id,
+                                     char const* job) {
   std::string st = std::string(job) + "\"Timestamp\": \"" +
                    std::to_string(year) + "-02-25T12:38:29Z\"\n}";
   snapshot.getOrCreate("/Target/HotBackup/TransferJobs/" + std::to_string(id)) =
@@ -454,7 +460,8 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs) {
   };
 
   auto envelope = std::make_shared<VPackBuilder>();
-  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(_snapshot, envelope);
+  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(_snapshot,
+                                                              envelope);
   VPackSlice content = envelope->slice();
   EXPECT_TRUE(content.isArray());
   EXPECT_EQ(content.length(), 1);
@@ -462,7 +469,8 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs) {
   EXPECT_EQ(content.length(), 100);
   // We expect the first 100 jobs to be deleted:
   for (size_t i = 0; i < 100; ++i) {
-    std::string jobId = "/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i);
+    std::string jobId =
+        "/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i);
     VPackSlice guck = content.get(jobId);
     EXPECT_TRUE(guck.isObject());
     EXPECT_TRUE(guck.hasKey("op"));
@@ -486,7 +494,8 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs_empty) {
   }
 
   auto envelope = std::make_shared<VPackBuilder>();
-  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(_snapshot, envelope);
+  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(_snapshot,
+                                                              envelope);
   VPackSlice content = envelope->slice();
   EXPECT_TRUE(content.isArray());
   EXPECT_EQ(content.length(), 1);
@@ -494,7 +503,8 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs_empty) {
   EXPECT_EQ(content.length(), 100);
   // We expect the first 100 jobs to be deleted:
   for (size_t i = 0; i < 100; ++i) {
-    std::string jobId = "/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i);
+    std::string jobId =
+        "/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i);
     VPackSlice guck = content.get(jobId);
     EXPECT_TRUE(guck.isObject());
     EXPECT_TRUE(guck.hasKey("op"));
@@ -664,7 +674,8 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs_diverse) {
 )=");
 
   auto envelope = std::make_shared<VPackBuilder>();
-  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(_snapshot, envelope);
+  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(_snapshot,
+                                                              envelope);
   VPackSlice content = envelope->slice();
   EXPECT_TRUE(content.isArray());
   EXPECT_EQ(content.length(), 1);
@@ -672,7 +683,8 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs_diverse) {
   EXPECT_EQ(content.length(), 5);
   // We expect the oldest suitable jobs to be deleted:
   for (size_t i = 0; i < 5; ++i) {
-    std::string jobId = "/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i);
+    std::string jobId =
+        "/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i);
     VPackSlice guck = content.get(jobId);
     EXPECT_TRUE(guck.isObject());
     EXPECT_TRUE(guck.hasKey("op"));
@@ -720,7 +732,8 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_locks) {
   }
 
   auto envelope = std::make_shared<VPackBuilder>();
-  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(_snapshot, envelope);
+  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(_snapshot,
+                                                              envelope);
   VPackSlice content = envelope->slice();
   EXPECT_TRUE(content.isArray());
   EXPECT_EQ(content.length(), 2);
@@ -786,7 +799,8 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_locks_dont) {
   }
 
   auto envelope = std::make_shared<VPackBuilder>();
-  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(_snapshot, envelope);
+  arangodb::consensus::cleanupHotbackupTransferJobsFunctional(_snapshot,
+                                                              envelope);
   EXPECT_TRUE(envelope->isEmpty());
 }
 
@@ -796,8 +810,8 @@ TEST_F(SupervisionTestClass, fail_hotbackup_transfer_jobs) {
   // For the other ones either the dbserver is FAILED or its rebootId
   // has changed, in this case we want the job aborted and the lock
   // removed.
-  _snapshot.getOrCreate("/Target/HotBackup/TransferJobs/" + std::to_string(1234567)) =
-      createNode(R"=(
+  _snapshot.getOrCreate("/Target/HotBackup/TransferJobs/" +
+                        std::to_string(1234567)) = createNode(R"=(
 {
   "Timestamp": "2021-02-25T12:38:29Z",
   "DBServers": {
@@ -889,7 +903,8 @@ TEST_F(SupervisionTestClass, fail_hotbackup_transfer_jobs) {
 }
         )=");
   auto envelope = std::make_shared<VPackBuilder>();
-  arangodb::consensus::failBrokenHotbackupTransferJobsFunctional(_snapshot, envelope);
+  arangodb::consensus::failBrokenHotbackupTransferJobsFunctional(_snapshot,
+                                                                 envelope);
   VPackSlice content = envelope->slice();
   EXPECT_TRUE(content.isArray());
   EXPECT_EQ(content.length(), 2);  // two transactions

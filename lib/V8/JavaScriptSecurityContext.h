@@ -97,11 +97,13 @@ class JavaScriptSecurityContext {
   static JavaScriptSecurityContext createTaskContext(bool allowUseDatabase);
 
   /// @brief create a security context for REST actions
-  static JavaScriptSecurityContext createRestActionContext(bool allowUseDatabase);
+  static JavaScriptSecurityContext createRestActionContext(
+      bool allowUseDatabase);
 
   /// @brief create a security context for admin script operations running
   /// via POST /_admin/execute
-  static JavaScriptSecurityContext createRestAdminScriptActionContext(bool allowUseDatabase);
+  static JavaScriptSecurityContext createRestAdminScriptActionContext(
+      bool allowUseDatabase);
 
  private:
   Type _type;

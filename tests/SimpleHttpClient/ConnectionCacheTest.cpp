@@ -35,7 +35,8 @@ using namespace arangodb::httpclient;
 
 TEST(ConnectionCacheTest, testEmpty) {
   application_features::ApplicationServer server(nullptr, nullptr);
-  server.addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  server
+      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(server, ConnectionCache::Options{5});
 
@@ -45,7 +46,8 @@ TEST(ConnectionCacheTest, testEmpty) {
 
 TEST(ConnectionCacheTest, testAcquireInvalidEndpoint) {
   application_features::ApplicationServer server(nullptr, nullptr);
-  server.addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  server
+      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(server, ConnectionCache::Options{5});
 
@@ -67,7 +69,8 @@ TEST(ConnectionCacheTest, testAcquireInvalidEndpoint) {
 
 TEST(ConnectionCacheTest, testAcquireAndReleaseClosedConnection) {
   application_features::ApplicationServer server(nullptr, nullptr);
-  server.addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  server
+      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(server, ConnectionCache::Options{5});
 
@@ -92,7 +95,8 @@ TEST(ConnectionCacheTest, testAcquireAndReleaseClosedConnection) {
 
 TEST(ConnectionCacheTest, testAcquireAndReleaseClosedConnectionForce) {
   application_features::ApplicationServer server(nullptr, nullptr);
-  server.addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  server
+      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(server, ConnectionCache::Options{5});
 
@@ -120,7 +124,8 @@ TEST(ConnectionCacheTest, testAcquireAndReleaseClosedConnectionForce) {
 
 TEST(ConnectionCacheTest, testAcquireAndReleaseRepeat) {
   application_features::ApplicationServer server(nullptr, nullptr);
-  server.addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  server
+      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(server, ConnectionCache::Options{5});
 
@@ -178,7 +183,8 @@ TEST(ConnectionCacheTest, testAcquireAndReleaseRepeat) {
 
 TEST(ConnectionCacheTest, testSameEndpointMultipleLeases) {
   application_features::ApplicationServer server(nullptr, nullptr);
-  server.addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  server
+      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(server, ConnectionCache::Options{5});
 
@@ -225,7 +231,8 @@ TEST(ConnectionCacheTest, testSameEndpointMultipleLeases) {
 
 TEST(ConnectionCacheTest, testDifferentEndpoints) {
   application_features::ApplicationServer server(nullptr, nullptr);
-  server.addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  server
+      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(server, ConnectionCache::Options{5});
 
@@ -262,7 +269,8 @@ TEST(ConnectionCacheTest, testDifferentEndpoints) {
 
 TEST(ConnectionCacheTest, testSameEndpointDifferentProtocols) {
   application_features::ApplicationServer server(nullptr, nullptr);
-  server.addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  server
+      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(server, ConnectionCache::Options{5});
 
@@ -299,7 +307,8 @@ TEST(ConnectionCacheTest, testSameEndpointDifferentProtocols) {
 
 TEST(ConnectionCacheTest, testDropSuperfluous) {
   application_features::ApplicationServer server(nullptr, nullptr);
-  server.addFeature<arangodb::application_features::CommunicationFeaturePhase>();
+  server
+      .addFeature<arangodb::application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(server, ConnectionCache::Options{3});
 

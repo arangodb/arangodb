@@ -129,6 +129,7 @@ TEST_F(ClusterInfoTest, plan_will_provide_latest_id) {
   auto builder{std::make_shared<VPackBuilder>()};
   auto result{ci.agencyPlan(builder)};
   ASSERT_TRUE(result.ok());
-  ASSERT_EQ(builder->slice().at(0).get("arango").get("Sync").get("LatestID").getInt(),
-            expectedLatestId);
+  ASSERT_EQ(
+      builder->slice().at(0).get("arango").get("Sync").get("LatestID").getInt(),
+      expectedLatestId);
 }

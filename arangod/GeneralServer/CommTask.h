@@ -89,11 +89,12 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   virtual void stop() = 0;
 
  protected:
-  virtual std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
-                                                          uint64_t messageId) = 0;
+  virtual std::unique_ptr<GeneralResponse> createResponse(
+      rest::ResponseCode, uint64_t messageId) = 0;
 
   /// @brief send the response to the client.
-  virtual void sendResponse(std::unique_ptr<GeneralResponse>, RequestStatistics::Item) = 0;
+  virtual void sendResponse(std::unique_ptr<GeneralResponse>,
+                            RequestStatistics::Item) = 0;
 
  protected:
   enum class Flow : bool { Continue = true, Abort = false };
@@ -107,15 +108,17 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   void finishExecution(GeneralResponse&, std::string const& cors) const;
 
   /// Push this request into the execution pipeline
-  void executeRequest(std::unique_ptr<GeneralRequest>, std::unique_ptr<GeneralResponse>);
+  void executeRequest(std::unique_ptr<GeneralRequest>,
+                      std::unique_ptr<GeneralResponse>);
 
   RequestStatistics::Item const& acquireStatistics(uint64_t);
   RequestStatistics::Item const& statistics(uint64_t);
   RequestStatistics::Item stealStatistics(uint64_t);
 
   /// @brief send response including error response body
-  void sendErrorResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
-                         ErrorCode errorNum, std::string_view errorMessage = {});
+  void sendErrorResponse(rest::ResponseCode, rest::ContentType,
+                         uint64_t messageId, ErrorCode errorNum,
+                         std::string_view errorMessage = {});
 
   /// @brief send simple response including response body
   void sendSimpleResponse(rest::ResponseCode, rest::ContentType,
@@ -130,7 +133,8 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   bool allowCorsCredentials(std::string const& origin) const;
 
   /// handle an OPTIONS request, will send response
-  void processCorsOptions(std::unique_ptr<GeneralRequest> req, std::string const& origin);
+  void processCorsOptions(std::unique_ptr<GeneralRequest> req,
+                          std::string const& origin);
 
   /// check authentication headers
   auth::TokenCache::Entry checkAuthHeader(GeneralRequest& request);
@@ -140,7 +144,8 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
 
  private:
   bool handleRequestSync(std::shared_ptr<RestHandler>);
-  bool handleRequestAsync(std::shared_ptr<RestHandler>, uint64_t* jobId = nullptr);
+  bool handleRequestAsync(std::shared_ptr<RestHandler>,
+                          uint64_t* jobId = nullptr);
 
  protected:
   GeneralServer& _server;

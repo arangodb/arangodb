@@ -103,14 +103,15 @@ struct AttributeNamePath {
 
 namespace std {
 
-template <>
+template<>
 struct hash<arangodb::aql::AttributeNamePath> {
-  size_t operator()(arangodb::aql::AttributeNamePath const& value) const noexcept {
+  size_t operator()(
+      arangodb::aql::AttributeNamePath const& value) const noexcept {
     return value.hash();
   }
 };
 
-template <>
+template<>
 struct equal_to<arangodb::aql::AttributeNamePath> {
   bool operator()(arangodb::aql::AttributeNamePath const& lhs,
                   arangodb::aql::AttributeNamePath const& rhs) const noexcept {

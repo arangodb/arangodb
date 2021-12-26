@@ -41,11 +41,13 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 
 namespace {
-void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
-                            std::function<void(bool)>& gcfunc, std::chrono::seconds offset) {
+void queueGarbageCollection(std::mutex& mutex,
+                            arangodb::Scheduler::WorkHandle& workItem,
+                            std::function<void(bool)>& gcfunc,
+                            std::chrono::seconds offset) {
   std::lock_guard<std::mutex> guard(mutex);
-  workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(arangodb::RequestLane::INTERNAL_LOW,
-                                                                 offset, gcfunc);
+  workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(
+      arangodb::RequestLane::INTERNAL_LOW, offset, gcfunc);
 }
 
 constexpr double CongestionRatio = 0.5;
@@ -75,7 +77,8 @@ DECLARE_COUNTER(arangodb_network_forwarded_requests_total,
 DECLARE_COUNTER(arangodb_network_request_timeouts_total,
                 "Number of internal requests that have timed out");
 DECLARE_HISTOGRAM(
-    arangodb_network_request_duration_as_percentage_of_timeout, NetworkFeatureScale,
+    arangodb_network_request_duration_as_percentage_of_timeout,
+    NetworkFeatureScale,
     "Internal request round-trip time as a percentage of timeout [%]");
 DECLARE_GAUGE(arangodb_network_requests_in_flight, uint64_t,
               "Number of outgoing internal requests in flight");
@@ -105,7 +108,8 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
   startsAfter<EngineSelectorFeature>();
 }
 
-void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
+void NetworkFeature::collectOptions(
+    std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("network", "cluster-internal networking");
 
   options
@@ -135,12 +139,14 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
 
   std::unordered_set<std::string> protos = {"", "http", "http2", "h2", "vst"};
 
-  // starting with 3.9, we will hard-code the protocol for cluster-internal communication
+  // starting with 3.9, we will hard-code the protocol for cluster-internal
+  // communication
   options
-      ->addOption("--network.protocol",
-                  "network protocol to use for cluster-internal communication",
-                  new DiscreteValuesParameter<StringParameter>(&_protocol, protos),
-                  options::makeDefaultFlags(options::Flags::Hidden))
+      ->addOption(
+          "--network.protocol",
+          "network protocol to use for cluster-internal communication",
+          new DiscreteValuesParameter<StringParameter>(&_protocol, protos),
+          options::makeDefaultFlags(options::Flags::Hidden))
       .setIntroducedIn(30700)
       .setDeprecatedIn(30900);
 
@@ -153,7 +159,8 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
       .setIntroducedIn(30800);
 }
 
-void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opts) {
+void NetworkFeature::validateOptions(
+    std::shared_ptr<options::ProgramOptions> opts) {
   _numIOThreads = std::max<unsigned>(1, std::min<unsigned>(_numIOThreads, 8));
   if (_maxOpenConnections < 8) {
     _maxOpenConnections = 8;
@@ -166,18 +173,21 @@ void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
     _idleTtlMilli = 10000;
   }
 
-  uint64_t clamped = std::clamp(_maxInFlight, ::MinAllowedInFlight, ::MaxAllowedInFlight);
+  uint64_t clamped =
+      std::clamp(_maxInFlight, ::MinAllowedInFlight, ::MaxAllowedInFlight);
   if (clamped != _maxInFlight) {
     LOG_TOPIC("38cd1", WARN, Logger::CONFIG)
-        << "Must set --network.max-requests-in-flight between " << ::MinAllowedInFlight
-        << " and " << ::MaxAllowedInFlight << ", clamping value";
+        << "Must set --network.max-requests-in-flight between "
+        << ::MinAllowedInFlight << " and " << ::MaxAllowedInFlight
+        << ", clamping value";
     _maxInFlight = clamped;
   }
 }
 
 void NetworkFeature::prepare() {
   ClusterInfo* ci = nullptr;
-  if (server().hasFeature<ClusterFeature>() && server().isEnabled<ClusterFeature>()) {
+  if (server().hasFeature<ClusterFeature>() &&
+      server().isEnabled<ClusterFeature>()) {
     ci = &server().getFeature<ClusterFeature>().clusterInfo();
   }
 
@@ -313,10 +323,9 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
   bool isFromPool = false;
   auto conn = pool.leaseConnection(endpoint, isFromPool);
   conn->sendRequest(std::move(req),
-                    [this, &pool, isFromPool,
-                     cb = std::move(cb)](fuerte::Error err,
-                                         std::unique_ptr<fuerte::Request> req,
-                                         std::unique_ptr<fuerte::Response> res) {
+                    [this, &pool, isFromPool, cb = std::move(cb)](
+                        fuerte::Error err, std::unique_ptr<fuerte::Request> req,
+                        std::unique_ptr<fuerte::Response> res) {
                       TRI_ASSERT(req != nullptr);
                       finishRequest(pool, err, req, res);
                       TRI_ASSERT(req != nullptr);
@@ -331,7 +340,8 @@ void NetworkFeature::prepareRequest(network::ConnectionPool const& pool,
     req->timestamp(std::chrono::steady_clock::now());
   }
 }
-void NetworkFeature::finishRequest(network::ConnectionPool const& pool, fuerte::Error err,
+void NetworkFeature::finishRequest(network::ConnectionPool const& pool,
+                                   fuerte::Error err,
                                    std::unique_ptr<fuerte::Request> const& req,
                                    std::unique_ptr<fuerte::Response>& res) {
   _requestsInFlight -= 1;
@@ -346,9 +356,10 @@ void NetworkFeature::finishRequest(network::ConnectionPool const& pool, fuerte::
     TRI_ASSERT(timeout.count() > 0);
     if (timeout.count() > 0) {
       // only go in here if we are sure to not divide by zero
-      double percentage = std::clamp(100.0 * static_cast<double>(duration.count()) /
-                                         static_cast<double>(timeout.count()),
-                                     0.0, 100.0);
+      double percentage =
+          std::clamp(100.0 * static_cast<double>(duration.count()) /
+                         static_cast<double>(timeout.count()),
+                     0.0, 100.0);
       _requestDurations.count(percentage);
     } else {
       // the timeout value was 0, for whatever reason. this is unexpected,

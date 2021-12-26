@@ -44,9 +44,11 @@ class SupervisedSchedulerManagerThread;
 class SupervisedScheduler final : public Scheduler {
  public:
   SupervisedScheduler(application_features::ApplicationServer& server,
-                      uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
-                      uint64_t fifo1Size, uint64_t fifo2Size, uint64_t fifo3Size,
-                      uint64_t ongoingLowPriorityLimit, double unavailabilityQueueFillGrade);
+                      uint64_t minThreads, uint64_t maxThreads,
+                      uint64_t maxQueueSize, uint64_t fifo1Size,
+                      uint64_t fifo2Size, uint64_t fifo3Size,
+                      uint64_t ongoingLowPriorityLimit,
+                      double unavailabilityQueueFillGrade);
   ~SupervisedScheduler() final;
 
   bool start() override;
@@ -104,16 +106,17 @@ class SupervisedScheduler final : public Scheduler {
   // done if the thread has actually started to work on a request less than
   // 1 seconds ago.
   // _sleepTimeout_ms is the amount of ms the thread should sleep before waking
-  // up again. Note that each worker wakes up constantly, even if there is no work.
+  // up again. Note that each worker wakes up constantly, even if there is no
+  // work.
   //
   // All those values are maintained by the supervisor thread.
   // Currently they are set once and for all the same, however a future
   // implementation my alter those values for each thread individually.
   //
-  // _lastJobStarted is the timepoint when the last job in this thread was started.
-  // _working indicates if the thread is currently processing a job.
-  //    Hence if you want to know, if the thread has a long running job, test for
-  //    _working && (now - _lastJobStarted) > eps
+  // _lastJobStarted is the timepoint when the last job in this thread was
+  // started. _working indicates if the thread is currently processing a job.
+  //    Hence if you want to know, if the thread has a long running job, test
+  //    for _working && (now - _lastJobStarted) > eps
   struct WorkerState {
     uint64_t _queueRetryTime_us;  // t1
     uint64_t _sleepTimeout_ms;    // t2
@@ -162,7 +165,8 @@ class SupervisedScheduler final : public Scheduler {
   void runWorker();
   void runSupervisor();
 
-  [[nodiscard]] bool queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> item,
+  [[nodiscard]] bool queueItem(RequestLane lane,
+                               std::unique_ptr<WorkItemBase> item,
                                bool bounded) override;
 
  private:
@@ -237,7 +241,8 @@ class SupervisedScheduler final : public Scheduler {
   /// this metric is only updated probabilistically
   Gauge<uint64_t>& _metricsLastLowPriorityDequeueTime;
 
-  std::array<std::reference_wrapper<Gauge<uint64_t>>, NumberOfQueues> _metricsQueueLengths;
+  std::array<std::reference_wrapper<Gauge<uint64_t>>, NumberOfQueues>
+      _metricsQueueLengths;
 };
 
 }  // namespace arangodb

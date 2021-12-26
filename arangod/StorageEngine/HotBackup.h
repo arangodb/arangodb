@@ -63,14 +63,16 @@ class HotBackup {
    * @param  body  rest handling body
    */
   arangodb::Result executeRocksDB(std::string const& command,
-                                  VPackSlice const payload, VPackBuilder& report);
+                                  VPackSlice const payload,
+                                  VPackBuilder& report);
 
   /**
    * @brief select engine and create backup
    * @param  payload  rest handling payload
    */
   arangodb::Result executeCoordinator(std::string const& command,
-                                      VPackSlice const payload, VPackBuilder& report);
+                                      VPackSlice const payload,
+                                      VPackBuilder& report);
 
 #ifdef USE_ENTERPRISE
   application_features::ApplicationServer& _server;

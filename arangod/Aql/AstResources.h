@@ -72,7 +72,7 @@ class AstResources {
   char* registerEscapedString(char const* p, size_t length, size_t& outLength);
 
  private:
-  template <typename T>
+  template<typename T>
   size_t newCapacity(T const& container, size_t initialCapacity) const noexcept;
 
   /// @brief registers a long string and takes over the ownership for it

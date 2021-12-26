@@ -44,12 +44,14 @@ using namespace arangodb;
 namespace {
 // custom type value handler, used for deciphering the _id attribute
 struct CustomTypeHandler final : public VPackCustomTypeHandler {
-  CustomTypeHandler(TRI_vocbase_t& vocbase, CollectionNameResolver const& resolver)
+  CustomTypeHandler(TRI_vocbase_t& vocbase,
+                    CollectionNameResolver const& resolver)
       : vocbase(vocbase), resolver(resolver) {}
 
   ~CustomTypeHandler() = default;
 
-  void dump(VPackSlice const& value, VPackDumper* dumper, VPackSlice const& base) override final {
+  void dump(VPackSlice const& value, VPackDumper* dumper,
+            VPackSlice const& base) override final {
     dumper->appendString(toString(value, nullptr, base));
   }
 
@@ -79,7 +81,8 @@ transaction::Context::~Context() {
   // unregister the transaction from the logfile manager
   if (_transaction.id.isSet()) {
     transaction::ManagerFeature::manager()->unregisterTransaction(
-        _transaction.id, _transaction.isReadOnlyTransaction, _transaction.isFollowerTransaction);
+        _transaction.id, _transaction.isReadOnlyTransaction,
+        _transaction.isFollowerTransaction);
   }
 
   // call the actual cleanup routine which frees all
@@ -111,13 +114,15 @@ void transaction::Context::cleanup() noexcept {
 }
 
 /// @brief factory to create a custom type handler, not managed
-std::unique_ptr<VPackCustomTypeHandler> transaction::Context::createCustomTypeHandler(
+std::unique_ptr<VPackCustomTypeHandler>
+transaction::Context::createCustomTypeHandler(
     TRI_vocbase_t& vocbase, CollectionNameResolver const& resolver) {
   return std::make_unique<::CustomTypeHandler>(vocbase, resolver);
 }
 
 /// @brief temporarily lease a StringBuffer object
-basics::StringBuffer* transaction::Context::leaseStringBuffer(size_t initialSize) {
+basics::StringBuffer* transaction::Context::leaseStringBuffer(
+    size_t initialSize) {
   if (_stringBuffer == nullptr) {
     _stringBuffer.reset(new basics::StringBuffer(initialSize, false));
   } else {
@@ -128,7 +133,8 @@ basics::StringBuffer* transaction::Context::leaseStringBuffer(size_t initialSize
 }
 
 /// @brief return a temporary StringBuffer object
-void transaction::Context::returnStringBuffer(basics::StringBuffer* stringBuffer) noexcept {
+void transaction::Context::returnStringBuffer(
+    basics::StringBuffer* stringBuffer) noexcept {
   _stringBuffer.reset(stringBuffer);
 }
 
@@ -200,18 +206,20 @@ CollectionNameResolver const& transaction::Context::resolver() {
   return *_resolver;
 }
 
-std::shared_ptr<TransactionState> transaction::Context::createState(transaction::Options const& options) {
+std::shared_ptr<TransactionState> transaction::Context::createState(
+    transaction::Options const& options) {
   // now start our own transaction
   TRI_ASSERT(vocbase().server().hasFeature<EngineSelectorFeature>());
-  StorageEngine& engine = vocbase().server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine =
+      vocbase().server().getFeature<EngineSelectorFeature>().engine();
   return engine.createTransactionState(_vocbase, generateId(), options);
 }
 
 /// @brief unregister the transaction
 /// this will save the transaction's id and status locally
-void transaction::Context::storeTransactionResult(TransactionId id, bool wasRegistered,
-                                                  bool isReadOnlyTransaction,
-                                                  bool isFollowerTransaction) noexcept {
+void transaction::Context::storeTransactionResult(
+    TransactionId id, bool wasRegistered, bool isReadOnlyTransaction,
+    bool isFollowerTransaction) noexcept {
   TRI_ASSERT(_transaction.id.empty());
 
   if (wasRegistered) {

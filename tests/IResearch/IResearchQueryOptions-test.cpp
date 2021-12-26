@@ -106,7 +106,8 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+    view->properties(builder,
+                     arangodb::LogicalDataSource::Serialization::Properties);
     builder.close();
 
     auto slice = builder.slice();
@@ -125,9 +126,9 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
   {
     arangodb::OperationOptions opt;
 
-    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
-                                       arangodb::transaction::Options());
+    arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
+        EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
@@ -136,25 +137,27 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential.json");
 
-      auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
+          resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
       size_t i = 0;
 
-      std::shared_ptr<arangodb::LogicalCollection> collections[]{logicalCollection1,
-                                                                 logicalCollection2};
+      std::shared_ptr<arangodb::LogicalCollection> collections[]{
+          logicalCollection1, logicalCollection2};
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         {
           insertedDocs.emplace_back();
-          auto const res = collections[0]->insert(&trx, doc, insertedDocs.back(), opt);
+          auto const res =
+              collections[0]->insert(&trx, doc, insertedDocs.back(), opt);
           EXPECT_TRUE(res.ok());
         }
         {
           insertedDocs.emplace_back();
-          auto const res = collections[1]->insert(&trx, doc, insertedDocs.back(), opt);
+          auto const res =
+              collections[1]->insert(&trx, doc, insertedDocs.back(), opt);
           EXPECT_TRUE(res.ok());
         }
         ++i;
@@ -170,7 +173,8 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
   }
 
   // -----------------------------------------------------------------------------
-  // --SECTION--                                              'collections' option
+  // --SECTION--                                              'collections'
+  // option
   // -----------------------------------------------------------------------------
 
   // collection by name
@@ -181,10 +185,11 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
         " RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+        vocbase, query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs{
-        {"A", &insertedDocs[0]}};
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+        expectedDocs{{"A", &insertedDocs[0]}};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -202,9 +207,10 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved, true));
+      EXPECT_TRUE(0 ==
+                  arangodb::basics::VelocyPackHelper::compare(
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -218,15 +224,18 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
         " RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule},
+        vocbase, query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule},
         arangodb::velocypack::Parser::fromJson(
             "{ \"collectionName\" : \"collection_1\" }")));
 
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs{
-        {"A", &insertedDocs[0]}};
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+        expectedDocs{{"A", &insertedDocs[0]}};
 
     auto queryResult = arangodb::tests::executeQuery(
-        vocbase, query, arangodb::velocypack::Parser::fromJson("{ \"collectionName\" : \"collection_1\" }"));
+        vocbase, query,
+        arangodb::velocypack::Parser::fromJson(
+            "{ \"collectionName\" : \"collection_1\" }"));
     ASSERT_TRUE(queryResult.result.ok());
 
     auto result = queryResult.data->slice();
@@ -242,9 +251,10 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved, true));
+      EXPECT_TRUE(0 ==
+                  arangodb::basics::VelocyPackHelper::compare(
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -258,15 +268,18 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
         " RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule},
+        vocbase, query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule},
         arangodb::velocypack::Parser::fromJson(
             "{ \"collections\" : [ \"collection_1\" ] }")));
 
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs{
-        {"A", &insertedDocs[0]}};
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+        expectedDocs{{"A", &insertedDocs[0]}};
 
     auto queryResult = arangodb::tests::executeQuery(
-        vocbase, query, arangodb::velocypack::Parser::fromJson("{ \"collections\" : [ \"collection_1\" ] }"));
+        vocbase, query,
+        arangodb::velocypack::Parser::fromJson(
+            "{ \"collections\" : [ \"collection_1\" ] }"));
     ASSERT_TRUE(queryResult.result.ok());
 
     auto result = queryResult.data->slice();
@@ -282,9 +295,10 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved, true));
+      EXPECT_TRUE(0 ==
+                  arangodb::basics::VelocyPackHelper::compare(
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -300,10 +314,11 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
         " RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+        vocbase, query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs{
-        {"A", &insertedDocs[1]}};
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+        expectedDocs{{"A", &insertedDocs[1]}};
 
     // check node estimation
     {
@@ -322,7 +337,8 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
         }
       }
       ASSERT_TRUE(viewNode.isObject());
-      ASSERT_EQ(insertedDocs.size() / 2 + 1., viewNode.get("estimatedCost").getDouble());
+      ASSERT_EQ(insertedDocs.size() / 2 + 1.,
+                viewNode.get("estimatedCost").getDouble());
       ASSERT_EQ(insertedDocs.size() / 2,
                 viewNode.get("estimatedNrItems").getNumber<size_t>());
     }
@@ -343,9 +359,10 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved, true));
+      EXPECT_TRUE(0 ==
+                  arangodb::basics::VelocyPackHelper::compare(
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -361,10 +378,11 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
         " RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+        vocbase, query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs{
-        {"A", &insertedDocs[1]}};
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+        expectedDocs{{"A", &insertedDocs[1]}};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -382,9 +400,10 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved, true));
+      EXPECT_TRUE(0 ==
+                  arangodb::basics::VelocyPackHelper::compare(
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -401,10 +420,12 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
         " RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+        vocbase, query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    std::map<irs::string_ref, std::vector<arangodb::ManagedDocumentResult const*>> expectedDocs{
-        {"A", {&insertedDocs[0], &insertedDocs[1]}}};
+    std::map<irs::string_ref,
+             std::vector<arangodb::ManagedDocumentResult const*>>
+        expectedDocs{{"A", {&insertedDocs[0], &insertedDocs[1]}}};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -444,7 +465,8 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
         " RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+        vocbase, query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -464,7 +486,8 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
         " RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+        vocbase, query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     // check node estimation
     {
@@ -483,12 +506,15 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
         }
       }
       ASSERT_TRUE(viewNode.isObject());
-      ASSERT_EQ(insertedDocs.size() + 1., viewNode.get("estimatedCost").getDouble());
-      ASSERT_EQ(insertedDocs.size(), viewNode.get("estimatedNrItems").getNumber<size_t>());
+      ASSERT_EQ(insertedDocs.size() + 1.,
+                viewNode.get("estimatedCost").getDouble());
+      ASSERT_EQ(insertedDocs.size(),
+                viewNode.get("estimatedNrItems").getNumber<size_t>());
     }
 
-    std::map<irs::string_ref, std::vector<arangodb::ManagedDocumentResult const*>> expectedDocs{
-        {"A", {&insertedDocs[0], &insertedDocs[1]}}};
+    std::map<irs::string_ref,
+             std::vector<arangodb::ManagedDocumentResult const*>>
+        expectedDocs{{"A", {&insertedDocs[0], &insertedDocs[1]}}};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -531,10 +557,12 @@ TEST_P(IResearchQueryOptionsTest, Collections) {
         " RETURN { d, x }";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+        vocbase, query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    std::map<irs::string_ref, std::vector<arangodb::ManagedDocumentResult const*>> expectedDocs{
-        {"A", {&insertedDocs[0], &insertedDocs[1]}}};
+    std::map<irs::string_ref,
+             std::vector<arangodb::ManagedDocumentResult const*>>
+        expectedDocs{{"A", {&insertedDocs[0], &insertedDocs[1]}}};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -760,7 +788,8 @@ TEST_P(IResearchQueryOptionsTest, WaitForSync) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+    view->properties(builder,
+                     arangodb::LogicalDataSource::Serialization::Properties);
     builder.close();
 
     auto slice = builder.slice();
@@ -779,9 +808,9 @@ TEST_P(IResearchQueryOptionsTest, WaitForSync) {
   {
     arangodb::OperationOptions opt;
 
-    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
-                                       arangodb::transaction::Options());
+    arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
+        EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
@@ -790,19 +819,20 @@ TEST_P(IResearchQueryOptionsTest, WaitForSync) {
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential.json");
 
-      auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
+          resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
       size_t i = 0;
 
-      std::shared_ptr<arangodb::LogicalCollection> collections[]{logicalCollection1,
-                                                                 logicalCollection2};
+      std::shared_ptr<arangodb::LogicalCollection> collections[]{
+          logicalCollection1, logicalCollection2};
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
-        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
+        auto const res =
+            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
         ++i;
       }
@@ -812,7 +842,8 @@ TEST_P(IResearchQueryOptionsTest, WaitForSync) {
   }
 
   // -----------------------------------------------------------------------------
-  // --SECTION--                                              'waitForSync' option
+  // --SECTION--                                              'waitForSync'
+  // option
   // -----------------------------------------------------------------------------
 
   // wrong option type is specified
@@ -877,7 +908,8 @@ TEST_P(IResearchQueryOptionsTest, WaitForSync) {
         " RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+        vocbase, query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -897,14 +929,16 @@ TEST_P(IResearchQueryOptionsTest, WaitForSync) {
         " RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule},
+        vocbase, query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule},
         arangodb::velocypack::Parser::fromJson("{ \"doSync\" : true }")));
 
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs{
-        {"A", &insertedDocs[0]}};
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+        expectedDocs{{"A", &insertedDocs[0]}};
 
     auto queryResult = arangodb::tests::executeQuery(
-        vocbase, query, arangodb::velocypack::Parser::fromJson("{ \"doSync\" : true }"));
+        vocbase, query,
+        arangodb::velocypack::Parser::fromJson("{ \"doSync\" : true }"));
     ASSERT_TRUE(queryResult.result.ok());
 
     auto result = queryResult.data->slice();
@@ -920,9 +954,10 @@ TEST_P(IResearchQueryOptionsTest, WaitForSync) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved, true));
+      EXPECT_TRUE(0 ==
+                  arangodb::basics::VelocyPackHelper::compare(
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -983,7 +1018,8 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+    view->properties(builder,
+                     arangodb::LogicalDataSource::Serialization::Properties);
     builder.close();
 
     auto slice = builder.slice();
@@ -1002,9 +1038,9 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
   {
     arangodb::OperationOptions opt;
     static std::vector<std::string> const EMPTY;
-    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
-                                       arangodb::transaction::Options());
+    arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
+        EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collection_1
@@ -1026,7 +1062,8 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
-        auto const res = logicalCollection1->insert(&trx, doc, insertedDocs.back(), opt);
+        auto const res =
+            logicalCollection1->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
       }
     }
@@ -1050,24 +1087,28 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
-        auto const res = logicalCollection2->insert(&trx, doc, insertedDocs.back(), opt);
+        auto const res =
+            logicalCollection2->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
       }
     }
 
     EXPECT_TRUE(trx.commit().ok());
 
-    EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection1, *view)
+    EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(
+                    *logicalCollection1, *view)
                     ->commit()
                     .ok());
 
-    EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *view)
+    EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(
+                    *logicalCollection2, *view)
                     ->commit()
                     .ok());
   }
 
   // -----------------------------------------------------------------------------
-  // --SECTION--                                        'noMaterialization' option
+  // --SECTION--                                        'noMaterialization'
+  // option
   // -----------------------------------------------------------------------------
 
   // wrong option type is specified
@@ -1137,12 +1178,13 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
         "true }"
         " RETURN d.value";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, queryString,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, queryString,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    auto query =
-        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                     arangodb::aql::QueryString(queryString), nullptr);
+    auto query = arangodb::aql::Query::create(
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::aql::QueryString(queryString), nullptr);
     auto const res = query->explain();
     ASSERT_TRUE(res.data);
     auto const explanation = res.data->slice();
@@ -1177,12 +1219,13 @@ TEST_P(IResearchQueryOptionsTest, noMaterialization) {
         "false }"
         " RETURN d.value";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, queryString,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, queryString,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    auto query =
-        arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                     arangodb::aql::QueryString(queryString), nullptr);
+    auto query = arangodb::aql::Query::create(
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::aql::QueryString(queryString), nullptr);
     auto const res = query->explain();
     ASSERT_TRUE(res.data);
     auto const explanation = res.data->slice();

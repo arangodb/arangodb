@@ -147,8 +147,10 @@ class Utf8Helper {
   /// @brief returns the words of a UTF-8 string.
   //////////////////////////////////////////////////////////////////////////////
 
-  bool tokenize(std::set<std::string>& words, arangodb::velocypack::StringRef const& text,
-                size_t minimalWordLength, size_t maximalWordLength, bool lowerCase);
+  bool tokenize(std::set<std::string>& words,
+                arangodb::velocypack::StringRef const& text,
+                size_t minimalWordLength, size_t maximalWordLength,
+                bool lowerCase);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief builds a regex matcher for the specified pattern
@@ -199,8 +201,9 @@ class Utf8Helper {
 
 UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, size_t* outLength,
                        UErrorCode* status = nullptr);
-UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, UChar* buffer, size_t bufferSize,
-                       size_t* outLength, UErrorCode* status = nullptr);
+UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, UChar* buffer,
+                       size_t bufferSize, size_t* outLength,
+                       UErrorCode* status = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uchar (utf-16) to a utf-8 string
@@ -214,7 +217,8 @@ char* TRI_UCharToUtf8(UChar const* uchar, size_t inLength, size_t* outLength,
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_normalize_utf8_to_NFC(char const* utf8, size_t inLength,
-                                size_t* outLength, UErrorCode* status = nullptr);
+                                size_t* outLength,
+                                UErrorCode* status = nullptr);
 
 std::string normalizeUtf8ToNFC(std::string_view value);
 
@@ -223,7 +227,8 @@ std::string normalizeUtf8ToNFC(std::string_view value);
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16, size_t inLength,
-                                 size_t* outLength, UErrorCode* status = nullptr);
+                                 size_t* outLength,
+                                 UErrorCode* status = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two utf8 strings
@@ -231,8 +236,8 @@ char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16, size_t inLength,
 
 static inline int TRI_compare_utf8(char const* left, size_t leftLength,
                                    char const* right, size_t rightLength) {
-  return arangodb::basics::Utf8Helper::DefaultUtf8Helper.compareUtf8(left, leftLength,
-                                                                     right, rightLength);
+  return arangodb::basics::Utf8Helper::DefaultUtf8Helper.compareUtf8(
+      left, leftLength, right, rightLength);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

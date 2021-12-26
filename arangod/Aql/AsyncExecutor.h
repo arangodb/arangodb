@@ -47,7 +47,7 @@ class AsyncExecutor final {};
 /**
  * @brief See ExecutionBlockImpl.h for documentation.
  */
-template <>
+template<>
 class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
  public:
   // TODO Even if it's not strictly necessary here, for consistency's sake the
@@ -55,12 +55,15 @@ class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
   // moved into some AsyncExecutorInfos class.
   ExecutionBlockImpl(ExecutionEngine* engine, AsyncNode const* node);
 
-  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack const& stack) override;
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(
+      AqlCallStack const& stack) override;
 
-  std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
+  std::pair<ExecutionState, Result> initializeCursor(
+      InputAqlItemRow const& input) override;
 
  private:
-  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack const& stack);
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
+  executeWithoutTrace(AqlCallStack const& stack);
 
   enum class AsyncState { Empty, InProgress, GotResult, GotException };
 

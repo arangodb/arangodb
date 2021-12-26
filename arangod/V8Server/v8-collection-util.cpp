@@ -33,7 +33,8 @@
 using namespace arangodb;
 
 /// @brief check if a name belongs to a collection
-bool EqualCollection(CollectionNameResolver const* resolver, std::string const& collectionName,
+bool EqualCollection(CollectionNameResolver const* resolver,
+                     std::string const& collectionName,
                      LogicalCollection const* collection) {
   if (collectionName == collection->name()) {
     return true;
@@ -46,7 +47,8 @@ bool EqualCollection(CollectionNameResolver const* resolver, std::string const& 
   // Shouldn't it just be: If we are on DBServer we also have to check for
   // global ID name and cid should be the shard.
   if (ServerState::instance()->isCoordinator()) {
-    if (collectionName == resolver->getCollectionNameCluster(collection->id())) {
+    if (collectionName ==
+        resolver->getCollectionNameCluster(collection->id())) {
       return true;
     }
     return false;
@@ -63,9 +65,10 @@ bool EqualCollection(CollectionNameResolver const* resolver, std::string const& 
 /// @brief unwrap a LogicalCollection wrapped via WrapCollection(...)
 /// @return collection or nullptr on failure
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::LogicalCollection* UnwrapCollection(v8::Isolate* isolate,
-                                              v8::Local<v8::Object> const& holder) {
-  return TRI_UnwrapClass<arangodb::LogicalCollection>(holder, WRP_VOCBASE_COL_TYPE, TRI_IGETC);
+arangodb::LogicalCollection* UnwrapCollection(
+    v8::Isolate* isolate, v8::Local<v8::Object> const& holder) {
+  return TRI_UnwrapClass<arangodb::LogicalCollection>(
+      holder, WRP_VOCBASE_COL_TYPE, TRI_IGETC);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,14 +76,16 @@ arangodb::LogicalCollection* UnwrapCollection(v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 v8::Handle<v8::Object> WrapCollection(  // wrap collection
     v8::Isolate* isolate,               // isolate
-    std::shared_ptr<arangodb::LogicalCollection> const& collection  // collection
+    std::shared_ptr<arangodb::LogicalCollection> const&
+        collection  // collection
 ) {
   v8::EscapableHandleScope scope(isolate);
   TRI_GET_GLOBALS();
   auto context = TRI_IGETC;
   TRI_GET_GLOBAL(VocbaseColTempl, v8::ObjectTemplate);
   v8::Handle<v8::Object> result =
-      VocbaseColTempl->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      VocbaseColTempl->NewInstance(TRI_IGETC).FromMaybe(
+          v8::Local<v8::Object>());
 
   if (result.IsEmpty()) {
     return scope.Escape<v8::Object>(result);
@@ -88,15 +93,20 @@ v8::Handle<v8::Object> WrapCollection(  // wrap collection
 
   auto value = std::shared_ptr<void>(  // persistent value
       collection.get(),                // value
-      [collection](void*) -> void {  // ensure collection shared_ptr is not deallocated
+      [collection](
+          void*) -> void {  // ensure collection shared_ptr is not deallocated
         TRI_ASSERT(!collection->vocbase().isDangling());
-        collection->vocbase().release();  // decrease the reference-counter for the database
+        collection->vocbase()
+            .release();  // decrease the reference-counter for the database
       });
   auto itr = TRI_v8_global_t::SharedPtrPersistent::emplace(*isolate, value);
   auto& entry = itr.first;
 
   TRI_ASSERT(!collection->vocbase().isDangling());
-  collection->vocbase().forceUse();  // increase the reference-counter for the database (will be decremented by 'value' distructor above, valid for both new and existing mappings)
+  collection->vocbase()
+      .forceUse();  // increase the reference-counter for the database (will be
+                    // decremented by 'value' distructor above, valid for both
+                    // new and existing mappings)
 
   result->SetInternalField(  // required for TRI_UnwrapClass(...)
       SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRP_VOCBASE_COL_TYPE)  // args
@@ -110,20 +120,23 @@ v8::Handle<v8::Object> WrapCollection(  // wrap collection
       ->DefineOwnProperty(  // define own property
           TRI_IGETC,        // context
           _IdKey,           // key
-          TRI_V8UInt64String<DataSourceId::BaseType>(isolate, collection->id().id()),  // value
-          v8::ReadOnly  // attributes
+          TRI_V8UInt64String<DataSourceId::BaseType>(
+              isolate, collection->id().id()),  // value
+          v8::ReadOnly                          // attributes
           )
       .FromMaybe(false);  // Ignore result...
   result
       ->Set(context,  // set value
-            _DbNameKey, TRI_V8_STD_STRING(isolate, collection->vocbase().name())  // args
+            _DbNameKey,
+            TRI_V8_STD_STRING(isolate, collection->vocbase().name())  // args
             )
       .FromMaybe(false);
   result
       ->DefineOwnProperty(   // define own property
           TRI_IGETC,         // context
           VersionKeyHidden,  // key
-          v8::Integer::NewFromUnsigned(isolate, collection->v8CacheVersion()),  // value
+          v8::Integer::NewFromUnsigned(isolate,
+                                       collection->v8CacheVersion()),  // value
           v8::DontEnum  // attributes
           )
       .FromMaybe(false);  // ignore return value

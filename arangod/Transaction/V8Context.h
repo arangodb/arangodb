@@ -44,11 +44,12 @@ class V8Context final : public Context {
   ~V8Context() noexcept;
 
   /// @brief order a custom type handler
-  arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() override final;
+  arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler()
+      override final;
 
   /// @brief get transaction state, determine commit responsiblity
-  std::shared_ptr<TransactionState> acquireState(transaction::Options const& options,
-                                                 bool& responsibleForCommit) override;
+  std::shared_ptr<TransactionState> acquireState(
+      transaction::Options const& options, bool& responsibleForCommit) override;
 
   void enterV8Context();
   void exitV8Context() noexcept;
@@ -70,12 +71,13 @@ class V8Context final : public Context {
   static bool isEmbedded();
 
   /// @brief create a context
-  static std::shared_ptr<transaction::V8Context> Create(TRI_vocbase_t& vocbase, bool embeddable);
+  static std::shared_ptr<transaction::V8Context> Create(TRI_vocbase_t& vocbase,
+                                                        bool embeddable);
 
   /// @brief create a V8 transaction context if we are in a V8 isolate, and a
   /// standlone transaction context otherwise
-  static std::shared_ptr<transaction::Context> CreateWhenRequired(TRI_vocbase_t& vocbase,
-                                                                  bool embeddable);
+  static std::shared_ptr<transaction::Context> CreateWhenRequired(
+      TRI_vocbase_t& vocbase, bool embeddable);
 
  private:
   static TRI_v8_global_t* getV8State() noexcept;

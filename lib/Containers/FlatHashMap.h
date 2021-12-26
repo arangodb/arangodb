@@ -28,9 +28,11 @@
 namespace arangodb {
 namespace containers {
 
-template <typename T, typename V, typename Hash = ::iresearch_absl::container_internal::hash_default_hash<T>,
-          typename Eq = ::iresearch_absl::container_internal::hash_default_eq<T>,
-          typename Allocator = std::allocator<T>>
+template<typename T, typename V,
+         typename Hash =
+             ::iresearch_absl::container_internal::hash_default_hash<T>,
+         typename Eq = ::iresearch_absl::container_internal::hash_default_eq<T>,
+         typename Allocator = std::allocator<T>>
 using FlatHashMap = ::iresearch_absl::flat_hash_map<T, V, Hash, Eq, Allocator>;
 
 }

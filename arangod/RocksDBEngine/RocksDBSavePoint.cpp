@@ -33,7 +33,8 @@
 
 namespace arangodb {
 
-RocksDBSavePoint::RocksDBSavePoint(RocksDBTransactionState* state, transaction::Methods* trx,
+RocksDBSavePoint::RocksDBSavePoint(RocksDBTransactionState* state,
+                                   transaction::Methods* trx,
                                    TRI_voc_document_operation_e operationType)
     : _state(state),
       _trx(trx),
@@ -83,7 +84,8 @@ void RocksDBSavePoint::prepareOperation(DataSourceId cid, RevisionId rid) {
 Result RocksDBSavePoint::finish(DataSourceId cid, RevisionId rid) {
   bool hasPerformedIntermediateCommit = false;
   Result res = basics::catchToResult([&]() -> Result {
-    return _state->addOperation(cid, rid, _operationType, hasPerformedIntermediateCommit);
+    return _state->addOperation(cid, rid, _operationType,
+                                hasPerformedIntermediateCommit);
   });
 
   if (!_handled) {

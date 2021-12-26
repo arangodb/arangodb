@@ -51,13 +51,15 @@ class ClusterTraverser final : public Traverser {
   ///        Returns true if the vertex passes filtering conditions
   ///        Also apppends the _id value of the vertex in the given vector
 
-  bool getVertex(arangodb::velocypack::Slice, arangodb::traverser::EnumeratedPath& path) override;
+  bool getVertex(arangodb::velocypack::Slice,
+                 arangodb::traverser::EnumeratedPath& path) override;
 
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
-  bool getSingleVertex(arangodb::velocypack::Slice edge,
-                       arangodb::velocypack::StringRef sourceVertexId, uint64_t depth,
-                       arangodb::velocypack::StringRef& targetVertexId) override;
+  bool getSingleVertex(
+      arangodb::velocypack::Slice edge,
+      arangodb::velocypack::StringRef sourceVertexId, uint64_t depth,
+      arangodb::velocypack::StringRef& targetVertexId) override;
 
   bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth) override;
 
@@ -87,7 +89,8 @@ class ClusterTraverser final : public Traverser {
   /// @brief build the (single) path enumerator of this traverser
   void createEnumerator();
 
-  std::unordered_map<arangodb::velocypack::HashedStringRef, VPackSlice> _vertices;
+  std::unordered_map<arangodb::velocypack::HashedStringRef, VPackSlice>
+      _vertices;
 
   std::string const _dbname;
 

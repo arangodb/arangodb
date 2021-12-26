@@ -62,7 +62,10 @@ class Slice;
 
 struct AgencyConnectionOptions {
   AgencyConnectionOptions(double ct, double rt, double lt, size_t cr) noexcept
-      : _connectTimeout(ct), _requestTimeout(rt), _lockTimeout(lt), _connectRetries(cr) {}
+      : _connectTimeout(ct),
+        _requestTimeout(rt),
+        _lockTimeout(lt),
+        _connectRetries(cr) {}
   double _connectTimeout;
   double _requestTimeout;
   double _lockTimeout;
@@ -212,7 +215,7 @@ class AgencyPrecondition {
   AgencyPrecondition();
   AgencyPrecondition(std::string const& key, Type, bool e);
   AgencyPrecondition(std::string const& key, Type, velocypack::Slice const&);
-  template <typename T>
+  template<typename T>
   AgencyPrecondition(std::string const& key, Type t, T const& v)
       : key(AgencyCommHelper::path(key)),
         type(t),
@@ -222,13 +225,17 @@ class AgencyPrecondition {
     value = builder->slice();
   }
 
-  AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path, Type, bool e);
+  AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
+                     Type, bool e);
   AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
                      Type, velocypack::Slice const&);
-  template <typename T>
+  template<typename T>
   AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
                      Type t, T const& v)
-      : key(path->str()), type(t), empty(false), builder(std::make_shared<VPackBuilder>()) {
+      : key(path->str()),
+        type(t),
+        empty(false),
+        builder(std::make_shared<VPackBuilder>()) {
     builder->add(VPackValue(v));
     value = builder->slice();
   }
@@ -263,8 +270,9 @@ class AgencyOperation {
   AgencyOperation(std::string const& key, AgencyValueOperationType opType,
                   std::shared_ptr<velocypack::Builder> value);
 
-  template <typename T>
-  AgencyOperation(std::string const& key, AgencyValueOperationType opType, T const& value)
+  template<typename T>
+  AgencyOperation(std::string const& key, AgencyValueOperationType opType,
+                  T const& value)
       : _key(AgencyCommHelper::path(key)),
         _opType(),
         _holder(std::make_shared<VPackBuilder>()) {
@@ -279,7 +287,8 @@ class AgencyOperation {
   AgencyOperation(std::string const& key, AgencyValueOperationType opType,
                   velocypack::Slice newValue, velocypack::Slice oldValue);
 
-  explicit AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path);
+  explicit AgencyOperation(
+      std::shared_ptr<cluster::paths::Path const> const& path);
 
   AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path,
                   AgencySimpleOperationType opType);
@@ -293,10 +302,12 @@ class AgencyOperation {
                   AgencyValueOperationType opType,
                   std::shared_ptr<velocypack::Builder> value);
 
-  template <typename T>
+  template<typename T>
   AgencyOperation(std::shared_ptr<cluster::paths::Path const> const& path,
                   AgencyValueOperationType opType, T const& value)
-      : _key(path->str()), _opType(), _holder(std::make_shared<VPackBuilder>()) {
+      : _key(path->str()),
+        _opType(),
+        _holder(std::make_shared<VPackBuilder>()) {
     _holder->add(VPackValue(value));
     _value = _holder->slice();
     _opType.type = AgencyOperationType::Type::VALUE;
@@ -380,7 +391,9 @@ class AgencyCommResult {
 
   [[nodiscard]] VPackBuilder toVelocyPack() const;
 
-  [[nodiscard]] std::pair<std::optional<ErrorCode>, std::optional<std::string_view>> parseBodyError() const;
+  [[nodiscard]] std::pair<std::optional<ErrorCode>,
+                          std::optional<std::string_view>>
+  parseBodyError() const;
 
  public:
   std::string _location = "";
@@ -430,7 +443,8 @@ struct AgencyWriteTransaction : public AgencyTransaction {
   explicit AgencyWriteTransaction(std::vector<AgencyOperation> const& _opers)
       : operations(_opers), clientId(randomClientId()) {}
 
-  AgencyWriteTransaction(AgencyOperation const& operation, AgencyPrecondition const& precondition)
+  AgencyWriteTransaction(AgencyOperation const& operation,
+                         AgencyPrecondition const& precondition)
       : clientId(randomClientId()) {
     operations.push_back(operation);
     preconditions.push_back(precondition);
@@ -459,7 +473,8 @@ struct AgencyWriteTransaction : public AgencyTransaction {
 
   AgencyWriteTransaction() : clientId(randomClientId()) {}
 
-  void toVelocyPack(arangodb::velocypack::Builder& builder) const override final;
+  void toVelocyPack(
+      arangodb::velocypack::Builder& builder) const override final;
 
   inline std::string const& path() const override final {
     return AgencyTransaction::TypeUrl[1];
@@ -485,7 +500,8 @@ struct AgencyTransientTransaction : public AgencyTransaction {
     operations.push_back(operation);
   }
 
-  explicit AgencyTransientTransaction(std::vector<AgencyOperation> const& _operations)
+  explicit AgencyTransientTransaction(
+      std::vector<AgencyOperation> const& _operations)
       : operations(_operations) {}
 
   AgencyTransientTransaction(AgencyOperation const& operation,
@@ -508,7 +524,8 @@ struct AgencyTransientTransaction : public AgencyTransaction {
 
   AgencyTransientTransaction() = default;
 
-  void toVelocyPack(arangodb::velocypack::Builder& builder) const override final;
+  void toVelocyPack(
+      arangodb::velocypack::Builder& builder) const override final;
 
   inline std::string const& path() const override final {
     return AgencyTransaction::TypeUrl[3];
@@ -539,7 +556,8 @@ struct AgencyReadTransaction : public AgencyTransaction {
 
   AgencyReadTransaction() = default;
 
-  void toVelocyPack(arangodb::velocypack::Builder& builder) const override final;
+  void toVelocyPack(
+      arangodb::velocypack::Builder& builder) const override final;
 
   inline std::string const& path() const override final {
     return AgencyTransaction::TypeUrl[0];
@@ -583,7 +601,8 @@ class AgencyComm {
 
   AgencyCommResult setValue(std::string const&, std::string const&, double);
 
-  AgencyCommResult setValue(std::string const&, arangodb::velocypack::Slice const&, double);
+  AgencyCommResult setValue(std::string const&,
+                            arangodb::velocypack::Slice const&, double);
 
   AgencyCommResult setTransient(std::string const& key,
                                 arangodb::velocypack::Slice const& slice,
@@ -600,19 +619,23 @@ class AgencyComm {
 
   /// compares and swaps a single value in the backend the CAS condition is
   /// whether or not a previous value existed for the key
-  AgencyCommResult casValue(std::string const&, arangodb::velocypack::Slice const&,
-                            bool, double, double);
+  AgencyCommResult casValue(std::string const&,
+                            arangodb::velocypack::Slice const&, bool, double,
+                            double);
 
   /// compares and swaps a single value in the back end the CAS condition is
   /// whether or not the previous value for the key was identical to `oldValue`
-  AgencyCommResult casValue(std::string const&, arangodb::velocypack::Slice const&,
+  AgencyCommResult casValue(std::string const&,
+                            arangodb::velocypack::Slice const&,
                             arangodb::velocypack::Slice const&, double, double);
 
   uint64_t uniqid(uint64_t, double);
 
-  AgencyCommResult registerCallback(std::string const& key, std::string const& endpoint);
+  AgencyCommResult registerCallback(std::string const& key,
+                                    std::string const& endpoint);
 
-  AgencyCommResult unregisterCallback(std::string const& key, std::string const& endpoint);
+  AgencyCommResult unregisterCallback(std::string const& key,
+                                      std::string const& endpoint);
 
   bool lockRead(std::string const&, double, double);
 
@@ -635,7 +658,8 @@ class AgencyComm {
   static void buildInitialAnalyzersSlice(VPackBuilder& builder);
 
  private:
-  bool lock(std::string const&, double, double, arangodb::velocypack::Slice const&);
+  bool lock(std::string const&, double, double,
+            arangodb::velocypack::Slice const&);
 
   bool unlock(std::string const&, arangodb::velocypack::Slice const&, double);
 

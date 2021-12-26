@@ -33,7 +33,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-IoContext::IoThread::IoThread(application_features::ApplicationServer& server, IoContext& iocontext)
+IoContext::IoThread::IoThread(application_features::ApplicationServer& server,
+                              IoContext& iocontext)
     : Thread(server, "Io"), _iocontext(iocontext) {}
 
 IoContext::IoThread::IoThread(IoThread const& other)

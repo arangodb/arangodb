@@ -31,8 +31,8 @@ namespace arangodb {
 
 RocksDBBackgroundErrorListener::~RocksDBBackgroundErrorListener() = default;
 
-void RocksDBBackgroundErrorListener::OnBackgroundError(rocksdb::BackgroundErrorReason reason,
-                                                       rocksdb::Status* status) {
+void RocksDBBackgroundErrorListener::OnBackgroundError(
+    rocksdb::BackgroundErrorReason reason, rocksdb::Status* status) {
   if (status != nullptr && status->IsShutdownInProgress()) {
     // this is not a relevant error, so let's ignore it
     return;
@@ -72,12 +72,17 @@ void RocksDBBackgroundErrorListener::OnBackgroundError(rocksdb::BackgroundErrorR
     }
 
     LOG_TOPIC("fae2c", ERR, Logger::ROCKSDB)
-        << "RocksDB encountered a background error during a " << operation << " operation: "
-        << (status != nullptr ? status->ToString() : "unknown error") << "; The database will be put in read-only mode, and subsequent write errors are likely. It is advised to shut down this instance, resolve the error offline and then restart it.";
+        << "RocksDB encountered a background error during a " << operation
+        << " operation: "
+        << (status != nullptr ? status->ToString() : "unknown error")
+        << "; The database will be put in read-only mode, and subsequent write "
+           "errors are likely. It is advised to shut down this instance, "
+           "resolve the error offline and then restart it.";
   }
 }
 
-void RocksDBBackgroundErrorListener::OnErrorRecoveryCompleted(rocksdb::Status /* old_bg_error */) {
+void RocksDBBackgroundErrorListener::OnErrorRecoveryCompleted(
+    rocksdb::Status /* old_bg_error */) {
   _called.store(false, std::memory_order_relaxed);
 
   LOG_TOPIC("8ff56", WARN, Logger::ROCKSDB)

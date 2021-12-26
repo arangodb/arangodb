@@ -72,30 +72,33 @@ arangodb::velocypack::StringRef VstRequest::rawPayload() const {
   if (_payload.size() <= _payloadOffset) {
     return arangodb::velocypack::StringRef();
   }
-  return arangodb::velocypack::StringRef(reinterpret_cast<const char*>(
-                                             _payload.data() + _payloadOffset),
-                                         _payload.size() - _payloadOffset);
+  return arangodb::velocypack::StringRef(
+      reinterpret_cast<const char*>(_payload.data() + _payloadOffset),
+      _payload.size() - _payloadOffset);
 }
 
 VPackSlice VstRequest::payload(bool strictValidation) {
   if (_contentType == ContentType::JSON) {
     if (!_vpackBuilder && _payload.size() > _payloadOffset) {
-      _vpackBuilder = VPackParser::fromJson(_payload.data() + _payloadOffset,
-                                            _payload.size() - _payloadOffset,
-                                            validationOptions(strictValidation));
+      _vpackBuilder = VPackParser::fromJson(
+          _payload.data() + _payloadOffset, _payload.size() - _payloadOffset,
+          validationOptions(strictValidation));
     }
     if (_vpackBuilder) {
       return _vpackBuilder->slice();
     }
-  } else if ((_contentType == ContentType::UNSET) || (_contentType == ContentType::VPACK)) {
+  } else if ((_contentType == ContentType::UNSET) ||
+             (_contentType == ContentType::VPACK)) {
     if (_payload.size() > _payloadOffset) {
       uint8_t const* ptr = _payload.data() + _payloadOffset;
       if (!_validatedPayload) {
-        /// the header is validated in VstCommTask, the actual body is only validated on demand
+        /// the header is validated in VstCommTask, the actual body is only
+        /// validated on demand
         VPackOptions const* options = validationOptions(strictValidation);
         VPackValidator validator(options);
         // will throw on error
-        _validatedPayload = validator.validate(ptr, _payload.size() - _payloadOffset);
+        _validatedPayload =
+            validator.validate(ptr, _payload.size() - _payloadOffset);
       }
       return VPackSlice(ptr);
     }
@@ -126,12 +129,15 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
       _contentTypeResponsePlain.clear();
     }
     return;  // don't insert this header!!
-  } else if ((_contentType == ContentType::UNSET) && (key == StaticStrings::ContentTypeHeader)) {
+  } else if ((_contentType == ContentType::UNSET) &&
+             (key == StaticStrings::ContentTypeHeader)) {
     StringUtils::tolowerInPlace(value);
     auto res = rest::stringToContentType(value, /*default*/ ContentType::UNSET);
-    // simon: the "@arangodb/requests" module by default the "text/plain" content-types for JSON
-    // in most tests. As soon as someone fixes all the tests we can enable these again.
-    if (res == ContentType::JSON || res == ContentType::VPACK || res == ContentType::DUMP) {
+    // simon: the "@arangodb/requests" module by default the "text/plain"
+    // content-types for JSON in most tests. As soon as someone fixes all the
+    // tests we can enable these again.
+    if (res == ContentType::JSON || res == ContentType::VPACK ||
+        res == ContentType::DUMP) {
       _contentType = res;
       return;  // don't insert this header!!
     }

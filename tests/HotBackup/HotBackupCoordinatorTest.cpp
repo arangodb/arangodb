@@ -125,8 +125,9 @@ TEST_F(HotBackupOnCoordinators, test_first_dbserver_new) {
     dbServers.push_back(i.key.copyString());
   }
 
-  dbServers.front() = std::string("PRMR_") +
-                      boost::uuids::to_string(boost::uuids::random_generator()());
+  dbServers.front() =
+      std::string("PRMR_") +
+      boost::uuids::to_string(boost::uuids::random_generator()());
 
   arangodb::Result res = matchBackupServers(plan, dbServers, matches);
 
@@ -144,8 +145,9 @@ TEST_F(HotBackupOnCoordinators, test_last_dbserver_new) {
     dbServers.push_back(i.key.copyString());
   }
 
-  dbServers.back() = std::string("PRMR_") +
-                     boost::uuids::to_string(boost::uuids::random_generator()());
+  dbServers.back() =
+      std::string("PRMR_") +
+      boost::uuids::to_string(boost::uuids::random_generator()());
 
   arangodb::Result res = matchBackupServers(plan, dbServers, matches);
 
@@ -163,10 +165,12 @@ TEST_F(HotBackupOnCoordinators, test_first_and_last_dbserver_new) {
     dbServers.push_back(i.key.copyString());
   }
 
-  dbServers.front() = std::string("PRMR_") +
-                      boost::uuids::to_string(boost::uuids::random_generator()());
-  dbServers.back() = std::string("PRMR_") +
-                     boost::uuids::to_string(boost::uuids::random_generator()());
+  dbServers.front() =
+      std::string("PRMR_") +
+      boost::uuids::to_string(boost::uuids::random_generator()());
+  dbServers.back() =
+      std::string("PRMR_") +
+      boost::uuids::to_string(boost::uuids::random_generator()());
 
   arangodb::Result res = matchBackupServers(plan, dbServers, matches);
 
@@ -181,8 +185,9 @@ TEST_F(HotBackupOnCoordinators, test_all_dbserver_new) {
   std::map<ServerID, ServerID> matches;
 
   for (size_t i = 0; i < plan.get(dbsPath).length(); ++i) {
-    dbServers.push_back(std::string("PRMR_") +
-                        boost::uuids::to_string(boost::uuids::random_generator()()));
+    dbServers.push_back(
+        std::string("PRMR_") +
+        boost::uuids::to_string(boost::uuids::random_generator()()));
   }
 
   arangodb::Result res = matchBackupServers(plan, dbServers, matches);
@@ -200,8 +205,9 @@ TEST_F(HotBackupOnCoordinators, test_one_more_local_server_than_in_backup) {
   for (auto const& i : VPackObjectIterator(plan.get(dbsPath))) {
     dbServers.push_back(i.key.copyString());
   }
-  dbServers.push_back(std::string("PRMR_") +
-                      boost::uuids::to_string(boost::uuids::random_generator()()));
+  dbServers.push_back(
+      std::string("PRMR_") +
+      boost::uuids::to_string(boost::uuids::random_generator()()));
 
   arangodb::Result res = matchBackupServers(plan, dbServers, matches);
 
@@ -226,7 +232,8 @@ TEST_F(HotBackupOnCoordinators, test_one_less_local_server_than_in_backup) {
   ASSERT_EQ(matches.size(), 0);
 }
 
-TEST_F(HotBackupOnCoordinators, test_effect_of_first_dbserver_changed_on_new_plab) {
+TEST_F(HotBackupOnCoordinators,
+       test_effect_of_first_dbserver_changed_on_new_plab) {
   std::shared_ptr<VPackBuilder> props;
 
   std::vector<ServerID> dbServers;
@@ -235,8 +242,9 @@ TEST_F(HotBackupOnCoordinators, test_effect_of_first_dbserver_changed_on_new_pla
   for (auto const& i : VPackObjectIterator(plan.get(dbsPath))) {
     dbServers.push_back(i.key.copyString());
   }
-  dbServers.front() = std::string("PRMR_") +
-                      boost::uuids::to_string(boost::uuids::random_generator()());
+  dbServers.front() =
+      std::string("PRMR_") +
+      boost::uuids::to_string(boost::uuids::random_generator()());
 
   arangodb::Result res = matchBackupServers(plan, dbServers, matches);
 
@@ -246,14 +254,16 @@ TEST_F(HotBackupOnCoordinators, test_effect_of_first_dbserver_changed_on_new_pla
   res = applyDBServerMatchesToPlan(plan, matches, newPlan);
 
   for (auto const& m : matches) {
-    ASSERT_EQ(countSubstring(newPlan.slice().get(colPath).toJson(), m.first), 0);
+    ASSERT_EQ(countSubstring(newPlan.slice().get(colPath).toJson(), m.first),
+              0);
     ASSERT_EQ(countSubstring(plan.get(colPath).toJson(), m.second), 0);
     ASSERT_EQ(countSubstring(newPlan.slice().get(colPath).toJson(), m.second),
               countSubstring(plan.get(colPath).toJson(), m.first));
   }
 }
 
-TEST_F(HotBackupOnCoordinators, test_effect_of_first_and_last_dbservers_changed_on_new_pan) {
+TEST_F(HotBackupOnCoordinators,
+       test_effect_of_first_and_last_dbservers_changed_on_new_pan) {
   std::shared_ptr<VPackBuilder> props;
 
   std::vector<ServerID> dbServers;
@@ -262,10 +272,12 @@ TEST_F(HotBackupOnCoordinators, test_effect_of_first_and_last_dbservers_changed_
   for (auto const& i : VPackObjectIterator(plan.get(dbsPath))) {
     dbServers.push_back(i.key.copyString());
   }
-  dbServers.front() = std::string("PRMR_") +
-                      boost::uuids::to_string(boost::uuids::random_generator()());
-  dbServers.back() = std::string("PRMR_") +
-                     boost::uuids::to_string(boost::uuids::random_generator()());
+  dbServers.front() =
+      std::string("PRMR_") +
+      boost::uuids::to_string(boost::uuids::random_generator()());
+  dbServers.back() =
+      std::string("PRMR_") +
+      boost::uuids::to_string(boost::uuids::random_generator()());
 
   arangodb::Result res = matchBackupServers(plan, dbServers, matches);
 
@@ -283,15 +295,17 @@ TEST_F(HotBackupOnCoordinators, test_effect_of_first_and_last_dbservers_changed_
   }
 }
 
-TEST_F(HotBackupOnCoordinators, test_effect_of_all_dbservers_changed_on_new_plan) {
+TEST_F(HotBackupOnCoordinators,
+       test_effect_of_all_dbservers_changed_on_new_plan) {
   std::shared_ptr<VPackBuilder> props;
 
   std::vector<ServerID> dbServers;
   std::map<ServerID, ServerID> matches;
 
   for (size_t i = 0; i < plan.get(dbsPath).length(); ++i) {
-    dbServers.push_back(std::string("PRMR_") +
-                        boost::uuids::to_string(boost::uuids::random_generator()()));
+    dbServers.push_back(
+        std::string("PRMR_") +
+        boost::uuids::to_string(boost::uuids::random_generator()()));
   }
 
   arangodb::Result res = matchBackupServers(plan, dbServers, matches);
@@ -310,7 +324,8 @@ TEST_F(HotBackupOnCoordinators, test_effect_of_all_dbservers_changed_on_new_plan
   }
 }
 
-TEST_F(HotBackupOnCoordinators, test_irrelevance_of_string_size_for_dbserver_id) {
+TEST_F(HotBackupOnCoordinators,
+       test_irrelevance_of_string_size_for_dbserver_id) {
   std::shared_ptr<VPackBuilder> props;
 
   std::vector<ServerID> dbServers;

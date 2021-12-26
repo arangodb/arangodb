@@ -58,33 +58,41 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
   std::string const& clientInfoString() const;
 
  private:
-  arangodb::Result collectionCountOnLeader(std::string const& endpoint, uint64_t& c);
+  arangodb::Result collectionCountOnLeader(std::string const& endpoint,
+                                           uint64_t& c);
 
-  arangodb::Result getReadLock(network::ConnectionPool* pool, std::string const& endpoint,
-                               std::string const& collection, std::string const& clientId,
-                               uint64_t rlid, bool soft, double timeout);
+  arangodb::Result getReadLock(network::ConnectionPool* pool,
+                               std::string const& endpoint,
+                               std::string const& collection,
+                               std::string const& clientId, uint64_t rlid,
+                               bool soft, double timeout);
 
   arangodb::Result startReadLockOnLeader(std::string const& endpoint,
                                          std::string const& collection,
-                                         std::string const& clientId, uint64_t& rlid,
-                                         bool soft, double timeout = 300.0);
+                                         std::string const& clientId,
+                                         uint64_t& rlid, bool soft,
+                                         double timeout = 300.0);
 
   arangodb::ResultT<TRI_voc_tick_t> catchupWithReadLock(
       std::string const& ep, LogicalCollection const& collection,
-      std::string const& clientId, std::string const& leader, TRI_voc_tick_t lastLogTick,
+      std::string const& clientId, std::string const& leader,
+      TRI_voc_tick_t lastLogTick,
       std::shared_ptr<DatabaseTailingSyncer> tailingSyncer);
 
   arangodb::Result catchupWithExclusiveLock(
-      std::string const& ep, LogicalCollection& collection, std::string const& clientId,
-      std::string const& leader, SyncerId syncerId, TRI_voc_tick_t lastLogTick,
+      std::string const& ep, LogicalCollection& collection,
+      std::string const& clientId, std::string const& leader, SyncerId syncerId,
+      TRI_voc_tick_t lastLogTick,
       std::shared_ptr<DatabaseTailingSyncer> tailingSyncer);
 
-  /// @brief Short, informative description of the replication client, passed to the server
+  /// @brief Short, informative description of the replication client, passed to
+  /// the server
   std::string _clientInfoString;
 
   uint64_t _followingTermId;
 
-  /// @brief maximum tick until which we need to run WAL tailing for. 0 means "no restriction"
+  /// @brief maximum tick until which we need to run WAL tailing for. 0 means
+  /// "no restriction"
   uint64_t _tailingUpperBoundTick;
 };
 

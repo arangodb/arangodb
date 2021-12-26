@@ -53,7 +53,7 @@ namespace iresearch {
 
 class IResearchFeature;
 class AsyncLinkHandle;
-template <typename T>
+template<typename T>
 class AsyncValue;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -154,9 +154,10 @@ class IResearchView final : public arangodb::LogicalView {
   ///         (nullptr == no view snapshot associated with the specified state)
   ///         if force == true && no snapshot -> associate current snapshot
   ////////////////////////////////////////////////////////////////////////////////
-  Snapshot const* snapshot(transaction::Methods& trx, SnapshotMode mode = SnapshotMode::Find,
-                           containers::HashSet<DataSourceId> const* shards = nullptr,
-                           void const* key = nullptr) const;
+  Snapshot const* snapshot(
+      transaction::Methods& trx, SnapshotMode mode = SnapshotMode::Find,
+      containers::HashSet<DataSourceId> const* shards = nullptr,
+      void const* key = nullptr) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unlink remove 'cid' from the persisted list of tracked collection
@@ -215,12 +216,18 @@ class IResearchView final : public arangodb::LogicalView {
   typedef std::shared_ptr<AsyncValue<IResearchView>> AsyncViewPtr;
   struct ViewFactory;  // forward declaration
 
-  AsyncViewPtr _asyncSelf;  // 'this' for the lifetime of the view (for use with asynchronous calls)
-  std::unordered_map<DataSourceId, AsyncLinkPtr> _links;  // registered links (value may be nullptr on single-server if link did not come up yet) FIXME TODO maybe this should be asyncSelf?
+  AsyncViewPtr _asyncSelf;  // 'this' for the lifetime of the view (for use with
+                            // asynchronous calls)
+  std::unordered_map<DataSourceId, AsyncLinkPtr>
+      _links;  // registered links (value may be nullptr on single-server if
+               // link did not come up yet) FIXME TODO maybe this should be
+               // asyncSelf?
   IResearchViewMeta _meta;  // the view configuration
-  mutable arangodb::iresearch::kludge::read_write_mutex _mutex;  // for use with member '_meta', '_links'
+  mutable arangodb::iresearch::kludge::read_write_mutex
+      _mutex;                   // for use with member '_meta', '_links'
   std::mutex _updateLinksLock;  // prevents simultaneous 'updateLinks'
-  std::function<void(transaction::Methods& trx, transaction::Status status)> _trxCallback;  // for snapshot(...)
+  std::function<void(transaction::Methods& trx, transaction::Status status)>
+      _trxCallback;  // for snapshot(...)
   std::atomic<bool> _inRecovery;
 
   IResearchView(TRI_vocbase_t& vocbase, velocypack::Slice const& info,
@@ -234,7 +241,8 @@ class IResearchView final : public arangodb::LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief called when a view's properties are updated (i.e. delta-modified)
   //////////////////////////////////////////////////////////////////////////////
-  Result updateProperties(velocypack::Slice slice, bool isUserRequest, bool partialUpdate);
+  Result updateProperties(velocypack::Slice slice, bool isUserRequest,
+                          bool partialUpdate);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Called in post-recovery to remove any dangling documents old links

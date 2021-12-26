@@ -42,7 +42,8 @@ struct Variable;  // forward decl
 }  // namespace aql
 }  // namespace arangodb
 
-struct ExpressionContextMock final : public arangodb::iresearch::ViewExpressionContextBase {
+struct ExpressionContextMock final
+    : public arangodb::iresearch::ViewExpressionContextBase {
   static ExpressionContextMock EMPTY;
 
   ExpressionContextMock()
@@ -50,12 +51,14 @@ struct ExpressionContextMock final : public arangodb::iresearch::ViewExpressionC
 
   virtual ~ExpressionContextMock();
 
-  virtual bool isDataFromCollection(arangodb::aql::Variable const* variable) const override {
+  virtual bool isDataFromCollection(
+      arangodb::aql::Variable const* variable) const override {
     return variable->isDataFromCollection;
   }
 
-  virtual arangodb::aql::AqlValue getVariableValue(arangodb::aql::Variable const* variable,
-                                                   bool doCopy, bool& mustDestroy) const override;
+  virtual arangodb::aql::AqlValue getVariableValue(
+      arangodb::aql::Variable const* variable, bool doCopy,
+      bool& mustDestroy) const override;
 
   void setTrx(arangodb::transaction::Methods* trx) { this->_trx = trx; }
 

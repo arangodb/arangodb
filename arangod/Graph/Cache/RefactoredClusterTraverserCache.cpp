@@ -40,17 +40,23 @@ constexpr size_t costPerVertexOrEdgeStringRefSlice =
 constexpr size_t heapBlockSize = 4096;
 };  // namespace
 
-RefactoredClusterTraverserCache::RefactoredClusterTraverserCache(ResourceMonitor& resourceMonitor)
+RefactoredClusterTraverserCache::RefactoredClusterTraverserCache(
+    ResourceMonitor& resourceMonitor)
     : _resourceMonitor{resourceMonitor},
-      _stringHeap(resourceMonitor, heapBlockSize), /* arbitrary block-size may be adjusted for performance */
+      _stringHeap(resourceMonitor,
+                  heapBlockSize), /* arbitrary block-size may be adjusted for
+                                     performance */
       _datalake(resourceMonitor) {}
 
 RefactoredClusterTraverserCache::~RefactoredClusterTraverserCache() { clear(); }
 
 void RefactoredClusterTraverserCache::clear() {
-  _resourceMonitor.decreaseMemoryUsage(_persistedStrings.size() * ::costPerPersistedString);
-  _resourceMonitor.decreaseMemoryUsage(_vertexData.size() * ::costPerVertexOrEdgeStringRefSlice);
-  _resourceMonitor.decreaseMemoryUsage(_edgeData.size() * ::costPerVertexOrEdgeStringRefSlice);
+  _resourceMonitor.decreaseMemoryUsage(_persistedStrings.size() *
+                                       ::costPerPersistedString);
+  _resourceMonitor.decreaseMemoryUsage(_vertexData.size() *
+                                       ::costPerVertexOrEdgeStringRefSlice);
+  _resourceMonitor.decreaseMemoryUsage(_edgeData.size() *
+                                       ::costPerVertexOrEdgeStringRefSlice);
   _stringHeap.clear();
   _persistedStrings.clear();
   _vertexData.clear();
@@ -58,7 +64,8 @@ void RefactoredClusterTraverserCache::clear() {
 }
 
 auto RefactoredClusterTraverserCache::cacheVertex(VertexType const& vertexId,
-                                                  velocypack::Slice vertexSlice) -> void {
+                                                  velocypack::Slice vertexSlice)
+    -> void {
   auto [it, inserted] = _vertexData.try_emplace(vertexId, vertexSlice);
   if (inserted) {
     // If we have added something into the cache, we need to account for it.
@@ -66,31 +73,34 @@ auto RefactoredClusterTraverserCache::cacheVertex(VertexType const& vertexId,
   }
 }
 
-auto RefactoredClusterTraverserCache::isVertexCached(VertexType const& vertexKey) const
-    -> bool {
+auto RefactoredClusterTraverserCache::isVertexCached(
+    VertexType const& vertexKey) const -> bool {
   return _vertexData.find(vertexKey) != _vertexData.end();
 }
 
-auto RefactoredClusterTraverserCache::isEdgeCached(EdgeType const& edgeKey) const -> bool {
+auto RefactoredClusterTraverserCache::isEdgeCached(
+    EdgeType const& edgeKey) const -> bool {
   return _edgeData.find(edgeKey) != _edgeData.end();
 }
 
-auto RefactoredClusterTraverserCache::getCachedVertex(VertexType const& vertex) const
-    -> VPackSlice {
+auto RefactoredClusterTraverserCache::getCachedVertex(
+    VertexType const& vertex) const -> VPackSlice {
   if (!isVertexCached(vertex)) {
     return VPackSlice::nullSlice();
   }
   return _vertexData.at(vertex);
 }
 
-auto RefactoredClusterTraverserCache::getCachedEdge(EdgeType const& edge) const -> VPackSlice {
+auto RefactoredClusterTraverserCache::getCachedEdge(EdgeType const& edge) const
+    -> VPackSlice {
   if (!isEdgeCached(edge)) {
     return VPackSlice::nullSlice();
   }
   return _edgeData.at(edge);
 }
 
-auto RefactoredClusterTraverserCache::persistString(arangodb::velocypack::HashedStringRef idString)
+auto RefactoredClusterTraverserCache::persistString(
+    arangodb::velocypack::HashedStringRef idString)
     -> arangodb::velocypack::HashedStringRef {
   auto it = _persistedStrings.find(idString);
   if (it != _persistedStrings.end()) {
@@ -106,11 +116,13 @@ auto RefactoredClusterTraverserCache::persistString(arangodb::velocypack::Hashed
   return res;
 }
 
-auto RefactoredClusterTraverserCache::persistEdgeData(velocypack::Slice edgeSlice)
-    -> std::pair<velocypack::Slice, bool> {
-  arangodb::velocypack::HashedStringRef edgeIdRef(edgeSlice.get(StaticStrings::IdString));
+auto RefactoredClusterTraverserCache::persistEdgeData(
+    velocypack::Slice edgeSlice) -> std::pair<velocypack::Slice, bool> {
+  arangodb::velocypack::HashedStringRef edgeIdRef(
+      edgeSlice.get(StaticStrings::IdString));
 
-  ResourceUsageScope guard(_resourceMonitor, ::costPerVertexOrEdgeStringRefSlice);
+  ResourceUsageScope guard(_resourceMonitor,
+                           ::costPerVertexOrEdgeStringRefSlice);
 
   auto const [it, inserted] = _edgeData.try_emplace(edgeIdRef, edgeSlice);
   if (inserted) {

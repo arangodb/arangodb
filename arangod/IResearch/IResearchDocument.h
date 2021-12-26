@@ -158,10 +158,12 @@ class FieldIterator {
   using Filter = bool (*)(std::string& buffer, FieldMeta const*& rootMeta,
                           IteratorValue const& value);
 
-  using PrimitiveTypeResetter = void (*)(irs::token_stream* stream, VPackSlice slice);
+  using PrimitiveTypeResetter = void (*)(irs::token_stream* stream,
+                                         VPackSlice slice);
 
   struct Level {
-    Level(velocypack::Slice slice, size_t nameLength, FieldMeta const& meta, Filter filter)
+    Level(velocypack::Slice slice, size_t nameLength, FieldMeta const& meta,
+          Filter filter)
         : it(slice), nameLength(nameLength), meta(&meta), filter(filter) {}
 
     Iterator it;
@@ -180,7 +182,8 @@ class FieldIterator {
   FieldIterator& operator=(FieldIterator const&) = delete;
 
   void next();
-  bool setValue(VPackSlice const value, FieldMeta::Analyzer const& valueAnalyzer);
+  bool setValue(VPackSlice const value,
+                FieldMeta::Analyzer const& valueAnalyzer);
   void setNullValue(VPackSlice const value);
   void setNumericValue(VPackSlice const value);
   void setBoolValue(VPackSlice const value);
@@ -192,7 +195,8 @@ class FieldIterator {
   std::vector<Level> _stack;
   size_t _prefixLength{};
   std::string _nameBuffer;  // buffer for field name
-  std::string _valueBuffer;  // need temporary buffer for custom types in VelocyPack
+  std::string
+      _valueBuffer;  // need temporary buffer for custom types in VelocyPack
   VPackBuffer<uint8_t> _buffer;  // buffer for stored values
   arangodb::transaction::Methods* _trx;
   irs::string_ref _collection;
@@ -243,7 +247,8 @@ struct StoredValue {
   velocypack::Slice const document;
   irs::string_ref fieldName;
   irs::string_ref collection;
-  std::vector<std::pair<std::string, std::vector<basics::AttributeName>>> const* fields;
+  std::vector<std::pair<std::string, std::vector<basics::AttributeName>>> const*
+      fields;
   IndexId linkId;
   bool isDBServer;
 };  // StoredValue

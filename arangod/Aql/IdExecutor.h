@@ -60,7 +60,8 @@ class OutputAqlItemRow;
 
 class IdExecutorInfos {
  public:
-  explicit IdExecutorInfos(bool doCount, RegisterId outputRegister = RegisterId(0),
+  explicit IdExecutorInfos(bool doCount,
+                           RegisterId outputRegister = RegisterId(0),
                            std::string distributeId = {""},
                            bool isResponsibleForInitializeCursor = true);
 
@@ -87,13 +88,14 @@ class IdExecutorInfos {
   std::string const _distributeId;
 };
 
-template <class UsedFetcher>
+template<class UsedFetcher>
 // cppcheck-suppress noConstructor
 class IdExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Enable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Enable;
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   // Only Supports SingleRowFetcher and ConstFetcher
@@ -107,7 +109,8 @@ class IdExecutor {
   /**
    * @brief produce the next Row of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
   auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;

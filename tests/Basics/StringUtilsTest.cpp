@@ -173,24 +173,20 @@ TEST_F(StringUtilsTest, test_toupper) {
 }
 
 TEST_F(StringUtilsTest, test_equalStringsCaseInsensitive) {
-  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string(), std::string()));
+  EXPECT_TRUE(
+      StringUtils::equalStringsCaseInsensitive(std::string(), std::string()));
   EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("ABC"),
                                                        std::string("ABC")));
-  EXPECT_TRUE(
-      StringUtils::equalStringsCaseInsensitive(std::string("ABC 1235667"),
-                                               std::string("ABC 1235667")));
-  EXPECT_TRUE(
-      StringUtils::equalStringsCaseInsensitive(std::string("abc 1235667"),
-                                               std::string("ABC 1235667")));
-  EXPECT_TRUE(
-      StringUtils::equalStringsCaseInsensitive(std::string("abc 1235667"),
-                                               std::string("AbC 1235667")));
-  EXPECT_TRUE(
-      StringUtils::equalStringsCaseInsensitive(std::string("abc 1235667"),
-                                               std::string("aBc 1235667")));
-  EXPECT_TRUE(
-      StringUtils::equalStringsCaseInsensitive(std::string("ABC 1235667"),
-                                               std::string("abc 1235667")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(
+      std::string("ABC 1235667"), std::string("ABC 1235667")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(
+      std::string("abc 1235667"), std::string("ABC 1235667")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(
+      std::string("abc 1235667"), std::string("AbC 1235667")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(
+      std::string("abc 1235667"), std::string("aBc 1235667")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(
+      std::string("ABC 1235667"), std::string("abc 1235667")));
   EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("mötör"),
                                                        std::string("MöTöR")));
   EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string(".'2!#"),
@@ -244,7 +240,8 @@ TEST_F(StringUtilsTest, test_uint64) {
   EXPECT_EQ(0ULL, StringUtils::uint64("-1"s));
   EXPECT_EQ(0ULL, StringUtils::uint64("-12345"s));
   EXPECT_EQ(1234ULL, StringUtils::uint64("1234.56"s));
-  EXPECT_EQ(0ULL, StringUtils::uint64("1234567890123456789012345678901234567890"s));
+  EXPECT_EQ(0ULL,
+            StringUtils::uint64("1234567890123456789012345678901234567890"s));
   EXPECT_EQ(0ULL, StringUtils::uint64("@"s));
 
   EXPECT_EQ(0ULL, StringUtils::uint64("0"s));
@@ -279,7 +276,8 @@ TEST_F(StringUtilsTest, test_uint64_trusted) {
   EXPECT_EQ(1234567800ULL, StringUtils::uint64_trusted("1234567800"));
   EXPECT_EQ(1234567890123456ULL,
             StringUtils::uint64_trusted("1234567890123456"));
-  EXPECT_EQ(UINT64_MAX, StringUtils::uint64_trusted(std::to_string(UINT64_MAX)));
+  EXPECT_EQ(UINT64_MAX,
+            StringUtils::uint64_trusted(std::to_string(UINT64_MAX)));
 }
 
 TEST_F(StringUtilsTest, test_encodeHex) {
@@ -307,7 +305,8 @@ TEST_F(StringUtilsTest, test_encodeHex) {
   EXPECT_EQ("ff", StringUtils::encodeHex("\xff"));
   EXPECT_EQ("aa0009", StringUtils::encodeHex(std::string("\xaa\x00\x09", 3)));
   EXPECT_EQ("000102", StringUtils::encodeHex(std::string("\x00\x01\x02", 3)));
-  EXPECT_EQ("00010203", StringUtils::encodeHex(std::string("\x00\x01\x02\03", 4)));
+  EXPECT_EQ("00010203",
+            StringUtils::encodeHex(std::string("\x00\x01\x02\03", 4)));
   EXPECT_EQ("20", StringUtils::encodeHex(" "));
   EXPECT_EQ("2a2a", StringUtils::encodeHex("**"));
   EXPECT_EQ("616263646566", StringUtils::encodeHex("abcdef"));
@@ -371,7 +370,10 @@ TEST_F(StringUtilsTest, test_decodeHex) {
   EXPECT_EQ("abcdef", StringUtils::decodeHex("616263646566"));
   EXPECT_EQ("ABCDEF G", StringUtils::decodeHex("4142434445462047"));
 
-  EXPECT_EQ("The Quick brown Fox jumped over the lazy dog!", StringUtils::decodeHex("54686520517569636b2062726f776e20466f78206a756d706564206f76657220746865206c617a7920646f6721"));
+  EXPECT_EQ(
+      "The Quick brown Fox jumped over the lazy dog!",
+      StringUtils::decodeHex("54686520517569636b2062726f776e20466f78206a756d706"
+                             "564206f76657220746865206c617a7920646f6721"));
   EXPECT_EQ("Der Kötör sprüng über die Brücke",
             StringUtils::decodeHex("446572204bc3b674c3b67220737072c3bc6e6720c3b"
                                    "c62657220646965204272c3bc636b65"));

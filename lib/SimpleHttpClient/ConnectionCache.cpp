@@ -37,9 +37,11 @@ namespace httpclient {
 ConnectionLease::ConnectionLease()
     : _cache(nullptr), _preventRecycling(false) {}
 
-ConnectionLease::ConnectionLease(ConnectionCache* cache,
-                                 std::unique_ptr<GeneralClientConnection> connection)
-    : _cache(cache), _connection(std::move(connection)), _preventRecycling(false) {}
+ConnectionLease::ConnectionLease(
+    ConnectionCache* cache, std::unique_ptr<GeneralClientConnection> connection)
+    : _cache(cache),
+      _connection(std::move(connection)),
+      _preventRecycling(false) {}
 
 ConnectionLease::~ConnectionLease() {
   if (_cache != nullptr && _connection != nullptr && !_preventRecycling) {
@@ -62,18 +64,25 @@ ConnectionLease& ConnectionLease::operator=(ConnectionLease&& other) noexcept {
 }
 
 void ConnectionLease::preventRecycling() noexcept {
-  // this will prevent the connection from being inserted back into the connection cache
+  // this will prevent the connection from being inserted back into the
+  // connection cache
   _preventRecycling = true;
 }
 
-ConnectionCache::ConnectionCache(arangodb::application_features::ApplicationServer& server,
-                                 Options const& options)
-    : _server(server), _options(options), _connectionsCreated(0), _connectionsRecycled(0) {}
+ConnectionCache::ConnectionCache(
+    arangodb::application_features::ApplicationServer& server,
+    Options const& options)
+    : _server(server),
+      _options(options),
+      _connectionsCreated(0),
+      _connectionsRecycled(0) {}
 
 ConnectionCache::~ConnectionCache() = default;
 
-ConnectionLease ConnectionCache::acquire(std::string endpoint, double connectTimeout,
-                                         double requestTimeout, size_t connectRetries,
+ConnectionLease ConnectionCache::acquire(std::string endpoint,
+                                         double connectTimeout,
+                                         double requestTimeout,
+                                         size_t connectRetries,
                                          uint64_t sslProtocol) {
   TRI_ASSERT(!endpoint.empty());
 
@@ -82,7 +91,8 @@ ConnectionLease ConnectionCache::acquire(std::string endpoint, double connectTim
   endpoint = Endpoint::unifiedForm(endpoint);
 
   LOG_TOPIC("c869a", TRACE, Logger::REPLICATION)
-      << "trying to find connection for endpoint " << endpoint << " in connections cache";
+      << "trying to find connection for endpoint " << endpoint
+      << " in connections cache";
 
   std::unique_ptr<GeneralClientConnection> connection;
   uint64_t metric;
@@ -97,8 +107,10 @@ ConnectionLease ConnectionCache::acquire(std::string endpoint, double connectTim
       for (auto it = connectionsForEndpoint.rbegin();
            it != connectionsForEndpoint.rend(); ++it) {
         auto& candidate = (*it);
-        if (candidate->getEndpoint()->encryption() != Endpoint::EncryptionType::NONE &&
-            static_cast<SslClientConnection*>(candidate.get())->sslProtocol() != sslProtocol) {
+        if (candidate->getEndpoint()->encryption() !=
+                Endpoint::EncryptionType::NONE &&
+            static_cast<SslClientConnection*>(candidate.get())->sslProtocol() !=
+                sslProtocol) {
           // different SSL protocol
           continue;
         }
@@ -129,8 +141,9 @@ ConnectionLease ConnectionCache::acquire(std::string endpoint, double connectTim
 
   if (connection == nullptr) {
     LOG_TOPIC("fd913", TRACE, Logger::REPLICATION)
-        << "did not find connection for endpoint "
-        << endpoint << " in connections cache. creating new connection... created connections: "
+        << "did not find connection for endpoint " << endpoint
+        << " in connections cache. creating new connection... created "
+           "connections: "
         << metric;
     std::unique_ptr<Endpoint> ep(arangodb::Endpoint::clientFactory(endpoint));
 
@@ -140,9 +153,11 @@ ConnectionLease ConnectionCache::acquire(std::string endpoint, double connectTim
           std::string("unable to create endpoint '") + endpoint + "'");
     }
 
-    // the unique_ptr ep is modified by the factory function and takes over ownership here
-    connection.reset(GeneralClientConnection::factory(_server, ep, requestTimeout, connectTimeout,
-                                                      connectRetries, sslProtocol));
+    // the unique_ptr ep is modified by the factory function and takes over
+    // ownership here
+    connection.reset(GeneralClientConnection::factory(
+        _server, ep, requestTimeout, connectTimeout, connectRetries,
+        sslProtocol));
 
     TRI_ASSERT(connection != nullptr);
   } else {
@@ -156,8 +171,8 @@ ConnectionLease ConnectionCache::acquire(std::string endpoint, double connectTim
   return {this, std::move(connection)};
 }
 
-void ConnectionCache::release(std::unique_ptr<GeneralClientConnection> connection,
-                              bool force) try {
+void ConnectionCache::release(
+    std::unique_ptr<GeneralClientConnection> connection, bool force) try {
   if (connection == nullptr) {
     // nothing to do
     return;
@@ -180,7 +195,8 @@ void ConnectionCache::release(std::unique_ptr<GeneralClientConnection> connectio
     }
   }
 } catch (...) {
-  // if we catch an exception here, the connection will be auto-destroyed, and no leaks will happen
+  // if we catch an exception here, the connection will be auto-destroyed, and
+  // no leaks will happen
 }
 
 }  // namespace httpclient

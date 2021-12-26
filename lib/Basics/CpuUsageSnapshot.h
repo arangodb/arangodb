@@ -38,7 +38,8 @@ struct CpuUsageSnapshot {
   /// @brief create a CpuUsageSnapshot from the contents of /proc/stat
   /// expects an input buffer with 10 numbers, each seperated by a space
   /// characters
-  static CpuUsageSnapshot fromString(char const* buffer, std::size_t bufferSize) noexcept;
+  static CpuUsageSnapshot fromString(char const* buffer,
+                                     std::size_t bufferSize) noexcept;
 
   /// @brief subtract the values of another CpuUsageSnapshot from ourselves
   void subtract(CpuUsageSnapshot const& other) noexcept;
@@ -78,19 +79,26 @@ struct CpuUsageSnapshot {
   }
 
   /// @brief from `man proc`:
-  ///  The amount of time, measured in units of USER_HZ (1/100ths of a second on most architectures, use sysconf(_SC_CLK_TCK) to obtain the  right  value),  that  the
-  ///  system ("cpu" line) or the specific CPU ("cpuN" line) spent in various states:
+  ///  The amount of time, measured in units of USER_HZ (1/100ths of a second on
+  ///  most architectures, use sysconf(_SC_CLK_TCK) to obtain the  right value),
+  ///  that  the system ("cpu" line) or the specific CPU ("cpuN" line) spent in
+  ///  various states:
   ///    user       (1) Time spent in user mode.
   ///    nice       (2) Time spent in user mode with low priority (nice).
   ///    system     (3) Time spent in system mode.
-  ///    idle       (4) Time spent in the idle task.  This value should be USER_HZ times the second entry in the /proc/uptime pseudo-file.
-  ///    iowait     (5) Time waiting for I/O to complete.  This value is not reliable, for the following reasons:
-  ///    irq        (6) Time servicing interrupts.
+  ///    idle       (4) Time spent in the idle task.  This value should be
+  ///    USER_HZ times the second entry in the /proc/uptime pseudo-file. iowait
+  ///    (5) Time waiting for I/O to complete.  This value is not reliable, for
+  ///    the following reasons: irq        (6) Time servicing interrupts.
   ///    softirq    (7) Time servicing softirqs.
-  ///    steal      (8) Stolen time, which is the time spent in other operating systems when running in a virtualized environment
-  ///    guest      (9) Time spent running a virtual CPU for guest operating systems under the control of the Linux kernel.
-  ///    guest_nice (10) Time spent running a niced guest (virtual CPU for guest operating systems under the control of the Linux kernel).
-  ///  One Windows, only user, system and idle are used, where "system" is the time spent in kernel mode.
+  ///    steal      (8) Stolen time, which is the time spent in other operating
+  ///    systems when running in a virtualized environment guest      (9) Time
+  ///    spent running a virtual CPU for guest operating systems under the
+  ///    control of the Linux kernel. guest_nice (10) Time spent running a niced
+  ///    guest (virtual CPU for guest operating systems under the control of the
+  ///    Linux kernel).
+  ///  One Windows, only user, system and idle are used, where "system" is the
+  ///  time spent in kernel mode.
   uint64_t user = 0;
   uint64_t nice = 0;
   uint64_t system = 0;

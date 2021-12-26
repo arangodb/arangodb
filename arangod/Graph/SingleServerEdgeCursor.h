@@ -69,9 +69,10 @@ class SingleServerEdgeCursor final : public EdgeCursor {
   std::vector<BaseOptions::LookupInfo> const& _lookupInfo;
 
  public:
-  explicit SingleServerEdgeCursor(BaseOptions* options, aql::Variable const* tmpVar,
-                                  std::vector<size_t> const* mapping,
-                                  std::vector<BaseOptions::LookupInfo> const& lookupInfo);
+  explicit SingleServerEdgeCursor(
+      BaseOptions* options, aql::Variable const* tmpVar,
+      std::vector<size_t> const* mapping,
+      std::vector<BaseOptions::LookupInfo> const& lookupInfo);
 
   ~SingleServerEdgeCursor();
 
@@ -89,11 +90,13 @@ class SingleServerEdgeCursor final : public EdgeCursor {
   bool advanceCursor(IndexIterator*& cursor,
                      std::vector<std::unique_ptr<IndexIterator>>*& cursorSet);
 
-  void getDocAndRunCallback(IndexIterator*, EdgeCursor::Callback const& callback);
+  void getDocAndRunCallback(IndexIterator*,
+                            EdgeCursor::Callback const& callback);
 
   void buildLookupInfo(arangodb::velocypack::StringRef vertex);
 
-  void addCursor(BaseOptions::LookupInfo const& info, arangodb::velocypack::StringRef vertex);
+  void addCursor(BaseOptions::LookupInfo const& info,
+                 arangodb::velocypack::StringRef vertex);
 };
 
 }  // namespace graph

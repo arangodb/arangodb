@@ -57,7 +57,8 @@ size_t AqlValueGroupHash::operator()(AqlValue const& value) const {
   return value.hash(hash);
 }
 
-size_t AqlValueGroupHash::operator()(HashedAqlValueGroup const& value) const noexcept {
+size_t AqlValueGroupHash::operator()(
+    HashedAqlValueGroup const& value) const noexcept {
   TRI_ASSERT(operator()(value.values) == value.hash);
   return value.hash;
 }
@@ -80,7 +81,8 @@ bool AqlValueGroupEqual::operator()(const std::vector<AqlValue>& lhs,
   return true;
 }
 
-bool AqlValueGroupEqual::operator()(AqlValue const& lhs, AqlValue const& rhs) const {
+bool AqlValueGroupEqual::operator()(AqlValue const& lhs,
+                                    AqlValue const& rhs) const {
   return AqlValue::Compare(_vpackOptions, lhs, rhs, false) == 0;
 }
 

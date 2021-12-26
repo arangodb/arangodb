@@ -58,7 +58,8 @@ class QueryResultCursor final : public arangodb::Cursor {
 
   size_t count() const override final;
 
-  std::pair<aql::ExecutionState, Result> dump(velocypack::Builder& result) override final;
+  std::pair<aql::ExecutionState, Result> dump(
+      velocypack::Builder& result) override final;
 
   Result dumpSync(velocypack::Builder& result) override final;
 
@@ -83,7 +84,8 @@ class QueryResultCursor final : public arangodb::Cursor {
 /// cursor is deleted (or query exhausted)
 class QueryStreamCursor final : public arangodb::Cursor {
  public:
-  QueryStreamCursor(std::shared_ptr<aql::Query> q, size_t batchSize, double ttl);
+  QueryStreamCursor(std::shared_ptr<aql::Query> q, size_t batchSize,
+                    double ttl);
 
   ~QueryStreamCursor();
 
@@ -97,7 +99,8 @@ class QueryStreamCursor final : public arangodb::Cursor {
 
   size_t count() const override final { return 0; }
 
-  std::pair<ExecutionState, Result> dump(velocypack::Builder& result) override final;
+  std::pair<ExecutionState, Result> dump(
+      velocypack::Builder& result) override final;
 
   Result dumpSync(velocypack::Builder& result) override final;
 

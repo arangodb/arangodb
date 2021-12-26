@@ -39,8 +39,10 @@ class ManagerFeature final : public application_features::ApplicationFeature {
  public:
   explicit ManagerFeature(application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) override;
-  void validateOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) override;
+  void collectOptions(
+      std::shared_ptr<arangodb::options::ProgramOptions> options) override;
+  void validateOptions(
+      std::shared_ptr<arangodb::options::ProgramOptions> options) override;
   void prepare() override;
   void start() override;
   void stop() override;

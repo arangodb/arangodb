@@ -46,7 +46,8 @@ class DumpFeature final : public application_features::ApplicationFeature {
   DumpFeature(application_features::ApplicationServer& server, int& exitCode);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions> options) override;
+  void validateOptions(
+      std::shared_ptr<options::ProgramOptions> options) override;
   void start() override;
 
   /**
@@ -94,7 +95,8 @@ class DumpFeature final : public application_features::ApplicationFeature {
   /// @brief base class for dump jobs
   struct DumpJob {
     DumpJob(ManagedDirectory&, DumpFeature&, Options const& options,
-            maskings::Maskings* maskings, Stats& stats, VPackSlice collectionInfo);
+            maskings::Maskings* maskings, Stats& stats,
+            VPackSlice collectionInfo);
     virtual ~DumpJob();
 
     virtual Result run(arangodb::httpclient::SimpleHttpClient& client) = 0;
@@ -129,8 +131,9 @@ class DumpFeature final : public application_features::ApplicationFeature {
   /// only used in cluster mode
   struct DumpShardJob : public DumpJob {
     DumpShardJob(ManagedDirectory&, DumpFeature&, Options const& options,
-                 maskings::Maskings* maskings, Stats& stats, VPackSlice collectionInfo,
-                 std::string const& shardName, std::string const& server,
+                 maskings::Maskings* maskings, Stats& stats,
+                 VPackSlice collectionInfo, std::string const& shardName,
+                 std::string const& server,
                  std::shared_ptr<ManagedDirectory::File> file);
 
     ~DumpShardJob();
@@ -156,12 +159,15 @@ class DumpFeature final : public application_features::ApplicationFeature {
   std::queue<Result> _workerErrors;
   std::unique_ptr<maskings::Maskings> _maskings;
 
-  Result runClusterDump(httpclient::SimpleHttpClient& client, std::string const& dbName);
-  Result runSingleDump(httpclient::SimpleHttpClient& client, std::string const& dbName);
+  Result runClusterDump(httpclient::SimpleHttpClient& client,
+                        std::string const& dbName);
+  Result runSingleDump(httpclient::SimpleHttpClient& client,
+                       std::string const& dbName);
 
   // called from both runClusterDump and runSingleDump
-  Result runDump(httpclient::SimpleHttpClient& client, std::string const& baseUrl,
-                 std::string const& dbName, uint64_t batchId);
+  Result runDump(httpclient::SimpleHttpClient& client,
+                 std::string const& baseUrl, std::string const& dbName,
+                 uint64_t batchId);
 
   Result storeDumpJson(VPackSlice body, std::string const& dbName) const;
   Result storeViews(velocypack::Slice const&) const;

@@ -74,7 +74,8 @@ void LambdaTask::run() {
 /// @brief create a queue
 ////////////////////////////////////////////////////////////////////////////////
 
-LocalTaskQueue::LocalTaskQueue(application_features::ApplicationServer& server, PostFn poster)
+LocalTaskQueue::LocalTaskQueue(application_features::ApplicationServer& server,
+                               PostFn poster)
     : _server(server),
       _poster(poster),
       _queue(),
@@ -102,9 +103,10 @@ void LocalTaskQueue::stopTask() {
   TRI_ASSERT(old > 0);
 
   // Notify the dispatching thread that new tasks can be scheduled.
-  // Note: we are deliberately not using a mutex here to avoid contention, but that means that
-  // the notification can potentially be missed. However, this should only happen very rarely
-  // and the dispatching thread is only waiting for a limited time.
+  // Note: we are deliberately not using a mutex here to avoid contention, but
+  // that means that the notification can potentially be missed. However, this
+  // should only happen very rarely and the dispatching thread is only waiting
+  // for a limited time.
   _condition.notify_one();
 }
 
@@ -193,8 +195,9 @@ void LocalTaskQueue::dispatchAndWait() {
       break;
     }
 
-    // We must only wait for a limited time here, since the notify operation in stopTask
-    // does not use a mutex, so there is a (rare) chance that we might miss a notification.
+    // We must only wait for a limited time here, since the notify operation in
+    // stopTask does not use a mutex, so there is a (rare) chance that we might
+    // miss a notification.
     _condition.wait_for(guard, std::chrono::milliseconds(50));
   }
 }

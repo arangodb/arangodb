@@ -33,12 +33,15 @@ namespace application_features {
 class ApplicationServer;
 }
 
-class ReplicationMetricsFeature final : public application_features::ApplicationFeature {
+class ReplicationMetricsFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit ReplicationMetricsFeature(application_features::ApplicationServer& server);
+  explicit ReplicationMetricsFeature(
+      application_features::ApplicationServer& server);
 
   struct InitialSyncStats {
-    explicit InitialSyncStats(ReplicationMetricsFeature& feature, bool autoPublish) noexcept
+    explicit InitialSyncStats(ReplicationMetricsFeature& feature,
+                              bool autoPublish) noexcept
         : feature(feature), autoPublish(autoPublish) {}
 
     // will update the system-wide statistics with the current values
@@ -82,9 +85,11 @@ class ReplicationMetricsFeature final : public application_features::Application
     // total time spent waiting on response for initial call to
     // /_api/replication/keys
     double waitedForInitial = 0.0;
-    // total time spent waiting for responses to /_api/replication/keys?type=keys
+    // total time spent waiting for responses to
+    // /_api/replication/keys?type=keys
     double waitedForKeys = 0.0;
-    // total time spent waiting for responses to /_api/replication/keys?type=docs
+    // total time spent waiting for responses to
+    // /_api/replication/keys?type=docs
     double waitedForDocs = 0.0;
     double waitedForInsertions = 0.0;
     double waitedForRemovals = 0.0;
@@ -93,7 +98,8 @@ class ReplicationMetricsFeature final : public application_features::Application
   };
 
   struct TailingSyncStats {
-    explicit TailingSyncStats(ReplicationMetricsFeature& feature, bool autoPublish) noexcept
+    explicit TailingSyncStats(ReplicationMetricsFeature& feature,
+                              bool autoPublish) noexcept
         : feature(feature), autoPublish(autoPublish) {}
 
     // will update the system-wide statistics with the current values

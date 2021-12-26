@@ -55,7 +55,8 @@ class Collections {
  public:
   Collection* get(std::string_view name) const;
 
-  Collection* add(std::string const& name, AccessMode::Type accessType, Collection::Hint hint);
+  Collection* add(std::string const& name, AccessMode::Type accessType,
+                  Collection::Hint hint);
 
   std::vector<std::string> collectionNames() const;
 
@@ -63,12 +64,14 @@ class Collections {
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
 
-  void visit(std::function<bool(std::string const&, Collection&)> const& visitor) const;
+  void visit(std::function<bool(std::string const&, Collection&)> const&
+                 visitor) const;
 
  private:
   TRI_vocbase_t* _vocbase;
 
-  std::map<std::string, std::unique_ptr<aql::Collection>, std::less<>> _collections;
+  std::map<std::string, std::unique_ptr<aql::Collection>, std::less<>>
+      _collections;
 
   static size_t const MaxCollections = 2048;
 };

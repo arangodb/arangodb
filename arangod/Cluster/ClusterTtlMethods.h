@@ -39,10 +39,12 @@ struct TtlStatistics;
 Result getTtlStatisticsFromAllDBServers(ClusterFeature&, TtlStatistics& out);
 
 /// @brief get TTL properties from all DBservers
-Result getTtlPropertiesFromAllDBServers(ClusterFeature&, arangodb::velocypack::Builder& out);
+Result getTtlPropertiesFromAllDBServers(ClusterFeature&,
+                                        arangodb::velocypack::Builder& out);
 
 /// @brief set TTL properties on all DBservers
-Result setTtlPropertiesOnAllDBServers(ClusterFeature&, arangodb::velocypack::Slice properties,
+Result setTtlPropertiesOnAllDBServers(ClusterFeature&,
+                                      arangodb::velocypack::Slice properties,
                                       arangodb::velocypack::Builder& out);
 
 }  // namespace arangodb

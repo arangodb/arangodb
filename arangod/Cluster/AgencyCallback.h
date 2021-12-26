@@ -98,7 +98,8 @@ class AgencyCallback {
   //////////////////////////////////////////////////////////////////////////////
 
  public:
-  AgencyCallback(application_features::ApplicationServer& server, std::string const&,
+  AgencyCallback(application_features::ApplicationServer& server,
+                 std::string const&,
                  std::function<bool(velocypack::Slice const&)> const&,
                  bool needsValue, bool needsInitialValue = true);
 

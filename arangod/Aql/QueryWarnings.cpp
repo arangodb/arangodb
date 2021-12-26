@@ -34,7 +34,8 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 QueryWarnings::QueryWarnings()
-    : _maxWarningCount(std::numeric_limits<size_t>::max()), _failOnWarning(false) {}
+    : _maxWarningCount(std::numeric_limits<size_t>::max()),
+      _failOnWarning(false) {}
 
 /// @brief register an error
 /// this also makes the query abort
@@ -104,6 +105,7 @@ std::vector<std::pair<ErrorCode, std::string>> QueryWarnings::all() const {
   return _list;
 }
 
-std::string QueryWarnings::buildFormattedString(ErrorCode code, char const* details) {
+std::string QueryWarnings::buildFormattedString(ErrorCode code,
+                                                char const* details) {
   return arangodb::basics::Exception::FillExceptionString(code, details);
 }

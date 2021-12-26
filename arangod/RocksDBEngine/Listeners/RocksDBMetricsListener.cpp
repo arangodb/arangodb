@@ -35,13 +35,15 @@ DECLARE_COUNTER(arangodb_rocksdb_write_stops_total,
 namespace arangodb {
 
 /// @brief Setup the object, clearing variables, but do no real work
-RocksDBMetricsListener::RocksDBMetricsListener(application_features::ApplicationServer& server)
+RocksDBMetricsListener::RocksDBMetricsListener(
+    application_features::ApplicationServer& server)
     : _writeStalls(server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_rocksdb_write_stalls_total{})),
       _writeStops(server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_rocksdb_write_stops_total{})) {}
 
-void RocksDBMetricsListener::OnStallConditionsChanged(const rocksdb::WriteStallInfo& info) {
+void RocksDBMetricsListener::OnStallConditionsChanged(
+    const rocksdb::WriteStallInfo& info) {
   // we should only get here if there's an actual change
   TRI_ASSERT(info.condition.cur != info.condition.prev);
 

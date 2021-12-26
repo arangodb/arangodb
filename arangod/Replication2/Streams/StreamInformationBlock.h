@@ -26,9 +26,11 @@
 #if (_MSC_VER >= 1)
 // suppress warnings:
 #pragma warning(push)
-// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of data
+// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of
+// data
 #pragma warning(disable : 4267)
-// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
+// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift
+// intended?)
 #pragma warning(disable : 4334)
 #endif
 #include <immer/flex_vector.hpp>
@@ -42,9 +44,9 @@
 
 namespace arangodb::replication2::streams {
 
-template <typename Descriptor>
+template<typename Descriptor>
 struct StreamInformationBlock;
-template <StreamId Id, typename Type, typename Tags>
+template<StreamId Id, typename Type, typename Tags>
 struct StreamInformationBlock<stream_descriptor<Id, Type, Tags>> {
   using StreamType = streams::Stream<Type>;
   using EntryType = StreamEntry<Type>;
@@ -67,7 +69,8 @@ struct StreamInformationBlock<stream_descriptor<Id, Type, Tags>> {
   auto getWaitForResolveSet(LogIndex commitIndex) -> WaitForQueue;
   auto registerWaitFor(LogIndex index) -> futures::Future<WaitForResult>;
   auto getIterator() -> std::unique_ptr<Iterator>;
-  auto getIteratorRange(LogIndex start, LogIndex stop) -> std::unique_ptr<Iterator>;
+  auto getIteratorRange(LogIndex start, LogIndex stop)
+      -> std::unique_ptr<Iterator>;
 
  private:
   auto getTransientContainer() -> TransientType&;

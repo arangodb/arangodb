@@ -58,7 +58,8 @@ namespace tests {
 namespace aql {
 
 using InsertExecutor =
-    ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>;
+    ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>,
+                         InsertModifier>;
 
 /*
  * Right now we use the following Executors:
@@ -75,10 +76,11 @@ using InsertExecutor =
  *                           needs to handle this skip correctly.
  */
 using ExecutorsToTest =
-    ::testing::Types<FilterExecutor, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
+    ::testing::Types<FilterExecutor,
+                     IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
                      SortExecutor, UnsortedGatherExecutor, InsertExecutor>;
 
-template <class ExecutorType>
+template<class ExecutorType>
 class AqlSharedExecutionBlockImplTest : public ::testing::Test {
  protected:
   std::string const collectionName = "UnitTestCollection";
@@ -89,8 +91,10 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
       server.createFakeQuery(false, "", [&](aql::Query& query) {
         if constexpr (std::is_same_v<ExecutorType, InsertExecutor>) {
           // Create dummy collection
-          auto info = VPackParser::fromJson(R"({"name": ")" + collectionName + R"("})");
-          auto collection = server.getSystemDatabase().createCollection(info->slice());
+          auto info =
+              VPackParser::fromJson(R"({"name": ")" + collectionName + R"("})");
+          auto collection =
+              server.getSystemDatabase().createCollection(info->slice());
           //"Failed to create collection";
           TRI_ASSERT(collection.get() != nullptr);
           auto& collections = query.collections();
@@ -112,12 +116,13 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
    *        These nodes can be used to create the Executors
    *        Caller does not need to manage the memory.
    *
-   * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
+   * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed,
+   * do not delete.
    */
   ExecutionNode* generateNodeDummy() {
-    auto dummy =
-        std::make_unique<SingletonNode>(const_cast<ExecutionPlan*>(fakedQuery->plan()),
-                                        ExecutionNodeId{_execNodes.size()});
+    auto dummy = std::make_unique<SingletonNode>(
+        const_cast<ExecutionPlan*>(fakedQuery->plan()),
+        ExecutionNodeId{_execNodes.size()});
     auto res = dummy.get();
     _execNodes.emplace_back(std::move(dummy));
     return res;
@@ -125,9 +130,10 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
 
   SharedAqlItemBlockPtr buildOneRowLeftoverBlock() {
     if constexpr (std::is_same_v<ExecutorType, InsertExecutor>) {
-      return buildBlock<1>(this->fakedQuery->rootEngine()->itemBlockManager(),
-                           {{R"({"_key":"1"})"}, {R"({"_key":"2"})"}, {R"({"_key":"3"})"}, {4}},
-                           {{3, 0}});
+      return buildBlock<1>(
+          this->fakedQuery->rootEngine()->itemBlockManager(),
+          {{R"({"_key":"1"})"}, {R"({"_key":"2"})"}, {R"({"_key":"3"})"}, {4}},
+          {{3, 0}});
     }
     return buildBlock<1>(this->fakedQuery->rootEngine()->itemBlockManager(),
                          {{1}, {2}, {3}, {4}}, {{3, 0}});
@@ -135,21 +141,29 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
 
   SharedAqlItemBlockPtr buildManyRowsLeftoverBlock() {
     if constexpr (std::is_same_v<ExecutorType, InsertExecutor>) {
-      return buildBlock<1>(
-          this->fakedQuery->rootEngine()->itemBlockManager(),
-          {{R"({"_key":"1"})"}, {R"({"_key":"2"})"}, {3}, {R"({"_key":"4"})"}, {5}, {6}},
-          {{2, 0}, {4, 0}, {5, 0}});
+      return buildBlock<1>(this->fakedQuery->rootEngine()->itemBlockManager(),
+                           {{R"({"_key":"1"})"},
+                            {R"({"_key":"2"})"},
+                            {3},
+                            {R"({"_key":"4"})"},
+                            {5},
+                            {6}},
+                           {{2, 0}, {4, 0}, {5, 0}});
     }
     return buildBlock<1>(this->fakedQuery->rootEngine()->itemBlockManager(),
-                         {{1}, {2}, {3}, {4}, {5}, {6}}, {{2, 0}, {4, 0}, {5, 0}});
+                         {{1}, {2}, {3}, {4}, {5}, {6}},
+                         {{2, 0}, {4, 0}, {5, 0}});
   }
 
   SharedAqlItemBlockPtr buildSubqueryOneRowLeftoverBlock() {
     if constexpr (std::is_same_v<ExecutorType, InsertExecutor>) {
-      return buildBlock<1>(
-          this->fakedQuery->rootEngine()->itemBlockManager(),
-          {{R"({"_key":"1"})"}, {R"({"_key":"2"})"}, {R"({"_key":"3"})"}, {4}, {5}},
-          {{3, 0}, {4, 1}});
+      return buildBlock<1>(this->fakedQuery->rootEngine()->itemBlockManager(),
+                           {{R"({"_key":"1"})"},
+                            {R"({"_key":"2"})"},
+                            {R"({"_key":"3"})"},
+                            {4},
+                            {5}},
+                           {{3, 0}, {4, 1}});
     }
     return buildBlock<1>(this->fakedQuery->rootEngine()->itemBlockManager(),
                          {{1}, {2}, {3}, {4}, {5}}, {{3, 0}, {4, 1}});
@@ -157,10 +171,15 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
 
   SharedAqlItemBlockPtr buildSubqueryManyRowsLeftoverBlock() {
     if constexpr (std::is_same_v<ExecutorType, InsertExecutor>) {
-      return buildBlock<1>(
-          this->fakedQuery->rootEngine()->itemBlockManager(),
-          {{R"({"_key":"1"})"}, {R"({"_key":"2"})"}, {3}, {R"({"_key":"4"})"}, {5}, {6}, {7}},
-          {{2, 0}, {4, 0}, {5, 0}, {6, 1}});
+      return buildBlock<1>(this->fakedQuery->rootEngine()->itemBlockManager(),
+                           {{R"({"_key":"1"})"},
+                            {R"({"_key":"2"})"},
+                            {3},
+                            {R"({"_key":"4"})"},
+                            {5},
+                            {6},
+                            {7}},
+                           {{2, 0}, {4, 0}, {5, 0}, {6, 1}});
     }
     return buildBlock<1>(this->fakedQuery->rootEngine()->itemBlockManager(),
                          {{1}, {2}, {3}, {4}, {5}, {6}, {7}},
@@ -172,10 +191,11 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
    * The first return value is the part that is produced later in the query,
    * the second return value is the part that is produced earlier in the query.
    * So base := second :: first
-   * This way the first value has to be given to the dependency, second to current block
+   * This way the first value has to be given to the dependency, second to
+   * current block
    */
-  std::pair<SharedAqlItemBlockPtr, SharedAqlItemBlockPtr> splitBlock(SharedAqlItemBlockPtr base,
-                                                                     size_t splitAtRow) {
+  std::pair<SharedAqlItemBlockPtr, SharedAqlItemBlockPtr> splitBlock(
+      SharedAqlItemBlockPtr base, size_t splitAtRow) {
     auto first = base->slice(0, splitAtRow);
     auto second = base->slice(splitAtRow, base->numRows());
     return {second, first};
@@ -187,44 +207,50 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
    *
    * @return RegisterInfo
    */
-  auto buildRegisterInfos(size_t nestingLevel, bool canWrite = true) -> RegisterInfos {
+  auto buildRegisterInfos(size_t nestingLevel, bool canWrite = true)
+      -> RegisterInfos {
     RegIdSetStack regStack{};
     for (size_t i = 0; i <= nestingLevel; ++i) {
       regStack.emplace_back(RegIdSet{0});
     }
     if (canWrite) {
-      return RegisterInfos(RegIdSet{0}, RegIdSet{0}, 1, 1, {}, std::move(regStack));
+      return RegisterInfos(RegIdSet{0}, RegIdSet{0}, 1, 1, {},
+                           std::move(regStack));
     }
-    return RegisterInfos(RegIdSet{0}, RegIdSet{}, 1, 1, {}, std::move(regStack));
+    return RegisterInfos(RegIdSet{0}, RegIdSet{}, 1, 1, {},
+                         std::move(regStack));
   }
 
   auto emptyProducer() -> WaitingExecutionBlockMock {
-    return WaitingExecutionBlockMock{fakedQuery->rootEngine(), generateNodeDummy(),
-                                     std::deque<SharedAqlItemBlockPtr>{},
-                                     WaitingExecutionBlockMock::WaitingBehaviour::NEVER};
+    return WaitingExecutionBlockMock{
+        fakedQuery->rootEngine(), generateNodeDummy(),
+        std::deque<SharedAqlItemBlockPtr>{},
+        WaitingExecutionBlockMock::WaitingBehaviour::NEVER};
   }
 
-  auto leftoverProducer(size_t nestingLevel) -> ExecutionBlockImpl<FilterExecutor> {
+  auto leftoverProducer(size_t nestingLevel)
+      -> ExecutionBlockImpl<FilterExecutor> {
     FilterExecutorInfos execInfos{0};
     return ExecutionBlockImpl<FilterExecutor>{
         fakedQuery->rootEngine(), generateNodeDummy(),
-        std::move(buildRegisterInfos(nestingLevel, false)), std::move(execInfos)};
+        std::move(buildRegisterInfos(nestingLevel, false)),
+        std::move(execInfos)};
   }
 
   auto buildExecBlock(size_t nestingLevel) -> ExecutionBlockImpl<ExecutorType> {
     if constexpr (std::is_same_v<ExecutorType, FilterExecutor>) {
       FilterExecutorInfos execInfos{0};
-      return ExecutionBlockImpl<ExecutorType>{fakedQuery->rootEngine(),
-                                              generateNodeDummy(),
-                                              std::move(buildRegisterInfos(nestingLevel)),
-                                              std::move(execInfos)};
+      return ExecutionBlockImpl<ExecutorType>{
+          fakedQuery->rootEngine(), generateNodeDummy(),
+          std::move(buildRegisterInfos(nestingLevel)), std::move(execInfos)};
     }
-    if constexpr (std::is_same_v<ExecutorType, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>) {
+    if constexpr (std::is_same_v<
+                      ExecutorType,
+                      IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>) {
       IdExecutorInfos execInfos{false};
-      return ExecutionBlockImpl<ExecutorType>{fakedQuery->rootEngine(),
-                                              generateNodeDummy(),
-                                              std::move(buildRegisterInfos(nestingLevel)),
-                                              std::move(execInfos)};
+      return ExecutionBlockImpl<ExecutorType>{
+          fakedQuery->rootEngine(), generateNodeDummy(),
+          std::move(buildRegisterInfos(nestingLevel)), std::move(execInfos)};
     }
     if constexpr (std::is_same_v<ExecutorType, SortExecutor>) {
       std::vector<SortRegister> sortRegisters{};
@@ -235,24 +261,21 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
                                   0,       fakedQuery->itemBlockManager(),
                                   nullptr, monitor,
                                   true};
-      return ExecutionBlockImpl<ExecutorType>{fakedQuery->rootEngine(),
-                                              generateNodeDummy(),
-                                              std::move(buildRegisterInfos(nestingLevel)),
-                                              std::move(execInfos)};
+      return ExecutionBlockImpl<ExecutorType>{
+          fakedQuery->rootEngine(), generateNodeDummy(),
+          std::move(buildRegisterInfos(nestingLevel)), std::move(execInfos)};
     }
     if constexpr (std::is_same_v<ExecutorType, UnsortedGatherExecutor>) {
       IdExecutorInfos execInfos{false};
-      return ExecutionBlockImpl<ExecutorType>{fakedQuery->rootEngine(),
-                                              generateNodeDummy(),
-                                              std::move(buildRegisterInfos(nestingLevel)),
-                                              std::move(execInfos)};
+      return ExecutionBlockImpl<ExecutorType>{
+          fakedQuery->rootEngine(), generateNodeDummy(),
+          std::move(buildRegisterInfos(nestingLevel)), std::move(execInfos)};
     }
     if constexpr (std::is_same_v<ExecutorType, CountCollectExecutor>) {
       CountCollectExecutorInfos execInfos{0};
-      return ExecutionBlockImpl<ExecutorType>{fakedQuery->rootEngine(),
-                                              generateNodeDummy(),
-                                              std::move(buildRegisterInfos(nestingLevel)),
-                                              std::move(execInfos)};
+      return ExecutionBlockImpl<ExecutorType>{
+          fakedQuery->rootEngine(), generateNodeDummy(),
+          std::move(buildRegisterInfos(nestingLevel)), std::move(execInfos)};
     }
     if constexpr (std::is_same_v<ExecutorType, InsertExecutor>) {
       auto const& collections = fakedQuery->collections();
@@ -275,10 +298,9 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
                                           DoCount(false),
                                           IsReplace(false),
                                           IgnoreDocumentNotFound(false)};
-      return ExecutionBlockImpl<ExecutorType>{fakedQuery->rootEngine(),
-                                              generateNodeDummy(),
-                                              std::move(buildRegisterInfos(nestingLevel)),
-                                              std::move(execInfos)};
+      return ExecutionBlockImpl<ExecutorType>{
+          fakedQuery->rootEngine(), generateNodeDummy(),
+          std::move(buildRegisterInfos(nestingLevel)), std::move(execInfos)};
     }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -287,7 +309,8 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
                        SharedAqlItemBlockPtr leftoverBlock, AqlCallStack stack,
                        SkipResult expectedSkip,
                        SharedAqlItemBlockPtr expectedResult = nullptr) -> void {
-    if constexpr (ExecutorType::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
+    if constexpr (ExecutorType::Properties::allowsBlockPassthrough ==
+                  BlockPassthrough::Enable) {
       // Passthrough Blocks cannot leave this situation behind
       return;
     }
@@ -298,22 +321,30 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
     for (size_t i = 1; i < stack.subqueryLevel(); ++i) {
       skip.incrementSubquery();
     }
-    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange, AqlItemBlockInputRange>) {
-      AqlItemBlockInputRange fakedInternalRange{ExecutorState::DONE, 0, leftoverBlock, 0};
-      testee.testInjectInputRange(std::move(fakedInternalRange), std::move(skip));
+    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange,
+                                 AqlItemBlockInputRange>) {
+      AqlItemBlockInputRange fakedInternalRange{ExecutorState::DONE, 0,
+                                                leftoverBlock, 0};
+      testee.testInjectInputRange(std::move(fakedInternalRange),
+                                  std::move(skip));
     }
-    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange, AqlItemBlockInputMatrix>) {
+    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange,
+                                 AqlItemBlockInputMatrix>) {
       _aqlItemBlockMatrix = std::make_unique<AqlItemMatrix>(1);
       _aqlItemBlockMatrix->addBlock(leftoverBlock);
       AqlItemBlockInputMatrix fakedInternalRange{ExecutorState::DONE,
                                                  _aqlItemBlockMatrix.get()};
-      testee.testInjectInputRange(std::move(fakedInternalRange), std::move(skip));
+      testee.testInjectInputRange(std::move(fakedInternalRange),
+                                  std::move(skip));
     }
-    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange, MultiAqlItemBlockInputRange>) {
+    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange,
+                                 MultiAqlItemBlockInputRange>) {
       MultiAqlItemBlockInputRange fakedInternalRange{ExecutorState::DONE, 0, 1};
-      AqlItemBlockInputRange tmpInternalRange{ExecutorState::DONE, 0, leftoverBlock, 0};
+      AqlItemBlockInputRange tmpInternalRange{ExecutorState::DONE, 0,
+                                              leftoverBlock, 0};
       fakedInternalRange.setDependency(0, tmpInternalRange);
-      testee.testInjectInputRange(std::move(fakedInternalRange), std::move(skip));
+      testee.testInjectInputRange(std::move(fakedInternalRange),
+                                  std::move(skip));
     }
 
     auto [state, skipped, block] = testee.execute(stack);
@@ -337,9 +368,12 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
 
   auto runSplitLeftoverTest(ExecutionBlockImpl<ExecutorType>& testee,
                             SharedAqlItemBlockPtr joinedLeftoverBlock,
-                            AqlCallStack stack, SkipResult expectedSkip, size_t splitAt,
-                            SharedAqlItemBlockPtr expectedResult = nullptr) -> void {
-    if constexpr (ExecutorType::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
+                            AqlCallStack stack, SkipResult expectedSkip,
+                            size_t splitAt,
+                            SharedAqlItemBlockPtr expectedResult = nullptr)
+      -> void {
+    if constexpr (ExecutorType::Properties::allowsBlockPassthrough ==
+                  BlockPassthrough::Enable) {
       // Passthrough Blocks cannot leave this situation behind
       return;
     }
@@ -350,8 +384,10 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
     }
 
     auto start = emptyProducer();
-    // Let us place another leftover executor straight before our Executor under test.
-    auto [dependencyLeftover, leftoverBlock] = splitBlock(joinedLeftoverBlock, splitAt);
+    // Let us place another leftover executor straight before our Executor under
+    // test.
+    auto [dependencyLeftover, leftoverBlock] =
+        splitBlock(joinedLeftoverBlock, splitAt);
     // We copy a skip of correct size here
     auto prod = leftoverProducer(skip.subqueryDepth());
     {
@@ -365,22 +401,31 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
     prod.addDependency(&start);
     testee.addDependency(&prod);
 
-    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange, AqlItemBlockInputRange>) {
-      AqlItemBlockInputRange fakedInternalRange{ExecutorState::HASMORE, 0, leftoverBlock, 0};
-      testee.testInjectInputRange(std::move(fakedInternalRange), std::move(skip));
+    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange,
+                                 AqlItemBlockInputRange>) {
+      AqlItemBlockInputRange fakedInternalRange{ExecutorState::HASMORE, 0,
+                                                leftoverBlock, 0};
+      testee.testInjectInputRange(std::move(fakedInternalRange),
+                                  std::move(skip));
     }
-    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange, AqlItemBlockInputMatrix>) {
+    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange,
+                                 AqlItemBlockInputMatrix>) {
       _aqlItemBlockMatrix = std::make_unique<AqlItemMatrix>(1);
       _aqlItemBlockMatrix->addBlock(leftoverBlock);
       AqlItemBlockInputMatrix fakedInternalRange{ExecutorState::HASMORE,
                                                  _aqlItemBlockMatrix.get()};
-      testee.testInjectInputRange(std::move(fakedInternalRange), std::move(skip));
+      testee.testInjectInputRange(std::move(fakedInternalRange),
+                                  std::move(skip));
     }
-    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange, MultiAqlItemBlockInputRange>) {
-      MultiAqlItemBlockInputRange fakedInternalRange{ExecutorState::HASMORE, 0, 1};
-      AqlItemBlockInputRange tmpInternalRange{ExecutorState::HASMORE, 0, leftoverBlock, 0};
+    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange,
+                                 MultiAqlItemBlockInputRange>) {
+      MultiAqlItemBlockInputRange fakedInternalRange{ExecutorState::HASMORE, 0,
+                                                     1};
+      AqlItemBlockInputRange tmpInternalRange{ExecutorState::HASMORE, 0,
+                                              leftoverBlock, 0};
       fakedInternalRange.setDependency(0, tmpInternalRange);
-      testee.testInjectInputRange(std::move(fakedInternalRange), std::move(skip));
+      testee.testInjectInputRange(std::move(fakedInternalRange),
+                                  std::move(skip));
     }
 
     auto [state, skipped, block] = testee.execute(stack);
@@ -495,8 +540,8 @@ TYPED_TEST(AqlSharedExecutionBlockImplTest, hardlimit_sub_query_one_row) {
   auto testee = this->buildExecBlock(2);
 
   auto leftoverBlock = this->buildSubqueryOneRowLeftoverBlock();
-  auto expectedBlock =
-      buildBlock<1>(this->fakedQuery->rootEngine()->itemBlockManager(), {{5}}, {{0, 1}});
+  auto expectedBlock = buildBlock<1>(
+      this->fakedQuery->rootEngine()->itemBlockManager(), {{5}}, {{0, 1}});
   // MainQuery does a hardLimit 0
   AqlCall hardLimit{};
   hardLimit.offset = 0;
@@ -513,15 +558,16 @@ TYPED_TEST(AqlSharedExecutionBlockImplTest, hardlimit_sub_query_one_row) {
   expectedSkip.incrementSubquery();
   expectedSkip.incrementSubquery();
 
-  this->runLeftoverTest(testee, leftoverBlock, stack, expectedSkip, expectedBlock);
+  this->runLeftoverTest(testee, leftoverBlock, stack, expectedSkip,
+                        expectedBlock);
 }
 
 TYPED_TEST(AqlSharedExecutionBlockImplTest, hardlimit_sub_query_many_rows) {
   auto testee = this->buildExecBlock(2);
 
   auto leftoverBlock = this->buildSubqueryManyRowsLeftoverBlock();
-  auto expectedBlock =
-      buildBlock<1>(this->fakedQuery->rootEngine()->itemBlockManager(), {{7}}, {{0, 1}});
+  auto expectedBlock = buildBlock<1>(
+      this->fakedQuery->rootEngine()->itemBlockManager(), {{7}}, {{0, 1}});
   // MainQuery does a hardLimit 0
   AqlCall hardLimit{};
   hardLimit.offset = 0;
@@ -538,15 +584,16 @@ TYPED_TEST(AqlSharedExecutionBlockImplTest, hardlimit_sub_query_many_rows) {
   expectedSkip.incrementSubquery();
   expectedSkip.incrementSubquery();
 
-  this->runLeftoverTest(testee, leftoverBlock, stack, expectedSkip, expectedBlock);
+  this->runLeftoverTest(testee, leftoverBlock, stack, expectedSkip,
+                        expectedBlock);
 }
 
 TYPED_TEST(AqlSharedExecutionBlockImplTest, fullcount_sub_query_one_row) {
   auto testee = this->buildExecBlock(2);
 
   auto leftoverBlock = this->buildSubqueryOneRowLeftoverBlock();
-  auto expectedBlock =
-      buildBlock<1>(this->fakedQuery->rootEngine()->itemBlockManager(), {{5}}, {{0, 1}});
+  auto expectedBlock = buildBlock<1>(
+      this->fakedQuery->rootEngine()->itemBlockManager(), {{5}}, {{0, 1}});
   // MainQuery does a hardLimit 0
   AqlCall hardLimit{};
   hardLimit.offset = 0;
@@ -564,15 +611,16 @@ TYPED_TEST(AqlSharedExecutionBlockImplTest, fullcount_sub_query_one_row) {
   expectedSkip.didSkip(1);
   expectedSkip.incrementSubquery();
 
-  this->runLeftoverTest(testee, leftoverBlock, stack, expectedSkip, expectedBlock);
+  this->runLeftoverTest(testee, leftoverBlock, stack, expectedSkip,
+                        expectedBlock);
 }
 
 TYPED_TEST(AqlSharedExecutionBlockImplTest, fullcount_sub_query_many_rows) {
   auto testee = this->buildExecBlock(2);
 
   auto leftoverBlock = this->buildSubqueryManyRowsLeftoverBlock();
-  auto expectedBlock =
-      buildBlock<1>(this->fakedQuery->rootEngine()->itemBlockManager(), {{7}}, {{0, 1}});
+  auto expectedBlock = buildBlock<1>(
+      this->fakedQuery->rootEngine()->itemBlockManager(), {{7}}, {{0, 1}});
   // MainQuery does a hardLimit 0
   AqlCall hardLimit{};
   hardLimit.offset = 0;
@@ -590,10 +638,12 @@ TYPED_TEST(AqlSharedExecutionBlockImplTest, fullcount_sub_query_many_rows) {
   expectedSkip.didSkip(3);
   expectedSkip.incrementSubquery();
 
-  this->runLeftoverTest(testee, leftoverBlock, stack, expectedSkip, expectedBlock);
+  this->runLeftoverTest(testee, leftoverBlock, stack, expectedSkip,
+                        expectedBlock);
 }
 
-TYPED_TEST(AqlSharedExecutionBlockImplTest, hardlimit_main_query_one_row_split) {
+TYPED_TEST(AqlSharedExecutionBlockImplTest,
+           hardlimit_main_query_one_row_split) {
   auto testee = this->buildExecBlock(1);
 
   auto leftoverBlock = this->buildOneRowLeftoverBlock();
@@ -614,7 +664,8 @@ TYPED_TEST(AqlSharedExecutionBlockImplTest, hardlimit_main_query_one_row_split) 
   this->runSplitLeftoverTest(testee, leftoverBlock, stack, expectedSkip, 3);
 }
 
-TYPED_TEST(AqlSharedExecutionBlockImplTest, hardlimit_main_query_many_rows_split) {
+TYPED_TEST(AqlSharedExecutionBlockImplTest,
+           hardlimit_main_query_many_rows_split) {
   auto testee = this->buildExecBlock(1);
 
   auto leftoverBlock = this->buildManyRowsLeftoverBlock();
@@ -635,7 +686,8 @@ TYPED_TEST(AqlSharedExecutionBlockImplTest, hardlimit_main_query_many_rows_split
   this->runSplitLeftoverTest(testee, leftoverBlock, stack, expectedSkip, 3);
 }
 
-TYPED_TEST(AqlSharedExecutionBlockImplTest, fullcount_main_query_one_row_split) {
+TYPED_TEST(AqlSharedExecutionBlockImplTest,
+           fullcount_main_query_one_row_split) {
   auto testee = this->buildExecBlock(1);
 
   auto leftoverBlock = this->buildOneRowLeftoverBlock();
@@ -657,7 +709,8 @@ TYPED_TEST(AqlSharedExecutionBlockImplTest, fullcount_main_query_one_row_split) 
   this->runSplitLeftoverTest(testee, leftoverBlock, stack, expectedSkip, 3);
 }
 
-TYPED_TEST(AqlSharedExecutionBlockImplTest, fullcount_main_query_many_rows_split) {
+TYPED_TEST(AqlSharedExecutionBlockImplTest,
+           fullcount_main_query_many_rows_split) {
   auto testee = this->buildExecBlock(1);
 
   auto leftoverBlock = this->buildManyRowsLeftoverBlock();
@@ -683,8 +736,8 @@ TYPED_TEST(AqlSharedExecutionBlockImplTest, hardlimit_sub_query_one_row_split) {
   auto testee = this->buildExecBlock(2);
 
   auto leftoverBlock = this->buildSubqueryOneRowLeftoverBlock();
-  auto expectedBlock =
-      buildBlock<1>(this->fakedQuery->rootEngine()->itemBlockManager(), {{5}}, {{0, 1}});
+  auto expectedBlock = buildBlock<1>(
+      this->fakedQuery->rootEngine()->itemBlockManager(), {{5}}, {{0, 1}});
   // MainQuery does a hardLimit 0
   AqlCall hardLimit{};
   hardLimit.offset = 0;
@@ -701,15 +754,17 @@ TYPED_TEST(AqlSharedExecutionBlockImplTest, hardlimit_sub_query_one_row_split) {
   expectedSkip.incrementSubquery();
   expectedSkip.incrementSubquery();
 
-  this->runSplitLeftoverTest(testee, leftoverBlock, stack, expectedSkip, 3, expectedBlock);
+  this->runSplitLeftoverTest(testee, leftoverBlock, stack, expectedSkip, 3,
+                             expectedBlock);
 }
 
-TYPED_TEST(AqlSharedExecutionBlockImplTest, hardlimit_sub_query_many_rows_split) {
+TYPED_TEST(AqlSharedExecutionBlockImplTest,
+           hardlimit_sub_query_many_rows_split) {
   auto testee = this->buildExecBlock(2);
 
   auto leftoverBlock = this->buildSubqueryManyRowsLeftoverBlock();
-  auto expectedBlock =
-      buildBlock<1>(this->fakedQuery->rootEngine()->itemBlockManager(), {{7}}, {{0, 1}});
+  auto expectedBlock = buildBlock<1>(
+      this->fakedQuery->rootEngine()->itemBlockManager(), {{7}}, {{0, 1}});
   // MainQuery does a hardLimit 0
   AqlCall hardLimit{};
   hardLimit.offset = 0;
@@ -726,15 +781,16 @@ TYPED_TEST(AqlSharedExecutionBlockImplTest, hardlimit_sub_query_many_rows_split)
   expectedSkip.incrementSubquery();
   expectedSkip.incrementSubquery();
 
-  this->runSplitLeftoverTest(testee, leftoverBlock, stack, expectedSkip, 3, expectedBlock);
+  this->runSplitLeftoverTest(testee, leftoverBlock, stack, expectedSkip, 3,
+                             expectedBlock);
 }
 
 TYPED_TEST(AqlSharedExecutionBlockImplTest, fullcount_sub_query_one_row_split) {
   auto testee = this->buildExecBlock(2);
 
   auto leftoverBlock = this->buildSubqueryOneRowLeftoverBlock();
-  auto expectedBlock =
-      buildBlock<1>(this->fakedQuery->rootEngine()->itemBlockManager(), {{5}}, {{0, 1}});
+  auto expectedBlock = buildBlock<1>(
+      this->fakedQuery->rootEngine()->itemBlockManager(), {{5}}, {{0, 1}});
   // MainQuery does a hardLimit 0
   AqlCall hardLimit{};
   hardLimit.offset = 0;
@@ -752,15 +808,17 @@ TYPED_TEST(AqlSharedExecutionBlockImplTest, fullcount_sub_query_one_row_split) {
   expectedSkip.didSkip(1);
   expectedSkip.incrementSubquery();
 
-  this->runSplitLeftoverTest(testee, leftoverBlock, stack, expectedSkip, 3, expectedBlock);
+  this->runSplitLeftoverTest(testee, leftoverBlock, stack, expectedSkip, 3,
+                             expectedBlock);
 }
 
-TYPED_TEST(AqlSharedExecutionBlockImplTest, fullcount_sub_query_many_rows_split) {
+TYPED_TEST(AqlSharedExecutionBlockImplTest,
+           fullcount_sub_query_many_rows_split) {
   auto testee = this->buildExecBlock(2);
 
   auto leftoverBlock = this->buildSubqueryManyRowsLeftoverBlock();
-  auto expectedBlock =
-      buildBlock<1>(this->fakedQuery->rootEngine()->itemBlockManager(), {{7}}, {{0, 1}});
+  auto expectedBlock = buildBlock<1>(
+      this->fakedQuery->rootEngine()->itemBlockManager(), {{7}}, {{0, 1}});
   // MainQuery does a hardLimit 0
   AqlCall hardLimit{};
   hardLimit.offset = 0;
@@ -778,7 +836,8 @@ TYPED_TEST(AqlSharedExecutionBlockImplTest, fullcount_sub_query_many_rows_split)
   expectedSkip.didSkip(3);
   expectedSkip.incrementSubquery();
 
-  this->runSplitLeftoverTest(testee, leftoverBlock, stack, expectedSkip, 3, expectedBlock);
+  this->runSplitLeftoverTest(testee, leftoverBlock, stack, expectedSkip, 3,
+                             expectedBlock);
 }
 
 }  // namespace aql

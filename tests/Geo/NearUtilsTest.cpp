@@ -59,8 +59,9 @@ typedef std::map<LocalDocumentId, S2LatLng> coords_t;
 // -----------------------------------------------------------------------------
 
 /// Perform indexx scan
-template <typename CMP>
-static std::vector<LocalDocumentId> nearSearch(index_t const& index, coords_t const& coords,
+template<typename CMP>
+static std::vector<LocalDocumentId> nearSearch(index_t const& index,
+                                               coords_t const& coords,
                                                geo_index::NearUtils<CMP>& near,
                                                size_t limit) {
   std::vector<LocalDocumentId> result;
@@ -197,7 +198,8 @@ TEST_F(SimpleNearQueriesTest, query_all_sorted_ascending_with_limit) {
   ASSERT_EQ(coords[4], S2LatLng::FromDegrees(1, 0));
 }
 
-TEST_F(SimpleNearQueriesTest, query_sorted_ascending_with_limit_and_max_distance) {
+TEST_F(SimpleNearQueriesTest,
+       query_sorted_ascending_with_limit_and_max_distance) {
   params.ascending = true;
   params.maxDistance = 111200.0;
   AscIterator near(std::move(params));
@@ -214,7 +216,8 @@ TEST_F(SimpleNearQueriesTest, query_sorted_ascending_with_limit_and_max_distance
   ASSERT_EQ(coords[4], S2LatLng::FromDegrees(1, 0));
 }
 
-TEST_F(SimpleNearQueriesTest, query_sorted_ascending_with_different_initial_delta) {
+TEST_F(SimpleNearQueriesTest,
+       query_sorted_ascending_with_different_initial_delta) {
   params.ascending = true;
   params.maxDistance = 111200;
   AscIterator near(std::move(params));
@@ -273,7 +276,8 @@ TEST_F(SimpleNearQueriesTest, query_all_sorted_descending_with_limit) {
   }
 }
 
-TEST_F(SimpleNearQueriesTest, query_all_sorted_descending_with_limit_and_max_distance) {
+TEST_F(SimpleNearQueriesTest,
+       query_all_sorted_descending_with_limit_and_max_distance) {
   params.ascending = false;
   params.maxDistance = 111200;
   DescIterator near(std::move(params));
@@ -327,7 +331,8 @@ class QueryPointAroundTest : public ::testing::Test {
     params.ascending = true;
   }
 
-  void checkResult(S2Point const& origin, std::vector<LocalDocumentId> const& result) {
+  void checkResult(S2Point const& origin,
+                   std::vector<LocalDocumentId> const& result) {
     double lastRad = 0;
     for (LocalDocumentId const& rev : result) {
       // check sort order
@@ -427,7 +432,8 @@ class QueryPointsContainedInTest : public ::testing::Test {
     auto it = latLngResult.begin();
     auto it2 = expected.begin();
     for (; it != latLngResult.end(); it++) {
-      double diff = std::fabs(std::max(it->first - it2->first, it->second - it2->second));
+      double diff =
+          std::fabs(std::max(it->first - it2->first, it->second - it2->second));
       ASSERT_TRUE(diff < 0.00001);
       it2++;
     }
@@ -453,9 +459,11 @@ TEST_F(QueryPointsContainedInTest, polygon) {
 }
 
 TEST_F(QueryPointsContainedInTest, rectangle) {
-  auto rect = createBuilder(R"=({"type": "Polygon", "coordinates":[[[0,0],[1.5,0],[1.5,1.5],[0,1.5],[0,0]]]})=");
+  auto rect = createBuilder(
+      R"=({"type": "Polygon", "coordinates":[[[0,0],[1.5,0],[1.5,1.5],[0,1.5],[0,0]]]})=");
   geo::geojson::parsePolygon(rect->slice(), params.filterShape);
-  ASSERT_EQ(params.filterShape.type(), geo::ShapeContainer::Type::S2_LATLNGRECT);
+  ASSERT_EQ(params.filterShape.type(),
+            geo::ShapeContainer::Type::S2_LATLNGRECT);
   params.filterShape.updateBounds(params);
 
   AscIterator near(std::move(params));

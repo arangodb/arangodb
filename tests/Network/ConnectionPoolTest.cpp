@@ -65,7 +65,8 @@ TEST_F(NetworkConnectionPoolTest, acquire_endpoint) {
   bool isFromPool;
   auto conn = pool.leaseConnection("tcp://example.org:80", isFromPool);
   ASSERT_EQ(pool.numOpenConnections(), 1);
-  auto req = fuerte::createRequest(fuerte::RestVerb::Get, fuerte::ContentType::Unset);
+  auto req =
+      fuerte::createRequest(fuerte::RestVerb::Get, fuerte::ContentType::Unset);
   auto res = conn->sendRequest(std::move(req));
   ASSERT_EQ(res->statusCode(), fuerte::StatusOK);
   ASSERT_TRUE(res->payloadSize() > 0);
@@ -85,8 +86,9 @@ TEST_F(NetworkConnectionPoolTest, acquire_multiple_endpoint) {
   bool isFromPool;
   auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
 
-  conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get, fuerte::ContentType::Unset),
-                     doNothing);
+  conn1->sendRequest(
+      fuerte::createRequest(fuerte::RestVerb::Get, fuerte::ContentType::Unset),
+      doNothing);
 
   auto conn2 = pool.leaseConnection("tcp://example.org:80", isFromPool);
 
@@ -113,7 +115,8 @@ TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_one) {
     bool isFromPool;
     auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 1);
-    conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get, fuerte::ContentType::Unset),
+    conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
+                                             fuerte::ContentType::Unset),
                        doNothing);
 
     auto conn2 = pool.leaseConnection("tcp://example.com:80", isFromPool);
@@ -143,7 +146,8 @@ TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
   {
     auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 1);
-    conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get, fuerte::ContentType::Unset),
+    conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
+                                             fuerte::ContentType::Unset),
                        doNothing);
 
     auto conn2 = pool.leaseConnection("tcp://example.com:80", isFromPool);
@@ -178,14 +182,16 @@ TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
   {
     auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 1);
-    conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get, fuerte::ContentType::Unset),
+    conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
+                                             fuerte::ContentType::Unset),
                        doNothing);
 
     auto conn2 = pool.leaseConnection("tcp://example.com:80", isFromPool);
     ASSERT_NE(conn1.get(), conn2.get());
     ASSERT_EQ(pool.numOpenConnections(), 2);
 
-    conn2->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get, fuerte::ContentType::Unset),
+    conn2->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
+                                             fuerte::ContentType::Unset),
                        doNothing);
   }
   ASSERT_EQ(pool.numOpenConnections(), 2);
@@ -213,14 +219,16 @@ TEST_F(NetworkConnectionPoolTest, checking_min_and_max_connections) {
     auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 1);
 
-    conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get, fuerte::ContentType::Unset),
+    conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
+                                             fuerte::ContentType::Unset),
                        doNothing);
 
     auto conn2 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_NE(conn1.get(), conn2.get());
     ASSERT_EQ(pool.numOpenConnections(), 2);
 
-    conn2->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get, fuerte::ContentType::Unset),
+    conn2->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
+                                             fuerte::ContentType::Unset),
                        doNothing);
 
     auto conn3 = pool.leaseConnection("tcp://example.org:80", isFromPool);
@@ -243,14 +251,16 @@ TEST_F(NetworkConnectionPoolTest, checking_min_and_max_connections) {
     auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 1);
 
-    conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get, fuerte::ContentType::Unset),
+    conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
+                                             fuerte::ContentType::Unset),
                        doNothing);
 
     auto conn2 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_NE(conn1.get(), conn2.get());
     ASSERT_EQ(pool.numOpenConnections(), 2);
 
-    conn2->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get, fuerte::ContentType::Unset),
+    conn2->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
+                                             fuerte::ContentType::Unset),
                        doNothing);
 
     auto conn3 = pool.leaseConnection("tcp://example.org:80", isFromPool);
@@ -258,7 +268,8 @@ TEST_F(NetworkConnectionPoolTest, checking_min_and_max_connections) {
     ASSERT_NE(conn1.get(), conn2.get());
     ASSERT_EQ(pool.numOpenConnections(), 3);
 
-    conn3->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get, fuerte::ContentType::Unset),
+    conn3->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
+                                             fuerte::ContentType::Unset),
                        doNothing);
   }
   ASSERT_EQ(pool.numOpenConnections(), 3);

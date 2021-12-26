@@ -43,10 +43,12 @@ struct Queries {
                             bool allDatabases, bool fanout);
 
   /// @brief clears the list of slow queries
-  static Result clearSlow(TRI_vocbase_t& vocbase, bool allDatabases, bool fanout);
+  static Result clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
+                          bool fanout);
 
   /// @brief kills the given query
-  static Result kill(TRI_vocbase_t& vocbase, TRI_voc_tick_t id, bool allDatabases);
+  static Result kill(TRI_vocbase_t& vocbase, TRI_voc_tick_t id,
+                     bool allDatabases);
 };
 
 }  // namespace methods

@@ -146,7 +146,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     std::string name = context.binaryName();
 
     auto options = std::make_shared<arangodb::options::ProgramOptions>(
-        argv[0], "Usage: " + name + " [<options>]", "For more information use:", SBIN_DIRECTORY);
+        argv[0], "Usage: " + name + " [<options>]",
+        "For more information use:", SBIN_DIRECTORY);
 
     ApplicationServer server(options, SBIN_DIRECTORY);
     ServerState state(server);
@@ -316,7 +317,8 @@ static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
     return;
   }
   // register the service ctrl handler,  lpszArgv[0] contains service name
-  ServiceStatus = RegisterServiceCtrlHandlerA(lpszArgv[0], (LPHANDLER_FUNCTION)ServiceCtrl);
+  ServiceStatus =
+      RegisterServiceCtrlHandlerA(lpszArgv[0], (LPHANDLER_FUNCTION)ServiceCtrl);
 
   // set start pending
   SetServiceStatus(SERVICE_START_PENDING, 0, 1, 10000, 0);
@@ -370,8 +372,8 @@ int main(int argc, char* argv[]) {
     ARGC = argc;
     ARGV = argv;
 
-    SERVICE_TABLE_ENTRY ste[] = {{TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain},
-                                 {nullptr, nullptr}};
+    SERVICE_TABLE_ENTRY ste[] = {
+        {TEXT(""), (LPSERVICE_MAIN_FUNCTION)ServiceMain}, {nullptr, nullptr}};
 
     if (!StartServiceCtrlDispatcher(ste)) {
       std::cerr << "FATAL: StartServiceCtrlDispatcher has failed with "
@@ -415,7 +417,8 @@ int main(int argc, char* argv[]) {
               << std::endl;
   }
   if (execvp(argv[0], argv) == -1) {
-    std::cerr << "WARNING: could not execvp ourselves, restore will not work!" << std::endl;
+    std::cerr << "WARNING: could not execvp ourselves, restore will not work!"
+              << std::endl;
   }
 #endif
 }

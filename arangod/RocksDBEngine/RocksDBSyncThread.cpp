@@ -34,7 +34,8 @@
 
 using namespace arangodb;
 
-RocksDBSyncThread::RocksDBSyncThread(RocksDBEngine& engine, std::chrono::milliseconds interval,
+RocksDBSyncThread::RocksDBSyncThread(RocksDBEngine& engine,
+                                     std::chrono::milliseconds interval,
                                      std::chrono::milliseconds delayThreshold)
     : Thread(engine.server(), "RocksDBSync"),
       _engine(engine),
@@ -117,7 +118,8 @@ void RocksDBSyncThread::run() {
         auto const end = _lastSyncTime + _interval;
         if (end > now) {
           guard.wait(std::chrono::microseconds(
-              std::chrono::duration_cast<std::chrono::microseconds>(end - now)));
+              std::chrono::duration_cast<std::chrono::microseconds>(end -
+                                                                    now)));
         }
 
         if (_lastSyncTime > previousLastSyncTime) {
@@ -138,12 +140,14 @@ void RocksDBSyncThread::run() {
       }
 
       {
-        if (_delayThreshold.count() > 0 && (lastSyncTime - previousLastSyncTime) > _delayThreshold) {
+        if (_delayThreshold.count() > 0 &&
+            (lastSyncTime - previousLastSyncTime) > _delayThreshold) {
           LOG_TOPIC("5b708", INFO, Logger::ENGINES)
               << "last RocksDB WAL sync happened longer ago than configured "
                  "threshold. "
               << "last sync happened "
-              << (std::chrono::duration_cast<std::chrono::milliseconds>(lastSyncTime - previousLastSyncTime))
+              << (std::chrono::duration_cast<std::chrono::milliseconds>(
+                      lastSyncTime - previousLastSyncTime))
                      .count()
               << " ms ago, "
               << "threshold value: " << _delayThreshold.count() << " ms";

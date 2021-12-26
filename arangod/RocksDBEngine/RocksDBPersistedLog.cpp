@@ -34,12 +34,13 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
-RocksDBPersistedLog::RocksDBPersistedLog(replication2::LogId id, uint64_t objectId,
-                                         std::shared_ptr<RocksDBLogPersistor> persistor)
+RocksDBPersistedLog::RocksDBPersistedLog(
+    replication2::LogId id, uint64_t objectId,
+    std::shared_ptr<RocksDBLogPersistor> persistor)
     : PersistedLog(id), _objectId(objectId), _persistor(std::move(persistor)) {}
 
-auto RocksDBPersistedLog::insert(PersistedLogIterator& iter, WriteOptions const& options)
-    -> Result {
+auto RocksDBPersistedLog::insert(PersistedLogIterator& iter,
+                                 WriteOptions const& options) -> Result {
   rocksdb::WriteBatch wb;
   auto res = prepareWriteBatch(iter, wb);
   if (!res.ok()) {
@@ -93,9 +94,9 @@ struct RocksDBLogIterator : PersistedLogIterator {
       return std::nullopt;
     }
 
-    return std::optional<PersistingLogEntry>{std::in_place,
-                                             RocksDBKey::logIndex(_iter->key()),
-                                             RocksDBValue::data(_iter->value())};
+    return std::optional<PersistingLogEntry>{
+        std::in_place, RocksDBKey::logIndex(_iter->key()),
+        RocksDBValue::data(_iter->value())};
   }
 
   RocksDBKeyBounds const _bounds;
@@ -104,8 +105,10 @@ struct RocksDBLogIterator : PersistedLogIterator {
   bool _first = true;
 };
 
-auto RocksDBPersistedLog::read(LogIndex start) -> std::unique_ptr<PersistedLogIterator> {
-  return std::make_unique<RocksDBLogIterator>(this, _persistor->_db, _persistor->_cf, start);
+auto RocksDBPersistedLog::read(LogIndex start)
+    -> std::unique_ptr<PersistedLogIterator> {
+  return std::make_unique<RocksDBLogIterator>(this, _persistor->_db,
+                                              _persistor->_cf, start);
 }
 
 auto RocksDBPersistedLog::drop() -> Result {
@@ -148,15 +151,17 @@ auto RocksDBPersistedLog::prepareWriteBatch(PersistedLogIterator& iter,
   return Result();
 }
 
-auto RocksDBPersistedLog::insertAsync(std::unique_ptr<PersistedLogIterator> iter,
-                                      WriteOptions const& opts) -> futures::Future<Result> {
+auto RocksDBPersistedLog::insertAsync(
+    std::unique_ptr<PersistedLogIterator> iter, WriteOptions const& opts)
+    -> futures::Future<Result> {
   RocksDBLogPersistor::WriteOptions wo;
   wo.waitForSync = opts.waitForSync;
   return _persistor->persist(shared_from_this(), std::move(iter), wo);
 }
 
 RocksDBLogPersistor::RocksDBLogPersistor(rocksdb::ColumnFamilyHandle* cf,
-                                         rocksdb::DB* db, std::shared_ptr<Executor> executor)
+                                         rocksdb::DB* db,
+                                         std::shared_ptr<Executor> executor)
     : _cf(cf), _db(db), _executor(std::move(executor)) {}
 
 void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
@@ -193,8 +198,10 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
         // persisted log already has some entries that are not yet confirmed
         // (which may be overwritten later). This could still be improved upon a
         // little by reporting up to which entry was written successfully.
-        while (wb.Count() < 1000 && nextReqToWrite != std::end(pendingRequests)) {
-          auto* log_ptr = dynamic_cast<RocksDBPersistedLog*>(nextReqToWrite->log.get());
+        while (wb.Count() < 1000 &&
+               nextReqToWrite != std::end(pendingRequests)) {
+          auto* log_ptr =
+              dynamic_cast<RocksDBPersistedLog*>(nextReqToWrite->log.get());
           TRI_ASSERT(log_ptr != nullptr);
           if (auto res = log_ptr->prepareWriteBatch(*nextReqToWrite->iter, wb);
               res.fail()) {
@@ -210,8 +217,9 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
 
           if (lane._waitForSync) {
             if (auto s = _db->SyncWAL(); !s.ok()) {
-              // At this point we have to make sure that every previous log entry is synced
-              // as well. Otherwise we might get holes in the log.
+              // At this point we have to make sure that every previous log
+              // entry is synced as well. Otherwise we might get holes in the
+              // log.
               return rocksutils::convertStatus(s);
             }
           }
@@ -228,7 +236,8 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
 
     // resolve all promises with the result
     if (result.fail()) {
-      for (; nextReqToResolve != std::end(pendingRequests); ++nextReqToResolve) {
+      for (; nextReqToResolve != std::end(pendingRequests);
+           ++nextReqToResolve) {
         // If a promise is fulfilled before (with a value), nextReqToResolve
         // should always be increased as well; meaning we only exactly iterate
         // over the unfulfilled promises here.
@@ -241,7 +250,8 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
 
 auto RocksDBLogPersistor::persist(std::shared_ptr<PersistedLog> log,
                                   std::unique_ptr<PersistedLogIterator> iter,
-                                  WriteOptions const& options) -> futures::Future<Result> {
+                                  WriteOptions const& options)
+    -> futures::Future<Result> {
   auto p = futures::Promise<Result>{};
   auto f = p.getFuture();
 
@@ -266,18 +276,19 @@ auto RocksDBLogPersistor::persist(std::shared_ptr<PersistedLog> log,
   // We committed ourselves to start a thread
   size_t num_retries = 0;
   while (true) {
-    auto lambda =
-        fu2::unique_function<void() noexcept>{[self = shared_from_this(), &lane]() noexcept {
+    auto lambda = fu2::unique_function<void() noexcept>{
+        [self = shared_from_this(), &lane]() noexcept {
           self->runPersistorWorker(lane);
         }};
 
     try {
-      _executor->operator()(std::move(lambda));  // may throw a QUEUE_FULL exception
+      _executor->operator()(
+          std::move(lambda));  // may throw a QUEUE_FULL exception
       break;
     } catch (std::exception const& e) {
       LOG_TOPIC("213cb", WARN, Logger::REPLICATION2)
-          << "Could not post persistence request onto the scheduler: " << e.what()
-          << " Retries: " << num_retries;
+          << "Could not post persistence request onto the scheduler: "
+          << e.what() << " Retries: " << num_retries;
     } catch (...) {
       LOG_TOPIC("8553d", WARN, Logger::REPLICATION2)
           << "Could not post persistence request onto the scheduler."

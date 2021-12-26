@@ -44,7 +44,8 @@ class Optimizer {
   /// @brief the following struct keeps a list (deque) of ExecutionPlan*
   /// and has some automatic convenience functions.
   struct PlanList {
-    using Entry = std::pair<std::unique_ptr<ExecutionPlan>, RuleDatabase::iterator>;
+    using Entry =
+        std::pair<std::unique_ptr<ExecutionPlan>, RuleDatabase::iterator>;
 
     ::arangodb::containers::RollingVector<Entry> list;
 
@@ -72,7 +73,8 @@ class Optimizer {
     }
 
     /// @brief push_back
-    void push_back(std::unique_ptr<ExecutionPlan> p, RuleDatabase::iterator rule) {
+    void push_back(std::unique_ptr<ExecutionPlan> p,
+                   RuleDatabase::iterator rule) {
       list.push_back({std::move(p), rule});
     }
 
@@ -120,10 +122,13 @@ class Optimizer {
                    QueryOptions const& queryOptions, bool estimateAllPlans);
 
   /// @brief add a plan to the optimizer
-  void addPlan(std::unique_ptr<ExecutionPlan>, OptimizerRule const&, bool wasModified);
+  void addPlan(std::unique_ptr<ExecutionPlan>, OptimizerRule const&,
+               bool wasModified);
 
-  /// @brief add a plan to the optimizer and makes it rerun the current rule again
-  void addPlanAndRerun(std::unique_ptr<ExecutionPlan>, OptimizerRule const&, bool wasModified);
+  /// @brief add a plan to the optimizer and makes it rerun the current rule
+  /// again
+  void addPlanAndRerun(std::unique_ptr<ExecutionPlan>, OptimizerRule const&,
+                       bool wasModified);
 
   /// @brief getPlans, ownership of the plans remains with the optimizer
   ::arangodb::containers::RollingVector<PlanList::Entry>& getPlans() {
@@ -162,8 +167,9 @@ class Optimizer {
   void enableRule(ExecutionPlan* plan, velocypack::StringRef name);
 
   /// @brief adds a plan, internal worker method
-  void addPlanInternal(std::unique_ptr<ExecutionPlan> plan, OptimizerRule const& rule,
-                       bool wasModified, RuleDatabase::iterator const& nextRule);
+  void addPlanInternal(std::unique_ptr<ExecutionPlan> plan,
+                       OptimizerRule const& rule, bool wasModified,
+                       RuleDatabase::iterator const& nextRule);
 
  public:
   /// @brief optimizer statistics

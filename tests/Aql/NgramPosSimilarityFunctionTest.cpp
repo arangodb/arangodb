@@ -52,7 +52,8 @@ class NgramPosSimilarityFunctionTest : public ::testing::Test {
 
  protected:
   AqlValue evaluate(AqlValue const* attribute, AqlValue const* target,
-                    AqlValue const* ngram_size, std::set<int>* warnings = nullptr) {
+                    AqlValue const* ngram_size,
+                    std::set<int>* warnings = nullptr) {
     fakeit::Mock<ExpressionContext> expressionContextMock;
     ExpressionContext& expressionContext = expressionContextMock.get();
     fakeit::When(Method(expressionContextMock, registerWarning))
@@ -61,11 +62,11 @@ class NgramPosSimilarityFunctionTest : public ::testing::Test {
             warnings->insert(static_cast<int>(c));
           }
         });
-    TRI_vocbase_t mockVocbase(TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t mockVocbase(TRI_VOCBASE_TYPE_NORMAL,
+                              testDBInfo(server.server()));
     auto trx = server.createFakeTransaction();
-    fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&]() -> transaction::Methods& {
-      return *trx;
-    });
+    fakeit::When(Method(expressionContextMock, trx))
+        .AlwaysDo([&]() -> transaction::Methods& { return *trx; });
     SmallVector<AqlValue>::allocator_type::arena_type arena;
     SmallVector<AqlValue> params{arena};
     if (attribute) {
@@ -83,21 +84,28 @@ class NgramPosSimilarityFunctionTest : public ::testing::Test {
     arangodb::aql::AstNode node(NODE_TYPE_FCALL);
     node.setData(static_cast<void const*>(&f));
 
-    return Functions::NgramPositionalSimilarity(&expressionContext, node, params);
+    return Functions::NgramPositionalSimilarity(&expressionContext, node,
+                                                params);
   }
 
-  void assertNgramSimilarityFail(size_t line, std::set<int> const& expected_warnings,
-                                 AqlValue const* attribute, AqlValue const* target,
+  void assertNgramSimilarityFail(size_t line,
+                                 std::set<int> const& expected_warnings,
+                                 AqlValue const* attribute,
+                                 AqlValue const* target,
                                  AqlValue const* ngram_size) {
-    SCOPED_TRACE(testing::Message("assertNgramSimilarityFail failed on line:") << line);
+    SCOPED_TRACE(testing::Message("assertNgramSimilarityFail failed on line:")
+                 << line);
     std::set<int> warnings;
-    ASSERT_TRUE(evaluate(attribute, target, ngram_size, &warnings).isNull(false));
+    ASSERT_TRUE(
+        evaluate(attribute, target, ngram_size, &warnings).isNull(false));
     ASSERT_EQ(expected_warnings, warnings);
   }
 
-  void assertNgramSimilarity(size_t line, double expectedValue, AqlValue const* attribute,
-                             AqlValue const* target, AqlValue const* ngram_size) {
-    SCOPED_TRACE(testing::Message("assertNgramSimilarity failed on line:") << line);
+  void assertNgramSimilarity(size_t line, double expectedValue,
+                             AqlValue const* attribute, AqlValue const* target,
+                             AqlValue const* ngram_size) {
+    SCOPED_TRACE(testing::Message("assertNgramSimilarity failed on line:")
+                 << line);
     std::set<int> warnings;
     auto value = evaluate(attribute, target, ngram_size, &warnings);
     ASSERT_TRUE(warnings.empty());
@@ -119,16 +127,20 @@ TEST_F(NgramPosSimilarityFunctionTest, test) {
     AqlValue const ValidString{"ValidString"};
     AqlValue const ValidInt{AqlValueHintInt{5}};
 
-    const std::set<int> badParamWarning{static_cast<int>(TRI_ERROR_BAD_PARAMETER)};
+    const std::set<int> badParamWarning{
+        static_cast<int>(TRI_ERROR_BAD_PARAMETER)};
     const std::set<int> typeMismatchWarning{
         static_cast<int>(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH)};
     const std::set<int> invalidArgsCount{
         static_cast<int>(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH)};
 
     // invalid args count
-    assertNgramSimilarityFail(__LINE__, invalidArgsCount, &ValidString, &ValidString, nullptr);
-    assertNgramSimilarityFail(__LINE__, invalidArgsCount, &ValidString, nullptr, nullptr);
-    assertNgramSimilarityFail(__LINE__, invalidArgsCount, nullptr, nullptr, nullptr);
+    assertNgramSimilarityFail(__LINE__, invalidArgsCount, &ValidString,
+                              &ValidString, nullptr);
+    assertNgramSimilarityFail(__LINE__, invalidArgsCount, &ValidString, nullptr,
+                              nullptr);
+    assertNgramSimilarityFail(__LINE__, invalidArgsCount, nullptr, nullptr,
+                              nullptr);
 
     // invalid attribute
     assertNgramSimilarityFail(__LINE__, typeMismatchWarning, &InvalidBool,
@@ -184,17 +196,20 @@ TEST_F(NgramPosSimilarityFunctionTest, test) {
     {
       AqlValue const Target{"aplejuice"};
       AqlValue const Attribute{"applejuice"};
-      std::vector<double> expected{0.9f,
-                                   8.f / 9.f,
-                                   (2.f / 3.f + 1.f + 1.f + 1.f + 1.f + 1.f + 1.f) / 8.f,
-                                   5.75f / 7.f,
-                                   4.8f / 6.f,
-                                   (8.f / 9.f) / 2.f};
+      std::vector<double> expected{
+          0.9f,
+          8.f / 9.f,
+          (2.f / 3.f + 1.f + 1.f + 1.f + 1.f + 1.f + 1.f) / 8.f,
+          5.75f / 7.f,
+          4.8f / 6.f,
+          (8.f / 9.f) / 2.f};
       for (int i = 1; i <= 5; ++i) {
         SCOPED_TRACE(testing::Message("Ngram size is ") << i);
         AqlValue const ValidInt{AqlValueHintInt{i}};
-        assertNgramSimilarity(__LINE__, expected[i - 1], &Attribute, &Target, &ValidInt);
-        assertNgramSimilarity(__LINE__, expected[i - 1], &Target, &Attribute, &ValidInt);
+        assertNgramSimilarity(__LINE__, expected[i - 1], &Attribute, &Target,
+                              &ValidInt);
+        assertNgramSimilarity(__LINE__, expected[i - 1], &Target, &Attribute,
+                              &ValidInt);
       }
     }
     // with gaps
@@ -204,15 +219,21 @@ TEST_F(NgramPosSimilarityFunctionTest, test) {
       std::vector<double> expected{
           9.f / 14.f,
           8.f / 13.f,
-          (2.f / 3.f + 1 + 2.f / 3.f + 1.f / 3.f + 2.f / 3.f + 1.f / 3.f + 3.f) / 12.f,
+          (2.f / 3.f + 1 + 2.f / 3.f + 1.f / 3.f + 2.f / 3.f + 1.f / 3.f +
+           3.f) /
+              12.f,
           (0.75f + 0.75f + 0.5f + 0.25f + 0.25f + 0.5f + 0.75f + 2) / 11.f,
-          (3.f / 5.f + 3.f / 5.f + 2.f / 5.f + 1.f / 5.f + 2.f / 5.f + 3.f / 5.f + 4.f / 5.f + 1) / 10.f,
+          (3.f / 5.f + 3.f / 5.f + 2.f / 5.f + 1.f / 5.f + 2.f / 5.f +
+           3.f / 5.f + 4.f / 5.f + 1) /
+              10.f,
           (1.f + 4.f / 6.f + 0.5f + 4.f / 6.f + 5.f / 6.f) / 9.f};
       for (int i = 1; i <= 5; ++i) {
         SCOPED_TRACE(testing::Message("Ngram size is ") << i);
         AqlValue const ValidInt{AqlValueHintInt{i}};
-        assertNgramSimilarity(__LINE__, expected[i - 1], &Attribute, &Target, &ValidInt);
-        assertNgramSimilarity(__LINE__, expected[i - 1], &Target, &Attribute, &ValidInt);
+        assertNgramSimilarity(__LINE__, expected[i - 1], &Attribute, &Target,
+                              &ValidInt);
+        assertNgramSimilarity(__LINE__, expected[i - 1], &Target, &Attribute,
+                              &ValidInt);
       }
     }
     // empty strings

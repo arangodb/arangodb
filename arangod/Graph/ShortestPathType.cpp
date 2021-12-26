@@ -34,7 +34,8 @@ constexpr char const* KShortestPathsName = "K_SHORTEST_PATHS";
 constexpr char const* KPathsName = "K_PATHS";
 
 /// @brief get the type from a string
-/*static*/ ShortestPathType::Type ShortestPathType::fromString(char const* value) {
+/*static*/ ShortestPathType::Type ShortestPathType::fromString(
+    char const* value) {
   if (strcmp(value, KShortestPathsName) == 0) {
     return Type::KShortestPaths;
   }
@@ -46,7 +47,8 @@ constexpr char const* KPathsName = "K_PATHS";
 }
 
 /// @brief return the type as a string
-/*static*/ char const* ShortestPathType::toString(ShortestPathType::Type value) {
+/*static*/ char const* ShortestPathType::toString(
+    ShortestPathType::Type value) {
   switch (value) {
     case Type::KShortestPaths:
       return KShortestPathsName;

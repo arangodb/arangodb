@@ -70,7 +70,8 @@ std::size_t countKeys(rocksdb::DB*, rocksdb::ColumnFamilyHandle* cf);
 
 /// @brief iterate over all keys in range and count them
 std::size_t countKeyRange(rocksdb::DB*, RocksDBKeyBounds const&,
-                          rocksdb::Snapshot const* snapshot, bool prefixSameAsStart);
+                          rocksdb::Snapshot const* snapshot,
+                          bool prefixSameAsStart);
 
 /// @brief whether or not the specified range has keys
 bool hasKeys(rocksdb::DB*, RocksDBKeyBounds const&,
@@ -84,14 +85,16 @@ Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
 /// @brief compacts the entire key range of the database.
 /// warning: may cause a full rewrite of the entire database, which will
 /// take long for large databases - use with care!
-Result compactAll(rocksdb::DB* db, bool changeLevel, bool compactBottomMostLevel,
+Result compactAll(rocksdb::DB* db, bool changeLevel,
+                  bool compactBottomMostLevel,
                   std::atomic<bool>* canceled = nullptr);
 
 // optional switch to std::function to reduce amount of includes and
 // to avoid template
 // this helper is not meant for transactional usage!
-template <typename T>  // T is an invokeable that takes a rocksdb::Iterator*
-void iterateBounds(rocksdb::TransactionDB* db, RocksDBKeyBounds const& bounds, T callback) {
+template<typename T>  // T is an invokeable that takes a rocksdb::Iterator*
+void iterateBounds(rocksdb::TransactionDB* db, RocksDBKeyBounds const& bounds,
+                   T callback) {
   rocksdb::Slice const end = bounds.end();
 
   rocksdb::ReadOptions options;
@@ -99,7 +102,8 @@ void iterateBounds(rocksdb::TransactionDB* db, RocksDBKeyBounds const& bounds, T
   options.prefix_same_as_start = true;
   options.verify_checksums = false;
   options.fill_cache = false;
-  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(options, bounds.columnFamily()));
+  std::unique_ptr<rocksdb::Iterator> it(
+      db->NewIterator(options, bounds.columnFamily()));
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     callback(it.get());
   }

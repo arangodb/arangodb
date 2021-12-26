@@ -117,18 +117,21 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
           collectionID(std::move(collectionID)),
           remainsFollower(true) {}
 
-    static std::unique_ptr<MoveShardContext> fromVelocyPack(arangodb::velocypack::Slice slice);
+    static std::unique_ptr<MoveShardContext> fromVelocyPack(
+        arangodb::velocypack::Slice slice);
   };
 
   RestStatus handlePostMoveShard(std::unique_ptr<MoveShardContext>&& ctx);
 
   RestStatus handleSingleServerJob(std::string const& job);
-  RestStatus handleCreateSingleServerJob(std::string const& job, std::string const& server);
+  RestStatus handleCreateSingleServerJob(std::string const& job,
+                                         std::string const& server);
 
   typedef std::chrono::steady_clock clock;
   typedef futures::Future<futures::Unit> FutureVoid;
 
-  FutureVoid waitForSupervisionState(bool state, std::string const& reactivationTime,
+  FutureVoid waitForSupervisionState(bool state,
+                                     std::string const& reactivationTime,
                                      clock::time_point startTime);
 
   struct RemoveServerContext {
@@ -141,10 +144,13 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
 
   FutureVoid tryDeleteServer(std::unique_ptr<RemoveServerContext>&& ctx);
   FutureVoid retryTryDeleteServer(std::unique_ptr<RemoveServerContext>&& ctx);
-  FutureVoid createMoveShard(std::unique_ptr<MoveShardContext>&& ctx, velocypack::Slice plan);
+  FutureVoid createMoveShard(std::unique_ptr<MoveShardContext>&& ctx,
+                             velocypack::Slice plan);
 
-  RestStatus handleProxyGetRequest(std::string const& url, std::string const& serverFromParameter);
-  RestStatus handleGetCollectionShardDistribution(std::string const& collection);
+  RestStatus handleProxyGetRequest(std::string const& url,
+                                   std::string const& serverFromParameter);
+  RestStatus handleGetCollectionShardDistribution(
+      std::string const& collection);
 
   RestStatus handlePostRemoveServer(std::string const& server);
 
@@ -161,7 +167,8 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
              isLeader == other.isLeader;
     }
   };
-  void getShardDistribution(std::map<std::string, std::unordered_set<CollectionShardPair>>& distr);
+  void getShardDistribution(
+      std::map<std::string, std::unordered_set<CollectionShardPair>>& distr);
 
   struct MoveShardDescription {
     std::string collection;
@@ -171,9 +178,10 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
     bool isLeader;
   };
 
-  using ShardMap = std::map<std::string, std::unordered_set<CollectionShardPair>>;
-  using ReshardAlgorithm =
-      std::function<void(ShardMap&, std::vector<MoveShardDescription>&, std::uint32_t)>;
+  using ShardMap =
+      std::map<std::string, std::unordered_set<CollectionShardPair>>;
+  using ReshardAlgorithm = std::function<void(
+      ShardMap&, std::vector<MoveShardDescription>&, std::uint32_t)>;
 
  private:
   FutureVoid handlePostRebalanceShards(const ReshardAlgorithm&);

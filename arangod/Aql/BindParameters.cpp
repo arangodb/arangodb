@@ -39,9 +39,12 @@ using namespace arangodb::aql;
 BindParameters::BindParameters(ResourceMonitor& resourceMonitor)
     : _resourceMonitor(resourceMonitor), _processed(false) {}
 
-BindParameters::BindParameters(ResourceMonitor& resourceMonitor,
-                               std::shared_ptr<arangodb::velocypack::Builder> builder)
-    : _resourceMonitor(resourceMonitor), _builder(std::move(builder)), _processed(false) {
+BindParameters::BindParameters(
+    ResourceMonitor& resourceMonitor,
+    std::shared_ptr<arangodb::velocypack::Builder> builder)
+    : _resourceMonitor(resourceMonitor),
+      _builder(std::move(builder)),
+      _processed(false) {
   process();
 }
 
@@ -83,7 +86,9 @@ VPackSlice BindParameters::markUsed(std::string const& name) noexcept {
 
 /// @brief run a visitor function on all bind parameters
 void BindParameters::visit(
-    std::function<void(std::string const& key, arangodb::velocypack::Slice value, bool used)> const& visitor) const {
+    std::function<void(std::string const& key,
+                       arangodb::velocypack::Slice value, bool used)> const&
+        visitor) const {
   for (auto const& it : _parameters) {
     visitor(it.first, it.second.first, it.second.second);
   }
@@ -91,7 +96,8 @@ void BindParameters::visit(
 
 /// @brief strip collection name prefixes from the parameters
 /// the values must be a VelocyPack array
-void BindParameters::stripCollectionNames(VPackSlice keys, std::string const& collectionName,
+void BindParameters::stripCollectionNames(VPackSlice keys,
+                                          std::string const& collectionName,
                                           VPackBuilder& result) {
   char const* c = collectionName.c_str();
 
@@ -106,7 +112,8 @@ void BindParameters::stripCollectionNames(VPackSlice keys, std::string const& co
         // key begins with collection name + '/', now strip it in place for
         // further comparisons
         result.add(VPackValue(std::string(
-            p + 1, static_cast<size_t>(l - static_cast<std::ptrdiff_t>(p - s) - 1))));
+            p + 1,
+            static_cast<size_t>(l - static_cast<std::ptrdiff_t>(p - s) - 1))));
         continue;
       }
     }
@@ -144,12 +151,14 @@ void BindParameters::process() {
     VPackSlice value(it.value);
 
     if (value.isNone()) {
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, key.c_str());
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
+                                    key.c_str());
     }
 
     if (key[0] == '@' && !value.isString()) {
       // collection bind parameter
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, key.c_str());
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
+                                    key.c_str());
     }
 
     ResourceUsageScope guard(_resourceMonitor, memoryUsage(key, value));
@@ -163,6 +172,7 @@ void BindParameters::process() {
   _processed = true;
 }
 
-std::size_t BindParameters::memoryUsage(std::string const& key, VPackSlice value) const noexcept {
+std::size_t BindParameters::memoryUsage(std::string const& key,
+                                        VPackSlice value) const noexcept {
   return 32 + key.size() + value.byteSize();
 }

@@ -133,8 +133,8 @@ class QuickHistogram : public arangodb::Thread {
     std::chrono::milliseconds intervalDiff, measuringDiff;
     std::chrono::microseconds zeroMicros = std::chrono::microseconds(0);
     intervalEnd = std::chrono::steady_clock::now();
-    intervalDiff =
-        std::chrono::duration_cast<std::chrono::milliseconds>(intervalEnd - _intervalStart);
+    intervalDiff = std::chrono::duration_cast<std::chrono::milliseconds>(
+        intervalEnd - _intervalStart);
 
     {
       // retest within mutex
@@ -156,14 +156,16 @@ class QuickHistogram : public arangodb::Thread {
           bool odd(num & 1);
           size_t half(num / 2);
 
-          std::chrono::microseconds sum =
-              std::accumulate(_readingLatencies->begin(), _readingLatencies->end(), zeroMicros);
+          std::chrono::microseconds sum = std::accumulate(
+              _readingLatencies->begin(), _readingLatencies->end(), zeroMicros);
           mean = sum / num;
 
           if (1 == num) {
             median = _readingLatencies->at(0);
           } else if (odd) {
-            median = (_readingLatencies->at(half) + _readingLatencies->at(half + 1)) / 2;
+            median = (_readingLatencies->at(half) +
+                      _readingLatencies->at(half + 1)) /
+                     2;
           } else {
             median = _readingLatencies->at(half);
           }
@@ -206,8 +208,8 @@ class QuickHistogram : public arangodb::Thread {
   // calculation taken from
   // http://www.dummies.com/education/math/statistics/how-to-calculate-percentiles-in-statistics
   //  (zero and one size vector calculations not included in that link)
-  std::chrono::microseconds calcPercentile(std::vector<std::chrono::microseconds>& SortedLatencies,
-                                           int Percentile) {
+  std::chrono::microseconds calcPercentile(
+      std::vector<std::chrono::microseconds>& SortedLatencies, int Percentile) {
     std::chrono::microseconds retVal = std::chrono::microseconds(0);
 
     if (0 < SortedLatencies.size()) {
@@ -224,7 +226,8 @@ class QuickHistogram : public arangodb::Thread {
       if (0 < index) {
         --index;
       }  // if
-      size_t nextIndex = ((index + 1) < SortedLatencies.size()) ? index + 1 : index;
+      size_t nextIndex =
+          ((index + 1) < SortedLatencies.size()) ? index + 1 : index;
 
       if (0 == remainder) {
         // whole number index

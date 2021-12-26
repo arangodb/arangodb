@@ -45,11 +45,15 @@ using namespace arangodb::basics;
 
 arangodb::basics::ReadWriteLock LogAppender::_appendersLock;
 
-std::array<std::vector<std::shared_ptr<LogAppender>>, LogGroup::Count> LogAppender::_globalAppenders;
+std::array<std::vector<std::shared_ptr<LogAppender>>, LogGroup::Count>
+    LogAppender::_globalAppenders;
 
-std::array<std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>, LogGroup::Count> LogAppender::_topics2appenders;
+std::array<std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>,
+           LogGroup::Count>
+    LogAppender::_topics2appenders;
 
-std::array<std::map<std::string, std::shared_ptr<LogAppender>>, LogGroup::Count> LogAppender::_definition2appenders;
+std::array<std::map<std::string, std::shared_ptr<LogAppender>>, LogGroup::Count>
+    LogAppender::_definition2appenders;
 
 bool LogAppender::_allowStdLogging = true;
 
@@ -59,7 +63,8 @@ void LogAppender::addGlobalAppender(LogGroup const& group,
   _globalAppenders[group.id()].emplace_back(std::move(appender));
 }
 
-void LogAppender::addAppender(LogGroup const& group, std::string const& definition) {
+void LogAppender::addAppender(LogGroup const& group,
+                              std::string const& definition) {
   std::string topicName;
   std::string output;
   LogTopic* topic = nullptr;
@@ -110,8 +115,8 @@ void LogAppender::addAppender(LogGroup const& group, std::string const& definiti
   }
 }
 
-std::shared_ptr<LogAppender> LogAppender::buildAppender(LogGroup const& group,
-                                                        std::string const& output) {
+std::shared_ptr<LogAppender> LogAppender::buildAppender(
+    LogGroup const& group, std::string const& output) {
 #ifdef ARANGODB_ENABLE_SYSLOG
   // first handle syslog-logging
   if (StringUtils::isPrefix(output, "syslog://")) {
@@ -220,8 +225,9 @@ void LogAppender::reopen() {
   LogAppenderFile::reopenAll();
 }
 
-Result LogAppender::parseDefinition(std::string const& definition, std::string& topicName,
-                                    std::string& output, LogTopic*& topic) {
+Result LogAppender::parseDefinition(std::string const& definition,
+                                    std::string& topicName, std::string& output,
+                                    LogTopic*& topic) {
   topicName.clear();
   output.clear();
   topic = nullptr;
@@ -240,16 +246,17 @@ Result LogAppender::parseDefinition(std::string const& definition, std::string& 
       output = v[1];
     }
   } else {
-    return Result(TRI_ERROR_BAD_PARAMETER,
-                  std::string("strange output definition '") + definition +
-                      "' ignored");
+    return Result(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("strange output definition '") + definition + "' ignored");
   }
 
   if (!topicName.empty()) {
     topic = LogTopic::lookup(topicName);
 
     if (topic == nullptr) {
-      return Result(TRI_ERROR_BAD_PARAMETER, std::string("strange topic '") + topicName +
+      return Result(TRI_ERROR_BAD_PARAMETER, std::string("strange topic '") +
+                                                 topicName +
                                                  "', ignoring whole defintion");
     }
   }
@@ -281,14 +288,16 @@ Result LogAppender::parseDefinition(std::string const& definition, std::string& 
 }
 
 bool LogAppender::haveAppenders(LogGroup const& group, size_t topicId) {
-  // It might be preferable if we could avoid the lock here, but ATM this is not possible.
-  // If this actually causes performance issues we have to think about other solutions.
+  // It might be preferable if we could avoid the lock here, but ATM this is not
+  // possible. If this actually causes performance issues we have to think about
+  // other solutions.
   READ_LOCKER(guard, _appendersLock);
   auto const& appenders = _topics2appenders[group.id()];
   auto haveTopicAppenders = [&appenders](size_t topicId) {
     auto it = appenders.find(topicId);
     return it != appenders.end() && !it->second.empty();
   };
-  return haveTopicAppenders(topicId) || haveTopicAppenders(LogTopic::MAX_LOG_TOPICS) ||
+  return haveTopicAppenders(topicId) ||
+         haveTopicAppenders(LogTopic::MAX_LOG_TOPICS) ||
          !_globalAppenders[group.id()].empty();
 }

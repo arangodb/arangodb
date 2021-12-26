@@ -41,7 +41,8 @@ class AttributeAccessorKey final : public AttributeAccessor {
 
   AqlValue get(CollectionNameResolver const&, ExpressionContext const* context,
                bool& mustDestroy) override {
-    AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
+    AqlValue const& value =
+        context->getVariableValue(_variable, false, mustDestroy);
     return value.getKeyAttribute(mustDestroy, true);
   }
 };
@@ -53,7 +54,8 @@ class AttributeAccessorId final : public AttributeAccessor {
 
   AqlValue get(CollectionNameResolver const& resolver,
                ExpressionContext const* context, bool& mustDestroy) override {
-    AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
+    AqlValue const& value =
+        context->getVariableValue(_variable, false, mustDestroy);
     return value.getIdAttribute(resolver, mustDestroy, true);
   }
 };
@@ -65,7 +67,8 @@ class AttributeAccessorFrom final : public AttributeAccessor {
 
   AqlValue get(CollectionNameResolver const&, ExpressionContext const* context,
                bool& mustDestroy) override {
-    AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
+    AqlValue const& value =
+        context->getVariableValue(_variable, false, mustDestroy);
     return value.getFromAttribute(mustDestroy, true);
   }
 };
@@ -77,19 +80,22 @@ class AttributeAccessorTo final : public AttributeAccessor {
 
   AqlValue get(CollectionNameResolver const&, ExpressionContext const* context,
                bool& mustDestroy) override {
-    AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
+    AqlValue const& value =
+        context->getVariableValue(_variable, false, mustDestroy);
     return value.getToAttribute(mustDestroy, true);
   }
 };
 
 class AttributeAccessorSingle final : public AttributeAccessor {
  public:
-  explicit AttributeAccessorSingle(Variable const* variable, std::string const& attributeName)
+  explicit AttributeAccessorSingle(Variable const* variable,
+                                   std::string const& attributeName)
       : AttributeAccessor(variable), _attributeName(attributeName) {}
 
   AqlValue get(CollectionNameResolver const& resolver,
                ExpressionContext const* context, bool& mustDestroy) override {
-    AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
+    AqlValue const& value =
+        context->getVariableValue(_variable, false, mustDestroy);
     // use optimized version for single attribute (e.g. variable.attr)
     return value.get(resolver, _attributeName, mustDestroy, true);
   }
@@ -106,7 +112,8 @@ class AttributeAccessorMulti final : public AttributeAccessor {
 
   AqlValue get(CollectionNameResolver const& resolver,
                ExpressionContext const* context, bool& mustDestroy) override {
-    AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
+    AqlValue const& value =
+        context->getVariableValue(_variable, false, mustDestroy);
     // use general version for multiple attributes (e.g. variable.attr.subattr)
     return value.get(resolver, _path.get(), mustDestroy, true);
   }
@@ -122,7 +129,8 @@ AttributeAccessor::AttributeAccessor(Variable const* variable)
     : _variable(variable) {}
 
 /// @brief replace the variable in the accessor
-void AttributeAccessor::replaceVariable(std::unordered_map<VariableId, Variable const*> const& replacements) {
+void AttributeAccessor::replaceVariable(
+    std::unordered_map<VariableId, Variable const*> const& replacements) {
   for (auto const& it : replacements) {
     if (it.first == _variable->id) {
       _variable = it.second;
@@ -131,9 +139,9 @@ void AttributeAccessor::replaceVariable(std::unordered_map<VariableId, Variable 
   }
 }
 
-AttributeAccessor* AttributeAccessor::create(arangodb::aql::AttributeNamePath&& path,
-                                             Variable const* variable,
-                                             bool dataIsFromCollection) {
+AttributeAccessor* AttributeAccessor::create(
+    arangodb::aql::AttributeNamePath&& path, Variable const* variable,
+    bool dataIsFromCollection) {
   TRI_ASSERT(variable != nullptr);
   TRI_ASSERT(!path.empty());
 

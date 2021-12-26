@@ -28,11 +28,11 @@ namespace arangodb {
 /**
  * @brief Construct an overloaded callable from multiple callables.
  */
-template <class... Ts>
+template<class... Ts>
 struct overload : Ts... {
   using Ts::operator()...;
 };
-template <class... Ts>
+template<class... Ts>
 overload(Ts...) -> overload<Ts...>;
 
 /*

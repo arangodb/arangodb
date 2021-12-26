@@ -53,8 +53,11 @@ using namespace arangodb::rest;
 V8LineEditor* ConsoleThread::serverConsole = nullptr;
 Mutex ConsoleThread::serverConsoleMutex;
 
-ConsoleThread::ConsoleThread(ApplicationServer& applicationServer, TRI_vocbase_t* vocbase)
-    : Thread(applicationServer, "Console"), _vocbase(vocbase), _userAborted(false) {}
+ConsoleThread::ConsoleThread(ApplicationServer& applicationServer,
+                             TRI_vocbase_t* vocbase)
+    : Thread(applicationServer, "Console"),
+      _vocbase(vocbase),
+      _userAborted(false) {}
 
 ConsoleThread::~ConsoleThread() { shutdown(); }
 
@@ -105,9 +108,11 @@ void ConsoleThread::inner(V8ContextGuard const& guard) {
             << ")" << std::endl;
   std::cout << "Copyright (c) ArangoDB GmbH" << std::endl;
 
-  v8::Local<v8::String> name(TRI_V8_ASCII_STRING(isolate, TRI_V8_SHELL_COMMAND_NAME));
+  v8::Local<v8::String> name(
+      TRI_V8_ASCII_STRING(isolate, TRI_V8_SHELL_COMMAND_NAME));
 
-  auto localContext = v8::Local<v8::Context>::New(isolate, guard.context()->_context);
+  auto localContext =
+      v8::Local<v8::Context>::New(isolate, guard.context()->_context);
   localContext->Enter();
   {
     v8::Context::Scope contextScope(localContext);
@@ -139,9 +144,9 @@ start_color_print('arangodb', true);
 })();
 )SCRIPT";
 
-    TRI_ExecuteJavaScriptString(isolate, localContext,
-                                TRI_V8_ASCII_STRING(isolate, startupScript),
-                                TRI_V8_ASCII_STRING(isolate, "(startup)"), false);
+    TRI_ExecuteJavaScriptString(
+        isolate, localContext, TRI_V8_ASCII_STRING(isolate, startupScript),
+        TRI_V8_ASCII_STRING(isolate, "(startup)"), false);
 
 #ifndef _WIN32
     // allow SIGINT in this particular thread... otherwise we cannot CTRL-C the
@@ -168,7 +173,8 @@ start_color_print('arangodb', true);
     bool lastEmpty = false;
 
     while (!isStopping() && !_userAborted.load()) {
-      if (nrCommands >= gcInterval || V8PlatformFeature::isOutOfMemory(isolate)) {
+      if (nrCommands >= gcInterval ||
+          V8PlatformFeature::isOutOfMemory(isolate)) {
         TRI_RunGarbageCollectionV8(isolate, 0.5);
         nrCommands = 0;
 
@@ -186,7 +192,8 @@ start_color_print('arangodb', true);
         input = console.prompt("arangod> ", "arangod>", eof);
       }
 
-      if (eof == ShellBase::EOF_FORCE_ABORT || (eof == ShellBase::EOF_ABORT && lastEmpty)) {
+      if (eof == ShellBase::EOF_FORCE_ABORT ||
+          (eof == ShellBase::EOF_ABORT && lastEmpty)) {
         _userAborted.store(true);
       }
 
@@ -209,7 +216,8 @@ start_color_print('arangodb', true);
 
         console.setExecutingCommand(true);
         TRI_ExecuteJavaScriptString(isolate, localContext,
-                                    TRI_V8_STD_STRING(isolate, input), name, true);
+                                    TRI_V8_STD_STRING(isolate, input), name,
+                                    true);
         console.setExecutingCommand(false);
 
         if (_userAborted.load()) {

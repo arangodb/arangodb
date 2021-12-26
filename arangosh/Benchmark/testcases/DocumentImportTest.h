@@ -44,11 +44,13 @@ struct DocumentImportTest : public Benchmark<DocumentImportTest> {
 
   void tearDown() override {}
 
-  void buildRequest(size_t threadNumber, size_t threadCounter, size_t globalCounter,
-                    BenchmarkOperation::RequestData& requestData) const override {
+  void buildRequest(
+      size_t threadNumber, size_t threadCounter, size_t globalCounter,
+      BenchmarkOperation::RequestData& requestData) const override {
     requestData.type = rest::RequestType::POST;
-    requestData.url = std::string("/_api/import?collection=" + _arangobench.collection() +
-                                  "&type=documents");
+    requestData.url =
+        std::string("/_api/import?collection=" + _arangobench.collection() +
+                    "&type=documents");
     uint64_t const n = _arangobench.complexity();
     using namespace arangodb::velocypack;
     requestData.payload.openArray();

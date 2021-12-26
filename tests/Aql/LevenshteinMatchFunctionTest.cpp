@@ -45,11 +45,13 @@ using namespace arangodb::containers;
 
 namespace {
 
-AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs, AqlValue const& distance,
+AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs,
+                  AqlValue const& distance,
                   AqlValue const* transpositions = nullptr) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
-  fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([](ErrorCode, char const*) {});
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .AlwaysDo([](ErrorCode, char const*) {});
 
   VPackOptions options;
   fakeit::Mock<transaction::Context> trxCtxMock;
@@ -61,9 +63,8 @@ AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs, AqlValue const& dist
     return &trxCtx;
   });
   fakeit::When(Method(trxMock, vpackOptions)).AlwaysReturn(options);
-  fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&]() -> transaction::Methods& {
-    return trxMock.get();
-  });
+  fakeit::When(Method(expressionContextMock, trx))
+      .AlwaysDo([&]() -> transaction::Methods& { return trxMock.get(); });
 
   SmallVector<AqlValue>::allocator_type::arena_type arena;
   SmallVector<AqlValue> params{arena};
@@ -80,7 +81,8 @@ AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs, AqlValue const& dist
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
 
-  AqlValue result = Functions::LevenshteinMatch(&expressionContext, node, params);
+  AqlValue result =
+      Functions::LevenshteinMatch(&expressionContext, node, params);
 
   // explicitly call cleanup on the mocked transaction context because
   // for whatever reason the context's dtor does not fire and thus we
@@ -100,16 +102,18 @@ void assertLevenshteinMatchFail(AqlValue const& lhs, AqlValue const& rhs,
 void assertLevenshteinMatch(bool expectedValue, AqlValue const& lhs,
                             AqlValue const& rhs, AqlValue const& distance,
                             AqlValue const* transpositions = nullptr) {
-  auto assertLevenshteinMatchValue = [](bool expectedValue, AqlValue const& lhs,
-                                        AqlValue const& rhs, AqlValue const& distance,
-                                        AqlValue const* transpositions = nullptr) {
-    auto const value = evaluate(lhs, rhs, distance, transpositions);
-    ASSERT_TRUE(value.isBoolean());
-    ASSERT_EQ(expectedValue, value.toBoolean());
-  };
+  auto assertLevenshteinMatchValue =
+      [](bool expectedValue, AqlValue const& lhs, AqlValue const& rhs,
+         AqlValue const& distance, AqlValue const* transpositions = nullptr) {
+        auto const value = evaluate(lhs, rhs, distance, transpositions);
+        ASSERT_TRUE(value.isBoolean());
+        ASSERT_EQ(expectedValue, value.toBoolean());
+      };
 
-  assertLevenshteinMatchValue(expectedValue, lhs, rhs, distance, transpositions);
-  assertLevenshteinMatchValue(expectedValue, rhs, lhs, distance, transpositions);
+  assertLevenshteinMatchValue(expectedValue, lhs, rhs, distance,
+                              transpositions);
+  assertLevenshteinMatchValue(expectedValue, rhs, lhs, distance,
+                              transpositions);
 }
 
 }  // namespace
@@ -166,28 +170,34 @@ TEST(LevenshteinMatchFunctionTest, test) {
                          AqlValue(AqlValueHintInt{6}), &Damerau);
   assertLevenshteinMatch(true, AqlValue(AqlValueHintNull{}), AqlValue("aa"),
                          AqlValue(AqlValueHintInt{2}), &Levenshtein);
-  assertLevenshteinMatch(false, AqlValue(AqlValueHintEmptyArray{}), AqlValue("aa"),
-                         AqlValue(AqlValueHintInt{1}), &Levenshtein);
-  assertLevenshteinMatch(true, AqlValue(AqlValueHintEmptyObject{}), AqlValue("aa"),
-                         AqlValue(AqlValueHintInt{2}), &Levenshtein);
+  assertLevenshteinMatch(false, AqlValue(AqlValueHintEmptyArray{}),
+                         AqlValue("aa"), AqlValue(AqlValueHintInt{1}),
+                         &Levenshtein);
+  assertLevenshteinMatch(true, AqlValue(AqlValueHintEmptyObject{}),
+                         AqlValue("aa"), AqlValue(AqlValueHintInt{2}),
+                         &Levenshtein);
   assertLevenshteinMatch(true, AqlValue(AqlValueHintInt{1}), AqlValue("aa"),
                          AqlValue(AqlValueHintInt{2}), &Levenshtein);
   assertLevenshteinMatch(true, AqlValue(AqlValueHintDouble{1.}), AqlValue("aa"),
                          AqlValue(AqlValueHintInt{2}), &Levenshtein);
-  assertLevenshteinMatch(true, AqlValue(AqlValueHintBool{false}), AqlValue("aa"),
-                         AqlValue(AqlValueHintInt{2}), &Levenshtein);
+  assertLevenshteinMatch(true, AqlValue(AqlValueHintBool{false}),
+                         AqlValue("aa"), AqlValue(AqlValueHintInt{2}),
+                         &Levenshtein);
   assertLevenshteinMatch(false, AqlValue(AqlValueHintNull{}), AqlValue("aa"),
                          AqlValue(AqlValueHintInt{1}), &Damerau);
   assertLevenshteinMatch(true, AqlValue(AqlValueHintEmptyArray{}),
-                         AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Damerau);
+                         AqlValue("aa"), AqlValue(AqlValueHintInt{2}),
+                         &Damerau);
   assertLevenshteinMatch(true, AqlValue(AqlValueHintEmptyObject{}),
-                         AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Damerau);
+                         AqlValue("aa"), AqlValue(AqlValueHintInt{2}),
+                         &Damerau);
   assertLevenshteinMatch(true, AqlValue(AqlValueHintInt{1}), AqlValue("aa"),
                          AqlValue(AqlValueHintInt{2}), &Damerau);
   assertLevenshteinMatch(true, AqlValue(AqlValueHintDouble{1.}), AqlValue("aa"),
                          AqlValue(AqlValueHintInt{2}), &Damerau);
   assertLevenshteinMatch(true, AqlValue(AqlValueHintBool{false}),
-                         AqlValue("aa"), AqlValue(AqlValueHintInt{2}), &Damerau);
+                         AqlValue("aa"), AqlValue(AqlValueHintInt{2}),
+                         &Damerau);
   assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"),
                          AqlValue(AqlValueHintInt{1}), &Levenshtein);
   assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"),

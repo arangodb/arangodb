@@ -30,7 +30,8 @@ namespace arangodb {
 namespace consensus {
 
 struct CleanOutServer : public Job {
-  CleanOutServer(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
+  CleanOutServer(Node const& snapshot, AgentInterface* agent,
+                 std::string const& jobId,
                  std::string const& creator = std::string(),
                  std::string const& server = std::string());
 
@@ -40,7 +41,8 @@ struct CleanOutServer : public Job {
   virtual ~CleanOutServer();
 
   virtual JOB_STATUS status() override final;
-  virtual bool create(std::shared_ptr<VPackBuilder> envelope = nullptr) override final;
+  virtual bool create(
+      std::shared_ptr<VPackBuilder> envelope = nullptr) override final;
   virtual void run(bool&) override final;
   virtual bool start(bool&) override final;
   virtual Result abort(std::string const& reason) override final;

@@ -38,9 +38,9 @@ MockScheduler::MockScheduler(std::size_t threads)
     : _ioService(new asio_ns::io_context()),
       _serviceGuard(new asio_ns::io_context::work(*_ioService)) {
   for (std::size_t i = 0; i < threads; i++) {
-    auto worker =
-        std::bind(static_cast<size_t (asio_ns::io_context::*)()>(&asio_ns::io_context::run),
-                  _ioService.get());
+    auto worker = std::bind(static_cast<size_t (asio_ns::io_context::*)()>(
+                                &asio_ns::io_context::run),
+                            _ioService.get());
     _group.emplace_back(new std::thread(worker));
   }
 }

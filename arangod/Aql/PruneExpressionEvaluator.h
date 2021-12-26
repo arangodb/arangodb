@@ -45,7 +45,8 @@ class PruneExpressionEvaluator {
                            AqlFunctionsInternalCache& cache,
                            std::vector<Variable const*> vars,
                            std::vector<RegisterId> regs, size_t vertexVarIdx,
-                           size_t edgeVarIdx, size_t pathVarIdx, Expression* expr);
+                           size_t edgeVarIdx, size_t pathVarIdx,
+                           Expression* expr);
 
   ~PruneExpressionEvaluator();
 

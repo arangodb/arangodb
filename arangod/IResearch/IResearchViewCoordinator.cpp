@@ -49,8 +49,9 @@
 
 namespace {
 
-void ensureImmutableProperties(arangodb::iresearch::IResearchViewMeta& dst,
-                               arangodb::iresearch::IResearchViewMeta const& src) {
+void ensureImmutableProperties(
+    arangodb::iresearch::IResearchViewMeta& dst,
+    arangodb::iresearch::IResearchViewMeta const& src) {
   dst._version = src._version;
   dst._writebufferActive = src._writebufferActive;
   dst._writebufferIdle = src._writebufferIdle;
@@ -70,18 +71,22 @@ namespace iresearch {
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
   virtual Result create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                        VPackSlice definition, bool isUserRequest) const override {
+                        VPackSlice definition,
+                        bool isUserRequest) const override {
     if (!vocbase.server().hasFeature<ClusterFeature>()) {
-      return Result(TRI_ERROR_INTERNAL,
-                    std::string(
-                        "failure to find 'ClusterInfo' instance while creating "
-                        "arangosearch View in database '") +
-                        vocbase.name() + "'");
+      return Result(
+          TRI_ERROR_INTERNAL,
+          std::string("failure to find 'ClusterInfo' instance while creating "
+                      "arangosearch View in database '") +
+              vocbase.name() + "'");
     }
     auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
     auto properties =
-        definition.isObject() ? definition : velocypack::Slice::emptyObjectSlice();  // if no 'info' then assume defaults
+        definition.isObject()
+            ? definition
+            : velocypack::Slice::emptyObjectSlice();  // if no 'info' then
+                                                      // assume defaults
     auto links = properties.hasKey(StaticStrings::LinksField)
                      ? properties.get(StaticStrings::LinksField)
                      : velocypack::Slice::emptyObjectSlice();
@@ -110,7 +115,8 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
       if (!res.ok()) {
         LOG_TOPIC("39d88", WARN, iresearch::TOPIC)
             << "failed to create links while creating arangosearch view '"
-            << impl->name() << "': " << res.errorNumber() << " " << res.errorMessage();
+            << impl->name() << "': " << res.errorNumber() << " "
+            << res.errorMessage();
       }
     } catch (basics::Exception const& e) {
       LOG_TOPIC("09bb9", WARN, iresearch::TOPIC)
@@ -129,8 +135,9 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
           << impl->name() << "'";
     }
 
-    view = ci.getView(vocbase.name(),
-                      std::to_string(impl->id().id()));  // refresh view from Agency
+    view = ci.getView(
+        vocbase.name(),
+        std::to_string(impl->id().id()));  // refresh view from Agency
 
     if (view) {
       view->open();  // open view to match the behavior in
@@ -164,8 +171,8 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
   }
 };
 
-Result IResearchViewCoordinator::appendVelocyPackImpl(velocypack::Builder& builder,
-                                                      Serialization context) const {
+Result IResearchViewCoordinator::appendVelocyPackImpl(
+    velocypack::Builder& builder, Serialization context) const {
   if (Serialization::List == context) {
     // nothing more to output
     return {};
@@ -178,8 +185,8 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(velocypack::Builder& build
   static const std::function<bool(irs::string_ref const&)> persistenceAcceptor =
       [](irs::string_ref const&) -> bool { return true; };
 
-  static const std::function<bool(irs::string_ref const&)> linkPropertiesAcceptor =
-      [](irs::string_ref const& key) -> bool {
+  static const std::function<bool(irs::string_ref const&)>
+      linkPropertiesAcceptor = [](irs::string_ref const& key) -> bool {
     return key != iresearch::StaticStrings::AnalyzerDefinitionsField &&
            key != iresearch::StaticStrings::PrimarySortField &&
            key != iresearch::StaticStrings::PrimarySortCompressionField &&
@@ -190,7 +197,8 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(velocypack::Builder& build
 
   auto* acceptor = &propertiesAcceptor;
 
-  if (context == Serialization::Persistence || context == Serialization::PersistenceWithInProgress) {
+  if (context == Serialization::Persistence ||
+      context == Serialization::PersistenceWithInProgress) {
     auto res = LogicalViewHelperClusterInfo::properties(builder, *this);
 
     if (!res.ok()) {
@@ -200,12 +208,14 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(velocypack::Builder& build
     acceptor = &persistenceAcceptor;
   }
 
-  if (context == Serialization::Properties || context == Serialization::Inventory) {
+  if (context == Serialization::Properties ||
+      context == Serialization::Inventory) {
     // verify that the current user has access on all linked collections
     ExecContext const& exec = ExecContext::current();
     if (!exec.isSuperuser()) {
       for (auto& entry : _collections) {
-        if (!exec.canUseCollection(vocbase().name(), entry.second.first, auth::Level::RO)) {
+        if (!exec.canUseCollection(vocbase().name(), entry.second.first,
+                                   auth::Level::RO)) {
           return Result(TRI_ERROR_FORBIDDEN);
         }
       }
@@ -248,7 +258,8 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(velocypack::Builder& build
   sanitizedBuilder.openObject();
   IResearchViewMeta::Mask mask(true);
   if (!_meta.json(sanitizedBuilder, nullptr, &mask) ||
-      !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(), *acceptor)) {
+      !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(),
+                          *acceptor)) {
     return {TRI_ERROR_INTERNAL,
             std::string("failure to generate definition while generating "
                         "properties jSON for IResearch View in database '")
@@ -266,7 +277,8 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(velocypack::Builder& build
 }
 
 Result IResearchViewCoordinator::link(IResearchLink const& link) {
-  if (!ClusterMethods::includeHiddenCollectionInLink(link.collection().name())) {
+  if (!ClusterMethods::includeHiddenCollectionInLink(
+          link.collection().name())) {
     return TRI_ERROR_NO_ERROR;
   }
   static const std::function<bool(irs::string_ref const& key)> acceptor =
@@ -281,7 +293,9 @@ Result IResearchViewCoordinator::link(IResearchLink const& link) {
 
   builder.openObject();
 
-  auto res = link.properties(builder, true);  // generate user-visible definition, agency will not see links
+  auto res = link.properties(
+      builder,
+      true);  // generate user-visible definition, agency will not see links
 
   if (!res.ok()) {
     return res;
@@ -294,7 +308,8 @@ Result IResearchViewCoordinator::link(IResearchLink const& link) {
 
   sanitizedBuilder.openObject();
 
-  // strip internal keys (added in IResearchLink::properties(...)) from externally visible link definition
+  // strip internal keys (added in IResearchLink::properties(...)) from
+  // externally visible link definition
   if (!mergeSliceSkipKeys(sanitizedBuilder, builder.slice(), acceptor)) {
     return Result(           // result
         TRI_ERROR_INTERNAL,  // code
@@ -337,7 +352,8 @@ IResearchViewCoordinator::IResearchViewCoordinator(TRI_vocbase_t& vocbase,
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 }
 
-bool IResearchViewCoordinator::visitCollections(CollectionVisitor const& visitor) const {
+bool IResearchViewCoordinator::visitCollections(
+    CollectionVisitor const& visitor) const {
   // '_collections' can be asynchronously modified
   auto lock = irs::make_shared_lock(_mutex);
 
@@ -351,7 +367,8 @@ bool IResearchViewCoordinator::visitCollections(CollectionVisitor const& visitor
 }
 
 Result IResearchViewCoordinator::properties(velocypack::Slice slice,
-                                            bool isUserRequest, bool partialUpdate) {
+                                            bool isUserRequest,
+                                            bool partialUpdate) {
   if (!vocbase().server().hasFeature<ClusterFeature>()) {
     return Result(TRI_ERROR_INTERNAL,
                   std::string("failure to get storage engine while "
@@ -375,17 +392,17 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
     if (!exe.isSuperuser()) {
       // check existing links
       for (auto& entry : _collections) {
-        auto collection =
-            engine.getCollection(vocbase().name(), std::to_string(entry.first.id()));
+        auto collection = engine.getCollection(
+            vocbase().name(), std::to_string(entry.first.id()));
 
-        if (collection && !exe.canUseCollection(vocbase().name(), collection->name(),
-                                                auth::Level::RO)) {
-          return Result(TRI_ERROR_FORBIDDEN,
-                        std::string(
-                            "while updating arangosearch definition, error: "
-                            "collection '") +
-                            collection->name() +
-                            "' not authorized for read access");
+        if (collection &&
+            !exe.canUseCollection(vocbase().name(), collection->name(),
+                                  auth::Level::RO)) {
+          return Result(
+              TRI_ERROR_FORBIDDEN,
+              std::string("while updating arangosearch definition, error: "
+                          "collection '") +
+                  collection->name() + "' not authorized for read access");
         }
       }
     }
@@ -460,7 +477,8 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
     }
 
     return IResearchLinkHelper::updateLinks(collections, *this, links,
-                                            getDefaultVersion(isUserRequest), currentCids);
+                                            getDefaultVersion(isUserRequest),
+                                            currentCids);
   } catch (basics::Exception& e) {
     LOG_TOPIC("714b3", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
@@ -513,18 +531,20 @@ Result IResearchViewCoordinator::dropImpl() {
         auto collection =
             engine.getCollection(vocbase().name(), std::to_string(entry.id()));
 
-        if (collection && !exe.canUseCollection(vocbase().name(), collection->name(),
-                                                auth::Level::RO)) {
+        if (collection &&
+            !exe.canUseCollection(vocbase().name(), collection->name(),
+                                  auth::Level::RO)) {
           return Result(TRI_ERROR_FORBIDDEN);
         }
       }
     }
 
     std::unordered_set<DataSourceId> collections;
-    auto res = IResearchLinkHelper::updateLinks(collections, *this,
-                                                velocypack::Slice::emptyObjectSlice(),
-                                                LinkVersion::MAX,  // we don't care of link version due to removal only request
-                                                currentCids);
+    auto res = IResearchLinkHelper::updateLinks(
+        collections, *this, velocypack::Slice::emptyObjectSlice(),
+        LinkVersion::MAX,  // we don't care of link version due to removal only
+                           // request
+        currentCids);
 
     if (!res.ok()) {
       return {res.errorNumber(),

@@ -59,27 +59,30 @@ RegisterInfos MakeBaseInfos(RegisterCount numRegs) {
 using SubqueryStartSplitType = ExecutorTestHelper<1, 1>::SplitType;
 
 class SubqueryStartExecutorTest
-    : public AqlExecutorTestCaseWithParam<std::tuple<SubqueryStartSplitType>, false> {
+    : public AqlExecutorTestCaseWithParam<std::tuple<SubqueryStartSplitType>,
+                                          false> {
  protected:
   auto GetSplit() const -> SubqueryStartSplitType {
     auto const [split] = GetParam();
     return split;
   }
 
-  auto queryStack(AqlCall fromSubqueryEnd, AqlCall insideSubquery) const -> AqlCallStack {
-    AqlCallList list = insideSubquery.getOffset() == 0 && !insideSubquery.needsFullCount()
-                           ? AqlCallList{insideSubquery, insideSubquery}
-                           : AqlCallList{insideSubquery};
+  auto queryStack(AqlCall fromSubqueryEnd, AqlCall insideSubquery) const
+      -> AqlCallStack {
+    AqlCallList list =
+        insideSubquery.getOffset() == 0 && !insideSubquery.needsFullCount()
+            ? AqlCallList{insideSubquery, insideSubquery}
+            : AqlCallList{insideSubquery};
     AqlCallStack stack(AqlCallList{fromSubqueryEnd});
     stack.pushCall(list);
     return stack;
   }
 };
 
-template <size_t... vs>
+template<size_t... vs>
 const SubqueryStartSplitType splitIntoBlocks =
     SubqueryStartSplitType{std::vector<std::size_t>{vs...}};
-template <size_t step>
+template<size_t step>
 const SubqueryStartSplitType splitStep = SubqueryStartSplitType{step};
 
 INSTANTIATE_TEST_CASE_P(SubqueryStartExecutorTest, SubqueryStartExecutorTest,
@@ -90,7 +93,8 @@ TEST_P(SubqueryStartExecutorTest, check_properties) {
   EXPECT_TRUE(SubqueryStartExecutor::Properties::preservesOrder)
       << "The block has no effect on ordering of elements, it adds additional "
          "rows only.";
-  EXPECT_EQ(SubqueryStartExecutor::Properties::allowsBlockPassthrough, ::arangodb::aql::BlockPassthrough::Disable)
+  EXPECT_EQ(SubqueryStartExecutor::Properties::allowsBlockPassthrough,
+            ::arangodb::aql::BlockPassthrough::Disable)
       << "The block cannot be passThrough, as it increases the number of rows.";
   EXPECT_TRUE(SubqueryStartExecutor::Properties::inputSizeRestrictsOutputSize)
       << "The block is restricted by input, it will atMost produce 2 times the "
@@ -125,7 +129,8 @@ TEST_P(SubqueryStartExecutorTest, adds_a_shadowrow_after_single_input) {
       .run();
 }
 
-TEST_P(SubqueryStartExecutorTest, adds_a_shadowrow_after_every_input_line_in_single_pass) {
+TEST_P(SubqueryStartExecutorTest,
+       adds_a_shadowrow_after_every_input_line_in_single_pass) {
   makeExecutorTestHelper<1, 1>()
       .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1),
                                           ExecutionNode::SUBQUERY_START)
@@ -133,7 +138,13 @@ TEST_P(SubqueryStartExecutorTest, adds_a_shadowrow_after_every_input_line_in_sin
       .expectedStats(ExecutionStats{})
       .expectedState(ExecutionState::DONE)
       .expectSkipped(0, 0)
-      .expectOutput({0}, {{R"("a")"}, {R"("a")"}, {R"("b")"}, {R"("b")"}, {R"("c")"}, {R"("c")"}},
+      .expectOutput({0},
+                    {{R"("a")"},
+                     {R"("a")"},
+                     {R"("b")"},
+                     {R"("b")"},
+                     {R"("c")"},
+                     {R"("c")"}},
                     {{1, 0}, {3, 0}, {5, 0}})
       .setCallStack(queryStack(AqlCall{}, AqlCall{}))
       .setInputSplitType(GetSplit())
@@ -150,7 +161,13 @@ TEST_P(SubqueryStartExecutorTest, adds_a_shadowrow_after_every_input_line) {
       .expectedStats(ExecutionStats{})
       .expectedState(ExecutionState::DONE)
       .expectSkipped(0, 0)
-      .expectOutput({0}, {{R"("a")"}, {R"("a")"}, {R"("b")"}, {R"("b")"}, {R"("c")"}, {R"("c")"}},
+      .expectOutput({0},
+                    {{R"("a")"},
+                     {R"("a")"},
+                     {R"("b")"},
+                     {R"("b")"},
+                     {R"("c")"},
+                     {R"("c")"}},
                     {{1, 0}, {3, 0}, {5, 0}})
       .setCallStack(queryStack(AqlCall{}, AqlCall{}))
       .setInputSplitType(GetSplit())
@@ -158,13 +175,15 @@ TEST_P(SubqueryStartExecutorTest, adds_a_shadowrow_after_every_input_line) {
 }
 
 TEST_P(SubqueryStartExecutorTest, shadow_row_does_not_fit_in_current_block) {
-  // NOTE: This test relies on batchSizes being handled correctly and we do not over-allocate memory
-  // Also it tests, that ShadowRows go into place accounting of the output block (count as 1 line)
+  // NOTE: This test relies on batchSizes being handled correctly and we do not
+  // over-allocate memory Also it tests, that ShadowRows go into place
+  // accounting of the output block (count as 1 line)
 
   // NOTE: Reduce batch size to 1, to enforce a too small output block
   ExecutionBlock::setDefaultBatchSize(1);
   auto sg = arangodb::scopeGuard([&]() noexcept {
-    ExecutionBlock::setDefaultBatchSize(ExecutionBlock::ProductionDefaultBatchSize);
+    ExecutionBlock::setDefaultBatchSize(
+        ExecutionBlock::ProductionDefaultBatchSize);
   });
   {
     // First test: Validate that the shadowRow is not written
@@ -221,7 +240,8 @@ TEST_P(SubqueryStartExecutorTest, fullCount_in_subquery) {
       .expectedState(ExecutionState::DONE)
       .expectOutput({0}, {{R"("a")"}}, {{0, 0}})
       .expectSkipped(0, 1)
-      .setCallStack(queryStack(AqlCall{}, AqlCall{0, true, 0, AqlCall::LimitType::HARD}))
+      .setCallStack(
+          queryStack(AqlCall{}, AqlCall{0, true, 0, AqlCall::LimitType::HARD}))
       .setInputSplitType(GetSplit())
       .run();
 }
@@ -249,7 +269,8 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding) {
       .run();
 }
 
-TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_single_call) {
+TEST_P(SubqueryStartExecutorTest,
+       shadow_row_forwarding_many_inputs_single_call) {
   auto helper = makeExecutorTestHelper<1, 1>();
   AqlCallStack stack = queryStack(AqlCall{}, AqlCall{});
   stack.pushCall(AqlCallList{AqlCall{}});
@@ -271,7 +292,8 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_single_call)
       .run();
 }
 
-TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_many_requests) {
+TEST_P(SubqueryStartExecutorTest,
+       shadow_row_forwarding_many_inputs_many_requests) {
   auto helper = makeExecutorTestHelper<1, 1>();
   AqlCallStack stack = queryStack(AqlCall{}, AqlCall{});
   stack.pushCall(AqlCallList{AqlCall{}});
@@ -287,23 +309,34 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_many_request
   helper.setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}})
       .expectedStats(ExecutionStats{})
       .expectedState(ExecutionState::DONE)
-      .expectOutput(
-          {0},
-          {{R"("a")"}, {R"("a")"}, {R"("a")"}, {R"("b")"}, {R"("b")"}, {R"("b")"}, {R"("c")"}, {R"("c")"}, {R"("c")"}},
-          {{1, 0}, {2, 1}, {4, 0}, {5, 1}, {7, 0}, {8, 1}})
+      .expectOutput({0},
+                    {{R"("a")"},
+                     {R"("a")"},
+                     {R"("a")"},
+                     {R"("b")"},
+                     {R"("b")"},
+                     {R"("b")"},
+                     {R"("c")"},
+                     {R"("c")"},
+                     {R"("c")"}},
+                    {{1, 0}, {2, 1}, {4, 0}, {5, 1}, {7, 0}, {8, 1}})
       .setCallStack(stack)
       .setInputSplitType(GetSplit())
       .run(true);
 }
 
-TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_not_enough_space) {
-  // NOTE: This test relies on batchSizes being handled correctly and we do not over-allocate memory
-  // Also it tests, that ShadowRows go into place accounting of the output block (count as 1 line)
+TEST_P(SubqueryStartExecutorTest,
+       shadow_row_forwarding_many_inputs_not_enough_space) {
+  // NOTE: This test relies on batchSizes being handled correctly and we do not
+  // over-allocate memory Also it tests, that ShadowRows go into place
+  // accounting of the output block (count as 1 line)
 
-  // NOTE: Reduce batch size to 2, to enforce a too small output block, in between the shadow Rows
+  // NOTE: Reduce batch size to 2, to enforce a too small output block, in
+  // between the shadow Rows
   ExecutionBlock::setDefaultBatchSize(2);
   auto sg = arangodb::scopeGuard([&]() noexcept {
-    ExecutionBlock::setDefaultBatchSize(ExecutionBlock::ProductionDefaultBatchSize);
+    ExecutionBlock::setDefaultBatchSize(
+        ExecutionBlock::ProductionDefaultBatchSize);
   });
   {
     // First test: Validate that the shadowRow is not written
@@ -348,10 +381,17 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_not_enough_s
     helper.setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}})
         .expectedStats(ExecutionStats{})
         .expectedState(ExecutionState::DONE)
-        .expectOutput(
-            {0},
-            {{R"("a")"}, {R"("a")"}, {R"("a")"}, {R"("b")"}, {R"("b")"}, {R"("b")"}, {R"("c")"}, {R"("c")"}, {R"("c")"}},
-            {{1, 0}, {2, 1}, {4, 0}, {5, 1}, {7, 0}, {8, 1}})
+        .expectOutput({0},
+                      {{R"("a")"},
+                       {R"("a")"},
+                       {R"("a")"},
+                       {R"("b")"},
+                       {R"("b")"},
+                       {R"("b")"},
+                       {R"("c")"},
+                       {R"("c")"},
+                       {R"("c")"}},
+                      {{1, 0}, {2, 1}, {4, 0}, {5, 1}, {7, 0}, {8, 1}})
         .setCallStack(stack)
         .setInputSplitType(GetSplit())
         .run(true);
@@ -367,7 +407,8 @@ TEST_P(SubqueryStartExecutorTest, skip_in_outer_subquery) {
       .expectedState(ExecutionState::DONE)
       .expectOutput({0}, {{R"("b")"}, {R"("b")"}}, {{1, 0}})
       .expectSkipped(1, 0)
-      .setCallStack(queryStack(AqlCall{1, false, AqlCall::Infinity{}}, AqlCall{}))
+      .setCallStack(
+          queryStack(AqlCall{1, false, AqlCall::Infinity{}}, AqlCall{}))
       .setInputSplitType(GetSplit())
       .run();
 }
@@ -390,12 +431,18 @@ TEST_P(SubqueryStartExecutorTest, fullCount_in_outer_subquery) {
   makeExecutorTestHelper<1, 1>()
       .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1),
                                           ExecutionNode::SUBQUERY_START)
-      .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}, {R"("d")"}, {R"("e")"}, {R"("f")"}})
+      .setInputValue({{R"("a")"},
+                      {R"("b")"},
+                      {R"("c")"},
+                      {R"("d")"},
+                      {R"("e")"},
+                      {R"("f")"}})
       .expectedStats(ExecutionStats{})
       .expectedState(ExecutionState::DONE)
       .expectOutput({0}, {})
       .expectSkipped(6, 0)
-      .setCallStack(queryStack(AqlCall{0, true, 0, AqlCall::LimitType::HARD}, AqlCall{}))
+      .setCallStack(
+          queryStack(AqlCall{0, true, 0, AqlCall::LimitType::HARD}, AqlCall{}))
       .setInputSplitType(GetSplit())
       .run();
 }
@@ -404,10 +451,21 @@ TEST_P(SubqueryStartExecutorTest, fastForward_in_inner_subquery) {
   makeExecutorTestHelper<1, 1>()
       .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1),
                                           ExecutionNode::SUBQUERY_START)
-      .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}, {R"("d")"}, {R"("e")"}, {R"("f")"}})
+      .setInputValue({{R"("a")"},
+                      {R"("b")"},
+                      {R"("c")"},
+                      {R"("d")"},
+                      {R"("e")"},
+                      {R"("f")"}})
       .expectedStats(ExecutionStats{})
       .expectedState(ExecutionState::DONE)
-      .expectOutput({0}, {{R"("a")"}, {R"("b")"}, {R"("c")"}, {R"("d")"}, {R"("e")"}, {R"("f")"}},
+      .expectOutput({0},
+                    {{R"("a")"},
+                     {R"("b")"},
+                     {R"("c")"},
+                     {R"("d")"},
+                     {R"("e")"},
+                     {R"("f")"}},
                     {{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}})
       .expectSkipped(0, 0)
       .setCallStack(queryStack(AqlCall{0, false, AqlCall::Infinity{}},
@@ -420,7 +478,12 @@ TEST_P(SubqueryStartExecutorTest, skip_out_skip_in) {
   makeExecutorTestHelper<1, 1>()
       .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1),
                                           ExecutionNode::SUBQUERY_START)
-      .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}, {R"("d")"}, {R"("e")"}, {R"("f")"}})
+      .setInputValue({{R"("a")"},
+                      {R"("b")"},
+                      {R"("c")"},
+                      {R"("d")"},
+                      {R"("e")"},
+                      {R"("f")"}})
       .expectedStats(ExecutionStats{})
       .expectedState(ExecutionState::HASMORE)
       .expectOutput({0}, {{R"("c")"}}, {{0, 0}})
@@ -435,12 +498,18 @@ TEST_P(SubqueryStartExecutorTest, fullbypass_in_outer_subquery) {
   makeExecutorTestHelper<1, 1>()
       .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1),
                                           ExecutionNode::SUBQUERY_START)
-      .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}, {R"("d")"}, {R"("e")"}, {R"("f")"}})
+      .setInputValue({{R"("a")"},
+                      {R"("b")"},
+                      {R"("c")"},
+                      {R"("d")"},
+                      {R"("e")"},
+                      {R"("f")"}})
       .expectedStats(ExecutionStats{})
       .expectedState(ExecutionState::DONE)
       .expectOutput({0}, {})
       .expectSkipped(0, 0)
-      .setCallStack(queryStack(AqlCall{0, false, 0, AqlCall::LimitType::HARD}, AqlCall{}))
+      .setCallStack(
+          queryStack(AqlCall{0, false, 0, AqlCall::LimitType::HARD}, AqlCall{}))
       .setInputSplitType(GetSplit())
       .run();
 }
@@ -454,7 +523,8 @@ TEST_F(SubqueryStartSpecficTest, hard_limit_nested_subqueries) {
 
   // The issue under test is a split after a datarow, but before the
   // shadowRow (entry 5)
-  // This caused the SubqueryStartExecutor to not reset that it has returned done.
+  // This caused the SubqueryStartExecutor to not reset that it has returned
+  // done.
   inputData.push_back(buildBlock<2>(manager(),
                                     {{1, NoneEntry{}},
                                      {NoneEntry{}, NoneEntry{}},
@@ -475,10 +545,10 @@ TEST_F(SubqueryStartSpecficTest, hard_limit_nested_subqueries) {
                                      {NoneEntry{}, NoneEntry{}}},
                                     {{0, 0}, {2, 0}, {4, 0}}));
 
-  inputData.push_back(
-      buildBlock<2>(manager(),
-                    {{8, NoneEntry{}}, {NoneEntry{}, NoneEntry{}}, {9, NoneEntry{}}},
-                    {{1, 0}}));
+  inputData.push_back(buildBlock<2>(
+      manager(),
+      {{8, NoneEntry{}}, {NoneEntry{}, NoneEntry{}}, {9, NoneEntry{}}},
+      {{1, 0}}));
 
   inputData.push_back(buildBlock<2>(manager(),
                                     {
@@ -486,18 +556,22 @@ TEST_F(SubqueryStartSpecficTest, hard_limit_nested_subqueries) {
                                     },
                                     {{0, 0}}));
 
-  MockTypedNode inputNode{fakedQuery->plan(), ExecutionNodeId{1}, ExecutionNode::FILTER};
+  MockTypedNode inputNode{fakedQuery->plan(), ExecutionNodeId{1},
+                          ExecutionNode::FILTER};
   FixedOutputExecutionBlockMock dependency{fakedQuery->rootEngine(), &inputNode,
                                            std::move(inputData)};
-  MockTypedNode sqNode{fakedQuery->plan(), ExecutionNodeId{42}, ExecutionNode::SUBQUERY_START};
-  ExecutionBlockImpl<SubqueryStartExecutor> testee{fakedQuery->rootEngine(), &sqNode,
-                                                   MakeBaseInfos(2), MakeBaseInfos(2)};
+  MockTypedNode sqNode{fakedQuery->plan(), ExecutionNodeId{42},
+                       ExecutionNode::SUBQUERY_START};
+  ExecutionBlockImpl<SubqueryStartExecutor> testee{
+      fakedQuery->rootEngine(), &sqNode, MakeBaseInfos(2), MakeBaseInfos(2)};
   testee.addDependency(&dependency);
   // MainQuery (HardLimit 10)
-  AqlCallStack callStack{AqlCallList{AqlCall{0, false, 10, AqlCall::LimitType::HARD}}};
+  AqlCallStack callStack{
+      AqlCallList{AqlCall{0, false, 10, AqlCall::LimitType::HARD}}};
   // outer subquery (Hardlimit 1)
-  callStack.pushCall(AqlCallList{AqlCall{0, false, 1, AqlCall::LimitType::HARD},
-                                 AqlCall{0, false, 1, AqlCall::LimitType::HARD}});
+  callStack.pushCall(
+      AqlCallList{AqlCall{0, false, 1, AqlCall::LimitType::HARD},
+                  AqlCall{0, false, 1, AqlCall::LimitType::HARD}});
   // InnerSubquery (Produce all)
   callStack.pushCall(AqlCallList{AqlCall{0}, AqlCall{0}});
 

@@ -28,7 +28,8 @@
 
 namespace arangodb {
 
-CpuUsageSnapshot CpuUsageSnapshot::fromString(char const* buffer, std::size_t bufferSize) noexcept {
+CpuUsageSnapshot CpuUsageSnapshot::fromString(char const* buffer,
+                                              std::size_t bufferSize) noexcept {
   auto readNumber = [](char const*& p, char const* e, bool& valid) {
     if (p >= e) {
       valid = false;
@@ -108,7 +109,8 @@ void CpuUsageSnapshot::clear() noexcept {
 }
 
 uint64_t CpuUsageSnapshot::total() const noexcept {
-  return user + nice + system + idle + iowait + irq + softirq + steal + guest + guestnice;
+  return user + nice + system + idle + iowait + irq + softirq + steal + guest +
+         guestnice;
 }
 
 }  // namespace arangodb

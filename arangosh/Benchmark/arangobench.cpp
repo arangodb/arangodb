@@ -60,8 +60,9 @@ int main(int argc, char* argv[]) {
     context.installHup();
 
     std::shared_ptr<options::ProgramOptions> options(
-        new options::ProgramOptions(argv[0], "Usage: arangobench [<options>]",
-                                    "For more information use:", BIN_DIRECTORY));
+        new options::ProgramOptions(
+            argv[0], "Usage: arangobench [<options>]",
+            "For more information use:", BIN_DIRECTORY));
     ApplicationServer server(options, BIN_DIRECTORY);
     int ret;
 
@@ -71,7 +72,8 @@ int main(int argc, char* argv[]) {
 
     server.addFeature<BenchFeature>(&ret);
     server.addFeature<ClientFeature, HttpEndpointProvider>(
-        false, std::numeric_limits<size_t>::max());  // provide max number of endpoints
+        false,
+        std::numeric_limits<size_t>::max());  // provide max number of endpoints
     server.addFeature<ConfigFeature>("arangobench");
     server.addFeature<LoggerFeature>(false);
     server.addFeature<RandomFeature>();
@@ -90,7 +92,8 @@ int main(int argc, char* argv[]) {
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("0a1a9", ERR, arangodb::Logger::BENCH)
-          << "arangobench terminated because of an unhandled exception: " << ex.what();
+          << "arangobench terminated because of an unhandled exception: "
+          << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
       LOG_TOPIC("61697", ERR, arangodb::Logger::BENCH)

@@ -35,8 +35,11 @@
 
 using namespace arangodb;
 
-RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine& eng, double interval)
-    : Thread(eng.server(), "RocksDBThread"), _engine(eng), _interval(interval) {}
+RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine& eng,
+                                                 double interval)
+    : Thread(eng.server(), "RocksDBThread"),
+      _engine(eng),
+      _interval(interval) {}
 
 RocksDBBackgroundThread::~RocksDBBackgroundThread() { shutdown(); }
 
@@ -80,8 +83,8 @@ void RocksDBBackgroundThread::run() {
           double end = TRI_microtime();
           if (end - start > 5.0) {
             LOG_TOPIC("3ad54", WARN, Logger::ENGINES)
-                << "slow background settings sync: " << Logger::FIXED(end - start, 6)
-                << " s";
+                << "slow background settings sync: "
+                << Logger::FIXED(end - start, 6) << " s";
           } else if (end - start > 0.75) {
             LOG_TOPIC("dd9ea", DEBUG, Logger::ENGINES)
                 << "slow background settings sync took: "
@@ -120,7 +123,8 @@ void RocksDBBackgroundThread::run() {
             [&minTick](TRI_vocbase_t& vocbase) -> void {
               // lowestServedValue will return the lowest of the lastServedTick
               // values stored, or UINT64_MAX if no clients are registered
-              minTick = std::min(minTick, vocbase.replicationClients().lowestServedValue());
+              minTick = std::min(
+                  minTick, vocbase.replicationClients().lowestServedValue());
             });
       }
 
@@ -158,6 +162,7 @@ void RocksDBBackgroundThread::run() {
     _engine.settingsManager()->sync(true);  // final write on shutdown
   } catch (std::exception const& ex) {
     LOG_TOPIC("f3aa6", WARN, Logger::ENGINES)
-        << "caught exception during final RocksDB sync operation: " << ex.what();
+        << "caught exception during final RocksDB sync operation: "
+        << ex.what();
   }
 }

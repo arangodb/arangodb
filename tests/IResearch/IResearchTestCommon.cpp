@@ -44,7 +44,8 @@ bool TestAnalyzer::next() {
   return true;
 }
 
-bool TestAnalyzer::normalize(const iresearch::string_ref& args, std::string& definition) {
+bool TestAnalyzer::normalize(const iresearch::string_ref& args,
+                             std::string& definition) {
   // same validation as for make,
   // as normalize usually called to sanitize data before make
   auto slice = arangodb::iresearch::slice(args);
@@ -56,10 +57,11 @@ bool TestAnalyzer::normalize(const iresearch::string_ref& args, std::string& def
     VPackObjectBuilder scope(&builder);
     arangodb::iresearch::addStringRef(builder, "args",
                                       arangodb::iresearch::getStringRef(slice));
-  } else if (slice.isObject() && slice.hasKey("args") && slice.get("args").isString()) {
+  } else if (slice.isObject() && slice.hasKey("args") &&
+             slice.get("args").isString()) {
     VPackObjectBuilder scope(&builder);
-    arangodb::iresearch::addStringRef(builder, "args",
-                                      arangodb::iresearch::getStringRef(slice.get("args")));
+    arangodb::iresearch::addStringRef(
+        builder, "args", arangodb::iresearch::getStringRef(slice.get("args")));
   } else {
     return false;
   }
@@ -77,7 +79,8 @@ auto TestAnalyzer::make(const iresearch::string_ref& args) -> ptr {
   return ptr;
 }
 
-irs::attribute* TestAnalyzer::get_mutable(irs::type_info::type_id type) noexcept {
+irs::attribute* TestAnalyzer::get_mutable(
+    irs::type_info::type_id type) noexcept {
   if (type == irs::type<TestAttribute>::id()) {
     return &_attr;
   }
@@ -90,6 +93,8 @@ irs::attribute* TestAnalyzer::get_mutable(irs::type_info::type_id type) noexcept
   return nullptr;
 }
 
-REGISTER_ATTRIBUTE(TestAttribute);  // required to open reader on segments with analyzed fields
+REGISTER_ATTRIBUTE(
+    TestAttribute);  // required to open reader on segments with analyzed fields
 
-REGISTER_ANALYZER_VPACK(TestAnalyzer, TestAnalyzer::make, TestAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(TestAnalyzer, TestAnalyzer::make,
+                        TestAnalyzer::normalize);

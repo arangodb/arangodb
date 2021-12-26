@@ -52,8 +52,10 @@ using namespace arangodb::methods;
 constexpr auto WAIT_FOR_SYNC_REPL = "waitForSyncReplication";
 constexpr auto ENF_REPL_FACT = "enforceReplicationFactor";
 
-CreateCollection::CreateCollection(MaintenanceFeature& feature, ActionDescription const& desc)
-    : ActionBase(feature, desc), ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
+CreateCollection::CreateCollection(MaintenanceFeature& feature,
+                                   ActionDescription const& desc)
+    : ActionBase(feature, desc),
+      ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);
@@ -124,8 +126,9 @@ bool CreateCollection::first() {
                            ? props.get(WAIT_FOR_SYNC_REPL).getBool()
                            : cluster.createWaitsForSyncReplication();
 
-    bool enforceReplFact =
-        (props.get(ENF_REPL_FACT).isBool()) ? props.get(ENF_REPL_FACT).getBool() : true;
+    bool enforceReplFact = (props.get(ENF_REPL_FACT).isBool())
+                               ? props.get(ENF_REPL_FACT).getBool()
+                               : true;
 
     TRI_col_type_e type = static_cast<TRI_col_type_e>(
         props.get(StaticStrings::DataSourceType).getNumber<uint32_t>());
@@ -154,7 +157,8 @@ bool CreateCollection::first() {
     result(res);
     if (col) {
       LOG_TOPIC("9db9a", DEBUG, Logger::MAINTENANCE)
-          << "local collection " << database << "/" << shard << " successfully created";
+          << "local collection " << database << "/" << shard
+          << " successfully created";
 
       if (leader.empty()) {
         std::vector<std::string> noFollowers;
@@ -179,8 +183,9 @@ bool CreateCollection::first() {
         return false;
       }
       std::stringstream error;
-      error << "creating local shard '" << database << "/" << shard << "' for central '"
-            << database << "/" << collection << "' failed: " << res;
+      error << "creating local shard '" << database << "/" << shard
+            << "' for central '" << database << "/" << collection
+            << "' failed: " << res;
       LOG_TOPIC("63687", ERR, Logger::MAINTENANCE) << error.str();
 
       res.reset(TRI_ERROR_FAILED, error.str());
@@ -197,7 +202,8 @@ bool CreateCollection::first() {
   }
 
   if (res.fail()) {
-    _feature.storeShardError(database, collection, shard, _description.get(SERVER_ID), res);
+    _feature.storeShardError(database, collection, shard,
+                             _description.get(SERVER_ID), res);
   }
 
   LOG_TOPIC("4562c", DEBUG, Logger::MAINTENANCE)

@@ -47,7 +47,8 @@ class QueryWarnings final {
 
   /// @brief register an error
   /// this also makes the query abort
-  [[noreturn]] void registerError(ErrorCode code, std::string_view details = {});
+  [[noreturn]] void registerError(ErrorCode code,
+                                  std::string_view details = {});
   /// @brief register a warning
   void registerWarning(ErrorCode code, std::string_view details = {});
 

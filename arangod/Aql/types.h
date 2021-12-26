@@ -40,9 +40,9 @@
 
 namespace boost {
 namespace container {
-template <class T>
+template<class T>
 class new_allocator;
-template <class Key, class Compare, class AllocatorOrContainer>
+template<class Key, class Compare, class AllocatorOrContainer>
 class flat_set;
 }  // namespace container
 }  // namespace boost
@@ -50,7 +50,8 @@ class flat_set;
 namespace arangodb {
 
 namespace containers {
-template <class Key, class Compare = std::less<Key>, class AllocatorOrContainer = boost::container::new_allocator<Key>>
+template<class Key, class Compare = std::less<Key>,
+         class AllocatorOrContainer = boost::container::new_allocator<Key>>
 using flat_set = boost::container::flat_set<Key, Compare, AllocatorOrContainer>;
 }
 
@@ -65,8 +66,8 @@ typedef uint64_t QueryId;
 typedef uint64_t EngineId;
 
 // Map RemoteID->ServerID->[SnippetId]
-using MapRemoteToSnippet =
-    std::unordered_map<ExecutionNodeId, std::unordered_map<std::string, std::vector<std::string>>>;
+using MapRemoteToSnippet = std::unordered_map<
+    ExecutionNodeId, std::unordered_map<std::string, std::vector<std::string>>>;
 
 // Enable/Disable block passthrough in fetchers
 enum class BlockPassthrough { Disable, Enable };

@@ -43,8 +43,8 @@ struct WorkerContext : public ::arangodb::pregel::WorkerContext {
   void postGlobalSuperstep(uint64_t gss) override;
   void postGlobalSuperstepMasterMessage(VPackBuilder& msg) override;
 
-  [[nodiscard]] greenspun::EvalResult sendToGlobalAccumulator(std::string accumId,
-                                                              VPackSlice message) const;
+  [[nodiscard]] greenspun::EvalResult sendToGlobalAccumulator(
+      std::string accumId, VPackSlice message) const;
 
  private:
   struct MutexAccumPair {
@@ -55,14 +55,18 @@ struct WorkerContext : public ::arangodb::pregel::WorkerContext {
         : accum(std::move(accum)) {}
   };
 
-  [[nodiscard]] std::unordered_map<std::string, MutexAccumPair> const& globalAccumulatorsUpdates() const;
-  [[nodiscard]] std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>> const& globalAccumulators() const;
+  [[nodiscard]] std::unordered_map<std::string, MutexAccumPair> const&
+  globalAccumulatorsUpdates() const;
+  [[nodiscard]] std::unordered_map<std::string,
+                                   std::unique_ptr<AccumulatorBase>> const&
+  globalAccumulators() const;
 
   ProgrammablePregelAlgorithm const* _algo;
 
   // This map contains the values of the global accumulators
   // from the last GSS
-  std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>> _globalAccumulators;
+  std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>>
+      _globalAccumulators;
 
   // This only holds the *deltas* for the global accumulators, i.e.
   // these accumulators are reset before every GSS, and their contents

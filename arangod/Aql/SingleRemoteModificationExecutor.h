@@ -36,22 +36,21 @@ namespace aql {
 class ExecutionEngine;
 
 struct SingleRemoteModificationInfos : ModificationExecutorInfos {
-  SingleRemoteModificationInfos(ExecutionEngine* engine, RegisterId inputRegister,
-                                RegisterId outputNewRegisterId,
-                                RegisterId outputOldRegisterId, RegisterId outputRegisterId,
-                                arangodb::aql::QueryContext& query,
-                                OperationOptions options, aql::Collection const* aqlCollection,
-                                ConsultAqlWriteFilter consultAqlWriteFilter,
-                                IgnoreErrors ignoreErrors,
-                                IgnoreDocumentNotFound ignoreDocumentNotFound,
-                                std::string key, bool hasParent, bool replaceIndex)
-      : ModificationExecutorInfos(engine, inputRegister, RegisterPlan::MaxRegisterId,
-                                  RegisterPlan::MaxRegisterId, outputNewRegisterId,
-                                  outputOldRegisterId, outputRegisterId, query,
-                                  std::move(options), aqlCollection,
-                                  ProducesResults(false), consultAqlWriteFilter,
-                                  ignoreErrors, DoCount(true), IsReplace(false),
-                                  ignoreDocumentNotFound),
+  SingleRemoteModificationInfos(
+      ExecutionEngine* engine, RegisterId inputRegister,
+      RegisterId outputNewRegisterId, RegisterId outputOldRegisterId,
+      RegisterId outputRegisterId, arangodb::aql::QueryContext& query,
+      OperationOptions options, aql::Collection const* aqlCollection,
+      ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
+      IgnoreDocumentNotFound ignoreDocumentNotFound, std::string key,
+      bool hasParent, bool replaceIndex)
+      : ModificationExecutorInfos(
+            engine, inputRegister, RegisterPlan::MaxRegisterId,
+            RegisterPlan::MaxRegisterId, outputNewRegisterId,
+            outputOldRegisterId, outputRegisterId, query, std::move(options),
+            aqlCollection, ProducesResults(false), consultAqlWriteFilter,
+            ignoreErrors, DoCount(true), IsReplace(false),
+            ignoreDocumentNotFound),
         _key(std::move(key)),
         _hasParent(hasParent),
         _replaceIndex(replaceIndex) {}
@@ -74,11 +73,12 @@ struct Replace {};
 struct Update {};
 struct Upsert {};
 
-template <typename Modifier>
+template<typename Modifier>
 struct SingleRemoteModificationExecutor {
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Infos = SingleRemoteModificationInfos;
@@ -95,13 +95,15 @@ struct SingleRemoteModificationExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input,
+                                 OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
  protected:
-  auto doSingleRemoteModificationOperation(InputAqlItemRow&, Stats&) -> OperationResult;
+  auto doSingleRemoteModificationOperation(InputAqlItemRow&, Stats&)
+      -> OperationResult;
   auto doSingleRemoteModificationOutput(InputAqlItemRow&, OutputAqlItemRow&,
                                         OperationResult&) -> void;
 

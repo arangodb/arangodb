@@ -60,14 +60,14 @@ struct PregelID {
   bool isValid() const { return shard != InvalidPregelShard && !key.empty(); }
 };
 
-template <typename V, typename E>
+template<typename V, typename E>
 class GraphStore;
 
 // header entry for the edge file
-template <typename E>
+template<typename E>
 // cppcheck-suppress noConstructor
 class Edge {
-  template <typename V, typename E2>
+  template<typename V, typename E2>
   friend class GraphStore;
 
   // these members are initialized by the GraphStore
@@ -85,7 +85,7 @@ class Edge {
   PregelShard targetShard() const noexcept { return _targetShard; }
 };
 
-template <typename V, typename E>
+template<typename V, typename E>
 // cppcheck-suppress noConstructor
 class Vertex {
   char const* _key;  // uint64_t
@@ -114,14 +114,21 @@ class Vertex {
 
  public:
   Vertex() noexcept
-      : _key(nullptr), _edges(nullptr), _edgeCount(0), _active(1), _keyLength(0), _shard(InvalidPregelShard) {
+      : _key(nullptr),
+        _edges(nullptr),
+        _edgeCount(0),
+        _active(1),
+        _keyLength(0),
+        _shard(InvalidPregelShard) {
     TRI_ASSERT(keyLength() == 0);
     TRI_ASSERT(active());
 
     // make sure that Vertex has the smallest possible size, especially
-    // that the bitfield for _acitve and _keyLength takes up only 16 bits in total.
+    // that the bitfield for _acitve and _keyLength takes up only 16 bits in
+    // total.
     static_assert(sizeof(Vertex<V, E>) ==
-                      sizeof(char const*) + sizeof(Edge<E>*) + sizeof(uint32_t) +
+                      sizeof(char const*) + sizeof(Edge<E>*) +
+                          sizeof(uint32_t) +
                           sizeof(uint16_t) +  // combined size of the bitfield
                           sizeof(PregelShard) + std::max<size_t>(8U, sizeof(V)),
                   "invalid size of Vertex");
@@ -154,7 +161,8 @@ class Vertex {
 
   // maximum number of edges that can be added for each vertex
   static constexpr size_t maxEdgeCount() {
-    return static_cast<size_t>(std::numeric_limits<decltype(_edgeCount)>::max());
+    return static_cast<size_t>(
+        std::numeric_limits<decltype(_edgeCount)>::max());
   }
 
   void setActive(bool bb) noexcept {
@@ -194,7 +202,7 @@ class Vertex {
 }  // namespace arangodb
 
 namespace std {
-template <>
+template<>
 struct hash<arangodb::pregel::PregelID> {
   std::size_t operator()(const arangodb::pregel::PregelID& k) const noexcept {
     using std::hash;

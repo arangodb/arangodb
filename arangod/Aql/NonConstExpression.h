@@ -36,7 +36,8 @@ struct NonConstExpression {
   std::unique_ptr<Expression> expression;
   std::vector<size_t> const indexPath;
 
-  NonConstExpression(std::unique_ptr<Expression> exp, std::vector<size_t> idxPath);
+  NonConstExpression(std::unique_ptr<Expression> exp,
+                     std::vector<size_t> idxPath);
 };
 
 }  // namespace aql

@@ -33,7 +33,8 @@
 using namespace arangodb::consensus;
 
 ResignLeadership::ResignLeadership(Node const& snapshot, AgentInterface* agent,
-                                   std::string const& jobId, std::string const& creator,
+                                   std::string const& jobId,
+                                   std::string const& creator,
                                    std::string const& server)
     : Job(NOTFOUND, snapshot, agent, jobId, creator), _server(id(server)) {}
 
@@ -95,7 +96,8 @@ JOB_STATUS ResignLeadership::status() {
     return PENDING;
   }
 
-  Node::Children const& failed = _snapshot.hasAsChildren(failedPrefix).value().get();
+  Node::Children const& failed =
+      _snapshot.hasAsChildren(failedPrefix).value().get();
   size_t failedFound = 0;
   for (auto const& subJob : failed) {
     if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
@@ -184,7 +186,8 @@ bool ResignLeadership::create(std::shared_ptr<VPackBuilder> envelope) {
 
   _status = NOTFOUND;
 
-  LOG_TOPIC("dead8", INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
+  LOG_TOPIC("dead8", INFO, Logger::SUPERVISION)
+      << "Failed to insert job " + _jobId;
   return false;
 }
 
@@ -372,7 +375,8 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         continue;
       }
 
-      for (auto const& shard : collection.hasAsChildren("shards").value().get()) {
+      for (auto const& shard :
+           collection.hasAsChildren("shards").value().get()) {
         // Only shards, which are affected
         int found = -1;
         int count = 0;
@@ -390,10 +394,8 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         bool isLeader = (found == 0);
 
         if (isLeader) {
-          std::string toServer =
-              Job::findNonblockedCommonHealthyInSyncFollower(_snapshot, database.first,
-                                                             collptr.first,
-                                                             shard.first, _server);
+          std::string toServer = Job::findNonblockedCommonHealthyInSyncFollower(
+              _snapshot, database.first, collptr.first, shard.first, _server);
 
           if (toServer.empty()) {
             continue;  // can not resign from that shard
@@ -406,7 +408,8 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
               .create(trx);
 
         } else {
-          // Intentionally do nothing. RemoveServer will remove the failed follower
+          // Intentionally do nothing. RemoveServer will remove the failed
+          // follower
           LOG_TOPIC("deadf", DEBUG, Logger::SUPERVISION)
               << "Do nothing for resign leadership of follower of the "
                  "collection "
@@ -450,19 +453,23 @@ arangodb::Result ResignLeadership::abort(std::string const& reason) {
   }
 
   // Abort all our subjobs:
-  Node::Children const& todos = _snapshot.hasAsChildren(toDoPrefix).value().get();
-  Node::Children const& pends = _snapshot.hasAsChildren(pendingPrefix).value().get();
+  Node::Children const& todos =
+      _snapshot.hasAsChildren(toDoPrefix).value().get();
+  Node::Children const& pends =
+      _snapshot.hasAsChildren(pendingPrefix).value().get();
 
   std::string moveShardAbortReason = "resign leadership aborted: " + reason;
 
   for (auto const& subJob : todos) {
     if (subJob.first.compare(0, _jobId.size() + 1, _jobId + "-") == 0) {
-      JobContext(TODO, subJob.first, _snapshot, _agent).abort(moveShardAbortReason);
+      JobContext(TODO, subJob.first, _snapshot, _agent)
+          .abort(moveShardAbortReason);
     }
   }
   for (auto const& subJob : pends) {
     if (subJob.first.compare(0, _jobId.size() + 1, _jobId + "-") == 0) {
-      JobContext(PENDING, subJob.first, _snapshot, _agent).abort(moveShardAbortReason);
+      JobContext(PENDING, subJob.first, _snapshot, _agent)
+          .abort(moveShardAbortReason);
     }
   }
 

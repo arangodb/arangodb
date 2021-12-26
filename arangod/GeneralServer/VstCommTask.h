@@ -35,7 +35,7 @@
 namespace arangodb {
 namespace rest {
 
-template <SocketType T>
+template<SocketType T>
 class VstCommTask final : public GeneralCommTask<T> {
  public:
   VstCommTask(GeneralServer& server, ConnectionInfo,
@@ -52,10 +52,11 @@ class VstCommTask final : public GeneralCommTask<T> {
 
   // convert from GeneralResponse to VstResponse ad dispatch request to class
   // internal addResponse
-  virtual void sendResponse(std::unique_ptr<GeneralResponse>, RequestStatistics::Item) override;
+  virtual void sendResponse(std::unique_ptr<GeneralResponse>,
+                            RequestStatistics::Item) override;
 
-  virtual std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
-                                                          uint64_t messageId) override;
+  virtual std::unique_ptr<GeneralResponse> createResponse(
+      rest::ResponseCode, uint64_t messageId) override;
 
  private:
   // Process the given incoming chunk.

@@ -102,7 +102,8 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   }
 
  protected:
-  virtual Result appendVelocyPackImpl(VPackBuilder& builder, Serialization context) const override;
+  virtual Result appendVelocyPackImpl(VPackBuilder& builder,
+                                      Serialization context) const override;
 
   virtual Result dropImpl() override;
 
@@ -113,7 +114,8 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
 
   IResearchViewCoordinator(TRI_vocbase_t& vocbase, VPackSlice info);
 
-  std::unordered_map<DataSourceId, std::pair<std::string, VPackBuilder>> _collections;  // transient member, not persisted
+  std::unordered_map<DataSourceId, std::pair<std::string, VPackBuilder>>
+      _collections;                  // transient member, not persisted
   mutable std::shared_mutex _mutex;  // for use with '_collections'
   IResearchViewMeta _meta;
 };  // IResearchViewCoordinator

@@ -70,9 +70,9 @@ TEST_P(IResearchQueryExistsTest, test) {
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -95,16 +95,16 @@ TEST_P(IResearchQueryExistsTest, test) {
     resource /= std::string_view(arangodb::tests::testResourceDir);
     resource /= std::string_view("simple_sequential.json");
 
-    auto builder =
-        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+    auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
+        resource.u8string());
     auto slice = builder.slice();
     ASSERT_TRUE(slice.isArray());
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -139,10 +139,9 @@ TEST_P(IResearchQueryExistsTest, test) {
         "storeValues": "id" }
     }})";
 
-    auto viewDefinition =
-        irs::string_utils::to_string(viewDefinitionTemplate,
-                                     static_cast<uint32_t>(linkVersion()),
-                                     static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition = irs::string_utils::to_string(
+        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()),
+        static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -848,11 +847,10 @@ TEST_P(IResearchQueryExistsTest, test) {
 
   // test existent (numeric) via [], limit  5
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[3].slice(),
-                                                         insertedDocs[6].slice(),
-                                                         insertedDocs[7].slice(),
-                                                         insertedDocs[8].slice(),
-                                                         insertedDocs[9].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[3].slice(), insertedDocs[6].slice(),
+        insertedDocs[7].slice(), insertedDocs[8].slice(),
+        insertedDocs[9].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH EXISTS(d['value'], 'numeric') SORT BM25(d) "
@@ -1288,9 +1286,9 @@ TEST_P(IResearchQueryExistsTest, StoreMaskPartially) {
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -1313,16 +1311,16 @@ TEST_P(IResearchQueryExistsTest, StoreMaskPartially) {
     resource /= std::string_view(arangodb::tests::testResourceDir);
     resource /= std::string_view("simple_sequential.json");
 
-    auto builder =
-        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+    auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
+        resource.u8string());
     auto slice = builder.slice();
     ASSERT_TRUE(slice.isArray());
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -1356,10 +1354,9 @@ TEST_P(IResearchQueryExistsTest, StoreMaskPartially) {
         "version": %u }
     }})";
 
-    auto viewDefinition =
-        irs::string_utils::to_string(viewDefinitionTemplate,
-                                     static_cast<uint32_t>(linkVersion()),
-                                     static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition = irs::string_utils::to_string(
+        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()),
+        static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 

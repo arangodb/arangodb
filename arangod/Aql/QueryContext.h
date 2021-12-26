@@ -165,10 +165,12 @@ class QueryContext {
   std::unordered_map<std::string, std::unique_ptr<graph::Graph>> _graphs;
 
   /// @brief set of DataSources used in the query
-  ///        needed for the query cache, stores datasource guid -> datasource name
+  ///        needed for the query cache, stores datasource guid -> datasource
+  ///        name
   std::unordered_map<std::string, std::string> _queryDataSources;
 
-  /// @brief current state the query is in (used for profiling and error messages)
+  /// @brief current state the query is in (used for profiling and error
+  /// messages)
   std::atomic<QueryExecutionState::ValueType> _execState;
 
   /// @brief _ast, we need an ast to manage the memory for AstNodes, even

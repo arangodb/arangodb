@@ -37,7 +37,8 @@ constexpr const char expressionsKey[] = "expressions";
 constexpr const char varMappingKey[] = "varMapping";
 constexpr const char hasV8ExpressionKey[] = "hasV8Expression";
 
-void NonConstExpressionContainer::toVelocyPack(arangodb::velocypack::Builder& builder) const {
+void NonConstExpressionContainer::toVelocyPack(
+    arangodb::velocypack::Builder& builder) const {
   VPackObjectBuilder containerObject(&builder);
   builder.add(VPackValue(expressionsKey));
   {
@@ -71,8 +72,8 @@ NonConstExpressionContainer NonConstExpressionContainer::clone(Ast* ast) const {
   decltype(_expressions) expressions{};
   expressions.reserve(_expressions.size());
   for (auto const& e : _expressions) {
-    expressions.emplace_back(
-        std::make_unique<NonConstExpression>(e->expression->clone(ast), e->indexPath));
+    expressions.emplace_back(std::make_unique<NonConstExpression>(
+        e->expression->clone(ast), e->indexPath));
   }
 
   return NonConstExpressionContainer{std::move(expressions),
@@ -104,16 +105,16 @@ NonConstExpressionContainer NonConstExpressionContainer::fromVelocyPack(
       TRI_ASSERT(p.isNumber<size_t>());
       indexPath.emplace_back(p.getNumber<size_t>());
     }
-    result._expressions.emplace_back(
-        std::make_unique<NonConstExpression>(std::make_unique<Expression>(ast, exp),
-                                             std::move(indexPath)));
+    result._expressions.emplace_back(std::make_unique<NonConstExpression>(
+        std::make_unique<Expression>(ast, exp), std::move(indexPath)));
   }
 
   auto vars = slice.get(varMappingKey);
   TRI_ASSERT(vars.isObject());
   for (auto const& [varId, regId] : VPackObjectIterator(vars)) {
     VariableId variableId = 0;
-    bool converted = basics::StringUtils::toNumber(varId.copyString(), variableId);
+    bool converted =
+        basics::StringUtils::toNumber(varId.copyString(), variableId);
     TRI_ASSERT(converted);
     result._varToRegisterMapping.emplace_back(
         std::make_pair(variableId, regId.getNumber<RegisterId::value_t>()));

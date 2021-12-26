@@ -29,12 +29,14 @@ using namespace arangodb;
 using namespace arangodb::zkd;
 
 TEST(Zkd_byte_string_conversion, uint64) {
-  auto tests = {std::pair{uint64_t{12}, byte_string{0_b, 0_b, 0_b, 0_b, 0_b, 0_b, 0_b, 12_b}},
-                std::pair{uint64_t{0xAABBCCDD},
-                          byte_string{0_b, 0_b, 0_b, 0_b, 0xAA_b, 0xBB_b, 0xCC_b, 0xDD_b}},
-                std::pair{uint64_t{0x0123456789ABCDEF},
-                          byte_string{0x01_b, 0x23_b, 0x45_b, 0x67_b, 0x89_b,
-                                      0xAB_b, 0xCD_b, 0xEF_b}}};
+  auto tests = {
+      std::pair{uint64_t{12},
+                byte_string{0_b, 0_b, 0_b, 0_b, 0_b, 0_b, 0_b, 12_b}},
+      std::pair{uint64_t{0xAABBCCDD}, byte_string{0_b, 0_b, 0_b, 0_b, 0xAA_b,
+                                                  0xBB_b, 0xCC_b, 0xDD_b}},
+      std::pair{uint64_t{0x0123456789ABCDEF},
+                byte_string{0x01_b, 0x23_b, 0x45_b, 0x67_b, 0x89_b, 0xAB_b,
+                            0xCD_b, 0xEF_b}}};
 
   for (auto&& [v, bs] : tests) {
     auto result = to_byte_string_fixed_length(v);
@@ -62,8 +64,9 @@ TEST(Zkd_byte_string_conversion, uint64_compare) {
 TEST(Zkd_byte_string_conversion, int64) {
   auto tests = {std::pair{int64_t{12}, byte_string{0xff_b, 0_b, 0_b, 0_b, 0_b,
                                                    0_b, 0_b, 0_b, 12_b}},
-                std::pair{int64_t{0xAABBCCDD}, byte_string{0xFF_b, 0_b, 0_b, 0_b, 0_b, 0xAA_b,
-                                                           0xBB_b, 0xCC_b, 0xDD_b}},
+                std::pair{int64_t{0xAABBCCDD},
+                          byte_string{0xFF_b, 0_b, 0_b, 0_b, 0_b, 0xAA_b,
+                                      0xBB_b, 0xCC_b, 0xDD_b}},
                 std::pair{int64_t{-0x0123456789ABCDEF},
                           byte_string{0x00_b, 0xFE_b, 0xDC_b, 0xBA_b, 0x98_b,
                                       0x76_b, 0x54_b, 0x32_b, 0x11_b}}};

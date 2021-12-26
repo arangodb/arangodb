@@ -65,7 +65,8 @@ void AgencyCallback::local(bool b) {
 
 bool AgencyCallback::local() const { return _local; }
 
-void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) {
+void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex,
+                                      bool forceCheck) {
   if (!_needsValue) {
     // no need to pass any value to the callback
     if (needToAcquireMutex) {
@@ -95,7 +96,8 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
         // only log errors if we are not already shutting down...
         // in case of shutdown this error is somewhat expected
         LOG_TOPIC("ec320", ERR, arangodb::Logger::CLUSTER)
-            << "Callback to get agency cache was not successful: " << result.toJson();
+            << "Callback to get agency cache was not successful: "
+            << result.toJson();
       }
       return;
     }
@@ -107,8 +109,8 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
         // only log errors if we are not already shutting down...
         // in case of shutdown this error is somewhat expected
         LOG_TOPIC("fb402", ERR, arangodb::Logger::CLUSTER)
-            << "Callback getValues to agency was not successful: " << tmp.errorCode()
-            << " " << tmp.errorMessage();
+            << "Callback getValues to agency was not successful: "
+            << tmp.errorCode() << " " << tmp.errorMessage();
       }
       return;
     }
@@ -130,11 +132,13 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
   }
 }
 
-void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData, bool forceCheck) {
+void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData,
+                                bool forceCheck) {
   // Only called from refetchAndUpdate, we always have the mutex when
   // we get here!
   if (!_lastData || forceCheck ||
-      !arangodb::basics::VelocyPackHelper::equal(_lastData->slice(), newData->slice(), false)) {
+      !arangodb::basics::VelocyPackHelper::equal(_lastData->slice(),
+                                                 newData->slice(), false)) {
     LOG_TOPIC("2bd14", DEBUG, Logger::CLUSTER)
         << "AgencyCallback: Got new value " << newData->slice().typeName()
         << " " << newData->toJson() << " forceCheck=" << forceCheck;

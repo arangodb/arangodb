@@ -80,7 +80,8 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) : IndexHint() {
           if (value->type == AstNodeType::NODE_TYPE_VALUE &&
               value->value.type == AstNodeValueType::VALUE_TYPE_STRING) {
             _type = HintType::Simple;
-            _hint.simple.emplace_back(value->getStringValue(), value->getStringLength());
+            _hint.simple.emplace_back(value->getStringValue(),
+                                      value->getStringLength());
             handled = true;
           } else if (value->type == AstNodeType::NODE_TYPE_ARRAY) {
             _type = HintType::Simple;
@@ -106,7 +107,8 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) : IndexHint() {
         }
 
         if (!handled) {
-          ExecutionPlan::invalidOptionAttribute(query, "FOR", name.data(), name.size());
+          ExecutionPlan::invalidOptionAttribute(query, "FOR", name.data(),
+                                                name.size());
         }
       }
     }
@@ -121,7 +123,8 @@ IndexHint::IndexHint(VPackSlice const& slice) : IndexHint() {
   if (s.isObject()) {
     _type = ::fromTypeName(
         basics::VelocyPackHelper::getStringValue(s, ::FieldType, ""));
-    _forced = basics::VelocyPackHelper::getBooleanValue(s, ::FieldForced, false);
+    _forced =
+        basics::VelocyPackHelper::getBooleanValue(s, ::FieldForced, false);
   }
 
   if (_type != HintType::Illegal && _type != HintType::None) {
@@ -183,7 +186,8 @@ std::string IndexHint::toString() const {
   return builder.slice().toJson();
 }
 
-std::ostream& operator<<(std::ostream& stream, arangodb::aql::IndexHint const& hint) {
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::aql::IndexHint const& hint) {
   stream << hint.toString();
   return stream;
 }

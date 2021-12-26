@@ -36,7 +36,7 @@
 namespace arangodb {
 namespace basics {
 
-template <typename TID, typename T>
+template<typename TID, typename T>
 class DeadlockDetector {
  public:
   explicit DeadlockDetector(bool enabled) : _enabled(enabled) {}
@@ -157,7 +157,8 @@ class DeadlockDetector {
 
             if (it2 != _blocked.end()) {
               // writer thread is blocking...
-              stack.emplace_back(otherTid, (*it2).second.first, (*it).second.second);
+              stack.emplace_back(otherTid, (*it2).second.first,
+                                 (*it).second.second);
             }
           }
         }
@@ -178,7 +179,8 @@ class DeadlockDetector {
       return TRI_ERROR_NO_ERROR;
     }
 
-    bool const inserted = _blocked.emplace(tid, std::make_pair(value, isWrite)).second;
+    bool const inserted =
+        _blocked.emplace(tid, std::make_pair(value, isWrite)).second;
 
     if (!inserted) {
       // we're already blocking. should never happen
@@ -217,8 +219,9 @@ class DeadlockDetector {
 
   /// @brief unregister a thread from the list of active threads
   void unsetActive(TID tid, T const* value, bool isWrite) {
-    MUTEX_LOCKER(mutexLocker,
-                 _lock);  // note: this lock is expensive when many threads compete
+    MUTEX_LOCKER(
+        mutexLocker,
+        _lock);  // note: this lock is expensive when many threads compete
 
     if (!_enabled) {
       return;
@@ -278,8 +281,9 @@ class DeadlockDetector {
 
   /// @brief add a reader/writer to the list of active threads
   void addActive(TID tid, T const* value, bool isWrite, bool wasBlockedBefore) {
-    MUTEX_LOCKER(mutexLocker,
-                 _lock);  // note: this lock is expensive when many threads compete
+    MUTEX_LOCKER(
+        mutexLocker,
+        _lock);  // note: this lock is expensive when many threads compete
 
     if (!_enabled) {
       return;
@@ -289,7 +293,8 @@ class DeadlockDetector {
 
     if (it == _active.end()) {
       // no one else there. simply register us
-      _active.emplace(value, std::make_pair(std::unordered_set<TID>({tid}), isWrite));
+      _active.emplace(value,
+                      std::make_pair(std::unordered_set<TID>({tid}), isWrite));
     } else {
       // someone else is already there
       // we're expecting one or many readers
@@ -318,7 +323,8 @@ class DeadlockDetector {
   std::unordered_map<TID, std::pair<T const*, bool>> _blocked;
 
   /// @brief threads currently holding locks
-  std::unordered_map<T const*, std::pair<std::unordered_set<TID>, bool>> _active;
+  std::unordered_map<T const*, std::pair<std::unordered_set<TID>, bool>>
+      _active;
 
   /// @brief whether or not the detector is enabled
   bool _enabled;

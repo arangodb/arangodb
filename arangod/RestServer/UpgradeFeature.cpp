@@ -58,8 +58,9 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-UpgradeFeature::UpgradeFeature(application_features::ApplicationServer& server,
-                               int* result, std::vector<std::type_index> const& nonServerFeatures)
+UpgradeFeature::UpgradeFeature(
+    application_features::ApplicationServer& server, int* result,
+    std::vector<std::type_index> const& nonServerFeatures)
     : ApplicationFeature(server, "Upgrade"),
       _upgrade(false),
       _upgradeCheck(true),
@@ -80,9 +81,10 @@ void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "perform a database upgrade if necessary",
                      new BooleanParameter(&_upgrade));
 
-  options->addOption("--database.upgrade-check", "skip a database upgrade",
-                     new BooleanParameter(&_upgradeCheck),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption(
+      "--database.upgrade-check", "skip a database upgrade",
+      new BooleanParameter(&_upgradeCheck),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
 #ifndef _WIN32
@@ -133,7 +135,8 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // in the way...
   if (ServerState::instance()->isCoordinator()) {
     std::vector<std::type_index> otherFeaturesToDisable = {
-        std::type_index(typeid(DaemonFeature)), std::type_index(typeid(GreetingsFeature)),
+        std::type_index(typeid(DaemonFeature)),
+        std::type_index(typeid(GreetingsFeature)),
         std::type_index(typeid(pregel::PregelFeature)),
         std::type_index(typeid(SupervisorFeature))};
     server().forceDisableFeatures(otherFeaturesToDisable);
@@ -145,7 +148,8 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     server().forceDisableFeatures(otherFeaturesToDisable);
   }
 
-  ReplicationFeature& replicationFeature = server().getFeature<ReplicationFeature>();
+  ReplicationFeature& replicationFeature =
+      server().getFeature<ReplicationFeature>();
   replicationFeature.disableReplicationApplier();
 
   DatabaseFeature& database = server().getFeature<DatabaseFeature>();
@@ -172,7 +176,8 @@ void UpgradeFeature::start() {
       upgradeLocalDatabase();
     }
 
-    auth::UserManager* um = server().getFeature<AuthenticationFeature>().userManager();
+    auth::UserManager* um =
+        server().getFeature<AuthenticationFeature>().userManager();
 
     if (um != nullptr) {
       if (!ServerState::instance()->isCoordinator() && !init.restoreAdmin() &&
@@ -189,7 +194,8 @@ void UpgradeFeature::start() {
           });
           if (res.is(TRI_ERROR_USER_NOT_FOUND)) {
             VPackSlice extras = VPackSlice::noneSlice();
-            res = um->storeUser(false, "root", init.defaultPassword(), true, extras);
+            res = um->storeUser(false, "root", init.defaultPassword(), true,
+                                extras);
           }
           return res;
         });
@@ -202,7 +208,8 @@ void UpgradeFeature::start() {
     }
 
     // change admin user
-    if (init.restoreAdmin() && ServerState::instance()->isSingleServerOrCoordinator()) {
+    if (init.restoreAdmin() &&
+        ServerState::instance()->isSingleServerOrCoordinator()) {
       Result res = um->removeAllUsers();
       if (res.fail()) {
         LOG_TOPIC("70922", ERR, arangodb::Logger::FIXME)
@@ -214,7 +221,8 @@ void UpgradeFeature::start() {
       VPackSlice extras = VPackSlice::noneSlice();
       res = um->storeUser(true, "root", init.defaultPassword(), true, extras);
       if (res.fail() && res.errorNumber() == TRI_ERROR_USER_NOT_FOUND) {
-        res = um->storeUser(false, "root", init.defaultPassword(), true, extras);
+        res =
+            um->storeUser(false, "root", init.defaultPassword(), true, extras);
       }
 
       if (res.fail()) {
@@ -263,7 +271,8 @@ void UpgradeFeature::upgradeLocalDatabase() {
     TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
     TRI_ASSERT(vocbase != nullptr);
 
-    auto res = methods::Upgrade::startup(*vocbase, _upgrade, ignoreDatafileErrors);
+    auto res =
+        methods::Upgrade::startup(*vocbase, _upgrade, ignoreDatafileErrors);
 
     if (res.fail()) {
       char const* typeName = "initialization";

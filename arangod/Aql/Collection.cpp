@@ -53,19 +53,22 @@ Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase,
   TRI_ASSERT(_vocbase != nullptr);
 
   // _collection will only be populated here in the constructor, and not later.
-  // note that it will only be populated for "real" collections and shards though.
-  // aql::Collection objects can also be created for views and for non-existing
-  // collections. In these cases it is not possible to populate _collection, at all.
+  // note that it will only be populated for "real" collections and shards
+  // though. aql::Collection objects can also be created for views and for
+  // non-existing collections. In these cases it is not possible to populate
+  // _collection, at all.
   if (hint == Hint::Collection) {
     if (ServerState::instance()->isRunningInCluster()) {
-      auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+      auto& clusterInfo =
+          _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
       _collection = clusterInfo.getCollection(_vocbase->name(), _name);
     } else {
       _collection = _vocbase->lookupCollection(_name);
     }
   } else if (hint == Hint::Shard) {
     if (ServerState::instance()->isCoordinator()) {
-      auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+      auto& clusterInfo =
+          _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
       _collection = clusterInfo.getCollection(_vocbase->name(), _name);
     } else {
       _collection = _vocbase->lookupCollection(_name);
@@ -92,7 +95,8 @@ DataSourceId Collection::id() const { return getCollection()->id(); }
 TRI_col_type_e Collection::type() const { return getCollection()->type(); }
 
 /// @brief count the number of documents in the collection
-size_t Collection::count(transaction::Methods* trx, transaction::CountType type) const {
+size_t Collection::count(transaction::Methods* trx,
+                         transaction::CountType type) const {
   OperationOptions options;  // TODO get from trx?
   OperationResult res = trx->count(_name, type, options);
   if (res.fail()) {
@@ -103,7 +107,8 @@ size_t Collection::count(transaction::Methods* trx, transaction::CountType type)
 
 std::unordered_set<std::string> Collection::responsibleServers() const {
   std::unordered_set<std::string> result;
-  auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+  auto& clusterInfo =
+      _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
 
   auto shardIds = this->shardIds();
   for (auto const& it : *shardIds) {
@@ -113,8 +118,10 @@ std::unordered_set<std::string> Collection::responsibleServers() const {
   return result;
 }
 
-size_t Collection::responsibleServers(std::unordered_set<std::string>& result) const {
-  auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+size_t Collection::responsibleServers(
+    std::unordered_set<std::string>& result) const {
+  auto& clusterInfo =
+      _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
 
   size_t n = 0;
   auto shardIds = this->shardIds();
@@ -132,7 +139,8 @@ std::string const& Collection::distributeShardsLike() const {
 
 /// @brief returns the shard ids of a collection
 std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
-  auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+  auto& clusterInfo =
+      _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
   auto coll = getCollection();
   if (coll->isSmart() && coll->type() == TRI_COL_TYPE_EDGE) {
     auto names = coll->realNamesForRead();
@@ -148,7 +156,8 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
     return res;
   }
 
-  return clusterInfo.getShardList(arangodb::basics::StringUtils::itoa(id().id()));
+  return clusterInfo.getShardList(
+      arangodb::basics::StringUtils::itoa(id().id()));
 }
 
 /// @brief returns the filtered list of shard ids of a collection
@@ -236,7 +245,8 @@ std::string const& Collection::name() const {
 }
 
 // moved here from transaction::Methods::getIndexByIdentifier(..)
-std::shared_ptr<arangodb::Index> Collection::indexByIdentifier(std::string const& idxId) const {
+std::shared_ptr<arangodb::Index> Collection::indexByIdentifier(
+    std::string const& idxId) const {
   if (idxId.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "The index id cannot be empty.");
@@ -291,8 +301,9 @@ bool Collection::hasCollectionObject() const noexcept {
 /// @brief throw if the underlying collection has not been set
 void Collection::checkCollection() const {
   if (_collection == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                   std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) +
-                                       ": " + _name);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) +
+            ": " + _name);
   }
 }

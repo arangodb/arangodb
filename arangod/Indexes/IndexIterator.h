@@ -69,9 +69,14 @@ class IndexIterator {
   friend class MultiIndexIterator;
 
  public:
-  typedef std::function<bool(LocalDocumentId const& token)> LocalDocumentIdCallback;
-  typedef std::function<bool(LocalDocumentId const& token, velocypack::Slice doc)> DocumentCallback;
-  typedef std::function<bool(LocalDocumentId const& token, velocypack::Slice extra)> ExtraCallback;
+  typedef std::function<bool(LocalDocumentId const& token)>
+      LocalDocumentIdCallback;
+  typedef std::function<bool(LocalDocumentId const& token,
+                             velocypack::Slice doc)>
+      DocumentCallback;
+  typedef std::function<bool(LocalDocumentId const& token,
+                             velocypack::Slice extra)>
+      ExtraCallback;
 
  public:
   IndexIterator(IndexIterator const&) = delete;
@@ -96,22 +101,26 @@ class IndexIterator {
   /// @brief Calls cb for the next batchSize many elements
   /// returns true if there are more documents (hasMore) and false
   /// if there are none
-  bool next(IndexIterator::LocalDocumentIdCallback const& callback, uint64_t batchSize);
+  bool next(IndexIterator::LocalDocumentIdCallback const& callback,
+            uint64_t batchSize);
 
   /// @brief Calls cb for the next batchSize many elements
   /// returns true if there are more documents (hasMore) and false
   /// if there are none
-  bool nextExtra(IndexIterator::ExtraCallback const& callback, uint64_t batchSize);
+  bool nextExtra(IndexIterator::ExtraCallback const& callback,
+                 uint64_t batchSize);
 
   /// @brief Calls cb for the next batchSize many elements, complete documents
   /// returns true if there are more documents (hasMore) and false
   /// if there are none
-  bool nextDocument(IndexIterator::DocumentCallback const& callback, uint64_t batchSize);
+  bool nextDocument(IndexIterator::DocumentCallback const& callback,
+                    uint64_t batchSize);
 
   /// @brief Calls cb for the next batchSize many elements, index-only
   /// projections returns true if there are more documents (hasMore) and false
   /// if there are none
-  bool nextCovering(IndexIterator::DocumentCallback const& callback, uint64_t batchSize);
+  bool nextCovering(IndexIterator::DocumentCallback const& callback,
+                    uint64_t batchSize);
 
   /// @brief convenience function to retrieve all results
   void all(IndexIterator::LocalDocumentIdCallback const& callback) {
@@ -126,7 +135,8 @@ class IndexIterator {
   }
 
   /// @brief convenience function to retrieve all results
-  void allDocuments(IndexIterator::DocumentCallback const& callback, uint64_t batchSize) {
+  void allDocuments(IndexIterator::DocumentCallback const& callback,
+                    uint64_t batchSize) {
     while (nextDocument(callback, batchSize)) { /* intentionally empty */
     }
   }
@@ -268,9 +278,11 @@ class MultiIndexIterator final : public IndexIterator {
   ///        If callback is called less than limit many times
   ///        all iterators are exhausted
   bool nextImpl(LocalDocumentIdCallback const& callback, size_t limit) override;
-  bool nextDocumentImpl(DocumentCallback const& callback, size_t limit) override;
+  bool nextDocumentImpl(DocumentCallback const& callback,
+                        size_t limit) override;
   bool nextExtraImpl(ExtraCallback const& callback, size_t limit) override;
-  bool nextCoveringImpl(DocumentCallback const& callback, size_t limit) override;
+  bool nextCoveringImpl(DocumentCallback const& callback,
+                        size_t limit) override;
 
   /// @brief Reset the cursor
   ///        This will reset ALL internal iterators and start all over again

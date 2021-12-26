@@ -51,17 +51,21 @@ class FlushFeature final : public application_features::ApplicationFeature {
   /// @param vocbase the vocbase the marker applies to
   /// @param slice the originally stored marker body
   /// @return success
-  typedef std::function<Result(TRI_vocbase_t const& vocbase, velocypack::Slice const& slice)> FlushRecoveryCallback;
+  typedef std::function<Result(TRI_vocbase_t const& vocbase,
+                               velocypack::Slice const& slice)>
+      FlushRecoveryCallback;
 
   explicit FlushFeature(application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions> options) override;
+  void collectOptions(
+      std::shared_ptr<options::ProgramOptions> options) override;
 
   /// @brief register a flush subscription that will ensure replay of all WAL
   ///        entries after the latter of registration or the last successful
   ///        token commit
   /// @param subscription to register
-  void registerFlushSubscription(const std::shared_ptr<FlushSubscription>& subscription);
+  void registerFlushSubscription(
+      const std::shared_ptr<FlushSubscription>& subscription);
 
   /// @brief release all ticks not used by the flush subscriptions
   /// @param 'count' a number of released subscriptions

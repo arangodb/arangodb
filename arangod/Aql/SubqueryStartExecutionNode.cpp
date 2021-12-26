@@ -43,7 +43,8 @@ SubqueryStartNode::SubqueryStartNode(ExecutionPlan* plan,
                                      arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base), _subqueryOutVariable(nullptr) {
   // On purpose exclude the _subqueryOutVariable
-  // A query cannot be explained after nodes have been serialized and deserialized
+  // A query cannot be explained after nodes have been serialized and
+  // deserialized
 }
 
 CostEstimate SubqueryStartNode::estimateCost() const {
@@ -60,7 +61,8 @@ CostEstimate SubqueryStartNode::estimateCost() const {
   return estimate;
 }
 
-void SubqueryStartNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void SubqueryStartNode::doToVelocyPack(VPackBuilder& nodes,
+                                       unsigned flags) const {
   // We need this for the Explainer
   if (_subqueryOutVariable != nullptr) {
     nodes.add(VPackValue("subqueryOutVariable"));
@@ -84,7 +86,8 @@ std::unique_ptr<ExecutionBlock> SubqueryStartNode::createBlock(
       &engine, this, registerInfos, RegisterInfos{registerInfos});
 }
 
-ExecutionNode* SubqueryStartNode::clone(ExecutionPlan* plan, bool withDependencies,
+ExecutionNode* SubqueryStartNode::clone(ExecutionPlan* plan,
+                                        bool withDependencies,
                                         bool withProperties) const {
   // On purpose exclude the _subqueryOutVariable
   auto c = std::make_unique<SubqueryStartNode>(plan, _id, nullptr);

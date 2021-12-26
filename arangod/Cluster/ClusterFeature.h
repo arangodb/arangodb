@@ -116,8 +116,11 @@ class ClusterFeature : public application_features::ApplicationFeature {
    * @brief Add databases to dirty list
    */
   void addDirty(std::string const& database);
-  void addDirty(std::unordered_set<std::string> const& databases, bool callNotify);
-  void addDirty(std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& changeset);
+  void addDirty(std::unordered_set<std::string> const& databases,
+                bool callNotify);
+  void addDirty(
+      std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const&
+          changeset);
   std::unordered_set<std::string> allDatabases() const;
 
   /**
@@ -157,7 +160,8 @@ class ClusterFeature : public application_features::ApplicationFeature {
 
  protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
-                            uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
+                            uint64_t interval_ms,
+                            uint64_t maxFailsBeforeWarning,
                             std::string const& endpoints);
 
  private:
@@ -173,9 +177,12 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::uint32_t _defaultReplicationFactor =
       0;  // a value of 0 means it will use the min replication factor
   std::uint32_t _systemReplicationFactor = 2;
-  std::uint32_t _minReplicationFactor = 1;  // minimum replication factor (0 = unrestricted)
-  std::uint32_t _maxReplicationFactor = 10;  // maximum replication factor (0 = unrestricted)
-  std::uint32_t _maxNumberOfShards = 1000;  // maximum number of shards (0 = unrestricted)
+  std::uint32_t _minReplicationFactor =
+      1;  // minimum replication factor (0 = unrestricted)
+  std::uint32_t _maxReplicationFactor =
+      10;  // maximum replication factor (0 = unrestricted)
+  std::uint32_t _maxNumberOfShards =
+      1000;  // maximum number of shards (0 = unrestricted)
   std::uint32_t _maxNumberOfMoveShards =
       10;  // maximum number of shards to be moved per rebalance operation
            // if value = 0, no move shards operations will be scheduled

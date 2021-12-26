@@ -64,9 +64,9 @@ class BaseEngine {
  public:
   enum EngineType { TRAVERSER, SHORTESTPATH };
 
-  static std::unique_ptr<BaseEngine> BuildEngine(TRI_vocbase_t& vocbase,
-                                                 aql::QueryContext& query,
-                                                 arangodb::velocypack::Slice info);
+  static std::unique_ptr<BaseEngine> BuildEngine(
+      TRI_vocbase_t& vocbase, aql::QueryContext& query,
+      arangodb::velocypack::Slice info);
 
   BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
              arangodb::velocypack::Slice info);
@@ -108,11 +108,14 @@ class BaseTraverserEngine : public BaseEngine {
 
   ~BaseTraverserEngine();
 
-  void getEdges(arangodb::velocypack::Slice, size_t, arangodb::velocypack::Builder&);
+  void getEdges(arangodb::velocypack::Slice, size_t,
+                arangodb::velocypack::Builder&);
 
-  graph::EdgeCursor* getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth);
+  graph::EdgeCursor* getCursor(arangodb::velocypack::StringRef nextVertex,
+                               uint64_t currentDepth);
 
-  virtual void smartSearch(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) = 0;
+  virtual void smartSearch(arangodb::velocypack::Slice,
+                           arangodb::velocypack::Builder&) = 0;
 
   EngineType getType() const override { return TRAVERSER; }
 
@@ -142,7 +145,8 @@ class ShortestPathEngine : public BaseEngine {
 
   ~ShortestPathEngine();
 
-  void getEdges(arangodb::velocypack::Slice, bool backward, arangodb::velocypack::Builder&);
+  void getEdges(arangodb::velocypack::Slice, bool backward,
+                arangodb::velocypack::Builder&);
 
   EngineType getType() const override { return SHORTESTPATH; }
 
@@ -170,7 +174,8 @@ class TraverserEngine : public BaseTraverserEngine {
 
   ~TraverserEngine();
 
-  void smartSearch(arangodb::velocypack::Slice, arangodb::velocypack::Builder&) override;
+  void smartSearch(arangodb::velocypack::Slice,
+                   arangodb::velocypack::Builder&) override;
 };
 
 }  // namespace traverser

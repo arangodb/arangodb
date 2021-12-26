@@ -31,9 +31,9 @@ RegisterId RegisterId::fromUInt32(uint32_t value) {
   RegisterId result(v, type);
   TRI_ASSERT(result.isValid());
   if (!result.isValid()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "Cannot parse RegisterId from value " +
-                                       std::to_string(value));
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "Cannot parse RegisterId from value " + std::to_string(value));
   }
   return result;
 }

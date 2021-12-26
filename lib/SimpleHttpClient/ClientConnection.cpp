@@ -49,15 +49,16 @@ using namespace arangodb::httpclient;
 /// @brief creates a new client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-ClientConnection::ClientConnection(application_features::ApplicationServer& server,
-                                   Endpoint* endpoint, double requestTimeout,
-                                   double connectTimeout, size_t connectRetries)
+ClientConnection::ClientConnection(
+    application_features::ApplicationServer& server, Endpoint* endpoint,
+    double requestTimeout, double connectTimeout, size_t connectRetries)
     : GeneralClientConnection(server, endpoint, requestTimeout, connectTimeout,
                               connectRetries) {}
 
-ClientConnection::ClientConnection(application_features::ApplicationServer& server,
-                                   std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
-                                   double connectTimeout, size_t connectRetries)
+ClientConnection::ClientConnection(
+    application_features::ApplicationServer& server,
+    std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
+    double connectTimeout, size_t connectRetries)
     : GeneralClientConnection(server, endpoint, requestTimeout, connectTimeout,
                               connectRetries) {}
 
@@ -153,7 +154,8 @@ bool ClientConnection::writeClientConnection(void const* buffer, size_t length,
 /// @brief read data from the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ClientConnection::readClientConnection(StringBuffer& stringBuffer, bool& connectionClosed) {
+bool ClientConnection::readClientConnection(StringBuffer& stringBuffer,
+                                            bool& connectionClosed) {
   if (!checkSocket()) {
     connectionClosed = true;
     return false;

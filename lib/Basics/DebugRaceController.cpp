@@ -52,8 +52,9 @@ std::vector<std::any> DebugRaceController::data() const {
   return _data;
 }
 
-void DebugRaceController::waitForOthers(size_t numberOfThreadsToWaitFor, std::any myData,
-                                        arangodb::application_features::ApplicationServer const& server) {
+void DebugRaceController::waitForOthers(
+    size_t numberOfThreadsToWaitFor, std::any myData,
+    arangodb::application_features::ApplicationServer const& server) {
   std::unique_lock<std::mutex> guard(_mutex);
   _data.emplace_back(std::move(myData));
   _condVariable.wait(guard, [&] {

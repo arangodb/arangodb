@@ -209,7 +209,8 @@ TEST(SmallBufferTest, moveSelfAssignment) {
 
 class NodeTest
     : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::SUPERVISION, arangodb::LogLevel::ERR> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::SUPERVISION,
+                                            arangodb::LogLevel::ERR> {
  protected:
   NodeTest() {}
 };
@@ -461,7 +462,8 @@ TEST_F(NodeTest, node_applyOp_lock) {
   ret = n.getOrCreate(path).applyOp(ulck1.slice());
   EXPECT_EQ(ret.ok(), false);
 
-  // caller1 write lock -> reject (cannot write lock while still locked by caller2)
+  // caller1 write lock -> reject (cannot write lock while still locked by
+  // caller2)
   ret = n.getOrCreate(path).applyOp(wlck1.slice());
   EXPECT_EQ(ret.ok(), false);
 

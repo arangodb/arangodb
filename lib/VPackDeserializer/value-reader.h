@@ -33,16 +33,17 @@ namespace deserializer {
 
 /*
  * value_reader is used to extract a value from a slice. It is specialised
- * for all types that can be read. It is expected to have a static `read` function
- * that receives a slice and returns a `result<double, deserialize_error>`.
+ * for all types that can be read. It is expected to have a static `read`
+ * function that receives a slice and returns a `result<double,
+ * deserialize_error>`.
  */
-template <typename T, typename V = void>
+template<typename T, typename V = void>
 struct value_reader {
   static_assert(utilities::always_false_v<T>,
                 "no value reader for the given type available");
 };
 
-template <>
+template<>
 struct value_reader<std::string> {
   using value_type = std::string;
   using result_type = result<std::string, deserialize_error>;
@@ -55,7 +56,7 @@ struct value_reader<std::string> {
   }
 };
 
-template <>
+template<>
 struct value_reader<std::string_view> {
   using value_type = std::string_view;
   using result_type = result<std::string_view, deserialize_error>;
@@ -68,7 +69,7 @@ struct value_reader<std::string_view> {
   }
 };
 
-template <>
+template<>
 struct value_reader<bool> {
   using value_type = bool;
   using result_type = result<bool, deserialize_error>;
@@ -81,7 +82,7 @@ struct value_reader<bool> {
   }
 };
 
-template <typename T>
+template<typename T>
 struct value_reader<T, std::void_t<std::enable_if_t<std::is_arithmetic_v<T>>>> {
   using value_type = T;
   using result_type = result<T, deserialize_error>;

@@ -28,7 +28,7 @@
 
 using namespace arangodb;
 
-template <typename T = float>
+template<typename T = float>
 struct TimeScale {
   static log_scale_t<T> scale() { return {10., 0.0, 1000.0, 11}; }
 };
@@ -86,23 +86,29 @@ TransactionStatistics::TransactionStatistics(MetricsFeature& metrics)
     : _metrics(metrics),
       _transactionsStarted(_metrics.add(arangodb_transactions_started_total{})),
       _transactionsAborted(_metrics.add(arangodb_transactions_aborted_total{})),
-      _transactionsCommitted(_metrics.add(arangodb_transactions_committed_total{})),
+      _transactionsCommitted(
+          _metrics.add(arangodb_transactions_committed_total{})),
       _intermediateCommits(_metrics.add(arangodb_intermediate_commits_total{})),
       _readTransactions(_metrics.add(arangodb_read_transactions_total{})),
       _exclusiveLockTimeouts(
           _metrics.add(arangodb_collection_lock_timeouts_exclusive_total{})),
-      _writeLockTimeouts(_metrics.add(arangodb_collection_lock_timeouts_write_total{})),
-      _lockTimeMicros(_metrics.add(arangodb_collection_lock_acquisition_micros_total{})),
+      _writeLockTimeouts(
+          _metrics.add(arangodb_collection_lock_timeouts_write_total{})),
+      _lockTimeMicros(
+          _metrics.add(arangodb_collection_lock_acquisition_micros_total{})),
       _lockTimes(_metrics.add(arangodb_collection_lock_acquisition_time{})),
-      _sequentialLocks(_metrics.add(arangodb_collection_lock_sequential_mode_total{})),
+      _sequentialLocks(
+          _metrics.add(arangodb_collection_lock_sequential_mode_total{})),
       _exportReadWriteMetrics(/*may be updated later*/ false) {}
 
 void TransactionStatistics::setupDocumentMetrics() {
-  // the following metrics are conditional, so we don't initialize them in the constructor
+  // the following metrics are conditional, so we don't initialize them in the
+  // constructor
   _exportReadWriteMetrics = true;
 
   _numWrites = _metrics.add(arangodb_document_writes_total{});
-  _numWritesReplication = _metrics.add(arangodb_document_writes_replication_total{});
+  _numWritesReplication =
+      _metrics.add(arangodb_document_writes_replication_total{});
   _numTruncates = _metrics.add(arangodb_collection_truncates_total{});
   _numTruncatesReplication =
       _metrics.add(arangodb_collection_truncates_replication_total{});

@@ -31,7 +31,8 @@
 namespace arangodb::aql {
 
 // Partial map dep -> call. May be empty.
-// IMPORTANT: Are expected to be saved in increasing order (regarding dependency)
+// IMPORTANT: Are expected to be saved in increasing order (regarding
+// dependency)
 struct AqlCallSet {
   struct DepCallPair {
     std::size_t dependency{};

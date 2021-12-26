@@ -57,9 +57,11 @@ struct AqlValueGroupHash {
 struct AqlValueGroupEqual {
   explicit AqlValueGroupEqual(velocypack::Options const*);
 
-  bool operator()(std::vector<AqlValue> const& lhs, std::vector<AqlValue> const& rhs) const;
+  bool operator()(std::vector<AqlValue> const& lhs,
+                  std::vector<AqlValue> const& rhs) const;
   bool operator()(AqlValue const& lhs, AqlValue const& rhs) const;
-  bool operator()(HashedAqlValueGroup const& lhs, HashedAqlValueGroup const& rhs) const;
+  bool operator()(HashedAqlValueGroup const& lhs,
+                  HashedAqlValueGroup const& rhs) const;
 
   velocypack::Options const* _vpackOptions;
 };

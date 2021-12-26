@@ -256,7 +256,8 @@ TEST(ParametersTest, toNumberPercent) {
   ASSERT_EQ(int64_t(0), arangodb::options::toNumber<int64_t>("0%", 100));
   ASSERT_EQ(int64_t(0), arangodb::options::toNumber<int64_t>("0%", 1000));
   ASSERT_EQ(int64_t(0), arangodb::options::toNumber<int64_t>("0%", 9999));
-  ASSERT_EQ(int64_t(0), arangodb::options::toNumber<int64_t>("0%", 10000000000));
+  ASSERT_EQ(int64_t(0),
+            arangodb::options::toNumber<int64_t>("0%", 10000000000));
 
   ASSERT_EQ(int64_t(0), arangodb::options::toNumber<int64_t>("1%", 0));
   ASSERT_EQ(int64_t(0), arangodb::options::toNumber<int64_t>("1%", 1));
@@ -265,7 +266,8 @@ TEST(ParametersTest, toNumberPercent) {
   ASSERT_EQ(int64_t(1), arangodb::options::toNumber<int64_t>("1%", 100));
   ASSERT_EQ(int64_t(10), arangodb::options::toNumber<int64_t>("1%", 1000));
   ASSERT_EQ(int64_t(99), arangodb::options::toNumber<int64_t>("1%", 9999));
-  ASSERT_EQ(int64_t(100000000), arangodb::options::toNumber<int64_t>("1%", 10000000000));
+  ASSERT_EQ(int64_t(100000000),
+            arangodb::options::toNumber<int64_t>("1%", 10000000000));
 
   ASSERT_EQ(int64_t(0), arangodb::options::toNumber<int64_t>("3%", 0));
   ASSERT_EQ(int64_t(0), arangodb::options::toNumber<int64_t>("3%", 1));
@@ -274,7 +276,8 @@ TEST(ParametersTest, toNumberPercent) {
   ASSERT_EQ(int64_t(3), arangodb::options::toNumber<int64_t>("3%", 100));
   ASSERT_EQ(int64_t(30), arangodb::options::toNumber<int64_t>("3%", 1000));
   ASSERT_EQ(int64_t(299), arangodb::options::toNumber<int64_t>("3%", 9999));
-  ASSERT_EQ(int64_t(300000000), arangodb::options::toNumber<int64_t>("3%", 10000000000));
+  ASSERT_EQ(int64_t(300000000),
+            arangodb::options::toNumber<int64_t>("3%", 10000000000));
 
   ASSERT_EQ(int64_t(0), arangodb::options::toNumber<int64_t>("5%", 0));
   ASSERT_EQ(int64_t(0), arangodb::options::toNumber<int64_t>("5%", 1));
@@ -283,7 +286,8 @@ TEST(ParametersTest, toNumberPercent) {
   ASSERT_EQ(int64_t(5), arangodb::options::toNumber<int64_t>("5%", 100));
   ASSERT_EQ(int64_t(50), arangodb::options::toNumber<int64_t>("5%", 1000));
   ASSERT_EQ(int64_t(499), arangodb::options::toNumber<int64_t>("5%", 9999));
-  ASSERT_EQ(int64_t(500000000), arangodb::options::toNumber<int64_t>("5%", 10000000000));
+  ASSERT_EQ(int64_t(500000000),
+            arangodb::options::toNumber<int64_t>("5%", 10000000000));
 
   ASSERT_EQ(int64_t(0), arangodb::options::toNumber<int64_t>("10%", 0));
   ASSERT_EQ(int64_t(0), arangodb::options::toNumber<int64_t>("10%", 1));
@@ -292,7 +296,8 @@ TEST(ParametersTest, toNumberPercent) {
   ASSERT_EQ(int64_t(10), arangodb::options::toNumber<int64_t>("10%", 100));
   ASSERT_EQ(int64_t(100), arangodb::options::toNumber<int64_t>("10%", 1000));
   ASSERT_EQ(int64_t(999), arangodb::options::toNumber<int64_t>("10%", 9999));
-  ASSERT_EQ(int64_t(1000000000), arangodb::options::toNumber<int64_t>("10%", 10000000000));
+  ASSERT_EQ(int64_t(1000000000),
+            arangodb::options::toNumber<int64_t>("10%", 10000000000));
 
   ASSERT_EQ(int64_t(0), arangodb::options::toNumber<int64_t>("50%", 0));
   ASSERT_EQ(int64_t(0), arangodb::options::toNumber<int64_t>("50%", 1));
@@ -301,7 +306,8 @@ TEST(ParametersTest, toNumberPercent) {
   ASSERT_EQ(int64_t(50), arangodb::options::toNumber<int64_t>("50%", 100));
   ASSERT_EQ(int64_t(500), arangodb::options::toNumber<int64_t>("50%", 1000));
   ASSERT_EQ(int64_t(4999), arangodb::options::toNumber<int64_t>("50%", 9999));
-  ASSERT_EQ(int64_t(5000000000), arangodb::options::toNumber<int64_t>("50%", 10000000000));
+  ASSERT_EQ(int64_t(5000000000),
+            arangodb::options::toNumber<int64_t>("50%", 10000000000));
 
   ASSERT_EQ(int64_t(0), arangodb::options::toNumber<int64_t>("100%", 0));
   ASSERT_EQ(int64_t(1), arangodb::options::toNumber<int64_t>("100%", 1));
@@ -310,7 +316,8 @@ TEST(ParametersTest, toNumberPercent) {
   ASSERT_EQ(int64_t(100), arangodb::options::toNumber<int64_t>("100%", 100));
   ASSERT_EQ(int64_t(1000), arangodb::options::toNumber<int64_t>("100%", 1000));
   ASSERT_EQ(int64_t(9999), arangodb::options::toNumber<int64_t>("100%", 9999));
-  ASSERT_EQ(int64_t(10000000000), arangodb::options::toNumber<int64_t>("100%", 10000000000));
+  ASSERT_EQ(int64_t(10000000000),
+            arangodb::options::toNumber<int64_t>("100%", 10000000000));
 
   ASSERT_EQ(int64_t(0), arangodb::options::toNumber<int64_t>("200%", 0));
   ASSERT_EQ(int64_t(2), arangodb::options::toNumber<int64_t>("200%", 1));
@@ -319,7 +326,8 @@ TEST(ParametersTest, toNumberPercent) {
   ASSERT_EQ(int64_t(200), arangodb::options::toNumber<int64_t>("200%", 100));
   ASSERT_EQ(int64_t(2000), arangodb::options::toNumber<int64_t>("200%", 1000));
   ASSERT_EQ(int64_t(19998), arangodb::options::toNumber<int64_t>("200%", 9999));
-  ASSERT_EQ(int64_t(20000000000), arangodb::options::toNumber<int64_t>("200%", 10000000000));
+  ASSERT_EQ(int64_t(20000000000),
+            arangodb::options::toNumber<int64_t>("200%", 10000000000));
 
   ASSERT_EQ(int64_t(0), arangodb::options::toNumber<int64_t>("500%", 0));
   ASSERT_EQ(int64_t(5), arangodb::options::toNumber<int64_t>("500%", 1));
@@ -328,15 +336,22 @@ TEST(ParametersTest, toNumberPercent) {
   ASSERT_EQ(int64_t(500), arangodb::options::toNumber<int64_t>("500%", 100));
   ASSERT_EQ(int64_t(5000), arangodb::options::toNumber<int64_t>("500%", 1000));
   ASSERT_EQ(int64_t(49995), arangodb::options::toNumber<int64_t>("500%", 9999));
-  ASSERT_EQ(int64_t(50000000000), arangodb::options::toNumber<int64_t>("500%", 10000000000));
+  ASSERT_EQ(int64_t(50000000000),
+            arangodb::options::toNumber<int64_t>("500%", 10000000000));
 
-  ASSERT_EQ(int64_t(209715), arangodb::options::toNumber<int64_t>("20%", 1048576));
-  ASSERT_EQ(int64_t(524288), arangodb::options::toNumber<int64_t>("50%", 1048576));
-  ASSERT_EQ(int64_t(1572864), arangodb::options::toNumber<int64_t>("150%", 1048576));
+  ASSERT_EQ(int64_t(209715),
+            arangodb::options::toNumber<int64_t>("20%", 1048576));
+  ASSERT_EQ(int64_t(524288),
+            arangodb::options::toNumber<int64_t>("50%", 1048576));
+  ASSERT_EQ(int64_t(1572864),
+            arangodb::options::toNumber<int64_t>("150%", 1048576));
 
-  ASSERT_EQ(int64_t(46729244180), arangodb::options::toNumber<int64_t>("17%", 274877906944));
-  ASSERT_EQ(int64_t(386618490193), arangodb::options::toNumber<int64_t>("44%", 878678386803));
-  ASSERT_EQ(int64_t(8589934592), arangodb::options::toNumber<int64_t>("50%", 17179869184));
+  ASSERT_EQ(int64_t(46729244180),
+            arangodb::options::toNumber<int64_t>("17%", 274877906944));
+  ASSERT_EQ(int64_t(386618490193),
+            arangodb::options::toNumber<int64_t>("44%", 878678386803));
+  ASSERT_EQ(int64_t(8589934592),
+            arangodb::options::toNumber<int64_t>("50%", 17179869184));
 }
 
 TEST(ParametersTest, toNumberUInt8) {

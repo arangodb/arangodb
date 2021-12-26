@@ -82,8 +82,9 @@ class Thread {
   static TRI_tid_t currentThreadId();
 
  public:
-  Thread(application_features::ApplicationServer& server, std::string const& name,
-         bool deleteOnExit = false, std::uint32_t terminationTimeout = INFINITE);
+  Thread(application_features::ApplicationServer& server,
+         std::string const& name, bool deleteOnExit = false,
+         std::uint32_t terminationTimeout = INFINITE);
   virtual ~Thread();
 
   // whether or not the thread is allowed to start during prepare
@@ -175,7 +176,8 @@ class Thread {
 
   // The max timeout (in ms) to wait for the thread to terminate.
   // Failure to terminate within the specified time results in process abortion!
-  // The default value is INFINITE, i.e., we want to wait forever instead of aborting the process.
+  // The default value is INFINITE, i.e., we want to wait forever instead of
+  // aborting the process.
   std::uint32_t _terminationTimeout;
 
   bool const _deleteOnExit;

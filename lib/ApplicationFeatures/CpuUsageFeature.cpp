@@ -68,7 +68,8 @@ CpuUsageFeature::SnapshotProvider::~SnapshotProvider() {
   }
 }
 
-bool CpuUsageFeature::SnapshotProvider::tryTakeSnapshot(CpuUsageSnapshot& result) noexcept {
+bool CpuUsageFeature::SnapshotProvider::tryTakeSnapshot(
+    CpuUsageSnapshot& result) noexcept {
   constexpr size_t bufferSize = 4096;
 
   // none of the following methods will throw an exception
@@ -90,7 +91,8 @@ bool CpuUsageFeature::SnapshotProvider::tryTakeSnapshot(CpuUsageSnapshot& result
   return true;
 }
 
-size_t CpuUsageFeature::SnapshotProvider::readStatFile(char* buffer, size_t bufferSize) noexcept {
+size_t CpuUsageFeature::SnapshotProvider::readStatFile(
+    char* buffer, size_t bufferSize) noexcept {
   size_t offset = 0;
   size_t remain = bufferSize - 1;
   while (remain > 0) {
@@ -114,7 +116,8 @@ struct CpuUsageFeature::SnapshotProvider {
   bool tryTakeSnapshot(CpuUsageSnapshot& result) noexcept;
 };
 
-bool CpuUsageFeature::SnapshotProvider::tryTakeSnapshot(CpuUsageSnapshot& result) noexcept {
+bool CpuUsageFeature::SnapshotProvider::tryTakeSnapshot(
+    CpuUsageSnapshot& result) noexcept {
   FILETIME idleTime, kernelTime, userTime;
   if (GetSystemTimes(&idleTime, &kernelTime, &userTime) == FALSE) {
     return false;
@@ -129,7 +132,8 @@ bool CpuUsageFeature::SnapshotProvider::tryTakeSnapshot(CpuUsageSnapshot& result
 
   result.idle = toUInt64(idleTime);
   result.user = toUInt64(userTime);
-  // the kernel time returned by GetSystemTimes includes the amount of time the system has been idle
+  // the kernel time returned by GetSystemTimes includes the amount of time the
+  // system has been idle
   result.system = toUInt64(kernelTime) - result.idle;
   return true;
 }
@@ -145,7 +149,8 @@ struct CpuUsageFeature::SnapshotProvider {
 };
 #endif
 
-CpuUsageFeature::CpuUsageFeature(application_features::ApplicationServer& server)
+CpuUsageFeature::CpuUsageFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, "CpuUsage"),
       _snapshotProvider(),
       _updateInProgress(false) {
@@ -204,7 +209,8 @@ CpuUsageSnapshot CpuUsageFeature::snapshot() {
     // snapshot must be updated and returned under mutex
     MUTEX_LOCKER(guard, _snapshotMutex);
     if (success) {
-      // if we failed to obtain new snapshot, we simply return whatever we had before
+      // if we failed to obtain new snapshot, we simply return whatever we had
+      // before
       _snapshot = next;
       if (lastSnapshot.valid()) {
         next.subtract(lastSnapshot);

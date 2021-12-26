@@ -39,9 +39,9 @@ TEST_F(AppendEntriesBatchTest, test_with_two_batches) {
       persistedLog->setEntry(LogIndex{i}, LogTerm{4},
                              LogPayload::createFromString("log entry"));
     }
-    return std::make_shared<TestReplicatedLog>(std::make_unique<LogCore>(persistedLog),
-                                               _logMetricsMock,
-                                               LoggerContext(Logger::REPLICATION2));
+    return std::make_shared<TestReplicatedLog>(
+        std::make_unique<LogCore>(persistedLog), _logMetricsMock,
+        LoggerContext(Logger::REPLICATION2));
   });
 
   auto followerLog = makeReplicatedLog(LogId{1});

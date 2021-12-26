@@ -132,8 +132,10 @@ class UpsertModifier {
   VPackArrayIterator getInsertResultsIterator() const;
 
   OperationType updateReplaceCase(ModificationExecutorAccumulator& accu,
-                                  AqlValue const& inDoc, AqlValue const& updateDoc);
-  OperationType insertCase(ModificationExecutorAccumulator& accu, AqlValue const& insertDoc);
+                                  AqlValue const& inDoc,
+                                  AqlValue const& updateDoc);
+  OperationType insertCase(ModificationExecutorAccumulator& accu,
+                           AqlValue const& insertDoc);
 
   ModificationExecutorInfos& _infos;
   std::vector<ModOp> _operations;

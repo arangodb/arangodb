@@ -74,8 +74,8 @@ TEST(CNormalizeStringTest, tst_1) {
       0xE1, 0x84, 0x80, 0xE1, 0x85, 0xB3, 0xE1, 0x86, 0xAF, 'z',  0};
 
   size_t len = 0;
-  char* result = TRI_normalize_utf8_to_NFC((const char*)decomposed,
-                                           strlen((const char*)decomposed), &len);
+  char* result = TRI_normalize_utf8_to_NFC(
+      (const char*)decomposed, strlen((const char*)decomposed), &len);
 
   size_t l1 = sizeof(composed) - 1;
   size_t l2 = strlen(result);
@@ -90,20 +90,19 @@ TEST(CNormalizeStringTest, tst_1) {
 
 TEST(CNormalizeStringTest, tst_2) {
   /* "Grüß Gott. Здравствуйте! x=(-b±sqrt(b²-4ac))/(2a)  日本語,中文,한글" */
-  static const unsigned char gruessgott1[] = {'G',  'r', 0xC3, 0xBC, 0xC3,
-                                              0x9F, ' ', 'G',  'o',  't',
-                                              't',  '.', 0};
+  static const unsigned char gruessgott1[] = {
+      'G', 'r', 0xC3, 0xBC, 0xC3, 0x9F, ' ', 'G', 'o', 't', 't', '.', 0};
 
-  static const unsigned char gruessgott2[] = {'G',  'R', 0xC3, 0x9C, 0xC3,
-                                              0x9F, ' ', 'G',  'O',  'T',
-                                              't',  '.', 0};
+  static const unsigned char gruessgott2[] = {
+      'G', 'R', 0xC3, 0x9C, 0xC3, 0x9F, ' ', 'G', 'O', 'T', 't', '.', 0};
 
   static const unsigned char lower[] = {'g', 'r', 0xC3, 0xBC, 0xC3, 0x9F, ' ',
                                         'g', 'o', 't',  't',  '.',  0};
 
   int32_t len = 0;
-  char* result = TRI_tolower_utf8((const char*)gruessgott1,
-                                  (int32_t)strlen((const char*)gruessgott1), &len);
+  char* result =
+      TRI_tolower_utf8((const char*)gruessgott1,
+                       (int32_t)strlen((const char*)gruessgott1), &len);
 
   // printf("\nOriginal: %s\nLower: %s (%d)\n", gruessgott1, result, len);
   size_t l1 = sizeof(lower) - 1;
@@ -137,7 +136,8 @@ TEST(CNormalizeStringTest, tst_3) {
 
   testString = "aäoöuüAÄOÖUÜ";
   expectString = "AÄOÖUÜAÄOÖUÜ";
-  resultString = arangodb::basics::Utf8Helper::DefaultUtf8Helper.toUpperCase(testString);
+  resultString =
+      arangodb::basics::Utf8Helper::DefaultUtf8Helper.toUpperCase(testString);
   EXPECT_TRUE(std::string(expectString) == resultString);
 }
 

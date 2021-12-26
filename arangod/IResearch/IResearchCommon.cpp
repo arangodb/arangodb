@@ -36,8 +36,8 @@ namespace iresearch {
 LogTopic TOPIC(::TYPE, LogLevel::INFO);
 
 arangodb::LogicalDataSource::Type const& dataSourceType() {
-  static auto& type =
-      arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef(TYPE));
+  static auto& type = arangodb::LogicalDataSource::Type::emplace(
+      arangodb::velocypack::StringRef(TYPE));
 
   return type;
 }

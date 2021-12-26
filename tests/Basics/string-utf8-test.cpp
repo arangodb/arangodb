@@ -126,7 +126,8 @@ TEST_F(CStringUtf8Test, tst_japanese) {
       "067\\u3042\\u3063\\u305F\\u3002");
   ;
   size_t outLength;
-  char* unescaped = TRI_UnescapeUtf8String(data.data(), data.size(), &outLength, true);
+  char* unescaped =
+      TRI_UnescapeUtf8String(data.data(), data.size(), &outLength, true);
   EXPECT_EQ(
       std::string(unescaped),
       "ジャパン は、イギリスのニュー・ウェーヴバンド。デヴィッド・ ... "
@@ -172,7 +173,8 @@ TEST_F(CStringUtf8Test, tst_korean) {
       "\\uBB34\\uB2E8\\uC218\\uC9D1\\uAC70\\uBD80 | \\uC11C\\uBE44\\uC2A4 "
       "\\uC804\\uCCB4\\uBCF4\\uAE30");
   size_t outLength;
-  char* unescaped = TRI_UnescapeUtf8String(data.data(), data.size(), &outLength, true);
+  char* unescaped =
+      TRI_UnescapeUtf8String(data.data(), data.size(), &outLength, true);
   EXPECT_EQ(std::string(unescaped),
             "코리아닷컴 메일알리미 서비스 중단안내 [안내] 개인정보취급방침 "
             "변경 안내 회사소개 | 광고안내 | 제휴안내 | 개인정보취급방침 | "
@@ -196,7 +198,8 @@ TEST_F(CStringUtf8Test, tst_chinese) {
       "305\\u7F57\\u4E07\\u6709\\u7684\\u7F51\\u4E0A\\u4EA7\\u54C1\\u53CA\\u670"
       "D\\u52A1\\u3002");
   size_t outLength;
-  char* unescaped = TRI_UnescapeUtf8String(data.data(), data.size(), &outLength, true);
+  char* unescaped =
+      TRI_UnescapeUtf8String(data.data(), data.size(), &outLength, true);
   EXPECT_EQ(std::string(unescaped),
             "中华网以中国的市场为核心，致力为当地用户提供流动增值服务、网上娱乐"
             "及互联网服务。本公司亦推出网上游戏，及透过其门户网站提供包罗万有的"
@@ -262,7 +265,8 @@ TEST_F(CStringUtf8Test, tst_hebrew) {
       "\\u05D5\\u05DC\\u05D4\\u05D6\\u05DE\\u05D9\\u05DF "
       "\\u05DE\\u05E8\\u05D0\\u05E9");
   size_t outLength;
-  char* unescaped = TRI_UnescapeUtf8String(data.data(), data.size(), &outLength, true);
+  char* unescaped =
+      TRI_UnescapeUtf8String(data.data(), data.size(), &outLength, true);
   EXPECT_EQ(std::string(unescaped),
             "כפי שסופיה קופולה היטיבה לבטא בסרטה אבודים בטוקיו, בתי מלון "
             "יוקרתיים בערים גדולות אמנם מציעים אינספור פינוקים, אבל הם גם "
@@ -300,7 +304,8 @@ TEST_F(CStringUtf8Test, tst_arabian) {
       "\\u0628\\u0627\\u0646\\u0641\\u062C\\u0627\\u0631 "
       "\\u0628\\u0627\\u0644\\u0635\\u0648\\u0645\\u0627\\u0644");
   size_t outLength;
-  char* unescaped = TRI_UnescapeUtf8String(data.data(), data.size(), &outLength, true);
+  char* unescaped =
+      TRI_UnescapeUtf8String(data.data(), data.size(), &outLength, true);
   EXPECT_EQ(std::string(unescaped),
             "بان يأسف لمقتل لاجئين سوريين بتركيا المرزوقي يندد بعنف الأمن "
             "التونسي تنديد بقتل الجيش السوري مصورا تلفزيونيا 14 قتيلا وعشرات "
@@ -329,7 +334,8 @@ TEST_F(CStringUtf8Test, tst_russian) {
       "u043C \\u0434\\u0435\\u0440\\u0431\\u0438 \\u0441 "
       "\\u00AB\\u0410\\u0442\\u043B\\u0435\\u0442\\u0438\\u043A\\u043E\\u00BB");
   size_t outLength;
-  char* unescaped = TRI_UnescapeUtf8String(data.data(), data.size(), &outLength, true);
+  char* unescaped =
+      TRI_UnescapeUtf8String(data.data(), data.size(), &outLength, true);
   EXPECT_EQ(
       std::string(unescaped),
       "Голкипер мадридского «Реала» Икер Касильяс призвал своих партнеров "
@@ -347,7 +353,8 @@ TEST_F(CStringUtf8Test, tst_klingon) {
       "\\uF8D5\\uF8D0\\uF8D8\\uF8D8\\uF8D0\\uF8D8 "
       "\\uF8D8\\uF8D0\\uF8D5\\uF8D6\\uF8DD\\uF8DA\\uF8D9\\uF8D7\\uF8D8");
   size_t outLength;
-  char* unescaped = TRI_UnescapeUtf8String(data.data(), data.size(), &outLength, true);
+  char* unescaped =
+      TRI_UnescapeUtf8String(data.data(), data.size(), &outLength, true);
   EXPECT_EQ(std::string(unescaped), "   ");
   TRI_FreeString(unescaped);
 }
@@ -365,7 +372,8 @@ TEST_F(CStringUtf8Test, tst_devanagari) {
       "\\u092C \\u092D \\u092E \\u092F \\u0930 \\u0932 \\u0935 \\u0936 \\u0937 "
       "\\u0938 \\u0939");
   size_t outLength;
-  char* unescaped = TRI_UnescapeUtf8String(data.data(), data.size(), &outLength, true);
+  char* unescaped =
+      TRI_UnescapeUtf8String(data.data(), data.size(), &outLength, true);
   EXPECT_EQ(std::string(unescaped),
             "अ आ इ ई उ ऊ ऋ ॠ ऌ ॡ ए ऐ ओ औ क ख ग घ ङ च छ ज झ ञ ट ठ ड ढ ण त थ द ध "
             "न प फ ब भ म य र ल व श ष स ह");
@@ -388,7 +396,8 @@ TEST_F(CStringUtf8Test, tst_vietnamese) {
       "k\\u025Cn f\\u0250\\u02D0j \\u0257oj s\\u0268 v\\u025Cj \\u0272\\u0250w "
       "c\\u0254\\u014B ti\\u014B \\u0253\\u0250\\u014B h\\u0268w.");
   size_t outLength;
-  char* unescaped = TRI_UnescapeUtf8String(data.data(), data.size(), &outLength, true);
+  char* unescaped =
+      TRI_UnescapeUtf8String(data.data(), data.size(), &outLength, true);
   EXPECT_EQ(std::string(unescaped),
             "tɜt kɐː mɔj ŋɨɜj siŋ za ɗew ɗɨɜk tɨɰ zɔ vɐː ɓiŋ ɗɐŋ vej ɲɜn fɜm "
             "vɐː kɨɜn. mɔj kɔn ŋɨɜj ɗeu ɗɨɜk tɐːw huɜ ɓɐːn cɔ li ci vɐː lɨɜŋ "
@@ -404,7 +413,8 @@ TEST_F(CStringUtf8Test, tst_western_european) {
   std::string const data(
       "\\u00E4\\u00F6\\u00FC\\u00DF\\u00C4\\u00D6\\u00DC\\u20AC\\u00B5");
   size_t outLength;
-  char* unescaped = TRI_UnescapeUtf8String(data.data(), data.size(), &outLength, true);
+  char* unescaped =
+      TRI_UnescapeUtf8String(data.data(), data.size(), &outLength, true);
   EXPECT_EQ(std::string(unescaped), "äöüßÄÖÜ€µ");
   TRI_FreeString(unescaped);
 }

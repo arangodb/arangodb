@@ -40,14 +40,16 @@
 
 class Metric {
  public:
-  Metric(std::string const& name, std::string const& help, std::string const& labels);
+  Metric(std::string const& name, std::string const& help,
+         std::string const& labels);
   virtual ~Metric();
   std::string const& help() const;
   std::string const& name() const;
   std::string const& labels() const;
   virtual std::string type() const = 0;
-  virtual void toPrometheus(std::string& result, std::string const& globals,
-                            std::string const& alternativeName = std::string()) const = 0;
+  virtual void toPrometheus(
+      std::string& result, std::string const& globals,
+      std::string const& alternativeName = std::string()) const = 0;
   void header(std::string& result) const;
 
  protected:
@@ -57,10 +59,13 @@ class Metric {
 };
 
 struct Metrics {
-  using counter_type = gcl::counter::simplex<uint64_t, gcl::counter::atomicity::full>;
-  using hist_type = gcl::counter::simplex_array<uint64_t, gcl::counter::atomicity::full>;
+  using counter_type =
+      gcl::counter::simplex<uint64_t, gcl::counter::atomicity::full>;
+  using hist_type =
+      gcl::counter::simplex_array<uint64_t, gcl::counter::atomicity::full>;
   using buffer_type =
-      gcl::counter::buffer<uint64_t, gcl::counter::atomicity::full, gcl::counter::atomicity::full>;
+      gcl::counter::buffer<uint64_t, gcl::counter::atomicity::full,
+                           gcl::counter::atomicity::full>;
 };
 
 /**
@@ -83,14 +88,15 @@ class Counter : public Metric {
   uint64_t load() const;
   void store(uint64_t const&);
   void push();
-  virtual void toPrometheus(std::string&, std::string const&, std::string const&) const override;
+  virtual void toPrometheus(std::string&, std::string const&,
+                            std::string const&) const override;
 
  private:
   mutable Metrics::counter_type _c;
   mutable Metrics::buffer_type _b;
 };
 
-template <typename T>
+template<typename T>
 class Gauge : public Metric {
  public:
   Gauge() = delete;
@@ -110,7 +116,8 @@ class Gauge : public Metric {
     } else {
       T tmp(_g.load(std::memory_order_relaxed));
       do {
-      } while (!_g.compare_exchange_weak(tmp, tmp + t, mo, std::memory_order_relaxed));
+      } while (!_g.compare_exchange_weak(tmp, tmp + t, mo,
+                                         std::memory_order_relaxed));
       return tmp;
     }
   }
@@ -135,7 +142,8 @@ class Gauge : public Metric {
     } else {
       T tmp(_g.load(std::memory_order_relaxed));
       do {
-      } while (!_g.compare_exchange_weak(tmp, tmp - t, mo, std::memory_order_relaxed));
+      } while (!_g.compare_exchange_weak(tmp, tmp - t, mo,
+                                         std::memory_order_relaxed));
       return tmp;
     }
   }
@@ -204,7 +212,7 @@ std::ostream& operator<<(std::ostream&, Metrics::hist_type const&);
 
 enum ScaleType { Fixed, Linear, Logarithmic };
 
-template <typename T>
+template<typename T>
 struct scale_t {
  public:
   using value_type = T;
@@ -270,18 +278,19 @@ struct scale_t {
   size_t _n;
 };
 
-template <typename T>
+template<typename T>
 std::ostream& operator<<(std::ostream& o, scale_t<T> const& s) {
   return s.print(o);
 }
 
-template <typename T>
+template<typename T>
 struct fixed_scale_t : public scale_t<T> {
  public:
   using value_type = T;
   static constexpr ScaleType scale_type = Fixed;
 
-  fixed_scale_t(T const& low, T const& high, std::initializer_list<T> const& list)
+  fixed_scale_t(T const& low, T const& high,
+                std::initializer_list<T> const& list)
       : scale_t<T>(low, high, list.size() + 1) {
     this->_delim = list;
   }
@@ -309,7 +318,7 @@ struct fixed_scale_t : public scale_t<T> {
   T _base, _div;
 };
 
-template <typename T>
+template<typename T>
 struct log_scale_t : public scale_t<T> {
  public:
   using value_type = T;
@@ -317,7 +326,8 @@ struct log_scale_t : public scale_t<T> {
 
   static constexpr auto getHighFromSmallestBucket(T smallestBucketSize, T base,
                                                   T low, size_t n) -> T {
-    return static_cast<T>((smallestBucketSize - low) * std::pow(base, n - 1) + low);
+    return static_cast<T>((smallestBucketSize - low) * std::pow(base, n - 1) +
+                          low);
   }
   struct supply_smallest_bucket_t {};
   static constexpr auto supply_smallest_bucket = supply_smallest_bucket_t{};
@@ -325,16 +335,18 @@ struct log_scale_t : public scale_t<T> {
   log_scale_t(supply_smallest_bucket_t, T const& base, T const& low,
               T const& smallestBucketSize, size_t n)
       : log_scale_t(base, low,
-                    getHighFromSmallestBucket(smallestBucketSize, base, low, n), n) {}
+                    getHighFromSmallestBucket(smallestBucketSize, base, low, n),
+                    n) {}
 
   log_scale_t(T const& base, T const& low, T const& high, size_t n)
       : scale_t<T>(low, high, n), _base(base) {
     TRI_ASSERT(base > T(0));
     double nn = -1.0 * (n - 1);
     for (auto& i : this->_delim) {
-      i = static_cast<T>(static_cast<double>(high - low) *
-                             std::pow(static_cast<double>(base), static_cast<double>(nn++)) +
-                         static_cast<double>(low));
+      i = static_cast<T>(
+          static_cast<double>(high - low) *
+              std::pow(static_cast<double>(base), static_cast<double>(nn++)) +
+          static_cast<double>(low));
     }
     _div = this->_delim.front() - low;
     TRI_ASSERT(_div > T(0));
@@ -347,7 +359,8 @@ struct log_scale_t : public scale_t<T> {
    * @return    index
    */
   size_t pos(T val) const {
-    return static_cast<size_t>(1 + std::floor(log((val - this->_low) / _div) / _lbase));
+    return static_cast<size_t>(
+        1 + std::floor(log((val - this->_low) / _div) / _lbase));
   }
   /**
    * @brief Dump to builder
@@ -369,7 +382,7 @@ struct log_scale_t : public scale_t<T> {
   double _lbase;
 };
 
-template <typename T>
+template<typename T>
 struct lin_scale_t : public scale_t<T> {
  public:
   using value_type = T;
@@ -410,7 +423,7 @@ struct lin_scale_t : public scale_t<T> {
 /**
  * @brief Histogram functionality
  */
-template <typename Scale>
+template<typename Scale>
 class Histogram : public Metric {
  public:
   using value_type = typename Scale::value_type;
@@ -441,13 +454,15 @@ class Histogram : public Metric {
     // in maintainer mode so they can be used when debugging.
     auto expected = _lowr.load(std::memory_order_relaxed);
     while (val < expected) {
-      if (_lowr.compare_exchange_weak(expected, val, std::memory_order_relaxed)) {
+      if (_lowr.compare_exchange_weak(expected, val,
+                                      std::memory_order_relaxed)) {
         return;
       }
     }
     expected = _highr.load(std::memory_order_relaxed);
     while (val > expected) {
-      if (_highr.compare_exchange_weak(expected, val, std::memory_order_relaxed)) {
+      if (_highr.compare_exchange_weak(expected, val,
+                                       std::memory_order_relaxed)) {
         return;
       }
     }
@@ -475,9 +490,9 @@ class Histogram : public Metric {
     } else {
       value_type tmp = _sum.load(std::memory_order_relaxed);
       do {
-      } while (!_sum.compare_exchange_weak(tmp, tmp + static_cast<value_type>(n) * t,
-                                           std::memory_order_relaxed,
-                                           std::memory_order_relaxed));
+      } while (!_sum.compare_exchange_weak(
+          tmp, tmp + static_cast<value_type>(n) * t, std::memory_order_relaxed,
+          std::memory_order_relaxed));
     }
     track_extremes(t);
   }
@@ -515,7 +530,8 @@ class Histogram : public Metric {
       ls += labels();
     }
 
-    std::string const& theName = !alternativeName.empty() ? alternativeName : name();
+    std::string const& theName =
+        !alternativeName.empty() ? alternativeName : name();
 
     for (size_t i = 0; i < size(); ++i) {
       uint64_t n = load(i);
@@ -563,7 +579,7 @@ class Histogram : public Metric {
 };
 
 std::ostream& operator<<(std::ostream&, Metrics::counter_type const&);
-template <typename T>
+template<typename T>
 std::ostream& operator<<(std::ostream& o, Histogram<T> const& h) {
   return h.print(o);
 }

@@ -58,7 +58,8 @@ std::string const ResignShardLeadership::LeaderNotYetKnownString =
 
 ResignShardLeadership::ResignShardLeadership(MaintenanceFeature& feature,
                                              ActionDescription const& desc)
-    : ActionBase(feature, desc), ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
+    : ActionBase(feature, desc),
+      ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);
@@ -82,7 +83,8 @@ bool ResignShardLeadership::first() {
   std::string const& collection = getShard();
 
   LOG_TOPIC("14f43", DEBUG, Logger::MAINTENANCE)
-      << "trying to withdraw as leader of shard '" << database << "/" << collection;
+      << "trying to withdraw as leader of shard '" << database << "/"
+      << collection;
 
   // This starts a write transaction, just to wait for any ongoing
   // write transaction on this shard to terminate. We will then later
@@ -110,9 +112,10 @@ bool ResignShardLeadership::first() {
 
     // Get write transaction on collection
     transaction::StandaloneContext ctx(*vocbase);
-    SingleCollectionTransaction trx{std::shared_ptr<transaction::Context>(
-                                        std::shared_ptr<transaction::Context>(), &ctx),
-                                    *col, AccessMode::Type::EXCLUSIVE};
+    SingleCollectionTransaction trx{
+        std::shared_ptr<transaction::Context>(
+            std::shared_ptr<transaction::Context>(), &ctx),
+        *col, AccessMode::Type::EXCLUSIVE};
 
     Result res = trx.begin();
 

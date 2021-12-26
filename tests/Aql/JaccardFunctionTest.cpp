@@ -48,7 +48,8 @@ namespace {
 AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
-  fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([](ErrorCode, char const*) {});
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .AlwaysDo([](ErrorCode, char const*) {});
 
   VPackOptions options;
   fakeit::Mock<transaction::Context> trxCtxMock;
@@ -60,9 +61,8 @@ AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs) {
   fakeit::When(Method(trxMock, vpackOptions)).AlwaysReturn(options);
   transaction::Methods& trx = trxMock.get();
 
-  fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&trx]() -> transaction::Methods& {
-    return trx;
-  });
+  fakeit::When(Method(expressionContextMock, trx))
+      .AlwaysDo([&trx]() -> transaction::Methods& { return trx; });
 
   SmallVector<AqlValue>::allocator_type::arena_type arena;
   SmallVector<AqlValue> params{arena};
@@ -103,7 +103,8 @@ void assertJaccardFail(char const* lhs, AqlValue const& rhs) {
 }
 
 void assertJaccard(double_t expectedValue, char const* lhs, char const* rhs) {
-  auto assertJaccardCoef = [](double_t expectedValue, char const* lhs, char const* rhs) {
+  auto assertJaccardCoef = [](double_t expectedValue, char const* lhs,
+                              char const* rhs) {
     auto const value = evaluate(lhs, rhs);
     ASSERT_TRUE(value.isNumber());
     bool failed = true;

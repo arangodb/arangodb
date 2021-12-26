@@ -59,12 +59,14 @@ class StringBuffer;
 
 class RocksDBReplicationContext {
  private:
-  typedef std::function<void(LocalDocumentId const& token)> LocalDocumentIdCallback;
+  typedef std::function<void(LocalDocumentId const& token)>
+      LocalDocumentIdCallback;
 
   /// collection abstraction
   struct CollectionIterator {
-    CollectionIterator(TRI_vocbase_t&, std::shared_ptr<LogicalCollection> const&,
-                       bool sorted, rocksdb::Snapshot const*);
+    CollectionIterator(TRI_vocbase_t&,
+                       std::shared_ptr<LogicalCollection> const&, bool sorted,
+                       rocksdb::Snapshot const*);
     ~CollectionIterator();
 
     TRI_vocbase_t& vocbase;
@@ -123,9 +125,11 @@ class RocksDBReplicationContext {
 
  public:
   RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
-  RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
+  RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) =
+      delete;
 
-  RocksDBReplicationContext(RocksDBEngine&, double ttl, SyncerId syncerId, ServerId clientId);
+  RocksDBReplicationContext(RocksDBEngine&, double ttl, SyncerId syncerId,
+                            ServerId clientId);
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const;  // batchId
@@ -145,7 +149,8 @@ class RocksDBReplicationContext {
 
   // returns inventory
   Result getInventory(TRI_vocbase_t& vocbase, bool includeSystem,
-                      bool includeFoxxQueues, bool global, velocypack::Builder&);
+                      bool includeFoxxQueues, bool global,
+                      velocypack::Builder&);
 
   // returns inventory for a single shard (DB server only!)
   Result getInventory(TRI_vocbase_t& vocbase, std::string const& collectionName,
@@ -182,7 +187,8 @@ class RocksDBReplicationContext {
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
   DumpResult dumpJson(TRI_vocbase_t& vocbase, std::string const& cname,
-                      basics::StringBuffer&, uint64_t chunkSize, bool useEnvelope);
+                      basics::StringBuffer&, uint64_t chunkSize,
+                      bool useEnvelope);
 
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
@@ -196,7 +202,8 @@ class RocksDBReplicationContext {
   // bindCollection. Generates array of objects with minKey, maxKey and hash
   // per chunk. Distance between min and maxKey should be chunkSize
   arangodb::Result dumpKeyChunks(TRI_vocbase_t& vocbase, DataSourceId cid,
-                                 velocypack::Builder& outBuilder, uint64_t chunkSize);
+                                 velocypack::Builder& outBuilder,
+                                 uint64_t chunkSize);
   /// dump all keys from collection
   arangodb::Result dumpKeys(TRI_vocbase_t& vocbase, DataSourceId cid,
                             velocypack::Builder& outBuilder, size_t chunk,
@@ -229,14 +236,17 @@ class RocksDBReplicationContext {
   void removeBlocker(std::string const& dbName, std::string const& collection);
 
  private:
-  template <typename T>
-  bool findCollection(std::string const& dbName, T const& collection,
-                      std::function<void(TRI_vocbase_t& vocbase, LogicalCollection& collection)> const& cb);
+  template<typename T>
+  bool findCollection(
+      std::string const& dbName, T const& collection,
+      std::function<void(TRI_vocbase_t& vocbase,
+                         LogicalCollection& collection)> const& cb);
 
   void lazyCreateSnapshot();
 
-  CollectionIterator* getCollectionIterator(TRI_vocbase_t& vocbase, DataSourceId cid,
-                                            bool sorted, bool allowCreate);
+  CollectionIterator* getCollectionIterator(TRI_vocbase_t& vocbase,
+                                            DataSourceId cid, bool sorted,
+                                            bool allowCreate);
 
   void releaseDumpIterator(CollectionIterator*);
 
@@ -249,9 +259,10 @@ class RocksDBReplicationContext {
   std::string const _clientInfo;
 
   /// @brief collection for which we are allowed to patch counts. this can
-  /// be empty, meaning that the counts should not be patched for any collection.
-  /// if this is set to the name of any collection/shard, it is expected that the
-  /// context will only be used for exactly one collection/shard.
+  /// be empty, meaning that the counts should not be patched for any
+  /// collection. if this is set to the name of any collection/shard, it is
+  /// expected that the context will only be used for exactly one
+  /// collection/shard.
   std::string _patchCount;
 
   uint64_t _snapshotTick;  // tick in WAL from _snapshot

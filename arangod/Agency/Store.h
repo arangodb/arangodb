@@ -111,10 +111,12 @@ class Store {
   std::vector<bool> read(query_t const& query, query_t& result) const;
 
   /// @brief Read specified query from store
-  void read(query_t const& query, std::unordered_map<std::string, query_t>& result) const;
+  void read(query_t const& query,
+            std::unordered_map<std::string, query_t>& result) const;
 
   /// @brief Read individual entry specified in slice into builder
-  bool read(arangodb::velocypack::Slice const&, arangodb::velocypack::Builder&) const;
+  bool read(arangodb::velocypack::Slice const&,
+            arangodb::velocypack::Builder&) const;
 
   /// @brief Dump everything to builder
   void dumpToBuilder(Builder&) const;
@@ -129,7 +131,8 @@ class Store {
   Node const* nodePtr(std::string const& path = std::string("/")) const;
 
   /// @brief Get node at path under mutex and store it in velocypack
-  void get(std::string const& path, arangodb::velocypack::Builder& b, bool showHidden) const;
+  void get(std::string const& path, arangodb::velocypack::Builder& b,
+           bool showHidden) const;
 
   /// @brief Copy out a node
   Node get(std::string const& path = std::string("/")) const;
@@ -145,7 +148,8 @@ class Store {
   void removeTTL(std::string const&);
 
   std::unordered_multimap<std::string, std::string>& observedTable();
-  std::unordered_multimap<std::string, std::string> const& observedTable() const;
+  std::unordered_multimap<std::string, std::string> const& observedTable()
+      const;
 
   static std::string normalize(char const* key, size_t length);
 
@@ -173,7 +177,8 @@ class Store {
   std::multimap<TimePoint, std::string>& timeTable();
   std::multimap<TimePoint, std::string> const& timeTable() const;
   /// @brief Check precondition
-  check_ret_t check(arangodb::velocypack::Slice const&, CheckMode = FIRST_FAIL) const;
+  check_ret_t check(arangodb::velocypack::Slice const&,
+                    CheckMode = FIRST_FAIL) const;
 
   /// @brief Clear entries, whose time to live has expired
   query_t clearExpired() const;

@@ -68,7 +68,8 @@ static thread_local SeededPRNG threadLocalPRNG;
 
 namespace arangodb {
 
-SharedPRNGFeature::SharedPRNGFeature(application_features::ApplicationServer& server)
+SharedPRNGFeature::SharedPRNGFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, "SharedPRNG") {
   setOptional(true);
 }

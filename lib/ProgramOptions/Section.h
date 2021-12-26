@@ -36,7 +36,8 @@ struct Section {
   // sections are default copy-constructible and default movable
 
   Section(std::string const& name, std::string const& description,
-          std::string const& link, std::string const& alias, bool hidden, bool obsolete)
+          std::string const& link, std::string const& alias, bool hidden,
+          bool obsolete)
       : name(name),
         description(description),
         link(link),
@@ -54,7 +55,8 @@ struct Section {
   // print help for a section
   // the special search string "." will show help for all sections, even if
   // hidden
-  void printHelp(std::string const& search, size_t tw, size_t ow, bool colors) const;
+  void printHelp(std::string const& search, size_t tw, size_t ow,
+                 bool colors) const;
 
   // determine display width for a section
   size_t optionsWidth() const;

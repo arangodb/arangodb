@@ -51,7 +51,9 @@ namespace arangodb {
 std::atomic<bool> FlushFeature::_isRunning(false);
 
 FlushFeature::FlushFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Flush"), _flushInterval(1000000), _stopped(false) {
+    : ApplicationFeature(server, "Flush"),
+      _flushInterval(1000000),
+      _stopped(false) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 
@@ -59,13 +61,14 @@ FlushFeature::FlushFeature(application_features::ApplicationServer& server)
 }
 
 void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--server.flush-interval",
-                     "interval (in microseconds) for flushing data",
-                     new UInt64Parameter(&_flushInterval),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption(
+      "--server.flush-interval", "interval (in microseconds) for flushing data",
+      new UInt64Parameter(&_flushInterval),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
-void FlushFeature::registerFlushSubscription(const std::shared_ptr<FlushSubscription>& subscription) {
+void FlushFeature::registerFlushSubscription(
+    const std::shared_ptr<FlushSubscription>& subscription) {
   if (!subscription) {
     return;
   }
@@ -81,7 +84,8 @@ void FlushFeature::registerFlushSubscription(const std::shared_ptr<FlushSubscrip
   _flushSubscriptions.emplace_back(subscription);
 }
 
-arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count, TRI_voc_tick_t& minTick) {
+arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count,
+                                                  TRI_voc_tick_t& minTick) {
   count = 0;
   auto& engine = server().getFeature<EngineSelectorFeature>().engine();
 
@@ -91,7 +95,8 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count, TRI_voc_tick_t&
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
     // find min tick and remove stale subscriptions
-    for (auto itr = _flushSubscriptions.begin(); itr != _flushSubscriptions.end();) {
+    for (auto itr = _flushSubscriptions.begin();
+         itr != _flushSubscriptions.end();) {
       auto entry = itr->lock();
 
       if (!entry) {
@@ -128,7 +133,8 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count, TRI_voc_tick_t&
   return {};
 }
 
-void FlushFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
+void FlushFeature::validateOptions(
+    std::shared_ptr<options::ProgramOptions> options) {
   if (_flushInterval < 1000) {
     // do not go below 1000 microseconds
     _flushInterval = 1000;
@@ -199,8 +205,9 @@ void FlushFeature::stop() {
     {
       std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
-      // release any remaining flush subscriptions so that they may get deallocated ASAP
-      // subscriptions could survive after FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
+      // release any remaining flush subscriptions so that they may get
+      // deallocated ASAP subscriptions could survive after
+      // FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
       _flushSubscriptions.clear();
       _stopped = true;
     }

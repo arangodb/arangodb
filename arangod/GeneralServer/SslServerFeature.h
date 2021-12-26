@@ -80,8 +80,10 @@ class SslServerFeature : public application_features::ApplicationFeature {
   std::string _keyfile;        // name of default keyfile
   // For SNI, we have two maps, one mapping to the filename for a certain
   // server, another, to keep the actual keyfile in memory.
-  std::vector<SNIEntry> _sniEntries;  // the first entry is the default server keyfile
-  std::unordered_map<std::string, size_t> _sniServerIndex;  // map server names to indices in _sniEntries
+  std::vector<SNIEntry>
+      _sniEntries;  // the first entry is the default server keyfile
+  std::unordered_map<std::string, size_t>
+      _sniServerIndex;  // map server names to indices in _sniEntries
   bool _sessionCache;
   std::string _cipherList;
   uint64_t _sslProtocol;
@@ -90,7 +92,8 @@ class SslServerFeature : public application_features::ApplicationFeature {
   bool _preferHttp11InAlpn;
 
  private:
-  asio_ns::ssl::context createSslContextInternal(std::string keyfileName, std::string& content);
+  asio_ns::ssl::context createSslContextInternal(std::string keyfileName,
+                                                 std::string& content);
 
   std::string stringifySslOptions(uint64_t opts) const;
 

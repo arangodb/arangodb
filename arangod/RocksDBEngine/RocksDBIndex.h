@@ -61,8 +61,9 @@ class RocksDBIndex : public Index {
   void toVelocyPackFigures(velocypack::Builder& builder) const override;
 
   /// @brief return a VelocyPack representation of the index
-  void toVelocyPack(velocypack::Builder& builder,
-                    std::underlying_type<Index::Serialize>::type) const override;
+  void toVelocyPack(
+      velocypack::Builder& builder,
+      std::underlying_type<Index::Serialize>::type) const override;
 
   uint64_t objectId() const { return _objectId.load(); }
 
@@ -75,7 +76,8 @@ class RocksDBIndex : public Index {
 
   Result drop() override;
 
-  virtual void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override;
+  virtual void afterTruncate(TRI_voc_tick_t tick,
+                             transaction::Methods* trx) override;
 
   void load() override;
   void unload() override;
@@ -100,19 +102,22 @@ class RocksDBIndex : public Index {
                              arangodb::velocypack::Slice doc,
                              OperationOptions const& options);
 
-  /// performs a preflight check for an update/replace operation, not carrying out any
-  /// modifications to the index.
-  /// the default implementation does nothing. indexes can override this and
-  /// perform useful checks (uniqueness checks etc.) here
-  virtual Result checkReplace(transaction::Methods& trx, RocksDBMethods* methods,
+  /// performs a preflight check for an update/replace operation, not carrying
+  /// out any modifications to the index. the default implementation does
+  /// nothing. indexes can override this and perform useful checks (uniqueness
+  /// checks etc.) here
+  virtual Result checkReplace(transaction::Methods& trx,
+                              RocksDBMethods* methods,
                               LocalDocumentId const& documentId,
                               arangodb::velocypack::Slice doc,
                               OperationOptions const& options);
 
   /// insert index elements into the specified write batch.
   virtual Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                        LocalDocumentId const& documentId, arangodb::velocypack::Slice doc,
-                        OperationOptions const& options, bool performChecks) = 0;
+                        LocalDocumentId const& documentId,
+                        arangodb::velocypack::Slice doc,
+                        OperationOptions const& options,
+                        bool performChecks) = 0;
 
   /// remove index elements and put it in the specified write batch.
   virtual Result remove(transaction::Methods& trx, RocksDBMethods* methods,
@@ -122,7 +127,8 @@ class RocksDBIndex : public Index {
   virtual Result update(transaction::Methods& trx, RocksDBMethods* methods,
                         LocalDocumentId const& oldDocumentId,
                         arangodb::velocypack::Slice oldDoc,
-                        LocalDocumentId const& newDocumentId, velocypack::Slice newDoc,
+                        LocalDocumentId const& newDocumentId,
+                        velocypack::Slice newDoc,
                         OperationOptions const& options, bool performChecks);
 
   rocksdb::ColumnFamilyHandle* columnFamily() const { return _cf; }
@@ -135,7 +141,8 @@ class RocksDBIndex : public Index {
 
   RocksDBKeyBounds getBounds() const { return getBounds(_objectId); }
 
-  static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId, bool unique);
+  static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId,
+                                    bool unique);
 
   /// @brief get index estimator, optional
   virtual RocksDBCuckooIndexEstimatorType* estimator();
@@ -143,8 +150,10 @@ class RocksDBIndex : public Index {
   virtual void recalculateEstimates();
 
  protected:
-  RocksDBIndex(IndexId id, LogicalCollection& collection, std::string const& name,
-               std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
+  RocksDBIndex(IndexId id, LogicalCollection& collection,
+               std::string const& name,
+               std::vector<std::vector<arangodb::basics::AttributeName>> const&
+                   attributes,
                bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
                uint64_t objectId, bool useCache);
 

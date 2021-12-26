@@ -28,7 +28,8 @@
 #include <Replication2/Mocks/ReplicatedLogMetricsMock.h>
 #include "Replication2/Mocks/PersistedLog.h"
 
-void arangodb::TestLogEntry::toVelocyPack(arangodb::velocypack::Builder& builder) const {
+void arangodb::TestLogEntry::toVelocyPack(
+    arangodb::velocypack::Builder& builder) const {
   velocypack::ObjectBuilder ob(&builder);
   builder.add("payload", velocypack::Value(payload));
 }
@@ -47,6 +48,6 @@ auto StateMachineTest::createReplicatedLog()
   auto persisted = std::make_shared<test::MockLog>(LogId{0});
   auto core = std::make_unique<replicated_log::LogCore>(persisted);
   auto metrics = std::make_shared<ReplicatedLogMetricsMock>();
-  return std::make_shared<replicated_log::ReplicatedLog>(std::move(core), metrics,
-                                                         LoggerContext(Logger::REPLICATION2));
+  return std::make_shared<replicated_log::ReplicatedLog>(
+      std::move(core), metrics, LoggerContext(Logger::REPLICATION2));
 }

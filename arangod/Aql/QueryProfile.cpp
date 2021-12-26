@@ -93,14 +93,16 @@ double QueryProfile::setStateDone(QueryExecutionState::ValueType state) {
 }
 
 /// @brief sets the absolute end time for an execution state
-void QueryProfile::setStateEnd(QueryExecutionState::ValueType state, double time) {
+void QueryProfile::setStateEnd(QueryExecutionState::ValueType state,
+                               double time) {
   _timers[static_cast<int>(state)] = time - _lastStamp;
 }
 
 /// @brief convert the profile to VelocyPack
 void QueryProfile::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder, "profile", true);
-  for (auto state : ENUM_ITERATOR(QueryExecutionState::ValueType, INITIALIZATION, FINALIZATION)) {
+  for (auto state : ENUM_ITERATOR(QueryExecutionState::ValueType,
+                                  INITIALIZATION, FINALIZATION)) {
     double const value = _timers[static_cast<size_t>(state)];
 
     if (value >= 0.0) {

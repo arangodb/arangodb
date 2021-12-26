@@ -46,37 +46,64 @@ bool validateIdWrapper(char const* id, bool extendedNames, size_t expectedSplit,
 }  // namespace
 
 TEST(KeyGeneratorTest, encodePadded) {
-  ASSERT_EQ(std::string("0000000000000000"), KeyGeneratorHelper::encodePadded(0));
-  ASSERT_EQ(std::string("0000000000000001"), KeyGeneratorHelper::encodePadded(1));
-  ASSERT_EQ(std::string("0000000000000002"), KeyGeneratorHelper::encodePadded(2));
-  ASSERT_EQ(std::string("0000000000000005"), KeyGeneratorHelper::encodePadded(5));
-  ASSERT_EQ(std::string("0000000000000009"), KeyGeneratorHelper::encodePadded(9));
-  ASSERT_EQ(std::string("000000000000000a"), KeyGeneratorHelper::encodePadded(10));
-  ASSERT_EQ(std::string("000000000000000c"), KeyGeneratorHelper::encodePadded(12));
-  ASSERT_EQ(std::string("000000000000000f"), KeyGeneratorHelper::encodePadded(15));
-  ASSERT_EQ(std::string("0000000000000010"), KeyGeneratorHelper::encodePadded(16));
-  ASSERT_EQ(std::string("0000000000000011"), KeyGeneratorHelper::encodePadded(17));
-  ASSERT_EQ(std::string("0000000000000019"), KeyGeneratorHelper::encodePadded(25));
-  ASSERT_EQ(std::string("0000000000000020"), KeyGeneratorHelper::encodePadded(32));
-  ASSERT_EQ(std::string("0000000000000021"), KeyGeneratorHelper::encodePadded(33));
-  ASSERT_EQ(std::string("000000000000003f"), KeyGeneratorHelper::encodePadded(63));
-  ASSERT_EQ(std::string("0000000000000040"), KeyGeneratorHelper::encodePadded(64));
-  ASSERT_EQ(std::string("000000000000007f"), KeyGeneratorHelper::encodePadded(127));
-  ASSERT_EQ(std::string("00000000000000ff"), KeyGeneratorHelper::encodePadded(255));
-  ASSERT_EQ(std::string("0000000000000100"), KeyGeneratorHelper::encodePadded(256));
-  ASSERT_EQ(std::string("0000000000000101"), KeyGeneratorHelper::encodePadded(257));
-  ASSERT_EQ(std::string("00000000000001ff"), KeyGeneratorHelper::encodePadded(511));
-  ASSERT_EQ(std::string("0000000000000200"), KeyGeneratorHelper::encodePadded(512));
-  ASSERT_EQ(std::string("0000000000001002"), KeyGeneratorHelper::encodePadded(4098));
-  ASSERT_EQ(std::string("000000000000ffff"), KeyGeneratorHelper::encodePadded(65535));
-  ASSERT_EQ(std::string("0000000000010000"), KeyGeneratorHelper::encodePadded(65536));
-  ASSERT_EQ(std::string("0000000007a9f3bf"), KeyGeneratorHelper::encodePadded(128578495));
-  ASSERT_EQ(std::string("00000000ffffffff"), KeyGeneratorHelper::encodePadded(UINT32_MAX));
+  ASSERT_EQ(std::string("0000000000000000"),
+            KeyGeneratorHelper::encodePadded(0));
+  ASSERT_EQ(std::string("0000000000000001"),
+            KeyGeneratorHelper::encodePadded(1));
+  ASSERT_EQ(std::string("0000000000000002"),
+            KeyGeneratorHelper::encodePadded(2));
+  ASSERT_EQ(std::string("0000000000000005"),
+            KeyGeneratorHelper::encodePadded(5));
+  ASSERT_EQ(std::string("0000000000000009"),
+            KeyGeneratorHelper::encodePadded(9));
+  ASSERT_EQ(std::string("000000000000000a"),
+            KeyGeneratorHelper::encodePadded(10));
+  ASSERT_EQ(std::string("000000000000000c"),
+            KeyGeneratorHelper::encodePadded(12));
+  ASSERT_EQ(std::string("000000000000000f"),
+            KeyGeneratorHelper::encodePadded(15));
+  ASSERT_EQ(std::string("0000000000000010"),
+            KeyGeneratorHelper::encodePadded(16));
+  ASSERT_EQ(std::string("0000000000000011"),
+            KeyGeneratorHelper::encodePadded(17));
+  ASSERT_EQ(std::string("0000000000000019"),
+            KeyGeneratorHelper::encodePadded(25));
+  ASSERT_EQ(std::string("0000000000000020"),
+            KeyGeneratorHelper::encodePadded(32));
+  ASSERT_EQ(std::string("0000000000000021"),
+            KeyGeneratorHelper::encodePadded(33));
+  ASSERT_EQ(std::string("000000000000003f"),
+            KeyGeneratorHelper::encodePadded(63));
+  ASSERT_EQ(std::string("0000000000000040"),
+            KeyGeneratorHelper::encodePadded(64));
+  ASSERT_EQ(std::string("000000000000007f"),
+            KeyGeneratorHelper::encodePadded(127));
+  ASSERT_EQ(std::string("00000000000000ff"),
+            KeyGeneratorHelper::encodePadded(255));
+  ASSERT_EQ(std::string("0000000000000100"),
+            KeyGeneratorHelper::encodePadded(256));
+  ASSERT_EQ(std::string("0000000000000101"),
+            KeyGeneratorHelper::encodePadded(257));
+  ASSERT_EQ(std::string("00000000000001ff"),
+            KeyGeneratorHelper::encodePadded(511));
+  ASSERT_EQ(std::string("0000000000000200"),
+            KeyGeneratorHelper::encodePadded(512));
+  ASSERT_EQ(std::string("0000000000001002"),
+            KeyGeneratorHelper::encodePadded(4098));
+  ASSERT_EQ(std::string("000000000000ffff"),
+            KeyGeneratorHelper::encodePadded(65535));
+  ASSERT_EQ(std::string("0000000000010000"),
+            KeyGeneratorHelper::encodePadded(65536));
+  ASSERT_EQ(std::string("0000000007a9f3bf"),
+            KeyGeneratorHelper::encodePadded(128578495));
+  ASSERT_EQ(std::string("00000000ffffffff"),
+            KeyGeneratorHelper::encodePadded(UINT32_MAX));
   ASSERT_EQ(std::string("000019a33af7f8cf"),
             KeyGeneratorHelper::encodePadded(28188859693263ULL));
   ASSERT_EQ(std::string("03e9782f766722ab"),
             KeyGeneratorHelper::encodePadded(281888596932633259ULL));
-  ASSERT_EQ(std::string("ffffffffffffffff"), KeyGeneratorHelper::encodePadded(UINT64_MAX));
+  ASSERT_EQ(std::string("ffffffffffffffff"),
+            KeyGeneratorHelper::encodePadded(UINT64_MAX));
 }
 
 TEST(KeyGeneratorTest, decodePadded) {

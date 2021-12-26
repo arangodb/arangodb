@@ -44,20 +44,21 @@ struct DocumentCrudTest : public Benchmark<DocumentCrudTest> {
 
   void tearDown() override {}
 
-  void buildRequest(size_t threadNumber, size_t threadCounter, size_t globalCounter,
-                    BenchmarkOperation::RequestData& requestData) const override {
+  void buildRequest(
+      size_t threadNumber, size_t threadCounter, size_t globalCounter,
+      BenchmarkOperation::RequestData& requestData) const override {
     size_t keyId = static_cast<size_t>(globalCounter / 5);
     std::string const key = "testkey" + StringUtils::itoa(keyId);
     size_t const mod = globalCounter % 5;
 
     if (mod == 0) {
-      requestData.url =
-          std::string("/_api/document?collection=" + _arangobench.collection()) +
-          "&silent=true";
+      requestData.url = std::string("/_api/document?collection=" +
+                                    _arangobench.collection()) +
+                        "&silent=true";
       requestData.type = rest::RequestType::POST;
     } else {
-      requestData.url =
-          std::string("/_api/document/" + _arangobench.collection() + "/" + key);
+      requestData.url = std::string("/_api/document/" +
+                                    _arangobench.collection() + "/" + key);
       if (mod == 2) {
         requestData.type = rest::RequestType::PATCH;
       } else if (mod == 4) {
@@ -73,7 +74,8 @@ struct DocumentCrudTest : public Benchmark<DocumentCrudTest> {
       uint64_t n = _arangobench.complexity();
       for (uint64_t i = 1; i <= n; ++i) {
         bool value = (mod == 0) ? true : false;
-        requestData.payload.add(std::string("value") + std::to_string(i), Value(value));
+        requestData.payload.add(std::string("value") + std::to_string(i),
+                                Value(value));
       }
       requestData.payload.close();
     }

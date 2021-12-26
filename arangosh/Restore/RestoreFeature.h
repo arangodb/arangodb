@@ -52,11 +52,13 @@ class ManagedDirectory;
 
 class RestoreFeature final : public application_features::ApplicationFeature {
  public:
-  RestoreFeature(application_features::ApplicationServer& server, int& exitCode);
+  RestoreFeature(application_features::ApplicationServer& server,
+                 int& exitCode);
 
   // for documentation of virtual methods, see `ApplicationFeature`
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions> options) override;
+  void validateOptions(
+      std::shared_ptr<options::ProgramOptions> options) override;
   void prepare() override;
   void start() override;
 
@@ -158,7 +160,8 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     /// each chunk to test the resumption of a restore after a crash)
     std::map<size_t, size_t> readOffsets;
 
-    /// @brief whether ot not we have read the complete input data file for the collection
+    /// @brief whether ot not we have read the complete input data file for the
+    /// collection
     bool readCompleteInputfile;
   };
 
@@ -166,7 +169,8 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   struct RestoreJob {
     RestoreJob(RestoreFeature& feature, RestoreProgressTracker& progressTracker,
                Options const& options, Stats& stats, bool useEnvelope,
-               std::string const& collectionName, std::shared_ptr<SharedState> sharedState);
+               std::string const& collectionName,
+               std::shared_ptr<SharedState> sharedState);
 
     virtual ~RestoreJob();
 
@@ -175,7 +179,8 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     void updateProgress();
 
     Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& client,
-                           size_t readOffset, char const* buffer, size_t bufferSize);
+                           size_t readOffset, char const* buffer,
+                           size_t bufferSize);
 
     RestoreFeature& feature;
     RestoreProgressTracker& progressTracker;
@@ -188,13 +193,15 @@ class RestoreFeature final : public application_features::ApplicationFeature {
 
   struct RestoreMainJob : public RestoreJob {
     RestoreMainJob(ManagedDirectory& directory, RestoreFeature& feature,
-                   RestoreProgressTracker& progressTracker, Options const& options,
-                   Stats& stats, VPackSlice parameters, bool useEnvelope);
+                   RestoreProgressTracker& progressTracker,
+                   Options const& options, Stats& stats, VPackSlice parameters,
+                   bool useEnvelope);
 
     Result run(arangodb::httpclient::SimpleHttpClient& client) override;
 
-    Result dispatchRestoreData(arangodb::httpclient::SimpleHttpClient& client, size_t readOffset,
-                               char const* data, size_t length, bool forceDirect);
+    Result dispatchRestoreData(arangodb::httpclient::SimpleHttpClient& client,
+                               size_t readOffset, char const* data,
+                               size_t length, bool forceDirect);
 
     Result restoreData(arangodb::httpclient::SimpleHttpClient& client);
 
@@ -210,10 +217,12 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   };
 
   struct RestoreSendJob : public RestoreJob {
-    RestoreSendJob(RestoreFeature& feature, RestoreProgressTracker& progressTracker,
+    RestoreSendJob(RestoreFeature& feature,
+                   RestoreProgressTracker& progressTracker,
                    Options const& options, Stats& stats, bool useEnvelope,
-                   std::string const& collectionName, std::shared_ptr<SharedState> sharedState,
-                   size_t readOffset, std::unique_ptr<basics::StringBuffer> buffer);
+                   std::string const& collectionName,
+                   std::shared_ptr<SharedState> sharedState, size_t readOffset,
+                   std::unique_ptr<basics::StringBuffer> buffer);
 
     Result run(arangodb::httpclient::SimpleHttpClient& client) override;
 
@@ -223,7 +232,8 @@ class RestoreFeature final : public application_features::ApplicationFeature {
 
   ClientTaskQueue<RestoreJob>& taskQueue();
 
-  static void sortCollectionsForCreation(std::vector<VPackBuilder>& collections);
+  static void sortCollectionsForCreation(
+      std::vector<VPackBuilder>& collections);
 
  private:
   struct DatabaseInfo {
@@ -232,7 +242,8 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     std::string name;
   };
 
-  std::vector<DatabaseInfo> determineDatabaseList(std::string const& databaseName);
+  std::vector<DatabaseInfo> determineDatabaseList(
+      std::string const& databaseName);
 
   ClientManager _clientManager;
   ClientTaskQueue<RestoreJob> _clientTaskQueue;

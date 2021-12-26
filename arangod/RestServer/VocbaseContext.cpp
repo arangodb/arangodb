@@ -37,7 +37,8 @@ namespace arangodb {
 VocbaseContext::VocbaseContext(GeneralRequest& req, TRI_vocbase_t& vocbase,
                                ExecContext::Type type, auth::Level systemLevel,
                                auth::Level dbLevel, bool isAdminUser)
-    : ExecContext(type, req.user(), req.databaseName(), systemLevel, dbLevel, isAdminUser),
+    : ExecContext(type, req.user(), req.databaseName(), systemLevel, dbLevel,
+                  isAdminUser),
 #ifdef USE_ENTERPRISE
       _request(req),
 #endif
@@ -52,14 +53,16 @@ VocbaseContext::~VocbaseContext() {
   _vocbase.release();
 }
 
-VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocbase) {
+VocbaseContext* VocbaseContext::create(GeneralRequest& req,
+                                       TRI_vocbase_t& vocbase) {
   // _vocbase has already been refcounted for us
   TRI_ASSERT(!vocbase.isDangling());
 
   // superusers will have an empty username. This MUST be invalid
   // for users authenticating with name / password
-  const bool isSuperUser = req.authenticated() && req.user().empty() &&
-                           req.authenticationMethod() == AuthenticationMethod::JWT;
+  const bool isSuperUser =
+      req.authenticated() && req.user().empty() &&
+      req.authenticationMethod() == AuthenticationMethod::JWT;
   if (isSuperUser) {
     return new VocbaseContext(req, vocbase, ExecContext::Type::Internal,
                               /*sysLevel*/ auth::Level::RW,
@@ -101,16 +104,20 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
     return nullptr;
   }
 
-  auth::Level dbLvl = um->databaseAuthLevel(req.user(), req.databaseName(), false);
+  auth::Level dbLvl =
+      um->databaseAuthLevel(req.user(), req.databaseName(), false);
   auth::Level sysLvl = dbLvl;
   if (req.databaseName() != StaticStrings::SystemDatabase) {
-    sysLvl = um->databaseAuthLevel(req.user(), StaticStrings::SystemDatabase, false);
+    sysLvl =
+        um->databaseAuthLevel(req.user(), StaticStrings::SystemDatabase, false);
   }
   bool isAdminUser = (sysLvl == auth::Level::RW);
   if (!isAdminUser && ServerState::readOnly()) {
-    // in case we are in read-only mode, we need to re-check the original permissions
-    isAdminUser = um->databaseAuthLevel(req.user(), StaticStrings::SystemDatabase,
-                                        true) == auth::Level::RW;
+    // in case we are in read-only mode, we need to re-check the original
+    // permissions
+    isAdminUser =
+        um->databaseAuthLevel(req.user(), StaticStrings::SystemDatabase,
+                              true) == auth::Level::RW;
   }
 
   return new VocbaseContext(req, vocbase, ExecContext::Type::Default,

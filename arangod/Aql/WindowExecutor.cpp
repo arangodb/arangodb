@@ -42,10 +42,11 @@ namespace {
 static const AqlValue EmptyValue;
 }
 
-WindowExecutorInfos::WindowExecutorInfos(WindowBounds const& bounds, RegisterId rangeRegister,
-                                         std::vector<std::string>&& aggregateTypes,
-                                         std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-                                         QueryWarnings& w, velocypack::Options const* opts)
+WindowExecutorInfos::WindowExecutorInfos(
+    WindowBounds const& bounds, RegisterId rangeRegister,
+    std::vector<std::string>&& aggregateTypes,
+    std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
+    QueryWarnings& w, velocypack::Options const* opts)
     : _bounds(bounds),
       _rangeRegister(rangeRegister),
       _aggregateTypes(std::move(aggregateTypes)),
@@ -59,7 +60,8 @@ WindowBounds const& WindowExecutorInfos::bounds() const { return _bounds; }
 
 RegisterId WindowExecutorInfos::rangeRegister() const { return _rangeRegister; }
 
-std::vector<std::pair<RegisterId, RegisterId>> WindowExecutorInfos::getAggregatedRegisters() const {
+std::vector<std::pair<RegisterId, RegisterId>>
+WindowExecutorInfos::getAggregatedRegisters() const {
   return _aggregateRegisters;
 }
 
@@ -124,7 +126,8 @@ void BaseWindowExecutor::resetAggregators() {
 
 // produce output row, reset aggregator
 void BaseWindowExecutor::produceOutputRow(InputAqlItemRow& input,
-                                          OutputAqlItemRow& output, bool reset) {
+                                          OutputAqlItemRow& output,
+                                          bool reset) {
   size_t j = 0;
   auto const& registers = _infos.getAggregatedRegisters();
   for (std::unique_ptr<Aggregator> const& agg : _aggregators) {
@@ -170,7 +173,8 @@ std::tuple<ExecutorState, NoStats, AqlCall> AccuWindowExecutor::produceRows(
     // So there will always be enough place for all inputRows within
     // the output.
     TRI_ASSERT(!output.isFull());
-    auto [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    auto [state, input] =
+        inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
     applyAggregators(input);
     produceOutputRow(input, output, /*reset*/ false);
@@ -189,15 +193,18 @@ std::tuple<ExecutorState, NoStats, AqlCall> AccuWindowExecutor::produceRows(
  * @param call Call from client
  * @return std::tuple<ExecutorState, NoStats, size_t, AqlCall>
  */
-auto AccuWindowExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+auto AccuWindowExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                       AqlCall& call)
     -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
   // we do not keep any state
   AqlCall upstreamCall{};
-  return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(), upstreamCall};
+  return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(),
+          upstreamCall};
 }
 
 [[nodiscard]] auto AccuWindowExecutor::expectedNumberOfRowsNew(
-    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+    -> size_t {
   if (input.finalState() == ExecutorState::DONE) {
     // For every input row we produce a new row.
     auto estOnInput = input.countDataRows();
@@ -215,13 +222,15 @@ WindowExecutor::WindowExecutor(Fetcher& fetcher, Infos& infos)
 
 WindowExecutor::~WindowExecutor() = default;
 
-ExecutorState WindowExecutor::consumeInputRange(AqlItemBlockInputRange& inputRange) {
+ExecutorState WindowExecutor::consumeInputRange(
+    AqlItemBlockInputRange& inputRange) {
   const RegisterId rangeRegister = _infos.rangeRegister();
   QueryWarnings& qc = _infos.warnings();
   WindowBounds const& b = _infos.bounds();
 
   while (inputRange.hasDataRow()) {
-    auto [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    auto [state, input] =
+        inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
 
     if (rangeRegister.isValid()) {
@@ -245,7 +254,8 @@ void WindowExecutor::trimBounds() {
     if (_currentIdx > numPreceding) {
       auto toRemove = _currentIdx - numPreceding;
       // remove elements [0, numPreceding), excluding elem at idx numPreceding
-      _rows.erase(_rows.begin(), _rows.begin() + decltype(_rows)::difference_type(toRemove));
+      _rows.erase(_rows.begin(),
+                  _rows.begin() + decltype(_rows)::difference_type(toRemove));
       _currentIdx -= toRemove;
     }
     TRI_ASSERT(_currentIdx <= numPreceding || _rows.empty());
@@ -285,9 +295,11 @@ void WindowExecutor::trimBounds() {
 
   if (foundLimit) {
     TRI_ASSERT(i < _currentIdx);
-    _rows.erase(_rows.begin(), _rows.begin() + decltype(_rows)::difference_type(i + 1));
-    _windowRows.erase(_windowRows.begin(),
-                      _windowRows.begin() + decltype(_windowRows)::difference_type(i + 1));
+    _rows.erase(_rows.begin(),
+                _rows.begin() + decltype(_rows)::difference_type(i + 1));
+    _windowRows.erase(
+        _windowRows.begin(),
+        _windowRows.begin() + decltype(_windowRows)::difference_type(i + 1));
     _currentIdx -= (i + 1);
   }
 }
@@ -317,13 +329,16 @@ std::tuple<ExecutorState, NoStats, AqlCall> WindowExecutor::produceRows(
 
     auto haveRows = [&]() -> bool {
       return (state == ExecutorState::DONE && _currentIdx < _rows.size()) ||
-             (numPreceding <= _currentIdx && numFollowing + _currentIdx < _rows.size());
+             (numPreceding <= _currentIdx &&
+              numFollowing + _currentIdx < _rows.size());
     };
 
     // simon; Fairly inefficient aggregation loop, would need a better
-    // Aggregation API allowing removal of values to avoid re-scanning entire range
+    // Aggregation API allowing removal of values to avoid re-scanning entire
+    // range
     while (!output.isFull() && haveRows()) {
-      size_t start = _currentIdx > numPreceding ? _currentIdx - numPreceding : 0;
+      size_t start =
+          _currentIdx > numPreceding ? _currentIdx - numPreceding : 0;
       size_t end = std::min(_rows.size(), _currentIdx + numFollowing + 1);
 
       while (start != end) {
@@ -397,8 +412,9 @@ std::tuple<ExecutorState, NoStats, AqlCall> WindowExecutor::produceRows(
  * @param call Call from client
  * @return std::tuple<ExecutorState, NoStats, size_t, AqlCall>
  */
-std::tuple<ExecutorState, NoStats, size_t, AqlCall> WindowExecutor::skipRowsRange(
-    AqlItemBlockInputRange& inputRange, AqlCall& call) {
+std::tuple<ExecutorState, NoStats, size_t, AqlCall>
+WindowExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
+                              AqlCall& call) {
   TRI_ASSERT(_currentIdx < _rows.size());
 
   std::ignore = consumeInputRange(inputRange);
@@ -423,8 +439,8 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> WindowExecutor::skipRowsRang
   return {state, NoStats{}, call.getSkipCount(), upstreamCall};
 }
 
-[[nodiscard]] auto WindowExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                                           AqlCall const& call) const noexcept
+[[nodiscard]] auto WindowExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
   if (input.finalState() == ExecutorState::DONE) {
     size_t remain = _currentIdx < _rows.size() ? _rows.size() - _currentIdx : 0;

@@ -84,7 +84,8 @@ struct LogMessage {
   LogMessage& operator=(LogMessage const&) = delete;
 
   LogMessage(char const* function, char const* file, int line, LogLevel level,
-             size_t topicId, std::string&& message, uint32_t offset, bool shrunk) noexcept;
+             size_t topicId, std::string&& message, uint32_t offset,
+             bool shrunk) noexcept;
 
   /// @brief whether or no the message was already shrunk
   bool shrunk() const noexcept { return _shrunk; }
@@ -289,12 +290,14 @@ class Logger {
   // can be called after fork()
   static void clearCachedPid() { _cachedPid = 0; }
 
-  static bool translateLogLevel(std::string const& l, bool isGeneral, LogLevel& level) noexcept;
+  static bool translateLogLevel(std::string const& l, bool isGeneral,
+                                LogLevel& level) noexcept;
 
   static std::string const& translateLogLevel(LogLevel) noexcept;
 
-  static void log(char const* logid, char const* function, char const* file, int line,
-                  LogLevel level, size_t topicId, std::string const& message);
+  static void log(char const* logid, char const* function, char const* file,
+                  int line, LogLevel level, size_t topicId,
+                  std::string const& message);
 
   static void append(
       LogGroup&, std::unique_ptr<LogMessage>& msg, bool forceDirect,

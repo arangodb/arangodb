@@ -32,23 +32,29 @@ void CredentialsBad(GeneralRequest const&, std::string const& username) {}
 void CredentialsBad(GeneralRequest const&, rest::AuthenticationMethod) {}
 void Authenticated(GeneralRequest const&, rest::AuthenticationMethod) {}
 void NotAuthorized(GeneralRequest const&) {}
-void CreateCollection(std::string const& db, std::string const& name, ErrorCode result) {}
-void DropCollection(std::string const& db, std::string const& name, ErrorCode result) {}
-void PropertyUpdateCollection(std::string const& db, std::string const& collectionName,
+void CreateCollection(std::string const& db, std::string const& name,
+                      ErrorCode result) {}
+void DropCollection(std::string const& db, std::string const& name,
+                    ErrorCode result) {}
+void PropertyUpdateCollection(std::string const& db,
+                              std::string const& collectionName,
                               OperationResult const&) {}
 void TruncateCollection(std::string const& db, std::string const& name,
                         OperationResult const& result) {}
 void CreateDatabase(std::string const&, Result const&, ExecContext const&) {}
 void DropDatabase(std::string const&, Result const&, ExecContext const&) {}
 // index creation start
-void CreateIndexStart(std::string const& db, std::string const& col, VPackSlice slice) {}
+void CreateIndexStart(std::string const& db, std::string const& col,
+                      VPackSlice slice) {}
 // index creation result
 void CreateIndexEnd(std::string const& db, std::string const& col,
                     VPackSlice slice, ErrorCode result) {}
 void DropIndex(std::string const& db, std::string const& col,
                std::string const& idx, ErrorCode result) {}
-void CreateView(std::string const& db, std::string const& name, ErrorCode result) {}
-void DropView(std::string const& db, std::string const& name, ErrorCode result) {}
+void CreateView(std::string const& db, std::string const& name,
+                ErrorCode result) {}
+void DropView(std::string const& db, std::string const& name,
+              ErrorCode result) {}
 void CreateDocument(std::string const& db, std::string const& collection,
                     VPackSlice const& document, OperationOptions const& options,
                     ErrorCode) {}
@@ -56,14 +62,16 @@ void DeleteDocument(std::string const& db, std::string const& collection,
                     VPackSlice const& document, OperationOptions const& options,
                     ErrorCode) {}
 void ReadDocument(std::string const& db, std::string const& collection,
-                  VPackSlice const& document, OperationOptions const& options, ErrorCode) {}
+                  VPackSlice const& document, OperationOptions const& options,
+                  ErrorCode) {}
 void ReplaceDocument(std::string const& db, std::string const& collection,
                      VPackSlice const& document,
                      OperationOptions const& options, ErrorCode) {}
 void ModifyDocument(std::string const& db, std::string const& collection,
                     VPackSlice const& document, OperationOptions const& options,
                     ErrorCode code) {}
-void IllegalDocumentOperation(GeneralRequest const& request, rest::ResponseCode result) {}
+void IllegalDocumentOperation(GeneralRequest const& request,
+                              rest::ResponseCode result) {}
 void AqlQuery(aql::Query const& /*query*/) {}
 void QueryDocument(std::string const& db, VPackSlice const&, int code) {}
 void CreateHotbackup(std::string const& id, ErrorCode result) {}

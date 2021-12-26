@@ -32,8 +32,12 @@ namespace {
 // to avoid adding new file to both arangodbtests and arangod
 // we create here a header-only static by using this holder
 struct function_holder {
-  std::function<irs::bytes_ref(irs::byte_type* src, size_t size, irs::bstring& out)> compress_mock;
-  std::function<irs::bytes_ref(const irs::byte_type* src, size_t src_size, irs::byte_type* dst, size_t dst_size)> decompress_mock;
+  std::function<irs::bytes_ref(irs::byte_type* src, size_t size,
+                               irs::bstring& out)>
+      compress_mock;
+  std::function<irs::bytes_ref(const irs::byte_type* src, size_t src_size,
+                               irs::byte_type* dst, size_t dst_size)>
+      decompress_mock;
 };
 }  // namespace
 
@@ -41,21 +45,25 @@ namespace iresearch {
 namespace compression {
 namespace mock {
 struct test_compressor {
-  class test_compressor_compressor final : public ::iresearch::compression::compressor {
+  class test_compressor_compressor final
+      : public ::iresearch::compression::compressor {
    public:
-    virtual bytes_ref compress(byte_type* src, size_t size, bstring& out) override {
+    virtual bytes_ref compress(byte_type* src, size_t size,
+                               bstring& out) override {
       return test_compressor::functions().compress_mock
                  ? test_compressor::functions().compress_mock(src, size, out)
                  : bytes_ref::EMPTY;
     }
   };
 
-  class test_compressor_decompressor final : public ::iresearch::compression::decompressor {
+  class test_compressor_decompressor final
+      : public ::iresearch::compression::decompressor {
    public:
     virtual bytes_ref decompress(const byte_type* src, size_t src_size,
                                  byte_type* dst, size_t dst_size) override {
       return test_compressor::functions().decompress_mock
-                 ? test_compressor::functions().decompress_mock(src, src_size, dst, dst_size)
+                 ? test_compressor::functions().decompress_mock(src, src_size,
+                                                                dst, dst_size)
                  : bytes_ref::EMPTY;
     }
   };
@@ -85,13 +93,16 @@ namespace mock {
 
 class test_encryption final : public ctr_encryption {
  public:
-  static std::unique_ptr<test_encryption> make(size_t block_size,
-                                               size_t header_length = DEFAULT_HEADER_LENGTH) {
+  static std::unique_ptr<test_encryption> make(
+      size_t block_size, size_t header_length = DEFAULT_HEADER_LENGTH) {
     return std::make_unique<test_encryption>(block_size, header_length);
   }
 
-  explicit test_encryption(size_t block_size, size_t header_length = DEFAULT_HEADER_LENGTH) noexcept
-      : irs::ctr_encryption(cipher_), cipher_(block_size), header_length_(header_length) {}
+  explicit test_encryption(
+      size_t block_size, size_t header_length = DEFAULT_HEADER_LENGTH) noexcept
+      : irs::ctr_encryption(cipher_),
+        cipher_(block_size),
+        header_length_(header_length) {}
 
   virtual size_t header_length() noexcept override { return header_length_; }
 

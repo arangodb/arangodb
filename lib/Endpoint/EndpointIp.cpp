@@ -69,7 +69,8 @@ char const* EndpointIp::_defaultHost = "127.0.0.1";
 static std::string buildSpecification(Endpoint::DomainType domainType,
                                       Endpoint::TransportType transport,
                                       Endpoint::EncryptionType encryption,
-                                      std::string const& host, uint16_t const port) {
+                                      std::string const& host,
+                                      uint16_t const port) {
   std::string specification;
 
   switch (transport) {
@@ -111,12 +112,14 @@ static std::string buildSpecification(Endpoint::DomainType domainType,
 /// @brief creates an IP socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointIp::EndpointIp(DomainType domainType, EndpointType type, TransportType transport,
-                       EncryptionType encryption, int listenBacklog, bool reuseAddress,
+EndpointIp::EndpointIp(DomainType domainType, EndpointType type,
+                       TransportType transport, EncryptionType encryption,
+                       int listenBacklog, bool reuseAddress,
                        std::string const& host, uint16_t const port)
-    : Endpoint(domainType, type, transport, encryption,
-               buildSpecification(domainType, transport, encryption, host, port),
-               listenBacklog),
+    : Endpoint(
+          domainType, type, transport, encryption,
+          buildSpecification(domainType, transport, encryption, host, port),
+          listenBacklog),
       _host(host),
       _port(port),
       _reuseAddress(reuseAddress) {
@@ -139,7 +142,8 @@ EndpointIp::~EndpointIp() {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_socket_t EndpointIp::connectSocket(const struct addrinfo* aip,
-                                       double connectTimeout, double requestTimeout) {
+                                       double connectTimeout,
+                                       double requestTimeout) {
   char const* pErr;
   char errBuf[1080];
 #ifdef _WIN32
@@ -150,8 +154,9 @@ TRI_socket_t EndpointIp::connectSocket(const struct addrinfo* aip,
   char host[NI_MAXHOST];
   char serv[NI_MAXSERV];
 
-  if (::getnameinfo(aip->ai_addr, (socklen_t)aip->ai_addrlen, host, sizeof(host),
-                    serv, sizeof(serv), NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
+  if (::getnameinfo(aip->ai_addr, (socklen_t)aip->ai_addrlen, host,
+                    sizeof(host), serv, sizeof(serv),
+                    NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
     LOG_TOPIC("6f759", TRACE, arangodb::Logger::FIXME)
         << "bind to address '" << host << "', port " << _port;
   }
@@ -161,7 +166,8 @@ TRI_socket_t EndpointIp::connectSocket(const struct addrinfo* aip,
 
   if (!TRI_isvalidsocket(listenSocket)) {
     pErr = STR_ERROR();
-    snprintf(errBuf, sizeof(errBuf), "socket() failed with %d - %s", errno, pErr);
+    snprintf(errBuf, sizeof(errBuf), "socket() failed with %d - %s", errno,
+             pErr);
 
     _errorMessage = errBuf;
     return listenSocket;
@@ -173,7 +179,8 @@ TRI_socket_t EndpointIp::connectSocket(const struct addrinfo* aip,
     if (TRI_setsockopt(listenSocket, SOL_SOCKET, SO_EXCLUSIVEADDRUSE,
                        reinterpret_cast<char*>(&excl), sizeof(excl)) == -1) {
       pErr = STR_ERROR();
-      snprintf(errBuf, sizeof(errBuf), "setsockopt() failed with #%d - %s", errno, pErr);
+      snprintf(errBuf, sizeof(errBuf), "setsockopt() failed with #%d - %s",
+               errno, pErr);
 
       _errorMessage = errBuf;
 
@@ -188,7 +195,8 @@ TRI_socket_t EndpointIp::connectSocket(const struct addrinfo* aip,
       if (TRI_setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR,
                          reinterpret_cast<char*>(&opt), sizeof(opt)) == -1) {
         pErr = STR_ERROR();
-        snprintf(errBuf, sizeof(errBuf), "setsockopt() failed with #%d - %s", errno, pErr);
+        snprintf(errBuf, sizeof(errBuf), "setsockopt() failed with #%d - %s",
+                 errno, pErr);
 
         _errorMessage = errBuf;
 
@@ -223,7 +231,8 @@ TRI_socket_t EndpointIp::connectSocket(const struct addrinfo* aip,
 
     if (result != 0) {
       pErr = STR_ERROR();
-      snprintf(errBuf, sizeof(errBuf), "listen() failed with #%d - %s", errno, pErr);
+      snprintf(errBuf, sizeof(errBuf), "listen() failed with #%d - %s", errno,
+               pErr);
 
       _errorMessage = errBuf;
 
@@ -242,7 +251,8 @@ TRI_socket_t EndpointIp::connectSocket(const struct addrinfo* aip,
 
     if (result != 0) {
       pErr = STR_ERROR();
-      snprintf(errBuf, sizeof(errBuf), "connect() failed with #%d - %s", errno, pErr);
+      snprintf(errBuf, sizeof(errBuf), "connect() failed with #%d - %s", errno,
+               pErr);
 
       _errorMessage = errBuf;
 

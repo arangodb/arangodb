@@ -64,7 +64,8 @@ AqlValue createArray(const VPackSlice slice) {
   return AqlValue(builder.slice());
 }
 
-void expectEqSlices(const VPackSlice actualSlice, const VPackSlice expectedSlice) {
+void expectEqSlices(const VPackSlice actualSlice,
+                    const VPackSlice expectedSlice) {
   ASSERT_TRUE((actualSlice.isNumber() && expectedSlice.isNumber()) ||
               (actualSlice.isArray() && expectedSlice.isArray()));
 
@@ -92,7 +93,8 @@ AqlValue evaluateDistanceFunction(const SmallVector<AqlValue>& params,
                                   const arangodb::aql::AstNode& node) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
-  fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([](ErrorCode, char const*) {});
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .AlwaysDo([](ErrorCode, char const*) {});
 
   VPackOptions options;
   fakeit::Mock<transaction::Context> trxCtxMock;
@@ -104,11 +106,11 @@ AqlValue evaluateDistanceFunction(const SmallVector<AqlValue>& params,
   fakeit::When(Method(trxMock, vpackOptions)).AlwaysReturn(options);
   transaction::Methods& trx = trxMock.get();
 
-  fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&trx]() -> transaction::Methods& {
-    return trx;
-  });
+  fakeit::When(Method(expressionContextMock, trx))
+      .AlwaysDo([&trx]() -> transaction::Methods& { return trx; });
 
-  auto distanceFunction = static_cast<arangodb::aql::Function const*>(node.getData());
+  auto distanceFunction =
+      static_cast<arangodb::aql::Function const*>(node.getData());
   return distanceFunction->implementation(&expressionContext, node, params);
 }
 
@@ -245,7 +247,8 @@ TEST(DistanceFuncton, CosineSimilarityTest) {
                              "[1,1,1,1]", node);
   assertDistanceFunctionFail("[1,1,1,1]",
                              "[[1,1,1,1],[0,0,0,0],[1,1,1,1],[1,1,1,1]]", node);
-  assertDistanceFunctionFail("[[1,1,1,1],1,1,1,1,1,1,1,1,1,1,1,1]", "[1,1,1,1]", node);
+  assertDistanceFunctionFail("[[1,1,1,1],1,1,1,1,1,1,1,1,1,1,1,1]", "[1,1,1,1]",
+                             node);
 }
 
 TEST(DistanceFuncton, L1DistanceTest) {
@@ -283,7 +286,8 @@ TEST(DistanceFuncton, L2DistanceTest) {
   assertDistanceFunction("0", "[0,0]", "[0,0]", node);
   assertDistanceFunction("4.1231056256176606", "[1,1]", "[5,2]", node);
   assertDistanceFunction("1.4142135623730951", "[0,1]", "[1,0]", node);
-  assertDistanceFunction("2.449489742783178", "[0,1,0,0,1]", "[2,0,0,0,0]", node);
+  assertDistanceFunction("2.449489742783178", "[0,1,0,0,1]", "[2,0,0,0,0]",
+                         node);
 }
 
 }  // namespace

@@ -62,7 +62,8 @@ enum class ReadOwnWrites : bool {
 enum class IndexOperationMode : uint8_t { normal, internal, rollback };
 
 // a struct for keeping document modification operations in transactions
-#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#if defined(__GNUC__) && \
+    (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
@@ -84,7 +85,8 @@ struct OperationOptions {
 // The following code does not work with VisualStudi 2019's `cl`
 // Lets keep it for debugging on linux.
 #ifndef _WIN32
-  friend std::ostream& operator<<(std::ostream& os, OperationOptions const& ops);
+  friend std::ostream& operator<<(std::ostream& os,
+                                  OperationOptions const& ops);
 #endif
 
   bool isOverwriteModeSet() const {
@@ -92,11 +94,13 @@ struct OperationOptions {
   }
 
   bool isOverwriteModeUpdateReplace() const {
-    return (overwriteMode == OverwriteMode::Update || overwriteMode == OverwriteMode::Replace);
+    return (overwriteMode == OverwriteMode::Update ||
+            overwriteMode == OverwriteMode::Replace);
   }
 
   /// @brief stringifies the overwrite mode
-  static char const* stringifyOverwriteMode(OperationOptions::OverwriteMode mode);
+  static char const* stringifyOverwriteMode(
+      OperationOptions::OverwriteMode mode);
 
   /// @brief determine the overwrite mode from the string value
   static OverwriteMode determineOverwriteMode(velocypack::StringRef value);
@@ -144,13 +148,13 @@ struct OperationOptions {
   // restored by replicated and arangorestore
   bool isRestore;
 
-  // for replication; only set true if case insert/replace should have a read-only
-  // preflight phase, in which it checks whether a document can actually be inserted
-  // before carrying out the actual insert/replace.
-  // separating the check phase from the actual insert/replace allows running the
-  // preflight check without modifying the transaction's underlying WriteBatch object,
-  // so in case a unique constraint violation is detected, it does not need to be
-  // rebuilt (this would be _very_ expensive).
+  // for replication; only set true if case insert/replace should have a
+  // read-only preflight phase, in which it checks whether a document can
+  // actually be inserted before carrying out the actual insert/replace.
+  // separating the check phase from the actual insert/replace allows running
+  // the preflight check without modifying the transaction's underlying
+  // WriteBatch object, so in case a unique constraint violation is detected, it
+  // does not need to be rebuilt (this would be _very_ expensive).
   bool checkUniqueConstraintsInPreflight;
 
   // when truncating - should we also run the compaction?
@@ -162,9 +166,10 @@ struct OperationOptions {
   // header when putting together the requests for DB servers
   bool documentCallFromAql;
 
-  // whether or not indexing can be disabed. We must not disable indexing if we have to ensure
-  // that writes become visible to the current query.
-  // This is necessary for UPSERTS where the subquery relies on a non-unique secondary index.
+  // whether or not indexing can be disabed. We must not disable indexing if we
+  // have to ensure that writes become visible to the current query. This is
+  // necessary for UPSERTS where the subquery relies on a non-unique secondary
+  // index.
   bool canDisableIndexing = true;
 
   // get associated execution context
@@ -174,7 +179,8 @@ struct OperationOptions {
   ExecContext const* _context;
 };
 
-#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#if defined(__GNUC__) && \
+    (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
 #pragma GCC diagnostic pop
 #endif
 

@@ -35,7 +35,8 @@ thread_local ExecContext const* ExecContext::CURRENT = nullptr;
 
 ExecContext const ExecContext::Superuser(ExecContext::Type::Internal,
                                          /*name*/ "", /*db*/ "",
-                                         auth::Level::RW, auth::Level::RW, true);
+                                         auth::Level::RW, auth::Level::RW,
+                                         true);
 
 /// Should always contain a reference to current user context
 /*static*/ ExecContext const& ExecContext::current() {
@@ -86,7 +87,8 @@ std::unique_ptr<ExecContext> ExecContext::create(std::string const& user,
     }
     dbLvl = sysLvl = um->databaseAuthLevel(user, dbname, false);
     if (dbname != StaticStrings::SystemDatabase) {
-      sysLvl = um->databaseAuthLevel(user, StaticStrings::SystemDatabase, false);
+      sysLvl =
+          um->databaseAuthLevel(user, StaticStrings::SystemDatabase, false);
     }
     isAdminUser = (sysLvl == auth::Level::RW);
     if (!isAdminUser && ServerState::readOnly()) {
@@ -94,13 +96,15 @@ std::unique_ptr<ExecContext> ExecContext::create(std::string const& user,
                                           true) == auth::Level::RW;
     }
   }
-  // we cannot use std::make_unique here, as ExecContext has a protected constructor
+  // we cannot use std::make_unique here, as ExecContext has a protected
+  // constructor
   auto* ptr = new ExecContext(ExecContext::Type::Default, user, dbname, sysLvl,
                               dbLvl, isAdminUser);
   return std::unique_ptr<ExecContext>(ptr);
 }
 
-bool ExecContext::canUseDatabase(std::string const& db, auth::Level requested) const {
+bool ExecContext::canUseDatabase(std::string const& db,
+                                 auth::Level requested) const {
   if (isInternal() || _database == db) {
     // should be RW for superuser, RO for read-only
     return requested <= _databaseAuthLevel;
@@ -141,7 +145,8 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
     // handle fixed permissions here outside auth module.
     // TODO: move this block above, such that it takes effect
     //       when authentication is disabled
-    if (dbname == StaticStrings::SystemDatabase && coll == StaticStrings::UsersCollection) {
+    if (dbname == StaticStrings::SystemDatabase &&
+        coll == StaticStrings::UsersCollection) {
       return auth::Level::NONE;
     } else if (coll == StaticStrings::QueuesCollection) {
       return auth::Level::RO;

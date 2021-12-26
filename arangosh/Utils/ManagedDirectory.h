@@ -61,7 +61,8 @@ class EncryptionFeature;  // to reduce number of #ifdef
 class ManagedDirectory {
  public:
   static constexpr int DefaultReadFlags = O_RDONLY | TRI_O_CLOEXEC;
-  static constexpr int DefaultWriteFlags = O_WRONLY | TRI_O_CLOEXEC | O_CREAT | O_EXCL;
+  static constexpr int DefaultWriteFlags =
+      O_WRONLY | TRI_O_CLOEXEC | O_CREAT | O_EXCL;
 
  public:
   class File {
@@ -140,7 +141,8 @@ class ManagedDirectory {
     bool isGzip() const { return -1 != _gzfd; }
 
     /**
-     * @brief Count of bytes read from regular or gzip file, not amount returned by read
+     * @brief Count of bytes read from regular or gzip file, not amount returned
+     * by read
      */
 
     std::int64_t offset() const;
@@ -189,7 +191,8 @@ class ManagedDirectory {
    * @param writeGzip    True if writes should use gzip (reads autodetect .gz)
    */
   ManagedDirectory(application_features::ApplicationServer& server,
-                   std::string const& path, bool requireEmpty, bool create, bool writeGzip);
+                   std::string const& path, bool requireEmpty, bool create,
+                   bool writeGzip);
   ~ManagedDirectory();
 
  public:
@@ -244,7 +247,8 @@ class ManagedDirectory {
    * @param  flags    Flags (will be XORed with `DefaultReadFlags`
    * @return          Unique pointer to file, if opened
    */
-  std::unique_ptr<File> readableFile(std::string const& filename, int flags = 0);
+  std::unique_ptr<File> readableFile(std::string const& filename,
+                                     int flags = 0);
   std::unique_ptr<File> readableFile(int fileDescriptor);
 
   /**
@@ -252,11 +256,13 @@ class ManagedDirectory {
    * @param  name      The filename, relative to the directory
    * @param  overwrite Whether to overwrite file if it exists (otherwise fail)
    * @param  flags     Flags (will be XORed with `DefaultWriteFlags`
-   * @param  gzipOk    Flag whether this file is suitable for gzip (when enabled)
+   * @param  gzipOk    Flag whether this file is suitable for gzip (when
+   * enabled)
    * @return           Unique pointer to file, if opened
    */
-  std::unique_ptr<File> writableFile(std::string const& filename, bool overwrite,
-                                     int flags = 0, bool gzipOk = true);
+  std::unique_ptr<File> writableFile(std::string const& filename,
+                                     bool overwrite, int flags = 0,
+                                     bool gzipOk = true);
 
   /**
    * @brief Write a string to file

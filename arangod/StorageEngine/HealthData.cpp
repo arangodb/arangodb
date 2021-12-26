@@ -30,7 +30,8 @@
 
 using namespace arangodb;
 
-/*static*/ arangodb::HealthData arangodb::HealthData::fromVelocyPack(velocypack::Slice slice) {
+/*static*/ arangodb::HealthData arangodb::HealthData::fromVelocyPack(
+    velocypack::Slice slice) {
   HealthData result;
   if (slice.isObject()) {
     auto code = TRI_ERROR_NO_ERROR;
@@ -50,11 +51,13 @@ using namespace arangodb;
     }
 
     if (VPackSlice fdsb = slice.get("freeDiskSpaceBytes"); fdsb.isNumber()) {
-      result.freeDiskSpaceBytes = fdsb.getNumber<decltype(freeDiskSpaceBytes)>();
+      result.freeDiskSpaceBytes =
+          fdsb.getNumber<decltype(freeDiskSpaceBytes)>();
     }
 
     if (VPackSlice fdsp = slice.get("freeDiskSpacePercent"); fdsp.isNumber()) {
-      result.freeDiskSpacePercent = fdsp.getNumber<decltype(freeDiskSpacePercent)>();
+      result.freeDiskSpacePercent =
+          fdsp.getNumber<decltype(freeDiskSpacePercent)>();
     }
   }
 

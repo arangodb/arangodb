@@ -318,7 +318,8 @@ class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
         tick = _lastValue.fetch_add(1, std::memory_order_relaxed) + 1;
         break;
       }
-    } while (!_lastValue.compare_exchange_weak(lastValue, tick, std::memory_order_relaxed));
+    } while (!_lastValue.compare_exchange_weak(lastValue, tick,
+                                               std::memory_order_relaxed));
 
     return tick;
   }
@@ -328,7 +329,8 @@ class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
     auto lastValue = _lastValue.load(std::memory_order_relaxed);
     while (value > lastValue) {
       // and update our last value
-      if (_lastValue.compare_exchange_weak(lastValue, value, std::memory_order_relaxed)) {
+      if (_lastValue.compare_exchange_weak(lastValue, value,
+                                           std::memory_order_relaxed)) {
         break;
       }
     }
@@ -394,7 +396,8 @@ class PaddedKeyGenerator : public KeyGenerator {
         tick = _lastValue.fetch_add(1, std::memory_order_relaxed) + 1;
         break;
       }
-    } while (!_lastValue.compare_exchange_weak(lastValue, tick, std::memory_order_relaxed));
+    } while (!_lastValue.compare_exchange_weak(lastValue, tick,
+                                               std::memory_order_relaxed));
 
     return KeyGeneratorHelper::encodePadded(tick);
   }
@@ -418,7 +421,8 @@ class PaddedKeyGenerator : public KeyGenerator {
       auto lastValue = _lastValue.load(std::memory_order_relaxed);
       while (value > lastValue) {
         // and update our last value
-        if (_lastValue.compare_exchange_weak(lastValue, value, std::memory_order_relaxed)) {
+        if (_lastValue.compare_exchange_weak(lastValue, value,
+                                             std::memory_order_relaxed)) {
           break;
         }
       }
@@ -426,7 +430,8 @@ class PaddedKeyGenerator : public KeyGenerator {
   }
 
   /// @brief build a VelocyPack representation of the generator in the builder
-  void toVelocyPack(arangodb::velocypack::Builder& builder) const override final {
+  void toVelocyPack(
+      arangodb::velocypack::Builder& builder) const override final {
     KeyGenerator::toVelocyPack(builder);
     builder.add("type", VPackValue("padded"));
 
@@ -467,7 +472,8 @@ class PaddedKeyGeneratorSingle final : public PaddedKeyGenerator {
 class PaddedKeyGeneratorCluster final : public PaddedKeyGenerator {
  public:
   /// @brief create the generator
-  explicit PaddedKeyGeneratorCluster(ClusterInfo& ci, bool allowUserKeys, uint64_t lastValue)
+  explicit PaddedKeyGeneratorCluster(ClusterInfo& ci, bool allowUserKeys,
+                                     uint64_t lastValue)
       : PaddedKeyGenerator(allowUserKeys, lastValue), _ci(ci) {
     TRI_ASSERT(ServerState::instance()->isCoordinator());
   }
@@ -503,7 +509,8 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
       if (lastValue < _offset) {
         keyValue = _offset;
       } else {
-        keyValue = lastValue + _increment - ((lastValue - _offset) % _increment);
+        keyValue =
+            lastValue + _increment - ((lastValue - _offset) % _increment);
       }
 
       // bounds and validity checks
@@ -513,7 +520,8 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
 
       TRI_ASSERT(keyValue > lastValue);
       // update our last value
-    } while (!_lastValue.compare_exchange_weak(lastValue, keyValue, std::memory_order_relaxed));
+    } while (!_lastValue.compare_exchange_weak(lastValue, keyValue,
+                                               std::memory_order_relaxed));
 
     return arangodb::basics::StringUtils::itoa(keyValue);
   }
@@ -548,7 +556,8 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
         auto lastValue = _lastValue.load(std::memory_order_relaxed);
         while (value > lastValue) {
           // and update our last value
-          if (_lastValue.compare_exchange_weak(lastValue, value, std::memory_order_relaxed)) {
+          if (_lastValue.compare_exchange_weak(lastValue, value,
+                                               std::memory_order_relaxed)) {
             break;
           }
         }
@@ -620,7 +629,8 @@ GeneratorType generatorType(VPackSlice const& parameters) {
     return GeneratorType::TRADITIONAL;
   }
 
-  std::string const typeName = arangodb::basics::StringUtils::tolower(type.copyString());
+  std::string const typeName =
+      arangodb::basics::StringUtils::tolower(type.copyString());
 
   auto it = generatorNames.find(typeName);
 
@@ -631,9 +641,13 @@ GeneratorType generatorType(VPackSlice const& parameters) {
   return GeneratorType::UNKNOWN;
 }
 
-std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(application_features::ApplicationServer&, bool, VPackSlice)>> const factories = {
+std::unordered_map<
+    GeneratorMapType,
+    std::function<KeyGenerator*(application_features::ApplicationServer&, bool,
+                                VPackSlice)>> const factories = {
     {static_cast<GeneratorMapType>(GeneratorType::UNKNOWN),
-     [](application_features::ApplicationServer&, bool, VPackSlice) -> KeyGenerator* {
+     [](application_features::ApplicationServer&, bool,
+        VPackSlice) -> KeyGenerator* {
        // unknown key generator type
        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR,
                                       "invalid key generator type");
@@ -645,7 +659,8 @@ std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(application_fea
          auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
          return new TraditionalKeyGeneratorCluster(ci, allowUserKeys);
        }
-       return new TraditionalKeyGeneratorSingle(allowUserKeys, ::readLastValue(options));
+       return new TraditionalKeyGeneratorSingle(allowUserKeys,
+                                                ::readLastValue(options));
      }},
     {static_cast<GeneratorMapType>(GeneratorType::AUTOINCREMENT),
      [](application_features::ApplicationServer&, bool allowUserKeys,
@@ -659,7 +674,8 @@ std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(application_fea
        uint64_t offset = 0;
        uint64_t increment = 1;
 
-       if (VPackSlice incrementSlice = options.get("increment"); incrementSlice.isNumber()) {
+       if (VPackSlice incrementSlice = options.get("increment");
+           incrementSlice.isNumber()) {
          double v = incrementSlice.getNumericValue<double>();
          if (v <= 0.0) {
            // negative or 0 increment is not allowed
@@ -678,7 +694,8 @@ std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(application_fea
          }
        }
 
-       if (VPackSlice offsetSlice = options.get("offset"); offsetSlice.isNumber()) {
+       if (VPackSlice offsetSlice = options.get("offset");
+           offsetSlice.isNumber()) {
          double v = offsetSlice.getNumericValue<double>();
          if (v < 0.0) {
            // negative or 0 offset is not allowed
@@ -690,16 +707,18 @@ std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(application_fea
          offset = offsetSlice.getNumericValue<uint64_t>();
 
          if (offset >= UINT64_MAX) {
-           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR,
-                                          "offset value is too high");
+           THROW_ARANGO_EXCEPTION_MESSAGE(
+               TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR,
+               "offset value is too high");
          }
        }
 
-       return new AutoIncrementKeyGenerator(allowUserKeys, ::readLastValue(options),
-                                            offset, increment);
+       return new AutoIncrementKeyGenerator(
+           allowUserKeys, ::readLastValue(options), offset, increment);
      }},
     {static_cast<GeneratorMapType>(GeneratorType::UUID),
-     [](application_features::ApplicationServer&, bool allowUserKeys, VPackSlice) -> KeyGenerator* {
+     [](application_features::ApplicationServer&, bool allowUserKeys,
+        VPackSlice) -> KeyGenerator* {
        return new UuidKeyGenerator(allowUserKeys);
      }},
     {static_cast<GeneratorMapType>(GeneratorType::PADDED),
@@ -707,9 +726,11 @@ std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(application_fea
         VPackSlice options) -> KeyGenerator* {
        if (ServerState::instance()->isCoordinator()) {
          auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
-         return new PaddedKeyGeneratorCluster(ci, allowUserKeys, ::readLastValue(options));
+         return new PaddedKeyGeneratorCluster(ci, allowUserKeys,
+                                              ::readLastValue(options));
        }
-       return new PaddedKeyGeneratorSingle(allowUserKeys, ::readLastValue(options));
+       return new PaddedKeyGeneratorSingle(allowUserKeys,
+                                           ::readLastValue(options));
      }}};
 
 }  // namespace
@@ -779,22 +800,22 @@ void KeyGenerator::toVelocyPack(arangodb::velocypack::Builder& builder) const {
 }
 
 /// @brief create a key generator based on the options specified
-KeyGenerator* KeyGenerator::factory(application_features::ApplicationServer& server,
-                                    VPackSlice options) {
+KeyGenerator* KeyGenerator::factory(
+    application_features::ApplicationServer& server, VPackSlice options) {
   if (!options.isObject()) {
     options = VPackSlice::emptyObjectSlice();
   }
 
   ::GeneratorType type = ::generatorType(options);
 
-  bool allowUserKeys =
-      arangodb::basics::VelocyPackHelper::getBooleanValue(options,
-                                                          "allowUserKeys", true);
+  bool allowUserKeys = arangodb::basics::VelocyPackHelper::getBooleanValue(
+      options, "allowUserKeys", true);
 
   auto it = ::factories.find(static_cast<::GeneratorMapType>(type));
 
   if (it == ::factories.end()) {
-    it = ::factories.find(static_cast<::GeneratorMapType>(::GeneratorType::UNKNOWN));
+    it = ::factories.find(
+        static_cast<::GeneratorMapType>(::GeneratorType::UNKNOWN));
   }
 
   TRI_ASSERT(it != ::factories.end());
@@ -808,7 +829,8 @@ ErrorCode KeyGenerator::validate(char const* p, size_t length, bool isRestore) {
 }
 
 /// @brief check global key attributes
-ErrorCode KeyGenerator::globalCheck(char const* p, size_t length, bool isRestore) {
+ErrorCode KeyGenerator::globalCheck(char const* p, size_t length,
+                                    bool isRestore) {
   // user has specified a key
   if (length > 0 && !_allowUserKeys && !isRestore && !_isDBServer) {
     // we do not allow user-generated keys
@@ -847,7 +869,8 @@ bool KeyGenerator::validateKey(char const* key, size_t len) {
 }
 
 /// @brief validate a document id (collection name + / + document key)
-bool KeyGenerator::validateId(char const* key, size_t len, bool extendedNames, size_t& split) {
+bool KeyGenerator::validateId(char const* key, size_t len, bool extendedNames,
+                              size_t& split) {
   // look for split character
   char const* found = static_cast<char const*>(memchr(key, '/', len));
   if (found == nullptr) {
@@ -870,7 +893,8 @@ bool KeyGenerator::validateId(char const* key, size_t len, bool extendedNames, s
   }
   if (p == key) {
     // non-numeric id
-    if (!CollectionNameValidator::isAllowedName(/*allowSystem*/ true, extendedNames,
+    if (!CollectionNameValidator::isAllowedName(/*allowSystem*/ true,
+                                                extendedNames,
                                                 std::string_view(key, split))) {
       return false;
     }

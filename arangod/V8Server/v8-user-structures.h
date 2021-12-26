@@ -35,7 +35,7 @@
 namespace arangodb {
 
 namespace velocypack {
-template <typename T>
+template<typename T>
 class Buffer;
 }
 
@@ -47,7 +47,9 @@ class CacheKeySpace {
 
  private:
   arangodb::basics::ReadWriteLock _lock;
-  std::unordered_map<std::string, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>> _hash;
+  std::unordered_map<std::string,
+                     std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+      _hash;
 };
 
 struct DatabaseJavaScriptCache {

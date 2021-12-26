@@ -47,14 +47,16 @@ class EdgeCursor {
  public:
   virtual ~EdgeCursor() = default;
 
-  using Callback =
-      std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)>;
+  using Callback = std::function<void(EdgeDocumentToken&&,
+                                      arangodb::velocypack::Slice, size_t)>;
 
   virtual bool next(
-      std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)> const& callback) = 0;
+      std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice,
+                         size_t)> const& callback) = 0;
 
   virtual void readAll(
-      std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)> const& callback) = 0;
+      std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice,
+                         size_t)> const& callback) = 0;
 
   virtual size_t httpRequests() const = 0;
 

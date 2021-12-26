@@ -71,7 +71,8 @@ void HttpResponse::reset(ResponseCode code) {
 
 void HttpResponse::setCookie(std::string const& name, std::string const& value,
                              int lifeTimeSeconds, std::string const& path,
-                             std::string const& domain, bool secure, bool httpOnly) {
+                             std::string const& domain, bool secure,
+                             bool httpOnly) {
   StringBuffer buffer(false);
 
   std::string tmp = StringUtils::trim(name);
@@ -169,14 +170,16 @@ void HttpResponse::writeHeader(StringBuffer* output) {
       continue;
     }
 
-    if (keyLength == 6 && key[0] == 's' && memcmp(key.c_str(), "server", keyLength) == 0) {
+    if (keyLength == 6 && key[0] == 's' &&
+        memcmp(key.c_str(), "server", keyLength) == 0) {
       // this ensures we don't print two "Server" headers
       seenServerHeader = true;
       // go on and use the user-defined "Server" header value
     }
 
     // reserve enough space for header name + ": " + value + "\r\n"
-    if (output->reserve(keyLength + 2 + it.second.size() + 2) != TRI_ERROR_NO_ERROR) {
+    if (output->reserve(keyLength + 2 + it.second.size() + 2) !=
+        TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
@@ -286,7 +289,8 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   // end of header, body to follow
 }
 
-void HttpResponse::addPayload(VPackSlice const& slice, velocypack::Options const* options,
+void HttpResponse::addPayload(VPackSlice const& slice,
+                              velocypack::Options const* options,
                               bool resolveExternals) {
   if (_contentType == rest::ContentType::JSON &&
       _contentTypeRequested == rest::ContentType::VPACK) {
@@ -295,11 +299,13 @@ void HttpResponse::addPayload(VPackSlice const& slice, velocypack::Options const
     _contentType = rest::ContentType::VPACK;
   }
 
-  addPayloadInternal(slice.start(), slice.byteSize(), options, resolveExternals);
+  addPayloadInternal(slice.start(), slice.byteSize(), options,
+                     resolveExternals);
 }
 
 void HttpResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
-                              velocypack::Options const* options, bool resolveExternals) {
+                              velocypack::Options const* options,
+                              bool resolveExternals) {
   if (_contentType == rest::ContentType::JSON &&
       _contentTypeRequested == rest::ContentType::VPACK) {
     // content type was set by a handler to Json but the client wants VPACK
@@ -308,7 +314,8 @@ void HttpResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
   }
 
   if (buffer.size() > 0) {
-    addPayloadInternal(buffer.data(), buffer.length(), options, resolveExternals);
+    addPayloadInternal(buffer.data(), buffer.length(), options,
+                       resolveExternals);
   }
 }
 
@@ -317,7 +324,8 @@ void HttpResponse::addRawPayload(VPackStringRef payload) {
 }
 
 void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
-                                      VPackOptions const* options, bool resolveExternals) {
+                                      VPackOptions const* options,
+                                      bool resolveExternals) {
   TRI_ASSERT(data != nullptr);
 
   if (!options) {
@@ -343,12 +351,14 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
       // will contain sanitized data
       VPackBuffer<uint8_t> tmpBuffer;
       if (resolveExternals) {
-        bool resolveExt = VelocyPackHelper::hasNonClientTypes(currentData, true, true);
+        bool resolveExt =
+            VelocyPackHelper::hasNonClientTypes(currentData, true, true);
         if (resolveExt) {                  // resolve
           tmpBuffer.reserve(inputLength);  // reserve space already
           VPackBuilder builder(tmpBuffer, options);
-          VelocyPackHelper::sanitizeNonClientTypes(currentData, VPackSlice::noneSlice(),
-                                                   builder, options, true, true);
+          VelocyPackHelper::sanitizeNonClientTypes(
+              currentData, VPackSlice::noneSlice(), builder, options, true,
+              true);
           currentData = VPackSlice(tmpBuffer.data());
           outputLength = currentData.byteSize();
         }

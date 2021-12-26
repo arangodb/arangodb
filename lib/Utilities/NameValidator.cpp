@@ -55,7 +55,8 @@ bool DatabaseNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
       // database names from analyzer names in some analyzer keys
       ok &= (c != ':');
 
-      // non visible characters below ASCII code 32 (control characters) not allowed, including '\0'
+      // non visible characters below ASCII code 32 (control characters) not
+      // allowed, including '\0'
       ok &= (c >= 32U);
     } else {
       if (length == 0) {
@@ -108,7 +109,8 @@ bool DatabaseNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
 
 /// @brief checks if a collection name is valid
 /// returns true if the name is allowed and false otherwise
-bool CollectionNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
+bool CollectionNameValidator::isAllowedName(bool allowSystem,
+                                            bool extendedNames,
                                             std::string_view name) noexcept {
   std::size_t length = 0;
 
@@ -121,7 +123,8 @@ bool CollectionNameValidator::isAllowedName(bool allowSystem, bool extendedNames
       // the forward slash for splitting _everywhere_
       ok &= (c != '/');
 
-      // non visible characters below ASCII code 32 (control characters) not allowed, including '\0'
+      // non visible characters below ASCII code 32 (control characters) not
+      // allowed, including '\0'
       ok &= (c >= 32U);
 
       if (length == 0) {
@@ -129,7 +132,8 @@ bool CollectionNameValidator::isAllowedName(bool allowSystem, bool extendedNames
         // confused with numeric collection ids
         ok &= (c < '0' || c > '9');
 
-        // a collection name must not start with an underscore unless it is the system collection
+        // a collection name must not start with an underscore unless it is the
+        // system collection
         ok &= (c != '_' || allowSystem);
 
         // finally, a collection name must not start with a dot, because this is
@@ -152,8 +156,8 @@ bool CollectionNameValidator::isAllowedName(bool allowSystem, bool extendedNames
   }
 
   if (extendedNames &&
-      !velocypack::Utf8Helper::isValidUtf8(reinterpret_cast<std::uint8_t const*>(name.data()),
-                                           name.size())) {
+      !velocypack::Utf8Helper::isValidUtf8(
+          reinterpret_cast<std::uint8_t const*>(name.data()), name.size())) {
     // new naming convention allows Unicode characters. we need to
     // make sure everything is valid UTF-8 now.
     return false;
@@ -178,7 +182,8 @@ bool ViewNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
       // forward slash for splitting _everywhere_
       ok &= (c != '/');
 
-      // non visible characters below ASCII code 32 (control characters) not allowed, including '\0'
+      // non visible characters below ASCII code 32 (control characters) not
+      // allowed, including '\0'
       ok &= (c >= 32U);
 
       if (length == 0) {
@@ -186,7 +191,8 @@ bool ViewNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
         // confused with numeric view ids
         ok &= (c < '0' || c > '9');
 
-        // a view name must not start with an underscore (unless it is a system view)
+        // a view name must not start with an underscore (unless it is a system
+        // view)
         ok &= (c != '_' || allowSystem);
 
         // finally, a view name must not start with a dot, because this is used
@@ -209,8 +215,8 @@ bool ViewNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
   }
 
   if (extendedNames &&
-      !velocypack::Utf8Helper::isValidUtf8(reinterpret_cast<std::uint8_t const*>(name.data()),
-                                           name.size())) {
+      !velocypack::Utf8Helper::isValidUtf8(
+          reinterpret_cast<std::uint8_t const*>(name.data()), name.size())) {
     // new naming convention allows Unicode characters. we need to
     // make sure everything is valid UTF-8 now.
     return false;
@@ -222,7 +228,8 @@ bool ViewNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
 
 /// @brief checks if an index name is valid
 /// returns true if the name is allowed and false otherwise
-bool IndexNameValidator::isAllowedName(bool extendedNames, std::string_view name) noexcept {
+bool IndexNameValidator::isAllowedName(bool extendedNames,
+                                       std::string_view name) noexcept {
   std::size_t length = 0;
 
   for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
@@ -234,7 +241,8 @@ bool IndexNameValidator::isAllowedName(bool extendedNames, std::string_view name
       // forward slash for splitting _everywhere_
       ok &= (c != '/');
 
-      // non visible characters below ASCII code 32 (control characters) not allowed, including '\0'
+      // non visible characters below ASCII code 32 (control characters) not
+      // allowed, including '\0'
       ok &= (c >= 32U);
 
       if (length == 0) {
@@ -257,8 +265,8 @@ bool IndexNameValidator::isAllowedName(bool extendedNames, std::string_view name
   }
 
   if (extendedNames &&
-      !velocypack::Utf8Helper::isValidUtf8(reinterpret_cast<std::uint8_t const*>(name.data()),
-                                           name.size())) {
+      !velocypack::Utf8Helper::isValidUtf8(
+          reinterpret_cast<std::uint8_t const*>(name.data()), name.size())) {
     // new naming convention allows Unicode characters. we need to
     // make sure everything is valid UTF-8 now.
     return false;
@@ -270,7 +278,8 @@ bool IndexNameValidator::isAllowedName(bool extendedNames, std::string_view name
 
 /// @brief checks if an analyzer name is valid
 /// returns true if the name is allowed and false otherwise
-bool AnalyzerNameValidator::isAllowedName(bool extendedNames, std::string_view name) noexcept {
+bool AnalyzerNameValidator::isAllowedName(bool extendedNames,
+                                          std::string_view name) noexcept {
   std::size_t length = 0;
 
   for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
@@ -285,7 +294,8 @@ bool AnalyzerNameValidator::isAllowedName(bool extendedNames, std::string_view n
       // colons are used to separate database names from analyzer names
       ok &= (c != ':');
 
-      // non visible characters below ASCII code 32 (control characters) not allowed, including '\0'
+      // non visible characters below ASCII code 32 (control characters) not
+      // allowed, including '\0'
       ok &= (c >= 32U);
 
       if (length == 0) {
@@ -308,8 +318,8 @@ bool AnalyzerNameValidator::isAllowedName(bool extendedNames, std::string_view n
   }
 
   if (extendedNames &&
-      !velocypack::Utf8Helper::isValidUtf8(reinterpret_cast<std::uint8_t const*>(name.data()),
-                                           name.size())) {
+      !velocypack::Utf8Helper::isValidUtf8(
+          reinterpret_cast<std::uint8_t const*>(name.data()), name.size())) {
     // new naming convention allows Unicode characters. we need to
     // make sure everything is valid UTF-8 now.
     return false;

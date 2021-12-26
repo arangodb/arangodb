@@ -80,8 +80,8 @@ void testRegexPair(std::string const& allowList, std::string const& denyList,
 
 std::string canonicalpath(std::string const& path) {
 #ifndef _WIN32
-  auto realPath =
-      std::unique_ptr<char, void (*)(void*)>(::realpath(path.c_str(), nullptr), &free);
+  auto realPath = std::unique_ptr<char, void (*)(void*)>(
+      ::realpath(path.c_str(), nullptr), &free);
   if (realPath) {
     return std::string(realPath.get());
   }
@@ -90,7 +90,8 @@ std::string canonicalpath(std::string const& path) {
   return path;
 }
 
-void convertToSingleExpression(std::vector<std::string> const& values, std::string& targetRegex) {
+void convertToSingleExpression(std::vector<std::string> const& values,
+                               std::string& targetRegex) {
   if (values.empty()) {
     return;
   }
@@ -123,8 +124,10 @@ struct checkAllowDenyResult {
   bool deny;
 };
 
-checkAllowDenyResult checkAllowAndDenyList(std::string const& value, bool hasAllowList,
-                                           std::regex const& allowList, bool hasDenyList,
+checkAllowDenyResult checkAllowAndDenyList(std::string const& value,
+                                           bool hasAllowList,
+                                           std::regex const& allowList,
+                                           bool hasDenyList,
                                            std::regex const& denyList) {
   if (!hasAllowList && !hasDenyList) {
     return {true, false, false};
@@ -164,7 +167,8 @@ checkAllowDenyResult checkAllowAndDenyList(std::string const& value, bool hasAll
 }
 }  // namespace
 
-V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& server)
+V8SecurityFeature::V8SecurityFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, "V8Security"),
       _hardenInternalModule(false),
       _allowProcessControl(false),
@@ -174,16 +178,18 @@ V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& se
   startsAfter<V8PlatformFeature>();
 }
 
-void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void V8SecurityFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
   options->addSection("javascript", "JavaScript engine and execution");
   options
       ->addOption("--javascript.allow-port-testing",
                   "allow testing of ports from within JavaScript actions",
                   new BooleanParameter(&_allowPortTesting),
-                  arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
-                                               arangodb::options::Flags::OnCoordinator,
-                                               arangodb::options::Flags::OnSingle,
-                                               arangodb::options::Flags::Hidden))
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle,
+                      arangodb::options::Flags::Hidden))
       .setIntroducedIn(30500);
 
   options
@@ -191,10 +197,11 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                   "allow execution and control of external processes from "
                   "within JavaScript actions",
                   new BooleanParameter(&_allowProcessControl),
-                  arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
-                                               arangodb::options::Flags::OnCoordinator,
-                                               arangodb::options::Flags::OnSingle,
-                                               arangodb::options::Flags::Hidden))
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle,
+                      arangodb::options::Flags::Hidden))
       .setIntroducedIn(30500);
 
   options
@@ -202,49 +209,58 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                   "disables access to JavaScript functions in the internal "
                   "module: getPid() and logLevel()",
                   new BooleanParameter(&_hardenInternalModule),
-                  arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
-                                               arangodb::options::Flags::OnCoordinator,
-                                               arangodb::options::Flags::OnSingle))
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
 
   options
-      ->addOption("--javascript.startup-options-allowlist",
-                  "startup options whose names match this regular "
-                  "expression will be allowed and exposed to JavaScript",
-                  new VectorParameter<StringParameter>(&_startupOptionsAllowListVec),
-                  arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
-                                               arangodb::options::Flags::OnCoordinator,
-                                               arangodb::options::Flags::OnSingle))
+      ->addOption(
+          "--javascript.startup-options-allowlist",
+          "startup options whose names match this regular "
+          "expression will be allowed and exposed to JavaScript",
+          new VectorParameter<StringParameter>(&_startupOptionsAllowListVec),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
 
   options
-      ->addOption("--javascript.startup-options-denylist",
-                  "startup options whose names match this regular "
-                  "expression will not be exposed (if not in allowlist) to "
-                  "JavaScript actions",
-                  new VectorParameter<StringParameter>(&_startupOptionsDenyListVec),
-                  arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
-                                               arangodb::options::Flags::OnCoordinator,
-                                               arangodb::options::Flags::OnSingle))
+      ->addOption(
+          "--javascript.startup-options-denylist",
+          "startup options whose names match this regular "
+          "expression will not be exposed (if not in allowlist) to "
+          "JavaScript actions",
+          new VectorParameter<StringParameter>(&_startupOptionsDenyListVec),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
 
   options
       ->addOption("--javascript.environment-variables-allowlist",
                   "environment variables that will be accessible in JavaScript",
-                  new VectorParameter<StringParameter>(&_environmentVariablesAllowListVec),
-                  arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
-                                               arangodb::options::Flags::OnCoordinator,
-                                               arangodb::options::Flags::OnSingle))
+                  new VectorParameter<StringParameter>(
+                      &_environmentVariablesAllowListVec),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
 
   options
       ->addOption("--javascript.environment-variables-denylist",
                   "environment variables that will be inaccessible in "
                   "JavaScript (if not in allowlist)",
-                  new VectorParameter<StringParameter>(&_environmentVariablesDenyListVec),
-                  arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
-                                               arangodb::options::Flags::OnCoordinator,
-                                               arangodb::options::Flags::OnSingle))
+                  new VectorParameter<StringParameter>(
+                      &_environmentVariablesDenyListVec),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
 
   options
@@ -252,9 +268,10 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                   "endpoints that can be connected to via "
                   "@arangodb/request module in JavaScript actions",
                   new VectorParameter<StringParameter>(&_endpointsAllowListVec),
-                  arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
-                                               arangodb::options::Flags::OnCoordinator,
-                                               arangodb::options::Flags::OnSingle))
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
 
   options
@@ -262,9 +279,10 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                   "endpoints that cannot be connected to via @arangodb/request "
                   "module in JavaScript actions (if not in allowlist)",
                   new VectorParameter<StringParameter>(&_endpointsDenyListVec),
-                  arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
-                                               arangodb::options::Flags::OnCoordinator,
-                                               arangodb::options::Flags::OnSingle))
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
 
   options
@@ -272,9 +290,10 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                   "filesystem paths that will be accessible from within "
                   "JavaScript actions",
                   new VectorParameter<StringParameter>(&_filesAllowListVec),
-                  arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
-                                               arangodb::options::Flags::OnCoordinator,
-                                               arangodb::options::Flags::OnSingle))
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
 
   options->addOldOption("--javascript.startup-options-whitelist",
@@ -293,18 +312,23 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                         "--javascript.files-allowlist");
 }
 
-void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void V8SecurityFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> options) {
   // check if the regular expressions compile properly
 
   // startup options
-  convertToSingleExpression(_startupOptionsAllowListVec, _startupOptionsAllowList);
-  convertToSingleExpression(_startupOptionsDenyListVec, _startupOptionsDenyList);
+  convertToSingleExpression(_startupOptionsAllowListVec,
+                            _startupOptionsAllowList);
+  convertToSingleExpression(_startupOptionsDenyListVec,
+                            _startupOptionsDenyList);
   testRegexPair(_startupOptionsAllowList, _startupOptionsDenyList,
                 "startup-options");
 
   // environment variables
-  convertToSingleExpression(_environmentVariablesAllowListVec, _environmentVariablesAllowList);
-  convertToSingleExpression(_environmentVariablesDenyListVec, _environmentVariablesDenyList);
+  convertToSingleExpression(_environmentVariablesAllowListVec,
+                            _environmentVariablesAllowList);
+  convertToSingleExpression(_environmentVariablesDenyListVec,
+                            _environmentVariablesDenyList);
   testRegexPair(_environmentVariablesAllowList, _environmentVariablesDenyList,
                 "environment-variables");
 
@@ -326,21 +350,24 @@ void V8SecurityFeature::prepare() {
 }
 
 void V8SecurityFeature::start() {
-  // initialize regexes for filtering options. the regexes must have been validated before
-  _startupOptionsAllowListRegex =
-      std::regex(_startupOptionsAllowList, std::regex::nosubs | std::regex::ECMAScript);
-  _startupOptionsDenyListRegex =
-      std::regex(_startupOptionsDenyList, std::regex::nosubs | std::regex::ECMAScript);
+  // initialize regexes for filtering options. the regexes must have been
+  // validated before
+  _startupOptionsAllowListRegex = std::regex(
+      _startupOptionsAllowList, std::regex::nosubs | std::regex::ECMAScript);
+  _startupOptionsDenyListRegex = std::regex(
+      _startupOptionsDenyList, std::regex::nosubs | std::regex::ECMAScript);
 
   _environmentVariablesAllowListRegex =
-      std::regex(_environmentVariablesAllowList, std::regex::nosubs | std::regex::ECMAScript);
+      std::regex(_environmentVariablesAllowList,
+                 std::regex::nosubs | std::regex::ECMAScript);
   _environmentVariablesDenyListRegex =
-      std::regex(_environmentVariablesDenyList, std::regex::nosubs | std::regex::ECMAScript);
+      std::regex(_environmentVariablesDenyList,
+                 std::regex::nosubs | std::regex::ECMAScript);
 
-  _endpointsAllowListRegex =
-      std::regex(_endpointsAllowList, std::regex::nosubs | std::regex::ECMAScript);
-  _endpointsDenyListRegex =
-      std::regex(_endpointsDenyList, std::regex::nosubs | std::regex::ECMAScript);
+  _endpointsAllowListRegex = std::regex(
+      _endpointsAllowList, std::regex::nosubs | std::regex::ECMAScript);
+  _endpointsDenyListRegex = std::regex(
+      _endpointsDenyList, std::regex::nosubs | std::regex::ECMAScript);
 
   _filesAllowListRegex =
       std::regex(_filesAllowList, std::regex::nosubs | std::regex::ECMAScript);
@@ -353,13 +380,16 @@ void V8SecurityFeature::dumpAccessLists() const {
       << ", internal write allow list:" << _writeAllowList
       << ", internal startup options allow list:" << _startupOptionsAllowList
       << ", internal startup options deny list: " << _startupOptionsDenyList
-      << ", internal environment variable allow list:" << _environmentVariablesAllowList
-      << ", internal environment variables deny list: " << _environmentVariablesDenyList
+      << ", internal environment variable allow list:"
+      << _environmentVariablesAllowList
+      << ", internal environment variables deny list: "
+      << _environmentVariablesDenyList
       << ", internal endpoints allow list:" << _endpointsAllowList
       << ", internal endpoints deny list: " << _endpointsDenyList;
 }
 
-void V8SecurityFeature::addToInternalAllowList(std::string const& inItem, FSAccessType type) {
+void V8SecurityFeature::addToInternalAllowList(std::string const& inItem,
+                                               FSAccessType type) {
   // This function is not efficient and we would not need the _readAllowList
   // to be persistent. But the persistence will help in debugging and
   // there are only a few items expected.
@@ -374,7 +404,8 @@ void V8SecurityFeature::addToInternalAllowList(std::string const& inItem, FSAcce
   }
 
   auto item = canonicalpath(inItem);
-  if ((item.length() > 0) && (item[item.length() - 1] != TRI_DIR_SEPARATOR_CHAR)) {
+  if ((item.length() > 0) &&
+      (item[item.length() - 1] != TRI_DIR_SEPARATOR_CHAR)) {
     item += TRI_DIR_SEPARATOR_STR;
   }
   auto path = "^" + arangodb::basics::StringUtils::escapeRegexParams(item);
@@ -389,7 +420,8 @@ void V8SecurityFeature::addToInternalAllowList(std::string const& inItem, FSAcce
   }
 }
 
-bool V8SecurityFeature::isAllowedToControlProcesses(v8::Isolate* isolate) const {
+bool V8SecurityFeature::isAllowedToControlProcesses(
+    v8::Isolate* isolate) const {
   TRI_GET_GLOBALS();
   TRI_ASSERT(v8g != nullptr);
   return _allowProcessControl && v8g->_securityContext.canControlProcesses();
@@ -403,7 +435,8 @@ bool V8SecurityFeature::isInternalModuleHardened(v8::Isolate* isolate) const {
   return _hardenInternalModule;
 }
 
-bool V8SecurityFeature::isAllowedToDefineHttpAction(v8::Isolate* isolate) const {
+bool V8SecurityFeature::isAllowedToDefineHttpAction(
+    v8::Isolate* isolate) const {
   TRI_GET_GLOBALS();
   TRI_ASSERT(v8g != nullptr);
   return v8g->_securityContext.canDefineHttpAction();
@@ -422,16 +455,17 @@ bool V8SecurityFeature::isAdminScriptContext(v8::Isolate* isolate) const {
          v8g->_securityContext.isRestAdminScript();
 }
 
-bool V8SecurityFeature::shouldExposeStartupOption(v8::Isolate* isolate,
-                                                  std::string const& name) const {
+bool V8SecurityFeature::shouldExposeStartupOption(
+    v8::Isolate* isolate, std::string const& name) const {
   return checkAllowAndDenyList(name, !_startupOptionsAllowList.empty(),
                                _startupOptionsAllowListRegex,
-                               !_startupOptionsDenyList.empty(), _startupOptionsDenyListRegex)
+                               !_startupOptionsDenyList.empty(),
+                               _startupOptionsDenyListRegex)
       .result;
 }
 
-bool V8SecurityFeature::shouldExposeEnvironmentVariable(v8::Isolate* isolate,
-                                                        std::string const& name) const {
+bool V8SecurityFeature::shouldExposeEnvironmentVariable(
+    v8::Isolate* isolate, std::string const& name) const {
   return checkAllowAndDenyList(name, !_environmentVariablesAllowList.empty(),
                                _environmentVariablesAllowListRegex,
                                !_environmentVariablesDenyList.empty(),
@@ -439,9 +473,9 @@ bool V8SecurityFeature::shouldExposeEnvironmentVariable(v8::Isolate* isolate,
       .result;
 }
 
-bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate,
-                                                     std::string const& endpoint,
-                                                     std::string const& url) const {
+bool V8SecurityFeature::isAllowedToConnectToEndpoint(
+    v8::Isolate* isolate, std::string const& endpoint,
+    std::string const& url) const {
   TRI_GET_GLOBALS();
   TRI_ASSERT(v8g != nullptr);
   if (v8g->_securityContext.isInternal()) {
@@ -450,23 +484,26 @@ bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate,
     return true;
   }
 
-  auto endpointResult =
-      checkAllowAndDenyList(endpoint, !_endpointsAllowList.empty(), _endpointsAllowListRegex,
-                            !_endpointsDenyList.empty(), _endpointsDenyListRegex);
+  auto endpointResult = checkAllowAndDenyList(
+      endpoint, !_endpointsAllowList.empty(), _endpointsAllowListRegex,
+      !_endpointsDenyList.empty(), _endpointsDenyListRegex);
 
-  auto urlResult =
-      checkAllowAndDenyList(url, !_endpointsAllowList.empty(), _endpointsAllowListRegex,
-                            !_endpointsDenyList.empty(), _endpointsDenyListRegex);
+  auto urlResult = checkAllowAndDenyList(
+      url, !_endpointsAllowList.empty(), _endpointsAllowListRegex,
+      !_endpointsDenyList.empty(), _endpointsDenyListRegex);
 
   return endpointResult.result || (urlResult.result && !endpointResult.deny);
 }
 
-bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string const& path,
+bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
+                                              std::string const& path,
                                               FSAccessType access) const {
-  return V8SecurityFeature::isAllowedToAccessPath(isolate, path.c_str(), access);
+  return V8SecurityFeature::isAllowedToAccessPath(isolate, path.c_str(),
+                                                  access);
 }
 
-bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* pathPtr,
+bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,
+                                              char const* pathPtr,
                                               FSAccessType access) const {
   if (_filesAllowList.empty()) {
     return true;
@@ -493,17 +530,19 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
     path += TRI_DIR_SEPARATOR_STR;
   }
 
-  if (access == FSAccessType::READ && std::regex_search(path, _readAllowListRegex)) {
+  if (access == FSAccessType::READ &&
+      std::regex_search(path, _readAllowListRegex)) {
     // even in restricted contexts we may read module paths
     return true;
   }
 
-  if (access == FSAccessType::WRITE && std::regex_search(path, _writeAllowListRegex)) {
+  if (access == FSAccessType::WRITE &&
+      std::regex_search(path, _writeAllowListRegex)) {
     // even in restricted contexts we may read module paths
     return true;
   }
 
-  return checkAllowAndDenyList(path, !_filesAllowList.empty(), _filesAllowListRegex,
-                               false, _filesAllowListRegex /*passed to match the signature but not used*/)
+  return checkAllowAndDenyList(path, !_filesAllowList.empty(),
+                               _filesAllowListRegex, false, _filesAllowListRegex /*passed to match the signature but not used*/)
       .result;
 }

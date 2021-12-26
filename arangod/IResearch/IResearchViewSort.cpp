@@ -79,8 +79,9 @@ bool IResearchViewSort::toVelocyPack(velocypack::Builder& builder) const {
   }
 
   std::string fieldName;
-  auto visitor = [&builder, &fieldName](std::vector<basics::AttributeName> const& field,
-                                        bool direction) {
+  auto visitor = [&builder, &fieldName](
+                     std::vector<basics::AttributeName> const& field,
+                     bool direction) {
     fieldName.clear();
     basics::TRI_AttributeNamesToString(field, fieldName, true);
 
@@ -94,7 +95,8 @@ bool IResearchViewSort::toVelocyPack(velocypack::Builder& builder) const {
   return visit(visitor);
 }
 
-bool IResearchViewSort::fromVelocyPack(velocypack::Slice slice, std::string& error) {
+bool IResearchViewSort::fromVelocyPack(velocypack::Slice slice,
+                                       std::string& error) {
   static std::string const directionFieldName = "direction";
   static std::string const ascFieldName = "asc";
   static std::string const fieldName = "field";
@@ -137,8 +139,8 @@ bool IResearchViewSort::fromVelocyPack(velocypack::Slice slice, std::string& err
     std::vector<arangodb::basics::AttributeName> field;
 
     try {
-      arangodb::basics::TRI_ParseAttributeString(arangodb::iresearch::getStringRef(fieldSlice),
-                                                 field, false);
+      arangodb::basics::TRI_ParseAttributeString(
+          arangodb::iresearch::getStringRef(fieldSlice), field, false);
     } catch (...) {
       // FIXME why doesn't 'TRI_ParseAttributeString' return bool?
       error = "[" + std::to_string(size()) + "]." + fieldName;

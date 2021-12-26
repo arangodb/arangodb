@@ -42,7 +42,8 @@ using namespace arangodb::methods;
 using namespace arangodb::maintenance;
 using namespace arangodb;
 
-DropDatabase::DropDatabase(MaintenanceFeature& feature, ActionDescription const& desc)
+DropDatabase::DropDatabase(MaintenanceFeature& feature,
+                           ActionDescription const& desc)
     : ActionBase(feature, desc) {
   std::stringstream error;
 
@@ -54,7 +55,8 @@ DropDatabase::DropDatabase(MaintenanceFeature& feature, ActionDescription const&
   TRI_ASSERT(desc.has(DATABASE));
 
   if (!error.str().empty()) {
-    LOG_TOPIC("103f0", ERR, Logger::MAINTENANCE) << "DropDatabase: " << error.str();
+    LOG_TOPIC("103f0", ERR, Logger::MAINTENANCE)
+        << "DropDatabase: " << error.str();
     result(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
@@ -64,7 +66,8 @@ DropDatabase::~DropDatabase() = default;
 
 bool DropDatabase::first() {
   std::string const database = _description.get(DATABASE);
-  LOG_TOPIC("22779", DEBUG, Logger::MAINTENANCE) << "DropDatabase: dropping " << database;
+  LOG_TOPIC("22779", DEBUG, Logger::MAINTENANCE)
+      << "DropDatabase: dropping " << database;
 
   try {
     auto& df = _feature.server().getFeature<DatabaseFeature>();

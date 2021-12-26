@@ -34,7 +34,8 @@ namespace arangodb {
 /// transaction wrapper, uses the current rocksdb transaction
 class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
  public:
-  explicit RocksDBTrxMethods(RocksDBTransactionState*, rocksdb::TransactionDB* db);
+  explicit RocksDBTrxMethods(RocksDBTransactionState*,
+                             rocksdb::TransactionDB* db);
 
   ~RocksDBTrxMethods();
 
@@ -83,7 +84,8 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   /// @brief check sizes and call internalCommit if too big
   /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
   /// performed
-  Result checkIntermediateCommit(uint64_t newSize, bool& hasPerformedIntermediateCommit);
+  Result checkIntermediateCommit(uint64_t newSize,
+                                 bool& hasPerformedIntermediateCommit);
 
   void initializeReadWriteBatch();
   void releaseReadWriteBatch() noexcept;
@@ -92,27 +94,29 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   /// For intermediate commits this MUST ONLY be used for iterators
   rocksdb::Snapshot const* _iteratorReadSnapshot{nullptr};
 
-  /// @brief this WriteBatch can be used to satisfy read operations in a streaming trx.
-  /// _readWriteBatch can have three different states:
+  /// @brief this WriteBatch can be used to satisfy read operations in a
+  /// streaming trx. _readWriteBatch can have three different states:
   ///   - nullptr
   ///   - pointing to a copy (_ownsReadWriteBatch == true)
-  ///   - pointing to _rockTransaction's underlying WriteBatch (_ownsReadWriteBatch == false)
+  ///   - pointing to _rockTransaction's underlying WriteBatch
+  ///   (_ownsReadWriteBatch == false)
   ///
-  /// If _readWriteBatch is null, read operations without read-own-writes semantic are
-  /// performed directly on the DB using the snapshot, otherwise on _rocksTransaction.
-  /// When a modification query is started, the current WriteBatch from _rocksTransaction
-  /// is copied and stored in _readWriteBatch.
-  /// Once the modification query is finished, the copy is released and _readWriteBatch
-  /// is set to point to the trx's underlying WriteBatch. This is necessary to ensure
-  /// that subsequent read operations within the same streaming transaction see the
-  /// previously performed writes.
-  /// If _readWriteBatch is not null, read-operations without read-own-writes semantic
-  /// are performed on _readWriteBatch, otherwise on _rocksTransaction.
+  /// If _readWriteBatch is null, read operations without read-own-writes
+  /// semantic are performed directly on the DB using the snapshot, otherwise on
+  /// _rocksTransaction. When a modification query is started, the current
+  /// WriteBatch from _rocksTransaction is copied and stored in _readWriteBatch.
+  /// Once the modification query is finished, the copy is released and
+  /// _readWriteBatch is set to point to the trx's underlying WriteBatch. This
+  /// is necessary to ensure that subsequent read operations within the same
+  /// streaming transaction see the previously performed writes. If
+  /// _readWriteBatch is not null, read-operations without read-own-writes
+  /// semantic are performed on _readWriteBatch, otherwise on _rocksTransaction.
   ///
-  /// If the transaction is globally managed (e.g., a streaming trx), we already set
-  /// _readWriteBatch to point to the trx's underlying WriteBatch at the begin of the
-  /// transaction. This is necessary to ensure that read operations performed as part
-  /// of the trx observe the correct transaction state, regardless of any AQL queries.
+  /// If the transaction is globally managed (e.g., a streaming trx), we already
+  /// set _readWriteBatch to point to the trx's underlying WriteBatch at the
+  /// begin of the transaction. This is necessary to ensure that read operations
+  /// performed as part of the trx observe the correct transaction state,
+  /// regardless of any AQL queries.
   rocksdb::WriteBatchWithIndex* _readWriteBatch{nullptr};
   bool _ownsReadWriteBatch{false};
 

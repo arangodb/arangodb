@@ -57,8 +57,9 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace {
-arangodb::Result writeSettings(arangodb::StorageEngine& engine, rocksdb::WriteBatch& batch,
-                               VPackBuilder& b, uint64_t seqNumber) {
+arangodb::Result writeSettings(arangodb::StorageEngine& engine,
+                               rocksdb::WriteBatch& batch, VPackBuilder& b,
+                               uint64_t seqNumber) {
   using arangodb::EngineSelectorFeature;
   using arangodb::Logger;
   using arangodb::Result;
@@ -77,14 +78,16 @@ arangodb::Result writeSettings(arangodb::StorageEngine& engine, rocksdb::WriteBa
   b.close();
 
   VPackSlice slice = b.slice();
-  LOG_TOPIC("f5e34", DEBUG, Logger::ENGINES) << "writing settings: " << slice.toJson();
+  LOG_TOPIC("f5e34", DEBUG, Logger::ENGINES)
+      << "writing settings: " << slice.toJson();
 
   RocksDBKey key;
   key.constructSettingsValue(RocksDBSettingsType::ServerTick);
   rocksdb::Slice value(slice.startAs<char>(), slice.byteSize());
 
   rocksdb::Status s =
-      batch.Put(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+      batch.Put(RocksDBColumnFamilyManager::get(
+                    RocksDBColumnFamilyManager::Family::Definitions),
                 key.string(), value);
   if (!s.ok()) {
     LOG_TOPIC("140ec", WARN, Logger::ENGINES)
@@ -117,8 +120,8 @@ bool RocksDBSettingsManager::lockForSync(bool force) {
   if (force) {
     while (true) {
       bool expected = false;
-      bool res = _syncing.compare_exchange_strong(expected, true, std::memory_order_acquire,
-                                                  std::memory_order_relaxed);
+      bool res = _syncing.compare_exchange_strong(
+          expected, true, std::memory_order_acquire, std::memory_order_relaxed);
       if (res) {
         break;
       }
@@ -127,7 +130,8 @@ bool RocksDBSettingsManager::lockForSync(bool force) {
   } else {
     bool expected = false;
 
-    if (!_syncing.compare_exchange_strong(expected, true, std::memory_order_acquire,
+    if (!_syncing.compare_exchange_strong(expected, true,
+                                          std::memory_order_acquire,
                                           std::memory_order_relaxed)) {
       return false;
     }
@@ -279,7 +283,8 @@ Result RocksDBSettingsManager::sync(bool force) {
   wo.sync = true;
   auto s = _db->Write(wo, &batch);
   if (s.ok()) {
-    LOG_TOPIC("103ae", TRACE, Logger::ENGINES) << "updating lastSync to " << minSeqNr;
+    LOG_TOPIC("103ae", TRACE, Logger::ENGINES)
+        << "updating lastSync to " << minSeqNr;
     _lastSync.store(std::max(_lastSync.load(), minSeqNr));
   }
 
@@ -293,11 +298,13 @@ void RocksDBSettingsManager::loadSettings() {
   rocksdb::PinnableSlice result;
   rocksdb::Status status =
       _db->Get(rocksdb::ReadOptions(),
-               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+               RocksDBColumnFamilyManager::get(
+                   RocksDBColumnFamilyManager::Family::Definitions),
                key.string(), &result);
   if (status.ok()) {
     // key may not be there, so don't fail when not found
-    VPackSlice slice = VPackSlice(reinterpret_cast<uint8_t const*>(result.data()));
+    VPackSlice slice =
+        VPackSlice(reinterpret_cast<uint8_t const*>(result.data()));
     TRI_ASSERT(slice.isObject());
     LOG_TOPIC("7458b", TRACE, Logger::ENGINES)
         << "read initial settings: " << slice.toJson();
@@ -307,14 +314,16 @@ void RocksDBSettingsManager::loadSettings() {
         if (slice.hasKey("tick")) {
           uint64_t lastTick =
               basics::VelocyPackHelper::stringUInt64(slice.get("tick"));
-          LOG_TOPIC("369d3", TRACE, Logger::ENGINES) << "using last tick: " << lastTick;
+          LOG_TOPIC("369d3", TRACE, Logger::ENGINES)
+              << "using last tick: " << lastTick;
           TRI_UpdateTickServer(lastTick);
         }
 
         if (slice.hasKey("hlc")) {
           uint64_t lastHlc =
               basics::VelocyPackHelper::stringUInt64(slice.get("hlc"));
-          LOG_TOPIC("647a8", TRACE, Logger::ENGINES) << "using last hlc: " << lastHlc;
+          LOG_TOPIC("647a8", TRACE, Logger::ENGINES)
+              << "using last hlc: " << lastHlc;
           TRI_HybridLogicalClock(lastHlc);
         }
 

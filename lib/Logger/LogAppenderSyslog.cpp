@@ -50,7 +50,8 @@ void LogAppenderSyslog::close() {
   }
 }
 
-LogAppenderSyslog::LogAppenderSyslog(std::string const& facility, std::string const& name)
+LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
+                                     std::string const& name)
     : LogAppender(), _sysname(name.empty() ? "[arangod]" : name) {
   // find facility
   int value = LOG_LOCAL0;
@@ -72,8 +73,10 @@ LogAppenderSyslog::LogAppenderSyslog(std::string const& facility, std::string co
 
   // from man 3 syslog:
   //   The argument ident in the call of openlog() is probably stored as-is.
-  //   Thus, if the string it points to is changed, syslog() may start prepending the changed string, and  if
-  //    the string it points to ceases to exist, the results are undefined. Most portable is to use a string constant.
+  //   Thus, if the string it points to is changed, syslog() may start
+  //   prepending the changed string, and  if
+  //    the string it points to ceases to exist, the results are undefined. Most
+  //    portable is to use a string constant.
 
   // and open logging, openlog does not have a return value...
   ::openlog(_sysname.c_str(), LOG_CONS | LOG_PID, value);

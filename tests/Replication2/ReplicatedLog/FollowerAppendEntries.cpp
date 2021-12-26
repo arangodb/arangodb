@@ -114,7 +114,8 @@ TEST_F(FollowerAppendEntriesTest, wrong_term) {
     {
       auto result = f.get();
       EXPECT_EQ(result.logTerm, LogTerm{5});
-      EXPECT_EQ(result.errorCode, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
+      EXPECT_EQ(result.errorCode,
+                TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
       EXPECT_EQ(result.reason, AppendEntriesErrorReason::WRONG_TERM);
     }
   }
@@ -140,7 +141,8 @@ TEST_F(FollowerAppendEntriesTest, missing_prev_log_index) {
     {
       auto result = f.get();
       EXPECT_EQ(result.logTerm, LogTerm{5});
-      EXPECT_EQ(result.errorCode, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
+      EXPECT_EQ(result.errorCode,
+                TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
       EXPECT_EQ(result.reason, AppendEntriesErrorReason::NO_PREV_LOG_MATCH);
     }
   }
@@ -187,7 +189,8 @@ TEST_F(FollowerAppendEntriesTest, missmatch_prev_log_term) {
     {
       auto result = f.get();
       EXPECT_EQ(result.logTerm, LogTerm{5});
-      EXPECT_EQ(result.errorCode, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
+      EXPECT_EQ(result.errorCode,
+                TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
       EXPECT_EQ(result.reason, AppendEntriesErrorReason::NO_PREV_LOG_MATCH);
     }
   }
@@ -214,7 +217,8 @@ TEST_F(FollowerAppendEntriesTest, wrong_leader_name) {
       auto result = f.get();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       // TODO this is known to fail
-      EXPECT_EQ(result.errorCode, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
+      EXPECT_EQ(result.errorCode,
+                TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
       EXPECT_EQ(result.reason, AppendEntriesErrorReason::INVALID_LEADER_ID);
     }
   }
@@ -250,7 +254,10 @@ TEST_F(FollowerAppendEntriesTest, resigned_follower) {
   ASSERT_NE(logCore, nullptr);
   logCore.reset();
   // follower should now be resigned
-  ASSERT_THROW(std::ignore = follower->getStatus(), arangodb::basics::Exception);  // TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED
+  ASSERT_THROW(
+      std::ignore = follower->getStatus(),
+      arangodb::basics::
+          Exception);  // TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED
 
   {
     AppendEntriesRequest request;
@@ -268,7 +275,8 @@ TEST_F(FollowerAppendEntriesTest, resigned_follower) {
     {
       auto result = f.get();
       EXPECT_EQ(result.logTerm, LogTerm{5});
-      EXPECT_EQ(result.errorCode, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
+      EXPECT_EQ(result.errorCode,
+                TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
       EXPECT_EQ(result.reason, AppendEntriesErrorReason::LOST_LOG_CORE);
     }
   }
@@ -314,7 +322,8 @@ TEST_F(FollowerAppendEntriesTest, outdated_message_id) {
     {
       auto result = f.get();
       EXPECT_EQ(result.logTerm, LogTerm{5});
-      EXPECT_EQ(result.errorCode, TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
+      EXPECT_EQ(result.errorCode,
+                TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
       EXPECT_EQ(result.reason, AppendEntriesErrorReason::MESSAGE_OUTDATED);
     }
   }

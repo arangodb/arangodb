@@ -32,7 +32,8 @@ struct ReplicatedLogMethods;
 
 class RestLogHandler : public RestVocbaseBaseHandler {
  public:
-  RestLogHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
+  RestLogHandler(application_features::ApplicationServer&, GeneralRequest*,
+                 GeneralResponse*);
   ~RestLogHandler() override;
 
  public:
@@ -47,9 +48,12 @@ class RestLogHandler : public RestVocbaseBaseHandler {
   RestStatus handleDeleteRequest(ReplicatedLogMethods const& methods);
 
   RestStatus handleGet(ReplicatedLogMethods const& methods);
-  RestStatus handleGetTail(ReplicatedLogMethods const& methods, replication2::LogId);
-  RestStatus handleGetLog(ReplicatedLogMethods const& methods, replication2::LogId);
-  RestStatus handleGetReadEntry(ReplicatedLogMethods const& methods, replication2::LogId);
+  RestStatus handleGetTail(ReplicatedLogMethods const& methods,
+                           replication2::LogId);
+  RestStatus handleGetLog(ReplicatedLogMethods const& methods,
+                          replication2::LogId);
+  RestStatus handleGetReadEntry(ReplicatedLogMethods const& methods,
+                                replication2::LogId);
 };
 }  // namespace arangodb
 #endif  // ARANGODB3_RESTLOGHANDLER_H

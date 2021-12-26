@@ -64,7 +64,16 @@ TEST(RandomGeneratorTest, test_RandomGeneratorTest_interval_uint64_brute) {
   RandomGenerator::ensureDeviceIsInitialized();
   RandomGenerator::seed(0xdeadbeef);
 
-  constexpr uint64_t bounds[] = {1, 2, 4, 1023, 1024, 65535, 65536, 4294967295ULL, 4294967296ULL, 18446744073709551615ULL};
+  constexpr uint64_t bounds[] = {1,
+                                 2,
+                                 4,
+                                 1023,
+                                 1024,
+                                 65535,
+                                 65536,
+                                 4294967295ULL,
+                                 4294967296ULL,
+                                 18446744073709551615ULL};
   for (uint64_t bound : bounds) {
     for (int i = 0; i < 10000; ++i) {
       uint64_t value = RandomGenerator::interval(bound);

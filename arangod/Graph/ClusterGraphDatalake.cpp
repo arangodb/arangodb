@@ -33,12 +33,14 @@
 namespace arangodb {
 namespace graph {
 
-ClusterGraphDatalake::ClusterGraphDatalake(arangodb::ResourceMonitor& resourceMonitor)
+ClusterGraphDatalake::ClusterGraphDatalake(
+    arangodb::ResourceMonitor& resourceMonitor)
     : _resourceMonitor(resourceMonitor), _totalMemoryUsage(0) {}
 
 ClusterGraphDatalake::~ClusterGraphDatalake() { clear(); }
 
-arangodb::velocypack::Slice ClusterGraphDatalake::operator[](size_t index) const noexcept {
+arangodb::velocypack::Slice ClusterGraphDatalake::operator[](
+    size_t index) const noexcept {
   TRI_ASSERT(index < _data.size());
   return arangodb::velocypack::Slice(_data[index]->data());
 }

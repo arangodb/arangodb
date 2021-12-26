@@ -85,7 +85,8 @@ class DataProtector {
     Entry() : _count(0) {}
   };
 
-  typename std::aligned_storage<sizeof(Entry), alignof(Entry)>::type _list[DATA_PROTECTOR_MULTIPLICITY];
+  typename std::aligned_storage<sizeof(Entry), alignof(Entry)>::type
+      _list[DATA_PROTECTOR_MULTIPLICITY];
 
   static std::atomic<int> _last;
 

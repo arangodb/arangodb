@@ -69,7 +69,8 @@ struct Version {
   static VersionResult check(TRI_vocbase_t*);
   static VersionResult::StatusCode compare(uint64_t current, uint64_t other);
   /// @brief write a VERSION file including all tasks
-  static Result write(TRI_vocbase_t*, std::map<std::string, bool> const& tasks, bool sync);
+  static Result write(TRI_vocbase_t*, std::map<std::string, bool> const& tasks,
+                      bool sync);
 
   static uint64_t parseVersion(const char* str);
 

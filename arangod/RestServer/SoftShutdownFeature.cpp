@@ -43,7 +43,8 @@ using namespace arangodb::options;
 
 namespace {
 
-void queueShutdownChecker(std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
+void queueShutdownChecker(std::mutex& mutex,
+                          arangodb::Scheduler::WorkHandle& workItem,
                           std::function<void(bool)>& checkFunc) {
   arangodb::Scheduler* scheduler = arangodb::SchedulerFeature::SCHEDULER;
   std::lock_guard<std::mutex> guard(mutex);
@@ -55,7 +56,8 @@ void queueShutdownChecker(std::mutex& mutex, arangodb::Scheduler::WorkHandle& wo
 
 namespace arangodb {
 
-SoftShutdownFeature::SoftShutdownFeature(application_features::ApplicationServer& server)
+SoftShutdownFeature::SoftShutdownFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, "SoftShutdown") {
   setOptional(true);
   startsAfter<application_features::AgencyFeaturePhase>();
@@ -82,7 +84,8 @@ void SoftShutdownTracker::cancelChecker() {
   }
 }
 
-SoftShutdownTracker::SoftShutdownTracker(application_features::ApplicationServer& server)
+SoftShutdownTracker::SoftShutdownTracker(
+    application_features::ApplicationServer& server)
     : _server(server), _softShutdownOngoing(false) {
   _checkFunc = [this](bool cancelled) {
     if (_server.isStopping()) {
@@ -91,7 +94,8 @@ SoftShutdownTracker::SoftShutdownTracker(application_features::ApplicationServer
     }
     if (!this->checkAndShutdownIfAllClear()) {
       // Rearm ourselves:
-      queueShutdownChecker(this->_workItemMutex, this->_workItem, this->_checkFunc);
+      queueShutdownChecker(this->_workItemMutex, this->_workItem,
+                           this->_checkFunc);
     }
   };
 }
@@ -125,8 +129,8 @@ bool SoftShutdownTracker::checkAndShutdownIfAllClear() const {
     toVelocyPack(builder, status);
     // FIXME: Set to DEBUG level
     LOG_TOPIC("ffeec", INFO, Logger::STARTUP)
-        << "Soft shutdown check said 'not all clear': " << builder.slice().toJson()
-        << ".";
+        << "Soft shutdown check said 'not all clear': "
+        << builder.slice().toJson() << ".";
     return false;
   }
   LOG_TOPIC("ffeed", INFO, Logger::STARTUP)
@@ -146,8 +150,8 @@ void SoftShutdownTracker::initiateActualShutdown() const {
   });
 }
 
-void SoftShutdownTracker::toVelocyPack(VPackBuilder& builder,
-                                       SoftShutdownTracker::Status const& status) {
+void SoftShutdownTracker::toVelocyPack(
+    VPackBuilder& builder, SoftShutdownTracker::Status const& status) {
   VPackObjectBuilder guard(&builder);
   builder.add("softShutdownOngoing", VPackValue(status.softShutdownOngoing));
   builder.add("AQLcursors", VPackValue(status.AQLcursors));
@@ -155,8 +159,10 @@ void SoftShutdownTracker::toVelocyPack(VPackBuilder& builder,
   builder.add("pendingJobs", VPackValue(status.pendingJobs));
   builder.add("doneJobs", VPackValue(status.doneJobs));
   builder.add("pregelConductors", VPackValue(status.pregelConductors));
-  builder.add("lowPrioOngoingRequests", VPackValue(status.lowPrioOngoingRequests));
-  builder.add("lowPrioQueuedRequests", VPackValue(status.lowPrioQueuedRequests));
+  builder.add("lowPrioOngoingRequests",
+              VPackValue(status.lowPrioOngoingRequests));
+  builder.add("lowPrioQueuedRequests",
+              VPackValue(status.lowPrioQueuedRequests));
   builder.add("allClear", VPackValue(status.allClear()));
 }
 
@@ -180,7 +186,8 @@ SoftShutdownTracker::Status SoftShutdownTracker::getStatus() const {
   // Get numbers of pending and done asynchronous jobs:
   auto& generalServerFeature = _server.getFeature<GeneralServerFeature>();
   auto& jobManager = generalServerFeature.jobManager();
-  std::tie(status.pendingJobs, status.doneJobs) = jobManager.getNrPendingAndDone();
+  std::tie(status.pendingJobs, status.doneJobs) =
+      jobManager.getNrPendingAndDone();
 
   // Get number of active Pregel conductors on this coordinator:
   auto& pregelFeature = _server.getFeature<pregel::PregelFeature>();

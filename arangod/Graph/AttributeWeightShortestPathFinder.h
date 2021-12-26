@@ -76,7 +76,9 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   /// @brief our specialization of the priority queue
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef arangodb::graph::ShortestPathPriorityQueue<arangodb::velocypack::StringRef, Step, double> PQueue;
+  typedef arangodb::graph::ShortestPathPriorityQueue<
+      arangodb::velocypack::StringRef, Step, double>
+      PQueue;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief information for each thread
@@ -122,15 +124,18 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
     ThreadInfo& _peerInfo;
     arangodb::velocypack::StringRef _start;
     bool _backward;
-    /// @brief temp value, which is used only in Searcher::oneStep() and recycled.
+    /// @brief temp value, which is used only in Searcher::oneStep() and
+    /// recycled.
     std::vector<std::unique_ptr<Step>> _neighbors;
   };
 
   // -----------------------------------------------------------------------------
 
-  AttributeWeightShortestPathFinder(AttributeWeightShortestPathFinder const&) = delete;
+  AttributeWeightShortestPathFinder(AttributeWeightShortestPathFinder const&) =
+      delete;
 
-  AttributeWeightShortestPathFinder& operator=(AttributeWeightShortestPathFinder const&) = delete;
+  AttributeWeightShortestPathFinder& operator=(
+      AttributeWeightShortestPathFinder const&) = delete;
   AttributeWeightShortestPathFinder() = delete;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -162,7 +167,8 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
                 arangodb::velocypack::StringRef const& t, double currentWeight,
                 graph::EdgeDocumentToken&& edge);
 
-  void expandVertex(bool backward, arangodb::velocypack::StringRef const& source,
+  void expandVertex(bool backward,
+                    arangodb::velocypack::StringRef const& source,
                     std::vector<std::unique_ptr<Step>>& result);
 
   void clearCandidates() noexcept;

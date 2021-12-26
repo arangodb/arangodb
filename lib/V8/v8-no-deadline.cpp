@@ -30,7 +30,8 @@ double correctTimeoutToExecutionDeadlineS(double timeoutSeconds) {
   return timeoutSeconds;
 }
 
-std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::milliseconds timeout) {
+std::chrono::milliseconds correctTimeoutToExecutionDeadline(
+    std::chrono::milliseconds timeout) {
   return timeout;
 }
 

@@ -93,7 +93,8 @@ struct BackupMeta {
         builder.add(AVAILABLE, VPackValue(_isAvailable));
         builder.add(NRPIECESPRESENT, VPackValue(_nrPiecesPresent));
       }
-      builder.add(POTENTIALLYINCONSISTENT, VPackValue(_potentiallyInconsistent));
+      builder.add(POTENTIALLYINCONSISTENT,
+                  VPackValue(_potentiallyInconsistent));
     }
   }
 
@@ -112,20 +113,22 @@ struct BackupMeta {
           }
         }
       }
-      meta._sizeInBytes =
-          basics::VelocyPackHelper::getNumericValue<size_t>(slice, SIZEINBYTES, 0);
+      meta._sizeInBytes = basics::VelocyPackHelper::getNumericValue<size_t>(
+          slice, SIZEINBYTES, 0);
       meta._nrFiles =
           basics::VelocyPackHelper::getNumericValue<size_t>(slice, NRFILES, 0);
       meta._nrDBServers =
-          basics::VelocyPackHelper::getNumericValue<unsigned int>(slice, NRDBSERVERS, 1);
+          basics::VelocyPackHelper::getNumericValue<unsigned int>(
+              slice, NRDBSERVERS, 1);
       meta._serverId =
           basics::VelocyPackHelper::getStringValue(slice, SERVERID, "");
-      meta._potentiallyInconsistent =
-          basics::VelocyPackHelper::getBooleanValue(slice, POTENTIALLYINCONSISTENT, false);
+      meta._potentiallyInconsistent = basics::VelocyPackHelper::getBooleanValue(
+          slice, POTENTIALLYINCONSISTENT, false);
       meta._isAvailable =
           basics::VelocyPackHelper::getBooleanValue(slice, AVAILABLE, true);
       meta._nrPiecesPresent =
-          basics::VelocyPackHelper::getNumericValue<unsigned int>(slice, NRPIECESPRESENT, 1);
+          basics::VelocyPackHelper::getNumericValue<unsigned int>(
+              slice, NRPIECESPRESENT, 1);
       return meta;
     } catch (std::exception const& e) {
       return ResultT<BackupMeta>::error(TRI_ERROR_BAD_PARAMETER, e.what());
@@ -133,8 +136,9 @@ struct BackupMeta {
   }
 
   BackupMeta(std::string const& id, std::string const& version,
-             std::string const& datetime, std::vector<std::string> const& hashes,
-             size_t sizeInBytes, size_t nrFiles, unsigned int nrDBServers,
+             std::string const& datetime,
+             std::vector<std::string> const& hashes, size_t sizeInBytes,
+             size_t nrFiles, unsigned int nrDBServers,
              std::string const& serverId, bool potentiallyInconsistent)
       : _id(id),
         _version(version),

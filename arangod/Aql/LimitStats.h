@@ -53,8 +53,8 @@ class LimitStats {
   // Don't forget to update operator== when adding new members!
 };
 
-auto operator+=(ExecutionStats& executionStats, LimitStats const& limitStats) noexcept
-    -> ExecutionStats&;
+auto operator+=(ExecutionStats& executionStats,
+                LimitStats const& limitStats) noexcept -> ExecutionStats&;
 
 auto operator==(LimitStats const&, LimitStats const&) noexcept -> bool;
 

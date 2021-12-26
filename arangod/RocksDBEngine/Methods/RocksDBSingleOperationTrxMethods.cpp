@@ -41,7 +41,8 @@ RocksDBSingleOperationTrxMethods::RocksDBSingleOperationTrxMethods(
   TRI_ASSERT(!_state->hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS));
 }
 
-rocksdb::ReadOptions RocksDBSingleOperationTrxMethods::iteratorReadOptions() const {
+rocksdb::ReadOptions RocksDBSingleOperationTrxMethods::iteratorReadOptions()
+    const {
   // This should never be called for a single operation transaction.
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -49,8 +50,9 @@ rocksdb::ReadOptions RocksDBSingleOperationTrxMethods::iteratorReadOptions() con
       "should not call iteratorReadOptions for single operation methods");
 }
 
-void RocksDBSingleOperationTrxMethods::prepareOperation(DataSourceId cid, RevisionId rid,
-                                                        TRI_voc_document_operation_e operationType) {
+void RocksDBSingleOperationTrxMethods::prepareOperation(
+    DataSourceId cid, RevisionId rid,
+    TRI_voc_document_operation_e operationType) {
   TRI_ASSERT(_rocksTransaction != nullptr);
 
   // singleOp => no modifications yet
@@ -73,7 +75,8 @@ void RocksDBSingleOperationTrxMethods::prepareOperation(DataSourceId cid, Revisi
     case TRI_VOC_DOCUMENT_OPERATION_REMOVE: {
       TRI_ASSERT(rid.isSet());
 
-      auto logValue = RocksDBLogValue::SingleRemoveV2(_state->vocbase().id(), cid, rid);
+      auto logValue =
+          RocksDBLogValue::SingleRemoveV2(_state->vocbase().id(), cid, rid);
 
       _rocksTransaction->PutLogData(logValue.slice());
       TRI_ASSERT(_numLogdata == 0);
@@ -84,7 +87,8 @@ void RocksDBSingleOperationTrxMethods::prepareOperation(DataSourceId cid, Revisi
 }
 
 /// @brief undo the effects of the previous prepareOperation call
-void RocksDBSingleOperationTrxMethods::rollbackOperation(TRI_voc_document_operation_e operationType) {
+void RocksDBSingleOperationTrxMethods::rollbackOperation(
+    TRI_voc_document_operation_e operationType) {
   ++_numRollbacks;
   switch (operationType) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
@@ -101,8 +105,9 @@ void RocksDBSingleOperationTrxMethods::rollbackOperation(TRI_voc_document_operat
   }
 }
 
-std::unique_ptr<rocksdb::Iterator> RocksDBSingleOperationTrxMethods::NewIterator(
-    rocksdb::ColumnFamilyHandle*, ReadOptionsCallback) {
+std::unique_ptr<rocksdb::Iterator>
+RocksDBSingleOperationTrxMethods::NewIterator(rocksdb::ColumnFamilyHandle*,
+                                              ReadOptionsCallback) {
   // This should never be called for a single operation transaction.
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -110,7 +115,8 @@ std::unique_ptr<rocksdb::Iterator> RocksDBSingleOperationTrxMethods::NewIterator
       "should not call NewIterator for single operation methods");
 }
 
-bool RocksDBSingleOperationTrxMethods::iteratorMustCheckBounds(ReadOwnWrites) const {
+bool RocksDBSingleOperationTrxMethods::iteratorMustCheckBounds(
+    ReadOwnWrites) const {
   // This should never be called for a single operation transaction.
   TRI_ASSERT(false);
   return false;

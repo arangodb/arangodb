@@ -35,8 +35,9 @@ struct Helpers {
   /// element.
   /// if this would exceed the container's capacity, use a factor-of-2
   /// growth strategy to calculate the capacity.
-  template <typename T>
-  static std::size_t nextCapacity(T const& container, std::size_t initialCapacity) {
+  template<typename T>
+  static std::size_t nextCapacity(T const& container,
+                                  std::size_t initialCapacity) {
     std::size_t capacity;
     if (container.empty()) {
       // reserve some initial space
@@ -55,7 +56,7 @@ struct Helpers {
   /// @brief reserve space for at least one more element in the container.
   /// if this would exceed the container's capacity, use a factor-of-2
   /// growth strategy to grow the container's memory.
-  template <typename T>
+  template<typename T>
   static void reserveSpace(T& container, std::size_t initialCapacity) {
     std::size_t capacity = nextCapacity(container, initialCapacity);
 

@@ -45,12 +45,13 @@ namespace aql {
 class Query;
 
 struct QueryEntryCopy {
-  QueryEntryCopy(TRI_voc_tick_t id, std::string const& database,
-                 std::string const& user, std::string&& queryString,
-                 std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
-                 std::vector<std::string> dataSources, double started,
-                 double runTime, QueryExecutionState::ValueType state,
-                 bool stream, std::optional<ErrorCode> resultCode);
+  QueryEntryCopy(
+      TRI_voc_tick_t id, std::string const& database, std::string const& user,
+      std::string&& queryString,
+      std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
+      std::vector<std::string> dataSources, double started, double runTime,
+      QueryExecutionState::ValueType state, bool stream,
+      std::optional<ErrorCode> resultCode);
 
   void toVelocyPack(arangodb::velocypack::Builder& out) const;
 

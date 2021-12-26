@@ -61,13 +61,11 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
 /// @brief Gets the best fitting index for an AQL condition.
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
-bool getBestIndexHandleForFilterCondition(aql::Collection const& collection,
-                                          arangodb::aql::AstNode*& node,
-                                          arangodb::aql::Variable const* reference,
-                                          size_t itemsInCollection,
-                                          aql::IndexHint const& hint,
-                                          std::shared_ptr<Index>& usedIndex,
-                                          bool onlyEdgeIndexes = false);
+bool getBestIndexHandleForFilterCondition(
+    aql::Collection const& collection, arangodb::aql::AstNode*& node,
+    arangodb::aql::Variable const* reference, size_t itemsInCollection,
+    aql::IndexHint const& hint, std::shared_ptr<Index>& usedIndex,
+    bool onlyEdgeIndexes = false);
 
 /// @brief Gets the best fitting index for an AQL sort condition
 /// note: the caller must have read-locked the underlying collection when
@@ -80,8 +78,9 @@ bool getIndexForSortCondition(aql::Collection const& coll,
                               size_t& coveredAttributes);
 
 NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
-    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo, bool evaluateFCalls,
-    bool sorted, AstNode const* condition, Variable const* indexVariable);
+    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
+    bool evaluateFCalls, bool sorted, AstNode const* condition,
+    Variable const* indexVariable);
 
 }  // namespace utils
 }  // namespace aql

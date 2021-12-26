@@ -50,7 +50,8 @@ extern "C" const SSL_METHOD* SSLv3_method(void);
 /// @brief creates an SSL context
 ////////////////////////////////////////////////////////////////////////////////
 
-asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol, std::string const& keyfile) {
+asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol,
+                                           std::string const& keyfile) {
   // create our context
 
   asio_ns::ssl::context::method meth;
@@ -114,7 +115,8 @@ asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol, std::string con
                                    "unable to read certificate from file");
   }
 
-  sslctx.use_private_key_file(keyfile, asio_ns::ssl::context::file_format::pem, ec);
+  sslctx.use_private_key_file(keyfile, asio_ns::ssl::context::file_format::pem,
+                              ec);
   if (ec) {
     LOG_TOPIC("98712", ERR, arangodb::Logger::FIXME)
         << "cannot read key from '" << keyfile << "': " << ec;
@@ -173,12 +175,10 @@ std::unordered_set<uint64_t> arangodb::availableSslProtocols() {
       SslProtocol::TLS_V12, SslProtocol::TLS_V13, SslProtocol::TLS_GENERIC};
 #else
   // no support for TLS 1.3
-  return std::unordered_set<uint64_t>{SslProtocol::SSL_V2,  // unsupported!
-                                      SslProtocol::SSL_V23,
-                                      SslProtocol::SSL_V3,
-                                      SslProtocol::TLS_V1,
-                                      SslProtocol::TLS_V12,
-                                      SslProtocol::TLS_GENERIC};
+  return std::unordered_set<uint64_t>{
+      SslProtocol::SSL_V2,  // unsupported!
+      SslProtocol::SSL_V23, SslProtocol::SSL_V3,     SslProtocol::TLS_V1,
+      SslProtocol::TLS_V12, SslProtocol::TLS_GENERIC};
 #endif
 }
 

@@ -53,7 +53,8 @@ struct CFilesSetup {
 
     if (!Initialized) {
       Initialized = true;
-      arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
+      arangodb::RandomGenerator::initialize(
+          arangodb::RandomGenerator::RandomType::MERSENNE);
     }
 
     _directory.appendText(TRI_GetTempPath());
@@ -112,7 +113,8 @@ struct CFilesSetup {
 };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                        action tests
+// --SECTION--                                                        action
+// tests
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,7 +131,8 @@ TEST(RocksDBShaCalculatorThread, sha_a_new_file) {
   auto ret_val = TRI_WriteFile(new_sst.c_str(), "the quick brown fox", 19);
   EXPECT_EQ(ret_val, TRI_ERROR_NO_ERROR);
 
-  auto [good, hash] = arangodb::RocksDBShaCalculatorThread::shaCalcFile(new_sst.c_str());
+  auto [good, hash] =
+      arangodb::RocksDBShaCalculatorThread::shaCalcFile(new_sst.c_str());
   EXPECT_TRUE(good);
   EXPECT_EQ(hash,
             "9ecb36561341d18eb65484e833efea61edc74b84cf5e6ae1b81c63533e25fc8f");
@@ -145,7 +148,8 @@ TEST(RocksDBShaCalculatorThread, sha_a_different_new_file) {
   auto ret_val = TRI_WriteFile(new_sst.c_str(), "12345 67890 12345 67890", 23);
   EXPECT_EQ(ret_val, TRI_ERROR_NO_ERROR);
 
-  auto [good, hash] = arangodb::RocksDBShaCalculatorThread::shaCalcFile(new_sst.c_str());
+  auto [good, hash] =
+      arangodb::RocksDBShaCalculatorThread::shaCalcFile(new_sst.c_str());
   EXPECT_TRUE(good);
   EXPECT_EQ(hash,
             "e7f5561536b5891e35d6021015d67d5798b3731088b44dcebf6bad03785ac8c2");
@@ -158,7 +162,8 @@ TEST(RocksDBShaCalculatorThread, sha_a_non_existing_file) {
   sst += TRI_DIR_SEPARATOR_CHAR;
   sst += "does-not-exist";
 
-  auto [good, hash] = arangodb::RocksDBShaCalculatorThread::shaCalcFile(sst.c_str());
+  auto [good, hash] =
+      arangodb::RocksDBShaCalculatorThread::shaCalcFile(sst.c_str());
   EXPECT_FALSE(good);
   EXPECT_EQ(hash, "");
 }
@@ -166,9 +171,11 @@ TEST(RocksDBShaCalculatorThread, sha_a_non_existing_file) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test checkMissingShaFiles scenarios
 ////////////////////////////////////////////////////////////////////////////////
-class TestRocksDBShaCalculatorThread : public arangodb::RocksDBShaCalculatorThread {
+class TestRocksDBShaCalculatorThread
+    : public arangodb::RocksDBShaCalculatorThread {
  public:
-  TestRocksDBShaCalculatorThread(arangodb::application_features::ApplicationServer& server)
+  TestRocksDBShaCalculatorThread(
+      arangodb::application_features::ApplicationServer& server)
       : arangodb::RocksDBShaCalculatorThread(server, "testListener") {
     // sample sha values are simulated, not real
     setup.writeFile("MANIFEST-000004", "some manifest data");

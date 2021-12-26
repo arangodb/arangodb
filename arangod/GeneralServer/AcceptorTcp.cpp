@@ -40,7 +40,7 @@ using namespace arangodb::rest;
 namespace arangodb {
 namespace rest {
 
-template <SocketType T>
+template<SocketType T>
 void AcceptorTcp<T>::open() {
   asio_ns::ip::tcp::resolver resolver(_ctx.io_context);
 
@@ -55,11 +55,11 @@ void AcceptorTcp<T>::open() {
   } else {  // we need to resolve the string containing the ip
     std::unique_ptr<asio_ns::ip::tcp::resolver::query> query;
     if (_endpoint->domain() == AF_INET6) {
-      query.reset(new asio_ns::ip::tcp::resolver::query(asio_ns::ip::tcp::v6(), hostname,
-                                                        std::to_string(portNumber)));
+      query.reset(new asio_ns::ip::tcp::resolver::query(
+          asio_ns::ip::tcp::v6(), hostname, std::to_string(portNumber)));
     } else if (_endpoint->domain() == AF_INET) {
-      query.reset(new asio_ns::ip::tcp::resolver::query(asio_ns::ip::tcp::v4(), hostname,
-                                                        std::to_string(portNumber)));
+      query.reset(new asio_ns::ip::tcp::resolver::query(
+          asio_ns::ip::tcp::v4(), hostname, std::to_string(portNumber)));
     } else {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_IP_ADDRESS_INVALID);
     }
@@ -124,7 +124,7 @@ void AcceptorTcp<T>::open() {
   asyncAccept();
 }
 
-template <SocketType T>
+template<SocketType T>
 void AcceptorTcp<T>::close() {
   if (_open) {
     _open = false;  // make sure the _open flag is `false` before we
@@ -134,12 +134,12 @@ void AcceptorTcp<T>::close() {
   }
 }
 
-template <SocketType T>
+template<SocketType T>
 void AcceptorTcp<T>::cancel() {
   _acceptor.cancel();
 }
 
-template <>
+template<>
 void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
   TRI_ASSERT(_endpoint->encryption() == Endpoint::EncryptionType::NONE);
 
@@ -147,7 +147,8 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
       std::make_unique<AsioSocket<SocketType::Tcp>>(_server.selectIoContext());
   auto& socket = asioSocket->socket;
   auto& peer = asioSocket->peer;
-  auto handler = [this, asioSocket = std::move(asioSocket)](asio_ns::error_code const& ec) mutable {
+  auto handler = [this, asioSocket = std::move(asioSocket)](
+                     asio_ns::error_code const& ec) mutable {
     if (ec) {
       handleError(ec);
       return;
@@ -165,11 +166,11 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
     info.clientPort = asioSocket->peer.port();
 
     LOG_TOPIC("853aa", DEBUG, arangodb::Logger::COMMUNICATION)
-        << "accepted connection from " << info.clientAddress << ":" << info.clientPort;
+        << "accepted connection from " << info.clientAddress << ":"
+        << info.clientPort;
 
-    auto commTask =
-        std::make_shared<HttpCommTask<SocketType::Tcp>>(_server, std::move(info),
-                                                        std::move(asioSocket));
+    auto commTask = std::make_shared<HttpCommTask<SocketType::Tcp>>(
+        _server, std::move(info), std::move(asioSocket));
     _server.registerTask(std::move(commTask));
     this->asyncAccept();
   };
@@ -178,8 +179,9 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
   _acceptor.async_accept(socket, peer, std::move(handler));
 }
 
-template <>
-void AcceptorTcp<SocketType::Tcp>::performHandshake(std::unique_ptr<AsioSocket<SocketType::Tcp>> proto) {
+template<>
+void AcceptorTcp<SocketType::Tcp>::performHandshake(
+    std::unique_ptr<AsioSocket<SocketType::Tcp>> proto) {
   TRI_ASSERT(false);  // MSVC requires the implementation to exist
 }
 
@@ -194,15 +196,17 @@ bool tls_h2_negotiated(SSL* ssl) {
 
   // allowed value is "h2"
   // http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
-  if (next_proto != nullptr && next_proto_len == 2 && memcmp(next_proto, "h2", 2) == 0) {
+  if (next_proto != nullptr && next_proto_len == 2 &&
+      memcmp(next_proto, "h2", 2) == 0) {
     return true;
   }
   return false;
 }
 }  // namespace
 
-template <>
-void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<SocketType::Ssl>> proto) {
+template<>
+void AcceptorTcp<SocketType::Ssl>::performHandshake(
+    std::unique_ptr<AsioSocket<SocketType::Ssl>> proto) {
   // io_context is single-threaded, no sync needed
   auto* ptr = proto.get();
   proto->timer.expires_from_now(std::chrono::seconds(60));
@@ -213,7 +217,8 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<S
     ptr->shutdown([](asio_ns::error_code const&) {});  // ignore error
   });
 
-  auto cb = [this, as = std::move(proto)](asio_ns::error_code const& ec) mutable {
+  auto cb = [this,
+             as = std::move(proto)](asio_ns::error_code const& ec) mutable {
     as->timer.cancel();
     if (ec) {
       LOG_TOPIC("4c6b4", DEBUG, arangodb::Logger::COMMUNICATION)
@@ -235,11 +240,11 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<S
 
     std::shared_ptr<CommTask> task;
     if (tls_h2_negotiated(as->socket.native_handle())) {
-      task = std::make_shared<H2CommTask<SocketType::Ssl>>(_server, std::move(info),
-                                                           std::move(as));
+      task = std::make_shared<H2CommTask<SocketType::Ssl>>(
+          _server, std::move(info), std::move(as));
     } else {
-      task = std::make_shared<HttpCommTask<SocketType::Ssl>>(_server, std::move(info),
-                                                             std::move(as));
+      task = std::make_shared<HttpCommTask<SocketType::Ssl>>(
+          _server, std::move(info), std::move(as));
     }
 
     _server.registerTask(std::move(task));
@@ -247,7 +252,7 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<S
   ptr->handshake(std::move(cb));
 }
 
-template <>
+template<>
 void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
   TRI_ASSERT(_endpoint->encryption() == Endpoint::EncryptionType::SSL);
 
@@ -258,7 +263,8 @@ void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
       std::make_unique<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContexts());
   auto& socket = asioSocket->socket.lowest_layer();
   auto& peer = asioSocket->peer;
-  auto handler = [this, asioSocket = std::move(asioSocket)](asio_ns::error_code const& ec) mutable {
+  auto handler = [this, asioSocket = std::move(asioSocket)](
+                     asio_ns::error_code const& ec) mutable {
     if (ec) {
       handleError(ec);
       return;

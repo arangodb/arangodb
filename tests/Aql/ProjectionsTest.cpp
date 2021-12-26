@@ -208,9 +208,11 @@ TEST(ProjectionsTest, buildNested2) {
   ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[0].type);
   ASSERT_EQ(AttributeNamePath("_key"), p[1].path);
   ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::KeyAttribute, p[1].type);
-  ASSERT_EQ(AttributeNamePath(std::vector<std::string>({{"a"}, {"z"}, {"A"}})), p[2].path);
+  ASSERT_EQ(AttributeNamePath(std::vector<std::string>({{"a"}, {"z"}, {"A"}})),
+            p[2].path);
   ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::MultiAttribute, p[2].type);
-  ASSERT_EQ(AttributeNamePath(std::vector<std::string>({{"b"}, {"b"}})), p[3].path);
+  ASSERT_EQ(AttributeNamePath(std::vector<std::string>({{"b"}, {"b"}})),
+            p[3].path);
   ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::MultiAttribute, p[3].type);
 }
 
@@ -246,7 +248,8 @@ TEST(ProjectionsTest, buildOverlapping3) {
   Projections p(std::move(attributes));
 
   ASSERT_EQ(1, p.size());
-  ASSERT_EQ(AttributeNamePath(std::vector<std::string>({{"a"}, {"b"}})), p[0].path);
+  ASSERT_EQ(AttributeNamePath(std::vector<std::string>({{"a"}, {"b"}})),
+            p[0].path);
   ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::MultiAttribute, p[0].type);
 }
 
@@ -260,7 +263,8 @@ TEST(ProjectionsTest, buildOverlapping4) {
   Projections p(std::move(attributes));
 
   ASSERT_EQ(3, p.size());
-  ASSERT_EQ(AttributeNamePath(std::vector<std::string>({{"a"}, {"b"}, {"c"}})), p[0].path);
+  ASSERT_EQ(AttributeNamePath(std::vector<std::string>({{"a"}, {"b"}, {"c"}})),
+            p[0].path);
   ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::MultiAttribute, p[0].type);
   ASSERT_EQ(AttributeNamePath("b"), p[1].path);
   ASSERT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[1].type);

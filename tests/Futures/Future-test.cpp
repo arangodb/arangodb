@@ -43,7 +43,7 @@ auto makeInvalid() {
   return invalid;
 }
 
-template <typename T>
+template<typename T>
 constexpr typename std::decay<T>::type copy(T&& value) noexcept(
     noexcept(typename std::decay<T>::type(std::forward<T>(value)))) {
   return std::forward<T>(value);
@@ -333,37 +333,40 @@ TEST(FutureTest, thenError) {
   // By auto reference
   {
     auto f =
-        makeFuture().thenValue([](Unit) { throw eggs; }).thenError<eggs_t>([&](auto const& /* e */) noexcept {
-          flag();
-        });
+        makeFuture()
+            .thenValue([](Unit) { throw eggs; })
+            .thenError<eggs_t>([&](auto const& /* e */) noexcept { flag(); });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.get());
   }
 
   {
-    auto f =
-        makeFuture().thenValue([](Unit) { throw eggs; }).thenError<eggs_t>([&](auto const& /* e */) {
-          flag();
-          return makeFuture();
-        });
+    auto f = makeFuture()
+                 .thenValue([](Unit) { throw eggs; })
+                 .thenError<eggs_t>([&](auto const& /* e */) {
+                   flag();
+                   return makeFuture();
+                 });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.get());
   }
 
   // By value
   {
-    auto f = makeFuture().thenValue([](Unit) { throw eggs; }).thenError<eggs_t>([&](eggs_t /* e */) noexcept {
-      flag();
-    });
+    auto f = makeFuture()
+                 .thenValue([](Unit) { throw eggs; })
+                 .thenError<eggs_t>([&](eggs_t /* e */) noexcept { flag(); });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.get());
   }
 
   {
-    auto f = makeFuture().thenValue([](Unit) { throw eggs; }).thenError<eggs_t>([&](eggs_t /* e */) {
-      flag();
-      return makeFuture();
-    });
+    auto f = makeFuture()
+                 .thenValue([](Unit) { throw eggs; })
+                 .thenError<eggs_t>([&](eggs_t /* e */) {
+                   flag();
+                   return makeFuture();
+                 });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.get());
   }
@@ -390,38 +393,41 @@ TEST(FutureTest, thenError) {
   //
   // Non-exceptions
   {
-    auto f = makeFuture().thenValue([](Unit) { throw -1; }).thenError<int>([&](int /* e */) noexcept {
-      flag();
-    });
+    auto f = makeFuture()
+                 .thenValue([](Unit) { throw -1; })
+                 .thenError<int>([&](int /* e */) noexcept { flag(); });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.get());
   }
 
   {
-    auto f = makeFuture().thenValue([](Unit) { throw -1; }).thenError<int>([&](int /* e */) {
-      flag();
-      return makeFuture();
-    });
+    auto f = makeFuture()
+                 .thenValue([](Unit) { throw -1; })
+                 .thenError<int>([&](int /* e */) {
+                   flag();
+                   return makeFuture();
+                 });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.get());
   }
 
   // Mutable lambda
   {
-    auto f =
-        makeFuture().thenValue([](Unit) { throw eggs; }).thenError<eggs_t&>([&](eggs_t& /* e */) mutable noexcept {
-          flag();
-        });
+    auto f = makeFuture()
+                 .thenValue([](Unit) { throw eggs; })
+                 .thenError<eggs_t&>(
+                     [&](eggs_t& /* e */) mutable noexcept { flag(); });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.get());
   }
 
   {
-    auto f =
-        makeFuture().thenValue([](Unit) { throw eggs; }).thenError<eggs_t&>([&](eggs_t& /* e */) mutable {
-          flag();
-          return makeFuture();
-        });
+    auto f = makeFuture()
+                 .thenValue([](Unit) { throw eggs; })
+                 .thenError<eggs_t&>([&](eggs_t& /* e */) mutable {
+                   flag();
+                   return makeFuture();
+                 });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.get());
   }
@@ -435,36 +441,40 @@ TEST(FutureTest, thenError) {
     ASSERT_TRUE(10 == f.get());
   }
   {
-    auto f = makeFuture()
-                 .thenValue([](Unit) -> int { throw std::runtime_error("test"); })
-                 .thenError<const eggs_t&>(onErrorHelperEggs)
-                 .thenError<std::exception>(onErrorHelperGeneric);
+    auto f =
+        makeFuture()
+            .thenValue([](Unit) -> int { throw std::runtime_error("test"); })
+            .thenError<const eggs_t&>(onErrorHelperEggs)
+            .thenError<std::exception>(onErrorHelperGeneric);
     ASSERT_TRUE(20 == f.get());
   }
   {
-    auto f = makeFuture()
-                 .thenValue([](Unit) -> int { throw std::runtime_error("test"); })
-                 .thenError<const eggs_t&>(onErrorHelperEggs);
+    auto f =
+        makeFuture()
+            .thenValue([](Unit) -> int { throw std::runtime_error("test"); })
+            .thenError<const eggs_t&>(onErrorHelperEggs);
     EXPECT_THROW(f.get(), std::runtime_error);
   }
 
   // No throw
   {
-    auto f =
-        makeFuture().thenValue([](Unit) noexcept { return 42; }).thenError<eggs_t&>([&](eggs_t& /* e */) noexcept {
-          flag();
-          return -1;
-        });
+    auto f = makeFuture()
+                 .thenValue([](Unit) noexcept { return 42; })
+                 .thenError<eggs_t&>([&](eggs_t& /* e */) noexcept {
+                   flag();
+                   return -1;
+                 });
     EXPECT_NO_FLAG();
     ASSERT_TRUE(42 == f.get());
   }
 
   {
-    auto f =
-        makeFuture().thenValue([](Unit) noexcept { return 42; }).thenError<eggs_t&>([&](eggs_t& /* e */) {
-          flag();
-          return makeFuture<int>(-1);
-        });
+    auto f = makeFuture()
+                 .thenValue([](Unit) noexcept { return 42; })
+                 .thenError<eggs_t&>([&](eggs_t& /* e */) {
+                   flag();
+                   return makeFuture<int>(-1);
+                 });
     EXPECT_NO_FLAG();
     ASSERT_TRUE(42 == f.get());
   }
@@ -480,30 +490,32 @@ TEST(FutureTest, thenError) {
   }
 
   {
-    auto f = makeFuture()
-                 .thenValue([](Unit) { throw eggs; })
-                 .thenError<std::runtime_error&>([&](std::runtime_error& /* e */) {
-                   flag();
-                   return makeFuture();
-                 });
+    auto f =
+        makeFuture()
+            .thenValue([](Unit) { throw eggs; })
+            .thenError<std::runtime_error&>([&](std::runtime_error& /* e */) {
+              flag();
+              return makeFuture();
+            });
     EXPECT_NO_FLAG();
     EXPECT_THROW(f.get(), eggs_t);
   }
 
   // Returned value propagates
   {
-    auto f = makeFuture()
-                 .thenValue([](Unit) -> int { throw eggs; })
-                 .thenError<eggs_t&>([&](eggs_t& /* e */) noexcept { return 42; });
+    auto f =
+        makeFuture()
+            .thenValue([](Unit) -> int { throw eggs; })
+            .thenError<eggs_t&>([&](eggs_t& /* e */) noexcept { return 42; });
     ASSERT_TRUE(42 == f.get());
   }
 
   // Returned future propagates
   {
-    auto f =
-        makeFuture().thenValue([](Unit) -> int { throw eggs; }).thenError<eggs_t&>([&](eggs_t& /* e */) {
-          return makeFuture<int>(42);
-        });
+    auto f = makeFuture()
+                 .thenValue([](Unit) -> int { throw eggs; })
+                 .thenError<eggs_t&>(
+                     [&](eggs_t& /* e */) { return makeFuture<int>(42); });
     ASSERT_TRUE(42 == f.get());
   }
 
@@ -516,9 +528,10 @@ TEST(FutureTest, thenError) {
   }
 
   {
-    auto f = makeFuture()
-                 .thenValue([](Unit) -> int { throw eggs; })
-                 .thenError<eggs_t&>([&](eggs_t& e) -> Future<int> { throw e; });
+    auto f =
+        makeFuture()
+            .thenValue([](Unit) -> int { throw eggs; })
+            .thenError<eggs_t&>([&](eggs_t& e) -> Future<int> { throw e; });
     EXPECT_THROW(f.get(), eggs_t);
   }
 

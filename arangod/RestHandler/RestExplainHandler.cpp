@@ -34,8 +34,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestExplainHandler::RestExplainHandler(application_features::ApplicationServer& server,
-                                       GeneralRequest* request, GeneralResponse* response)
+RestExplainHandler::RestExplainHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestExplainHandler::execute() {
@@ -105,10 +106,10 @@ void RestExplainHandler::explainQuery() {
 
   auto bindBuilder = std::make_shared<VPackBuilder>(bindSlice);
 
-  auto query =
-      arangodb::aql::Query::create(transaction::StandaloneContext::Create(_vocbase),
-                                   aql::QueryString(queryString), std::move(bindBuilder),
-                                   aql::QueryOptions(optionsSlice));
+  auto query = arangodb::aql::Query::create(
+      transaction::StandaloneContext::Create(_vocbase),
+      aql::QueryString(queryString), std::move(bindBuilder),
+      aql::QueryOptions(optionsSlice));
   auto queryResult = query->explain();
 
   if (queryResult.result.fail()) {
@@ -137,7 +138,8 @@ void RestExplainHandler::explainQuery() {
   }
 
   result.add(StaticStrings::Error, VPackValue(false));
-  result.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));
+  result.add(StaticStrings::Code,
+             VPackValue(static_cast<int>(ResponseCode::OK)));
   result.close();
 
   generateResult(rest::ResponseCode::OK, result.slice());

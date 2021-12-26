@@ -57,9 +57,10 @@ struct OptimizerRule {
   };
 
   /// @brief helper for building flags
-  template <typename... Args>
+  template<typename... Args>
   static std::underlying_type<Flags>::type makeFlags(Flags flag, Args... args) {
-    return static_cast<std::underlying_type<Flags>::type>(flag) + makeFlags(args...);
+    return static_cast<std::underlying_type<Flags>::type>(flag) +
+           makeFlags(args...);
   }
 
   static std::underlying_type<Flags>::type makeFlags() {
@@ -68,7 +69,8 @@ struct OptimizerRule {
 
   /// @brief check a flag for the rule
   bool hasFlag(Flags flag) const {
-    return ((flags & static_cast<std::underlying_type<Flags>::type>(flag)) != 0);
+    return ((flags & static_cast<std::underlying_type<Flags>::type>(flag)) !=
+            0);
   }
 
   bool canBeDisabled() const { return hasFlag(Flags::CanBeDisabled); }
@@ -250,7 +252,8 @@ struct OptimizerRule {
     scatterIResearchViewInClusterRule,
 
 #ifdef USE_ENTERPRISE
-    // move traversal on SatelliteGraph to db server and add scatter / gather / remote
+    // move traversal on SatelliteGraph to db server and add scatter / gather /
+    // remote
     scatterSatelliteGraphRule,
 #endif
 
@@ -291,7 +294,8 @@ struct OptimizerRule {
     // push collect operations to the db servers
     collectInClusterRule,
 
-    // make sort node aware of subsequent limit statements for internal optimizations
+    // make sort node aware of subsequent limit statements for internal
+    // optimizations
     applySortLimitRule,
 
     // try to restrict fragments to a single shard if possible
@@ -305,18 +309,21 @@ struct OptimizerRule {
     // avoid copying large amounts of unneeded documents
     moveFiltersIntoEnumerateRule,
 
-    // turns LENGTH(FOR doc IN collection ... RETURN doc) into an optimized count
+    // turns LENGTH(FOR doc IN collection ... RETURN doc) into an optimized
+    // count
     // operation
     optimizeCountRule,
 
     // parallelizes execution in coordinator-sided GatherNodes
     parallelizeGatherRule,
 
-    // allows execution nodes to asynchronously prefetch the next batch from their
+    // allows execution nodes to asynchronously prefetch the next batch from
+    // their
     // upstream node.
     asyncPrefetch,
 
-    // reduce a sorted gather to an unsorted gather if only a single shard is affected
+    // reduce a sorted gather to an unsorted gather if only a single shard is
+    // affected
     decayUnnecessarySortedGatherRule,
 
 #ifdef USE_ENTERPRISE

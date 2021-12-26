@@ -35,15 +35,19 @@
 
 namespace {
 
-std::unordered_map<std::string, arangodb::LogTimeFormats::TimeFormat> const formatMap{
+std::unordered_map<std::string,
+                   arangodb::LogTimeFormats::TimeFormat> const formatMap{
     {"uptime", arangodb::LogTimeFormats::TimeFormat::Uptime},
     {"uptime-millis", arangodb::LogTimeFormats::TimeFormat::UptimeMillis},
     {"uptime-micros", arangodb::LogTimeFormats::TimeFormat::UptimeMicros},
     {"timestamp", arangodb::LogTimeFormats::TimeFormat::UnixTimestamp},
-    {"timestamp-millis", arangodb::LogTimeFormats::TimeFormat::UnixTimestampMillis},
-    {"timestamp-micros", arangodb::LogTimeFormats::TimeFormat::UnixTimestampMicros},
+    {"timestamp-millis",
+     arangodb::LogTimeFormats::TimeFormat::UnixTimestampMillis},
+    {"timestamp-micros",
+     arangodb::LogTimeFormats::TimeFormat::UnixTimestampMicros},
     {"utc-datestring", arangodb::LogTimeFormats::TimeFormat::UTCDateString},
-    {"utc-datestring-millis", arangodb::LogTimeFormats::TimeFormat::UTCDateStringMillis},
+    {"utc-datestring-millis",
+     arangodb::LogTimeFormats::TimeFormat::UTCDateStringMillis},
     {"local-datestring", arangodb::LogTimeFormats::TimeFormat::LocalDateString},
 };
 
@@ -76,7 +80,8 @@ bool isLocalFormat(TimeFormat format) {
 /// @brief whether or not the specified format produces string outputs
 /// (in contrast to numeric outputs)
 bool isStringFormat(TimeFormat format) {
-  return format == TimeFormat::UTCDateString || format == TimeFormat::UTCDateStringMillis ||
+  return format == TimeFormat::UTCDateString ||
+         format == TimeFormat::UTCDateStringMillis ||
          format == TimeFormat::LocalDateString;
 }
 
@@ -105,7 +110,8 @@ TimeFormat formatFromName(std::string const& name) {
   return (*it).second;
 }
 
-void writeTime(std::string& out, TimeFormat format, std::chrono::system_clock::time_point tp,
+void writeTime(std::string& out, TimeFormat format,
+               std::chrono::system_clock::time_point tp,
                std::chrono::system_clock::time_point startTp) {
   using namespace date;
   using namespace std::chrono;
@@ -123,13 +129,15 @@ void writeTime(std::string& out, TimeFormat format, std::chrono::system_clock::t
     if (format == TimeFormat::UptimeMillis) {
       // uptime with millisecond precision
       out.push_back('.');
-      appendNumber(uint64_t(duration_cast<milliseconds>(tp - startTp).count() % 1000),
-                   out, 3);
+      appendNumber(
+          uint64_t(duration_cast<milliseconds>(tp - startTp).count() % 1000),
+          out, 3);
     } else if (format == TimeFormat::UptimeMicros) {
       // uptime with microsecond precision
       out.push_back('.');
-      appendNumber(uint64_t(duration_cast<microseconds>(tp - startTp).count() % 1000000),
-                   out, 6);
+      appendNumber(
+          uint64_t(duration_cast<microseconds>(tp - startTp).count() % 1000000),
+          out, 6);
     }
   } else if (format == TimeFormat::UnixTimestamp) {
     // integral unix timestamp
@@ -141,20 +149,24 @@ void writeTime(std::string& out, TimeFormat format, std::chrono::system_clock::t
     arangodb::basics::StringUtils::itoa(
         uint64_t(duration_cast<seconds>(tp2.time_since_epoch()).count()), out);
     out.push_back('.');
-    appendNumber(uint64_t(duration_cast<milliseconds>(tp - tp2).count()), out, 3);
+    appendNumber(uint64_t(duration_cast<milliseconds>(tp - tp2).count()), out,
+                 3);
   } else if (format == TimeFormat::UnixTimestampMicros) {
     // unix timestamp with microsecond precision
     system_clock::time_point tp2(duration_cast<seconds>(tp.time_since_epoch()));
     arangodb::basics::StringUtils::itoa(
         uint64_t(duration_cast<seconds>(tp2.time_since_epoch()).count()), out);
     out.push_back('.');
-    appendNumber(uint64_t(duration_cast<microseconds>(tp - tp2).count()), out, 6);
+    appendNumber(uint64_t(duration_cast<microseconds>(tp - tp2).count()), out,
+                 6);
   } else {
     // all date-string variants handled here
-    if (format == TimeFormat::UTCDateString || format == TimeFormat::UTCDateStringMillis) {
+    if (format == TimeFormat::UTCDateString ||
+        format == TimeFormat::UTCDateStringMillis) {
       // UTC datestring
       // UTC datestring with milliseconds
-      arangodb::tp_sys_clock_ms secs(duration_cast<milliseconds>(tp.time_since_epoch()));
+      arangodb::tp_sys_clock_ms secs(
+          duration_cast<milliseconds>(tp.time_since_epoch()));
       auto days = floor<date::days>(secs);
       auto ymd = year_month_day(days);
       appendNumber(uint64_t(static_cast<int>(ymd.year())), out, 4);

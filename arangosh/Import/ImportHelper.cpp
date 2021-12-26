@@ -136,7 +136,8 @@ bool isDecimal(char const* field, size_t fieldLength) {
 namespace arangodb {
 namespace import {
 
-ImportStatistics::ImportStatistics(application_features::ApplicationServer& server)
+ImportStatistics::ImportStatistics(
+    application_features::ApplicationServer& server)
     : _histogram(server) {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -156,9 +157,11 @@ unsigned const ImportHelper::MaxBatchSize = 768 * 1024 * 1024;
 /// constructor and destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ImportHelper::ImportHelper(ClientFeature const& client, std::string const& endpoint,
+ImportHelper::ImportHelper(ClientFeature const& client,
+                           std::string const& endpoint,
                            httpclient::SimpleHttpClientParams const& params,
-                           uint64_t maxUploadSize, uint32_t threadCount, bool autoUploadSize)
+                           uint64_t maxUploadSize, uint32_t threadCount,
+                           bool autoUploadSize)
     : _clientFeature(client),
       _httpClient(client.createHttpClient(endpoint, params)),
       _maxUploadSize(maxUploadSize),
@@ -230,7 +233,8 @@ ImportHelper::~ImportHelper() {
 
 // read headers from separate file
 bool ImportHelper::readHeadersFile(std::string const& headersFile,
-                                   DelimitedImportType typeImport, char separator) {
+                                   DelimitedImportType typeImport,
+                                   char separator) {
   TRI_ASSERT(!headersFile.empty());
   TRI_ASSERT(!_headersSeen);
 
@@ -254,7 +258,8 @@ bool ImportHelper::readHeadersFile(std::string const& headersFile,
   _rowsToSkip = 0;
 
   TRI_csv_parser_t parser;
-  TRI_InitCsvParser(&parser, ProcessCsvBegin, ProcessCsvAdd, ProcessCsvEnd, nullptr);
+  TRI_InitCsvParser(&parser, ProcessCsvBegin, ProcessCsvAdd, ProcessCsvEnd,
+                    nullptr);
   TRI_SetSeparatorCsvParser(&parser, separator);
   TRI_UseBackslashCsvParser(&parser, _useBackslash);
 
@@ -267,7 +272,8 @@ bool ImportHelper::readHeadersFile(std::string const& headersFile,
   }
   parser._dataAdd = this;
 
-  auto guard = scopeGuard([&parser]() noexcept { TRI_DestroyCsvParser(&parser); });
+  auto guard =
+      scopeGuard([&parser]() noexcept { TRI_DestroyCsvParser(&parser); });
 
   constexpr int BUFFER_SIZE = 16384;
   char buffer[BUFFER_SIZE];
@@ -321,7 +327,8 @@ bool ImportHelper::readHeadersFile(std::string const& headersFile,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ImportHelper::importDelimited(std::string const& collectionName,
-                                   std::string const& pathName, std::string const& headersFile,
+                                   std::string const& pathName,
+                                   std::string const& headersFile,
                                    DelimitedImportType typeImport) {
   ManagedDirectory directory(_clientFeature.server(), TRI_Dirname(pathName),
                              false, false, true);
@@ -366,7 +373,8 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
     TRI_Free(s);
   }
 
-  if (!headersFile.empty() && !readHeadersFile(headersFile, typeImport, separator)) {
+  if (!headersFile.empty() &&
+      !readHeadersFile(headersFile, typeImport, separator)) {
     return false;
   }
 
@@ -393,7 +401,8 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   double nextProgress = ProgressStep;
 
   TRI_csv_parser_t parser;
-  TRI_InitCsvParser(&parser, ProcessCsvBegin, ProcessCsvAdd, ProcessCsvEnd, nullptr);
+  TRI_InitCsvParser(&parser, ProcessCsvBegin, ProcessCsvAdd, ProcessCsvEnd,
+                    nullptr);
   TRI_SetSeparatorCsvParser(&parser, separator);
   TRI_UseBackslashCsvParser(&parser, _useBackslash);
 
@@ -442,7 +451,8 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
 }
 
 bool ImportHelper::importJson(std::string const& collectionName,
-                              std::string const& pathName, bool assumeLinewise) {
+                              std::string const& pathName,
+                              bool assumeLinewise) {
   ManagedDirectory directory(_clientFeature.server(), TRI_Dirname(pathName),
                              false, false, true);
   std::string fileName(TRI_Basename(pathName.c_str()));
@@ -543,8 +553,8 @@ bool ImportHelper::importJson(std::string const& collectionName,
 
       // send all data before last '\n'
       char const* first = _outputBuffer.c_str();
-      char const* pos =
-          static_cast<char const*>(memrchr(first, '\n', _outputBuffer.length()));
+      char const* pos = static_cast<char const*>(
+          memrchr(first, '\n', _outputBuffer.length()));
 
       if (pos != nullptr) {
         size_t len = pos - first + 1;
@@ -582,7 +592,8 @@ bool ImportHelper::importJson(std::string const& collectionName,
 /// private functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead, double& nextProgress) {
+void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead,
+                                  double& nextProgress) {
   if (!_progress) {
     return;
   }
@@ -630,8 +641,8 @@ void ImportHelper::verifyMergeAttributesSyntax(std::string const& input) const {
   }
 }
 
-std::vector<ImportHelper::Step> ImportHelper::tokenizeInput(std::string const& input,
-                                                            std::string const& key) const {
+std::vector<ImportHelper::Step> ImportHelper::tokenizeInput(
+    std::string const& input, std::string const& key) const {
   std::vector<Step> steps;
   std::size_t pos = 0;
 
@@ -735,8 +746,9 @@ void ImportHelper::beginLine(size_t row) {
 /// @brief adds a new CSV field
 ////////////////////////////////////////////////////////////////////////////////
 
-void ImportHelper::ProcessCsvAdd(TRI_csv_parser_t* parser, char const* field, size_t fieldLength,
-                                 size_t row, size_t column, bool escaped) {
+void ImportHelper::ProcessCsvAdd(TRI_csv_parser_t* parser, char const* field,
+                                 size_t fieldLength, size_t row, size_t column,
+                                 bool escaped) {
   auto importHelper = static_cast<ImportHelper*>(parser->_dataAdd);
   importHelper->addField(field, fieldLength, row, column, escaped);
 }
@@ -771,7 +783,8 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
 
   auto guard = scopeGuard([&]() noexcept {
     if (!_mergeAttributesInstructions.empty()) {
-      _fieldsLookUpTable.try_emplace(_columnNames[column], std::move(lookUpTableValue));
+      _fieldsLookUpTable.try_emplace(_columnNames[column],
+                                     std::move(lookUpTableValue));
     }
   });
 
@@ -798,7 +811,8 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
     lookUpTableValue = field;
   }
 
-  if ((row == _rowsToSkip && !_headersSeen) || (escaped && itTypes == _datatypes.end()) ||
+  if ((row == _rowsToSkip && !_headersSeen) ||
+      (escaped && itTypes == _datatypes.end()) ||
       _keyColumn == static_cast<decltype(_keyColumn)>(column)) {
     // headline or escaped value
     _lineBuffer.appendJsonEncoded(field, fieldLength);
@@ -929,8 +943,9 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
 /// @brief ends a CSV line
 ////////////////////////////////////////////////////////////////////////////////
 
-void ImportHelper::ProcessCsvEnd(TRI_csv_parser_t* parser, char const* field, size_t fieldLength,
-                                 size_t row, size_t column, bool escaped) {
+void ImportHelper::ProcessCsvEnd(TRI_csv_parser_t* parser, char const* field,
+                                 size_t fieldLength, size_t row, size_t column,
+                                 bool escaped) {
   auto importHelper = static_cast<ImportHelper*>(parser->_dataAdd);
 
   if (importHelper->getRowsRead() < importHelper->getRowsToSkip()) {
@@ -956,35 +971,41 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
   if (!_mergeAttributesInstructions.empty()) {
     for (auto& [key, value] : _mergeAttributesInstructions) {
       if (row == _rowsToSkip) {
-        std::for_each(value.begin(), value.end(),
-                      [this, key = &key](Step const& attrProperties) {
-                        if (!attrProperties.isLiteral) {
-                          if (std::find(_columnNames.begin(), _columnNames.end(),
-                                        attrProperties.value) == _columnNames.end()) {
-                            LOG_TOPIC("ab353", WARN, arangodb::Logger::FIXME) << "In --merge-attributes: No matching value for attribute name "
-                                                                              << attrProperties
-                                                                                     .value
-                                                                              << " to populate attribute "
-                                                                              << key;
-                          }
-                        }
-                      });
+        std::for_each(
+            value.begin(), value.end(),
+            [this, key = &key](Step const& attrProperties) {
+              if (!attrProperties.isLiteral) {
+                if (std::find(_columnNames.begin(), _columnNames.end(),
+                              attrProperties.value) == _columnNames.end()) {
+                  LOG_TOPIC("ab353", WARN, arangodb::Logger::FIXME)
+                      << "In --merge-attributes: No matching value for "
+                         "attribute name "
+                      << attrProperties.value << " to populate attribute "
+                      << key;
+                }
+              }
+            });
         addField(key.c_str(), key.size(), row, column, escaped);
       } else {
         std::string attrsToMerge;
-        std::for_each(value.begin(), value.end(), [this, &attrsToMerge](Step const& attrProperties) {
-          if (!attrProperties.isLiteral) {
-            if (auto it = _fieldsLookUpTable.find(attrProperties.value);
-                it != _fieldsLookUpTable.end()) {
-              attrsToMerge += it->second;
-            }
-          } else {
-            attrsToMerge += attrProperties.value;
-          }
-        });
+        std::for_each(
+            value.begin(), value.end(),
+            [this, &attrsToMerge](Step const& attrProperties) {
+              if (!attrProperties.isLiteral) {
+                if (auto it = _fieldsLookUpTable.find(attrProperties.value);
+                    it != _fieldsLookUpTable.end()) {
+                  attrsToMerge += it->second;
+                }
+              } else {
+                attrsToMerge += attrProperties.value;
+              }
+            });
         bool tmp = _convert;
-        _convert = false;  // force only --merge-attribute arguments to be treated as string then switch back to normal conversion
-        addField(attrsToMerge.c_str(), attrsToMerge.size(), row, column, escaped);
+        _convert =
+            false;  // force only --merge-attribute arguments to be treated as
+                    // string then switch back to normal conversion
+        addField(attrsToMerge.c_str(), attrsToMerge.size(), row, column,
+                 escaped);
         _convert = tmp;
       }
       column++;
@@ -1027,7 +1048,8 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
 }
 
 bool ImportHelper::collectionExists() {
-  std::string const url("/_api/collection/" + StringUtils::urlEncode(_collectionName));
+  std::string const url("/_api/collection/" +
+                        StringUtils::urlEncode(_collectionName));
   std::unique_ptr<SimpleHttpResult> result(
       _httpClient->request(rest::RequestType::GET, url, nullptr, 0));
 
@@ -1077,13 +1099,14 @@ bool ImportHelper::checkCreateCollection() {
   builder.openObject();
   builder.add(arangodb::StaticStrings::DataSourceName,
               arangodb::velocypack::Value(_collectionName));
-  builder.add(arangodb::StaticStrings::DataSourceType,
-              arangodb::velocypack::Value(_createCollectionType == "edge" ? 3 : 2));
+  builder.add(
+      arangodb::StaticStrings::DataSourceType,
+      arangodb::velocypack::Value(_createCollectionType == "edge" ? 3 : 2));
   builder.close();
 
   std::string data = builder.slice().toJson();
-  std::unique_ptr<SimpleHttpResult> result(
-      _httpClient->request(rest::RequestType::POST, url, data.c_str(), data.size()));
+  std::unique_ptr<SimpleHttpResult> result(_httpClient->request(
+      rest::RequestType::POST, url, data.c_str(), data.size()));
 
   if (result == nullptr) {
     return false;
@@ -1091,7 +1114,8 @@ bool ImportHelper::checkCreateCollection() {
 
   auto code = static_cast<rest::ResponseCode>(result->getHttpReturnCode());
   if (code == rest::ResponseCode::CONFLICT || code == rest::ResponseCode::OK ||
-      code == rest::ResponseCode::CREATED || code == rest::ResponseCode::ACCEPTED) {
+      code == rest::ResponseCode::CREATED ||
+      code == rest::ResponseCode::ACCEPTED) {
     // collection already exists or was created successfully
     return true;
   }
@@ -1123,8 +1147,8 @@ bool ImportHelper::truncateCollection() {
 
   std::string const url = "/_api/collection/" + _collectionName + "/truncate";
   std::string data = "";  // never send an completly empty string
-  std::unique_ptr<SimpleHttpResult> result(
-      _httpClient->request(rest::RequestType::PUT, url, data.c_str(), data.size()));
+  std::unique_ptr<SimpleHttpResult> result(_httpClient->request(
+      rest::RequestType::PUT, url, data.c_str(), data.size()));
 
   if (result == nullptr) {
     return false;
@@ -1132,7 +1156,8 @@ bool ImportHelper::truncateCollection() {
 
   auto code = static_cast<rest::ResponseCode>(result->getHttpReturnCode());
   if (code == rest::ResponseCode::CONFLICT || code == rest::ResponseCode::OK ||
-      code == rest::ResponseCode::CREATED || code == rest::ResponseCode::ACCEPTED) {
+      code == rest::ResponseCode::CREATED ||
+      code == rest::ResponseCode::ACCEPTED) {
     // collection already exists or was created successfully
     return true;
   }
@@ -1150,9 +1175,9 @@ void ImportHelper::handleCsvBuffer(uint64_t bufferSizeThreshold) {
     return;
   }
 
-  std::string url("/_api/import?" + getCollectionUrlPart() +
-                  "&line=" + StringUtils::itoa(_rowOffset) +
-                  "&details=true&onDuplicate=" + StringUtils::urlEncode(_onDuplicateAction) +
+  std::string url("/_api/import?" + getCollectionUrlPart() + "&line=" +
+                  StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" +
+                  StringUtils::urlEncode(_onDuplicateAction) +
                   "&ignoreMissing=" + (_ignoreMissing ? "true" : "false"));
 
   if (!_fromCollectionPrefix.empty()) {
@@ -1188,7 +1213,8 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
 
   // build target url
   std::string url("/_api/import?" + getCollectionUrlPart() +
-                  "&details=true&onDuplicate=" + StringUtils::urlEncode(_onDuplicateAction));
+                  "&details=true&onDuplicate=" +
+                  StringUtils::urlEncode(_onDuplicateAction));
   if (isObject) {
     url += "&type=array";
   } else {

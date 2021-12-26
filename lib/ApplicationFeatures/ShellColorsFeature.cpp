@@ -64,7 +64,8 @@ char const* ShellColorsFeature::SHELL_COLOR_LINK_START = NoColor;
 char const* ShellColorsFeature::SHELL_COLOR_LINK_MIDDLE = NoColor;
 char const* ShellColorsFeature::SHELL_COLOR_LINK_END = NoColor;
 
-ShellColorsFeature::ShellColorsFeature(application_features::ApplicationServer& server)
+ShellColorsFeature::ShellColorsFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, "ShellColors"), _initialized(false) {
   setOptional(false);
 

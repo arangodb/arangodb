@@ -118,7 +118,8 @@ class RocksDBTransactionState final : public TransactionState {
   }
 
   /// @brief acquire a database snapshot if we do not yet have one.
-  /// Returns true if a snapshot was acquired, otherwise false (i.e., if we already had a snapshot)
+  /// Returns true if a snapshot was acquired, otherwise false (i.e., if we
+  /// already had a snapshot)
   bool ensureSnapshot();
 
   static RocksDBTransactionState* toState(transaction::Methods* trx) {
@@ -141,7 +142,8 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief in parallel mode. READ-ONLY transactions
   bool inParallelMode() const { return _parallel; }
 
-  RocksDBTransactionCollection::TrackedOperations& trackedOperations(DataSourceId cid);
+  RocksDBTransactionCollection::TrackedOperations& trackedOperations(
+      DataSourceId cid);
 
   /// @brief Track documents inserted to the collection
   ///        Used to update the revision tree for replication after commit
@@ -198,12 +200,14 @@ class RocksDBTransactionState final : public TransactionState {
 /// something in maintainer mode, and do nothing in release mode!
 struct RocksDBTransactionStateGuard {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  explicit RocksDBTransactionStateGuard(RocksDBTransactionState* state) noexcept;
+  explicit RocksDBTransactionStateGuard(
+      RocksDBTransactionState* state) noexcept;
   ~RocksDBTransactionStateGuard();
 
   RocksDBTransactionState* _state;
 #else
-  explicit RocksDBTransactionStateGuard(RocksDBTransactionState* /*state*/) noexcept {}
+  explicit RocksDBTransactionStateGuard(
+      RocksDBTransactionState* /*state*/) noexcept {}
   ~RocksDBTransactionStateGuard() = default;
 #endif
 };

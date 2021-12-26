@@ -49,8 +49,10 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 
-QueryResultCursor::QueryResultCursor(TRI_vocbase_t& vocbase, aql::QueryResult&& result,
-                                     size_t batchSize, double ttl, bool hasCount)
+QueryResultCursor::QueryResultCursor(TRI_vocbase_t& vocbase,
+                                     aql::QueryResult&& result,
+                                     size_t batchSize, double ttl,
+                                     bool hasCount)
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, hasCount),
       _guard(vocbase),
       _result(std::move(result)),
@@ -88,7 +90,8 @@ VPackSlice QueryResultCursor::next() {
 /// @brief return the cursor size
 size_t QueryResultCursor::count() const { return _iterator.size(); }
 
-std::pair<ExecutionState, Result> QueryResultCursor::dump(VPackBuilder& builder) {
+std::pair<ExecutionState, Result> QueryResultCursor::dump(
+    VPackBuilder& builder) {
   // This cursor cannot block, result already there.
   auto res = dumpSync(builder);
   return {ExecutionState::DONE, res};
@@ -155,10 +158,12 @@ QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
   TRI_IF_FAILURE("QueryStreamCursor::directKillAfterPrepare") {
     debugKillQuery();
   }
-  // In all the following ASSERTs it is valid (though unlikely) that the query is already killed
-  // In the cluster this kill operation will trigger cleanup side-effects, such as changing the STATE
-  // and commiting / aborting the transaction here
-  TRI_ASSERT(_query->state() == aql::QueryExecutionState::ValueType::EXECUTION ||
+  // In all the following ASSERTs it is valid (though unlikely) that the query
+  // is already killed In the cluster this kill operation will trigger cleanup
+  // side-effects, such as changing the STATE and commiting / aborting the
+  // transaction here
+  TRI_ASSERT(_query->state() ==
+                 aql::QueryExecutionState::ValueType::EXECUTION ||
              _query->killed());
   _ctx = _query->newTrxContext();
 
@@ -172,8 +177,10 @@ QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
   // otherwise we just get issues because we might still try to use the trx
   TRI_ASSERT(trx.status() == transaction::Status::RUNNING || _query->killed());
   // things break if the Query outlives a V8 transaction
-  _stateChangeCb = [this](transaction::Methods& /*trx*/, transaction::Status status) {
-    if (status == transaction::Status::COMMITTED || status == transaction::Status::ABORTED) {
+  _stateChangeCb = [this](transaction::Methods& /*trx*/,
+                          transaction::Status status) {
+    if (status == transaction::Status::COMMITTED ||
+        status == transaction::Status::ABORTED) {
       this->setDeleted();
     }
   };
@@ -211,7 +218,8 @@ void QueryStreamCursor::debugKillQuery() {
 #endif
 }
 
-std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder) {
+std::pair<ExecutionState, Result> QueryStreamCursor::dump(
+    VPackBuilder& builder) {
   TRI_IF_FAILURE("QueryCursor::directKillBeforeQueryIsGettingDumped") {
     debugKillQuery();
   }
@@ -252,19 +260,22 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder)
     this->setDeleted();
     return {ExecutionState::DONE,
             Result(ex.code(), "AQL: " + ex.message() +
-                                  QueryExecutionState::toStringWithPrefix(_query->state()))};
+                                  QueryExecutionState::toStringWithPrefix(
+                                      _query->state()))};
   } catch (std::bad_alloc const&) {
     this->setDeleted();
-    return {ExecutionState::DONE,
-            Result(TRI_ERROR_OUT_OF_MEMORY,
-                   StringUtils::concatT(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-                                        QueryExecutionState::toStringWithPrefix(
-                                            _query->state())))};
+    return {
+        ExecutionState::DONE,
+        Result(TRI_ERROR_OUT_OF_MEMORY,
+               StringUtils::concatT(
+                   TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                   QueryExecutionState::toStringWithPrefix(_query->state())))};
   } catch (std::exception const& ex) {
     this->setDeleted();
     return {ExecutionState::DONE,
             Result(TRI_ERROR_INTERNAL,
-                   ex.what() + QueryExecutionState::toStringWithPrefix(_query->state()))};
+                   ex.what() + QueryExecutionState::toStringWithPrefix(
+                                   _query->state()))};
   } catch (...) {
     this->setDeleted();
     return {ExecutionState::DONE,
@@ -327,18 +338,21 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
 
   } catch (arangodb::basics::Exception const& ex) {
     this->setDeleted();
-    return Result(ex.code(), "AQL: " + ex.message() +
-                                 QueryExecutionState::toStringWithPrefix(_query->state()));
+    return Result(ex.code(),
+                  "AQL: " + ex.message() +
+                      QueryExecutionState::toStringWithPrefix(_query->state()));
   } catch (std::bad_alloc const&) {
     this->setDeleted();
-    return Result(TRI_ERROR_OUT_OF_MEMORY,
-                  StringUtils::concatT(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-                                       QueryExecutionState::toStringWithPrefix(
-                                           _query->state())));
+    return Result(
+        TRI_ERROR_OUT_OF_MEMORY,
+        StringUtils::concatT(
+            TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+            QueryExecutionState::toStringWithPrefix(_query->state())));
   } catch (std::exception const& ex) {
     this->setDeleted();
-    return Result(TRI_ERROR_INTERNAL,
-                  ex.what() + QueryExecutionState::toStringWithPrefix(_query->state()));
+    return Result(
+        TRI_ERROR_INTERNAL,
+        ex.what() + QueryExecutionState::toStringWithPrefix(_query->state()));
   } catch (...) {
     this->setDeleted();
     return Result(TRI_ERROR_INTERNAL,
@@ -397,7 +411,8 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
 
     while (rowsWritten < batchSize() && _queryResultPos < block->numRows()) {
       if (!silent && resultRegister.isValid()) {
-        AqlValue const& value = block->getValueReference(_queryResultPos, resultRegister);
+        AqlValue const& value =
+            block->getValueReference(_queryResultPos, resultRegister);
         if (!value.isEmpty()) {  // ignore empty blocks (e.g. from UpdateBlock)
           uint64_t oldCapacity = buffer.capacity();
 
@@ -420,7 +435,8 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
     }
   }
 
-  TRI_ASSERT(_queryResults.empty() || _queryResultPos < _queryResults.front()->numRows());
+  TRI_ASSERT(_queryResults.empty() ||
+             _queryResultPos < _queryResults.front()->numRows());
 
   builder.close();  // result
 

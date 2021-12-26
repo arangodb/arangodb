@@ -49,7 +49,8 @@ struct DatabaseNameValidator {
 
   /// @brief checks if a database name is allowed in the given context.
   /// returns true if the name is allowed and false otherwise
-  static bool isAllowedName(bool allowSystem, bool extendedNames, std::string_view name) noexcept;
+  static bool isAllowedName(bool allowSystem, bool extendedNames,
+                            std::string_view name) noexcept;
 };
 
 struct CollectionNameValidator {
@@ -57,14 +58,16 @@ struct CollectionNameValidator {
   static constexpr std::size_t maxNameLengthTraditional = 256;
   static constexpr std::size_t maxNameLengthExtended = maxNameLengthTraditional;
 
-  /// @brief maximum length of a collection name (in bytes), (not yet) based on convention
+  /// @brief maximum length of a collection name (in bytes), (not yet) based on
+  /// convention
   static constexpr std::size_t maxNameLength(bool extendedNames) noexcept {
     return extendedNames ? maxNameLengthExtended : maxNameLengthTraditional;
   }
 
   /// @brief checks if a collection name is allowed in the given context.
   /// returns true if the name is allowed and false otherwise
-  static bool isAllowedName(bool allowSystem, bool extendedNames, std::string_view name) noexcept;
+  static bool isAllowedName(bool allowSystem, bool extendedNames,
+                            std::string_view name) noexcept;
 };
 
 struct ViewNameValidator {
@@ -82,7 +85,8 @@ struct ViewNameValidator {
 
   /// @brief checks if a view name is allowed in the given context.
   /// returns true if the name is allowed and false otherwise
-  static bool isAllowedName(bool allowSystem, bool extendedNames, std::string_view name) noexcept;
+  static bool isAllowedName(bool allowSystem, bool extendedNames,
+                            std::string_view name) noexcept;
 };
 
 struct IndexNameValidator {
@@ -90,7 +94,8 @@ struct IndexNameValidator {
   static constexpr std::size_t maxNameLengthTraditional = 256;
   static constexpr std::size_t maxNameLengthExtended = maxNameLengthTraditional;
 
-  /// @brief maximum length of an index name (in bytes), (not yet) based on convention
+  /// @brief maximum length of an index name (in bytes), (not yet) based on
+  /// convention
   static constexpr std::size_t maxNameLength(bool extendedNames) noexcept {
     return extendedNames ? maxNameLengthExtended : maxNameLengthTraditional;
   }
@@ -105,7 +110,8 @@ struct AnalyzerNameValidator {
   static constexpr std::size_t maxNameLengthTraditional = 64;
   static constexpr std::size_t maxNameLengthExtended = maxNameLengthTraditional;
 
-  /// @brief maximum length of an analyzer name (in bytes), (not yet) based on convention
+  /// @brief maximum length of an analyzer name (in bytes), (not yet) based on
+  /// convention
   static constexpr std::size_t maxNameLength(bool extendedNames) noexcept {
     return extendedNames ? maxNameLengthExtended : maxNameLengthTraditional;
   }

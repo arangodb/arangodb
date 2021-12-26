@@ -45,24 +45,26 @@ namespace options {
 
 IniFileParser::IniFileParser(ProgramOptions* options) : _options(options) {
   // a line with just comments, e.g. #... or ;...
-  _matchers.comment =
-      std::regex("^[ \t]*([#;].*)?$", std::regex::nosubs | std::regex::ECMAScript);
+  _matchers.comment = std::regex("^[ \t]*([#;].*)?$",
+                                 std::regex::nosubs | std::regex::ECMAScript);
   // a line that starts a section, e.g. [server]
-  _matchers.section =
-      std::regex("^[ \t]*\\[([-_A-Za-z0-9]*)\\][ \t]*$", std::regex::ECMAScript);
+  _matchers.section = std::regex("^[ \t]*\\[([-_A-Za-z0-9]*)\\][ \t]*$",
+                                 std::regex::ECMAScript);
   // a line that starts a community section, e.g. [server:community]
-  _matchers.communitySection =
-      std::regex("^[ \t]*\\[([-_A-Za-z0-9]*):community\\][ \t]*$", std::regex::ECMAScript);
+  _matchers.communitySection = std::regex(
+      "^[ \t]*\\[([-_A-Za-z0-9]*):community\\][ \t]*$", std::regex::ECMAScript);
   // a line that starts an enterprise section, e.g. [server:enterprise]
   _matchers.enterpriseSection =
-      std::regex("^[ \t]*\\[([-_A-Za-z0-9]*):enterprise\\][ \t]*$", std::regex::ECMAScript);
+      std::regex("^[ \t]*\\[([-_A-Za-z0-9]*):enterprise\\][ \t]*$",
+                 std::regex::ECMAScript);
   // a line that assigns a value to a named variable
   _matchers.assignment = std::regex(
       "^[ \t]*(([-_A-Za-z0-9]*\\.)?[-_A-Za-z0-9]*)[ \t]*=[ \t]*(.*?)?[ \t]*$",
       std::regex::ECMAScript);
   // an include line
   _matchers.include =
-      std::regex("^[ \t]*@include[ \t]*([-_A-Za-z0-9/\\.]*)[ \t]*$", std::regex::ECMAScript);
+      std::regex("^[ \t]*@include[ \t]*([-_A-Za-z0-9/\\.]*)[ \t]*$",
+                 std::regex::ECMAScript);
 }
 
 // parse a config file. returns true if all is well, false otherwise
@@ -87,7 +89,8 @@ bool IniFileParser::parse(std::string const& filename, bool endPassAfterwards) {
 // returns true if all is well, false otherwise
 // errors that occur during parse are reported to _options
 bool IniFileParser::parseContent(std::string const& filename,
-                                 std::string const& buf, bool endPassAfterwards) {
+                                 std::string const& buf,
+                                 bool endPassAfterwards) {
   bool isCommunity = false;
   bool isEnterprise = false;
   std::string currentSection;
@@ -104,7 +107,8 @@ bool IniFileParser::parseContent(std::string const& filename,
     }
 
     // set context for parsing (used in error messages)
-    _options->setContext("config file '" + filename + "', line #" + std::to_string(lineNumber));
+    _options->setContext("config file '" + filename + "', line #" +
+                         std::to_string(lineNumber));
 
     std::smatch match;
     if (std::regex_match(line, match, _matchers.section)) {

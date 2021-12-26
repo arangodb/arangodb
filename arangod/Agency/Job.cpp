@@ -100,7 +100,8 @@ bool Job::considerCancellation() {
 };
 
 bool Job::finish(std::string const& server, std::string const& shard,
-                 bool success, std::string const& reason, query_t const payload) {
+                 bool success, std::string const& reason,
+                 query_t const payload) {
   try {  // protect everything, just in case
     Builder pending, finished;
 
@@ -180,7 +181,8 @@ bool Job::finish(std::string const& server, std::string const& shard,
 
       }  // -- operations
 
-      if (preconditions.isObject() && preconditions.length() > 0) {  // preconditions --
+      if (preconditions.isObject() &&
+          preconditions.length() > 0) {  // preconditions --
         VPackObjectBuilder precguard(&finished);
         for (auto const& prec : VPackObjectIterator(preconditions)) {
           finished.add(prec.key.copyString(), prec.value);
@@ -205,8 +207,8 @@ bool Job::finish(std::string const& server, std::string const& shard,
   return false;
 }
 
-std::string Job::randomIdleAvailableServer(Node const& snap,
-                                           std::vector<std::string> const& exclude) {
+std::string Job::randomIdleAvailableServer(
+    Node const& snap, std::vector<std::string> const& exclude) {
   std::vector<std::string> as = availableServers(snap);
   std::string ret;
 
@@ -217,7 +219,8 @@ std::string Job::randomIdleAvailableServer(Node const& snap,
   try {
     for (auto const& srv : snap.hasAsChildren(healthPrefix).value().get()) {
       // ignore excluded servers
-      if (std::find(std::begin(exclude), std::end(exclude), srv.first) != std::end(exclude)) {
+      if (std::find(std::begin(exclude), std::end(exclude), srv.first) !=
+          std::end(exclude)) {
         continue;
       }
       // ignore servers not in availableServers above:
@@ -248,7 +251,8 @@ std::string Job::randomIdleAvailableServer(Node const& snap,
   return ret;
 }
 
-std::string Job::randomIdleAvailableServer(Node const& snap, Slice const& exclude) {
+std::string Job::randomIdleAvailableServer(Node const& snap,
+                                           Slice const& exclude) {
   std::vector<std::string> ev;
   if (exclude.isArray()) {
     for (const auto& s : VPackArrayIterator(exclude)) {
@@ -262,7 +266,8 @@ std::string Job::randomIdleAvailableServer(Node const& snap, Slice const& exclud
 
 // The following counts in a given server list how many of the servers are
 // in Status "GOOD" or "BAD".
-size_t Job::countGoodOrBadServersInList(Node const& snap, VPackSlice const& serverList) {
+size_t Job::countGoodOrBadServersInList(Node const& snap,
+                                        VPackSlice const& serverList) {
   size_t count = 0;
   if (!serverList.isArray()) {
     // No array, strange, return 0
@@ -300,8 +305,8 @@ size_t Job::countGoodOrBadServersInList(Node const& snap, VPackSlice const& serv
 
 // The following counts in a given server list how many of the servers are
 // in Status "GOOD" or "BAD".
-size_t Job::countGoodOrBadServersInList(Node const& snap,
-                                        std::vector<std::string> const& serverList) {
+size_t Job::countGoodOrBadServersInList(
+    Node const& snap, std::vector<std::string> const& serverList) {
   size_t count = 0;
   auto const& health = snap.hasAsChildren(healthPrefix);
   // Do we have a Health substructure?
@@ -363,12 +368,14 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
     ret.push_back(srv.first);
   }
 
-  auto excludePrefix = [&ret, &snapshot](std::string const& prefix, bool isArray) {
+  auto excludePrefix = [&ret, &snapshot](std::string const& prefix,
+                                         bool isArray) {
     if (isArray) {
       auto slice = snapshot.hasAsSlice(prefix);
       if (slice) {
         for (VPackSlice srv : VPackArrayIterator(*slice)) {
-          ret.erase(std::remove(ret.begin(), ret.end(), srv.copyString()), ret.end());
+          ret.erase(std::remove(ret.begin(), ret.end(), srv.copyString()),
+                    ret.end());
         }
       }
     } else {
@@ -390,7 +397,8 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
 }
 
 /// @brief Get servers from Supervision with health status GOOD
-std::vector<std::string> Job::healthyServers(arangodb::consensus::Node const& snapshot) {
+std::vector<std::string> Job::healthyServers(
+    arangodb::consensus::Node const& snapshot) {
   std::vector<std::string> ret;
   for (auto const& srv : snapshot.get(healthPrefix).value().get().children()) {
     auto healthState = srv.second->hasAsString("Status");
@@ -401,7 +409,7 @@ std::vector<std::string> Job::healthyServers(arangodb::consensus::Node const& sn
   return ret;
 }
 
-template <typename T>
+template<typename T>
 std::vector<size_t> idxsort(const std::vector<T>& v) {
   std::vector<size_t> idx(v.size());
 
@@ -430,7 +438,8 @@ std::vector<std::string> sortedShardList(Node const& shards) {
   return sorted;
 }
 
-std::vector<Job::shard_t> Job::clones(Node const& snapshot, std::string const& database,
+std::vector<Job::shard_t> Job::clones(Node const& snapshot,
+                                      std::string const& database,
                                       std::string const& collection,
                                       std::string const& shard) {
   std::vector<shard_t> ret;
@@ -441,17 +450,22 @@ std::vector<Job::shard_t> Job::clones(Node const& snapshot, std::string const& d
               planPath = databasePath + "/" + collection + "/shards";
 
   auto myshards = sortedShardList(snapshot.hasAsNode(planPath).value());
-  auto steps = std::distance(myshards.begin(),
-                             std::find(myshards.begin(), myshards.end(), shard));
+  auto steps = std::distance(
+      myshards.begin(), std::find(myshards.begin(), myshards.end(), shard));
 
-  for (const auto& colptr : snapshot.hasAsChildren(databasePath).value().get()) {  // collections
+  for (const auto& colptr :
+       snapshot.hasAsChildren(databasePath).value().get()) {  // collections
 
     auto const& col = *colptr.second;
     auto const& otherCollection = colptr.first;
 
-    if (otherCollection != collection && col.has("distributeShardsLike") &&  // use .has() form to prevent logging of missing
-        col.hasAsSlice("distributeShardsLike").value().copyString() == collection) {
-      auto const& theirshards = sortedShardList(col.hasAsNode("shards").value().get());
+    if (otherCollection != collection &&
+        col.has("distributeShardsLike") &&  // use .has() form to prevent
+                                            // logging of missing
+        col.hasAsSlice("distributeShardsLike").value().copyString() ==
+            collection) {
+      auto const& theirshards =
+          sortedShardList(col.hasAsNode("shards").value().get());
       if (theirshards.size() > 0) {  // do not care about virtual collections
         if (theirshards.size() == myshards.size()) {
           ret.emplace_back(otherCollection, theirshards[steps]);
@@ -467,7 +481,8 @@ std::vector<Job::shard_t> Job::clones(Node const& snapshot, std::string const& d
   return ret;
 }
 
-std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOOD" health
+std::string
+Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOOD" health
     Node const& snap, std::string const& db, std::string const& col,
     std::string const& shrd, std::string const& serverToAvoid) {
   // serverToAvoid is the leader for which we are seeking a replacement. Note
@@ -484,10 +499,12 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
   std::unordered_map<std::string, size_t> currentServers;
   for (const auto& clone : cs) {
     auto sharedPath = db + "/" + clone.collection + "/";
-    auto currentShardPath = curColPrefix + sharedPath + clone.shard + "/servers";
+    auto currentShardPath =
+        curColPrefix + sharedPath + clone.shard + "/servers";
     auto currentFailoverCandidatesPath =
         curColPrefix + sharedPath + clone.shard + "/failoverCandidates";
-    auto plannedShardPath = planColPrefix + sharedPath + "shards/" + clone.shard;
+    auto plannedShardPath =
+        planColPrefix + sharedPath + "shards/" + clone.shard;
 
     // start up race condition  ... current might not have everything in plan
     if (!snap.has(currentShardPath) || !snap.has(plannedShardPath)) {
@@ -559,8 +576,9 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
 /// @brief The shard must be one of a collection without
 /// `distributeShardsLike`. This returns all servers which
 /// are in sync for this shard and for all of its clones.
-std::vector<std::string> Job::findAllInSyncReplicas(Node const& snap, std::string const& db,
-                                                    std::vector<Job::shard_t> const& shardsLikeMe) {
+std::vector<std::string> Job::findAllInSyncReplicas(
+    Node const& snap, std::string const& db,
+    std::vector<Job::shard_t> const& shardsLikeMe) {
   std::vector<std::string> result;
 
   bool first = true;
@@ -600,7 +618,8 @@ std::vector<std::string> Job::findAllInSyncReplicas(Node const& snap, std::strin
 /// `distributeShardsLike`. This returns all servers which
 /// are in `failoverCandidates` for this shard or for any of its clones.
 std::unordered_set<std::string> Job::findAllFailoverCandidates(
-    Node const& snap, std::string const& db, std::vector<Job::shard_t> const& shardsLikeMe) {
+    Node const& snap, std::string const& db,
+    std::vector<Job::shard_t> const& shardsLikeMe) {
   std::unordered_set<std::string> result;
 
   for (const auto& clone : shardsLikeMe) {
@@ -621,7 +640,8 @@ std::unordered_set<std::string> Job::findAllFailoverCandidates(
 }
 
 std::string Job::uuidLookup(std::string const& shortID) {
-  for (auto const& uuid : _snapshot.hasAsChildren(mapUniqueToShortID).value().get()) {
+  for (auto const& uuid :
+       _snapshot.hasAsChildren(mapUniqueToShortID).value().get()) {
     if ((*uuid.second).hasAsString("ShortName").value() == shortID) {
       return uuid.first;
     }
@@ -665,7 +685,9 @@ bool Job::abortable(Node const& snapshot, std::string const& jobId) {
 
 void Job::doForAllShards(
     Node const& snapshot, std::string& database, std::vector<shard_t>& shards,
-    std::function<void(Slice plan, Slice current, std::string& planPath, std::string& curPath)> worker) {
+    std::function<void(Slice plan, Slice current, std::string& planPath,
+                       std::string& curPath)>
+        worker) {
   for (auto const& collShard : shards) {
     std::string shard = collShard.shard;
     std::string collection = collShard.collection;
@@ -740,9 +762,9 @@ void Job::addPutJobIntoSomewhere(Builder& trx, std::string const& where,
   }
 }
 
-void Job::addPreconditionCurrentReplicaShardGroup(Builder& pre, std::string const& database,
-                                                  std::vector<shard_t> const& shardGroup,
-                                                  std::string const& serverId) {
+void Job::addPreconditionCurrentReplicaShardGroup(
+    Builder& pre, std::string const& database,
+    std::vector<shard_t> const& shardGroup, std::string const& serverId) {
   for (auto const& sh : shardGroup) {
     std::string const curPath = curColPrefix + database + "/" + sh.collection +
                                 "/" + sh.shard + "/servers";
@@ -754,7 +776,8 @@ void Job::addPreconditionCurrentReplicaShardGroup(Builder& pre, std::string cons
   }
 }
 
-void Job::addPreconditionCollectionStillThere(Builder& pre, std::string const& database,
+void Job::addPreconditionCollectionStillThere(Builder& pre,
+                                              std::string const& database,
                                               std::string const& collection) {
   std::string planPath = planColPrefix + database + "/" + collection;
   pre.add(VPackValue(planPath));
@@ -764,7 +787,8 @@ void Job::addPreconditionCollectionStillThere(Builder& pre, std::string const& d
   }
 }
 
-void Job::addPreconditionServerNotBlocked(Builder& pre, std::string const& server) {
+void Job::addPreconditionServerNotBlocked(Builder& pre,
+                                          std::string const& server) {
   pre.add(VPackValue(blockedServersPrefix + server));
   {
     VPackObjectBuilder serverLockEmpty(&pre);
@@ -781,7 +805,8 @@ void Job::addPreconditionServerHealth(Builder& pre, std::string const& server,
   }
 }
 
-void Job::addPreconditionShardNotBlocked(Builder& pre, std::string const& shard) {
+void Job::addPreconditionShardNotBlocked(Builder& pre,
+                                         std::string const& shard) {
   pre.add(VPackValue(blockedShardsPrefix + shard));
   {
     VPackObjectBuilder shardLockEmpty(&pre);
@@ -789,7 +814,8 @@ void Job::addPreconditionShardNotBlocked(Builder& pre, std::string const& shard)
   }
 }
 
-void Job::addPreconditionUnchanged(Builder& pre, std::string const& key, Slice value) {
+void Job::addPreconditionUnchanged(Builder& pre, std::string const& key,
+                                   Slice value) {
   pre.add(VPackValue(key));
   {
     VPackObjectBuilder guard(&pre);
@@ -797,11 +823,13 @@ void Job::addPreconditionUnchanged(Builder& pre, std::string const& key, Slice v
   }
 }
 
-void Job::addBlockServer(Builder& trx, std::string const& server, std::string const& jobId) {
+void Job::addBlockServer(Builder& trx, std::string const& server,
+                         std::string const& jobId) {
   trx.add(blockedServersPrefix + server, VPackValue(jobId));
 }
 
-void Job::addBlockShard(Builder& trx, std::string const& shard, std::string const& jobId) {
+void Job::addBlockShard(Builder& trx, std::string const& shard,
+                        std::string const& jobId) {
   trx.add(blockedShardsPrefix + shard, VPackValue(jobId));
 }
 
@@ -821,7 +849,8 @@ void Job::addReleaseShard(Builder& trx, std::string const& shard) {
   }
 }
 
-void Job::addPreconditionJobStillInPending(Builder& pre, std::string const& jobId) {
+void Job::addPreconditionJobStillInPending(Builder& pre,
+                                           std::string const& jobId) {
   pre.add(VPackValue("/Target/Pending/" + jobId));
   {
     VPackObjectBuilder guard(&pre);
@@ -829,7 +858,8 @@ void Job::addPreconditionJobStillInPending(Builder& pre, std::string const& jobI
   }
 }
 
-std::string Job::checkServerHealth(Node const& snapshot, std::string const& server) {
+std::string Job::checkServerHealth(Node const& snapshot,
+                                   std::string const& server) {
   auto status = snapshot.hasAsString(healthPrefix + server + "/Status");
 
   if (!status) {
@@ -838,7 +868,8 @@ std::string Job::checkServerHealth(Node const& snapshot, std::string const& serv
   return status.value();
 }
 
-void Job::addReadLockServer(Builder& trx, std::string const& server, std::string const& jobId) {
+void Job::addReadLockServer(Builder& trx, std::string const& server,
+                            std::string const& jobId) {
   trx.add(VPackValue(blockedServersPrefix + server));
   {
     VPackObjectBuilder guard(&trx);
@@ -876,7 +907,8 @@ void Job::addWriteUnlockServer(Builder& trx, std::string const& server,
   }
 }
 
-void Job::addPreconditionServerReadLockable(Builder& pre, std::string const& server,
+void Job::addPreconditionServerReadLockable(Builder& pre,
+                                            std::string const& server,
                                             std::string const& jobId) {
   pre.add(VPackValue(blockedServersPrefix + server));
   {
@@ -885,7 +917,8 @@ void Job::addPreconditionServerReadLockable(Builder& pre, std::string const& ser
   }
 }
 
-void Job::addPreconditionServerReadLocked(Builder& pre, std::string const& server,
+void Job::addPreconditionServerReadLocked(Builder& pre,
+                                          std::string const& server,
                                           std::string const& jobId) {
   pre.add(VPackValue(blockedServersPrefix + server));
   {
@@ -894,7 +927,8 @@ void Job::addPreconditionServerReadLocked(Builder& pre, std::string const& serve
   }
 }
 
-void Job::addPreconditionServerWriteLockable(Builder& pre, std::string const& server,
+void Job::addPreconditionServerWriteLockable(Builder& pre,
+                                             std::string const& server,
                                              std::string const& jobId) {
   pre.add(VPackValue(blockedServersPrefix + server));
   {
@@ -903,7 +937,8 @@ void Job::addPreconditionServerWriteLockable(Builder& pre, std::string const& se
   }
 }
 
-void Job::addPreconditionServerWriteLocked(Builder& pre, std::string const& server,
+void Job::addPreconditionServerWriteLocked(Builder& pre,
+                                           std::string const& server,
                                            std::string const& jobId) {
   pre.add(VPackValue(blockedServersPrefix + server));
   {

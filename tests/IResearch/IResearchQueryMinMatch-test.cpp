@@ -72,9 +72,9 @@ TEST_P(IResearchQueryMinMatchTest, test) {
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -97,16 +97,16 @@ TEST_P(IResearchQueryMinMatchTest, test) {
     resource /= std::string_view(arangodb::tests::testResourceDir);
     resource /= std::string_view("simple_sequential.json");
 
-    auto builder =
-        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+    auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
+        resource.u8string());
     auto slice = builder.slice();
     ASSERT_TRUE(slice.isArray());
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -143,10 +143,9 @@ TEST_P(IResearchQueryMinMatchTest, test) {
       }
     })";
 
-    auto viewDefinition =
-        irs::string_utils::to_string(viewDefinitionTemplate,
-                                     static_cast<uint32_t>(linkVersion()),
-                                     static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition = irs::string_utils::to_string(
+        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()),
+        static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -166,7 +165,8 @@ TEST_P(IResearchQueryMinMatchTest, test) {
 
   // same as term query
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', 1) RETURN d");
@@ -186,8 +186,8 @@ TEST_P(IResearchQueryMinMatchTest, test) {
 
   // same as disjunction
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[7].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(), insertedDocs[7].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, 1) SORT "
@@ -208,8 +208,8 @@ TEST_P(IResearchQueryMinMatchTest, test) {
 
   // same as disjunction
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[7].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(), insertedDocs[7].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, 1.0) "
@@ -305,7 +305,8 @@ TEST_P(IResearchQueryMinMatchTest, test) {
         "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A') SORT d.seq RETURN "
         "d");
     ASSERT_FALSE(result.result.ok());
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
+    ASSERT_TRUE(
+        result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
   // missing arguments
@@ -313,7 +314,8 @@ TEST_P(IResearchQueryMinMatchTest, test) {
     auto result = arangodb::tests::executeQuery(
         vocbase, "FOR d IN testView SEARCH MIN_MATCH() SORT d.seq RETURN d");
     ASSERT_FALSE(result.result.ok());
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
+    ASSERT_TRUE(
+        result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
   // constexpr min match (true)
@@ -344,8 +346,8 @@ TEST_P(IResearchQueryMinMatchTest, test) {
 
   // same as disjunction
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[7].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(), insertedDocs[7].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, 1) SORT "
@@ -366,7 +368,8 @@ TEST_P(IResearchQueryMinMatchTest, test) {
 
   // same as conjunction
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 0, 2) SORT "
@@ -411,8 +414,8 @@ TEST_P(IResearchQueryMinMatchTest, test) {
 
   // 2 conditions
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[7].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(), insertedDocs[7].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, d.value "
@@ -433,8 +436,8 @@ TEST_P(IResearchQueryMinMatchTest, test) {
 
   // 2 conditions
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[7].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(), insertedDocs[7].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, d.seq "
@@ -486,8 +489,8 @@ TEST_P(IResearchQueryMinMatchTest, test) {
 
   // 3 conditions
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[7].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(), insertedDocs[7].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH MIN_MATCH(d.name == 'A', d.seq == 1, d.same "

@@ -53,22 +53,24 @@ namespace {
 /// @brief unwraps an analyser wrapped via WrapAnalyzer(...)
 /// @return collection or nullptr on failure
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::iresearch::AnalyzerPool* UnwrapAnalyzer(v8::Isolate* isolate,
-                                                  v8::Local<v8::Object> const& holder) {
-  return TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(holder, WRP_IRESEARCH_ANALYZER_TYPE,
-                                                            TRI_IGETC);
+arangodb::iresearch::AnalyzerPool* UnwrapAnalyzer(
+    v8::Isolate* isolate, v8::Local<v8::Object> const& holder) {
+  return TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
+      holder, WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps an Analyzer
 ////////////////////////////////////////////////////////////////////////////////
-v8::Handle<v8::Object> WrapAnalyzer(v8::Isolate* isolate,
-                                    arangodb::iresearch::AnalyzerPool::ptr const& analyzer) {
+v8::Handle<v8::Object> WrapAnalyzer(
+    v8::Isolate* isolate,
+    arangodb::iresearch::AnalyzerPool::ptr const& analyzer) {
   v8::EscapableHandleScope scope(isolate);
   TRI_GET_GLOBALS();
   TRI_GET_GLOBAL(IResearchAnalyzerInstanceTempl, v8::ObjectTemplate);
-  auto result = IResearchAnalyzerInstanceTempl->NewInstance(TRI_IGETC).FromMaybe(
-      v8::Local<v8::Object>());
+  auto result =
+      IResearchAnalyzerInstanceTempl->NewInstance(TRI_IGETC).FromMaybe(
+          v8::Local<v8::Object>());
 
   if (result.IsEmpty()) {
     return scope.Escape<v8::Object>(result);
@@ -78,7 +80,8 @@ v8::Handle<v8::Object> WrapAnalyzer(v8::Isolate* isolate,
   auto& entry = itr.first;
 
   result->SetInternalField(  // required for TRI_UnwrapClass(...)
-      SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRP_IRESEARCH_ANALYZER_TYPE)  // args
+      SLOT_CLASS_TYPE,
+      v8::Integer::New(isolate, WRP_IRESEARCH_ANALYZER_TYPE)  // args
   );
   result->SetInternalField(SLOT_CLASS, entry.get());
 
@@ -99,8 +102,8 @@ void JS_AnalyzerFeatures(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(analyzer->name(),
-                                                             arangodb::auth::Level::RO)) {
+  if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(
+          analyzer->name(), arangodb::auth::Level::RO)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(            // exception
         TRI_ERROR_FORBIDDEN,                   // code
         "insufficient rights to get analyzer"  // message
@@ -110,8 +113,8 @@ void JS_AnalyzerFeatures(v8::FunctionCallbackInfo<v8::Value> const& args) {
   try {
     auto result = v8::Array::New(isolate);
 
-    analyzer->features().visit([&result, &context, &isolate,
-                                i = uint32_t{0}](std::string_view feature) mutable {
+    analyzer->features().visit([&result, &context, &isolate, i = uint32_t{0}](
+                                   std::string_view feature) mutable {
       if (feature.empty()) {
         result->Set(context, i++, v8::Null(isolate)).FromMaybe(false);
       } else {
@@ -150,8 +153,8 @@ void JS_AnalyzerName(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(analyzer->name(),
-                                                             arangodb::auth::Level::RO)) {
+  if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(
+          analyzer->name(), arangodb::auth::Level::RO)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(            // exception
         TRI_ERROR_FORBIDDEN,                   // code
         "insufficient rights to get analyzer"  // message
@@ -189,8 +192,8 @@ void JS_AnalyzerProperties(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(analyzer->name(),
-                                                             arangodb::auth::Level::RO)) {
+  if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(
+          analyzer->name(), arangodb::auth::Level::RO)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(            // exception
         TRI_ERROR_FORBIDDEN,                   // code
         "insufficient rights to get analyzer"  // message
@@ -228,8 +231,8 @@ void JS_AnalyzerType(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(analyzer->name(),
-                                                             arangodb::auth::Level::RO)) {
+  if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(
+          analyzer->name(), arangodb::auth::Level::RO)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(            // exception
         TRI_ERROR_FORBIDDEN,                   // code
         "insufficient rights to get analyzer"  // message
@@ -269,7 +272,8 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // we require at least 2 but no more than 4 arguments
-  // save(name: <string>, type: <string>[, parameters: <json>[, features: <string-array>]]);
+  // save(name: <string>, type: <string>[, parameters: <json>[, features:
+  // <string-array>]]);
   if (args.Length() < 2        // too few args
       || args.Length() > 4     // too many args
       || !args[0]->IsString()  // not a string
@@ -287,7 +291,8 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
   auto splittedAnalyzerName =
-      arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(nameFromArgs);
+      arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(
+          nameFromArgs);
   if (!arangodb::iresearch::IResearchAnalyzerFeature::analyzerReachableFromDb(
           splittedAnalyzerName.first, vocbase.name())) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -296,16 +301,17 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return;
   }
 
-  bool extendedNames =
-      v8g->_server.getFeature<arangodb::DatabaseFeature>().extendedNamesForAnalyzers();
+  bool extendedNames = v8g->_server.getFeature<arangodb::DatabaseFeature>()
+                           .extendedNamesForAnalyzers();
   if (!arangodb::AnalyzerNameValidator::isAllowedName(
-          extendedNames, std::string_view(splittedAnalyzerName.second.c_str(),
-                                          splittedAnalyzerName.second.size()))) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   std::string(
-                                       "invalid characters in analyzer name '")
-                                       .append(splittedAnalyzerName.second)
-                                       .append("'"));
+          extendedNames,
+          std::string_view(splittedAnalyzerName.second.c_str(),
+                           splittedAnalyzerName.second.size()))) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("invalid characters in analyzer name '")
+            .append(splittedAnalyzerName.second)
+            .append("'"));
 
     return;
   }
@@ -324,7 +330,8 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
       arangodb::velocypack::Parser(propertiesBuilder).parse(propertiesBuf);
       propertiesSlice = propertiesBuilder.slice();
     } else if (args[2]->IsObject()) {
-      auto value = args[2]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      auto value =
+          args[2]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
       TRI_V8ToVPack(isolate, propertiesBuilder, value, false);
       propertiesSlice = propertiesBuilder.slice();
     } else if (!args[2]->IsNull()) {
@@ -362,7 +369,8 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(name, arangodb::auth::Level::RW)) {
+  if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(
+          name, arangodb::auth::Level::RW)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(               // exception
         TRI_ERROR_FORBIDDEN,                      // code
         "insufficient rights to create analyzer"  // message
@@ -447,7 +455,8 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    errorMessage);
   }
 
-  if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(name, arangodb::auth::Level::RO)) {
+  if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(
+          name, arangodb::auth::Level::RO)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(            // exception
         TRI_ERROR_FORBIDDEN,                   // code
         "insufficient rights to get analyzer"  // message
@@ -455,7 +464,8 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    auto analyzer = analyzers.get(name, arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+    auto analyzer =
+        analyzers.get(name, arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
 
     if (!analyzer) {
       TRI_V8_RETURN_NULL();
@@ -514,15 +524,16 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   try {
     analyzers.visit(visitor, nullptr);  // include static analyzers
 
-    if (arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RO)) {
+    if (arangodb::iresearch::IResearchAnalyzerFeature::canUse(
+            vocbase, arangodb::auth::Level::RO)) {
       analyzers.visit(visitor, &vocbase);
     }
 
     // include analyzers from the system vocbase if possible
     if (sysVocbase                               // have system vocbase
         && sysVocbase->name() != vocbase.name()  // not same vocbase as current
-        && arangodb::iresearch::IResearchAnalyzerFeature::canUse(*sysVocbase,
-                                                                 arangodb::auth::Level::RO)) {
+        && arangodb::iresearch::IResearchAnalyzerFeature::canUse(
+               *sysVocbase, arangodb::auth::Level::RO)) {
       analyzers.visit(visitor, sysVocbase.get());
     }
 
@@ -535,7 +546,8 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_V8_THROW_EXCEPTION_MEMORY();
       }
 
-      v8Result->Set(context, static_cast<uint32_t>(i), analyzer).FromMaybe(false);  // cast safe because of check above
+      v8Result->Set(context, static_cast<uint32_t>(i), analyzer)
+          .FromMaybe(false);  // cast safe because of check above
     }
 
     TRI_V8_RETURN(v8Result);
@@ -576,7 +588,8 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
   auto splittedAnalyzerName =
-      arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(nameFromArgs);
+      arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(
+          nameFromArgs);
   if (!arangodb::iresearch::IResearchAnalyzerFeature::analyzerReachableFromDb(
           splittedAnalyzerName.first, vocbase.name())) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -585,16 +598,17 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return;
   }
 
-  bool extendedNames =
-      v8g->_server.getFeature<arangodb::DatabaseFeature>().extendedNamesForAnalyzers();
+  bool extendedNames = v8g->_server.getFeature<arangodb::DatabaseFeature>()
+                           .extendedNamesForAnalyzers();
   if (!arangodb::AnalyzerNameValidator::isAllowedName(
-          extendedNames, std::string_view(splittedAnalyzerName.second.c_str(),
-                                          splittedAnalyzerName.second.size()))) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   std::string(
-                                       "Invalid characters in analyzer name '")
-                                       .append(splittedAnalyzerName.second)
-                                       .append("'"));
+          extendedNames,
+          std::string_view(splittedAnalyzerName.second.c_str(),
+                           splittedAnalyzerName.second.size()))) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("Invalid characters in analyzer name '")
+            .append(splittedAnalyzerName.second)
+            .append("'"));
   }
 
   auto name = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
@@ -613,7 +627,8 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(name, arangodb::auth::Level::RW)) {
+  if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(
+          name, arangodb::auth::Level::RW)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(               // exception
         TRI_ERROR_FORBIDDEN,                      // code
         "insufficient rights to remove analyzer"  // message
@@ -686,19 +701,24 @@ void TRI_InitV8Analyzers(TRI_v8_global_t& v8g, v8::Isolate* isolate) {
 
     objTemplate->SetInternalFieldCount(2);  // SLOT_CLASS_TYPE + SLOT_CLASS
     TRI_AddMethodVocbase(isolate, objTemplate,
-                         TRI_V8_ASCII_STRING(isolate, "features"), JS_AnalyzerFeatures);
+                         TRI_V8_ASCII_STRING(isolate, "features"),
+                         JS_AnalyzerFeatures);
     TRI_AddMethodVocbase(isolate, objTemplate,
                          TRI_V8_ASCII_STRING(isolate, "name"), JS_AnalyzerName);
     TRI_AddMethodVocbase(isolate, objTemplate,
-                         TRI_V8_ASCII_STRING(isolate, "properties"), JS_AnalyzerProperties);
+                         TRI_V8_ASCII_STRING(isolate, "properties"),
+                         JS_AnalyzerProperties);
     TRI_AddMethodVocbase(isolate, objTemplate,
                          TRI_V8_ASCII_STRING(isolate, "type"), JS_AnalyzerType);
 
     v8g.IResearchAnalyzerInstanceTempl.Reset(isolate, objTemplate);
-    TRI_AddGlobalFunctionVocbase(  // required only for pretty-printing via JavaScript (must to be defined AFTER v8g.IResearchAnalyzerTempl.Reset(...))
+    TRI_AddGlobalFunctionVocbase(  // required only for pretty-printing via
+                                   // JavaScript (must to be defined AFTER
+                                   // v8g.IResearchAnalyzerTempl.Reset(...))
         isolate,                   // isolate
         TRI_V8_ASCII_STRING(isolate, "ArangoAnalyzer"),  // name
-        fnTemplate->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>())  // impl
+        fnTemplate->GetFunction(TRI_IGETC).FromMaybe(
+            v8::Local<v8::Function>())  // impl
     );
   }
 }

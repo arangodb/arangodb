@@ -26,7 +26,7 @@
 namespace arangodb {
 namespace futures {
 
-template <class T>
+template<class T>
 Future<T> Promise<T>::getFuture() {
   if (_retrieved) {
     throw FutureException(ErrorCode::FutureAlreadyRetrieved);

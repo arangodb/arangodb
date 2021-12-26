@@ -69,7 +69,8 @@ auto SkipResult::toVelocyPack(VPackBuilder& builder) const noexcept -> void {
   }
 }
 
-auto SkipResult::fromVelocyPack(VPackSlice slice) -> arangodb::ResultT<SkipResult> {
+auto SkipResult::fromVelocyPack(VPackSlice slice)
+    -> arangodb::ResultT<SkipResult> {
   if (!slice.isArray()) {
     auto message = std::string{
         "When deserializing AqlExecuteResult: When reading skipped: "
@@ -130,7 +131,8 @@ auto SkipResult::reset() -> void {
   }
 }
 
-auto SkipResult::merge(SkipResult const& other, bool excludeTopLevel) noexcept -> void {
+auto SkipResult::merge(SkipResult const& other, bool excludeTopLevel) noexcept
+    -> void {
   size_t const otherDepth = other.subqueryDepth();
   _skipped.reserve(otherDepth);
   while (otherDepth > subqueryDepth()) {
@@ -176,7 +178,8 @@ auto SkipResult::operator!=(SkipResult const& b) const noexcept -> bool {
   return !(*this == b);
 }
 namespace arangodb::aql {
-std::ostream& operator<<(std::ostream& stream, arangodb::aql::SkipResult const& result) {
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::aql::SkipResult const& result) {
   VPackBuilder temp;
   result.toVelocyPack(temp);
   stream << temp.toJson();

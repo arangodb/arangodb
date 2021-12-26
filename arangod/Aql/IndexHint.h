@@ -68,7 +68,8 @@ class IndexHint {
   } _hint;
 };
 
-std::ostream& operator<<(std::ostream& stream, arangodb::aql::IndexHint const& hint);
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::aql::IndexHint const& hint);
 
 }  // namespace aql
 }  // namespace arangodb

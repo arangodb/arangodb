@@ -46,7 +46,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
   std::string const& path() const override final;
 
-  void deferDropCollection(std::function<bool(LogicalCollection&)> const&) override final;
+  void deferDropCollection(
+      std::function<bool(LogicalCollection&)> const&) override final;
 
   /// @brief report extra memory used by indexes etc.
   size_t memory() const override final { return 0; }
@@ -63,7 +64,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
   ErrorCode lockRead(double timeout = 0.0);
   void unlockRead();
 
-  /// recalculate counts for collection in case of failure, blocks other writes for a short period
+  /// recalculate counts for collection in case of failure, blocks other writes
+  /// for a short period
   uint64_t recalculateCounts() override;
 
   /// @brief compact-data operation
@@ -73,27 +75,32 @@ class RocksDBMetaCollection : public PhysicalCollection {
   /// estimate size of collection and indexes
   void estimateSize(velocypack::Builder& builder);
 
-  void setRevisionTree(std::unique_ptr<containers::RevisionTree>&& tree, uint64_t seq);
-  std::unique_ptr<containers::RevisionTree> revisionTree(transaction::Methods& trx) override;
-  std::unique_ptr<containers::RevisionTree> revisionTree(uint64_t batchId) override;
-  std::unique_ptr<containers::RevisionTree> computeRevisionTree(uint64_t batchId) override;
+  void setRevisionTree(std::unique_ptr<containers::RevisionTree>&& tree,
+                       uint64_t seq);
+  std::unique_ptr<containers::RevisionTree> revisionTree(
+      transaction::Methods& trx) override;
+  std::unique_ptr<containers::RevisionTree> revisionTree(
+      uint64_t batchId) override;
+  std::unique_ptr<containers::RevisionTree> computeRevisionTree(
+      uint64_t batchId) override;
 
-  Result takeCareOfRevisionTreePersistence(LogicalCollection& coll, RocksDBEngine& engine,
-                                           rocksdb::WriteBatch& batch,
-                                           rocksdb::ColumnFamilyHandle* const cf,
-                                           rocksdb::SequenceNumber maxCommitSeq,
-                                           bool force, std::string const& context,
-                                           std::string& output,
-                                           rocksdb::SequenceNumber& appliedSeq);
+  Result takeCareOfRevisionTreePersistence(
+      LogicalCollection& coll, RocksDBEngine& engine,
+      rocksdb::WriteBatch& batch, rocksdb::ColumnFamilyHandle* const cf,
+      rocksdb::SequenceNumber maxCommitSeq, bool force,
+      std::string const& context, std::string& output,
+      rocksdb::SequenceNumber& appliedSeq);
 
  private:
-  bool needToPersistRevisionTree(rocksdb::SequenceNumber maxCommitSeq,
-                                 std::unique_lock<std::mutex> const& lock) const;
-  rocksdb::SequenceNumber lastSerializedRevisionTree(rocksdb::SequenceNumber maxCommitSeq,
-                                                     std::unique_lock<std::mutex> const& lock);
-  rocksdb::SequenceNumber serializeRevisionTree(std::string& output,
-                                                rocksdb::SequenceNumber commitSeq, bool force,
-                                                std::unique_lock<std::mutex> const& lock);
+  bool needToPersistRevisionTree(
+      rocksdb::SequenceNumber maxCommitSeq,
+      std::unique_lock<std::mutex> const& lock) const;
+  rocksdb::SequenceNumber lastSerializedRevisionTree(
+      rocksdb::SequenceNumber maxCommitSeq,
+      std::unique_lock<std::mutex> const& lock);
+  rocksdb::SequenceNumber serializeRevisionTree(
+      std::string& output, rocksdb::SequenceNumber commitSeq, bool force,
+      std::unique_lock<std::mutex> const& lock);
 
  public:
   Result rebuildRevisionTree() override;
@@ -118,7 +125,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
    * @param  inserts  Vector of revisions to insert
    * @param  removals Vector of revisions to remove
    */
-  void bufferUpdates(rocksdb::SequenceNumber seq, std::vector<std::uint64_t>&& inserts,
+  void bufferUpdates(rocksdb::SequenceNumber seq,
+                     std::vector<std::uint64_t>&& inserts,
                      std::vector<std::uint64_t>&& removals);
 
   Result bufferTruncate(rocksdb::SequenceNumber seq);
@@ -127,10 +135,12 @@ class RocksDBMetaCollection : public PhysicalCollection {
   virtual RocksDBKeyBounds bounds() const = 0;
 
   /// @brief produce a revision tree from the documents in the collection
-  ResultT<std::pair<std::unique_ptr<containers::RevisionTree>, rocksdb::SequenceNumber>> revisionTreeFromCollection(
-      bool checkForBlockers);
+  ResultT<std::pair<std::unique_ptr<containers::RevisionTree>,
+                    rocksdb::SequenceNumber>>
+  revisionTreeFromCollection(bool checkForBlockers);
 
-  std::unique_ptr<containers::RevisionTree> buildTreeFromIterator(RevisionReplicationIterator& it) const;
+  std::unique_ptr<containers::RevisionTree> buildTreeFromIterator(
+      RevisionReplicationIterator& it) const;
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   void corruptRevisionTree(std::uint64_t count, std::uint64_t hash);
@@ -138,7 +148,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
  protected:
   /// @brief track the usage of waitForSync option in an operation
-  void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
+  void trackWaitForSync(arangodb::transaction::Methods* trx,
+                        OperationOptions& options);
 
  private:
   /// @brief sends the collection's revision tree to hibernation
@@ -150,7 +161,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
   ErrorCode doLock(double timeout, AccessMode::Type mode);
   bool haveBufferedOperations(std::unique_lock<std::mutex> const& lock) const;
-  std::unique_ptr<containers::RevisionTree> allocateEmptyRevisionTree(std::size_t depth) const;
+  std::unique_ptr<containers::RevisionTree> allocateEmptyRevisionTree(
+      std::size_t depth) const;
   void applyUpdates(rocksdb::SequenceNumber commitSeq,
                     std::unique_lock<std::mutex> const& lock);
   void ensureRevisionTree();
@@ -159,7 +171,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
   std::unique_ptr<containers::RevisionTree> revisionTree(
       rocksdb::SequenceNumber notAfter,
       std::function<std::unique_ptr<containers::RevisionTree>(
-          std::unique_ptr<containers::RevisionTree>, std::unique_lock<std::mutex>& lock)> const& callback);
+          std::unique_ptr<containers::RevisionTree>,
+          std::unique_lock<std::mutex>& lock)> const& callback);
 
  protected:
   RocksDBMetadata _meta;  /// collection metadata
@@ -186,8 +199,9 @@ class RocksDBMetaCollection : public PhysicalCollection {
     RevisionTreeAccessor(RevisionTreeAccessor const&) = delete;
     RevisionTreeAccessor& operator=(RevisionTreeAccessor const&) = delete;
 
-    explicit RevisionTreeAccessor(std::unique_ptr<containers::RevisionTree> tree,
-                                  LogicalCollection const& collection);
+    explicit RevisionTreeAccessor(
+        std::unique_ptr<containers::RevisionTree> tree,
+        LogicalCollection const& collection);
 
     ~RevisionTreeAccessor();
 
@@ -273,8 +287,10 @@ class RocksDBMetaCollection : public PhysicalCollection {
   // if the types of these containers are changed to some other type, please
   // check the new type's iterator invalidation rules first and if iterators are
   // invalidated when new elements get inserted
-  std::map<rocksdb::SequenceNumber, std::vector<std::uint64_t>> _revisionInsertBuffers;
-  std::map<rocksdb::SequenceNumber, std::vector<std::uint64_t>> _revisionRemovalBuffers;
+  std::map<rocksdb::SequenceNumber, std::vector<std::uint64_t>>
+      _revisionInsertBuffers;
+  std::map<rocksdb::SequenceNumber, std::vector<std::uint64_t>>
+      _revisionRemovalBuffers;
   std::set<rocksdb::SequenceNumber> _revisionTruncateBuffer;
 };
 

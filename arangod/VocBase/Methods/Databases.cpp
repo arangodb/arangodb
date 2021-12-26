@@ -70,8 +70,8 @@ std::string Databases::normalizeName(std::string const& name) {
   return normalizeUtf8ToNFC(name);
 }
 
-std::vector<std::string> Databases::list(application_features::ApplicationServer& server,
-                                         std::string const& user) {
+std::vector<std::string> Databases::list(
+    application_features::ApplicationServer& server, std::string const& user) {
   if (!server.hasFeature<DatabaseFeature>()) {
     return std::vector<std::string>();
   }
@@ -116,7 +116,8 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
       if (s.isString()) {
         result.add(StaticStrings::DataSourceId, s);
       } else if (s.isNumber()) {
-        result.add(StaticStrings::DataSourceId, VPackValue(std::to_string(s.getUInt())));
+        result.add(StaticStrings::DataSourceId,
+                   VPackValue(std::to_string(s.getUInt())));
       } else {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unexpected type for 'id' attribute");
@@ -128,8 +129,10 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
   } else {
     VPackObjectBuilder b(&result);
     result.add(StaticStrings::DataSourceName, VPackValue(vocbase->name()));
-    result.add(StaticStrings::DataSourceId, VPackValue(std::to_string(vocbase->id())));
-    result.add(StaticStrings::DataSourceSystem, VPackValue(vocbase->isSystem()));
+    result.add(StaticStrings::DataSourceId,
+               VPackValue(std::to_string(vocbase->id())));
+    result.add(StaticStrings::DataSourceSystem,
+               VPackValue(vocbase->isSystem()));
     result.add("path", VPackValue(vocbase->path()));
   }
   return Result();
@@ -137,7 +140,8 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
 
 // Grant permissions on newly created database to current user
 // to be able to run the upgrade script
-arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info, int64_t timeout) {
+arangodb::Result Databases::grantCurrentUser(CreateDatabaseInfo const& info,
+                                             int64_t timeout) {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
 
   Result res;
@@ -212,7 +216,8 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   auto failureGuard = scopeGuard([&ci, info]() noexcept {
     try {
       LOG_TOPIC("8cc61", ERR, Logger::CLUSTER)
-          << "Failed to create database '" << info.getName() << "', rolling back.";
+          << "Failed to create database '" << info.getName()
+          << "', rolling back.";
       Result res = ci.cancelCreateDatabaseCoordinator(info);
       if (!res.ok()) {
         // this cannot happen since cancelCreateDatabaseCoordinator keeps
@@ -241,14 +246,16 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   // This vocbase is needed for the call to methods::Upgrade::createDB, but
   // is just a placeholder
   CreateDatabaseInfo tempInfo = info;
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, std::move(tempInfo));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        std::move(tempInfo));
 
   // Now create *all* system collections for the database,
   // if any of these fail, database creation is considered unsuccessful
 
   VPackBuilder userBuilder;
   info.UsersToVelocyPack(userBuilder);
-  UpgradeResult upgradeRes = methods::Upgrade::createDB(vocbase, userBuilder.slice());
+  UpgradeResult upgradeRes =
+      methods::Upgrade::createDB(vocbase, userBuilder.slice());
   failureGuard.cancel();
 
   LOG_TOPIC("54324", DEBUG, Logger::CLUSTER)
@@ -260,23 +267,26 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   // make the database visible, otherwise clean up what we can.
   if (upgradeRes.ok()) {
     LOG_TOPIC("54325", DEBUG, Logger::CLUSTER)
-        << "createDatabase on coordinator: finished, database: " << info.getName();
+        << "createDatabase on coordinator: finished, database: "
+        << info.getName();
     return ci.createFinalizeDatabaseCoordinator(info);
   }
 
   LOG_TOPIC("24653", DEBUG, Logger::CLUSTER)
-      << "createDatabase on coordinator: cancelling, database: " << info.getName();
+      << "createDatabase on coordinator: cancelling, database: "
+      << info.getName();
 
   // We leave this handling here to be able to capture
   // error messages and return
   // Cleanup entries in agency.
   res = ci.cancelCreateDatabaseCoordinator(info);
   LOG_TOPIC("54327", DEBUG, Logger::CLUSTER)
-      << "createDatabase on coordinator: cancelled, database: " << info.getName()
-      << " result: " << res.errorNumber();
+      << "createDatabase on coordinator: cancelled, database: "
+      << info.getName() << " result: " << res.errorNumber();
   if (!res.ok()) {
-    // this should never happen as cancelCreateDatabaseCoordinator keeps retrying
-    // until either cancellation is successful or the cluster is shut down.
+    // this should never happen as cancelCreateDatabaseCoordinator keeps
+    // retrying until either cancellation is successful or the cluster is shut
+    // down.
     return res;
   }
 
@@ -289,11 +299,13 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
   if (!info.server().hasFeature<DatabaseFeature>()) {
     return {TRI_ERROR_INTERNAL};
   }
-  DatabaseFeature& databaseFeature = info.server().getFeature<DatabaseFeature>();
+  DatabaseFeature& databaseFeature =
+      info.server().getFeature<DatabaseFeature>();
 
   TRI_vocbase_t* vocbase = nullptr;
   auto tempInfo = info;
-  Result createResult = databaseFeature.createDatabase(std::move(tempInfo), vocbase);
+  Result createResult =
+      databaseFeature.createDatabase(std::move(tempInfo), vocbase);
   if (createResult.fail()) {
     return createResult;
   }
@@ -310,14 +322,16 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
 
   VPackBuilder userBuilder;
   info.UsersToVelocyPack(userBuilder);
-  UpgradeResult upgradeRes = methods::Upgrade::createDB(*vocbase, userBuilder.slice());
+  UpgradeResult upgradeRes =
+      methods::Upgrade::createDB(*vocbase, userBuilder.slice());
 
   return std::move(upgradeRes.result());
 }
 
-arangodb::Result Databases::create(application_features::ApplicationServer& server,
-                                   ExecContext const& exec, std::string const& dbName,
-                                   VPackSlice const& users, VPackSlice const& options) {
+arangodb::Result Databases::create(
+    application_features::ApplicationServer& server, ExecContext const& exec,
+    std::string const& dbName, VPackSlice const& users,
+    VPackSlice const& options) {
   // Only admin users are permitted to create databases
   if (!exec.isAdminUser() || (ServerState::readOnly() && !exec.isSuperuser())) {
     events::CreateDatabase(dbName, Result(TRI_ERROR_FORBIDDEN), exec);
@@ -343,7 +357,8 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
   if (createInfo.replicationVersion() == replication::Version::TWO &&
       !replication2::EnableReplication2) {
     using namespace std::string_view_literals;
-    auto const message = R"(Replication version 2 is disabled in this binary, but trying to create a version 2 database.)"sv;
+    auto const message =
+        R"(Replication version 2 is disabled in this binary, but trying to create a version 2 database.)"sv;
     LOG_TOPIC("e768d", ERR, Logger::REPLICATION2) << message;
     // Should not happen during testing
     TRI_ASSERT(false);
@@ -359,7 +374,8 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
       createInfo.sharding("single");
     }
 
-    res = ShardingInfo::validateShardsAndReplicationFactor(options, server, true);
+    res =
+        ShardingInfo::validateShardsAndReplicationFactor(options, server, true);
     if (res.ok()) {
       res = createCoordinator(createInfo);
     }
@@ -372,7 +388,8 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
   }
 
   if (res.fail()) {
-    if (!res.is(TRI_ERROR_BAD_PARAMETER) && !res.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
+    if (!res.is(TRI_ERROR_BAD_PARAMETER) &&
+        !res.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
       LOG_TOPIC("1964a", ERR, Logger::FIXME)
           << "Could not create database: " << res.errorMessage();
     }
@@ -396,7 +413,8 @@ ErrorCode dropDBCoordinator(DatabaseFeature& df, std::string const& dbName) {
 
   vocbase->release();
 
-  ClusterInfo& ci = vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+  ClusterInfo& ci =
+      vocbase->server().getFeature<ClusterFeature>().clusterInfo();
   auto res = ci.dropDatabaseCoordinator(dbName, 120.0);
 
   if (!res.ok()) {
@@ -424,7 +442,8 @@ ErrorCode dropDBCoordinator(DatabaseFeature& df, std::string const& dbName) {
 const std::string dropError = "Error when dropping database";
 }  // namespace
 
-arangodb::Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
+arangodb::Result Databases::drop(ExecContext const& exec,
+                                 TRI_vocbase_t* systemVocbase,
                                  std::string const& dbName) {
   TRI_ASSERT(systemVocbase->isSystem());
   if (exec.systemAuthLevel() != auth::Level::RW) {
@@ -434,14 +453,16 @@ arangodb::Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemV
 
   Result res;
   auto& server = systemVocbase->server();
-  if (server.hasFeature<V8DealerFeature>() && server.isEnabled<V8DealerFeature>()) {
+  if (server.hasFeature<V8DealerFeature>() &&
+      server.isEnabled<V8DealerFeature>()) {
     V8DealerFeature& dealer = server.getFeature<V8DealerFeature>();
     try {
       JavaScriptSecurityContext securityContext =
           JavaScriptSecurityContext::createInternalContext();
 
       v8::Isolate* isolate = v8::Isolate::GetCurrent();
-      V8ConditionalContextGuard guard(res, isolate, systemVocbase, securityContext);
+      V8ConditionalContextGuard guard(res, isolate, systemVocbase,
+                                      securityContext);
 
       if (res.fail()) {
         events::DropDatabase(dbName, res, exec);

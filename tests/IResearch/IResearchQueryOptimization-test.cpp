@@ -55,24 +55,28 @@ namespace {
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 
-bool findEmptyNodes(TRI_vocbase_t& vocbase, std::string const& queryString,
-                    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr) {
+bool findEmptyNodes(
+    TRI_vocbase_t& vocbase, std::string const& queryString,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr) {
   auto options = VPackParser::fromJson(
       //    "{ \"tracing\" : 1 }"
       "{ }");
 
-  auto query =
-      arangodb::aql::Query::create(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                   arangodb::aql::QueryString(queryString), bindVars,
-                                   arangodb::aql::QueryOptions(options->slice()));
+  auto query = arangodb::aql::Query::create(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      arangodb::aql::QueryString(queryString), bindVars,
+      arangodb::aql::QueryOptions(options->slice()));
 
   query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
-  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  arangodb::containers::SmallVector<
+      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
 
-  // try to find `EnumerateViewNode`s and process corresponding filters and sorts
-  query->plan()->findNodesOfType(nodes, arangodb::aql::ExecutionNode::NORESULTS, true);
+  // try to find `EnumerateViewNode`s and process corresponding filters and
+  // sorts
+  query->plan()->findNodesOfType(nodes, arangodb::aql::ExecutionNode::NORESULTS,
+                                 true);
   return !nodes.empty();
 }
 
@@ -80,7 +84,8 @@ class IResearchQueryOptimizationTest : public IResearchQueryTest {
  protected:
   std::deque<arangodb::ManagedDocumentResult> insertedDocs;
 
-  void addLinkToCollection(std::shared_ptr<arangodb::iresearch::IResearchView>& view) {
+  void addLinkToCollection(
+      std::shared_ptr<arangodb::iresearch::IResearchView>& view) {
     auto versionStr = std::to_string(static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(
@@ -94,7 +99,8 @@ class IResearchQueryOptimizationTest : public IResearchQueryTest {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+    view->properties(builder,
+                     arangodb::LogicalDataSource::Serialization::Properties);
     builder.close();
 
     auto slice = builder.slice();
@@ -151,12 +157,14 @@ class IResearchQueryOptimizationTest : public IResearchQueryTest {
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
-        auto const res = logicalCollection1->insert(&trx, doc, insertedDocs.back(), opt);
+        auto const res =
+            logicalCollection1->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
       }
 
       EXPECT_TRUE(trx.commit().ok());
-      EXPECT_TRUE((arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection1, *view)
+      EXPECT_TRUE((arangodb::iresearch::IResearchLinkHelper::find(
+                       *logicalCollection1, *view)
                        ->commit()
                        .ok()));
     }
@@ -187,8 +195,9 @@ TEST_P(IResearchQueryOptimizationTest, test_1) {
                                   "'A' ] AND d.values == 'C' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
@@ -239,8 +248,9 @@ TEST_P(IResearchQueryOptimizationTest, test_1) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -256,8 +266,9 @@ TEST_P(IResearchQueryOptimizationTest, test_2) {
                                   "== 'A'") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
@@ -314,8 +325,9 @@ TEST_P(IResearchQueryOptimizationTest, test_2) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -330,8 +342,9 @@ TEST_P(IResearchQueryOptimizationTest, test_3) {
                                   "'B' ] AND d.values == 'A' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -381,8 +394,9 @@ TEST_P(IResearchQueryOptimizationTest, test_3) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -397,8 +411,9 @@ TEST_P(IResearchQueryOptimizationTest, test_4) {
                                   "'A' ] AND d.values != 'D' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -448,8 +463,9 @@ TEST_P(IResearchQueryOptimizationTest, test_4) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -464,8 +480,9 @@ TEST_P(IResearchQueryOptimizationTest, test_5) {
                                   "'A' ] AND d.values != 'B' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -514,8 +531,9 @@ TEST_P(IResearchQueryOptimizationTest, test_5) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -530,8 +548,9 @@ TEST_P(IResearchQueryOptimizationTest, test_6) {
                                   "'D' ] AND d.values != 'D' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -582,8 +601,9 @@ TEST_P(IResearchQueryOptimizationTest, test_6) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -594,7 +614,8 @@ TEST_P(IResearchQueryOptimizationTest, test_6) {
 // a IN [ x ] && a == y, x == y
 TEST_P(IResearchQueryOptimizationTest, test_7) {
   std::string const query =
-    std::string("FOR d IN testView SEARCH d.values IN [ 'A', 'A' ] AND d.values != 'A'") + o +) + o + "RETURN d";
+    std::string("FOR d IN testView SEARCH d.values IN [ 'A', 'A' ] AND d.values
+!= 'A'") + o +) + o + "RETURN d";
 
   EXPECT_TRUE(arangodb::tests::assertRules(
   vocbase(), query, {
@@ -622,7 +643,9 @@ auto queryResult = arangodb::tests::executeQuery(vocbase(), query);
     auto const actualDoc = resultIt.value();
     auto const resolved = actualDoc.resolveExternals();
 
-    EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true));
+    EXPECT_EQ(0,
+arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc),
+resolved, true));
   }
   EXPECT_EQ(expectedDoc, expectedDocs.end());
 }
@@ -637,8 +660,9 @@ TEST_P(IResearchQueryOptimizationTest, test_8) {
                                   "'B' ] AND d.values != 'A' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -687,8 +711,9 @@ TEST_P(IResearchQueryOptimizationTest, test_8) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -703,8 +728,9 @@ TEST_P(IResearchQueryOptimizationTest, test_9) {
                                   "'B' ] AND d.values != '@' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -755,8 +781,9 @@ TEST_P(IResearchQueryOptimizationTest, test_9) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -771,8 +798,9 @@ TEST_P(IResearchQueryOptimizationTest, test_10) {
                                   "'B' ] AND d.values < 'C' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -824,8 +852,9 @@ TEST_P(IResearchQueryOptimizationTest, test_10) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -840,8 +869,9 @@ TEST_P(IResearchQueryOptimizationTest, test_11) {
                                   "'C' ] AND d.values < 'C' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -893,8 +923,9 @@ TEST_P(IResearchQueryOptimizationTest, test_11) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -909,8 +940,9 @@ TEST_P(IResearchQueryOptimizationTest, test_12) {
                                   "'C' ] AND d.values < 'B' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -962,8 +994,9 @@ TEST_P(IResearchQueryOptimizationTest, test_12) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -979,8 +1012,9 @@ TEST_P(IResearchQueryOptimizationTest, test_13) {
                                   "'C' ] AND d.values <= 'D' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -1032,8 +1066,9 @@ TEST_P(IResearchQueryOptimizationTest, test_13) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -1047,8 +1082,9 @@ TEST_P(IResearchQueryOptimizationTest, test_14) {
                                   "'C' ] AND d.values <= 'C' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -1100,8 +1136,9 @@ TEST_P(IResearchQueryOptimizationTest, test_14) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -1115,8 +1152,9 @@ TEST_P(IResearchQueryOptimizationTest, test_15) {
                                   "'C' ] AND d.values <= 'A' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -1168,8 +1206,9 @@ TEST_P(IResearchQueryOptimizationTest, test_15) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -1183,8 +1222,9 @@ TEST_P(IResearchQueryOptimizationTest, test_16) {
                                   "'A' ] AND d.values >= 'B' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -1236,8 +1276,9 @@ TEST_P(IResearchQueryOptimizationTest, test_16) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -1253,8 +1294,9 @@ TEST_P(IResearchQueryOptimizationTest, test_17) {
                                   "'A' ] AND d.values >= 'A' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -1306,8 +1348,9 @@ TEST_P(IResearchQueryOptimizationTest, test_17) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -1321,8 +1364,9 @@ TEST_P(IResearchQueryOptimizationTest, test_18) {
                                   "'D' ] AND d.values >= 'B' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -1374,8 +1418,9 @@ TEST_P(IResearchQueryOptimizationTest, test_18) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -1391,8 +1436,9 @@ TEST_P(IResearchQueryOptimizationTest, test_19) {
                                   "'A' ] AND d.values > 'B' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -1444,8 +1490,9 @@ TEST_P(IResearchQueryOptimizationTest, test_19) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -1460,8 +1507,9 @@ TEST_P(IResearchQueryOptimizationTest, test_20) {
                                   "'B' ] AND d.values > 'B' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
@@ -1514,8 +1562,9 @@ TEST_P(IResearchQueryOptimizationTest, test_20) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -1530,8 +1579,9 @@ TEST_P(IResearchQueryOptimizationTest, test_21) {
                                   "'D' ] AND d.values > 'B' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -1583,8 +1633,9 @@ TEST_P(IResearchQueryOptimizationTest, test_21) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -1600,8 +1651,9 @@ TEST_P(IResearchQueryOptimizationTest, test_22) {
                                   "'A', 'B', 'C' ]") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
@@ -1668,8 +1720,9 @@ TEST_P(IResearchQueryOptimizationTest, test_22) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -1684,8 +1737,9 @@ TEST_P(IResearchQueryOptimizationTest, test_23) {
                                   "] AND d.values == 'C' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
@@ -1728,8 +1782,9 @@ TEST_P(IResearchQueryOptimizationTest, test_23) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -1743,8 +1798,9 @@ TEST_P(IResearchQueryOptimizationTest, test_24) {
                                   "] AND d.values == 'C' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -1779,8 +1835,9 @@ TEST_P(IResearchQueryOptimizationTest, test_24) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -1795,8 +1852,9 @@ TEST_P(IResearchQueryOptimizationTest, test_25) {
                                   "] AND d.values == 'B' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
@@ -1838,8 +1896,9 @@ TEST_P(IResearchQueryOptimizationTest, test_25) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -1854,8 +1913,9 @@ TEST_P(IResearchQueryOptimizationTest, test_26) {
                                   "] AND d.values != 'B' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
@@ -1911,8 +1971,9 @@ TEST_P(IResearchQueryOptimizationTest, test_26) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -1933,8 +1994,9 @@ TEST_P(IResearchQueryOptimizationTest, test_27) {
       EXPECT_TRUE(findEmptyNodes(vocbase(), query));
     } else {
       // no optimization will give us redundant nodes, but that is expected
-      EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                               {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+      EXPECT_TRUE(arangodb::tests::assertRules(
+          vocbase(), query,
+          {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
       EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     }
 
@@ -1993,8 +2055,9 @@ TEST_P(IResearchQueryOptimizationTest, test_27) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -2011,8 +2074,9 @@ TEST_P(IResearchQueryOptimizationTest, test_28) {
             "FOR d IN testView SEARCH d.values IN ['B'] AND d.values != 'C'") +
         o + " RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
@@ -2067,8 +2131,9 @@ TEST_P(IResearchQueryOptimizationTest, test_28) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -2084,8 +2149,9 @@ TEST_P(IResearchQueryOptimizationTest, test_29) {
                                   "] AND d.values < 'C' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2136,8 +2202,9 @@ TEST_P(IResearchQueryOptimizationTest, test_29) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -2153,8 +2220,9 @@ TEST_P(IResearchQueryOptimizationTest, test_30) {
                                   "] AND d.values < 'C' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2197,8 +2265,9 @@ TEST_P(IResearchQueryOptimizationTest, test_30) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -2213,8 +2282,9 @@ TEST_P(IResearchQueryOptimizationTest, test_31) {
                                   "] AND d.values < 'B' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2257,8 +2327,9 @@ TEST_P(IResearchQueryOptimizationTest, test_31) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -2274,8 +2345,9 @@ TEST_P(IResearchQueryOptimizationTest, test_32) {
                                   "] AND d.values <= 'C' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2326,8 +2398,9 @@ TEST_P(IResearchQueryOptimizationTest, test_32) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -2344,8 +2417,9 @@ TEST_P(IResearchQueryOptimizationTest, test_33) {
                                   "] AND d.values <= 'B' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2396,8 +2470,9 @@ TEST_P(IResearchQueryOptimizationTest, test_33) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -2413,8 +2488,9 @@ TEST_P(IResearchQueryOptimizationTest, test_34) {
                                   "] AND d.values <= 'B' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2456,8 +2532,9 @@ TEST_P(IResearchQueryOptimizationTest, test_34) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -2472,8 +2549,9 @@ TEST_P(IResearchQueryOptimizationTest, test_35) {
                                   "] AND d.values >= 'B' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2531,8 +2609,9 @@ TEST_P(IResearchQueryOptimizationTest, test_35) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -2549,8 +2628,9 @@ TEST_P(IResearchQueryOptimizationTest, test_36) {
                                   "] AND d.values >= 'B' ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2601,8 +2681,9 @@ TEST_P(IResearchQueryOptimizationTest, test_36) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -2618,8 +2699,9 @@ TEST_P(IResearchQueryOptimizationTest, test_37) {
             "FOR d IN testView SEARCH d.values IN ['C'] AND d.values >= 'B'") +
         o + " RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2670,8 +2752,9 @@ TEST_P(IResearchQueryOptimizationTest, test_37) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -2687,8 +2770,9 @@ TEST_P(IResearchQueryOptimizationTest, test_38) {
             "FOR d IN testView SEARCH d.values IN ['A'] AND d.values > 'B'") +
         o + " RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2746,8 +2830,9 @@ TEST_P(IResearchQueryOptimizationTest, test_38) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -2763,8 +2848,9 @@ TEST_P(IResearchQueryOptimizationTest, test_39) {
             "FOR d IN testView SEARCH d.values IN ['B'] AND d.values > 'B'") +
         o + " RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2822,8 +2908,9 @@ TEST_P(IResearchQueryOptimizationTest, test_39) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -2840,8 +2927,9 @@ TEST_P(IResearchQueryOptimizationTest, test_40) {
             "FOR d IN testView SEARCH d.values IN ['C'] AND d.values > 'B'") +
         o + " RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2892,8 +2980,9 @@ TEST_P(IResearchQueryOptimizationTest, test_40) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -2909,8 +2998,9 @@ TEST_P(IResearchQueryOptimizationTest, test_41) {
             "FOR d IN testView SEARCH d.values == 'B' AND d.values == 'C'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -2951,8 +3041,9 @@ TEST_P(IResearchQueryOptimizationTest, test_41) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -2967,8 +3058,9 @@ TEST_P(IResearchQueryOptimizationTest, test_42) {
             "FOR d IN testView SEARCH d.values == 'C' AND d.values == 'C'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3003,8 +3095,9 @@ TEST_P(IResearchQueryOptimizationTest, test_42) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -3019,8 +3112,9 @@ TEST_P(IResearchQueryOptimizationTest, test_43) {
             "FOR d IN testView SEARCH d.values == 'C' AND d.values == 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3061,8 +3155,9 @@ TEST_P(IResearchQueryOptimizationTest, test_43) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -3078,8 +3173,9 @@ TEST_P(IResearchQueryOptimizationTest, test_44) {
             "FOR d IN testView SEARCH d.values == 'A' AND d.values != 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3133,8 +3229,9 @@ TEST_P(IResearchQueryOptimizationTest, test_44) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -3155,8 +3252,9 @@ TEST_P(IResearchQueryOptimizationTest, test_45) {
       //  { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
       EXPECT_TRUE(findEmptyNodes(vocbase(), query));
     } else {
-      EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                               {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+      EXPECT_TRUE(arangodb::tests::assertRules(
+          vocbase(), query,
+          {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
       EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     }
     // check structure
@@ -3214,8 +3312,9 @@ TEST_P(IResearchQueryOptimizationTest, test_45) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     optimizeType++;
@@ -3232,8 +3331,9 @@ TEST_P(IResearchQueryOptimizationTest, test_46) {
             "FOR d IN testView SEARCH d.values == 'B' AND d.values != 'C'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3287,8 +3387,9 @@ TEST_P(IResearchQueryOptimizationTest, test_46) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -3305,8 +3406,9 @@ TEST_P(IResearchQueryOptimizationTest, test_47) {
             "FOR d IN testView SEARCH d.values == 'B' AND d.values < 'C'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3357,8 +3459,9 @@ TEST_P(IResearchQueryOptimizationTest, test_47) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -3374,8 +3477,9 @@ TEST_P(IResearchQueryOptimizationTest, test_48) {
             "FOR d IN testView SEARCH d.values == 'C' AND d.values < 'C'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3418,8 +3522,9 @@ TEST_P(IResearchQueryOptimizationTest, test_48) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -3434,8 +3539,9 @@ TEST_P(IResearchQueryOptimizationTest, test_49) {
             "FOR d IN testView SEARCH d.values == 'C' AND d.values < 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3478,8 +3584,9 @@ TEST_P(IResearchQueryOptimizationTest, test_49) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -3495,8 +3602,9 @@ TEST_P(IResearchQueryOptimizationTest, test_50) {
             "FOR d IN testView SEARCH d.values == 'B' AND d.values <= 'C'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3547,8 +3655,9 @@ TEST_P(IResearchQueryOptimizationTest, test_50) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -3565,8 +3674,9 @@ TEST_P(IResearchQueryOptimizationTest, test_51) {
             "FOR d IN testView SEARCH d.values == 'B' AND d.values <= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3610,8 +3720,9 @@ TEST_P(IResearchQueryOptimizationTest, test_51) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -3627,8 +3738,9 @@ TEST_P(IResearchQueryOptimizationTest, test_52) {
             "FOR d IN testView SEARCH d.values == 'C' AND d.values <= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3671,8 +3783,9 @@ TEST_P(IResearchQueryOptimizationTest, test_52) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -3688,8 +3801,9 @@ TEST_P(IResearchQueryOptimizationTest, test_53) {
             "FOR d IN testView SEARCH d.values == 'A' AND d.values >= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3747,8 +3861,9 @@ TEST_P(IResearchQueryOptimizationTest, test_53) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -3765,8 +3880,9 @@ TEST_P(IResearchQueryOptimizationTest, test_54) {
             "FOR d IN testView SEARCH d.values == 'B' AND d.values >= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3810,8 +3926,9 @@ TEST_P(IResearchQueryOptimizationTest, test_54) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -3828,8 +3945,9 @@ TEST_P(IResearchQueryOptimizationTest, test_55) {
             "FOR d IN testView SEARCH d.values == 'C' AND d.values >= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3873,8 +3991,9 @@ TEST_P(IResearchQueryOptimizationTest, test_55) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -3891,8 +4010,9 @@ TEST_P(IResearchQueryOptimizationTest, test_56) {
             "FOR d IN testView SEARCH d.values == 'A' AND d.values > 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -3950,8 +4070,9 @@ TEST_P(IResearchQueryOptimizationTest, test_56) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -3967,8 +4088,9 @@ TEST_P(IResearchQueryOptimizationTest, test_57) {
             "FOR d IN testView SEARCH d.values == 'B' AND d.values > 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4026,8 +4148,9 @@ TEST_P(IResearchQueryOptimizationTest, test_57) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -4044,8 +4167,9 @@ TEST_P(IResearchQueryOptimizationTest, test_58) {
             "FOR d IN testView SEARCH d.values == 'C' AND d.values > 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4089,8 +4213,9 @@ TEST_P(IResearchQueryOptimizationTest, test_58) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -4106,8 +4231,9 @@ TEST_P(IResearchQueryOptimizationTest, test_59) {
             "FOR d IN testView SEARCH d.values != '@' AND d.values == 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4148,8 +4274,9 @@ TEST_P(IResearchQueryOptimizationTest, test_59) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -4164,8 +4291,9 @@ TEST_P(IResearchQueryOptimizationTest, test_60) {
             "FOR d IN testView SEARCH d.values != 'A' AND d.values == 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4205,8 +4333,9 @@ TEST_P(IResearchQueryOptimizationTest, test_60) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -4227,8 +4356,9 @@ TEST_P(IResearchQueryOptimizationTest, test_61) {
       //  { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
       EXPECT_TRUE(findEmptyNodes(vocbase(), query));
     } else {
-      EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                               {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+      EXPECT_TRUE(arangodb::tests::assertRules(
+          vocbase(), query,
+          {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
       EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     }
@@ -4288,8 +4418,9 @@ TEST_P(IResearchQueryOptimizationTest, test_61) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -4305,8 +4436,9 @@ TEST_P(IResearchQueryOptimizationTest, test_62) {
             "FOR d IN testView SEARCH d.values != 'D' AND d.values == 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4348,8 +4480,9 @@ TEST_P(IResearchQueryOptimizationTest, test_62) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -4364,8 +4497,9 @@ TEST_P(IResearchQueryOptimizationTest, test_63) {
             "FOR d IN testView SEARCH d.values != 'B' AND d.values == 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4405,8 +4539,9 @@ TEST_P(IResearchQueryOptimizationTest, test_63) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -4421,8 +4556,9 @@ TEST_P(IResearchQueryOptimizationTest, test_64) {
             "FOR d IN testView SEARCH d.values != '@' AND d.values != 'D'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4464,8 +4600,9 @@ TEST_P(IResearchQueryOptimizationTest, test_64) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -4480,8 +4617,9 @@ TEST_P(IResearchQueryOptimizationTest, test_65) {
             "FOR d IN testView SEARCH d.values != 'A' AND d.values != 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4521,8 +4659,9 @@ TEST_P(IResearchQueryOptimizationTest, test_65) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -4536,8 +4675,9 @@ TEST_P(IResearchQueryOptimizationTest, test_66) {
             "FOR d IN testView SEARCH d.values != 'D' AND d.values != 'D'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4572,8 +4712,9 @@ TEST_P(IResearchQueryOptimizationTest, test_66) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -4588,8 +4729,9 @@ TEST_P(IResearchQueryOptimizationTest, test_67) {
             "FOR d IN testView SEARCH d.values != 'A' AND d.values != 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4622,8 +4764,9 @@ TEST_P(IResearchQueryOptimizationTest, test_67) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -4638,8 +4781,9 @@ TEST_P(IResearchQueryOptimizationTest, test_68) {
             "FOR d IN testView SEARCH d.values != 'B' AND d.values != 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4678,8 +4822,9 @@ TEST_P(IResearchQueryOptimizationTest, test_68) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -4693,8 +4838,9 @@ TEST_P(IResearchQueryOptimizationTest, test_69) {
             "FOR d IN testView SEARCH d.values != '0' AND d.values < 'C'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4736,8 +4882,9 @@ TEST_P(IResearchQueryOptimizationTest, test_69) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -4752,8 +4899,9 @@ TEST_P(IResearchQueryOptimizationTest, test_70) {
             "FOR d IN testView SEARCH d.values != 'A' AND d.values < 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4793,8 +4941,9 @@ TEST_P(IResearchQueryOptimizationTest, test_70) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -4809,8 +4958,9 @@ TEST_P(IResearchQueryOptimizationTest, test_71) {
             "FOR d IN testView SEARCH d.values != '@' AND d.values < 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4853,8 +5003,9 @@ TEST_P(IResearchQueryOptimizationTest, test_71) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -4869,8 +5020,9 @@ TEST_P(IResearchQueryOptimizationTest, test_72) {
             "FOR d IN testView SEARCH d.values != 'D' AND d.values < 'D'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4913,8 +5065,9 @@ TEST_P(IResearchQueryOptimizationTest, test_72) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -4929,8 +5082,9 @@ TEST_P(IResearchQueryOptimizationTest, test_73) {
             "FOR d IN testView SEARCH d.values != 'D' AND d.values < 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -4973,8 +5127,9 @@ TEST_P(IResearchQueryOptimizationTest, test_73) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -4989,8 +5144,9 @@ TEST_P(IResearchQueryOptimizationTest, test_74) {
             "FOR d IN testView SEARCH d.values != 'C' AND d.values < 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5031,8 +5187,9 @@ TEST_P(IResearchQueryOptimizationTest, test_74) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -5047,8 +5204,9 @@ TEST_P(IResearchQueryOptimizationTest, test_75) {
             "FOR d IN testView SEARCH d.values != '0' AND d.values <= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5091,8 +5249,9 @@ TEST_P(IResearchQueryOptimizationTest, test_75) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -5106,8 +5265,9 @@ TEST_P(IResearchQueryOptimizationTest, test_76) {
             "FOR d IN testView SEARCH d.values != 'A' AND d.values <= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5148,8 +5308,9 @@ TEST_P(IResearchQueryOptimizationTest, test_76) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -5164,8 +5325,9 @@ TEST_P(IResearchQueryOptimizationTest, test_77) {
             "FOR d IN testView SEARCH d.values != 'D' AND d.values <= 'D'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5208,8 +5370,9 @@ TEST_P(IResearchQueryOptimizationTest, test_77) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -5224,8 +5387,9 @@ TEST_P(IResearchQueryOptimizationTest, test_78) {
             "FOR d IN testView SEARCH d.values != 'B' AND d.values <= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5266,8 +5430,9 @@ TEST_P(IResearchQueryOptimizationTest, test_78) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -5282,8 +5447,9 @@ TEST_P(IResearchQueryOptimizationTest, test_79) {
             "FOR d IN testView SEARCH d.values != 'D' AND d.values <= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5326,8 +5492,9 @@ TEST_P(IResearchQueryOptimizationTest, test_79) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -5342,8 +5509,9 @@ TEST_P(IResearchQueryOptimizationTest, test_80) {
             "FOR d IN testView SEARCH d.values != 'C' AND d.values <= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5384,8 +5552,9 @@ TEST_P(IResearchQueryOptimizationTest, test_80) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -5400,8 +5569,9 @@ TEST_P(IResearchQueryOptimizationTest, test_81) {
             "FOR d IN testView SEARCH d.values != '0' AND d.values >= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5444,8 +5614,9 @@ TEST_P(IResearchQueryOptimizationTest, test_81) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -5460,8 +5631,9 @@ TEST_P(IResearchQueryOptimizationTest, test_82) {
             "FOR d IN testView SEARCH d.values != 'A' AND d.values >= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5502,8 +5674,9 @@ TEST_P(IResearchQueryOptimizationTest, test_82) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -5517,8 +5690,9 @@ TEST_P(IResearchQueryOptimizationTest, test_83) {
             "FOR d IN testView SEARCH d.values != '0' AND d.values >= '0'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     SCOPED_TRACE(o);
@@ -5562,8 +5736,9 @@ TEST_P(IResearchQueryOptimizationTest, test_83) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -5578,8 +5753,9 @@ TEST_P(IResearchQueryOptimizationTest, test_84) {
             "FOR d IN testView SEARCH d.values != 'A' AND d.values >= 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5620,8 +5796,9 @@ TEST_P(IResearchQueryOptimizationTest, test_84) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -5636,8 +5813,9 @@ TEST_P(IResearchQueryOptimizationTest, test_85) {
             "FOR d IN testView SEARCH d.values != 'D' AND d.values >= 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5680,8 +5858,9 @@ TEST_P(IResearchQueryOptimizationTest, test_85) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -5696,8 +5875,9 @@ TEST_P(IResearchQueryOptimizationTest, test_86) {
             "FOR d IN testView SEARCH d.values != 'C' AND d.values >= 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5738,8 +5918,9 @@ TEST_P(IResearchQueryOptimizationTest, test_86) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -5754,8 +5935,9 @@ TEST_P(IResearchQueryOptimizationTest, test_87) {
             "FOR d IN testView SEARCH d.values != '0' AND d.values > 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5798,8 +5980,9 @@ TEST_P(IResearchQueryOptimizationTest, test_87) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -5814,8 +5997,9 @@ TEST_P(IResearchQueryOptimizationTest, test_88) {
             "FOR d IN testView SEARCH d.values != 'A' AND d.values > 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5856,8 +6040,9 @@ TEST_P(IResearchQueryOptimizationTest, test_88) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -5872,8 +6057,9 @@ TEST_P(IResearchQueryOptimizationTest, test_89) {
             "FOR d IN testView SEARCH d.values != '0' AND d.values > '0'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5916,8 +6102,9 @@ TEST_P(IResearchQueryOptimizationTest, test_89) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -5932,8 +6119,9 @@ TEST_P(IResearchQueryOptimizationTest, test_90) {
             "FOR d IN testView SEARCH d.values != 'A' AND d.values > 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -5974,8 +6162,9 @@ TEST_P(IResearchQueryOptimizationTest, test_90) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -5990,8 +6179,9 @@ TEST_P(IResearchQueryOptimizationTest, test_91) {
             "FOR d IN testView SEARCH d.values != 'D' AND d.values > 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6034,8 +6224,9 @@ TEST_P(IResearchQueryOptimizationTest, test_91) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -6050,8 +6241,9 @@ TEST_P(IResearchQueryOptimizationTest, test_92) {
             "FOR d IN testView SEARCH d.values != 'C' AND d.values > 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6092,8 +6284,9 @@ TEST_P(IResearchQueryOptimizationTest, test_92) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -6109,8 +6302,9 @@ TEST_P(IResearchQueryOptimizationTest, test_93) {
             "FOR d IN testView SEARCH d.values < 'B' AND d.values == 'C'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6169,8 +6363,9 @@ TEST_P(IResearchQueryOptimizationTest, test_93) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     optimizeType++;
@@ -6187,8 +6382,9 @@ TEST_P(IResearchQueryOptimizationTest, test_94) {
             "FOR d IN testView SEARCH d.values < 'B' AND d.values == 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6246,8 +6442,9 @@ TEST_P(IResearchQueryOptimizationTest, test_94) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -6264,8 +6461,9 @@ TEST_P(IResearchQueryOptimizationTest, test_95) {
             "FOR d IN testView SEARCH d.values < 'C' AND d.values == 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6311,8 +6509,9 @@ TEST_P(IResearchQueryOptimizationTest, test_95) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -6329,8 +6528,9 @@ TEST_P(IResearchQueryOptimizationTest, test_96) {
             "FOR d IN testView SEARCH d.values < 'B' AND d.values != 'D'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6388,8 +6588,9 @@ TEST_P(IResearchQueryOptimizationTest, test_96) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -6406,8 +6607,9 @@ TEST_P(IResearchQueryOptimizationTest, test_97) {
             "FOR d IN testView SEARCH d.values < 'B' AND d.values != 'C'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6463,8 +6665,9 @@ TEST_P(IResearchQueryOptimizationTest, test_97) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -6481,8 +6684,9 @@ TEST_P(IResearchQueryOptimizationTest, test_98) {
             "FOR d IN testView SEARCH d.values < 'D' AND d.values != 'D'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6540,8 +6744,9 @@ TEST_P(IResearchQueryOptimizationTest, test_98) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -6558,8 +6763,9 @@ TEST_P(IResearchQueryOptimizationTest, test_99) {
             "FOR d IN testView SEARCH d.values < 'B' AND d.values != 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6615,8 +6821,9 @@ TEST_P(IResearchQueryOptimizationTest, test_99) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -6633,8 +6840,9 @@ TEST_P(IResearchQueryOptimizationTest, test_100) {
             "FOR d IN testView SEARCH d.values < 'C' AND d.values != '0'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6693,8 +6901,9 @@ TEST_P(IResearchQueryOptimizationTest, test_100) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -6711,8 +6920,9 @@ TEST_P(IResearchQueryOptimizationTest, test_101) {
             "FOR d IN testView SEARCH d.values < 'C' AND d.values != 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6768,8 +6978,9 @@ TEST_P(IResearchQueryOptimizationTest, test_101) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -6786,8 +6997,9 @@ TEST_P(IResearchQueryOptimizationTest, test_102) {
             "FOR d IN testView SEARCH d.values < 'B' AND d.values < 'C'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6833,8 +7045,9 @@ TEST_P(IResearchQueryOptimizationTest, test_102) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -6850,8 +7063,9 @@ TEST_P(IResearchQueryOptimizationTest, test_103) {
             "FOR d IN testView SEARCH d.values < 'B' AND d.values < 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -6887,8 +7101,9 @@ TEST_P(IResearchQueryOptimizationTest, test_103) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -6907,8 +7122,9 @@ TEST_P(IResearchQueryOptimizationTest, test_104) {
             "FOR d IN testView SEARCH d.values < 'C' AND d.values < 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
@@ -6950,8 +7166,9 @@ TEST_P(IResearchQueryOptimizationTest, test_104) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -6967,8 +7184,9 @@ TEST_P(IResearchQueryOptimizationTest, test_105) {
             "FOR d IN testView SEARCH d.values < 'B' AND d.values <= 'C'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7013,8 +7231,9 @@ TEST_P(IResearchQueryOptimizationTest, test_105) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -7031,8 +7250,9 @@ TEST_P(IResearchQueryOptimizationTest, test_106) {
             "FOR d IN testView SEARCH d.values < 'C' AND d.values <= 'C'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7077,8 +7297,9 @@ TEST_P(IResearchQueryOptimizationTest, test_106) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -7095,8 +7316,9 @@ TEST_P(IResearchQueryOptimizationTest, test_107) {
             "FOR d IN testView SEARCH d.values < 'C' AND d.values <= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7141,8 +7363,9 @@ TEST_P(IResearchQueryOptimizationTest, test_107) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -7159,8 +7382,9 @@ TEST_P(IResearchQueryOptimizationTest, test_108) {
             "FOR d IN testView SEARCH d.values < 'B' AND d.values >= 'C'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7220,8 +7444,9 @@ TEST_P(IResearchQueryOptimizationTest, test_108) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -7238,8 +7463,9 @@ TEST_P(IResearchQueryOptimizationTest, test_109) {
             "FOR d IN testView SEARCH d.values < 'B' AND d.values >= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7299,8 +7525,9 @@ TEST_P(IResearchQueryOptimizationTest, test_109) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -7317,8 +7544,9 @@ TEST_P(IResearchQueryOptimizationTest, test_110) {
             "FOR d IN testView SEARCH d.values < 'C' AND d.values >= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7378,8 +7606,9 @@ TEST_P(IResearchQueryOptimizationTest, test_110) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -7396,8 +7625,9 @@ TEST_P(IResearchQueryOptimizationTest, test_111) {
             "FOR d IN testView SEARCH d.values < 'B' AND d.values > 'C'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7455,8 +7685,9 @@ TEST_P(IResearchQueryOptimizationTest, test_111) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -7473,8 +7704,9 @@ TEST_P(IResearchQueryOptimizationTest, test_112) {
             "FOR d IN testView SEARCH d.values < 'B' AND d.values > 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7534,8 +7766,9 @@ TEST_P(IResearchQueryOptimizationTest, test_112) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -7552,8 +7785,9 @@ TEST_P(IResearchQueryOptimizationTest, test_113) {
             "FOR d IN testView SEARCH d.values < 'C' AND d.values > 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7613,8 +7847,9 @@ TEST_P(IResearchQueryOptimizationTest, test_113) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -7631,8 +7866,9 @@ TEST_P(IResearchQueryOptimizationTest, test_114) {
             "FOR d IN testView SEARCH d.values <= 'A' AND d.values == 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7690,8 +7926,9 @@ TEST_P(IResearchQueryOptimizationTest, test_114) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -7708,8 +7945,9 @@ TEST_P(IResearchQueryOptimizationTest, test_115) {
             "FOR d IN testView SEARCH d.values <= 'A' AND d.values == 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7753,8 +7991,9 @@ TEST_P(IResearchQueryOptimizationTest, test_115) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -7771,8 +8010,9 @@ TEST_P(IResearchQueryOptimizationTest, test_116) {
             "FOR d IN testView SEARCH d.values <= 'B' AND d.values == 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7816,8 +8056,9 @@ TEST_P(IResearchQueryOptimizationTest, test_116) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -7834,8 +8075,9 @@ TEST_P(IResearchQueryOptimizationTest, test_117) {
             "FOR d IN testView SEARCH d.values <= 'A' AND d.values != 'D'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7893,8 +8135,9 @@ TEST_P(IResearchQueryOptimizationTest, test_117) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -7911,8 +8154,9 @@ TEST_P(IResearchQueryOptimizationTest, test_118) {
             "FOR d IN testView SEARCH d.values <= 'A' AND d.values != 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -7968,8 +8212,9 @@ TEST_P(IResearchQueryOptimizationTest, test_118) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -7986,8 +8231,9 @@ TEST_P(IResearchQueryOptimizationTest, test_119) {
             "FOR d IN testView SEARCH d.values <= 'B' AND d.values != 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8043,8 +8289,9 @@ TEST_P(IResearchQueryOptimizationTest, test_119) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -8061,8 +8308,9 @@ TEST_P(IResearchQueryOptimizationTest, test_120) {
             "FOR d IN testView SEARCH d.values <= 'D' AND d.values != 'D'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8120,8 +8368,9 @@ TEST_P(IResearchQueryOptimizationTest, test_120) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -8138,8 +8387,9 @@ TEST_P(IResearchQueryOptimizationTest, test_121) {
             "FOR d IN testView SEARCH d.values <= 'C' AND d.values != '@'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8197,8 +8447,9 @@ TEST_P(IResearchQueryOptimizationTest, test_121) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -8215,8 +8466,9 @@ TEST_P(IResearchQueryOptimizationTest, test_122) {
             "FOR d IN testView SEARCH d.values <= 'C' AND d.values != 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8272,8 +8524,9 @@ TEST_P(IResearchQueryOptimizationTest, test_122) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -8290,8 +8543,9 @@ TEST_P(IResearchQueryOptimizationTest, test_123) {
             "FOR d IN testView SEARCH d.values <= 'A' AND d.values < 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8336,8 +8590,9 @@ TEST_P(IResearchQueryOptimizationTest, test_123) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -8354,8 +8609,9 @@ TEST_P(IResearchQueryOptimizationTest, test_124) {
             "FOR d IN testView SEARCH d.values <= 'B' AND d.values < 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8400,8 +8656,9 @@ TEST_P(IResearchQueryOptimizationTest, test_124) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -8417,8 +8674,9 @@ TEST_P(IResearchQueryOptimizationTest, test_125) {
             "FOR d IN testView SEARCH d.values <= 'C' AND d.values < 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8463,8 +8721,9 @@ TEST_P(IResearchQueryOptimizationTest, test_125) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -8481,8 +8740,9 @@ TEST_P(IResearchQueryOptimizationTest, test_126) {
             "FOR d IN testView SEARCH d.values <= 'A' AND d.values <= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8527,8 +8787,9 @@ TEST_P(IResearchQueryOptimizationTest, test_126) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -8544,8 +8805,9 @@ TEST_P(IResearchQueryOptimizationTest, test_127) {
             "FOR d IN testView SEARCH d.values <= 'B' AND d.values <= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8581,8 +8843,9 @@ TEST_P(IResearchQueryOptimizationTest, test_127) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -8598,8 +8861,9 @@ TEST_P(IResearchQueryOptimizationTest, test_128) {
             "FOR d IN testView SEARCH d.values <= 'C' AND d.values <= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8644,8 +8908,9 @@ TEST_P(IResearchQueryOptimizationTest, test_128) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -8662,8 +8927,9 @@ TEST_P(IResearchQueryOptimizationTest, test_129) {
             "FOR d IN testView SEARCH d.values <= 'A' AND d.values >= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8723,8 +8989,9 @@ TEST_P(IResearchQueryOptimizationTest, test_129) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -8741,8 +9008,9 @@ TEST_P(IResearchQueryOptimizationTest, test_130) {
             "FOR d IN testView SEARCH d.values <= 'A' AND d.values >= 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8802,8 +9070,9 @@ TEST_P(IResearchQueryOptimizationTest, test_130) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -8820,8 +9089,9 @@ TEST_P(IResearchQueryOptimizationTest, test_131) {
             "FOR d IN testView SEARCH d.values <= 'C' AND d.values >= 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8881,8 +9151,9 @@ TEST_P(IResearchQueryOptimizationTest, test_131) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -8899,8 +9170,9 @@ TEST_P(IResearchQueryOptimizationTest, test_132) {
             "FOR d IN testView SEARCH d.values <= 'A' AND d.values > 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -8960,8 +9232,9 @@ TEST_P(IResearchQueryOptimizationTest, test_132) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -8978,8 +9251,9 @@ TEST_P(IResearchQueryOptimizationTest, test_133) {
             "FOR d IN testView SEARCH d.values <= 'A' AND d.values > 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9039,8 +9313,9 @@ TEST_P(IResearchQueryOptimizationTest, test_133) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -9057,8 +9332,9 @@ TEST_P(IResearchQueryOptimizationTest, test_134) {
             "FOR d IN testView SEARCH d.values <= 'C' AND d.values > 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9118,8 +9394,9 @@ TEST_P(IResearchQueryOptimizationTest, test_134) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -9136,8 +9413,9 @@ TEST_P(IResearchQueryOptimizationTest, test_135) {
             "FOR d IN testView SEARCH d.values >= 'A' AND d.values == 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9181,8 +9459,9 @@ TEST_P(IResearchQueryOptimizationTest, test_135) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -9198,8 +9477,9 @@ TEST_P(IResearchQueryOptimizationTest, test_136) {
             "FOR d IN testView SEARCH d.values >= 'A' AND d.values == 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9243,8 +9523,9 @@ TEST_P(IResearchQueryOptimizationTest, test_136) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -9260,8 +9541,9 @@ TEST_P(IResearchQueryOptimizationTest, test_137) {
             "FOR d IN testView SEARCH d.values >= 'B' AND d.values == 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9303,8 +9585,9 @@ TEST_P(IResearchQueryOptimizationTest, test_137) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -9319,8 +9602,9 @@ TEST_P(IResearchQueryOptimizationTest, test_138) {
             "FOR d IN testView SEARCH d.values >= 'A' AND d.values != 'D'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9378,8 +9662,9 @@ TEST_P(IResearchQueryOptimizationTest, test_138) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -9396,8 +9681,9 @@ TEST_P(IResearchQueryOptimizationTest, test_139) {
             "FOR d IN testView SEARCH d.values >= 'A' AND d.values != 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9453,8 +9739,9 @@ TEST_P(IResearchQueryOptimizationTest, test_139) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -9471,8 +9758,9 @@ TEST_P(IResearchQueryOptimizationTest, test_140) {
             "FOR d IN testView SEARCH d.values >= '@' AND d.values != '@'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9530,8 +9818,9 @@ TEST_P(IResearchQueryOptimizationTest, test_140) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -9548,8 +9837,9 @@ TEST_P(IResearchQueryOptimizationTest, test_141) {
             "FOR d IN testView SEARCH d.values >= 'A' AND d.values != 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9605,8 +9895,9 @@ TEST_P(IResearchQueryOptimizationTest, test_141) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -9622,8 +9913,9 @@ TEST_P(IResearchQueryOptimizationTest, test_142) {
             "FOR d IN testView SEARCH d.values >= 'B' AND d.values != 'D'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9681,8 +9973,9 @@ TEST_P(IResearchQueryOptimizationTest, test_142) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -9699,8 +9992,9 @@ TEST_P(IResearchQueryOptimizationTest, test_143) {
             "FOR d IN testView SEARCH d.values >= 'B' AND d.values != 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9756,8 +10050,9 @@ TEST_P(IResearchQueryOptimizationTest, test_143) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -9773,8 +10068,9 @@ TEST_P(IResearchQueryOptimizationTest, test_144) {
             "FOR d IN testView SEARCH d.values >= 'A' AND d.values < 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9818,8 +10114,9 @@ TEST_P(IResearchQueryOptimizationTest, test_144) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -9834,8 +10131,9 @@ TEST_P(IResearchQueryOptimizationTest, test_145) {
             "FOR d IN testView SEARCH d.values >= 'B' AND d.values < 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9879,8 +10177,9 @@ TEST_P(IResearchQueryOptimizationTest, test_145) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -9895,8 +10194,9 @@ TEST_P(IResearchQueryOptimizationTest, test_146) {
             "FOR d IN testView SEARCH d.values >= 'C' AND d.values < 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -9940,8 +10240,9 @@ TEST_P(IResearchQueryOptimizationTest, test_146) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -9956,8 +10257,9 @@ TEST_P(IResearchQueryOptimizationTest, test_147) {
             "FOR d IN testView SEARCH d.values >= 'A' AND d.values <= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10001,8 +10303,9 @@ TEST_P(IResearchQueryOptimizationTest, test_147) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -10017,8 +10320,9 @@ TEST_P(IResearchQueryOptimizationTest, test_148) {
             "FOR d IN testView SEARCH d.values >= 'B' AND d.values <= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10061,8 +10365,9 @@ TEST_P(IResearchQueryOptimizationTest, test_148) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -10076,8 +10381,9 @@ TEST_P(IResearchQueryOptimizationTest, test_149) {
             "FOR d IN testView SEARCH d.values >= 'C' AND d.values <= 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10120,8 +10426,9 @@ TEST_P(IResearchQueryOptimizationTest, test_149) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -10137,8 +10444,9 @@ TEST_P(IResearchQueryOptimizationTest, test_150) {
             "FOR d IN testView SEARCH d.values >= 'A' AND d.values >= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10184,8 +10492,9 @@ TEST_P(IResearchQueryOptimizationTest, test_150) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -10201,8 +10510,9 @@ TEST_P(IResearchQueryOptimizationTest, test_151) {
             "FOR d IN testView SEARCH d.values >= 'B' AND d.values >= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10239,8 +10549,9 @@ TEST_P(IResearchQueryOptimizationTest, test_151) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -10256,8 +10567,9 @@ TEST_P(IResearchQueryOptimizationTest, test_152) {
             "FOR d IN testView SEARCH d.values >= 'C' AND d.values >= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10302,8 +10614,9 @@ TEST_P(IResearchQueryOptimizationTest, test_152) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -10320,8 +10633,9 @@ TEST_P(IResearchQueryOptimizationTest, test_153) {
             "FOR d IN testView SEARCH d.values >= 'A' AND d.values > 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10367,8 +10681,9 @@ TEST_P(IResearchQueryOptimizationTest, test_153) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -10385,8 +10700,9 @@ TEST_P(IResearchQueryOptimizationTest, test_154) {
             "FOR d IN testView SEARCH d.values >= 'B' AND d.values > 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10432,8 +10748,9 @@ TEST_P(IResearchQueryOptimizationTest, test_154) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -10450,8 +10767,9 @@ TEST_P(IResearchQueryOptimizationTest, test_155) {
             "FOR d IN testView SEARCH d.values >= 'B' AND d.values > 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10497,8 +10815,9 @@ TEST_P(IResearchQueryOptimizationTest, test_155) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -10515,8 +10834,9 @@ TEST_P(IResearchQueryOptimizationTest, test_156) {
             "FOR d IN testView SEARCH d.values > 'A' AND d.values == 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10560,8 +10880,9 @@ TEST_P(IResearchQueryOptimizationTest, test_156) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -10577,8 +10898,9 @@ TEST_P(IResearchQueryOptimizationTest, test_157) {
             "FOR d IN testView SEARCH d.values > 'B' AND d.values == 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10620,8 +10942,9 @@ TEST_P(IResearchQueryOptimizationTest, test_157) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -10636,8 +10959,9 @@ TEST_P(IResearchQueryOptimizationTest, test_158) {
             "FOR d IN testView SEARCH d.values > 'B' AND d.values == 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10679,8 +11003,9 @@ TEST_P(IResearchQueryOptimizationTest, test_158) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -10696,8 +11021,9 @@ TEST_P(IResearchQueryOptimizationTest, test_159) {
             "FOR d IN testView SEARCH d.values > 'A' AND d.values != 'D'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10755,8 +11081,9 @@ TEST_P(IResearchQueryOptimizationTest, test_159) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -10773,8 +11100,9 @@ TEST_P(IResearchQueryOptimizationTest, test_160) {
             "FOR d IN testView SEARCH d.values > 'A' AND d.values != 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10830,8 +11158,9 @@ TEST_P(IResearchQueryOptimizationTest, test_160) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -10848,8 +11177,9 @@ TEST_P(IResearchQueryOptimizationTest, test_161) {
             "FOR d IN testView SEARCH d.values > '@' AND d.values != '@'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -10907,8 +11237,9 @@ TEST_P(IResearchQueryOptimizationTest, test_161) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -10925,8 +11256,9 @@ TEST_P(IResearchQueryOptimizationTest, test_162) {
             "FOR d IN testView SEARCH d.values > 'A' AND d.values != 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
 
@@ -10983,8 +11315,9 @@ TEST_P(IResearchQueryOptimizationTest, test_162) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     optimizeType++;
@@ -11001,8 +11334,9 @@ TEST_P(IResearchQueryOptimizationTest, test_163) {
             "FOR d IN testView SEARCH d.values > 'B' AND d.values != '@'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -11060,8 +11394,9 @@ TEST_P(IResearchQueryOptimizationTest, test_163) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -11078,8 +11413,9 @@ TEST_P(IResearchQueryOptimizationTest, test_164) {
             "FOR d IN testView SEARCH d.values > 'B' AND d.values != 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -11135,8 +11471,9 @@ TEST_P(IResearchQueryOptimizationTest, test_164) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -11152,8 +11489,9 @@ TEST_P(IResearchQueryOptimizationTest, test_165) {
             "FOR d IN testView SEARCH d.values > 'A' AND d.values < 'C'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -11197,8 +11535,9 @@ TEST_P(IResearchQueryOptimizationTest, test_165) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -11213,8 +11552,9 @@ TEST_P(IResearchQueryOptimizationTest, test_166) {
             "FOR d IN testView SEARCH d.values > 'B' AND d.values < 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
     {
@@ -11259,8 +11599,9 @@ TEST_P(IResearchQueryOptimizationTest, test_166) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -11275,8 +11616,9 @@ TEST_P(IResearchQueryOptimizationTest, test_167) {
             "FOR d IN testView SEARCH d.values > 'C' AND d.values < 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -11318,8 +11660,9 @@ TEST_P(IResearchQueryOptimizationTest, test_167) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -11334,8 +11677,9 @@ TEST_P(IResearchQueryOptimizationTest, test_168) {
             "FOR d IN testView SEARCH d.values > 'A' AND d.values <= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -11379,8 +11723,9 @@ TEST_P(IResearchQueryOptimizationTest, test_168) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -11395,8 +11740,9 @@ TEST_P(IResearchQueryOptimizationTest, test_169) {
             "FOR d IN testView SEARCH d.values > 'B' AND d.values <= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -11440,8 +11786,9 @@ TEST_P(IResearchQueryOptimizationTest, test_169) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -11456,8 +11803,9 @@ TEST_P(IResearchQueryOptimizationTest, test_170) {
             "FOR d IN testView SEARCH d.values > 'B' AND d.values <= 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -11501,8 +11849,9 @@ TEST_P(IResearchQueryOptimizationTest, test_170) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -11518,8 +11867,9 @@ TEST_P(IResearchQueryOptimizationTest, test_171) {
             "FOR d IN testView SEARCH d.values > 'A' AND d.values >= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -11565,8 +11915,9 @@ TEST_P(IResearchQueryOptimizationTest, test_171) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -11583,8 +11934,9 @@ TEST_P(IResearchQueryOptimizationTest, test_172) {
             "FOR d IN testView SEARCH d.values > 'B' AND d.values >= 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -11629,8 +11981,9 @@ TEST_P(IResearchQueryOptimizationTest, test_172) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -11647,8 +12000,9 @@ TEST_P(IResearchQueryOptimizationTest, test_173) {
             "FOR d IN testView SEARCH d.values > 'B' AND d.values >= 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -11693,8 +12047,9 @@ TEST_P(IResearchQueryOptimizationTest, test_173) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -11711,8 +12066,9 @@ TEST_P(IResearchQueryOptimizationTest, test_174) {
             "FOR d IN testView SEARCH d.values > 'A' AND d.values > 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -11758,8 +12114,9 @@ TEST_P(IResearchQueryOptimizationTest, test_174) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -11775,8 +12132,9 @@ TEST_P(IResearchQueryOptimizationTest, test_175) {
             "FOR d IN testView SEARCH d.values > 'B' AND d.values > 'B'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -11813,8 +12171,9 @@ TEST_P(IResearchQueryOptimizationTest, test_175) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -11830,8 +12189,9 @@ TEST_P(IResearchQueryOptimizationTest, test_176) {
             "FOR d IN testView SEARCH d.values > 'B' AND d.values > 'A'") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -11876,8 +12236,9 @@ TEST_P(IResearchQueryOptimizationTest, test_176) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -11893,8 +12254,9 @@ TEST_P(IResearchQueryOptimizationTest, test_177) {
         std::string("FOR d IN testView SEARCH  NOT( NOT (d.values == 'B'))") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -11930,8 +12292,9 @@ TEST_P(IResearchQueryOptimizationTest, test_177) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -12015,8 +12378,9 @@ TEST_P(IResearchQueryOptimizationTest, test_178) {
             "OR d.values == 'A' ) ") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -12045,8 +12409,9 @@ TEST_P(IResearchQueryOptimizationTest, test_178) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
 
@@ -12054,7 +12419,8 @@ TEST_P(IResearchQueryOptimizationTest, test_178) {
   }
 }
 
-// check DNF conversion disabled  but IN nodes processed (sorted and deduplicated)!
+// check DNF conversion disabled  but IN nodes processed (sorted and
+// deduplicated)!
 TEST_P(IResearchQueryOptimizationTest, test_179) {
   auto dnfConvertedExpected = [](irs::Or& expected) {
     auto& root = expected;
@@ -12192,8 +12558,9 @@ TEST_P(IResearchQueryOptimizationTest, test_179) {
             "IN ['C', 'B', 'C']  OR d.values IN ['A', 'B'] ) ") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -12222,8 +12589,9 @@ TEST_P(IResearchQueryOptimizationTest, test_179) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
 
@@ -12231,7 +12599,8 @@ TEST_P(IResearchQueryOptimizationTest, test_179) {
   }
 }
 
-// check DNF conversion disabled (with root disjunction)  but IN nodes processed (sorted and deduplicated)!
+// check DNF conversion disabled (with root disjunction)  but IN nodes processed
+// (sorted and deduplicated)!
 TEST_P(IResearchQueryOptimizationTest, test_180) {
   auto dnfConvertedExpected = [](irs::Or& expected) {
     auto& root = expected;
@@ -12350,8 +12719,9 @@ TEST_P(IResearchQueryOptimizationTest, test_180) {
             "IN ['C', 'B', 'C']  OR d.values IN ['A', 'B'] ) ") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -12380,8 +12750,9 @@ TEST_P(IResearchQueryOptimizationTest, test_180) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
 
@@ -12389,7 +12760,8 @@ TEST_P(IResearchQueryOptimizationTest, test_180) {
   }
 }
 
-// check DNF conversion disabled (with root disjunction and conjunction inside) but IN nodes processed (sorted and deduplicated)!
+// check DNF conversion disabled (with root disjunction and conjunction inside)
+// but IN nodes processed (sorted and deduplicated)!
 TEST_P(IResearchQueryOptimizationTest, test_181) {
   auto dnfConvertedExpected = [](irs::Or& expected) {
     auto& root = expected;
@@ -12508,8 +12880,9 @@ TEST_P(IResearchQueryOptimizationTest, test_181) {
             "IN ['C', 'B', 'C']  AND d.values IN ['A', 'B'] ) ") +
         o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -12538,8 +12911,9 @@ TEST_P(IResearchQueryOptimizationTest, test_181) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
 
@@ -12572,8 +12946,10 @@ TEST_P(IResearchQueryOptimizationTest, test_182) {
   };
 
   auto nonConvertedExpected = [](irs::Or& expected) {
-    auto& root =
-        expected.add<irs::And>().add<irs::Not>().filter<irs::And>().add<irs::And>();
+    auto& root = expected.add<irs::And>()
+                     .add<irs::Not>()
+                     .filter<irs::And>()
+                     .add<irs::And>();
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("values");
@@ -12601,8 +12977,9 @@ TEST_P(IResearchQueryOptimizationTest, test_182) {
                                   "'A' AND  d.values == 'B') ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -12629,8 +13006,9 @@ TEST_P(IResearchQueryOptimizationTest, test_182) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
 
@@ -12663,8 +13041,10 @@ TEST_P(IResearchQueryOptimizationTest, test_183) {
   };
 
   auto nonConvertedExpected = [](irs::Or& expected) {
-    auto& root =
-        expected.add<irs::And>().add<irs::Not>().filter<irs::And>().add<irs::Or>();
+    auto& root = expected.add<irs::And>()
+                     .add<irs::Not>()
+                     .filter<irs::And>()
+                     .add<irs::Or>();
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("values");
@@ -12692,8 +13072,9 @@ TEST_P(IResearchQueryOptimizationTest, test_183) {
                                   "'A' OR  d.values == 'B') ") +
                               o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure
@@ -12720,8 +13101,9 @@ TEST_P(IResearchQueryOptimizationTest, test_183) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
 
@@ -12740,8 +13122,9 @@ TEST_P(IResearchQueryOptimizationTest, test_184) {
             "d.values == 'A') AND  (d.values == 'A' OR d.values == 'C' OR "
             "d.values == 'C') ") +
         o + "RETURN d";
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure only for non-optimized
@@ -12798,8 +13181,9 @@ TEST_P(IResearchQueryOptimizationTest, test_184) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -12816,8 +13200,9 @@ TEST_P(IResearchQueryOptimizationTest, test_185) {
             "FOR d IN testView SEARCH  (d.values IN ['A', 'B', 'A']) AND  "
             "(d.values == 'A' OR d.values == 'C' OR d.values == 'C') ") +
         o + "RETURN d";
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_FALSE(findEmptyNodes(vocbase(), query));
     // check structure only for non-optimized
@@ -12874,8 +13259,9 @@ TEST_P(IResearchQueryOptimizationTest, test_185) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE((
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
     ++optimizeType;
@@ -12886,7 +13272,8 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
   // empty prefix case wrapped
   {
     irs::Or expected;
-    auto& filter = expected.add<irs::And>().add<irs::And>().add<irs::by_edit_distance>();
+    auto& filter =
+        expected.add<irs::And>().add<irs::And>().add<irs::by_edit_distance>();
     *filter.mutable_field() = mangleString("name", "test_analyzer");
     auto* opts = filter.mutable_options();
     opts->max_distance = 2;
@@ -13070,7 +13457,8 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       *starts.mutable_field() = mangleString("name", "identity");
       auto* opt = starts.mutable_options();
       opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("boo"));
-      opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      opt->scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
     assertFilterOptimized(vocbase(),
                           "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
@@ -13098,7 +13486,8 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       *starts.mutable_field() = mangleString("name", "identity");
       auto* opt = starts.mutable_options();
       opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("boo"));
-      opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      opt->scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
     assertFilterOptimized(vocbase(),
                           "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
@@ -13126,7 +13515,8 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       *starts.mutable_field() = mangleString("name", "identity");
       auto* opt = starts.mutable_options();
       opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foobard"));
-      opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      opt->scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
     assertFilterOptimized(vocbase(),
                           "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
@@ -13154,7 +13544,8 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       *starts.mutable_field() = mangleString("name", "identity");
       auto* opt = starts.mutable_options();
       opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-      opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      opt->scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
     assertFilterOptimized(vocbase(),
                           "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
@@ -13182,7 +13573,8 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       *starts.mutable_field() = mangleString("name", "identity");
       auto* opt = starts.mutable_options();
       opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-      opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      opt->scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
     assertFilterOptimized(vocbase(),
                           "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
@@ -13211,7 +13603,8 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       *starts.mutable_field() = mangleString("name", "identity");
       auto* opt = starts.mutable_options();
       opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-      opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      opt->scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
     assertFilterOptimized(vocbase(),
                           "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
@@ -13243,14 +13636,16 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
         *starts.mutable_field() = mangleString("name", "identity");
         auto* opt = starts.mutable_options();
         opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-        opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+        opt->scored_terms_limit =
+            arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
       }
       {
         auto& starts = orFilter.add<irs::by_prefix>();
         *starts.mutable_field() = mangleString("name", "identity");
         auto* opt = starts.mutable_options();
         opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("boo"));
-        opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+        opt->scored_terms_limit =
+            arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
       }
     }
     assertFilterOptimized(vocbase(),
@@ -13280,7 +13675,8 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       *starts.mutable_field() = mangleString("name2", "identity");
       auto* opt = starts.mutable_options();
       opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("boo"));
-      opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      opt->scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
     assertFilterOptimized(vocbase(),
                           "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
@@ -13308,7 +13704,8 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       *starts.mutable_field() = mangleString("name", "identity");
       auto* opt = starts.mutable_options();
       opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foa"));
-      opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      opt->scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
     assertFilterOptimized(vocbase(),
                           "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "
@@ -13336,7 +13733,8 @@ TEST_P(IResearchQueryOptimizationTest, mergeLevenshteinStartsWith) {
       *starts.mutable_field() = mangleString("name", "identity");
       auto* opt = starts.mutable_options();
       opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("fao"));
-      opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      opt->scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
     assertFilterOptimized(vocbase(),
                           "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.name, "

@@ -40,7 +40,8 @@ auto const MAGIC_TYPE{0xf3};
 // -----------------------------------------------------------------------------
 
 struct TestTypeHandler final : public arangodb::velocypack::CustomTypeHandler {
-  void dump(arangodb::velocypack::Slice const& value, arangodb::velocypack::Dumper* dumper,
+  void dump(arangodb::velocypack::Slice const& value,
+            arangodb::velocypack::Dumper* dumper,
             arangodb::velocypack::Slice const& base) override final {
     throw std::runtime_error("Not implemented");
   }
@@ -66,9 +67,9 @@ TEST_F(VstResponseTest, add_payload_slice_json) {
   builder.openObject();
 
   // use the builder to create the value I want
-  uint8_t* p =
-      builder.add(arangodb::StaticStrings::IdString,
-                  arangodb::velocypack::ValuePair(9ULL, arangodb::velocypack::ValueType::Custom));
+  uint8_t* p = builder.add(arangodb::StaticStrings::IdString,
+                           arangodb::velocypack::ValuePair(
+                               9ULL, arangodb::velocypack::ValueType::Custom));
 
   *p++ = MAGIC_TYPE;
   arangodb::encoding::storeNumber<uint64_t>(p, 12345, sizeof(uint64_t));

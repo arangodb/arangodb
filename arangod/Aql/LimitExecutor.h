@@ -42,7 +42,7 @@ namespace aql {
 
 class InputAqlItemRow;
 class RegisterInfos;
-template <BlockPassthrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 
 class LimitExecutorInfos {
@@ -78,7 +78,8 @@ class LimitExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Enable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Enable;
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -94,17 +95,21 @@ class LimitExecutor {
   /**
    * @brief produce the next Rows of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
-  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input,
+                                 OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
 
   /**
    * @brief skip the next Row of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
-  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                   AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
  private:
@@ -125,7 +130,8 @@ class LimitExecutor {
     auto const limitPlusOffset = infos().getLimitPlusOffset();
 
     // Restricted value of _counter in [offset, limitPlusOffset]
-    auto const boundedCounter = std::min(limitPlusOffset, std::max(offset, _counter));
+    auto const boundedCounter =
+        std::min(limitPlusOffset, std::max(offset, _counter));
     TRI_ASSERT(offset <= boundedCounter);
     TRI_ASSERT(boundedCounter <= limitPlusOffset);
     return limitPlusOffset - boundedCounter;

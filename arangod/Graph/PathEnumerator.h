@@ -67,7 +67,7 @@ class EnumeratedPath {
   graph::EdgeDocumentToken const& lastEdge() const noexcept;
 
  private:
-  template <typename T>
+  template<typename T>
   void growStorage(std::vector<T>& data);
 
  private:
@@ -112,7 +112,8 @@ class PathEnumerator {
   bool _isFirst;
 
   bool keepEdge(graph::EdgeDocumentToken& eid, velocypack::Slice edge,
-                velocypack::StringRef sourceVertex, size_t depth, size_t cursorId);
+                velocypack::StringRef sourceVertex, size_t depth,
+                size_t cursorId);
 
  public:
   PathEnumerator(Traverser* traverser, TraverserOptions* opts);
@@ -153,7 +154,8 @@ class PathEnumerator {
   void incHttpRequests(size_t requests) { _httpRequests += requests; }
 
  protected:
-  graph::EdgeCursor* getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth);
+  graph::EdgeCursor* getCursor(arangodb::velocypack::StringRef nextVertex,
+                               uint64_t currentDepth);
 
   /// @brief The vector of EdgeCursors to walk through.
   std::vector<std::unique_ptr<graph::EdgeCursor>> _cursors;
@@ -192,7 +194,8 @@ class DepthFirstEnumerator final : public PathEnumerator {
   bool shouldPrune();
   bool validDisjointPath() const;
 
-  velocypack::Slice pathToSlice(arangodb::velocypack::Builder& result, bool fromPrune);
+  velocypack::Slice pathToSlice(arangodb::velocypack::Builder& result,
+                                bool fromPrune);
 };
 }  // namespace traverser
 }  // namespace arangodb

@@ -45,7 +45,8 @@ class AqlItemBlockTest : public ::testing::Test {
  protected:
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor,
+                                       SerializationFormat::SHADOWROWS};
   std::shared_ptr<VPackBuilder> _dummyData{VPackParser::fromJson(R"(
           [
               "a",
@@ -70,8 +71,9 @@ class AqlItemBlockTest : public ::testing::Test {
 
   void compareWithDummy(SharedAqlItemBlockPtr const& testee, size_t row,
                         RegisterId column, size_t dummyIndex) {
-    EXPECT_EQ(VelocyPackHelper::compare(testee->getValueReference(row, column).slice(),
-                                        dummyData(dummyIndex), false),
+    EXPECT_EQ(VelocyPackHelper::compare(
+                  testee->getValueReference(row, column).slice(),
+                  dummyData(dummyIndex), false),
               0)
         << testee->getValueReference(row, column).slice().toJson() << " vs "
         << dummyData(dummyIndex).toJson();
@@ -218,7 +220,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_1) {
   ASSERT_TRUE(result.isOpenObject());
   result.close();
 
-  SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+  SharedAqlItemBlockPtr testee =
+      itemBlockManager.requestAndInitBlock(result.slice());
 
   // Check exposed attributes
   EXPECT_EQ(testee->numRows(), block->numRows());
@@ -247,7 +250,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_2) {
     ASSERT_TRUE(result.isOpenObject());
     result.close();
 
-    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+    SharedAqlItemBlockPtr testee =
+        itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
     EXPECT_EQ(testee->numRows(), block->numRows());
@@ -283,7 +287,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_3) {
     ASSERT_TRUE(result.isOpenObject());
     result.close();
 
-    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+    SharedAqlItemBlockPtr testee =
+        itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
     EXPECT_EQ(testee->numRows(), block->numRows());
@@ -327,7 +332,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_shadowrows) {
   ASSERT_TRUE(result.isOpenObject());
   result.close();
 
-  SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+  SharedAqlItemBlockPtr testee =
+      itemBlockManager.requestAndInitBlock(result.slice());
 
   // Check exposed attributes
   EXPECT_EQ(testee->numRows(), block->numRows());
@@ -368,7 +374,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_slices) {
     ASSERT_TRUE(result.isOpenObject());
     result.close();
 
-    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+    SharedAqlItemBlockPtr testee =
+        itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
     EXPECT_EQ(testee->numRows(), 1);
@@ -386,7 +393,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_slices) {
     ASSERT_TRUE(result.isOpenObject());
     result.close();
 
-    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+    SharedAqlItemBlockPtr testee =
+        itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
     EXPECT_EQ(testee->numRows(), 1);
@@ -415,7 +423,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_with_ranges) {
     ASSERT_TRUE(result.isOpenObject());
     result.close();
 
-    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+    SharedAqlItemBlockPtr testee =
+        itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
     EXPECT_EQ(testee->numRows(), 1);
@@ -435,7 +444,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_with_ranges) {
     ASSERT_TRUE(result.isOpenObject());
     result.close();
 
-    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+    SharedAqlItemBlockPtr testee =
+        itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
     EXPECT_EQ(testee->numRows(), 1);
@@ -455,7 +465,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_with_ranges) {
     ASSERT_TRUE(result.isOpenObject());
     result.close();
 
-    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+    SharedAqlItemBlockPtr testee =
+        itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
     EXPECT_EQ(testee->numRows(), 2);
@@ -484,7 +495,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_input_row) {
     ASSERT_TRUE(result.isOpenObject());
     result.close();
 
-    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+    SharedAqlItemBlockPtr testee =
+        itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
     EXPECT_EQ(testee->numRows(), 1);
@@ -502,7 +514,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_input_row) {
     ASSERT_TRUE(result.isOpenObject());
     result.close();
 
-    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+    SharedAqlItemBlockPtr testee =
+        itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
     EXPECT_EQ(testee->numRows(), 1);
@@ -543,8 +556,9 @@ class AqlItemBlockClassicTest : public ::testing::Test {
 
   void compareWithDummy(SharedAqlItemBlockPtr const& testee, size_t row,
                         RegisterId column, size_t dummyIndex) {
-    EXPECT_EQ(VelocyPackHelper::compare(testee->getValueReference(row, column).slice(),
-                                        dummyData(dummyIndex), false),
+    EXPECT_EQ(VelocyPackHelper::compare(
+                  testee->getValueReference(row, column).slice(),
+                  dummyData(dummyIndex), false),
               0)
         << testee->getValueReference(row, column).slice().toJson() << " vs "
         << dummyData(dummyIndex).toJson();
@@ -564,7 +578,8 @@ TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_1) {
   ASSERT_TRUE(result.isOpenObject());
   result.close();
 
-  SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+  SharedAqlItemBlockPtr testee =
+      itemBlockManager.requestAndInitBlock(result.slice());
 
   // Check exposed attributes
   EXPECT_EQ(testee->numRows(), block->numRows());
@@ -592,7 +607,8 @@ TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_2) {
     ASSERT_TRUE(result.isOpenObject());
     result.close();
 
-    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+    SharedAqlItemBlockPtr testee =
+        itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
     EXPECT_EQ(testee->numRows(), block->numRows());
@@ -627,7 +643,8 @@ TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_3) {
     ASSERT_TRUE(result.isOpenObject());
     result.close();
 
-    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+    SharedAqlItemBlockPtr testee =
+        itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
     EXPECT_EQ(testee->numRows(), block->numRows());
@@ -669,7 +686,8 @@ TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_shadowrows) {
   result.close();
 
   // The shadow row information will be lost!
-  SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+  SharedAqlItemBlockPtr testee =
+      itemBlockManager.requestAndInitBlock(result.slice());
 
   // Check exposed attributes
   EXPECT_EQ(testee->numRows(), block->numRows());
@@ -708,7 +726,8 @@ TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_slices) {
     ASSERT_TRUE(result.isOpenObject());
     result.close();
 
-    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+    SharedAqlItemBlockPtr testee =
+        itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
     EXPECT_EQ(testee->numRows(), 1);
@@ -726,7 +745,8 @@ TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_slices) {
     ASSERT_TRUE(result.isOpenObject());
     result.close();
 
-    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+    SharedAqlItemBlockPtr testee =
+        itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
     EXPECT_EQ(testee->numRows(), 1);
@@ -751,7 +771,8 @@ TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_input_row) {
     ASSERT_TRUE(result.isOpenObject());
     result.close();
 
-    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+    SharedAqlItemBlockPtr testee =
+        itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
     EXPECT_EQ(testee->numRows(), 1);
@@ -769,7 +790,8 @@ TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_input_row) {
     ASSERT_TRUE(result.isOpenObject());
     result.close();
 
-    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+    SharedAqlItemBlockPtr testee =
+        itemBlockManager.requestAndInitBlock(result.slice());
 
     // Check exposed attributes
     EXPECT_EQ(testee->numRows(), 1);

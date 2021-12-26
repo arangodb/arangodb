@@ -48,7 +48,8 @@ static void JS_StateAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
-  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+  if (!v8security.isInternalContext(isolate) &&
+      !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
   }
@@ -63,7 +64,8 @@ static void JS_StateAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
   } catch (std::exception const& e) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, std::string("couldn't access agency feature: ") + e.what());
+        TRI_ERROR_INTERNAL,
+        std::string("couldn't access agency feature: ") + e.what());
   }
 
   TRI_V8_TRY_CATCH_END
@@ -75,12 +77,14 @@ static void JS_EnabledAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
-  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+  if (!v8security.isInternalContext(isolate) &&
+      !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
   }
 
-  TRI_V8_RETURN(v8::Boolean::New(isolate, v8g->_server.isEnabled<AgencyFeature>()));
+  TRI_V8_RETURN(
+      v8::Boolean::New(isolate, v8g->_server.isEnabled<AgencyFeature>()));
 
   TRI_V8_TRY_CATCH_END
 }
@@ -91,7 +95,8 @@ static void JS_LeadingAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
-  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+  if (!v8security.isInternalContext(isolate) &&
+      !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
   }
@@ -103,7 +108,8 @@ static void JS_LeadingAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   } catch (std::exception const& e) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, std::string("couldn't access agency feature: ") + e.what());
+        TRI_ERROR_INTERNAL,
+        std::string("couldn't access agency feature: ") + e.what());
   }
 
   v8::Handle<v8::Object> r = v8::Object::New(isolate);
@@ -123,7 +129,8 @@ static void JS_ReadAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
-  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+  if (!v8security.isInternalContext(isolate) &&
+      !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
   }
@@ -135,7 +142,8 @@ static void JS_ReadAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   } catch (std::exception const& e) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, std::string("couldn't access agency feature: ") + e.what());
+        TRI_ERROR_INTERNAL,
+        std::string("couldn't access agency feature: ") + e.what());
   }
 
   query_t query = std::make_shared<Builder>();
@@ -158,7 +166,8 @@ static void JS_WriteAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
-  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+  if (!v8security.isInternalContext(isolate) &&
+      !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
   }
@@ -170,7 +179,8 @@ static void JS_WriteAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   } catch (std::exception const& e) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, std::string("couldn't access agency feature: ") + e.what());
+        TRI_ERROR_INTERNAL,
+        std::string("couldn't access agency feature: ") + e.what());
   }
 
   query_t query = std::make_shared<Builder>();
@@ -225,11 +235,16 @@ void TRI_InitV8Agency(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
 
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "enabled"), JS_EnabledAgent);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "leading"), JS_LeadingAgent);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "read"), JS_ReadAgent);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "write"), JS_WriteAgent);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "state"), JS_StateAgent);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "enabled"),
+                       JS_EnabledAgent);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "leading"),
+                       JS_LeadingAgent);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "read"),
+                       JS_ReadAgent);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "write"),
+                       JS_WriteAgent);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "state"),
+                       JS_StateAgent);
 
   v8g->AgentTempl.Reset(isolate, rt);
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoAgentCtor"));
@@ -242,7 +257,7 @@ void TRI_InitV8Agency(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   v8::Handle<v8::Object> aa =
       rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   if (!aa.IsEmpty()) {
-    TRI_AddGlobalVariableVocbase(isolate,
-                                 TRI_V8_ASCII_STRING(isolate, "ArangoAgent"), aa);
+    TRI_AddGlobalVariableVocbase(
+        isolate, TRI_V8_ASCII_STRING(isolate, "ArangoAgent"), aa);
   }
 }

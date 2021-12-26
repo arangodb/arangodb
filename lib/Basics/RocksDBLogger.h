@@ -45,7 +45,8 @@ class RocksDBLogger final : public rocksdb::Logger {
   void LogHeader(const char* format, va_list ap) override {}
 
   void Logv(char const* format, va_list ap) override;
-  void Logv(const rocksdb::InfoLogLevel, char const* format, va_list ap) override;
+  void Logv(const rocksdb::InfoLogLevel, char const* format,
+            va_list ap) override;
 
   // nothing to do here, as ArangoDB logger infrastructure takes care of
   // flushing itself

@@ -46,7 +46,8 @@ TEST(QueryAnalyzerRevisionsTest, emptyData) {
   arangodb::QueryAnalyzerRevisions revisions;
   ASSERT_TRUE(
       revisions
-          .fromVelocyPack(VPackParser::fromJson("{\"analyzersRevision\" : {}}")->slice())
+          .fromVelocyPack(
+              VPackParser::fromJson("{\"analyzersRevision\" : {}}")->slice())
           .ok());
   ASSERT_EQ(arangodb::QueryAnalyzerRevisions(arangodb::AnalyzersRevision::MIN,
                                              arangodb::AnalyzersRevision::MIN),
@@ -73,7 +74,9 @@ TEST(QueryAnalyzerRevisionsTest, onlySystemData) {
                               "{\"analyzersRevision\" : {\"system\": 11}}")
                               ->slice())
           .ok());
-  ASSERT_EQ(arangodb::QueryAnalyzerRevisions(arangodb::AnalyzersRevision::MIN, 11), revisions);
+  ASSERT_EQ(
+      arangodb::QueryAnalyzerRevisions(arangodb::AnalyzersRevision::MIN, 11),
+      revisions);
 }
 
 TEST(QueryAnalyzerRevisionsTest, onlyCurrentData) {
@@ -85,7 +88,9 @@ TEST(QueryAnalyzerRevisionsTest, onlyCurrentData) {
                               "{\"analyzersRevision\" : {\"current\": 11}}")
                               ->slice())
           .ok());
-  ASSERT_EQ(arangodb::QueryAnalyzerRevisions(11, arangodb::AnalyzersRevision::MIN), revisions);
+  ASSERT_EQ(
+      arangodb::QueryAnalyzerRevisions(11, arangodb::AnalyzersRevision::MIN),
+      revisions);
 }
 
 TEST(QueryAnalyzerRevisionsTest, invalidCurrent) {
@@ -111,7 +116,8 @@ TEST(QueryAnalyzerRevisionsTest, invalidSystem) {
 TEST(QueryAnalyzerRevisionsTest, getVocbaseRevision) {
   arangodb::QueryAnalyzerRevisions revisions(1, 2);
   ASSERT_EQ(1, revisions.getVocbaseRevision("my_database"));
-  ASSERT_EQ(2, revisions.getVocbaseRevision(arangodb::StaticStrings::SystemDatabase));
+  ASSERT_EQ(
+      2, revisions.getVocbaseRevision(arangodb::StaticStrings::SystemDatabase));
 }
 
 TEST(QueryAnalyzerRevisionsTest, equality) {
@@ -143,12 +149,15 @@ TEST(QueryAnalyzerRevisionsTest, fillFullData) {
     VPackObjectBuilder query(&builder);
     revisions.toVelocyPack(builder);
   }
-  auto slice = builder.slice().get(arangodb::StaticStrings::ArangoSearchAnalyzersRevision);
+  auto slice = builder.slice().get(
+      arangodb::StaticStrings::ArangoSearchAnalyzersRevision);
   ASSERT_TRUE(slice.isObject());
-  auto current = slice.get(arangodb::StaticStrings::ArangoSearchCurrentAnalyzersRevision);
+  auto current =
+      slice.get(arangodb::StaticStrings::ArangoSearchCurrentAnalyzersRevision);
   ASSERT_TRUE(current.isNumber());
   ASSERT_EQ(1, current.getNumber<arangodb::AnalyzersRevision::Revision>());
-  auto system = slice.get(arangodb::StaticStrings::ArangoSearchSystemAnalyzersRevision);
+  auto system =
+      slice.get(arangodb::StaticStrings::ArangoSearchSystemAnalyzersRevision);
   ASSERT_TRUE(system.isNumber());
   ASSERT_EQ(2, system.getNumber<arangodb::AnalyzersRevision::Revision>());
 
@@ -164,7 +173,8 @@ TEST(QueryAnalyzerRevisionsTest, allDefaultData) {
     VPackObjectBuilder query(&builder);
     revisions.toVelocyPack(builder);
   }
-  auto slice = builder.slice().get(arangodb::StaticStrings::ArangoSearchAnalyzersRevision);
+  auto slice = builder.slice().get(
+      arangodb::StaticStrings::ArangoSearchAnalyzersRevision);
   ASSERT_TRUE(slice.isEmptyObject());
 
   arangodb::QueryAnalyzerRevisions revisions2;
@@ -173,17 +183,21 @@ TEST(QueryAnalyzerRevisionsTest, allDefaultData) {
 }
 
 TEST(QueryAnalyzerRevisionsTest, fillSystemData) {
-  arangodb::QueryAnalyzerRevisions revisions(arangodb::AnalyzersRevision::MIN, 2);
+  arangodb::QueryAnalyzerRevisions revisions(arangodb::AnalyzersRevision::MIN,
+                                             2);
   VPackBuilder builder;
   {
     VPackObjectBuilder query(&builder);
     revisions.toVelocyPack(builder);
   }
-  auto slice = builder.slice().get(arangodb::StaticStrings::ArangoSearchAnalyzersRevision);
+  auto slice = builder.slice().get(
+      arangodb::StaticStrings::ArangoSearchAnalyzersRevision);
   ASSERT_TRUE(slice.isObject());
-  auto current = slice.get(arangodb::StaticStrings::ArangoSearchCurrentAnalyzersRevision);
+  auto current =
+      slice.get(arangodb::StaticStrings::ArangoSearchCurrentAnalyzersRevision);
   ASSERT_TRUE(current.isNone());
-  auto system = slice.get(arangodb::StaticStrings::ArangoSearchSystemAnalyzersRevision);
+  auto system =
+      slice.get(arangodb::StaticStrings::ArangoSearchSystemAnalyzersRevision);
   ASSERT_TRUE(system.isNumber());
   ASSERT_EQ(2, system.getNumber<arangodb::AnalyzersRevision::Revision>());
 
@@ -193,18 +207,22 @@ TEST(QueryAnalyzerRevisionsTest, fillSystemData) {
 }
 
 TEST(QueryAnalyzerRevisionsTest, fillCurrentData) {
-  arangodb::QueryAnalyzerRevisions revisions(1, arangodb::AnalyzersRevision::MIN);
+  arangodb::QueryAnalyzerRevisions revisions(1,
+                                             arangodb::AnalyzersRevision::MIN);
   VPackBuilder builder;
   {
     VPackObjectBuilder query(&builder);
     revisions.toVelocyPack(builder);
   }
-  auto slice = builder.slice().get(arangodb::StaticStrings::ArangoSearchAnalyzersRevision);
+  auto slice = builder.slice().get(
+      arangodb::StaticStrings::ArangoSearchAnalyzersRevision);
   ASSERT_TRUE(slice.isObject());
-  auto current = slice.get(arangodb::StaticStrings::ArangoSearchCurrentAnalyzersRevision);
+  auto current =
+      slice.get(arangodb::StaticStrings::ArangoSearchCurrentAnalyzersRevision);
   ASSERT_TRUE(current.isNumber());
   ASSERT_EQ(1, current.getNumber<arangodb::AnalyzersRevision::Revision>());
-  auto system = slice.get(arangodb::StaticStrings::ArangoSearchSystemAnalyzersRevision);
+  auto system =
+      slice.get(arangodb::StaticStrings::ArangoSearchSystemAnalyzersRevision);
   ASSERT_TRUE(system.isNone());
 
   arangodb::QueryAnalyzerRevisions revisions2;

@@ -37,18 +37,20 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminStatisticsHandler::RestAdminStatisticsHandler(application_features::ApplicationServer& server,
-                                                       GeneralRequest* request,
-                                                       GeneralResponse* response)
+RestAdminStatisticsHandler::RestAdminStatisticsHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAdminStatisticsHandler::execute() {
   if (_request->requestType() != rest::RequestType::GET) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 
-  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security =
+      server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here

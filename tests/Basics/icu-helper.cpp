@@ -55,7 +55,8 @@ void IcuInitializer::setup(char const* path) {
   icuDataPtr = arangodb::LanguageFeature::prepareIcu(TEST_DIRECTORY, binaryPath,
                                                      p, "basics_suite");
   if (icuDataPtr == nullptr ||
-      !arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage("", icuDataPtr)) {
+      !arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(
+          "", icuDataPtr)) {
     std::string msg =
         "failed to initialize ICU library. The environment variable ICU_DATA";
     if (getenv("ICU_DATA") != nullptr) {

@@ -45,9 +45,11 @@ class RestUsersHandler : public arangodb::RestBaseHandler {
   bool canAccessUser(std::string const& user) const;
 
   /// helper to generate a compliant response for individual user requests
-  void generateUserResult(rest::ResponseCode code, velocypack::Builder const& doc);
+  void generateUserResult(rest::ResponseCode code,
+                          velocypack::Builder const& doc);
 
-  void generateDatabaseResult(auth::UserManager*, std::string const& user, bool full);
+  void generateDatabaseResult(auth::UserManager*, std::string const& user,
+                              bool full);
 
   RestStatus getRequest(auth::UserManager*);
   RestStatus postRequest(auth::UserManager*);

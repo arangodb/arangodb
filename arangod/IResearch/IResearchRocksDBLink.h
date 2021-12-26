@@ -40,7 +40,8 @@ namespace iresearch {
 
 class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
  public:
-  IResearchRocksDBLink(IndexId iid, LogicalCollection& collection, uint64_t objectId);
+  IResearchRocksDBLink(IndexId iid, LogicalCollection& collection,
+                       uint64_t objectId);
 
   void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override {
     IResearchLink::afterTruncate(tick, trx);
@@ -56,7 +57,8 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
 
   Result insert(transaction::Methods& trx, RocksDBMethods* /*methods*/,
                 LocalDocumentId const& documentId, VPackSlice doc,
-                OperationOptions const& /*options*/, bool /*performChecks*/) override {
+                OperationOptions const& /*options*/,
+                bool /*performChecks*/) override {
     return IResearchLink::insert(trx, documentId, doc);
   }
 
@@ -86,9 +88,11 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
   ////////////////////////////////////////////////////////////////////////////////
-  using Index::toVelocyPack;  // for std::shared_ptr<Builder> Index::toVelocyPack(bool, Index::Serialize)
-  void toVelocyPack(VPackBuilder& builder,
-                    std::underlying_type<Index::Serialize>::type flags) const override;
+  using Index::toVelocyPack;  // for std::shared_ptr<Builder>
+                              // Index::toVelocyPack(bool, Index::Serialize)
+  void toVelocyPack(
+      VPackBuilder& builder,
+      std::underlying_type<Index::Serialize>::type flags) const override;
 
   void toVelocyPackFigures(VPackBuilder& builder) const override {
     IResearchLink::toVelocyPackStats(builder);
@@ -116,17 +120,20 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
     IndexFactory(application_features::ApplicationServer& server);
 
    public:
-    bool equal(VPackSlice lhs, VPackSlice rhs, std::string const& dbname) const override;
+    bool equal(VPackSlice lhs, VPackSlice rhs,
+               std::string const& dbname) const override;
 
-    std::shared_ptr<Index> instantiate(LogicalCollection& collection,
-                                       VPackSlice definition, IndexId id,
-                                       bool /*isClusterConstructor*/) const override;
+    std::shared_ptr<Index> instantiate(
+        LogicalCollection& collection, VPackSlice definition, IndexId id,
+        bool /*isClusterConstructor*/) const override;
 
     virtual Result normalize(VPackBuilder& normalized, VPackSlice definition,
-                             bool isCreation, TRI_vocbase_t const& vocbase) const override;
+                             bool isCreation,
+                             TRI_vocbase_t const& vocbase) const override;
   };
 
-  static std::shared_ptr<IndexFactory> createFactory(application_features::ApplicationServer&);
+  static std::shared_ptr<IndexFactory> createFactory(
+      application_features::ApplicationServer&);
 };
 
 }  // namespace iresearch

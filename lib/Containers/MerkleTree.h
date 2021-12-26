@@ -107,7 +107,8 @@ class MerkleTreeBase {
   static constexpr std::uint64_t MetaSize = sizeof(Meta);
 
   // size of each shard, in bytes.
-  // note: trees with a small depth may only have a single shard which is smaller than this value
+  // note: trees with a small depth may only have a single shard which is
+  // smaller than this value
   static constexpr std::uint64_t ShardSize = (1 << 16);
 
   struct Data {
@@ -129,9 +130,9 @@ class MerkleTreeBase {
   };
 };
 
-template <typename Hasher,
-          std::uint64_t const BranchingBits = 3  // 8 children per internal node,
-          >
+template<typename Hasher,
+         std::uint64_t const BranchingBits = 3  // 8 children per internal node,
+         >
 class MerkleTree : public MerkleTreeBase {
   // A MerkleTree has three parameters which define its semantics:
   //  - rangeMin: lower bound (inclusive) for _rev values it can take
@@ -195,7 +196,8 @@ class MerkleTree : public MerkleTreeBase {
    *
    * @param depth The same depth value used for the calculation
    */
-  static constexpr std::uint64_t nodeCountAtDepth(std::uint64_t depth) noexcept {
+  static constexpr std::uint64_t nodeCountAtDepth(
+      std::uint64_t depth) noexcept {
     return static_cast<std::uint64_t>(1) << (BranchingBits * depth);
   }
 
@@ -224,7 +226,8 @@ class MerkleTree : public MerkleTreeBase {
    * @param buffer      A buffer containing a serialized tree
    * @return A newly allocated tree constructed from the input
    */
-  static std::unique_ptr<MerkleTree<Hasher, BranchingBits>> fromBuffer(std::string_view buffer);
+  static std::unique_ptr<MerkleTree<Hasher, BranchingBits>> fromBuffer(
+      std::string_view buffer);
 
   /**
    * @brief Construct a tree from a buffer containing an uncompressed tree
@@ -232,7 +235,8 @@ class MerkleTree : public MerkleTreeBase {
    * @param buffer      A buffer containing an uncompressed tree
    * @return A newly allocated tree constructed from the input
    */
-  static std::unique_ptr<MerkleTree<Hasher, BranchingBits>> fromUncompressed(std::string_view buffer);
+  static std::unique_ptr<MerkleTree<Hasher, BranchingBits>> fromUncompressed(
+      std::string_view buffer);
 
   /**
    * @brief Construct a tree from a buffer containing a Snappy-compressed tree
@@ -240,9 +244,11 @@ class MerkleTree : public MerkleTreeBase {
    * @param buffer      A buffer containing a Snappy compressed tree
    * @return A newly allocated tree constructed from the input
    */
-  static std::unique_ptr<MerkleTree<Hasher, BranchingBits>> fromSnappyCompressed(std::string_view buffer);
+  static std::unique_ptr<MerkleTree<Hasher, BranchingBits>>
+  fromSnappyCompressed(std::string_view buffer);
 
-  static std::unique_ptr<MerkleTree<Hasher, BranchingBits>> fromSnappyLazyCompressed(std::string_view buffer);
+  static std::unique_ptr<MerkleTree<Hasher, BranchingBits>>
+  fromSnappyLazyCompressed(std::string_view buffer);
 
   /**
    * @brief Construct a tree from a buffer containing only the populated buckets
@@ -250,7 +256,8 @@ class MerkleTree : public MerkleTreeBase {
    * @param buffer      A buffer containing a series of populated buckets
    * @return A newly allocated tree constructed from the input
    */
-  static std::unique_ptr<MerkleTree<Hasher, BranchingBits>> fromOnlyPopulated(std::string_view buffer);
+  static std::unique_ptr<MerkleTree<Hasher, BranchingBits>> fromOnlyPopulated(
+      std::string_view buffer);
 
   /**
    * @brief Construct a tree from a portable serialized tree
@@ -258,7 +265,8 @@ class MerkleTree : public MerkleTreeBase {
    * @param slice A slice containing a serialized tree
    * @return A newly allocated tree constructed from the input
    */
-  static std::unique_ptr<MerkleTree<Hasher, BranchingBits>> deserialize(velocypack::Slice slice);
+  static std::unique_ptr<MerkleTree<Hasher, BranchingBits>> deserialize(
+      velocypack::Slice slice);
 
   /**
    * @brief Construct a Merkle tree of a given depth with a given minimum key
@@ -291,7 +299,8 @@ class MerkleTree : public MerkleTreeBase {
    *
    * @param other Input tree, intended assignment
    */
-  MerkleTree& operator=(std::unique_ptr<MerkleTree<Hasher, BranchingBits>>&& other);
+  MerkleTree& operator=(
+      std::unique_ptr<MerkleTree<Hasher, BranchingBits>>&& other);
 
   std::uint64_t memoryUsage() const;
 
@@ -381,7 +390,8 @@ class MerkleTree : public MerkleTreeBase {
    * @return  Vector of (inclusive) ranges of keys over which trees differ
    * @throws std::invalid_argument  If trees different rangeMin
    */
-  std::vector<std::pair<std::uint64_t, std::uint64_t>> diff(MerkleTree<Hasher, BranchingBits>& other);
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> diff(
+      MerkleTree<Hasher, BranchingBits>& other);
 
   /**
    * @brief Convert to a human-readable string for printing
@@ -409,7 +419,8 @@ class MerkleTree : public MerkleTreeBase {
    * @param count The number of partitions to return
    * @return Vector of (inclusive) ranges that partiion the keyspace
    */
-  std::vector<std::pair<std::uint64_t, std::uint64_t>> partitionKeys(std::uint64_t count) const;
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> partitionKeys(
+      std::uint64_t count) const;
 
   /**
    * @brief Serialize the tree for transport or storage in binary format
@@ -445,7 +456,8 @@ class MerkleTree : public MerkleTreeBase {
   std::uint64_t index(std::uint64_t key) const noexcept;
   void modify(std::uint64_t key, bool isInsert);
   void modify(std::vector<std::uint64_t> const& keys, bool isInsert);
-  bool modifyLocal(Node& node, std::uint64_t count, std::uint64_t value, bool isInsert) noexcept;
+  bool modifyLocal(Node& node, std::uint64_t count, std::uint64_t value,
+                   bool isInsert) noexcept;
   bool modifyLocal(std::uint64_t key, std::uint64_t value, bool isInsert);
   void leftCombine(bool withShift);
   void rightCombine(bool withShift);
@@ -485,8 +497,9 @@ class MerkleTree : public MerkleTreeBase {
   Data _data;
 };
 
-template <typename Hasher, std::uint64_t const BranchingBits>
-std::ostream& operator<<(std::ostream& stream, MerkleTree<Hasher, BranchingBits> const& tree);
+template<typename Hasher, std::uint64_t const BranchingBits>
+std::ostream& operator<<(std::ostream& stream,
+                         MerkleTree<Hasher, BranchingBits> const& tree);
 
 using RevisionTree = MerkleTree<FnvHashProvider, 3>;
 

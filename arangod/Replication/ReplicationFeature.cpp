@@ -69,7 +69,8 @@ void writeError(ErrorCode code, arangodb::GeneralResponse* response) {
   builder.add(VPackValue(VPackValueType::Object));
   builder.add(arangodb::StaticStrings::Error, VPackValue(true));
   builder.add(arangodb::StaticStrings::ErrorNum, VPackValue(code));
-  builder.add(arangodb::StaticStrings::ErrorMessage, VPackValue(TRI_errno_string(code)));
+  builder.add(arangodb::StaticStrings::ErrorMessage,
+              VPackValue(TRI_errno_string(code)));
   builder.add(arangodb::StaticStrings::Code,
               VPackValue(static_cast<int>(response->responseCode())));
   builder.close();
@@ -112,32 +113,36 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
 
 ReplicationFeature::~ReplicationFeature() = default;
 
-void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void ReplicationFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
   options->addSection("replication", "replication");
-  options->addOption("--replication.auto-start",
-                     "switch to enable or disable the automatic start "
-                     "of replication appliers",
-                     new BooleanParameter(&_replicationApplierAutoStart),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption(
+      "--replication.auto-start",
+      "switch to enable or disable the automatic start "
+      "of replication appliers",
+      new BooleanParameter(&_replicationApplierAutoStart),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOldOption("server.disable-replication-applier",
                         "replication.auto-start");
   options->addOldOption("database.replication-applier",
                         "replication.auto-start");
-  options->addOption("--replication.automatic-failover",
-                     "Please use `--replication.active-failover` instead",
-                     new BooleanParameter(&_enableActiveFailover),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption(
+      "--replication.automatic-failover",
+      "Please use `--replication.active-failover` instead",
+      new BooleanParameter(&_enableActiveFailover),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
   options->addOption("--replication.active-failover",
                      "Enable active-failover during asynchronous replication",
                      new BooleanParameter(&_enableActiveFailover));
 
   options
-      ->addOption("--replication.max-parallel-tailing-invocations",
-                  "Maximum number of concurrently allowed WAL tailing "
-                  "invocations (0 = unlimited)",
-                  new UInt64Parameter(&_maxParallelTailingInvocations),
-                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption(
+          "--replication.max-parallel-tailing-invocations",
+          "Maximum number of concurrently allowed WAL tailing "
+          "invocations (0 = unlimited)",
+          new UInt64Parameter(&_maxParallelTailingInvocations),
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setIntroducedIn(30500);
 
   options
@@ -155,11 +160,12 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
       .setIntroducedIn(30504);
 
   options
-      ->addOption("--replication.quick-keys-limit",
-                  "Limit at which 'quick' calls to the replication keys API "
-                  "return only the document count for second run",
-                  new UInt64Parameter(&_quickKeysLimit),
-                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption(
+          "--replication.quick-keys-limit",
+          "Limit at which 'quick' calls to the replication keys API "
+          "return only the document count for second run",
+          new UInt64Parameter(&_quickKeysLimit),
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setIntroducedIn(30709);
 
   options
@@ -170,7 +176,8 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
       .setIntroducedIn(30700);
 }
 
-void ReplicationFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
+void ReplicationFeature::validateOptions(
+    std::shared_ptr<options::ProgramOptions> options) {
   auto& feature = server().getFeature<ClusterFeature>();
   if (_enableActiveFailover && feature.agencyEndpoints().empty()) {
     LOG_TOPIC("68fcb", FATAL, arangodb::Logger::REPLICATION)
@@ -218,7 +225,8 @@ void ReplicationFeature::start() {
 
   if (_globalReplicationApplier->autoStart() &&
       _globalReplicationApplier->hasState() && _replicationApplierAutoStart) {
-    _globalReplicationApplier->startTailing(/*initialTick*/ 0, /*useTick*/ false);
+    _globalReplicationApplier->startTailing(/*initialTick*/ 0,
+                                            /*useTick*/ false);
   }
 }
 
@@ -307,7 +315,8 @@ void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
           << vocbase->name() << "'";
     } else {
       try {
-        vocbase->replicationApplier()->startTailing(/*initialTick*/ 0, /*useTick*/ false);
+        vocbase->replicationApplier()->startTailing(/*initialTick*/ 0,
+                                                    /*useTick*/ false);
       } catch (std::exception const& ex) {
         LOG_TOPIC("2038f", WARN, arangodb::Logger::REPLICATION)
             << "unable to start replication applier for database '"
@@ -334,7 +343,8 @@ void ReplicationFeature::disableReplicationApplier() {
 void ReplicationFeature::stopApplier(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
 
-  if (!ServerState::instance()->isClusterRole() && vocbase->replicationApplier() != nullptr) {
+  if (!ServerState::instance()->isClusterRole() &&
+      vocbase->replicationApplier() != nullptr) {
     vocbase->replicationApplier()->stopAndJoin();
   }
 }
@@ -361,8 +371,8 @@ void ReplicationFeature::setEndpointHeader(GeneralResponse* res,
 }
 
 /// @brief fill a response object with correct response for a follower
-void ReplicationFeature::prepareFollowerResponse(GeneralResponse* response,
-                                                 arangodb::ServerState::Mode mode) {
+void ReplicationFeature::prepareFollowerResponse(
+    GeneralResponse* response, arangodb::ServerState::Mode mode) {
   switch (mode) {
     case ServerState::Mode::REDIRECT: {
       setEndpointHeader(response, mode);

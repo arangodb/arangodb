@@ -43,9 +43,9 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-MaintenanceRestHandler::MaintenanceRestHandler(application_features::ApplicationServer& server,
-                                               GeneralRequest* request,
-                                               GeneralResponse* response)
+MaintenanceRestHandler::MaintenanceRestHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus MaintenanceRestHandler::execute() {
@@ -74,7 +74,8 @@ RestStatus MaintenanceRestHandler::execute() {
       break;
 
     default:
-      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                    TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
       break;
   }  // switch
 
@@ -102,7 +103,8 @@ RestStatus MaintenanceRestHandler::postAction() {
         if (body.get("duration").isNumber()) {
           dur = std::chrono::seconds(body.get("duration").getNumber<int64_t>());
           if (dur.count() <= 0 || dur.count() > 300) {
-            es << "invalid mainenance pause duration: " << dur.count() << " seconds";
+            es << "invalid mainenance pause duration: " << dur.count()
+               << " seconds";
           }
           // Pause maintenance
           LOG_TOPIC("1ee7a", DEBUG, Logger::MAINTENANCE)
@@ -134,7 +136,8 @@ RestStatus MaintenanceRestHandler::postAction() {
     generateResult(rest::ResponseCode::OK, ok.slice());
   } else {
     LOG_TOPIC("9faa1", ERR, Logger::MAINTENANCE) << es.str();
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, es.str());
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  es.str());
   }
 
   return RestStatus::DONE;
@@ -147,10 +150,10 @@ void MaintenanceRestHandler::putAction() {
   try {
     parameters = _request->payload();
   } catch (VPackException const& ex) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  std::string(
-                      "expecting a valid JSON object in the request. got: ") +
-                      ex.what());
+    generateError(
+        rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        std::string("expecting a valid JSON object in the request. got: ") +
+            ex.what());
     good = false;
   }  // catch
 
@@ -165,9 +168,9 @@ void MaintenanceRestHandler::putAction() {
 
     // bad json
     if (!good) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    std::string(
-                        "unable to parse JSON object into key/value pairs."));
+      generateError(
+          rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+          std::string("unable to parse JSON object into key/value pairs."));
     }  // if
   }    // if
 
@@ -205,21 +208,23 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {
     // attempt insert into map ... but needs to be unique
     if (key.isString() && value.isString()) {
       good = desc.insert({key.copyString(), value.copyString()}).second;
-    } else if (key.isString() && (key.copyString() == "properties") && value.isObject()) {
+    } else if (key.isString() && (key.copyString() == "properties") &&
+               value.isObject()) {
       // code here
       prop.reset(new VPackBuilder(value));
-    } else if (key.isString() && (key.copyString() == "priority") && value.isInteger()) {
+    } else if (key.isString() && (key.copyString() == "priority") &&
+               value.isInteger()) {
       priority = static_cast<int>(value.getInt());
-    } else if (key.isString() && (key.stringRef() == "forced") && value.isBool()) {
+    } else if (key.isString() && (key.stringRef() == "forced") &&
+               value.isBool()) {
       forced = value.isTrue();
     } else {
       good = false;
     }  // else
   }    // for
 
-  _actionDesc =
-      std::make_shared<maintenance::ActionDescription>(std::move(desc), priority,
-                                                       forced, std::move(prop));
+  _actionDesc = std::make_shared<maintenance::ActionDescription>(
+      std::move(desc), priority, forced, std::move(prop));
 
   return good;
 
@@ -231,7 +236,8 @@ void MaintenanceRestHandler::getAction() {
   VPackBuilder builder;
   {
     VPackObjectBuilder o(&builder);
-    builder.add("status", VPackValue(maintenance.isPaused() ? "paused" : "running"));
+    builder.add("status",
+                VPackValue(maintenance.isPaused() ? "paused" : "running"));
     builder.add(VPackValue("registry"));
     maintenance.toVelocyPack(builder);
   }

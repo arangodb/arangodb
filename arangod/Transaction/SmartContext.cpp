@@ -45,7 +45,8 @@ SmartContext::SmartContext(TRI_vocbase_t& vocbase, TransactionId globalId,
 SmartContext::~SmartContext() = default;
 
 /// @brief order a custom type handler for the collection
-arangodb::velocypack::CustomTypeHandler* transaction::SmartContext::orderCustomTypeHandler() {
+arangodb::velocypack::CustomTypeHandler*
+transaction::SmartContext::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
     _customTypeHandler =
         transaction::Context::createCustomTypeHandler(_vocbase, resolver());
@@ -100,8 +101,9 @@ ManagedContext::~ManagedContext() {
 }
 
 /// @brief get transaction state, determine commit responsiblity
-/*virtual*/ std::shared_ptr<TransactionState> transaction::ManagedContext::acquireState(
-    transaction::Options const& options, bool& responsibleForCommit) {
+/*virtual*/ std::shared_ptr<TransactionState>
+transaction::ManagedContext::acquireState(transaction::Options const& options,
+                                          bool& responsibleForCommit) {
   TRI_ASSERT(_state);
   // single document transaction should never be leased out
   TRI_ASSERT(!_state->hasHint(Hints::Hint::SINGLE_OPERATION));
@@ -116,9 +118,10 @@ void ManagedContext::unregisterTransaction() noexcept {
 
 std::shared_ptr<transaction::Context> ManagedContext::clone() const {
   // cloned transactions may never be responsible for commits
-  auto clone = std::make_shared<transaction::ManagedContext>(_globalId, _state,
-                                                             /*responsibleForCommit*/ false,
-                                                             /*cloned*/ true);
+  auto clone = std::make_shared<transaction::ManagedContext>(
+      _globalId, _state,
+      /*responsibleForCommit*/ false,
+      /*cloned*/ true);
   TRI_ASSERT(clone->_state == _state);
   return clone;
 }
@@ -126,7 +129,8 @@ std::shared_ptr<transaction::Context> ManagedContext::clone() const {
 // ============= AQLStandaloneContext =============
 
 /// @brief get transaction state, determine commit responsiblity
-/*virtual*/ std::shared_ptr<TransactionState> transaction::AQLStandaloneContext::acquireState(
+/*virtual*/ std::shared_ptr<TransactionState>
+transaction::AQLStandaloneContext::acquireState(
     transaction::Options const& options, bool& responsibleForCommit) {
   if (!_state) {
     responsibleForCommit = true;
@@ -151,7 +155,8 @@ void AQLStandaloneContext::unregisterTransaction() noexcept {
 }
 
 std::shared_ptr<transaction::Context> AQLStandaloneContext::clone() const {
-  auto clone = std::make_shared<transaction::AQLStandaloneContext>(_vocbase, _globalId);
+  auto clone =
+      std::make_shared<transaction::AQLStandaloneContext>(_vocbase, _globalId);
   clone->_state = _state;
   return clone;
 }

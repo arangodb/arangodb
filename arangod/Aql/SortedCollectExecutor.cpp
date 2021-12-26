@@ -54,7 +54,8 @@ SortedCollectExecutor::CollectGroup::CollectGroup(Infos& infos)
       _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _builder(_buffer) {
   for (auto const& aggName : infos.getAggregateTypes()) {
-    aggregators.emplace_back(Aggregator::fromTypeString(infos.getVPackOptions(), aggName));
+    aggregators.emplace_back(
+        Aggregator::fromTypeString(infos.getVPackOptions(), aggName));
   }
   TRI_ASSERT(infos.getAggregatedRegisters().size() == aggregators.size());
 }
@@ -122,7 +123,8 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
 SortedCollectExecutorInfos::SortedCollectExecutorInfos(
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
     RegisterId collectRegister, RegisterId expressionRegister,
-    Variable const* expressionVariable, std::vector<std::string>&& aggregateTypes,
+    Variable const* expressionVariable,
+    std::vector<std::string>&& aggregateTypes,
     std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
     velocypack::Options const* opts)
@@ -145,7 +147,8 @@ SortedCollectExecutor::SortedCollectExecutor(Fetcher&, Infos& infos)
   _currentGroup.reset(emptyInput);
 }
 
-void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) {
+void SortedCollectExecutor::CollectGroup::addLine(
+    InputAqlItemRow const& input) {
   // remember the last valid row we had
   _lastInputRow = input;
 
@@ -191,7 +194,8 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) 
   }
 }
 
-bool SortedCollectExecutor::CollectGroup::isSameGroup(InputAqlItemRow const& input) const {
+bool SortedCollectExecutor::CollectGroup::isSameGroup(
+    InputAqlItemRow const& input) const {
   // if we do not have valid input, return false
   if (!input.isInitialized()) {
     return false;
@@ -223,7 +227,8 @@ bool SortedCollectExecutor::CollectGroup::isSameGroup(InputAqlItemRow const& inp
   }
 }
 
-void SortedCollectExecutor::CollectGroup::groupValuesToArray(VPackBuilder& builder) {
+void SortedCollectExecutor::CollectGroup::groupValuesToArray(
+    VPackBuilder& builder) {
   builder.openArray();
   for (auto const& value : groupValues) {
     value.toVelocyPack(infos.getVPackOptions(), builder,
@@ -234,8 +239,8 @@ void SortedCollectExecutor::CollectGroup::groupValuesToArray(VPackBuilder& build
   builder.close();
 }
 
-void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output,
-                                                        InputAqlItemRow const& input) {
+void SortedCollectExecutor::CollectGroup::writeToOutput(
+    OutputAqlItemRow& output, InputAqlItemRow const& input) {
   // Thanks to the edge case that we have to emit a row even if we have no
   // input We cannot assert here that the input row is valid ;(
 
@@ -259,7 +264,8 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
   for (auto& it : this->aggregators) {
     AqlValue val = it->stealValue();
     AqlValueGuard guard{val, true};
-    output.moveValueInto(infos.getAggregatedRegisters()[j].first, _lastInputRow, guard);
+    output.moveValueInto(infos.getAggregatedRegisters()[j].first, _lastInputRow,
+                         guard);
     ++j;
   }
 
@@ -280,7 +286,8 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
 }
 
 [[nodiscard]] auto SortedCollectExecutor::expectedNumberOfRowsNew(
-    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+    -> size_t {
   if (input.finalState() == ExecutorState::DONE) {
     // Worst case assumption:
     // For every input row we have a new group.
@@ -320,12 +327,14 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     INTERNAL_LOG_SC << "SortedCollectExecutor::produceRows " << state << " "
                     << input.isInitialized();
 
-    if (state == ExecutorState::DONE && !(_haveSeenData || input.isInitialized())) {
+    if (state == ExecutorState::DONE &&
+        !(_haveSeenData || input.isInitialized())) {
       // we have never been called with data
       INTERNAL_LOG_SC << "never called with data";
       if (_infos.getGroupRegisters().empty()) {
         // by definition we need to emit one collect row
-        _currentGroup.writeToOutput(output, InputAqlItemRow{CreateInvalidInputRowHint{}});
+        _currentGroup.writeToOutput(
+            output, InputAqlItemRow{CreateInvalidInputRowHint{}});
       }
       break;
     }
@@ -389,13 +398,15 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     }
   }
 
-  auto newState = pendingGroup ? ExecutorState::HASMORE : inputRange.upstreamState();
+  auto newState =
+      pendingGroup ? ExecutorState::HASMORE : inputRange.upstreamState();
 
   INTERNAL_LOG_SC << "reporting state: " << newState;
   return {newState, Stats{}, AqlCall{}};
 }
 
-auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
+auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                          AqlCall& clientCall)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   TRI_IF_FAILURE("SortedCollectExecutor::skipRowsRange") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -403,8 +414,10 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
 
   TRI_ASSERT(clientCall.needSkipMore());
   while (clientCall.needSkipMore()) {
-    INTERNAL_LOG_SC << "clientCall.getSkipCount() == " << clientCall.getSkipCount();
-    INTERNAL_LOG_SC << "clientCall.needSkipMore() == " << clientCall.needSkipMore();
+    INTERNAL_LOG_SC << "clientCall.getSkipCount() == "
+                    << clientCall.getSkipCount();
+    INTERNAL_LOG_SC << "clientCall.needSkipMore() == "
+                    << clientCall.needSkipMore();
 
     auto [state, input] = inputRange.peekDataRow();
 
@@ -465,5 +478,6 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
   INTERNAL_LOG_SC << " skipped rows: " << clientCall.getSkipCount();
   INTERNAL_LOG_SC << "reporting state: " << inputRange.upstreamState();
 
-  return {inputRange.upstreamState(), NoStats{}, clientCall.getSkipCount(), AqlCall{}};
+  return {inputRange.upstreamState(), NoStats{}, clientCall.getSkipCount(),
+          AqlCall{}};
 }

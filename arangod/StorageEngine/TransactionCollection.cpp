@@ -65,7 +65,8 @@ Result TransactionCollection::updateUsage(AccessMode::Type accessType) {
     if (_transaction->status() != transaction::Status::CREATED) {
       // trying to write access a collection that is marked read-access
       return Result(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-                    std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
+                    std::string(TRI_errno_string(
+                        TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
                         ": " + collectionName() + " [" +
                         AccessMode::typeString(accessType) + "]");
     }

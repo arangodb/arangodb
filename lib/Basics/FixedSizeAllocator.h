@@ -32,10 +32,11 @@
 
 namespace arangodb {
 
-template <typename T>
+template<typename T>
 class FixedSizeAllocator {
  private:
-  // sizeof(T) is always a multiple of alignof(T) unless T is packed (which should never be the case here)!
+  // sizeof(T) is always a multiple of alignof(T) unless T is packed (which
+  // should never be the case here)!
   static_assert((sizeof(T) % alignof(T)) == 0);
 
   class MemoryBlock {
@@ -95,7 +96,7 @@ class FixedSizeAllocator {
   FixedSizeAllocator() = default;
   ~FixedSizeAllocator() noexcept { clear(); }
 
-  template <typename... Args>
+  template<typename... Args>
   T* allocate(Args&&... args) {
     if (_head == nullptr || _head->full()) {
       allocateBlock();
@@ -147,7 +148,8 @@ class FixedSizeAllocator {
 
     // adjust memory address to cache line offset (assumed to be 64 bytes)
     auto* data = reinterpret_cast<T*>(
-        (reinterpret_cast<uintptr_t>(p) + sizeof(MemoryBlock) + 63u) & ~(uintptr_t(63u)));
+        (reinterpret_cast<uintptr_t>(p) + sizeof(MemoryBlock) + 63u) &
+        ~(uintptr_t(63u)));
 
     // creating a MemoryBlock is noexcept, it should not fail
     new (p) MemoryBlock(numItems, data);

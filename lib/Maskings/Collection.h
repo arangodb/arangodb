@@ -45,7 +45,8 @@ class Collection {
  public:
   Collection() {}
 
-  Collection(CollectionSelection selection, std::vector<AttributeMasking> const& maskings)
+  Collection(CollectionSelection selection,
+             std::vector<AttributeMasking> const& maskings)
       : _selection(selection), _maskings(maskings) {}
 
   CollectionSelection selection() const noexcept { return _selection; }

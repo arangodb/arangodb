@@ -37,7 +37,8 @@ namespace arangodb {
 
 class SoftShutdownTracker;
 
-class SoftShutdownFeature final : public application_features::ApplicationFeature {
+class SoftShutdownFeature final
+    : public application_features::ApplicationFeature {
  public:
   SoftShutdownFeature(application_features::ApplicationServer& server);
   SoftShutdownTracker& softShutdownTracker() const {
@@ -51,7 +52,8 @@ class SoftShutdownFeature final : public application_features::ApplicationFeatur
   std::shared_ptr<SoftShutdownTracker> _softShutdownTracker;
 };
 
-class SoftShutdownTracker : public std::enable_shared_from_this<SoftShutdownTracker> {
+class SoftShutdownTracker
+    : public std::enable_shared_from_this<SoftShutdownTracker> {
   // This is a class which tracks the proceedings in case of a soft shutdown.
   // Soft shutdown is a means to shut down a coordinator gracefully. It
   // means that certain things are allowed to run to completion but

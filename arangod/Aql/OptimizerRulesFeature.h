@@ -34,9 +34,11 @@
 namespace arangodb {
 namespace aql {
 
-class OptimizerRulesFeature final : public application_features::ApplicationFeature {
+class OptimizerRulesFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit OptimizerRulesFeature(application_features::ApplicationServer& server);
+  explicit OptimizerRulesFeature(
+      application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
@@ -50,7 +52,8 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
   bool parallelizeGatherWrites() const { return _parallelizeGatherWrites; }
 
   /// @brief translate a list of rule ids into rule name
-  static std::vector<velocypack::StringRef> translateRules(std::vector<int> const&);
+  static std::vector<velocypack::StringRef> translateRules(
+      std::vector<int> const&);
 
   /// @brief translate a single rule
   static velocypack::StringRef translateRule(int rule);
@@ -71,7 +74,8 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
   static int ruleIndex(int level);
 
   /// @brief register a rule, don't call this after prepare()
-  void registerRule(char const* name, RuleFunction func, OptimizerRule::RuleLevel level,
+  void registerRule(char const* name, RuleFunction func,
+                    OptimizerRule::RuleLevel level,
                     std::underlying_type<OptimizerRule::Flags>::type flags);
 
  private:

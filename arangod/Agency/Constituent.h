@@ -40,7 +40,8 @@ namespace arangodb {
 namespace consensus {
 
 static inline double steadyClockToDouble() {
-  return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch())
+  return std::chrono::duration<double>(
+             std::chrono::steady_clock::now().time_since_epoch())
       .count();
 }
 
@@ -73,10 +74,12 @@ class Constituent : public Thread {
   bool running() const;
 
   // Called by REST handler
-  bool vote(term_t termOfPeer, std::string const& id, index_t prevLogIndex, term_t prevLogTerm);
+  bool vote(term_t termOfPeer, std::string const& id, index_t prevLogIndex,
+            term_t prevLogTerm);
 
   // Check leader
-  bool checkLeader(term_t term, std::string const& id, index_t prevLogIndex, term_t prevLogTerm);
+  bool checkLeader(term_t term, std::string const& id, index_t prevLogIndex,
+                   term_t prevLogTerm);
 
   // Notify about heartbeat being sent out:
   void notifyHeartbeatSent(std::string const& followerId);

@@ -52,14 +52,14 @@ void enforceReplicationFunctional(Node const& snapshot, uint64_t& jobId,
 // This is the functional version which actually does the work, it is
 // called by the private method Supervision::cleanupHotbackupTransferJobs
 // and the unit tests:
-void cleanupHotbackupTransferJobsFunctional(Node const& snapshot,
-                                            std::shared_ptr<VPackBuilder> envelope);
+void cleanupHotbackupTransferJobsFunctional(
+    Node const& snapshot, std::shared_ptr<VPackBuilder> envelope);
 
 // This is the second functional version which actually does the work, it is
 // called by the private method Supervision::cleanupHotbackupTransferJobs
 // and the unit tests:
-void failBrokenHotbackupTransferJobsFunctional(Node const& snapshot,
-                                               std::shared_ptr<VPackBuilder> envelope);
+void failBrokenHotbackupTransferJobsFunctional(
+    Node const& snapshot, std::shared_ptr<VPackBuilder> envelope);
 
 class Supervision : public arangodb::Thread {
  public:
@@ -75,7 +75,7 @@ class Supervision : public arangodb::Thread {
     FOLLOWER_INTENDED_MIGRATION
   };
 
-  template <TASKS T>
+  template<TASKS T>
   class Task {
     explicit Task(const VPackSlice& config) {}
     ServerID _serverID;
@@ -146,9 +146,11 @@ class Supervision : public arangodb::Thread {
     _agencyPrefix = prefix;
   }
 
-  static std::string serverHealthFunctional(Node const& snapshot, std::string const&);
+  static std::string serverHealthFunctional(Node const& snapshot,
+                                            std::string const&);
 
-  static bool verifyServerRebootID(Node const& snapshot, std::string const& serverID,
+  static bool verifyServerRebootID(Node const& snapshot,
+                                   std::string const& serverID,
                                    uint64_t wantedRebootID, bool& serverFound);
 
  private:
@@ -167,10 +169,12 @@ class Supervision : public arangodb::Thread {
   /// @brief Upgrade agency to supervision overhaul jobs
   void upgradeHealthRecords(VPackBuilder&);
 
-  /// @brief Check for orphaned index creations, which have been successfully built
+  /// @brief Check for orphaned index creations, which have been successfully
+  /// built
   void readyOrphanedIndexCreations();
 
-  /// @brief Check for orphaned index creations, which have been successfully built
+  /// @brief Check for orphaned index creations, which have been successfully
+  /// built
   void checkBrokenCreatedDatabases();
 
   /// @brief Check for boken collections
@@ -189,13 +193,16 @@ class Supervision : public arangodb::Thread {
     bool coordinatorFound;
   };
 
-  // @brief Checks if a resource (database or collection). Action is called if resource should be deleted
-  void ifResourceCreatorLost(std::shared_ptr<Node> const& resource,
-                             std::function<void(ResourceCreatorLostEvent const&)> const& action);
+  // @brief Checks if a resource (database or collection). Action is called if
+  // resource should be deleted
+  void ifResourceCreatorLost(
+      std::shared_ptr<Node> const& resource,
+      std::function<void(ResourceCreatorLostEvent const&)> const& action);
 
   // @brief Action is called if resource should be deleted
-  void resourceCreatorLost(std::shared_ptr<Node> const& resource,
-                           std::function<void(const ResourceCreatorLostEvent&)> const& action);
+  void resourceCreatorLost(
+      std::shared_ptr<Node> const& resource,
+      std::function<void(const ResourceCreatorLostEvent&)> const& action);
 
   /// @brief Check for inconsistencies in replication factor vs dbs entries
   void enforceReplication();
@@ -263,17 +270,19 @@ class Supervision : public arangodb::Thread {
 
   bool handleJobs();
   void handleShutdown();
-  void deleteBrokenDatabase(std::string const& database, std::string const& coordinatorID,
-                            uint64_t rebootID, bool coordinatorFound);
-  void deleteBrokenCollection(std::string const& database, std::string const& collection,
+  void deleteBrokenDatabase(std::string const& database,
+                            std::string const& coordinatorID, uint64_t rebootID,
+                            bool coordinatorFound);
+  void deleteBrokenCollection(std::string const& database,
+                              std::string const& collection,
                               std::string const& coordinatorID,
                               uint64_t rebootID, bool coordinatorFound);
 
-  void restoreBrokenAnalyzersRevision(std::string const& database,
-                                      AnalyzersRevision::Revision revision,
-                                      AnalyzersRevision::Revision buildingRevision,
-                                      std::string const& coordinatorID,
-                                      uint64_t rebootID, bool coordinatorFound);
+  void restoreBrokenAnalyzersRevision(
+      std::string const& database, AnalyzersRevision::Revision revision,
+      AnalyzersRevision::Revision buildingRevision,
+      std::string const& coordinatorID, uint64_t rebootID,
+      bool coordinatorFound);
 
   /// @brief Migrate chains of distributeShardsLike to depth 1
   void fixPrototypeChain(VPackBuilder&);

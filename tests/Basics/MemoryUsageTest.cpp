@@ -40,7 +40,8 @@ constexpr size_t numThreads = 4;
 constexpr uint64_t numOpsPerThread = 15 * 1000 * 1000;
 
 constexpr size_t bucketize(size_t value) {
-  return value / arangodb::ResourceMonitor::chunkSize * arangodb::ResourceMonitor::chunkSize;
+  return value / arangodb::ResourceMonitor::chunkSize *
+         arangodb::ResourceMonitor::chunkSize;
 }
 }  // namespace
 

@@ -51,9 +51,8 @@ class Connection100kWritesF : public ::testing::Test {
 
       // delete collection
       {
-        auto request =
-            arangodb::fuerte::createRequest(arangodb::fuerte::RestVerb::Delete,
-                                            "/_api/collection/testobi");
+        auto request = arangodb::fuerte::createRequest(
+            arangodb::fuerte::RestVerb::Delete, "/_api/collection/testobi");
         auto result = _connection->sendRequest(std::move(request));
         // arangodb::fuerte::run();
       }
@@ -84,9 +83,8 @@ class Connection100kWritesF : public ::testing::Test {
   virtual void TearDown() override {
     // delete collection
     {
-      auto request =
-          arangodb::fuerte::createRequest(arangodb::fuerte::RestVerb::Delete,
-                                          "/_api/collection/testobi");
+      auto request = arangodb::fuerte::createRequest(
+          arangodb::fuerte::RestVerb::Delete, "/_api/collection/testobi");
       auto result = _connection->sendRequest(std::move(request));
       // arangodb::fuerte::run();
     }
@@ -118,16 +116,14 @@ TEST_F(Connection100kWritesF, Writes100k){
   parser.parse(content);
   auto builder = parser.steal();
 
-  fu::OnErrorCallback onError = [](fu::Error error, std::unique_ptr<fu::Request> req, std::unique_ptr<fu::Response> res) {
-    ASSERT_TRUE(false) << fu::to_string(fu::intToError(error));
-    std::cerr << fu::to_string(fu::intToError(error));
-    assert(false);
-    throw;
+  fu::OnErrorCallback onError = [](fu::Error error, std::unique_ptr<fu::Request>
+req, std::unique_ptr<fu::Response> res) { ASSERT_TRUE(false) <<
+fu::to_string(fu::intToError(error)); std::cerr <<
+fu::to_string(fu::intToError(error)); assert(false); throw;
   };
 
-  fu::OnSuccessCallback onSuccess = [](std::unique_ptr<fu::Request> req, std::unique_ptr<fu::Response> res){
-    assert(req);
-    assert(res);
+  fu::OnSuccessCallback onSuccess = [](std::unique_ptr<fu::Request> req,
+std::unique_ptr<fu::Response> res){ assert(req); assert(res);
     //ASSERT_TRUE(res->header.responseCode < 400);
     if (res->header.responseCode >= 400) {
       std::cerr << res->messageid << std::endl;
@@ -145,7 +141,8 @@ TEST_F(Connection100kWritesF, Writes100k){
         boost::thread_group     threads;
         boost::barrier          barrier(numThreads);
         auto asioLoop = fu::getProvider().getAsioLoop();
-        auto work = std::make_shared<asio_ns::io_service::work>(*asioLoop->getIoService());
+        auto work =
+std::make_shared<asio_ns::io_service::work>(*asioLoop->getIoService());
 
   if (use_threads) {
                 for( unsigned int i = 0; i < numThreads; ++i ){
@@ -153,9 +150,8 @@ TEST_F(Connection100kWritesF, Writes100k){
                                         while (work){
                                                         try {
                                                                 asioLoop->direct_run();
-                                                        } catch (std::exception const& e){
-                                                                std::cout << e.what();
-                                                                if( barrier.wait() ) {
+                                                        } catch (std::exception
+const& e){ std::cout << e.what(); if( barrier.wait() ) {
                                                                         asioLoop->direct_reset();
                                                                 }
                                                         }
@@ -175,8 +171,8 @@ TEST_F(Connection100kWritesF, Writes100k){
     if (!use_threads && i % 50 == 0){
       fu::run();
     }
-    auto request = fu::createRequest(fu::RestVerb::Post, "/_api/document/testobi");
-    request->addBinary(slice.start(),slice.byteSize());
+    auto request = fu::createRequest(fu::RestVerb::Post,
+"/_api/document/testobi"); request->addBinary(slice.start(),slice.byteSize());
     _connection->sendRequest(std::move(request), onError, onSuccess);
   }
 

@@ -46,18 +46,22 @@ struct AqlCall {
   //      In addition, fullCount does only make sense together with a hard
   //      limit.
   //      The data structures and APIs should reflect that. E.g.:
-  //      Infinity | SoftLimit { count : Int } | HardLimit { count : Int, fullCount : Bool }
-  //      On a less important case, softLimit = 0 and offset = 0 do not occur together,
-  //      but it's probably not worth implementing that in terms of data structures.
+  //      Infinity | SoftLimit { count : Int } | HardLimit { count : Int,
+  //      fullCount : Bool } On a less important case, softLimit = 0 and offset
+  //      = 0 do not occur together, but it's probably not worth implementing
+  //      that in terms of data structures.
   class Infinity {};
   using Limit = std::variant<std::size_t, Infinity>;
 
   /**
-   * @brief We need to implement this wrappter class only for a MSVC compiler insufficency:
-   * For some reason (see bug-report here: https://developercommunity.visualstudio.com/content/problem/1031281/improper-c4244-warning-in-variant-code.html)
-   * the MSVC compiler decides on every operator<< usage if this implementation could be used.
-   * This causes every operator<<(numberType) to test this implementation (and discard it afterwards), however if the
-   * Number type is too large, this will result in a valid compilation unit, emitting this warning (possible dataloss e.g. double -> size_t), which is neither used
+   * @brief We need to implement this wrappter class only for a MSVC compiler
+   * insufficency: For some reason (see bug-report here:
+   * https://developercommunity.visualstudio.com/content/problem/1031281/improper-c4244-warning-in-variant-code.html)
+   * the MSVC compiler decides on every operator<< usage if this implementation
+   * could be used. This causes every operator<<(numberType) to test this
+   * implementation (and discard it afterwards), however if the Number type is
+   * too large, this will result in a valid compilation unit, emitting this
+   * warning (possible dataloss e.g. double -> size_t), which is neither used
    * nor compiled, but the error is reported.
    * As we disallow any warnings in the build this will stop compilation here.
    *
@@ -87,12 +91,17 @@ struct AqlCall {
   enum class LimitType { SOFT, HARD };
   // cppcheck-suppress *
   constexpr AqlCall(size_t off, bool fc, Infinity)
-      : offset{off}, softLimit{Infinity{}}, hardLimit{Infinity{}}, fullCount{fc} {}
+      : offset{off},
+        softLimit{Infinity{}},
+        hardLimit{Infinity{}},
+        fullCount{fc} {}
   // cppcheck-suppress *
   constexpr AqlCall(size_t off, bool fc, size_t limit, LimitType limitType)
       : offset{off},
-        softLimit{limitType == LimitType::SOFT ? Limit{limit} : Limit{Infinity{}}},
-        hardLimit{limitType == LimitType::HARD ? Limit{limit} : Limit{Infinity{}}},
+        softLimit{limitType == LimitType::SOFT ? Limit{limit}
+                                               : Limit{Infinity{}}},
+        hardLimit{limitType == LimitType::HARD ? Limit{limit}
+                                               : Limit{Infinity{}}},
         fullCount{fc} {}
 
   static auto fromVelocyPack(velocypack::Slice) -> ResultT<AqlCall>;
@@ -147,9 +156,10 @@ struct AqlCall {
 
   std::size_t getOffset() const { return offset; }
 
-  // TODO I think this should return the actual limit without regards to the batch size,
-  //      so we can use it to calculate upstream calls. The batch size should be applied
-  //      when allocating blocks only!
+  // TODO I think this should return the actual limit without regards to the
+  // batch size,
+  //      so we can use it to calculate upstream calls. The batch size should be
+  //      applied when allocating blocks only!
   std::size_t getLimit() const {
     return clampToLimit(ExecutionBlock::DefaultBatchSize);
   }
@@ -260,7 +270,8 @@ constexpr AqlCall::Limit operator+(size_t n, AqlCall::Limit const& a) {
   return a + n;
 }
 
-constexpr AqlCall::Limit operator+(AqlCall::Limit const& a, AqlCall::Limit const& b) {
+constexpr AqlCall::Limit operator+(AqlCall::Limit const& a,
+                                   AqlCall::Limit const& b) {
   return std::visit(
       overload{[&a](size_t const& b_) -> AqlCall::Limit { return a + b_; },
                [](AqlCall::Infinity inf) -> AqlCall::Limit { return inf; }},
@@ -294,14 +305,17 @@ constexpr bool operator==(AqlCall::Limit const& a, AqlCall::Limit const& b) {
 }
 
 constexpr bool operator==(AqlCall const& left, AqlCall const& right) {
-  return left.hardLimit == right.hardLimit && left.softLimit == right.softLimit &&
-         left.offset == right.offset && left.fullCount == right.fullCount &&
+  return left.hardLimit == right.hardLimit &&
+         left.softLimit == right.softLimit && left.offset == right.offset &&
+         left.fullCount == right.fullCount &&
          left.skippedRows == right.skippedRows;
 }
 
-auto operator<<(std::ostream& out, const arangodb::aql::AqlCall::LimitPrinter& limit)
+auto operator<<(std::ostream& out,
+                const arangodb::aql::AqlCall::LimitPrinter& limit)
     -> std::ostream&;
 
-auto operator<<(std::ostream& out, const arangodb::aql::AqlCall& call) -> std::ostream&;
+auto operator<<(std::ostream& out, const arangodb::aql::AqlCall& call)
+    -> std::ostream&;
 
 }  // namespace arangodb::aql

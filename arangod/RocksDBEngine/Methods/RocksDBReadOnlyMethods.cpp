@@ -31,7 +31,8 @@ using namespace arangodb;
 
 Result RocksDBReadOnlyMethods::beginTransaction() {
   TRI_ASSERT(_readOptions.snapshot == nullptr);
-  _readOptions.snapshot = _db->GetSnapshot();  // must call ReleaseSnapshot later
+  _readOptions.snapshot =
+      _db->GetSnapshot();  // must call ReleaseSnapshot later
   return {};
 }
 
@@ -51,7 +52,8 @@ rocksdb::ReadOptions RocksDBReadOnlyMethods::iteratorReadOptions() const {
 
 rocksdb::Status RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                             rocksdb::Slice const& key,
-                                            rocksdb::PinnableSlice* val, ReadOwnWrites) {
+                                            rocksdb::PinnableSlice* val,
+                                            ReadOwnWrites) {
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_readOptions.snapshot != nullptr);
   return _db->Get(_readOptions, cf, key, val);

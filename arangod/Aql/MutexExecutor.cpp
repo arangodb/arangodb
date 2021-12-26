@@ -49,9 +49,9 @@ MutexExecutorInfos::MutexExecutorInfos(std::vector<std::string> clientIds)
 MutexExecutor::MutexExecutor(MutexExecutorInfos const& infos)
     : _infos(infos), _numClient(0) {}
 
-auto MutexExecutor::distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
-                                    std::unordered_map<std::string, ClientBlockData>& blockMap)
-    -> void {
+auto MutexExecutor::distributeBlock(
+    SharedAqlItemBlockPtr const& block, SkipResult skipped,
+    std::unordered_map<std::string, ClientBlockData>& blockMap) -> void {
   TRI_IF_FAILURE("MutexExecutor::distributeBlock") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -94,15 +94,15 @@ auto MutexExecutor::distributeBlock(SharedAqlItemBlockPtr const& block, SkipResu
   }
 }
 
-std::string const& MutexExecutor::getClient(SharedAqlItemBlockPtr /*block*/, size_t rowIndex) {
+std::string const& MutexExecutor::getClient(SharedAqlItemBlockPtr /*block*/,
+                                            size_t rowIndex) {
   TRI_ASSERT(_infos.nrClients() > 0);
   // round-robin distribution
   return _infos.clientIds()[(_numClient++) % _infos.nrClients()];
 }
 
-ExecutionBlockImpl<MutexExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
-                                                      MutexNode const* node,
-                                                      RegisterInfos registerInfos,
-                                                      MutexExecutorInfos&& executorInfos)
+ExecutionBlockImpl<MutexExecutor>::ExecutionBlockImpl(
+    ExecutionEngine* engine, MutexNode const* node, RegisterInfos registerInfos,
+    MutexExecutorInfos&& executorInfos)
     : BlocksWithClientsImpl(engine, node, std::move(registerInfos),
                             std::move(executorInfos)) {}

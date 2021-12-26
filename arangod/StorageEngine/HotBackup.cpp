@@ -55,7 +55,8 @@ HotBackup::HotBackup(application_features::ApplicationServer& server)
 }
 
 arangodb::Result HotBackup::execute(std::string const& command,
-                                    VPackSlice const payload, VPackBuilder& report) {
+                                    VPackSlice const payload,
+                                    VPackBuilder& report) {
   switch (_engine) {
     case BACKUP_ENGINE::ROCKSDB:
       return executeRocksDB(command, payload, report);
@@ -68,11 +69,13 @@ arangodb::Result HotBackup::execute(std::string const& command,
 }
 
 arangodb::Result HotBackup::executeRocksDB(std::string const& command,
-                                           VPackSlice const payload, VPackBuilder& report) {
+                                           VPackSlice const payload,
+                                           VPackBuilder& report) {
 #ifdef USE_ENTERPRISE
   std::shared_ptr<RocksDBHotBackup> operation;
   auto& feature = _server.getFeature<HotBackupFeature>();
-  operation = RocksDBHotBackup::operationFactory(feature, command, payload, report);
+  operation =
+      RocksDBHotBackup::operationFactory(feature, command, payload, report);
 
   if (operation->valid()) {
     operation->execute();
@@ -82,7 +85,8 @@ arangodb::Result HotBackup::executeRocksDB(std::string const& command,
 
   // if !valid() then !success() already set
   if (!operation->success()) {
-    return arangodb::Result(operation->restResponseError(), operation->errorMessage());
+    return arangodb::Result(operation->restResponseError(),
+                            operation->errorMessage());
   }
 #endif
 

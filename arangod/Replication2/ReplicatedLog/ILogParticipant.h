@@ -58,23 +58,26 @@ struct WaitForResult {
 
 /**
  * @brief Interface for a log participant: That is, usually either a leader or a
- * follower (LogLeader and LogFollower). Can also be a LogUnconfiguredParticipant,
- * e.g. during startup.
- * The most prominent thing this interface provides is that each instance is
- * responsible for a singular LogCore, which can be moved out with resign().
+ * follower (LogLeader and LogFollower). Can also be a
+ * LogUnconfiguredParticipant, e.g. during startup. The most prominent thing
+ * this interface provides is that each instance is responsible for a singular
+ * LogCore, which can be moved out with resign().
  */
 struct ILogParticipant {
   [[nodiscard]] virtual auto getStatus() const -> LogStatus = 0;
   virtual ~ILogParticipant() = default;
-  [[nodiscard]] virtual auto resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> = 0;
+  [[nodiscard]] virtual auto
+  resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> = 0;
 
   using WaitForPromise = futures::Promise<WaitForResult>;
   using WaitForFuture = futures::Future<WaitForResult>;
-  using WaitForIteratorFuture = futures::Future<std::unique_ptr<LogRangeIterator>>;
+  using WaitForIteratorFuture =
+      futures::Future<std::unique_ptr<LogRangeIterator>>;
   using WaitForQueue = std::multimap<LogIndex, WaitForPromise>;
 
   [[nodiscard]] virtual auto waitFor(LogIndex index) -> WaitForFuture = 0;
-  [[nodiscard]] virtual auto waitForIterator(LogIndex index) -> WaitForIteratorFuture;
+  [[nodiscard]] virtual auto waitForIterator(LogIndex index)
+      -> WaitForIteratorFuture;
   [[nodiscard]] virtual auto getTerm() const noexcept -> std::optional<LogTerm>;
 
   [[nodiscard]] virtual auto release(LogIndex doneWithIdx) -> Result = 0;
@@ -88,11 +91,13 @@ struct LogUnconfiguredParticipant final
     : std::enable_shared_from_this<LogUnconfiguredParticipant>,
       ILogParticipant {
   ~LogUnconfiguredParticipant() override;
-  explicit LogUnconfiguredParticipant(std::unique_ptr<LogCore> logCore,
-                                      std::shared_ptr<ReplicatedLogMetrics> logMetrics);
+  explicit LogUnconfiguredParticipant(
+      std::unique_ptr<LogCore> logCore,
+      std::shared_ptr<ReplicatedLogMetrics> logMetrics);
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
-  auto resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
+  auto
+  resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
   [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
 

@@ -64,13 +64,17 @@ class RegisterInfos {
    *   RegisterId register = it->second.registerId;
    */
 
-  RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeableOutputRegisters,
+  RegisterInfos(RegIdSet readableInputRegisters,
+                RegIdSet writeableOutputRegisters,
                 RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
-                RegIdSet const& registersToClear, RegIdSetStack const& registersToKeep);
+                RegIdSet const& registersToClear,
+                RegIdSetStack const& registersToKeep);
 
-  RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeableOutputRegisters,
+  RegisterInfos(RegIdSet readableInputRegisters,
+                RegIdSet writeableOutputRegisters,
                 RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
-                RegIdFlatSet registersToClear, RegIdFlatSetStack registersToKeep);
+                RegIdFlatSet registersToClear,
+                RegIdFlatSetStack registersToKeep);
 
   RegisterInfos(RegisterInfos&&) = default;
   RegisterInfos(RegisterInfos const&) = default;

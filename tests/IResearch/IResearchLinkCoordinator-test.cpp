@@ -90,7 +90,8 @@ class IResearchLinkCoordinatorTest : public ::testing::Test {
     vocbase = server.createDatabase("testDatabase");
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ("testDatabase", vocbase->name());
-    ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, vocbase->type());
+    ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
+              vocbase->type());
   }
 
   ~IResearchLinkCoordinatorTest() = default;
@@ -105,7 +106,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
   feature.validateOptions(server.server().options());
   feature.collectOptions(server.server().options());
 
-  arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});  // Hack.
+  arangodb::ServerState::instance()->setRebootId(
+      arangodb::RebootId{1});  // Hack.
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
@@ -120,9 +122,9 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
         "{ \"id\": \"1\", \"name\": \"testCollection\", "
         "\"replicationFactor\":1, \"shards\":{} }");
 
-    EXPECT_TRUE(ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-                                               1, false, collectionJson->slice(),
-                                               0.0, false, nullptr)
+    EXPECT_TRUE(ci.createCollectionCoordinator(
+                      vocbase->name(), collectionId, 0, 1, 1, false,
+                      collectionJson->slice(), 0.0, false, nullptr)
                     .ok());
 
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
@@ -142,16 +144,18 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     }
   }
 
-  // no view can be found (e.g. db-server coming up with view not available from Agency yet)
+  // no view can be found (e.g. db-server coming up with view not available from
+  // Agency yet)
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": \"42\" }");
-    EXPECT_NE(nullptr, factory.instantiate(*logicalCollection.get(), json->slice(),
-                                           arangodb::IndexId{1}, true));
+    EXPECT_NE(nullptr,
+              factory.instantiate(*logicalCollection.get(), json->slice(),
+                                  arangodb::IndexId{1}, true));
   }
 
-  auto const currentCollectionPath = "/Current/Collections/" + vocbase->name() +
-                                     "/" +
-                                     std::to_string(logicalCollection->id().id());
+  auto const currentCollectionPath =
+      "/Current/Collections/" + vocbase->name() + "/" +
+      std::to_string(logicalCollection->id().id());
 
   // valid link creation
   {
@@ -161,7 +165,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
         "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" "
         "}");
     arangodb::LogicalView::ptr logicalView;
-    ASSERT_TRUE(arangodb::LogicalView::create(logicalView, *vocbase, viewJson->slice(), true)
+    ASSERT_TRUE(arangodb::LogicalView::create(logicalView, *vocbase,
+                                              viewJson->slice(), true)
                     .ok());
 
     ASSERT_TRUE(logicalView);
@@ -180,14 +185,16 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     // unable to create index without timeout
     VPackBuilder outputDefinition;
     EXPECT_TRUE(arangodb::methods::Indexes::ensureIndex(logicalCollection.get(),
-                                                        linkJson->slice(), true, outputDefinition)
+                                                        linkJson->slice(), true,
+                                                        outputDefinition)
                     .ok());
 
     // get new version from plan
-    auto updatedCollection0 =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection->id().id()));
+    auto updatedCollection0 = ci.getCollection(
+        vocbase->name(), std::to_string(logicalCollection->id().id()));
     ASSERT_TRUE((updatedCollection0));
-    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection0, *logicalView);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(
+        *updatedCollection0, *logicalView);
     EXPECT_TRUE(link);
     ASSERT_EQ("1_3simd", link->format());
 
@@ -203,9 +210,10 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     EXPECT_TRUE(false == index->isSorted());
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE(true == index->sparse());
+    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
+                 index->type()));
     EXPECT_TRUE(
-        (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
-    EXPECT_TRUE((arangodb::iresearch::DATA_SOURCE_TYPE.name() == index->typeName()));
+        (arangodb::iresearch::DATA_SOURCE_TYPE.name() == index->typeName()));
     EXPECT_TRUE((false == index->unique()));
 
     arangodb::iresearch::IResearchLinkMeta actualMeta;
@@ -214,7 +222,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     std::string error;
-    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), false, error));
+    EXPECT_TRUE(
+        actualMeta.init(server.server(), builder->slice(), false, error));
     EXPECT_TRUE(error.empty());
     EXPECT_TRUE(expectedMeta == actualMeta);
     auto const slice = builder->slice();
@@ -259,11 +268,11 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
                     .ok());
 
     // get new version from plan
-    auto updatedCollection1 =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection->id().id()));
+    auto updatedCollection1 = ci.getCollection(
+        vocbase->name(), std::to_string(logicalCollection->id().id()));
     ASSERT_TRUE((updatedCollection1));
-    EXPECT_TRUE((!arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection1,
-                                                                 *logicalView)));
+    EXPECT_TRUE((!arangodb::iresearch::IResearchLinkHelper::find(
+        *updatedCollection1, *logicalView)));
 
     // drop view
     EXPECT_TRUE(logicalView->drop().ok());
@@ -277,8 +286,9 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
       std::string error;
 
-      EXPECT_TRUE((actualMeta.init(server.server(), builder->slice(), false, error) &&
-                   expectedMeta == actualMeta));
+      EXPECT_TRUE(
+          (actualMeta.init(server.server(), builder->slice(), false, error) &&
+           expectedMeta == actualMeta));
       auto slice = builder->slice();
       EXPECT_TRUE(error.empty());
       EXPECT_TRUE(slice.hasKey("view") && slice.get("view").isString() &&
@@ -316,7 +326,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
         "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" "
         "}");
     arangodb::LogicalView::ptr logicalView;
-    ASSERT_TRUE(arangodb::LogicalView::create(logicalView, *vocbase, viewJson->slice(), true)
+    ASSERT_TRUE(arangodb::LogicalView::create(logicalView, *vocbase,
+                                              viewJson->slice(), true)
                     .ok());
     ASSERT_TRUE(logicalView);
     auto const viewId = std::to_string(logicalView->planId().id());
@@ -334,14 +345,16 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     // unable to create index without timeout
     VPackBuilder outputDefinition;
     EXPECT_TRUE(arangodb::methods::Indexes::ensureIndex(logicalCollection.get(),
-                                                        linkJson->slice(), true, outputDefinition)
+                                                        linkJson->slice(), true,
+                                                        outputDefinition)
                     .ok());
 
     // get new version from plan
-    auto updatedCollection =
-        ci.getCollection(vocbase->name(), std::to_string(logicalCollection->id().id()));
+    auto updatedCollection = ci.getCollection(
+        vocbase->name(), std::to_string(logicalCollection->id().id()));
     ASSERT_TRUE(updatedCollection);
-    auto link = arangodb::iresearch::IResearchLinkHelper::find(*updatedCollection, *logicalView);
+    auto link = arangodb::iresearch::IResearchLinkHelper::find(
+        *updatedCollection, *logicalView);
     EXPECT_TRUE(link);
     ASSERT_EQ("1_4simd", link->format());
 
@@ -356,9 +369,10 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     EXPECT_TRUE(false == index->isSorted());
     EXPECT_EQ(0, index->memory());
     EXPECT_TRUE(true == index->sparse());
+    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
+                 index->type()));
     EXPECT_TRUE(
-        (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
-    EXPECT_TRUE((arangodb::iresearch::DATA_SOURCE_TYPE.name() == index->typeName()));
+        (arangodb::iresearch::DATA_SOURCE_TYPE.name() == index->typeName()));
     EXPECT_TRUE((false == index->unique()));
 
     {
@@ -368,8 +382,9 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
       std::string error;
 
-      EXPECT_TRUE((actualMeta.init(server.server(), builder->slice(), false, error) &&
-                   expectedMeta == actualMeta));
+      EXPECT_TRUE(
+          (actualMeta.init(server.server(), builder->slice(), false, error) &&
+           expectedMeta == actualMeta));
       auto slice = builder->slice();
       EXPECT_TRUE(slice.hasKey("view") && slice.get("view").isString() &&
                   logicalView->id().id() == 42 &&

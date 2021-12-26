@@ -31,7 +31,7 @@
 
 using namespace arangodb;
 
-template <typename T>
+template<typename T>
 struct NonCopyableType {
   explicit NonCopyableType(T t) : t(std::move(t)) {}
   NonCopyableType(NonCopyableType const&) = delete;
@@ -43,16 +43,16 @@ struct NonCopyableType {
   T t;
 };
 
-template <template <typename...> typename C>
+template<template<typename...> typename C>
 struct TemplateTemplateType {
-  template <typename... T>
+  template<typename... T>
   using type = C<T...>;
 };
 
-template <typename TT, typename... T>
+template<typename TT, typename... T>
 using template_template_type_t = typename TT::template type<T...>;
 
-template <typename TT>
+template<typename TT>
 class EnumerateVectorLikeTest : public ::testing::Test {};
 TYPED_TEST_CASE_P(EnumerateVectorLikeTest);
 
@@ -101,9 +101,9 @@ TYPED_TEST_P(EnumerateVectorLikeTest, test_vector_no_copy) {
 REGISTER_TYPED_TEST_CASE_P(EnumerateVectorLikeTest, test_vector_iterate,
                            test_vector_modify, test_vector_no_copy);
 
-using VectorLikeTypes =
-    ::testing::Types<TemplateTemplateType<std::vector>, TemplateTemplateType<std::list>,
-                     TemplateTemplateType<std::deque>>;
+using VectorLikeTypes = ::testing::Types<TemplateTemplateType<std::vector>,
+                                         TemplateTemplateType<std::list>,
+                                         TemplateTemplateType<std::deque>>;
 INSTANTIATE_TYPED_TEST_CASE_P(EnumerateVectorLikeTestInstant,
                               EnumerateVectorLikeTest, VectorLikeTypes);
 #endif

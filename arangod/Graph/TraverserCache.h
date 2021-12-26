@@ -106,9 +106,11 @@ class TraverserCache {
   /// @brief Persist the given id string. The return value is guaranteed to
   ///        stay valid as long as this cache is valid
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::velocypack::StringRef persistString(arangodb::velocypack::StringRef idString);
+  arangodb::velocypack::StringRef persistString(
+      arangodb::velocypack::StringRef idString);
 
-  arangodb::velocypack::HashedStringRef persistString(arangodb::velocypack::HashedStringRef idString);
+  arangodb::velocypack::HashedStringRef persistString(
+      arangodb::velocypack::HashedStringRef idString);
 
   void increaseFilterCounter() { _filteredDocuments++; }
 

@@ -81,15 +81,16 @@ class TokenCache {
   };
 
  public:
-  TokenCache::Entry checkAuthentication(arangodb::rest::AuthenticationMethod authType,
-                                        std::string const& secret);
+  TokenCache::Entry checkAuthentication(
+      arangodb::rest::AuthenticationMethod authType, std::string const& secret);
 
   /// Clear the cache of username / password auth
   void invalidateBasicCache();
 
 #ifdef USE_ENTERPRISE
   /// set new jwt secret, regenerate _jwtToken
-  void setJwtSecrets(std::string const& active, std::vector<std::string> const& passive);
+  void setJwtSecrets(std::string const& active,
+                     std::vector<std::string> const& passive);
 #else
   /// set new jwt secret, regenerate _jwtToken
   void setJwtSecret(std::string const& active);
@@ -113,7 +114,8 @@ class TokenCache {
   TokenCache::Entry validateJwtBody(std::string const&);
   bool validateJwtHMAC256Signature(std::string const&, std::string const&);
 
-  std::shared_ptr<velocypack::Builder> parseJson(std::string const& str, char const* hint);
+  std::shared_ptr<velocypack::Builder> parseJson(std::string const& str,
+                                                 char const* hint);
 
   /// generate new superuser jwtToken
   void generateSuperToken();

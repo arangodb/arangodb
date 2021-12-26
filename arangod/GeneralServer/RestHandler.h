@@ -42,9 +42,9 @@ class Exception;
 }
 
 namespace futures {
-template <typename T>
+template<typename T>
 class Future;
-template <typename T>
+template<typename T>
 class Try;
 }  // namespace futures
 
@@ -62,7 +62,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RestHandler& operator=(RestHandler const&) = delete;
 
  public:
-  RestHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
+  RestHandler(application_features::ApplicationServer&, GeneralRequest*,
+              GeneralResponse*);
   virtual ~RestHandler();
 
   void assignHandlerId();
@@ -154,14 +155,15 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // generates an error
   void generateError(arangodb::Result const&);
 
-  template <typename T>
+  template<typename T>
   RestStatus waitForFuture(futures::Future<T>&& f) {
     if (f.isReady()) {             // fast-path out
       f.result().throwIfFailed();  // just throw the error upwards
       return RestStatus::DONE;
     }
     bool done = false;
-    std::move(f).thenFinal([self = shared_from_this(), &done](futures::Try<T>&& t) -> void {
+    std::move(f).thenFinal([self = shared_from_this(),
+                            &done](futures::Try<T>&& t) -> void {
       auto thisPtr = self.get();
       if (t.hasException()) {
         thisPtr->handleExceptionPtr(std::move(t).exception());

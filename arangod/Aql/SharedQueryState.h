@@ -33,7 +33,8 @@ class ApplicationServer;
 }
 namespace aql {
 
-class SharedQueryState final : public std::enable_shared_from_this<SharedQueryState> {
+class SharedQueryState final
+    : public std::enable_shared_from_this<SharedQueryState> {
  public:
   SharedQueryState(SharedQueryState const&) = delete;
   SharedQueryState& operator=(SharedQueryState const&) = delete;
@@ -57,7 +58,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   /// This will lead to the following: The original request that led to
   /// the network communication will be rescheduled on the ioservice and
   /// continues its execution where it left off.
-  template <typename F>
+  template<typename F>
   void executeAndWakeup(F&& cb) {
     std::unique_lock<std::mutex> guard(_mutex);
     if (!_valid) {
@@ -71,7 +72,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
     }
   }
 
-  template <typename F>
+  template<typename F>
   void executeLocked(F&& cb) {
     std::unique_lock<std::mutex> guard(_mutex);
     if (!_valid) {
@@ -94,7 +95,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   void resetNumWakeups();
 
   /// execute a task in parallel if capacity is there
-  template <typename F>
+  template<typename F>
   bool asyncExecuteAndWakeup(F&& cb) {
     unsigned num = _numTasks.fetch_add(1);
     if (num + 1 > _maxTasks) {
@@ -102,22 +103,23 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
       std::forward<F>(cb)(false);
       return false;
     }
-    bool queued = queueAsyncTask([cb(std::forward<F>(cb)), self(shared_from_this())] {
-      if (self->_valid) {
-        try {
-          cb(true);
-        } catch (...) {
-        }
-        std::unique_lock<std::mutex> guard(self->_mutex);
-        self->_numTasks.fetch_sub(1);  // simon: intentionally under lock
-        self->notifyWaiter(guard);
-      } else {  // need to wakeup everybody
-        std::unique_lock<std::mutex> guard(self->_mutex);
-        self->_numTasks.fetch_sub(1);  // simon: intentionally under lock
-        guard.unlock();
-        self->_cv.notify_all();
-      }
-    });
+    bool queued =
+        queueAsyncTask([cb(std::forward<F>(cb)), self(shared_from_this())] {
+          if (self->_valid) {
+            try {
+              cb(true);
+            } catch (...) {
+            }
+            std::unique_lock<std::mutex> guard(self->_mutex);
+            self->_numTasks.fetch_sub(1);  // simon: intentionally under lock
+            self->notifyWaiter(guard);
+          } else {  // need to wakeup everybody
+            std::unique_lock<std::mutex> guard(self->_mutex);
+            self->_numTasks.fetch_sub(1);  // simon: intentionally under lock
+            guard.unlock();
+            self->_cv.notify_all();
+          }
+        });
 
     if (!queued) {
       _numTasks.fetch_sub(1);  // revert

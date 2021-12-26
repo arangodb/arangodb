@@ -45,9 +45,9 @@ using namespace arangodb::consensus;
 /// @brief Rest agency handler
 ////////////////////////////////////////////////////////////////////////////////
 
-RestAgencyHandler::RestAgencyHandler(application_features::ApplicationServer& server,
-                                     GeneralRequest* request,
-                                     GeneralResponse* response, Agent* agent)
+RestAgencyHandler::RestAgencyHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response, Agent* agent)
     : RestVocbaseBaseHandler(server, request, response), _agent(agent) {}
 
 inline RestStatus RestAgencyHandler::reportErrorEmptyRequest() {
@@ -89,7 +89,8 @@ void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
                       _request->requestPath();
     _response->setResponseCode(rest::ResponseCode::TEMPORARY_REDIRECT);
     _response->setHeaderNC(StaticStrings::Location, url);
-    LOG_TOPIC("9b62c", DEBUG, Logger::AGENCY) << "Sending 307 redirect to " << url;
+    LOG_TOPIC("9b62c", DEBUG, Logger::AGENCY)
+        << "Sending 307 redirect to " << url;
   } catch (std::exception const&) {
     reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
   }
@@ -135,7 +136,8 @@ RestStatus RestAgencyHandler::handleTransient() {
 
   // We're leading and handling the request
   if (ret.accepted) {
-    generateResult((ret.failed == 0) ? rest::ResponseCode::OK : rest::ResponseCode::PRECONDITION_FAILED,
+    generateResult((ret.failed == 0) ? rest::ResponseCode::OK
+                                     : rest::ResponseCode::PRECONDITION_FAILED,
                    ret.result->slice());
   } else {  // Redirect to leader
     if (_agent->leaderID() == NO_LEADER) {
@@ -155,7 +157,8 @@ RestStatus RestAgencyHandler::handleTransient() {
 /// { accepted:bool, result: { firstIndex, commitIndex, logs:[{index, log}] } }
 /// if !accepted, lost leadership
 /// else respond
-RestStatus RestAgencyHandler::pollIndex(index_t const& start, double const& timeout) {
+RestStatus RestAgencyHandler::pollIndex(index_t const& start,
+                                        double const& timeout) {
   auto pollResult = _agent->poll(start, timeout);
 
   if (std::get<1>(pollResult)) {
@@ -167,7 +170,8 @@ RestStatus RestAgencyHandler::pollIndex(index_t const& start, double const& time
               if (res.isObject() && res.hasKey("result")) {
                 if (res.hasKey("error")) {  // leadership loss
                   generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                                TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
+                                TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                                "No leader");
                   return;
                 }
 
@@ -182,16 +186,20 @@ RestStatus RestAgencyHandler::pollIndex(index_t const& start, double const& time
                     builder.add(VPackValue("result"));
                     VPackObjectBuilder r(&builder);
                     if (!slice.get("firstIndex").isNumber()) {
-                      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                      generateError(rest::ResponseCode::SERVER_ERROR,
+                                    TRI_ERROR_HTTP_SERVER_ERROR,
                                     "invalid first log index.");
                       return;
-                    } else if (slice.get("firstIndex").getNumber<uint64_t>() > start) {
+                    } else if (slice.get("firstIndex").getNumber<uint64_t>() >
+                               start) {
                       generateError(
-                          rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                          rest::ResponseCode::SERVER_ERROR,
+                          TRI_ERROR_HTTP_SERVER_ERROR,
                           "first log index is greater than requested.");
                       return;
                     }
-                    uint64_t firstIndex = slice.get("firstIndex").getNumber<uint64_t>(),
+                    uint64_t firstIndex =
+                                 slice.get("firstIndex").getNumber<uint64_t>(),
                              i = 0;
 
                     builder.add("commitIndex", slice.get("commitIndex"));
@@ -208,10 +216,12 @@ RestStatus RestAgencyHandler::pollIndex(index_t const& start, double const& time
                       }
                     }
                   }
-                  generateResult(rest::ResponseCode::OK, std::move(*builder.steal()));
+                  generateResult(rest::ResponseCode::OK,
+                                 std::move(*builder.steal()));
                   return;
                 } else {
-                  generateResult(rest::ResponseCode::OK, std::move(*rb->steal()));
+                  generateResult(rest::ResponseCode::OK,
+                                 std::move(*rb->steal()));
                   return;
                 }
               } else {
@@ -239,13 +249,14 @@ RestStatus RestAgencyHandler::pollIndex(index_t const& start, double const& time
 }
 
 namespace {
-template <class T>
+template<class T>
 static bool readValue(GeneralRequest const& req, char const* name, T& val) {
   bool found = true;
   std::string const& val_str = req.value(name, found);
 
   if (!found) {
-    LOG_TOPIC("f4732", DEBUG, Logger::AGENCY) << "Query string " << name << " missing.";
+    LOG_TOPIC("f4732", DEBUG, Logger::AGENCY)
+        << "Query string " << name << " missing.";
     return false;
   } else {
     if (!arangodb::basics::StringUtils::toNumber(val_str, val)) {
@@ -439,7 +450,8 @@ RestStatus RestAgencyHandler::handleWrite() {
         if (max_index > 0) {
           result = _agent->waitFor(max_index);
           _agent->commitHist().count(
-              duration<float, std::milli>(high_resolution_clock::now() - start).count());
+              duration<float, std::milli>(high_resolution_clock::now() - start)
+                  .count());
         }
       }
     }
@@ -447,9 +459,11 @@ RestStatus RestAgencyHandler::handleWrite() {
     body.close();
 
     if (result == Agent::raft_commit_t::UNKNOWN) {
-      generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
+      generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                    TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
     } else if (result == Agent::raft_commit_t::TIMEOUT) {
-      generateError(rest::ResponseCode::REQUEST_TIMEOUT, TRI_ERROR_HTTP_REQUEST_TIMEOUT);
+      generateError(rest::ResponseCode::REQUEST_TIMEOUT,
+                    TRI_ERROR_HTTP_REQUEST_TIMEOUT);
     } else {
       if (forbidden > 0) {
         generateResult(rest::ResponseCode::FORBIDDEN, body.slice());
@@ -517,7 +531,8 @@ RestStatus RestAgencyHandler::handleTransact() {
     if (ret.maxind > 0) {
       _agent->waitFor(ret.maxind);
     }
-    generateResult((ret.failed == 0) ? rest::ResponseCode::OK : rest::ResponseCode::PRECONDITION_FAILED,
+    generateResult((ret.failed == 0) ? rest::ResponseCode::OK
+                                     : rest::ResponseCode::PRECONDITION_FAILED,
                    ret.result->slice());
 
   } else {  // Redirect to leader
@@ -617,9 +632,11 @@ RestStatus RestAgencyHandler::handleInquire() {
     }
 
     if (result == Agent::raft_commit_t::UNKNOWN) {
-      generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
+      generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                    TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
     } else if (result == Agent::raft_commit_t::TIMEOUT) {
-      generateError(rest::ResponseCode::REQUEST_TIMEOUT, TRI_ERROR_HTTP_REQUEST_TIMEOUT);
+      generateError(rest::ResponseCode::REQUEST_TIMEOUT,
+                    TRI_ERROR_HTTP_REQUEST_TIMEOUT);
     } else {
       if (failed) {  // Some/all requests failed
         generateResult(rest::ResponseCode::NOT_FOUND, body.slice());
@@ -683,14 +700,17 @@ RestStatus RestAgencyHandler::handleConfig() {
     try {
       _agent->updatePeerEndpoint(_request->toVelocyPackBuilderPtr());
     } catch (std::exception const& e) {
-      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, e.what());
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                    e.what());
       return RestStatus::DONE;
     }
   } else if (_request->requestType() == rest::RequestType::PUT) {
     try {
-      _agent->updateSomeConfigValues(_request->toVelocyPackBuilderPtr()->slice());
+      _agent->updateSomeConfigValues(
+          _request->toVelocyPackBuilderPtr()->slice());
     } catch (std::exception const& e) {
-      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, e.what());
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                    e.what());
       return RestStatus::DONE;
     }
   }
@@ -709,8 +729,9 @@ RestStatus RestAgencyHandler::handleConfig() {
     LOG_TOPIC("ddeae", DEBUG, Logger::AGENCY)
         << "handleConfig after lastAckedAgo";
     body.add("configuration", _agent->config().toBuilder()->slice());
-    body.add("engine",
-             VPackValue(server().getFeature<EngineSelectorFeature>().engineName()));
+    body.add(
+        "engine",
+        VPackValue(server().getFeature<EngineSelectorFeature>().engineName()));
     body.add("version", VPackValue(ARANGODB_VERSION));
   }
 
@@ -755,7 +776,8 @@ RestStatus RestAgencyHandler::handleState() {
 }
 
 RestStatus RestAgencyHandler::reportMethodNotAllowed() {
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 

@@ -45,7 +45,8 @@ TEST(CStringTest, tst_lower_ascii_no_change) {
 
   // punctuation should not change
   result = TRI_LowerAsciiString("01234567890,.;:-_#'+*~!\"§$%&/()[]{}=?\\|<>");
-  EXPECT_EQ(std::string("01234567890,.;:-_#'+*~!\"§$%&/()[]{}=?\\|<>"), std::string(result));
+  EXPECT_EQ(std::string("01234567890,.;:-_#'+*~!\"§$%&/()[]{}=?\\|<>"),
+            std::string(result));
   TRI_FreeString(result);
 
   // whitespace should not change

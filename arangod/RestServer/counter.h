@@ -371,10 +371,10 @@ enum class atomicity {
    They serve as base classes for the public types.
 */
 
-template <typename Integral, atomicity Atomicity>
+template<typename Integral, atomicity Atomicity>
 class bumper;
 
-template <typename Integral>
+template<typename Integral>
 class bumper<Integral, atomicity::none> {
   bumper(const bumper&) = delete;
   bumper& operator=(const bumper&) = delete;
@@ -397,24 +397,26 @@ class bumper<Integral, atomicity::none> {
     return tmp;
   }
   Integral value_;
-  template <typename, atomicity>
+  template<typename, atomicity>
   friend class bumper_array;
-  template <typename, atomicity, atomicity>
+  template<typename, atomicity, atomicity>
   friend class buffer_array;
   friend struct std::dynarray<bumper>;
 };
 
-template <typename Integral>
+template<typename Integral>
 class bumper<Integral, atomicity::semi> {
   bumper(const bumper&) = delete;
   bumper& operator=(const bumper&) = delete;
 
  public:
   void operator+=(Integral by) {
-    value_.store(value_.load(std::memory_order_relaxed) + by, std::memory_order_relaxed);
+    value_.store(value_.load(std::memory_order_relaxed) + by,
+                 std::memory_order_relaxed);
   }
   void operator-=(Integral by) {
-    value_.store(value_.load(std::memory_order_relaxed) - by, std::memory_order_relaxed);
+    value_.store(value_.load(std::memory_order_relaxed) - by,
+                 std::memory_order_relaxed);
   }
   void operator++() { *this += 1; }
   void operator++(int) { *this += 1; }
@@ -431,14 +433,14 @@ class bumper<Integral, atomicity::semi> {
     return tmp;
   }
   std::atomic<Integral> value_;
-  template <typename, atomicity>
+  template<typename, atomicity>
   friend class bumper_array;
-  template <typename, atomicity, atomicity>
+  template<typename, atomicity, atomicity>
   friend class buffer_array;
   friend struct std::dynarray<bumper>;
 };
 
-template <typename Integral>
+template<typename Integral>
 class bumper<Integral, atomicity::full> {
   bumper(const bumper&) = delete;
   bumper& operator=(const bumper&) = delete;
@@ -463,9 +465,9 @@ class bumper<Integral, atomicity::full> {
     return value_.exchange(to, std::memory_order_relaxed);
   }
   std::atomic<Integral> value_;
-  template <typename, atomicity>
+  template<typename, atomicity>
   friend class bumper_array;
-  template <typename, atomicity, atomicity>
+  template<typename, atomicity, atomicity>
   friend class buffer_array;
   friend struct std::dynarray<bumper>;
 };
@@ -474,7 +476,7 @@ class bumper<Integral, atomicity::full> {
    The simplex counters.
 */
 
-template <typename Integral, atomicity Atomicity = atomicity::full>
+template<typename Integral, atomicity Atomicity = atomicity::full>
 class simplex : public bumper<Integral, Atomicity> {
   typedef bumper<Integral, Atomicity> base_type;
 
@@ -496,7 +498,8 @@ class simplex : public bumper<Integral, Atomicity> {
    are not reflected in the queries on the prime.
 */
 
-template <typename Integral, atomicity PrimeAtomicity = atomicity::full, atomicity BufferAtomicity = atomicity::none>
+template<typename Integral, atomicity PrimeAtomicity = atomicity::full,
+         atomicity BufferAtomicity = atomicity::none>
 class buffer : public bumper<Integral, BufferAtomicity> {
   typedef bumper<Integral, PrimeAtomicity> prime_type;
   typedef bumper<Integral, BufferAtomicity> base_type;
@@ -526,10 +529,10 @@ class buffer : public bumper<Integral, BufferAtomicity> {
    which means that you cannot extract counts early.
 */
 
-template <typename Integral>
+template<typename Integral>
 class strong_broker;
 
-template <typename Integral>
+template<typename Integral>
 class strong_duplex : public bumper<Integral, atomicity::full> {
   typedef bumper<Integral, atomicity::full> base_type;
   typedef strong_broker<Integral> broker_type;
@@ -550,7 +553,7 @@ class strong_duplex : public bumper<Integral, atomicity::full> {
   set_type children_;
 };
 
-template <typename Integral>
+template<typename Integral>
 class strong_broker : public bumper<Integral, atomicity::full> {
   typedef bumper<Integral, atomicity::full> base_type;
   typedef strong_duplex<Integral> duplex_type;
@@ -569,20 +572,20 @@ class strong_broker : public bumper<Integral, atomicity::full> {
   duplex_type& prime_;
 };
 
-template <typename Integral>
+template<typename Integral>
 void strong_duplex<Integral>::insert(broker_type* child) {
   std::lock_guard<std::mutex> _(serializer_);
   assert(children_.insert(child).second);
 }
 
-template <typename Integral>
+template<typename Integral>
 void strong_duplex<Integral>::erase(broker_type* child, Integral by) {
   this->operator+=(by);
   std::lock_guard<std::mutex> _(serializer_);
   assert(children_.erase(child) == 1);
 }
 
-template <typename Integral>
+template<typename Integral>
 Integral strong_duplex<Integral>::load() const {
   typedef typename set_type::iterator iterator;
   Integral tmp = 0;
@@ -594,7 +597,7 @@ Integral strong_duplex<Integral>::load() const {
   return tmp + base_type::load();
 }
 
-template <typename Integral>
+template<typename Integral>
 Integral strong_duplex<Integral>::exchange(Integral to) {
   typedef typename set_type::iterator iterator;
   Integral tmp = 0;
@@ -606,27 +609,27 @@ Integral strong_duplex<Integral>::exchange(Integral to) {
   return tmp + base_type::exchange(to);
 }
 
-template <typename Integral>
+template<typename Integral>
 strong_duplex<Integral>::~strong_duplex() {
   std::lock_guard<std::mutex> _(serializer_);
   assert(children_.size() == 0);
 }
 
-template <typename Integral>
+template<typename Integral>
 strong_broker<Integral>::strong_broker(duplex_type& p)
     : base_type(0), prime_(p) {
   prime_.insert(this);
 }
 
-template <typename Integral>
+template<typename Integral>
 strong_broker<Integral>::~strong_broker() {
   prime_.erase(this, base_type::load());
 }
 
-template <typename Integral>
+template<typename Integral>
 class weak_broker;
 
-template <typename Integral>
+template<typename Integral>
 class weak_duplex : public bumper<Integral, atomicity::full> {
   typedef bumper<Integral, atomicity::full> base_type;
   typedef weak_broker<Integral> broker_type;
@@ -648,7 +651,7 @@ class weak_duplex : public bumper<Integral, atomicity::full> {
   set_type children_;
 };
 
-template <typename Integral>
+template<typename Integral>
 class weak_broker : public bumper<Integral, atomicity::semi> {
   typedef bumper<Integral, atomicity::semi> base_type;
   typedef weak_duplex<Integral> duplex_type;
@@ -666,20 +669,20 @@ class weak_broker : public bumper<Integral, atomicity::semi> {
   duplex_type& prime_;
 };
 
-template <typename Integral>
+template<typename Integral>
 void weak_duplex<Integral>::insert(broker_type* child) {
   std::lock_guard<std::mutex> _(serializer_);
   assert(children_.insert(child).second);
 }
 
-template <typename Integral>
+template<typename Integral>
 void weak_duplex<Integral>::erase(broker_type* child, Integral by) {
   std::lock_guard<std::mutex> _(serializer_);
   this->operator+=(by);
   assert(children_.erase(child) == 1);
 }
 
-template <typename Integral>
+template<typename Integral>
 Integral weak_duplex<Integral>::load() const {
   typedef typename set_type::iterator iterator;
   Integral tmp = 0;
@@ -692,25 +695,25 @@ Integral weak_duplex<Integral>::load() const {
   return tmp;
 }
 
-template <typename Integral>
+template<typename Integral>
 weak_duplex<Integral>::~weak_duplex() {
   std::lock_guard<std::mutex> _(serializer_);
   assert(children_.size() == 0);
 }
 
-template <typename Integral>
+template<typename Integral>
 weak_broker<Integral>::weak_broker(duplex_type& p) : base_type(0), prime_(p) {
   prime_.insert(this);
 }
 
-template <typename Integral>
+template<typename Integral>
 weak_broker<Integral>::~weak_broker() {
   prime_.erase(this, base_type::load());
 }
 
 // Counter arrays.
 
-template <typename Integral, atomicity Atomicity = atomicity::full>
+template<typename Integral, atomicity Atomicity = atomicity::full>
 class bumper_array {
  public:
   typedef bumper<Integral, Atomicity> value_type;
@@ -737,7 +740,7 @@ class bumper_array {
   storage_type storage;
 };
 
-template <typename Integral, atomicity Atomicity = atomicity::full>
+template<typename Integral, atomicity Atomicity = atomicity::full>
 class simplex_array : public bumper_array<Integral, Atomicity> {
   typedef bumper_array<Integral, Atomicity> base_type;
 
@@ -756,7 +759,8 @@ class simplex_array : public bumper_array<Integral, Atomicity> {
   size_type size() const { return base_type::size(); }
 };
 
-template <typename Integral, atomicity PrimeAtomicity = atomicity::full, atomicity BufferAtomicity = atomicity::full>
+template<typename Integral, atomicity PrimeAtomicity = atomicity::full,
+         atomicity BufferAtomicity = atomicity::full>
 class buffer_array : public bumper_array<Integral, BufferAtomicity> {
   typedef bumper_array<Integral, BufferAtomicity> base_type;
   typedef bumper_array<Integral, PrimeAtomicity> prime_type;
@@ -780,7 +784,7 @@ class buffer_array : public bumper_array<Integral, BufferAtomicity> {
   prime_type& prime_;
 };
 
-template <typename Integral, atomicity BufferAtomicity, atomicity PrimeAtomicity>
+template<typename Integral, atomicity BufferAtomicity, atomicity PrimeAtomicity>
 void buffer_array<Integral, BufferAtomicity, PrimeAtomicity>::push() {
   int size = base_type::size();
   for (int i = 0; i < size; ++i) push(i);
@@ -788,10 +792,10 @@ void buffer_array<Integral, BufferAtomicity, PrimeAtomicity>::push() {
 
 // Duplex arrays
 
-template <typename Integral>
+template<typename Integral>
 class strong_broker_array;
 
-template <typename Integral>
+template<typename Integral>
 class strong_duplex_array : public bumper_array<Integral, atomicity::full> {
   typedef bumper_array<Integral, atomicity::full> base_type;
   typedef strong_broker_array<Integral> broker_type;
@@ -816,7 +820,7 @@ class strong_duplex_array : public bumper_array<Integral, atomicity::full> {
   set_type children_;
 };
 
-template <typename Integral>
+template<typename Integral>
 class strong_broker_array : public bumper_array<Integral, atomicity::semi> {
   typedef bumper_array<Integral, atomicity::semi> base_type;
   typedef strong_duplex_array<Integral> duplex_type;
@@ -840,27 +844,27 @@ class strong_broker_array : public bumper_array<Integral, atomicity::semi> {
   duplex_type& prime_;
 };
 
-template <typename Integral>
+template<typename Integral>
 strong_duplex_array<Integral>::~strong_duplex_array() {
   std::lock_guard<std::mutex> _(serializer_);
   assert(children_.size() == 0);
 }
 
-template <typename Integral>
+template<typename Integral>
 strong_broker_array<Integral>::strong_broker_array(duplex_type& p)
     : base_type(p.size()), prime_(p) {
   prime_.insert(this);
 }
 
-template <typename Integral>
+template<typename Integral>
 strong_broker_array<Integral>::~strong_broker_array() {
   prime_.erase(this, base_type::load());
 }
 
-template <typename Integral>
+template<typename Integral>
 class weak_broker_array;
 
-template <typename Integral>
+template<typename Integral>
 class weak_duplex_array : public bumper_array<Integral, atomicity::full> {
   typedef bumper_array<Integral, atomicity::full> base_type;
   typedef weak_broker_array<Integral> broker_type;
@@ -885,7 +889,7 @@ class weak_duplex_array : public bumper_array<Integral, atomicity::full> {
   set_type children_;
 };
 
-template <typename Integral>
+template<typename Integral>
 class weak_broker_array : public bumper_array<Integral, atomicity::semi> {
   typedef bumper_array<Integral, atomicity::semi> base_type;
   typedef weak_duplex_array<Integral> duplex_type;
@@ -906,19 +910,19 @@ class weak_broker_array : public bumper_array<Integral, atomicity::semi> {
   duplex_type& prime_;
 };
 
-template <typename Integral>
+template<typename Integral>
 weak_duplex_array<Integral>::~weak_duplex_array() {
   std::lock_guard<std::mutex> _(serializer_);
   assert(children_.size() == 0);
 }
 
-template <typename Integral>
+template<typename Integral>
 weak_broker_array<Integral>::weak_broker_array(duplex_type& p)
     : base_type(p.size()), prime_(p) {
   prime_.insert(this);
 }
 
-template <typename Integral>
+template<typename Integral>
 weak_broker_array<Integral>::~weak_broker_array() {
   prime_.erase(this, base_type::load());
 }

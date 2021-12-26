@@ -249,12 +249,10 @@ void testTerm(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with term
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, {term: 'a'}, 0, 'b', 0, "
@@ -268,8 +266,8 @@ void testTerm(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -277,12 +275,10 @@ void testTerm(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with term via []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [{term: 'a'}, 'b', 'c', "
@@ -296,8 +292,8 @@ void testTerm(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -305,12 +301,10 @@ void testTerm(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with tErm
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, {tErm: 'a'}, 0, 'b', 0, "
@@ -324,8 +318,8 @@ void testTerm(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -333,12 +327,10 @@ void testTerm(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with tErm via []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [{tErm: 'a'}, 'b', 'c', "
@@ -352,8 +344,8 @@ void testTerm(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -361,12 +353,10 @@ void testTerm(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with term (in an array)
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, {term: ['a']}, 0, 'b', "
@@ -380,8 +370,8 @@ void testTerm(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -389,12 +379,10 @@ void testTerm(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with term (in an array) via []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [{term: ['a']}, 'b', "
@@ -408,16 +396,17 @@ void testTerm(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
   }
 }
 
-void testStartsWith(TRI_vocbase_t& vocbase,
-                    const std::vector<arangodb::velocypack::Builder>& insertedDocs) {
+void testStartsWith(
+    TRI_vocbase_t& vocbase,
+    const std::vector<arangodb::velocypack::Builder>& insertedDocs) {
   // test invalid input for starts_with (object)
   {
     auto result = arangodb::tests::executeQuery(
@@ -618,12 +607,10 @@ void testStartsWith(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with starts_with
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, {starts_with: 'a'}, 0, "
@@ -637,8 +624,8 @@ void testStartsWith(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -646,12 +633,10 @@ void testStartsWith(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with starts_with via []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [{starts_with: 'a'}, "
@@ -665,8 +650,8 @@ void testStartsWith(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -674,12 +659,10 @@ void testStartsWith(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with stArts_wIth
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, {stArts_wIth: 'a'}, 0, "
@@ -693,8 +676,8 @@ void testStartsWith(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -702,12 +685,10 @@ void testStartsWith(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with stArts_wIth via []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [{stArts_wIth: 'a'}, "
@@ -721,8 +702,8 @@ void testStartsWith(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -730,12 +711,10 @@ void testStartsWith(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with starts_with (in an array)
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, {starts_with: ['a']}, "
@@ -749,8 +728,8 @@ void testStartsWith(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -758,12 +737,10 @@ void testStartsWith(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with starts_with (in an array) via []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [{starts_with: ['a']}, "
@@ -777,16 +754,17 @@ void testStartsWith(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
   }
 }
 
-void testWildcard(TRI_vocbase_t& vocbase,
-                  const std::vector<arangodb::velocypack::Builder>& insertedDocs) {
+void testWildcard(
+    TRI_vocbase_t& vocbase,
+    const std::vector<arangodb::velocypack::Builder>& insertedDocs) {
   // test invalid input for wildcard (object)
   {
     auto result = arangodb::tests::executeQuery(
@@ -997,12 +975,10 @@ void testWildcard(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with wildcard
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, {wildcard: '_'}, 0, "
@@ -1016,8 +992,8 @@ void testWildcard(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -1025,12 +1001,10 @@ void testWildcard(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with wildcard via []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [{wildcard: '_'}, 'b', "
@@ -1044,8 +1018,8 @@ void testWildcard(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -1053,12 +1027,10 @@ void testWildcard(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with wilDCard
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, {wilDCard: '_'}, 0, "
@@ -1072,8 +1044,8 @@ void testWildcard(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -1081,12 +1053,10 @@ void testWildcard(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with wilDCard via []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [{wilDCard: '_'}, 'b', "
@@ -1100,8 +1070,8 @@ void testWildcard(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -1109,12 +1079,10 @@ void testWildcard(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with wilDCard via [] via vriable
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "LET phraseStruct = NOOPT([{wilDCard: '_'}, 'b', 'c', 'd'])"
@@ -1128,8 +1096,8 @@ void testWildcard(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -1137,12 +1105,10 @@ void testWildcard(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with wildcard (in an array)
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, {wildcard: ['_']}, 0, "
@@ -1156,8 +1122,8 @@ void testWildcard(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -1165,12 +1131,10 @@ void testWildcard(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with wildcard (in an array) via []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [{wildcard: ['_']}, "
@@ -1184,16 +1148,17 @@ void testWildcard(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
   }
 }
 
-void testLevenshteinMatch(TRI_vocbase_t& vocbase,
-                          const std::vector<arangodb::velocypack::Builder>& insertedDocs) {
+void testLevenshteinMatch(
+    TRI_vocbase_t& vocbase,
+    const std::vector<arangodb::velocypack::Builder>& insertedDocs) {
   // test invalid input for levenshtein_match (no array object)
   {
     auto result = arangodb::tests::executeQuery(
@@ -1741,7 +1706,8 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
-  // test invalid input for levenshtein_match (wrong number of arguments 1) via []
+  // test invalid input for levenshtein_match (wrong number of arguments 1) via
+  // []
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -1759,7 +1725,8 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
-  // test invalid input for levenshtein_match (wrong number of arguments 5) via []
+  // test invalid input for levenshtein_match (wrong number of arguments 5) via
+  // []
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -1825,12 +1792,10 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with levenshtein_match
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, {levenshtein_match: "
@@ -1844,8 +1809,8 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -1853,12 +1818,10 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with levenshtein_match via [] via vaiable
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "LET phraseStruct = NOOPT([{levenshtein_match: ['f', 1]}, 'b', 'c', "
@@ -1873,8 +1836,8 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -1882,12 +1845,10 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with levenshtein_match via []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [{levenshtein_match: "
@@ -1901,8 +1862,8 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -1910,12 +1871,10 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with LEVenshtein_match
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, {LEVenshtein_match: "
@@ -1929,8 +1888,8 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -1938,12 +1897,10 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with LEVenshtein_match via []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [{LEVenshtein_match: "
@@ -1957,8 +1914,8 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -1966,7 +1923,8 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with LEVenshtein_match via [] with prefix
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[38].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[38].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.foo, {LEVENSHTEIN_MATCH: [\"cd\", "
@@ -1980,8 +1938,8 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -1989,7 +1947,8 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with LEVenshtein_match via [] with prefix
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[38].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[38].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.foo, [{LEVENSHTEIN_MATCH: [\"b\", "
@@ -2004,8 +1963,8 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -2013,8 +1972,8 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with LEVenshtein_match via [] + limit
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[36].slice(),
-                                                         insertedDocs[37].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[36].slice(), insertedDocs[37].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.prefix, ['a', 'b', 'c', "
@@ -2025,7 +1984,8 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
     ASSERT_TRUE(slice.isArray());
     size_t i = 0;
 
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr, ++i) {
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid();
+         ++itr, ++i) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
       EXPECT_EQUAL_SLICES(expected[i], resolved);
@@ -2052,7 +2012,8 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
     ASSERT_TRUE(slice.isArray());
     size_t i = 0;
 
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr, ++i) {
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid();
+         ++itr, ++i) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
       EXPECT_EQUAL_SLICES(expected[i], resolved);
@@ -2078,7 +2039,8 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
     ASSERT_TRUE(slice.isArray());
     size_t i = 0;
 
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr, ++i) {
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid();
+         ++itr, ++i) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
       EXPECT_EQUAL_SLICES(expected[i], resolved);
@@ -2089,12 +2051,10 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with levenshtein_match (not Damerau-Levenshtein)
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, {levenshtein_match: "
@@ -2114,14 +2074,13 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
     EXPECT_EQ(i, expected.size());
   }
 
-  // test custom analyzer with levenshtein_match via [] (not Damerau-Levenshtein)
+  // test custom analyzer with levenshtein_match via [] (not
+  // Damerau-Levenshtein)
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [{levenshtein_match: "
@@ -2135,21 +2094,20 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
   }
 
-  // test custom analyzer with levenshtein_match via [] (not Damerau-Levenshtein) with prefix
+  // test custom analyzer with levenshtein_match via [] (not
+  // Damerau-Levenshtein) with prefix
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [{levenshtein_match: "
@@ -2164,8 +2122,8 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -2173,12 +2131,10 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with levenshtein_match (Damerau-Levenshtein)
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, {levenshtein_match: "
@@ -2192,8 +2148,8 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -2201,12 +2157,10 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with levenshtein_match via [] (Damerau-Levenshtein)
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [{levenshtein_match: "
@@ -2220,21 +2174,20 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
   }
 
-  // test custom analyzer with levenshtein_match via [] (Damerau-Levenshtein) and prefix
+  // test custom analyzer with levenshtein_match via [] (Damerau-Levenshtein)
+  // and prefix
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [{levenshtein_match: "
@@ -2248,21 +2201,20 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
   }
 
-  // test custom analyzer with levenshtein_match via [] (Damerau-Levenshtein) via variable
+  // test custom analyzer with levenshtein_match via [] (Damerau-Levenshtein)
+  // via variable
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "LET phraseStruct = NOOPT({levenshtein_match: ['f', 1, true]})"
@@ -2277,8 +2229,8 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -2587,12 +2539,10 @@ void testTerms(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with terms
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, {terms: ['a']}, 0, 'b', "
@@ -2606,8 +2556,8 @@ void testTerms(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -2615,12 +2565,10 @@ void testTerms(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with terms
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, {terms: ['a', 'b']}, 0, "
@@ -2634,8 +2582,8 @@ void testTerms(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -2643,12 +2591,10 @@ void testTerms(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with terms via []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [{terms: ['a', 'b']}, "
@@ -2662,8 +2608,8 @@ void testTerms(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -2671,12 +2617,10 @@ void testTerms(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with terMs
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, {terMs: ['a', 'b']}, 0, "
@@ -2690,8 +2634,8 @@ void testTerms(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -2699,12 +2643,10 @@ void testTerms(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with terMs via []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [{terMs: ['a', 'b']}, "
@@ -2718,8 +2660,8 @@ void testTerms(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -2727,12 +2669,10 @@ void testTerms(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with terms via [[]]
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [['a', 'b'], 'b', 'c', "
@@ -2746,8 +2686,8 @@ void testTerms(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -2755,12 +2695,10 @@ void testTerms(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with terms via [[]] with analyzer
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [['ab', 'bb'], 'b', "
@@ -2774,8 +2712,8 @@ void testTerms(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -2816,8 +2754,8 @@ void testTerms(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -2845,16 +2783,17 @@ void testTerms(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
   }
 }
 
-void testInRange(TRI_vocbase_t& vocbase,
-                 const std::vector<arangodb::velocypack::Builder>& insertedDocs) {
+void testInRange(
+    TRI_vocbase_t& vocbase,
+    const std::vector<arangodb::velocypack::Builder>& insertedDocs) {
   // test invalid input for in_range (no array object) via variable
   {
     auto result = arangodb::tests::executeQuery(
@@ -3757,12 +3696,10 @@ void testInRange(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with in_range (true, true)
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, {in_range: ['a', 'b', "
@@ -3776,8 +3713,8 @@ void testInRange(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -3785,12 +3722,10 @@ void testInRange(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with in_range (true, true) via []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [{in_range: ['a', 'b', "
@@ -3804,8 +3739,8 @@ void testInRange(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -3813,12 +3748,10 @@ void testInRange(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with in_range (true, true) via variable
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "LET phraseStruct = NOOPT({in_range: ['a', 'b', true, true]})"
@@ -3833,8 +3766,8 @@ void testInRange(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -3842,12 +3775,10 @@ void testInRange(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with in_rAnge
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, {in_rAnge: ['a', 'b', "
@@ -3861,8 +3792,8 @@ void testInRange(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -3870,12 +3801,10 @@ void testInRange(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with in_rAnge via []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [{in_rAnge: ['a', 'b', "
@@ -3889,8 +3818,8 @@ void testInRange(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -3898,12 +3827,10 @@ void testInRange(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with in_range (false, false)
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, {in_range: ['!', 'b', "
@@ -3917,8 +3844,8 @@ void testInRange(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -3926,12 +3853,10 @@ void testInRange(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with in_range (false, false) via []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [{in_range: ['!', 'b', "
@@ -3945,8 +3870,8 @@ void testInRange(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -3954,12 +3879,10 @@ void testInRange(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with in_range (false, true)
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, {in_range: ['!', 'b', "
@@ -3973,8 +3896,8 @@ void testInRange(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -3982,12 +3905,10 @@ void testInRange(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with in_range via (false, true) []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [{in_range: ['!', 'b', "
@@ -4001,8 +3922,8 @@ void testInRange(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -4010,12 +3931,10 @@ void testInRange(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with in_range (true, false) via variable
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "LET phraseStruct = NOOPT({in_range: ['a', 'b', true, false]})"
@@ -4030,8 +3949,8 @@ void testInRange(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -4039,12 +3958,10 @@ void testInRange(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with in_range (true, false)
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, {in_range: ['a', 'b', "
@@ -4058,8 +3975,8 @@ void testInRange(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -4067,12 +3984,10 @@ void testInRange(TRI_vocbase_t& vocbase,
 
   // test custom analyzer with in_range (true, false) via []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [{in_range: ['a', 'b', "
@@ -4086,8 +4001,8 @@ void testInRange(TRI_vocbase_t& vocbase,
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -4100,7 +4015,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
 
-  auto& sysVocBaseFeature = server.getFeature<arangodb::SystemDatabaseFeature>();
+  auto& sysVocBaseFeature =
+      server.getFeature<arangodb::SystemDatabaseFeature>();
 
   auto sysVocBasePtr = sysVocBaseFeature.use();
   auto& vocbase = *sysVocBasePtr;
@@ -4129,9 +4045,9 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -4154,16 +4070,16 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     resource /= std::string_view(arangodb::tests::testResourceDir);
     resource /= std::string_view("simple_sequential.json");
 
-    auto builder =
-        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+    auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
+        resource.u8string());
     auto slice = builder.slice();
     ASSERT_TRUE(slice.isArray());
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -4199,10 +4115,9 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
           "includeAllFields": true }
     }})";
 
-    auto viewDefinition =
-        irs::string_utils::to_string(viewDefinitionTemplate,
-                                     static_cast<uint32_t>(linkVersion()),
-                                     static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition = irs::string_utils::to_string(
+        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()),
+        static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -4235,8 +4150,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -4257,8 +4172,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -4279,8 +4194,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -4301,8 +4216,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -4423,7 +4338,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.value) SORT BM25(d) ASC, TFIDF(d) "
         "DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
+    ASSERT_TRUE(
+        result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
   // test missing value via []
@@ -4432,7 +4348,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d['value']) SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
+    ASSERT_TRUE(
+        result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
   // test invalid analyzer type (array)
@@ -4575,8 +4492,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
@@ -4614,8 +4531,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -4641,8 +4558,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -4669,8 +4586,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -4696,8 +4613,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -4723,8 +4640,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -4750,8 +4667,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -4778,8 +4695,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -4807,8 +4724,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -4835,8 +4752,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -4857,8 +4774,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -4880,8 +4797,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -4907,8 +4824,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -4934,8 +4851,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -4961,8 +4878,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -4989,8 +4906,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5011,8 +4928,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5034,8 +4951,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5056,8 +4973,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5079,8 +4996,8 @@ TEST_P(IResearchQueryPhraseTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5117,9 +5034,9 @@ TEST_P(IResearchQueryPhraseTest, test) {
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -5142,16 +5059,16 @@ TEST_P(IResearchQueryPhraseTest, test) {
     resource /= std::string_view(arangodb::tests::testResourceDir);
     resource /= std::string_view("simple_sequential.json");
 
-    auto builder =
-        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+    auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
+        resource.u8string());
     auto slice = builder.slice();
     ASSERT_TRUE(slice.isArray());
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -5161,10 +5078,11 @@ TEST_P(IResearchQueryPhraseTest, test) {
     }
 
     // data set for prefix test in levenshtein
-    std::vector<std::shared_ptr<arangodb::velocypack::Builder>> levenshtein_docs{
-        arangodb::velocypack::Parser::fromJson(
-            "{\"seq\": -7, \"foo\": \"abcd\" }"),
-    };
+    std::vector<std::shared_ptr<arangodb::velocypack::Builder>>
+        levenshtein_docs{
+            arangodb::velocypack::Parser::fromJson(
+                "{\"seq\": -7, \"foo\": \"abcd\" }"),
+        };
 
     for (auto& entry : levenshtein_docs) {
       auto res = trx.insert(collection->name(), entry->slice(), options);
@@ -5199,10 +5117,9 @@ TEST_P(IResearchQueryPhraseTest, test) {
           "includeAllFields": true }
     }})";
 
-    auto viewDefinition =
-        irs::string_utils::to_string(viewDefinitionTemplate,
-                                     static_cast<uint32_t>(linkVersion()),
-                                     static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition = irs::string_utils::to_string(
+        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()),
+        static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -5235,8 +5152,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5257,8 +5174,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5279,8 +5196,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5301,8 +5218,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5485,7 +5402,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.value) SORT BM25(d) ASC, TFIDF(d) "
         "DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
+    ASSERT_TRUE(
+        result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
   // test missing value via []
@@ -5494,7 +5412,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d['value']) SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
+    ASSERT_TRUE(
+        result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
   // test invalid analyzer type (array)
@@ -5626,8 +5545,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5654,8 +5573,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5681,8 +5600,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5709,8 +5628,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5736,8 +5655,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5763,8 +5682,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5790,8 +5709,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5817,8 +5736,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5845,8 +5764,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5873,8 +5792,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5895,8 +5814,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5918,8 +5837,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5945,8 +5864,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5972,8 +5891,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -5999,8 +5918,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -6027,8 +5946,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -6049,8 +5968,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -6072,8 +5991,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -6094,8 +6013,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -6117,20 +6036,18 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
   }
   // test custom analyzer with multiple mixed offsets
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, ['a', 'b'], 1, ['d'], "
@@ -6143,20 +6060,18 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
   }
   // test custom analyzer with multiple mixed offsets via []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, ['a', 'b', 1, 'd'], "
@@ -6169,20 +6084,18 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
   }
   // test custom analyzer with multiple mixed offsets
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, ['a', 1, 'c'], 0, 'd', "
@@ -6195,20 +6108,18 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
   }
   // test custom analyzer with multiple mixed offsets
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, ['a', 'b', 'c'], 0, "
@@ -6222,20 +6133,18 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
   }
   // test custom analyzer with multiple mixed offsets via []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, ['a', 1, 'c', "
@@ -6249,20 +6158,18 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
   }
   // testarray at first arg
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, ['a', 1, 'c', "
@@ -6276,8 +6183,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -6320,12 +6227,10 @@ TEST_P(IResearchQueryPhraseTest, test) {
   }
   // test custom analyzer with multiple mixed offsets with empty array
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, 'a', 0, 'b', 0, 'c', 0, "
@@ -6339,19 +6244,23 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
   }
-  // test custom analyzer with multiple mixed offsets with empty array check accumulating offset
+  // test custom analyzer with multiple mixed offsets with empty array check
+  // accumulating offset
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[29].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH PHRASE(d.prefix, 'b', 1, [], 2, 'r', "  // bateradsfsfasdf
-        "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[29].slice()};
+    auto result = arangodb::tests::
+        executeQuery(vocbase,
+                     "FOR d IN testView SEARCH PHRASE(d.prefix, 'b', 1, [], 2, "
+                     "'r', "  // bateradsfsfasdf
+                     "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq "
+                     "RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     ASSERT_TRUE(slice.isArray());
@@ -6359,19 +6268,17 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
   // testarray at first arg with analyzer
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, ['a', 1, 'c', 'd'], "
@@ -6384,8 +6291,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -6448,14 +6355,13 @@ TEST_P(IResearchQueryPhraseTest, test) {
     testInRange(vocbase, insertedDocs);
   }
 
-  // test custom analyzer with mixed terms, starts_with, wildcard, levenshtein_match
+  // test custom analyzer with mixed terms, starts_with, wildcard,
+  // levenshtein_match
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[6].slice(),
-                                                         insertedDocs[10].slice(),
-                                                         insertedDocs[16].slice(),
-                                                         insertedDocs[26].slice(),
-                                                         insertedDocs[32].slice(),
-                                                         insertedDocs[36].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.duplicated, [['a', 'b'], "
@@ -6470,8 +6376,8 @@ TEST_P(IResearchQueryPhraseTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());

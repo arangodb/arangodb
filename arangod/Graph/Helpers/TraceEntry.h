@@ -38,7 +38,8 @@ class TraceEntry {
 
   void addTiming(double timeTaken) noexcept;
 
-  friend auto operator<<(std::ostream& out, TraceEntry const& entry) -> std::ostream&;
+  friend auto operator<<(std::ostream& out, TraceEntry const& entry)
+      -> std::ostream&;
 
  private:
   double _min{std::numeric_limits<double>::max()};

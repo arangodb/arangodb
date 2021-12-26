@@ -60,7 +60,8 @@ TEST(ComparingServerListsTest, comparing_same_server_lists_returns_true) {
   ASSERT_TRUE(ClusterHelpers::compareServerLists(a, b));
 }
 
-TEST(ComparingServerListsTest, comparing_same_server_lists_with_multiple_entries_returns_true) {
+TEST(ComparingServerListsTest,
+     comparing_same_server_lists_with_multiple_entries_returns_true) {
   std::vector<std::string> a{"test", "test1", "test2"};
   std::vector<std::string> b{"test", "test1", "test2"};
 
@@ -83,16 +84,18 @@ TEST(ComparingServerListsTest,
   ASSERT_FALSE(ClusterHelpers::compareServerLists(a, b));
 }
 
-TEST(ComparingServerListsTest,
-     comparing_different_server_lists_with_multiple_entries_but_same_contents_returns_true) {
+TEST(
+    ComparingServerListsTest,
+    comparing_different_server_lists_with_multiple_entries_but_same_contents_returns_true) {
   std::vector<std::string> a{"test", "test1", "test2"};
   std::vector<std::string> b{"test", "test2", "test1"};
 
   ASSERT_TRUE(ClusterHelpers::compareServerLists(a, b));
 }
 
-TEST(ComparingServerListsTest,
-     comparing_different_server_lists_with_multiple_entries_but_different_leader_returns_false) {
+TEST(
+    ComparingServerListsTest,
+    comparing_different_server_lists_with_multiple_entries_but_different_leader_returns_false) {
   std::vector<std::string> a{"test", "test1", "test2"};
   std::vector<std::string> b{"test2", "test", "test1"};
 

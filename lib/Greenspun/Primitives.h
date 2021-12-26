@@ -34,7 +34,8 @@
 namespace arangodb {
 namespace greenspun {
 
-void RegisterFunction(Machine& ctx, std::string_view name, Machine::function_type&& f);
+void RegisterFunction(Machine& ctx, std::string_view name,
+                      Machine::function_type&& f);
 void RegisterAllPrimitives(Machine& ctx);
 
 }  // namespace greenspun

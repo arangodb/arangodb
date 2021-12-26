@@ -66,7 +66,8 @@ SmallVector<AqlValue> createArgVec(const VPackSlice slice) {
   return params;
 }
 
-void expectEqSlices(const VPackSlice actualSlice, const VPackSlice expectedSlice) {
+void expectEqSlices(const VPackSlice actualSlice,
+                    const VPackSlice expectedSlice) {
   ASSERT_TRUE((actualSlice.isNumber() && expectedSlice.isNumber()) ||
               (actualSlice.isArray() && expectedSlice.isArray()));
 
@@ -94,7 +95,8 @@ AqlValue evaluateDecayFunction(const SmallVector<AqlValue>& params,
                                const arangodb::aql::AstNode& node) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
-  fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([](ErrorCode, char const*) {});
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .AlwaysDo([](ErrorCode, char const*) {});
 
   VPackOptions options;
   fakeit::Mock<transaction::Context> trxCtxMock;
@@ -106,11 +108,11 @@ AqlValue evaluateDecayFunction(const SmallVector<AqlValue>& params,
   fakeit::When(Method(trxMock, vpackOptions)).AlwaysReturn(options);
   transaction::Methods& trx = trxMock.get();
 
-  fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&trx]() -> transaction::Methods& {
-    return trx;
-  });
+  fakeit::When(Method(expressionContextMock, trx))
+      .AlwaysDo([&trx]() -> transaction::Methods& { return trx; });
 
-  auto decayFunction = static_cast<arangodb::aql::Function const*>(node.getData());
+  auto decayFunction =
+      static_cast<arangodb::aql::Function const*>(node.getData());
   return decayFunction->implementation(&expressionContext, node, params);
 }
 
@@ -143,7 +145,8 @@ void assertDecayFunction(char const* expected, char const* args,
   actual_value.destroy();
 }
 
-void assertDecayFunctionFail(char const* args, const arangodb::aql::AstNode& node) {
+void assertDecayFunctionFail(char const* args,
+                             const arangodb::aql::AstNode& node) {
   // get slice for args value
   auto const argsJson = VPackParser::fromJson(args);
   auto const argsSlice = argsJson->slice();
@@ -179,8 +182,8 @@ TEST(GaussDecayFunctionTest, test) {
       "0.6417129487814521, 0.5, 0.36856730432277535, 0.2570284566640167]",
       "[{\"low\":-5, \"high\":7}, 0, 5, 0, 0.5]", node);
 
-  assertDecayFunction("1.0",
-                      "[49.987, 49.987, 0.000000000000000001, 0.001, 0.2]", node);
+  assertDecayFunction(
+      "1.0", "[49.987, 49.987, 0.000000000000000001, 0.001, 0.2]", node);
 
   // with offset=0
   assertDecayFunction("0.9840344433634576", "[1, 0, 10, 0, 0.2]", node);
@@ -275,7 +278,8 @@ TEST(LinDecayFunctionTest, test) {
 
   // with scale=0.001 (almost zero)
   // also test array input and array output
-  assertDecayFunction("[1,1,1,1,0]", "[[0,1,9.8,10,11], 0, 0.001, 10, 0.2]", node);
+  assertDecayFunction("[1,1,1,1,0]", "[[0,1,9.8,10,11], 0, 0.001, 10, 0.2]",
+                      node);
 
   // test range input
   assertDecayFunction(

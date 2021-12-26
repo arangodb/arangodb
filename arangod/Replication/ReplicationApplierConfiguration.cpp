@@ -38,7 +38,8 @@
 using namespace arangodb;
 
 /// @brief construct the configuration with default values
-ReplicationApplierConfiguration::ReplicationApplierConfiguration(application_features::ApplicationServer& server)
+ReplicationApplierConfiguration::ReplicationApplierConfiguration(
+    application_features::ApplicationServer& server)
     : _server(server),
       _endpoint(),
       _database(),
@@ -154,7 +155,8 @@ void ReplicationApplierConfiguration::reset() {
 
 /// @brief get a VelocyPack representation
 /// expects builder to be in an open Object state
-void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool includePassword,
+void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder,
+                                                   bool includePassword,
                                                    bool includeJwt) const {
   if (!_endpoint.empty()) {
     builder.add("endpoint", VPackValue(_endpoint));
@@ -203,20 +205,25 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool i
   builder.close();  // restrictCollections
 
   builder.add("connectionRetryWaitTime",
-              VPackValue(static_cast<double>(_connectionRetryWaitTime) / (1000.0 * 1000.0)));
+              VPackValue(static_cast<double>(_connectionRetryWaitTime) /
+                         (1000.0 * 1000.0)));
   builder.add("initialSyncMaxWaitTime",
-              VPackValue(static_cast<double>(_initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
-  builder.add("idleMinWaitTime",
-              VPackValue(static_cast<double>(_idleMinWaitTime) / (1000.0 * 1000.0)));
-  builder.add("idleMaxWaitTime",
-              VPackValue(static_cast<double>(_idleMaxWaitTime) / (1000.0 * 1000.0)));
+              VPackValue(static_cast<double>(_initialSyncMaxWaitTime) /
+                         (1000.0 * 1000.0)));
+  builder.add(
+      "idleMinWaitTime",
+      VPackValue(static_cast<double>(_idleMinWaitTime) / (1000.0 * 1000.0)));
+  builder.add(
+      "idleMaxWaitTime",
+      VPackValue(static_cast<double>(_idleMaxWaitTime) / (1000.0 * 1000.0)));
 }
 
 /// @brief create a configuration object from velocypack
 ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
     application_features::ApplicationServer& server, VPackSlice slice,
     std::string const& databaseName) {
-  return fromVelocyPack(ReplicationApplierConfiguration(server), slice, databaseName);
+  return fromVelocyPack(ReplicationApplierConfiguration(server), slice,
+                        databaseName);
 }
 
 /// @brief create a configuration object from velocypack, merging it with an
@@ -258,7 +265,9 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
       if (cluster.isEnabled()) {
         if (existing._server.hasFeature<AuthenticationFeature>()) {
           configuration._jwt =
-              existing._server.getFeature<AuthenticationFeature>().tokenCache().jwtToken();
+              existing._server.getFeature<AuthenticationFeature>()
+                  .tokenCache()
+                  .jwtToken();
         }
       }
     }
@@ -378,7 +387,8 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
   if (value.isNumber()) {
     double v = value.getNumber<double>();
     if (v > 0.0) {
-      configuration._connectionRetryWaitTime = static_cast<uint64_t>(v * 1000.0 * 1000.0);
+      configuration._connectionRetryWaitTime =
+          static_cast<uint64_t>(v * 1000.0 * 1000.0);
     }
   }
 
@@ -386,7 +396,8 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
   if (value.isNumber()) {
     double v = value.getNumber<double>();
     if (v > 0.0) {
-      configuration._initialSyncMaxWaitTime = static_cast<uint64_t>(v * 1000.0 * 1000.0);
+      configuration._initialSyncMaxWaitTime =
+          static_cast<uint64_t>(v * 1000.0 * 1000.0);
     }
   }
 
@@ -394,7 +405,8 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
   if (value.isNumber()) {
     double v = value.getNumber<double>();
     if (v > 0.0) {
-      configuration._idleMinWaitTime = static_cast<uint64_t>(v * 1000.0 * 1000.0);
+      configuration._idleMinWaitTime =
+          static_cast<uint64_t>(v * 1000.0 * 1000.0);
     }
   }
 
@@ -402,7 +414,8 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
   if (value.isNumber()) {
     double v = value.getNumber<double>();
     if (v > 0.0) {
-      configuration._idleMaxWaitTime = static_cast<uint64_t>(v * 1000.0 * 1000.0);
+      configuration._idleMaxWaitTime =
+          static_cast<uint64_t>(v * 1000.0 * 1000.0);
     }
   }
 
@@ -433,8 +446,9 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
 /// @brief validate the configuration. will throw if the config is invalid
 void ReplicationApplierConfiguration::validate() const {
   if (_endpoint.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,
-                                   "invalid value for <endpoint>");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,
+        "invalid value for <endpoint>");
   }
 
   if ((_restrictType == RestrictType::None && !_restrictCollections.empty()) ||
@@ -445,7 +459,8 @@ void ReplicationApplierConfiguration::validate() const {
   }
 }
 
-ReplicationApplierConfiguration::RestrictType ReplicationApplierConfiguration::restrictTypeFromString(
+ReplicationApplierConfiguration::RestrictType
+ReplicationApplierConfiguration::restrictTypeFromString(
     std::string const& value) {
   if (value.empty() || value == "none") {
     return RestrictType::None;
@@ -457,8 +472,9 @@ ReplicationApplierConfiguration::RestrictType ReplicationApplierConfiguration::r
     return RestrictType::Exclude;
   }
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,
-                                 "invalid value for <restrictType>");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,
+      "invalid value for <restrictType>");
 }
 
 std::string ReplicationApplierConfiguration::restrictTypeToString(

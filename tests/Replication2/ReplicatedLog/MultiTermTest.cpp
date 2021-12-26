@@ -49,7 +49,8 @@ TEST_F(MultiTermTest, add_follower_test) {
       EXPECT_EQ(result.quorum->quorum, std::vector<ParticipantId>{"leader"});
     }
     {
-      auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
+      auto stats =
+          std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{2}));
       EXPECT_EQ(stats.commitIndex, LogIndex{2});
     }
@@ -62,7 +63,8 @@ TEST_F(MultiTermTest, add_follower_test) {
     auto leader = leaderLog->becomeLeader("leader", LogTerm{2}, {follower}, 2);
 
     {
-      auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
+      auto stats =
+          std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
       // Note that the leader inserts an empty log entry in becomeLeader, which
       // happened twice already.
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{2}, LogIndex{3}));
@@ -79,7 +81,8 @@ TEST_F(MultiTermTest, add_follower_test) {
 
     EXPECT_TRUE(f.isReady());
     {
-      auto stats = std::get<FollowerStatus>(follower->getStatus().getVariant()).local;
+      auto stats =
+          std::get<FollowerStatus>(follower->getStatus().getVariant()).local;
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{2}, LogIndex{3}));
       EXPECT_EQ(stats.commitIndex, LogIndex{3});
     }
@@ -99,13 +102,15 @@ TEST_F(MultiTermTest, resign_leader_wait_for) {
     auto f = leader->waitFor(idx);
     EXPECT_FALSE(f.isReady());
     leader->triggerAsyncReplication();
-    auto newLeader = leaderLog->becomeLeader("leader", LogTerm{2}, {follower}, 2);
+    auto newLeader =
+        leaderLog->becomeLeader("leader", LogTerm{2}, {follower}, 2);
     ASSERT_TRUE(f.isReady());
     EXPECT_ANY_THROW({ std::ignore = f.get(); });
     EXPECT_ANY_THROW({ std::ignore = leader->getStatus(); });
     EXPECT_ANY_THROW({
-      std::ignore = leader->insert(LogPayload::createFromString("second entry"),
-                                   false, LogLeader::doNotTriggerAsyncReplication);
+      std::ignore =
+          leader->insert(LogPayload::createFromString("second entry"), false,
+                         LogLeader::doNotTriggerAsyncReplication);
     });
   }
 }
@@ -125,7 +130,8 @@ TEST_F(MultiTermTest, resign_follower_wait_for) {
     leader->triggerAsyncReplication();
 
     {
-      auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
+      auto stats =
+          std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
       // Note that the leader inserts an empty log entry in becomeLeader
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{2}));
       EXPECT_EQ(stats.commitIndex, LogIndex{0});
@@ -142,7 +148,8 @@ TEST_F(MultiTermTest, resign_follower_wait_for) {
     EXPECT_ANY_THROW({ std::ignore = follower->getStatus(); });
 
     // now create a new leader
-    auto newLeader = leaderLog->becomeLeader("leader", LogTerm{2}, {newFollower}, 2);
+    auto newLeader =
+        leaderLog->becomeLeader("leader", LogTerm{2}, {newFollower}, 2);
     newLeader->triggerAsyncReplication();
     EXPECT_TRUE(newFollower->hasPendingAppendEntries());
 
@@ -193,7 +200,8 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
         followerLog->becomeFollower("follower", LogTerm{1}, "leader");
     auto followerProxy = std::make_shared<FollowerProxy>(follower);
 
-    auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {followerProxy}, 2);
+    auto leader =
+        leaderLog->becomeLeader("leader", LogTerm{1}, {followerProxy}, 2);
 
     auto idx = leader->insert(LogPayload::createFromString("first entry"),
                               false, LogLeader::doNotTriggerAsyncReplication);
@@ -203,14 +211,16 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
     EXPECT_FALSE(f.isReady());
 
     {
-      auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
+      auto stats =
+          std::get<LeaderStatus>(leader->getStatus().getVariant()).local;
       // Note that the leader inserts an empty log entry in becomeLeader
       EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm{1}, LogIndex{2}));
       EXPECT_EQ(stats.commitIndex, LogIndex{0});
     }
 
     // now create a new leader and delete the old one
-    leader = leaderLog->becomeLeader("newLeader", LogTerm{2}, {followerProxy}, 2);
+    leader =
+        leaderLog->becomeLeader("newLeader", LogTerm{2}, {followerProxy}, 2);
 
     EXPECT_TRUE(follower->hasPendingAppendEntries());
     follower->runAsyncAppendEntries();

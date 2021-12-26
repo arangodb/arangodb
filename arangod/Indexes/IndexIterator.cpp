@@ -31,8 +31,12 @@
 using namespace arangodb;
 
 IndexIterator::IndexIterator(LogicalCollection* collection,
-                             transaction::Methods* trx, ReadOwnWrites readOwnWrites)
-    : _collection(collection), _trx(trx), _hasMore(true), _readOwnWrites(readOwnWrites) {
+                             transaction::Methods* trx,
+                             ReadOwnWrites readOwnWrites)
+    : _collection(collection),
+      _trx(trx),
+      _hasMore(true),
+      _readOwnWrites(readOwnWrites) {
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(_trx != nullptr);
 }
@@ -44,7 +48,8 @@ void IndexIterator::reset() {
 
 /// @brief Calls cb for the next batchSize many elements
 ///        NOTE: This will throw on OUT_OF_MEMORY
-bool IndexIterator::next(LocalDocumentIdCallback const& callback, uint64_t batchSize) {
+bool IndexIterator::next(LocalDocumentIdCallback const& callback,
+                         uint64_t batchSize) {
   if (_hasMore) {
     TRI_ASSERT(batchSize != UINT64_MAX);
 
@@ -54,7 +59,8 @@ bool IndexIterator::next(LocalDocumentIdCallback const& callback, uint64_t batch
   return _hasMore;
 }
 
-bool IndexIterator::nextDocument(DocumentCallback const& callback, uint64_t batchSize) {
+bool IndexIterator::nextDocument(DocumentCallback const& callback,
+                                 uint64_t batchSize) {
   if (_hasMore) {
     TRI_ASSERT(batchSize != UINT64_MAX);
 
@@ -70,7 +76,8 @@ bool IndexIterator::nextDocument(DocumentCallback const& callback, uint64_t batc
 ///        who support it.
 //////////////////////////////////////////////////////////////////////////////
 
-bool IndexIterator::nextExtra(ExtraCallback const& callback, uint64_t batchSize) {
+bool IndexIterator::nextExtra(ExtraCallback const& callback,
+                              uint64_t batchSize) {
   TRI_ASSERT(hasExtra());
 
   if (_hasMore) {
@@ -82,7 +89,8 @@ bool IndexIterator::nextExtra(ExtraCallback const& callback, uint64_t batchSize)
   return _hasMore;
 }
 
-bool IndexIterator::nextCovering(DocumentCallback const& callback, uint64_t batchSize) {
+bool IndexIterator::nextCovering(DocumentCallback const& callback,
+                                 uint64_t batchSize) {
   TRI_ASSERT(hasCovering());
 
   if (_hasMore) {
@@ -138,7 +146,8 @@ void IndexIterator::skipAll(uint64_t& skipped) {
 /// @brief default implementation for rearm
 /// specialized index iterators can implement this method with some
 /// sensible behavior
-bool IndexIterator::rearmImpl(arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
+bool IndexIterator::rearmImpl(arangodb::aql::AstNode const*,
+                              arangodb::aql::Variable const*,
                               IndexIteratorOptions const&) {
   TRI_ASSERT(canRearm());
   THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -157,7 +166,9 @@ bool IndexIterator::nextImpl(LocalDocumentIdCallback const&, size_t /*limit*/) {
 bool IndexIterator::nextDocumentImpl(DocumentCallback const& cb, size_t limit) {
   return nextImpl(
       [this, &cb](LocalDocumentId const& token) {
-        return _collection->getPhysical()->read(_trx, token, cb, _readOwnWrites).ok();
+        return _collection->getPhysical()
+            ->read(_trx, token, cb, _readOwnWrites)
+            .ok();
       },
       limit);
 }
@@ -173,7 +184,8 @@ bool IndexIterator::nextExtraImpl(ExtraCallback const&, size_t /*limit*/) {
 /// @brief default implementation for nextCovering
 /// specialized index iterators can implement this method with some
 /// sensible behavior
-bool IndexIterator::nextCoveringImpl(DocumentCallback const&, size_t /*limit*/) {
+bool IndexIterator::nextCoveringImpl(DocumentCallback const&,
+                                     size_t /*limit*/) {
   TRI_ASSERT(hasCovering());
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "requested next covering values from an index "
@@ -195,7 +207,8 @@ void IndexIterator::skipImpl(uint64_t count, uint64_t& skipped) {
 ///        If one iterator is exhausted, the next one is used.
 ///        If callback is called less than limit many times
 ///        all iterators are exhausted
-bool MultiIndexIterator::nextImpl(LocalDocumentIdCallback const& callback, size_t limit) {
+bool MultiIndexIterator::nextImpl(LocalDocumentIdCallback const& callback,
+                                  size_t limit) {
   auto cb = [&limit, &callback](LocalDocumentId const& token) {
     if (callback(token)) {
       --limit;
@@ -223,7 +236,8 @@ bool MultiIndexIterator::nextImpl(LocalDocumentIdCallback const& callback, size_
 ///        If one iterator is exhausted, the next one is used.
 ///        If callback is called less than limit many times
 ///        all iterators are exhausted
-bool MultiIndexIterator::nextDocumentImpl(DocumentCallback const& callback, size_t limit) {
+bool MultiIndexIterator::nextDocumentImpl(DocumentCallback const& callback,
+                                          size_t limit) {
   auto cb = [&limit, &callback](LocalDocumentId const& token,
                                 arangodb::velocypack::Slice slice) {
     if (callback(token, slice)) {
@@ -248,7 +262,8 @@ bool MultiIndexIterator::nextDocumentImpl(DocumentCallback const& callback, size
   return true;
 }
 
-bool MultiIndexIterator::nextExtraImpl(ExtraCallback const& callback, size_t limit) {
+bool MultiIndexIterator::nextExtraImpl(ExtraCallback const& callback,
+                                       size_t limit) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
       "requested extra values from an index iterator that does not support it");
@@ -258,7 +273,8 @@ bool MultiIndexIterator::nextExtraImpl(ExtraCallback const& callback, size_t lim
 ///        If one iterator is exhausted, the next one is used.
 ///        If callback is called less than limit many times
 ///        all iterators are exhausted
-bool MultiIndexIterator::nextCoveringImpl(DocumentCallback const& callback, size_t limit) {
+bool MultiIndexIterator::nextCoveringImpl(DocumentCallback const& callback,
+                                          size_t limit) {
   TRI_ASSERT(hasCovering());
   auto cb = [&limit, &callback](LocalDocumentId const& token,
                                 arangodb::velocypack::Slice slice) {

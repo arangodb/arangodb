@@ -45,8 +45,10 @@ using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
-UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescription const& desc)
-    : ActionBase(feature, desc), ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
+UpdateCollection::UpdateCollection(MaintenanceFeature& feature,
+                                   ActionDescription const& desc)
+    : ActionBase(feature, desc),
+      ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);
@@ -128,7 +130,8 @@ bool UpdateCollection::first() {
 
     } else {
       std::stringstream error;
-      error << "failed to lookup local collection " << shard << "in database " + database;
+      error << "failed to lookup local collection " << shard
+            << "in database " + database;
       LOG_TOPIC("620fb", ERR, Logger::MAINTENANCE) << error.str();
       res = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       result(res);
@@ -144,7 +147,8 @@ bool UpdateCollection::first() {
   }
 
   if (res.fail()) {
-    _feature.storeShardError(database, collection, shard, _description.get(SERVER_ID), res);
+    _feature.storeShardError(database, collection, shard,
+                             _description.get(SERVER_ID), res);
   }
 
   return false;

@@ -62,7 +62,8 @@ CursorRepository::CursorRepository(TRI_vocbase_t& vocbase)
   _cursors.reserve(64);
   if (ServerState::instance()->isCoordinator()) {
     try {
-      auto const& softShutdownFeature{_vocbase.server().getFeature<SoftShutdownFeature>()};
+      auto const& softShutdownFeature{
+          _vocbase.server().getFeature<SoftShutdownFeature>()};
       auto& softShutdownTracker{softShutdownFeature.softShutdownTracker()};
       _softShutdownOngoing = softShutdownTracker.getSoftShutdownFlag();
     } catch (...) {
@@ -145,18 +146,20 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
 /// the cursor will take ownership and retain the entire QueryResult object
 ////////////////////////////////////////////////////////////////////////////////
 
-Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result, size_t batchSize,
-                                                double ttl, bool hasCount) {
+Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result,
+                                                size_t batchSize, double ttl,
+                                                bool hasCount) {
   TRI_ASSERT(result.data != nullptr);
 
-  if (_softShutdownOngoing != nullptr && _softShutdownOngoing->load(std::memory_order_relaxed)) {
+  if (_softShutdownOngoing != nullptr &&
+      _softShutdownOngoing->load(std::memory_order_relaxed)) {
     // Refuse to create the cursor:
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
                                    "Coordinator soft shutdown ongoing.");
   }
 
-  auto cursor = std::make_unique<aql::QueryResultCursor>(_vocbase, std::move(result),
-                                                         batchSize, ttl, hasCount);
+  auto cursor = std::make_unique<aql::QueryResultCursor>(
+      _vocbase, std::move(result), batchSize, ttl, hasCount);
   cursor->use();
 
   return addCursor(std::move(cursor));
@@ -169,15 +172,17 @@ Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result, size_
 /// the cursor will create a query internally and retain it until deleted
 //////////////////////////////////////////////////////////////////////////////
 
-Cursor* CursorRepository::createQueryStream(std::shared_ptr<arangodb::aql::Query> q,
-                                            size_t batchSize, double ttl) {
-  if (_softShutdownOngoing != nullptr && _softShutdownOngoing->load(std::memory_order_relaxed)) {
+Cursor* CursorRepository::createQueryStream(
+    std::shared_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl) {
+  if (_softShutdownOngoing != nullptr &&
+      _softShutdownOngoing->load(std::memory_order_relaxed)) {
     // Refuse to create the cursor:
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
                                    "Coordinator soft shutdown ongoing.");
   }
 
-  auto cursor = std::make_unique<aql::QueryStreamCursor>(std::move(q), batchSize, ttl);
+  auto cursor =
+      std::make_unique<aql::QueryStreamCursor>(std::move(q), batchSize, ttl);
   cursor->use();
 
   return addCursor(std::move(cursor));

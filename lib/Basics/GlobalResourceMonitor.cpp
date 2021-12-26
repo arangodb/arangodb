@@ -52,8 +52,10 @@ std::int64_t GlobalResourceMonitor::current() const noexcept {
 /// @brief number of times the global and any local limits were reached
 GlobalResourceMonitor::Stats GlobalResourceMonitor::stats() const noexcept {
   Stats stats;
-  stats.globalLimitReached = _globalLimitReachedCounter.load(std::memory_order_relaxed);
-  stats.localLimitReached = _localLimitReachedCounter.load(std::memory_order_relaxed);
+  stats.globalLimitReached =
+      _globalLimitReachedCounter.load(std::memory_order_relaxed);
+  stats.localLimitReached =
+      _localLimitReachedCounter.load(std::memory_order_relaxed);
   return stats;
 }
 
@@ -84,7 +86,8 @@ bool GlobalResourceMonitor::increaseMemoryUsage(std::int64_t value) noexcept {
       if (ADB_UNLIKELY(next > _limit)) {
         return false;
       }
-    } while (!_current.compare_exchange_weak(cur, next, std::memory_order_relaxed));
+    } while (
+        !_current.compare_exchange_weak(cur, next, std::memory_order_relaxed));
   }
 
   return true;
@@ -96,7 +99,8 @@ void GlobalResourceMonitor::decreaseMemoryUsage(std::int64_t value) noexcept {
   _current.fetch_sub(value, std::memory_order_relaxed);
 }
 
-void GlobalResourceMonitor::forceUpdateMemoryUsage(std::int64_t value) noexcept {
+void GlobalResourceMonitor::forceUpdateMemoryUsage(
+    std::int64_t value) noexcept {
   _current.fetch_add(value, std::memory_order_relaxed);
 }
 

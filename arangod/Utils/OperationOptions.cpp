@@ -99,7 +99,8 @@ ExecContext const& OperationOptions::context() const {
 }
 
 /// @brief stringifies the overwrite mode
-char const* OperationOptions::stringifyOverwriteMode(OperationOptions::OverwriteMode mode) {
+char const* OperationOptions::stringifyOverwriteMode(
+    OperationOptions::OverwriteMode mode) {
   switch (mode) {
     case OverwriteMode::Unknown:
       return "unknown";
@@ -116,7 +117,8 @@ char const* OperationOptions::stringifyOverwriteMode(OperationOptions::Overwrite
   return "unknown";
 }
 
-OperationOptions::OverwriteMode OperationOptions::determineOverwriteMode(velocypack::StringRef value) {
+OperationOptions::OverwriteMode OperationOptions::determineOverwriteMode(
+    velocypack::StringRef value) {
   if (value == "conflict") {
     return OverwriteMode::Conflict;
   }

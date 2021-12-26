@@ -71,7 +71,8 @@ void handleGossipResponse(arangodb::network::Response const& r,
           }
 
           LOG_TOPIC("4c822", DEBUG, Logger::AGENCY)
-              << "Got redirect to " << newLocation << ". Adding peer to gossip peers";
+              << "Got redirect to " << newLocation
+              << ". Adding peer to gossip peers";
           bool added = agent->addGossipPeer(newLocation);
           if (added) {
             LOG_TOPIC("d41c8", DEBUG, Logger::AGENCY)
@@ -164,7 +165,8 @@ void Inception::gossip() {
           return;
         }
 
-        network::sendRequest(cp, p, fuerte::RestVerb::Post, path, buffer, reqOpts)
+        network::sendRequest(cp, p, fuerte::RestVerb::Post, path, buffer,
+                             reqOpts)
             .thenValue([=](network::Response r) {
               ::handleGossipResponse(r, &_agent, version);
             });
@@ -194,7 +196,8 @@ void Inception::gossip() {
           return;
         }
 
-        network::sendRequest(cp, pair.second, fuerte::RestVerb::Post, path, buffer, reqOpts)
+        network::sendRequest(cp, pair.second, fuerte::RestVerb::Post, path,
+                             buffer, reqOpts)
             .thenValue([=](network::Response r) {
               ::handleGossipResponse(r, &_agent, version);
             });
@@ -273,7 +276,8 @@ bool Inception::restartingActiveAgent() {
 
   CONDITION_LOCKER(guard, _cv);
 
-  active.erase(std::remove(active.begin(), active.end(), myConfig.id()), active.end());
+  active.erase(std::remove(active.begin(), active.end(), myConfig.id()),
+               active.end());
 
   while (!this->isStopping() && !_agent.isStopping()) {
     active.erase(std::remove(active.begin(), active.end(), ""), active.end());
@@ -293,9 +297,9 @@ bool Inception::restartingActiveAgent() {
         return false;
       }
 
-      auto comres =
-          network::sendRequest(cp, p, fuerte::RestVerb::Post, path, greetBuffer, reqOpts)
-              .get();
+      auto comres = network::sendRequest(cp, p, fuerte::RestVerb::Post, path,
+                                         greetBuffer, reqOpts)
+                        .get();
 
       if (comres.ok() && comres.statusCode() == fuerte::StatusOK) {
         VPackSlice const theirConfig = comres.slice();
@@ -335,7 +339,8 @@ bool Inception::restartingActiveAgent() {
           try {
             VPackSlice theirConfig = comres.slice();
 
-            auto const& theirLeaderId = theirConfig.get("leaderId").copyString();
+            auto const& theirLeaderId =
+                theirConfig.get("leaderId").copyString();
             auto const& tcc = theirConfig.get("configuration");
             auto const& theirId = tcc.get("id").copyString();
 
@@ -346,7 +351,8 @@ bool Inception::restartingActiveAgent() {
                   << ". Finishing startup sequence.";
 
               auto const theirLeaderEp =
-                  tcc.get(std::vector<std::string>({"pool", theirLeaderId})).copyString();
+                  tcc.get(std::vector<std::string>({"pool", theirLeaderId}))
+                      .copyString();
 
               if (theirLeaderId == myConfig.id()) {
                 continue;
@@ -358,8 +364,9 @@ bool Inception::restartingActiveAgent() {
                   return false;
                 }
 
-                comres = network::sendRequest(cp, theirLeaderEp, fuerte::RestVerb::Post,
-                                              path, greetBuffer, reqOpts)
+                comres = network::sendRequest(cp, theirLeaderEp,
+                                              fuerte::RestVerb::Post, path,
+                                              greetBuffer, reqOpts)
                              .get();
 
                 // Failed to contact leader move on until we do. This way at
@@ -392,7 +399,8 @@ bool Inception::restartingActiveAgent() {
 
             if (i != active.end()) {  // Member in my active list
               TRI_ASSERT(theirActive.isArray());
-              if (theirActive.length() == 0 || theirActive.length() == myActive.length()) {
+              if (theirActive.length() == 0 ||
+                  theirActive.length() == myActive.length()) {
                 std::vector<std::string> theirActVec, myActVec;
                 for (auto const i : VPackArrayIterator(theirActive)) {
                   theirActVec.push_back(i.copyString());
@@ -431,8 +439,8 @@ bool Inception::restartingActiveAgent() {
           } catch (std::exception const& e) {
             if (!this->isStopping()) {
               LOG_TOPIC("e971a", FATAL, Logger::AGENCY)
-                  << "Assumed active RAFT peer has no active agency list: " << e.what()
-                  << ", administrative intervention needed.";
+                  << "Assumed active RAFT peer has no active agency list: "
+                  << e.what() << ", administrative intervention needed.";
               FATAL_ERROR_EXIT();
             }
             return false;
@@ -461,7 +469,8 @@ bool Inception::restartingActiveAgent() {
   return false;
 }
 
-void Inception::reportVersionForEp(std::string const& endpoint, size_t version) {
+void Inception::reportVersionForEp(std::string const& endpoint,
+                                   size_t version) {
   MUTEX_LOCKER(versionLocker, _vLock);
   if (_acked[endpoint] < version) {
     _acked[endpoint] = version;
@@ -471,7 +480,8 @@ void Inception::reportVersionForEp(std::string const& endpoint, size_t version) 
 // @brief Thread main
 void Inception::run() {
   auto server = ServerState::instance();
-  while (server->isMaintenance() && !this->isStopping() && !_agent.isStopping()) {
+  while (server->isMaintenance() && !this->isStopping() &&
+         !_agent.isStopping()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     LOG_TOPIC("1b613", DEBUG, Logger::AGENCY)
         << "Waiting for RestHandlerFactory to exit maintenance mode before we "

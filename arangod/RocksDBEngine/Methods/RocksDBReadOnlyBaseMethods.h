@@ -58,14 +58,18 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
   Result addOperation(DataSourceId collectionId, RevisionId revisionId,
                       TRI_voc_document_operation_e opType) override;
 
-  rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
+  rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
+                               rocksdb::Slice const&,
                                rocksdb::PinnableSlice*) override;
   rocksdb::Status Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
                       rocksdb::Slice const& val, bool assume_tracked) override;
-  rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+  rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*,
+                               RocksDBKey const& key,
                                rocksdb::Slice const& val) override;
-  rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
-  rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
+  rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*,
+                         RocksDBKey const& key) override;
+  rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*,
+                               RocksDBKey const&) override;
   void PutLogData(rocksdb::Slice const&) override;
 
   void SetSavePoint() override {}
@@ -73,7 +77,8 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
     return rocksdb::Status::OK();
   }
   rocksdb::Status RollbackToWriteBatchSavePoint() override {
-    // simply relay to the general method (which in this derived class does nothing)
+    // simply relay to the general method (which in this derived class does
+    // nothing)
     return RollbackToSavePoint();
   }
   void PopSavePoint() override {}

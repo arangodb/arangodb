@@ -59,8 +59,9 @@ VPackCustomTypeHandler* transaction::V8Context::orderCustomTypeHandler() {
 }
 
 /// @brief get transaction state, determine commit responsibility
-/*virtual*/ std::shared_ptr<TransactionState> transaction::V8Context::acquireState(
-    transaction::Options const& options, bool& responsibleForCommit) {
+/*virtual*/ std::shared_ptr<TransactionState>
+transaction::V8Context::acquireState(transaction::Options const& options,
+                                     bool& responsibleForCommit) {
   if (_currentTransaction) {
     responsibleForCommit = false;
     return _currentTransaction;
@@ -95,7 +96,8 @@ void transaction::V8Context::enterV8Context() {
   TRI_ASSERT(v8g != nullptr);
 
   TRI_ASSERT(_currentTransaction != nullptr);
-  TRI_ASSERT(v8g->_transactionContext == nullptr || v8g->_transactionContext == this);
+  TRI_ASSERT(v8g->_transactionContext == nullptr ||
+             v8g->_transactionContext == this);
 
   v8g->_transactionContext = this;
 }
@@ -128,12 +130,14 @@ std::shared_ptr<transaction::Context> transaction::V8Context::clone() const {
 bool transaction::V8Context::isEmbeddable() const { return _embeddable; }
 
 /// @brief return parent transaction state or none
-/*static*/ std::shared_ptr<TransactionState> transaction::V8Context::getParentState() {
+/*static*/ std::shared_ptr<TransactionState>
+transaction::V8Context::getParentState() {
   auto v8g = getV8State();
   if (v8g == nullptr || v8g->_transactionContext == nullptr) {
     return nullptr;
   }
-  return static_cast<transaction::V8Context*>(v8g->_transactionContext)->_currentTransaction;
+  return static_cast<transaction::V8Context*>(v8g->_transactionContext)
+      ->_currentTransaction;
 }
 
 /// @brief check whether the transaction is embedded
@@ -142,16 +146,18 @@ bool transaction::V8Context::isEmbeddable() const { return _embeddable; }
 }
 
 /// @brief create a context, returned in a shared ptr
-std::shared_ptr<transaction::V8Context> transaction::V8Context::Create(TRI_vocbase_t& vocbase,
-                                                                       bool embeddable) {
+std::shared_ptr<transaction::V8Context> transaction::V8Context::Create(
+    TRI_vocbase_t& vocbase, bool embeddable) {
   return std::make_shared<transaction::V8Context>(vocbase, embeddable);
 }
 
-std::shared_ptr<transaction::Context> transaction::V8Context::CreateWhenRequired(
-    TRI_vocbase_t& vocbase, bool embeddable) {
+std::shared_ptr<transaction::Context>
+transaction::V8Context::CreateWhenRequired(TRI_vocbase_t& vocbase,
+                                           bool embeddable) {
   // is V8 enabled and are currently in a V8 scope ?
   if (vocbase.server().hasFeature<V8DealerFeature>() &&
-      vocbase.server().isEnabled<V8DealerFeature>() && v8::Isolate::GetCurrent() != nullptr) {
+      vocbase.server().isEnabled<V8DealerFeature>() &&
+      v8::Isolate::GetCurrent() != nullptr) {
     return transaction::V8Context::Create(vocbase, embeddable);
   }
 

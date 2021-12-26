@@ -130,7 +130,8 @@ class ApplicationServer {
   static std::atomic<bool> CTRL_C;
 
  public:
-  ApplicationServer(std::shared_ptr<options::ProgramOptions>, char const* binaryPath);
+  ApplicationServer(std::shared_ptr<options::ProgramOptions>,
+                    char const* binaryPath);
 
   TEST_VIRTUAL ~ApplicationServer() = default;
 
@@ -142,32 +143,35 @@ class ApplicationServer {
 
   // return whether or not a feature is enabled
   // will throw when called for a non-existing feature
-  template <typename T>
+  template<typename T>
   bool isEnabled() const {
     return getFeature<T>().isEnabled();
   }
 
   // return whether or not a feature is optional
   // will throw when called for a non-existing feature
-  template <typename T>
+  template<typename T>
   bool isOptional() const {
     return getFeature<T>().isOptional();
   }
 
   // return whether or not a feature is required
   // will throw when called for a non-existing feature
-  template <typename T>
+  template<typename T>
   bool isRequired() const {
     return getFeature<T>().isRequired();
   }
 
-  /// @brief whether or not the server has made it as least as far as the IN_START state
+  /// @brief whether or not the server has made it as least as far as the
+  /// IN_START state
   bool isPrepared();
 
-  /// @brief whether or not the server has made it as least as far as the IN_SHUTDOWN state
+  /// @brief whether or not the server has made it as least as far as the
+  /// IN_SHUTDOWN state
   bool isStopping() const;
 
-  /// @brief whether or not state is the shutting down state or further (i.e. stopped, aborted etc.)
+  /// @brief whether or not state is the shutting down state or further (i.e.
+  /// stopped, aborted etc.)
   bool isStoppingState(State state) const;
 
   // this method will initialize and validate options
@@ -187,7 +191,8 @@ class ApplicationServer {
   // return VPack options, with optional filters applied to filter
   // out specific options. the filter function is expected to return true
   // for any options that should become part of the result
-  velocypack::Builder options(std::function<bool(std::string const&)> const& filter) const;
+  velocypack::Builder options(
+      std::function<bool(std::string const&)> const& filter) const;
 
   // return the program options object
   std::shared_ptr<options::ProgramOptions> options() const { return _options; }
@@ -205,14 +210,16 @@ class ApplicationServer {
     _startupCallbacks.emplace_back(callback);
   }
 
-  void registerFailCallback(std::function<void(std::string const&)> const& callback) {
+  void registerFailCallback(
+      std::function<void(std::string const&)> const& callback) {
     fail = callback;
   }
 
   // setup and validate all feature dependencies, determine feature order
   void setupDependencies(bool failOnMissing);
 
-  std::vector<std::reference_wrapper<ApplicationFeature>> const& getOrderedFeatures() {
+  std::vector<std::reference_wrapper<ApplicationFeature>> const&
+  getOrderedFeatures() {
     return _orderedFeatures;
   }
 
@@ -223,15 +230,18 @@ class ApplicationServer {
   // adds a feature to the application server. the application server
   // will take ownership of the feature object and destroy it in its
   // destructor
-  template <typename Type, typename As = Type, typename... Args,
-            typename std::enable_if<std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0,
-            typename std::enable_if<std::is_base_of<ApplicationFeature, As>::value, int>::type = 0,
-            typename std::enable_if<std::is_base_of<As, Type>::value, int>::type = 0>
+  template<
+      typename Type, typename As = Type, typename... Args,
+      typename std::enable_if<std::is_base_of<ApplicationFeature, Type>::value,
+                              int>::type = 0,
+      typename std::enable_if<std::is_base_of<ApplicationFeature, As>::value,
+                              int>::type = 0,
+      typename std::enable_if<std::is_base_of<As, Type>::value, int>::type = 0>
   As& addFeature(Args&&... args) {
     TRI_ASSERT(!hasFeature<As>());
-    std::pair<FeatureMap::iterator, bool> result =
-        _features.try_emplace(std::type_index(typeid(As)),
-                              std::make_unique<Type>(*this, std::forward<Args>(args)...));
+    std::pair<FeatureMap::iterator, bool> result = _features.try_emplace(
+        std::type_index(typeid(As)),
+        std::make_unique<Type>(*this, std::forward<Args>(args)...));
     TRI_ASSERT(result.second);
     result.first->second->setRegistration(std::type_index(typeid(As)));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -251,14 +261,19 @@ class ApplicationServer {
 
   // checks for the existence of a feature. will not throw when used for
   // a non-existing feature
-  template <typename Type, typename std::enable_if<std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0>
+  template<typename Type,
+           typename std::enable_if<
+               std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0>
   bool hasFeature() const noexcept {
     return hasFeature(std::type_index(typeid(Type)));
   }
 
   // returns a reference to a feature given the type. will throw when used for
   // a non-existing feature
-  template <typename AsType, typename std::enable_if<std::is_base_of<ApplicationFeature, AsType>::value, int>::type = 0>
+  template<
+      typename AsType,
+      typename std::enable_if<
+          std::is_base_of<ApplicationFeature, AsType>::value, int>::type = 0>
   AsType& getFeature(std::type_index type) const {
     auto it = _features.find(type);
     if (it == _features.end()) {
@@ -275,9 +290,12 @@ class ApplicationServer {
 
   // returns a const reference to a feature. will throw when used for
   // a non-existing feature
-  template <typename Type, typename AsType = Type,
-            typename std::enable_if<std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0,
-            typename std::enable_if<std::is_base_of<Type, AsType>::value || std::is_base_of<AsType, Type>::value, int>::type = 0>
+  template<typename Type, typename AsType = Type,
+           typename std::enable_if<
+               std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0,
+           typename std::enable_if<std::is_base_of<Type, AsType>::value ||
+                                       std::is_base_of<AsType, Type>::value,
+                                   int>::type = 0>
   AsType& getFeature() const {
     auto it = _features.find(std::type_index(typeid(Type)));
     if (it == _features.end()) {
@@ -294,9 +312,12 @@ class ApplicationServer {
 
   // returns the feature with the given name if known and enabled
   // throws otherwise
-  template <typename Type, typename AsType = Type,
-            typename std::enable_if<std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0,
-            typename std::enable_if<std::is_base_of<Type, AsType>::value || std::is_base_of<AsType, Type>::value, int>::type = 0>
+  template<typename Type, typename AsType = Type,
+           typename std::enable_if<
+               std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0,
+           typename std::enable_if<std::is_base_of<Type, AsType>::value ||
+                                       std::is_base_of<AsType, Type>::value,
+                                   int>::type = 0>
   AsType& getEnabledFeature() const {
     AsType& feature = getFeature<Type, AsType>();
     if (!feature.isEnabled()) {

@@ -54,7 +54,8 @@ namespace replutils {
 extern std::string const ReplicationUrl;
 
 struct Connection {
-  Connection(Syncer* syncer, ReplicationApplierConfiguration const& applierConfig);
+  Connection(Syncer* syncer,
+             ReplicationApplierConfiguration const& applierConfig);
 
   /// @brief determine if the client connection is open and valid
   bool valid() const;
@@ -77,13 +78,13 @@ struct Connection {
   void preventRecycling();
 
   /// @brief get an exclusive connection
-  template <typename F>
+  template<typename F>
   void lease(F&& func) & {
     std::lock_guard<std::mutex> guard(_mutex);
     std::forward<F>(func)(_client.get());
   }
 
-  template <typename F>
+  template<typename F>
   void lease(F&& func) const& {
     std::lock_guard<std::mutex> guard(_mutex);
     std::forward<F>(func)(_client.get());
@@ -109,7 +110,8 @@ struct ProgressInfo {
   /// @brief progress message
   std::string message{"not started"};
   /// @brief collections synced
-  std::map<DataSourceId, std::string> processedCollections{};  // TODO worker safety
+  std::map<DataSourceId, std::string>
+      processedCollections{};  // TODO worker safety
 
   // @brief constructor to optionally provide a setter/handler for messages
   explicit ProgressInfo(Setter);
@@ -143,7 +145,8 @@ struct LeaderInfo {
   uint64_t version() const;
 
   /// @brief get leader state
-  Result getState(Connection& connection, bool isChildSyncer, char const* context);
+  Result getState(Connection& connection, bool isChildSyncer,
+                  char const* context);
 };
 
 struct BatchInfo {
@@ -165,11 +168,13 @@ struct BatchInfo {
                char const* context, std::string const& patchCount = "");
 
   /// @brief send an "extend batch" command
-  Result extend(Connection& connection, ProgressInfo& progress, SyncerId syncerId);
+  Result extend(Connection& connection, ProgressInfo& progress,
+                SyncerId syncerId);
 
   /// @brief send a "finish batch" command
   // TODO worker-safety
-  Result finish(Connection& connection, ProgressInfo& progress, SyncerId syncerId) noexcept;
+  Result finish(Connection& connection, ProgressInfo& progress,
+                SyncerId syncerId) noexcept;
 };
 
 /// @brief generates basic source headers for ClusterComm requests

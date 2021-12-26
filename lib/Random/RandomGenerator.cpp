@@ -218,7 +218,7 @@ int32_t RandomDevice::other(int32_t left, uint32_t range) {
 #ifndef _WIN32
 
 namespace {
-template <int N>
+template<int N>
 class RandomDeviceDirect : public RandomDevice {
  public:
   explicit RandomDeviceDirect(std::string const& path) : fd(-1), pos(0) {
@@ -288,7 +288,7 @@ class RandomDeviceDirect : public RandomDevice {
 #ifndef _WIN32
 
 namespace {
-template <int N>
+template<int N>
 class RandomDeviceCombined : public RandomDevice {
  public:
   explicit RandomDeviceCombined(std::string const& path)
@@ -361,7 +361,8 @@ class RandomDeviceCombined : public RandomDevice {
 
       rseed = buffer[0];
 
-      LOG_TOPIC("6a060", TRACE, arangodb::Logger::FIXME) << "using seed " << rseed;
+      LOG_TOPIC("6a060", TRACE, arangodb::Logger::FIXME)
+          << "using seed " << rseed;
     }
 
     if (0 < n) {
@@ -412,7 +413,7 @@ class RandomDeviceMersenne : public RandomDevice {
 #ifdef _WIN32
 
 namespace {
-template <int N>
+template<int N>
 class RandomDeviceWin32 : public RandomDevice {
  public:
   RandomDeviceWin32() : cryptoHandle(0), pos(0) {
@@ -602,7 +603,8 @@ int32_t RandomGenerator::random(int32_t left, int32_t right) {
 
 void RandomGenerator::seed(uint64_t seed) {
   ensureDeviceIsInitialized();
-  if (RandomDeviceMersenne* dev = dynamic_cast<RandomDeviceMersenne*>(_device.get())) {
+  if (RandomDeviceMersenne* dev =
+          dynamic_cast<RandomDeviceMersenne*>(_device.get())) {
     dev->seed(seed);
     return;
   }

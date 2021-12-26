@@ -85,7 +85,7 @@ static int const SLOT_EXTERNAL = 2;
 /// @brief unwraps a C++ class given a v8::Object
 ////////////////////////////////////////////////////////////////////////////////
 
-template <class T>
+template<class T>
 static T* TRI_UnwrapClass(v8::Handle<v8::Object> obj, int32_t type,
                           v8::Handle<v8::Context> context) {
   if (obj->InternalFieldCount() <= SLOT_CLASS) {
@@ -131,11 +131,10 @@ bool TRI_ParseJavaScriptFile(v8::Isolate* isolate, char const*);
 /// @brief executes a string within a V8 context, optionally print the result
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
-                                                  v8::Handle<v8::Context> context,
-                                                  v8::Handle<v8::String> const source,
-                                                  v8::Handle<v8::String> const name,
-                                                  bool printResult);
+v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(
+    v8::Isolate* isolate, v8::Handle<v8::Context> context,
+    v8::Handle<v8::String> const source, v8::Handle<v8::String> const name,
+    bool printResult);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object, based on error number only
@@ -180,6 +179,7 @@ void TRI_ClearObjectCacheV8(v8::Isolate*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context>,
-                     std::string const& startupPath, std::string const& modules);
+                     std::string const& startupPath,
+                     std::string const& modules);
 
 void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args);

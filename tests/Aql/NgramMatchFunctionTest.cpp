@@ -56,11 +56,12 @@ class NgramMatchFunctionTest : public ::testing::Test {
 
     std::shared_ptr<arangodb::LogicalCollection> unused;
     arangodb::OperationOptions options(arangodb::ExecContext::current());
-    arangodb::methods::Collections::createSystem(server.getSystemDatabase(), options,
-                                                 arangodb::tests::AnalyzerCollectionName,
-                                                 false, unused);
+    arangodb::methods::Collections::createSystem(
+        server.getSystemDatabase(), options,
+        arangodb::tests::AnalyzerCollectionName, false, unused);
 
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
     auto res = analyzers.emplace(
@@ -68,7 +69,8 @@ class NgramMatchFunctionTest : public ::testing::Test {
         VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
                               "\"preserveOriginal\":false}")
             ->slice(),
-        arangodb::iresearch::Features(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS));
+        arangodb::iresearch::Features(irs::IndexFeatures::FREQ |
+                                      irs::IndexFeatures::POS));
     EXPECT_TRUE(res.ok());
   }
 
@@ -76,7 +78,8 @@ class NgramMatchFunctionTest : public ::testing::Test {
   constexpr char const* TwoGramAnalyzer() { return "_system::myngram"; }
 
   AqlValue evaluate(AqlValue const*& Attribute, AqlValue const* Target,
-                    AqlValue const* analyzer, AqlValue const* threshold = nullptr,
+                    AqlValue const* analyzer,
+                    AqlValue const* threshold = nullptr,
                     std::set<int>* warnings = nullptr) {
     fakeit::Mock<ExpressionContext> expressionContextMock;
     ExpressionContext& expressionContext = expressionContextMock.get();
@@ -88,7 +91,8 @@ class NgramMatchFunctionTest : public ::testing::Test {
         });
     auto trx = server.createFakeTransaction();
     fakeit::When(Method(expressionContextMock, trx)).AlwaysReturn(*trx);
-    fakeit::When(Method(expressionContextMock, vocbase)).AlwaysReturn(trx->vocbase());
+    fakeit::When(Method(expressionContextMock, vocbase))
+        .AlwaysReturn(trx->vocbase());
     SmallVector<AqlValue>::allocator_type::arena_type arena;
     SmallVector<AqlValue> params{arena};
     if (Attribute) {
@@ -113,15 +117,19 @@ class NgramMatchFunctionTest : public ::testing::Test {
 
   void assertNgramMatchFail(size_t line, std::set<int> const& expected_warnings,
                             AqlValue const* Attribute, AqlValue const* Target,
-                            AqlValue const* analyzer, AqlValue const* threshold = nullptr) {
-    SCOPED_TRACE(testing::Message("assertNgramMatchFail failed on line:") << line);
+                            AqlValue const* analyzer,
+                            AqlValue const* threshold = nullptr) {
+    SCOPED_TRACE(testing::Message("assertNgramMatchFail failed on line:")
+                 << line);
     std::set<int> warnings;
-    ASSERT_TRUE(evaluate(Attribute, Target, analyzer, threshold, &warnings).isNull(false));
+    ASSERT_TRUE(evaluate(Attribute, Target, analyzer, threshold, &warnings)
+                    .isNull(false));
     ASSERT_EQ(expected_warnings, warnings);
   }
 
-  void assertNgramMatch(size_t line, bool expectedValue, AqlValue const* Attribute,
-                        AqlValue const* Target, AqlValue const* analyzer,
+  void assertNgramMatch(size_t line, bool expectedValue,
+                        AqlValue const* Attribute, AqlValue const* Target,
+                        AqlValue const* analyzer,
                         AqlValue const* threshold = nullptr) {
     SCOPED_TRACE(testing::Message("assertNgramMatch failed on line:") << line);
     std::set<int> warnings;
@@ -147,7 +155,8 @@ TEST_F(NgramMatchFunctionTest, test) {
     AqlValue const ValidThreshold{AqlValueHintDouble{0.5}};
     AqlValue const ValidString{"ValidString"};
     AqlValue const ValidAnalyzerName{"TestAnalyzer"};
-    const std::set<int> badParamWarning{static_cast<int>(TRI_ERROR_BAD_PARAMETER)};
+    const std::set<int> badParamWarning{
+        static_cast<int>(TRI_ERROR_BAD_PARAMETER)};
     const std::set<int> typeMismatchWarning{
         static_cast<int>(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH)};
     const std::set<int> invalidArgsCount{
@@ -231,29 +240,39 @@ TEST_F(NgramMatchFunctionTest, test) {
     {
       AqlValue const Attribute{"aecd"};
       AqlValue const Target{"abcd"};
-      assertNgramMatch(__LINE__, false, &Attribute, &Target, &ValidAnalyzerName);
-      assertNgramMatch(__LINE__, false, &Attribute, &Target, &ValidAnalyzerName, &Threshold05);
-      assertNgramMatch(__LINE__, true, &Attribute, &Target, &ValidAnalyzerName, &Threshold02);
+      assertNgramMatch(__LINE__, false, &Attribute, &Target,
+                       &ValidAnalyzerName);
+      assertNgramMatch(__LINE__, false, &Attribute, &Target, &ValidAnalyzerName,
+                       &Threshold05);
+      assertNgramMatch(__LINE__, true, &Attribute, &Target, &ValidAnalyzerName,
+                       &Threshold02);
     }
     // no match
     {
       AqlValue const Attribute{"abcd"};
       AqlValue const Target{"efgh"};
-      assertNgramMatch(__LINE__, false, &Attribute, &Target, &ValidAnalyzerName);
-      assertNgramMatch(__LINE__, false, &Attribute, &Target, &ValidAnalyzerName, &Threshold05);
-      assertNgramMatch(__LINE__, false, &Attribute, &Target, &ValidAnalyzerName, &Threshold02);
+      assertNgramMatch(__LINE__, false, &Attribute, &Target,
+                       &ValidAnalyzerName);
+      assertNgramMatch(__LINE__, false, &Attribute, &Target, &ValidAnalyzerName,
+                       &Threshold05);
+      assertNgramMatch(__LINE__, false, &Attribute, &Target, &ValidAnalyzerName,
+                       &Threshold02);
     }
     // different length
     {
       AqlValue const Attribute{"aplejuice"};
       AqlValue const Target{"applejuice"};
-      assertNgramMatch(__LINE__, false, &Attribute, &Target, &ValidAnalyzerName, &Threshold09);
+      assertNgramMatch(__LINE__, false, &Attribute, &Target, &ValidAnalyzerName,
+                       &Threshold09);
       assertNgramMatch(__LINE__, true, &Attribute, &Target, &ValidAnalyzerName);
-      assertNgramMatch(__LINE__, true, &Target, &Attribute, &ValidAnalyzerName, &Threshold05);
+      assertNgramMatch(__LINE__, true, &Target, &Attribute, &ValidAnalyzerName,
+                       &Threshold05);
 
-      assertNgramMatch(__LINE__, true, &Target, &Attribute, &ValidAnalyzerName, &Threshold09);
+      assertNgramMatch(__LINE__, true, &Target, &Attribute, &ValidAnalyzerName,
+                       &Threshold09);
       assertNgramMatch(__LINE__, true, &Target, &Attribute, &ValidAnalyzerName);
-      assertNgramMatch(__LINE__, true, &Target, &Attribute, &ValidAnalyzerName, &Threshold05);
+      assertNgramMatch(__LINE__, true, &Target, &Attribute, &ValidAnalyzerName,
+                       &Threshold05);
     }
     // with gaps
     {
@@ -261,34 +280,44 @@ TEST_F(NgramMatchFunctionTest, test) {
       AqlValue const Target{"aple567juice"};
       AqlValue const Threshold064{AqlValueHintDouble{0.64}};
       AqlValue const Threshold062{AqlValueHintDouble{0.62}};
-      assertNgramMatch(__LINE__, false, &Attribute, &Target, &ValidAnalyzerName, &Threshold09);
-      assertNgramMatch(__LINE__, false, &Attribute, &Target, &ValidAnalyzerName);
-      assertNgramMatch(__LINE__, false, &Attribute, &Target, &ValidAnalyzerName, &Threshold064);
-      assertNgramMatch(__LINE__, true, &Attribute, &Target, &ValidAnalyzerName, &Threshold062);
+      assertNgramMatch(__LINE__, false, &Attribute, &Target, &ValidAnalyzerName,
+                       &Threshold09);
+      assertNgramMatch(__LINE__, false, &Attribute, &Target,
+                       &ValidAnalyzerName);
+      assertNgramMatch(__LINE__, false, &Attribute, &Target, &ValidAnalyzerName,
+                       &Threshold064);
+      assertNgramMatch(__LINE__, true, &Attribute, &Target, &ValidAnalyzerName,
+                       &Threshold062);
     }
     // empty strings
     {
       AqlValue const Attribute{""};
       AqlValue const Target{""};
       // two empty strings never matches to mimic search results
-      assertNgramMatch(__LINE__, false, &Attribute, &Target, &ValidAnalyzerName);
-      assertNgramMatch(__LINE__, false, &Attribute, &Target, &ValidAnalyzerName, &Threshold02);
+      assertNgramMatch(__LINE__, false, &Attribute, &Target,
+                       &ValidAnalyzerName);
+      assertNgramMatch(__LINE__, false, &Attribute, &Target, &ValidAnalyzerName,
+                       &Threshold02);
 
       // even with low threshold empty vs non-empty don`t match
-      assertNgramMatch(__LINE__, false, &ValidString, &Target, &ValidAnalyzerName, &Threshold02);
+      assertNgramMatch(__LINE__, false, &ValidString, &Target,
+                       &ValidAnalyzerName, &Threshold02);
       assertNgramMatch(__LINE__, false, &Attribute, &ValidString,
                        &ValidAnalyzerName, &Threshold02);
     }
-    // less than ngram size (no ngrams emitted as PreserveOriginal is false for test analyzer)
+    // less than ngram size (no ngrams emitted as PreserveOriginal is false for
+    // test analyzer)
     {
       AqlValue const Attribute{"a"};
       AqlValue const Target{"b"};
       AqlValue const Target2{"a"};
 
-      assertNgramMatch(__LINE__, false, &Attribute, &Target, &ValidAnalyzerName);
+      assertNgramMatch(__LINE__, false, &Attribute, &Target,
+                       &ValidAnalyzerName);
       // this are full binary match actually, but analyzer will emit no ngrams,
       // so no match will be found in index, so we also report no match
-      assertNgramMatch(__LINE__, false, &Attribute, &Target2, &ValidAnalyzerName);
+      assertNgramMatch(__LINE__, false, &Attribute, &Target2,
+                       &ValidAnalyzerName);
     }
   }
 }

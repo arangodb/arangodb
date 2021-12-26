@@ -39,9 +39,11 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 
-GlobalTailingSyncer::GlobalTailingSyncer(ReplicationApplierConfiguration const& configuration,
-                                         TRI_voc_tick_t initialTick, bool useTick)
-    : TailingSyncer(configuration._server.getFeature<ReplicationFeature>().globalReplicationApplier(),
+GlobalTailingSyncer::GlobalTailingSyncer(
+    ReplicationApplierConfiguration const& configuration,
+    TRI_voc_tick_t initialTick, bool useTick)
+    : TailingSyncer(configuration._server.getFeature<ReplicationFeature>()
+                        .globalReplicationApplier(),
                     configuration, initialTick, useTick),
       _queriedTranslations(false) {
   _ignoreDatabaseMarkers = false;

@@ -60,8 +60,11 @@ QueryContext::QueryContext(TRI_vocbase_t& vocbase, QueryId id)
       _execState(QueryExecutionState::ValueType::INVALID_STATE),
       _numRequests(0) {
   // aql analyzers should be able to run even during recovery when AqlFeature
-  // is not started. And as optimization  - this queries do not need queryRegistry
-  if (&_vocbase != &_vocbase.server().getFeature<DatabaseFeature>().getCalculationVocbase() &&
+  // is not started. And as optimization  - this queries do not need
+  // queryRegistry
+  if (&_vocbase != &_vocbase.server()
+                        .getFeature<DatabaseFeature>()
+                        .getCalculationVocbase() &&
       !AqlFeature::lease()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
@@ -70,13 +73,16 @@ QueryContext::QueryContext(TRI_vocbase_t& vocbase, QueryId id)
 /// @brief destroys a query
 QueryContext::~QueryContext() {
   _graphs.clear();
-  if (&_vocbase != &_vocbase.server().getFeature<DatabaseFeature>().getCalculationVocbase()) {
+  if (&_vocbase != &_vocbase.server()
+                        .getFeature<DatabaseFeature>()
+                        .getCalculationVocbase()) {
     AqlFeature::unlease();
   }
 }
 
 Collections& QueryContext::collections() {
-  TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION || ClusterEngine::Mocking);
+  TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION ||
+             ClusterEngine::Mocking);
   return _collections;
 }
 
@@ -92,7 +98,8 @@ std::string const& QueryContext::user() const { return StaticStrings::Empty; }
 
 /// @brief look up a graph either from our cache list or from the _graphs
 ///        collection
-ResultT<graph::Graph const*> QueryContext::lookupGraphByName(std::string const& name) {
+ResultT<graph::Graph const*> QueryContext::lookupGraphByName(
+    std::string const& name) {
   TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION);
 
   auto it = _graphs.find(name);
@@ -117,8 +124,9 @@ ResultT<graph::Graph const*> QueryContext::lookupGraphByName(std::string const& 
   return graphPtr;
 }
 
-void QueryContext::addDataSource(                           // track DataSource
-    std::shared_ptr<arangodb::LogicalDataSource> const& ds  // DataSource to track
+void QueryContext::addDataSource(  // track DataSource
+    std::shared_ptr<arangodb::LogicalDataSource> const&
+        ds  // DataSource to track
 ) {
   TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION);
   _queryDataSources.try_emplace(ds->guid(), ds->name());

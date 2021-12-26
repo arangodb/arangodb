@@ -44,7 +44,8 @@ class TransactionCollection {
   TransactionCollection(TransactionCollection const&) = delete;
   TransactionCollection& operator=(TransactionCollection const&) = delete;
 
-  TransactionCollection(TransactionState* trx, DataSourceId cid, AccessMode::Type accessType)
+  TransactionCollection(TransactionState* trx, DataSourceId cid,
+                        AccessMode::Type accessType)
       : _transaction(trx),
         _cid(cid),
         _accessType(accessType),

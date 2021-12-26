@@ -78,7 +78,8 @@ class LogicalCollection : public LogicalDataSource {
 
  public:
   LogicalCollection() = delete;
-  LogicalCollection(TRI_vocbase_t& vocbase, velocypack::Slice info, bool isAStub);
+  LogicalCollection(TRI_vocbase_t& vocbase, velocypack::Slice info,
+                    bool isAStub);
   LogicalCollection(LogicalCollection const&) = delete;
   LogicalCollection& operator=(LogicalCollection const&) = delete;
   ~LogicalCollection() override;
@@ -195,9 +196,10 @@ class LogicalCollection : public LogicalDataSource {
                                 std::string& shardID);
   ErrorCode getResponsibleShard(std::string_view key, std::string& shardID);
 
-  ErrorCode getResponsibleShard(velocypack::Slice slice, bool docComplete,
-                                std::string& shardID, bool& usesDefaultShardKeys,
-                                velocypack::StringRef const& key = velocypack::StringRef());
+  ErrorCode getResponsibleShard(
+      velocypack::Slice slice, bool docComplete, std::string& shardID,
+      bool& usesDefaultShardKeys,
+      velocypack::StringRef const& key = velocypack::StringRef());
 
   /// @briefs creates a new document key, the input slice is ignored here
   /// this method is overriden in derived classes
@@ -222,12 +224,14 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief return all indexes of the collection
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
-  void getIndexesVPack(velocypack::Builder&,
-                       std::function<bool(Index const*, uint8_t&)> const& filter) const;
+  void getIndexesVPack(
+      velocypack::Builder&,
+      std::function<bool(Index const*, uint8_t&)> const& filter) const;
 
   /// @brief a method to skip certain documents in AQL write operations,
   /// this is only used in the Enterprise Edition for SmartGraphs
-  virtual bool skipForAqlWrite(velocypack::Slice document, std::string const& key) const;
+  virtual bool skipForAqlWrite(velocypack::Slice document,
+                               std::string const& key) const;
 
   bool allowUserKeys() const;
 
@@ -241,13 +245,15 @@ class LogicalCollection : public LogicalDataSource {
                           std::unordered_set<std::string> const& ignoreKeys,
                           Serialization context) const;
 
-  velocypack::Builder toVelocyPackIgnore(std::unordered_set<std::string> const& ignoreKeys,
-                                         Serialization context) const;
+  velocypack::Builder toVelocyPackIgnore(
+      std::unordered_set<std::string> const& ignoreKeys,
+      Serialization context) const;
 
   void toVelocyPackForInventory(velocypack::Builder&) const;
 
-  virtual void toVelocyPackForClusterInventory(velocypack::Builder&, bool useSystem,
-                                               bool isReady, bool allInSync) const;
+  virtual void toVelocyPackForClusterInventory(velocypack::Builder&,
+                                               bool useSystem, bool isReady,
+                                               bool allInSync) const;
 
   using LogicalDataSource::properties;
 
@@ -259,8 +265,8 @@ class LogicalCollection : public LogicalDataSource {
   virtual Result properties(velocypack::Slice definition, bool partialUpdate);
 
   /// @brief return the figures for a collection
-  virtual futures::Future<OperationResult> figures(bool details,
-                                                   OperationOptions const& options) const;
+  virtual futures::Future<OperationResult> figures(
+      bool details, OperationOptions const& options) const;
 
   /// @brief closes an open collection
   ErrorCode close();
@@ -315,11 +321,13 @@ class LogicalCollection : public LogicalDataSource {
   ///        can be dropped. The callback is supposed to drop
   ///        the collection and it is guaranteed that no one is using
   ///        it at that moment.
-  void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback);
+  void deferDropCollection(
+      std::function<bool(LogicalCollection&)> const& callback);
 
   void schemaToVelocyPack(VPackBuilder&) const;
   Result validate(VPackSlice newDoc, VPackOptions const*) const;  // insert
-  Result validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VPackOptions const*) const;  // update / replace
+  Result validate(VPackSlice modifiedDoc, VPackSlice oldDoc,
+                  VPackOptions const*) const;  // update / replace
 
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.
@@ -332,8 +340,9 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief returns the value of _syncByRevision
   bool syncByRevision() const;
 
-  /// @brief returns the value of _syncByRevision, but only for "real" collections with data backing.
-  /// returns false for all collections with no data backing.
+  /// @brief returns the value of _syncByRevision, but only for "real"
+  /// collections with data backing. returns false for all collections with no
+  /// data backing.
   bool useSyncByRevision() const;
 
   /// @brief set the internal validator types. This should be handled with care
@@ -408,7 +417,8 @@ class LogicalCollection : public LogicalDataSource {
   bool const _isDisjoint;
   // @brief Flag if this collection is a smart one. (Enterprise Edition only)
   bool const _isSmart;
-  // @brief Flag if this collection is a child of a smart collection (Enterprise Edition only)
+  // @brief Flag if this collection is a child of a smart collection (Enterprise
+  // Edition only)
   bool const _isSmartChild;
 #endif
 

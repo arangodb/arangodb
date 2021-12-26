@@ -44,8 +44,9 @@ struct TransactionCountTest : public Benchmark<TransactionCountTest> {
 
   void tearDown() override {}
 
-  void buildRequest(size_t threadNumber, size_t threadCounter, size_t globalCounter,
-                    BenchmarkOperation::RequestData& requestData) const override {
+  void buildRequest(
+      size_t threadNumber, size_t threadCounter, size_t globalCounter,
+      BenchmarkOperation::RequestData& requestData) const override {
     requestData.url = "/_api/transaction";
     requestData.type = rest::RequestType::POST;
     using namespace arangodb::velocypack;
@@ -55,8 +56,12 @@ struct TransactionCountTest : public Benchmark<TransactionCountTest> {
     requestData.payload.close();
     requestData.payload.add(
         "action",
-        Value(std::string("function () { var c = require('internal').db['") +
-              _arangobench.collection() + std::string("']; var startcount = c.count(); for (var i = 0; i < 50; ++i) { if (startcount + i !== c.count()) { throw 'error, counters deviate!'; } c.save({ }); } }")));
+        Value(
+            std::string("function () { var c = require('internal').db['") +
+            _arangobench.collection() +
+            std::string("']; var startcount = c.count(); for (var i = 0; i < "
+                        "50; ++i) { if (startcount + i !== c.count()) { throw "
+                        "'error, counters deviate!'; } c.save({ }); } }")));
     requestData.payload.close();
   }
 

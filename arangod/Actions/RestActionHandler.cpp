@@ -34,8 +34,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestActionHandler::RestActionHandler(application_features::ApplicationServer& server,
-                                     GeneralRequest* request, GeneralResponse* response)
+RestActionHandler::RestActionHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _action(TRI_LookupActionVocBase(request)),
       _data(nullptr) {}
@@ -82,8 +83,8 @@ void RestActionHandler::executeAction() {
   rest::RequestType type = _request->requestType();
   if (type == rest::RequestType::GET) {
     std::vector<std::string> const& suffixes = _request->decodedSuffixes();
-    if (suffixes.empty() ||
-        (suffixes.size() == 2 && suffixes[0] == "_admin" && suffixes[1] == "html")) {
+    if (suffixes.empty() || (suffixes.size() == 2 && suffixes[0] == "_admin" &&
+                             suffixes[1] == "html")) {
       // request to just /
       auto& gs = server().getFeature<GeneralServerFeature>();
       _response->setResponseCode(gs.permanentRootRedirect()
@@ -96,8 +97,8 @@ void RestActionHandler::executeAction() {
     }
   }
 
-  TRI_action_result_t result =
-      _action->execute(&_vocbase, _request.get(), _response.get(), &_dataLock, &_data);
+  TRI_action_result_t result = _action->execute(
+      &_vocbase, _request.get(), _response.get(), &_dataLock, &_data);
 
   if (!result.isValid) {
     if (result.canceled) {

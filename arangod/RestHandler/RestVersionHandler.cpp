@@ -39,14 +39,16 @@ using namespace arangodb::rest;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestVersionHandler::RestVersionHandler(application_features::ApplicationServer& server,
-                                       GeneralRequest* request, GeneralResponse* response)
+RestVersionHandler::RestVersionHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestVersionHandler::execute() {
   VPackBuilder result;
 
-  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security =
+      server().getFeature<ServerSecurityFeature>();
 
   bool const allowInfo = security.canAccessHardenedApi();
 
@@ -71,7 +73,9 @@ RestStatus RestVersionHandler::execute() {
       result.add("mode", VPackValue(serverFeature.operationModeString()));
       auto serverState = ServerState::instance();
       if (serverState != nullptr) {
-        result.add("role", VPackValue(ServerState::roleToString(serverState->getRole())));
+        result.add(
+            "role",
+            VPackValue(ServerState::roleToString(serverState->getRole())));
       }
 
       std::string host = ServerState::instance()->getHost();

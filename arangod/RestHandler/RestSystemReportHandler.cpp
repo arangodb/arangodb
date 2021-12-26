@@ -48,9 +48,9 @@ std::mutex RestSystemReportHandler::_exclusive;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestSystemReportHandler::RestSystemReportHandler(application_features::ApplicationServer& server,
-                                                 GeneralRequest* request,
-                                                 GeneralResponse* response)
+RestSystemReportHandler::RestSystemReportHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response),
       cmds({{"date", "time date -u \"+%Y-%m-%d %H:%M:%S %Z\" 2>&1"},
             {"dmesg", "time dmesg 2>&1"},
@@ -67,7 +67,8 @@ namespace {
 std::string exec(std::string const& cmd) {
   std::array<char, 128> buffer;
   std::string result;
-  std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+  std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"),
+                                                pclose);
   if (!pipe) {
     throw std::runtime_error("popen() failed!");
   }
@@ -88,7 +89,8 @@ bool RestSystemReportHandler::isAdminUser() const {
 }
 
 RestStatus RestSystemReportHandler::execute() {
-  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security =
+      server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here

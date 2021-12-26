@@ -39,13 +39,15 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestLicenseHandler::RestLicenseHandler(application_features::ApplicationServer& server,
-                                       GeneralRequest* request, GeneralResponse* response)
+RestLicenseHandler::RestLicenseHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 #ifndef USE_ENTERPRISE
 RestStatus RestLicenseHandler::execute() {
-  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security =
+      server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here
@@ -62,12 +64,14 @@ RestStatus RestLicenseHandler::execute() {
       generateResult(rest::ResponseCode::OK, builder.slice());
       break;
     case RequestType::PUT:
-      generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_ONLY_ENTERPRISE,
+      generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                    TRI_ERROR_ONLY_ENTERPRISE,
                     "The community edition cannot be licensed.");
       break;
     default:
       generateError(
-          rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+          rest::ResponseCode::METHOD_NOT_ALLOWED,
+          TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
           "Method not allowed. Only GET and PUT requests are handled.");
   }
 

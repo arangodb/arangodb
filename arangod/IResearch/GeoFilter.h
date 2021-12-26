@@ -68,8 +68,8 @@ struct GeoFilterOptions {
 
   size_t hash() const noexcept {
     using GeoFilterUnderlyingType = std::underlying_type_t<GeoFilterType>;
-    size_t hash =
-        std::hash<GeoFilterUnderlyingType>()(static_cast<GeoFilterUnderlyingType>(type));
+    size_t hash = std::hash<GeoFilterUnderlyingType>()(
+        static_cast<GeoFilterUnderlyingType>(type));
 
     auto* region = shape.region();
     TRI_ASSERT(region);
@@ -103,9 +103,10 @@ class GeoFilter final : public irs::filter_base<GeoFilterOptions> {
 
   using filter::prepare;
 
-  virtual prepared::ptr prepare(const irs::index_reader& rdr,
-                                const irs::order::prepared& ord, irs::boost_t boost,
-                                const irs::attribute_provider* /*ctx*/) const override;
+  virtual prepared::ptr prepare(
+      const irs::index_reader& rdr, const irs::order::prepared& ord,
+      irs::boost_t boost,
+      const irs::attribute_provider* /*ctx*/) const override;
 };  // GeoFilter
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,7 +135,8 @@ class GeoDistanceFilterOptions {
 /// @class GeoDistanceFilter
 /// @brief user-side geo distance filter
 //////////////////////////////////////////////////////////////////////////////
-class GeoDistanceFilter final : public irs::filter_base<GeoDistanceFilterOptions> {
+class GeoDistanceFilter final
+    : public irs::filter_base<GeoDistanceFilterOptions> {
  public:
   static constexpr irs::string_ref type_name() noexcept {
     return "arangodb::iresearch::GeoFilter";
@@ -144,9 +146,10 @@ class GeoDistanceFilter final : public irs::filter_base<GeoDistanceFilterOptions
 
   using filter::prepare;
 
-  virtual prepared::ptr prepare(const irs::index_reader& rdr,
-                                const irs::order::prepared& ord, irs::boost_t boost,
-                                const irs::attribute_provider* /*ctx*/) const override;
+  virtual prepared::ptr prepare(
+      const irs::index_reader& rdr, const irs::order::prepared& ord,
+      irs::boost_t boost,
+      const irs::attribute_provider* /*ctx*/) const override;
 };  // GeoDistanceFilter
 
 }  // namespace iresearch

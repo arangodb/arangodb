@@ -185,7 +185,8 @@ class RequestStatistics {
     statistics::Distribution bytesReceived;
   };
 
-  static void getSnapshot(Snapshot& snapshot, stats::RequestStatisticsSource source);
+  static void getSnapshot(Snapshot& snapshot,
+                          stats::RequestStatisticsSource source);
 
  private:
   static void process(RequestStatistics*);

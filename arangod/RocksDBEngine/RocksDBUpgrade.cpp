@@ -52,10 +52,12 @@
 
 using namespace arangodb;
 
-void arangodb::rocksdbStartupVersionCheck(application_features::ApplicationServer& server,
-                                          rocksdb::TransactionDB* db, bool dbExisted) {
-  static_assert(std::is_same<char, std::underlying_type<RocksDBEndianness>::type>::value,
-                "RocksDBEndianness has wrong type");
+void arangodb::rocksdbStartupVersionCheck(
+    application_features::ApplicationServer& server, rocksdb::TransactionDB* db,
+    bool dbExisted) {
+  static_assert(
+      std::is_same<char, std::underlying_type<RocksDBEndianness>::type>::value,
+      "RocksDBEndianness has wrong type");
 
   // try to find version, using the version key
   char const version = rocksDBFormatVersion();
@@ -72,7 +74,8 @@ void arangodb::rocksdbStartupVersionCheck(application_features::ApplicationServe
     rocksdb::PinnableSlice oldVersion;
     rocksdb::Status s =
         db->Get(rocksdb::ReadOptions(),
-                RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+                RocksDBColumnFamilyManager::get(
+                    RocksDBColumnFamilyManager::Family::Definitions),
                 versionKey.string(), &oldVersion);
 
     if (s.IsNotFound() || oldVersion.size() != 1) {
@@ -102,10 +105,12 @@ void arangodb::rocksdbStartupVersionCheck(application_features::ApplicationServe
       // read current endianess
       rocksdb::PinnableSlice endianSlice;
       s = db->Get(rocksdb::ReadOptions(),
-                  RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+                  RocksDBColumnFamilyManager::get(
+                      RocksDBColumnFamilyManager::Family::Definitions),
                   endianKey.string(), &endianSlice);
       if (s.ok() && endianSlice.size() == 1) {
-        TRI_ASSERT(endianSlice.data()[0] == 'L' || endianSlice.data()[0] == 'B');
+        TRI_ASSERT(endianSlice.data()[0] == 'L' ||
+                   endianSlice.data()[0] == 'B');
         endianess = static_cast<RocksDBEndianness>(endianSlice.data()[0]);
       } else {
         LOG_TOPIC("b0083", FATAL, Logger::ENGINES)
@@ -119,7 +124,8 @@ void arangodb::rocksdbStartupVersionCheck(application_features::ApplicationServe
   }
 
   // enable correct key format
-  TRI_ASSERT(endianess == RocksDBEndianness::Little || endianess == RocksDBEndianness::Big);
+  TRI_ASSERT(endianess == RocksDBEndianness::Little ||
+             endianess == RocksDBEndianness::Big);
   rocksutils::setRocksDBKeyFormatEndianess(endianess);
 
   if (!dbExisted) {
@@ -129,14 +135,16 @@ void arangodb::rocksdbStartupVersionCheck(application_features::ApplicationServe
     char const endVal = static_cast<char>(endianess);
     rocksdb::Status s =
         db->Put(rocksdb::WriteOptions(),
-                RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+                RocksDBColumnFamilyManager::get(
+                    RocksDBColumnFamilyManager::Family::Definitions),
                 endianKey.string(), rocksdb::Slice(&endVal, sizeof(char)));
     if (s.ok()) {
       // store current version
       TRI_ASSERT(version == rocksDBFormatVersion());
 
       s = db->Put(rocksdb::WriteOptions(),
-                  RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+                  RocksDBColumnFamilyManager::get(
+                      RocksDBColumnFamilyManager::Family::Definitions),
                   versionKey.string(), rocksdb::Slice(&version, sizeof(char)));
     }
 
@@ -152,13 +160,15 @@ void arangodb::rocksdbStartupVersionCheck(application_features::ApplicationServe
 
   // fetch stored value of option `--database.extended-names-databases`
   RocksDBKey extendedNamesKey;
-  extendedNamesKey.constructSettingsValue(RocksDBSettingsType::ExtendedDatabaseNames);
+  extendedNamesKey.constructSettingsValue(
+      RocksDBSettingsType::ExtendedDatabaseNames);
 
   if (dbExisted) {
     rocksdb::PinnableSlice existingDatabaseNamesValue;
     rocksdb::Status s =
         db->Get(rocksdb::ReadOptions(),
-                RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+                RocksDBColumnFamilyManager::get(
+                    RocksDBColumnFamilyManager::Family::Definitions),
                 extendedNamesKey.string(), &existingDatabaseNamesValue);
 
     if (s.ok() && existingDatabaseNamesValue.size() == 1) {
@@ -194,10 +204,11 @@ void arangodb::rocksdbStartupVersionCheck(application_features::ApplicationServe
   if (server.getFeature<DatabaseFeature>().extendedNamesForDatabases()) {
     // now permanently store value
     char value = '1';
-    rocksdb::Status s =
-        db->Put(rocksdb::WriteOptions(),
-                RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
-                extendedNamesKey.string(), rocksdb::Slice(&value, sizeof(char)));
+    rocksdb::Status s = db->Put(
+        rocksdb::WriteOptions(),
+        RocksDBColumnFamilyManager::get(
+            RocksDBColumnFamilyManager::Family::Definitions),
+        extendedNamesKey.string(), rocksdb::Slice(&value, sizeof(char)));
     if (!s.ok()) {
       LOG_TOPIC("d61a8", FATAL, Logger::ENGINES)
           << "Error storing extended database names key info in storage "

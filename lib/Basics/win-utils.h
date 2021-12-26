@@ -83,7 +83,8 @@ void TRI_SetWindowsServiceAbortFunction(TRI_serviceAbort_t);
 /// the arango internal logging will handle that usually.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LogWindowsEventlog(char const* func, char const* file, int line, std::string const&);
+void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
+                            std::string const&);
 
 void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
                             char const* fmt, va_list ap);

@@ -38,7 +38,8 @@ namespace accumulators {
 using namespace arangodb::velocypack;
 
 struct MessageData {
-  void reset(std::string accumulatorName, VPackSlice const& value, std::string const& sender);
+  void reset(std::string accumulatorName, VPackSlice const& value,
+             std::string const& sender);
 
   void fromVelocyPack(VPackSlice slice);
   void toVelocyPack(VPackBuilder& b) const;

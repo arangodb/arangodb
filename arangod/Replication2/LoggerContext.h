@@ -27,9 +27,11 @@
 #if (_MSC_VER >= 1)
 // suppress warnings:
 #pragma warning(push)
-// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of data
+// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of
+// data
 #pragma warning(disable : 4267)
-// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
+// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift
+// intended?)
 #pragma warning(disable : 4334)
 #endif
 #include <immer/box.hpp>
@@ -48,7 +50,7 @@ struct LoggableValue {
   virtual auto operator<<(std::ostream& os) const noexcept -> std::ostream& = 0;
 };
 
-template <typename T, const char* N>
+template<typename T, const char* N>
 struct LogNameValuePair : LoggableValue {
   explicit LogNameValuePair(T t) : value(std::move(t)) {}
   T value;
@@ -60,7 +62,7 @@ struct LogNameValuePair : LoggableValue {
 struct LoggerContext {
   explicit LoggerContext(LogTopic const& topic) : topic(topic) {}
 
-  template <const char N[], typename T>
+  template<const char N[], typename T>
   auto with(T&& t) const -> LoggerContext {
     using S = std::decay_t<T>;
     auto pair = std::make_shared<LogNameValuePair<S, N>>(std::forward<T>(t));
@@ -71,7 +73,8 @@ struct LoggerContext {
     return LoggerContext(values, newTopic);
   }
 
-  friend auto operator<<(std::ostream& os, LoggerContext const& ctx) -> std::ostream& {
+  friend auto operator<<(std::ostream& os, LoggerContext const& ctx)
+      -> std::ostream& {
     os << "[";
     bool first = true;
     for (auto const& v : ctx.values) {
@@ -85,8 +88,8 @@ struct LoggerContext {
     return os;
   }
 
-  using Container =
-      ::immer::flex_vector<std::shared_ptr<LoggableValue>, arangodb::immer::arango_memory_policy>;
+  using Container = ::immer::flex_vector<std::shared_ptr<LoggableValue>,
+                                         arangodb::immer::arango_memory_policy>;
   LogTopic const& topic;
   Container const values = {};
 

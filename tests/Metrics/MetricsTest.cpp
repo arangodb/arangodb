@@ -145,7 +145,8 @@ TEST(MetricsTest, test_histogram_concurrency_distributed) {
   ASSERT_EQ(h.load(0), ::numOpsPerThread);
   ASSERT_EQ(h.load(1), (::numThreads > 1 ? 1 : 0) * ::numOpsPerThread);
   ASSERT_EQ(h.load(2), (::numThreads > 2 ? 1 : 0) * ::numOpsPerThread);
-  ASSERT_EQ(h.load(3), (::numThreads > 3 ? (::numThreads - 3) : 0) * ::numOpsPerThread);
+  ASSERT_EQ(h.load(3),
+            (::numThreads > 3 ? (::numThreads - 3) : 0) * ::numOpsPerThread);
 }
 
 TEST(MetricsTest, test_histogram_simple) {
@@ -249,7 +250,7 @@ TEST(MetricsTest, test_counter) {
   ASSERT_EQ(c.load(), 0);
 }
 
-template <typename T>
+template<typename T>
 void gauge_test() {
   T zdo = T(.1);
   T zero = T(0.);
@@ -519,7 +520,7 @@ TEST(MetricsTest, test_gauge_operations_double) {
   }
 }
 
-template <typename Scale>
+template<typename Scale>
 void histogram_test(Scale const& scale) {
   using T = typename Scale::value_type;
   bool constexpr linear = (Scale::scale_type == ScaleType::Linear);
@@ -529,7 +530,8 @@ void histogram_test(Scale const& scale) {
   ADB_IGNORE_UNUSED T base = static_cast<T>(0.);
   T span = mx - mn;
   ADB_IGNORE_UNUSED T step = span / static_cast<T>(buckets);
-  T mmin = (std::is_floating_point<T>::value) ? span / T(1.e6) : T(1), one(1), ten(10);
+  T mmin = (std::is_floating_point<T>::value) ? span / T(1.e6) : T(1), one(1),
+    ten(10);
 
   if constexpr (!linear) {
     base = scale.base();

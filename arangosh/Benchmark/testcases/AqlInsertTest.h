@@ -44,23 +44,27 @@ struct AqlInsertTest : public Benchmark<AqlInsertTest> {
 
   void tearDown() override {}
 
-  void buildRequest(size_t threadNumber, size_t threadCounter, size_t globalCounter,
-                    BenchmarkOperation::RequestData& requestData) const override {
+  void buildRequest(
+      size_t threadNumber, size_t threadCounter, size_t globalCounter,
+      BenchmarkOperation::RequestData& requestData) const override {
     using namespace arangodb::velocypack;
     requestData.url = "/_api/cursor";
     requestData.type = rest::RequestType::POST;
     requestData.payload.openObject();
-    requestData.payload.add("query", Value(std::string("INSERT @data INTO " +
-                                                       _arangobench.collection())));
+    requestData.payload.add(
+        "query",
+        Value(std::string("INSERT @data INTO " + _arangobench.collection())));
     requestData.payload.add(Value("bindVars"));
     requestData.payload.openObject();
     requestData.payload.add(Value("data"));
     requestData.payload.openObject();
-    requestData.payload.add(StaticStrings::KeyString,
-                            Value(std::string("test") + std::to_string((int64_t)globalCounter)));
+    requestData.payload.add(
+        StaticStrings::KeyString,
+        Value(std::string("test") + std::to_string((int64_t)globalCounter)));
     uint64_t const n = _arangobench.complexity();
     for (uint64_t i = 1; i <= n; ++i) {
-      requestData.payload.add(std::string("value") + std::to_string(i), Value(true));
+      requestData.payload.add(std::string("value") + std::to_string(i),
+                              Value(true));
     }
     requestData.payload.close();
     requestData.payload.close();

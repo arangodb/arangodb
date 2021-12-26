@@ -347,10 +347,10 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   /// @brief helper function for processRestoreCoordinatorAnalyzersBatch() and
   /// processRestoreUsersBatch().
-  Result parseBatchForSystemCollection(std::string const& collectionName,
-                                       VPackBuilder& documentsToInsert,
-                                       std::unordered_set<std::string>& documentsToRemove,
-                                       bool generateNewRevisionIds);
+  Result parseBatchForSystemCollection(
+      std::string const& collectionName, VPackBuilder& documentsToInsert,
+      std::unordered_set<std::string>& documentsToRemove,
+      bool generateNewRevisionIds);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of the _analyzers collection in cluster
@@ -368,7 +368,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the data of a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreDataBatch(transaction::Methods& trx, std::string const& colName,
+  Result processRestoreDataBatch(transaction::Methods& trx,
+                                 std::string const& colName,
                                  bool generateNewRevisionIds);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -393,7 +394,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief parse an input batch
   //////////////////////////////////////////////////////////////////////////////
 
-  Result parseBatch(transaction::Methods& trx, std::string const& collectionName,
+  Result parseBatch(transaction::Methods& trx,
+                    std::string const& collectionName,
                     VPackBuilder& documentToInsert,
                     std::unordered_set<std::string>& documentsToRemove,
                     bool generateNewRevisionIds);
@@ -437,7 +439,9 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        before it was actually registered and therefor only seldomly
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::unordered_map<std::string, std::chrono::time_point<std::chrono::steady_clock>> _tombstones;
+  static std::unordered_map<std::string,
+                            std::chrono::time_point<std::chrono::steady_clock>>
+      _tombstones;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -529,7 +533,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
   Result createBlockingTransaction(TransactionId tid, LogicalCollection& col,
                                    double ttl, AccessMode::Type access,
-                                   RebootId const& rebootId, std::string const& serverId);
+                                   RebootId const& rebootId,
+                                   std::string const& serverId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Test if we already have the read-lock

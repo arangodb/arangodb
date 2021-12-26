@@ -71,8 +71,9 @@ class VocbaseContext final : public arangodb::ExecContext {
   /// should be used to indicate a canceled request / thread
   std::atomic<bool> _canceled;
 
-  VocbaseContext(GeneralRequest& req, TRI_vocbase_t& vocbase, ExecContext::Type type,
-                 auth::Level systemLevel, auth::Level dbLevel, bool isAdminUser);
+  VocbaseContext(GeneralRequest& req, TRI_vocbase_t& vocbase,
+                 ExecContext::Type type, auth::Level systemLevel,
+                 auth::Level dbLevel, bool isAdminUser);
   VocbaseContext(VocbaseContext const&) = delete;
   VocbaseContext& operator=(VocbaseContext const&) = delete;
 };

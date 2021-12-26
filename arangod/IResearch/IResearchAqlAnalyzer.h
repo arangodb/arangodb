@@ -76,7 +76,8 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
     /// we expect just simple query.
     uint32_t batchSize{10};
 
-    /// @brief memory limit for query.  1Mb by default. Could be increased to 32Mb
+    /// @brief memory limit for query.  1Mb by default. Could be increased to
+    /// 32Mb
     uint32_t memoryLimit{1048576U};
 
     /// @brief target type to convert query output. Could be
@@ -98,7 +99,8 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
 
   explicit AqlAnalyzer(Options const& options);
 
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
+  virtual irs::attribute* get_mutable(
+      irs::type_info::type_id type) noexcept override final {
     return irs::get_mutable(_attrs, type);
   }
 
@@ -112,13 +114,14 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
   friend void resetFromExpression(AqlAnalyzer* analyzer);
   friend void resetFromQuery(AqlAnalyzer* analyzer);
 
-  using attributes =
-      std::tuple<irs::increment, AnalyzerValueTypeAttribute, irs::term_attribute, VPackTermAttribute>;
+  using attributes = std::tuple<irs::increment, AnalyzerValueTypeAttribute,
+                                irs::term_attribute, VPackTermAttribute>;
 
   Options _options;
   aql::AqlValue _valueBuffer;
   std::unique_ptr<aql::QueryContext> _query;
-  containers::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type _params_arena;
+  containers::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type
+      _params_arena;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   aql::AqlItemBlockManager _itemBlockManager;
   aql::ExecutionEngine _engine;

@@ -133,7 +133,8 @@ class V8Completer : public Completer {
     int openParen = 0;
     int openBrackets = 0;
     int openBraces = 0;
-    int openStrings = 0;  // only used for template strings, which can be multi-line
+    int openStrings =
+        0;  // only used for template strings, which can be multi-line
     int openComments = 0;
 
     enum line_parse_state_e {
@@ -350,8 +351,8 @@ class V8Completer : public Completer {
         v8::Handle<v8::Value> args[] = {v8::Null(isolate)};
 
         try {
-          v8::Handle<v8::Value> cpls =
-              func->Call(context, current, 0, args).FromMaybe(v8::Handle<v8::Value>());
+          v8::Handle<v8::Value> cpls = func->Call(context, current, 0, args)
+                                           .FromMaybe(v8::Handle<v8::Value>());
 
           if (cpls->IsArray()) {
             properties = v8::Handle<v8::Array>::Cast(cpls);
@@ -379,10 +380,11 @@ class V8Completer : public Completer {
           char const* s = *str;
 
           if (s != nullptr && *s) {
-            std::string suffix =
-                (current->Get(context, v).FromMaybe(v8::Local<v8::Value>())->IsFunction())
-                    ? "()"
-                    : "";
+            std::string suffix = (current->Get(context, v)
+                                      .FromMaybe(v8::Local<v8::Value>())
+                                      ->IsFunction())
+                                     ? "()"
+                                     : "";
             std::string name = path + s + suffix;
 
             if (prefix.empty() || prefix[0] == '\0' ||
@@ -405,9 +407,13 @@ class V8Completer : public Completer {
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8LineEditor::V8LineEditor(v8::Isolate* isolate, v8::Handle<v8::Context> context,
+V8LineEditor::V8LineEditor(v8::Isolate* isolate,
+                           v8::Handle<v8::Context> context,
                            std::string const& history)
-    : LineEditor(), _isolate(isolate), _context(context), _executingCommand(false) {
+    : LineEditor(),
+      _isolate(isolate),
+      _context(context),
+      _executingCommand(false) {
   // register global instance
 
   {

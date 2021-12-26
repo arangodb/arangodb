@@ -415,7 +415,8 @@ TEST(RecursiveLockerTest, testRecursiveReadLockMultiThreadedWriteAndReadMix) {
               RECURSIVE_WRITE_LOCKER(rwlock, owner);
               ASSERT_EQ(x, total);
 
-              // add a few nested lockers here, just to see if we get into issues
+              // add a few nested lockers here, just to see if we get into
+              // issues
               {
                 RECURSIVE_READ_LOCKER(rwlock, owner);
                 ASSERT_EQ(x, total);
@@ -436,7 +437,8 @@ TEST(RecursiveLockerTest, testRecursiveReadLockMultiThreadedWriteAndReadMix) {
               x++;
               ASSERT_EQ(x, total);
 
-              // add a few nested lockers here, just to see if we get into issues
+              // add a few nested lockers here, just to see if we get into
+              // issues
               {
                 RECURSIVE_WRITE_LOCKER(rwlock, owner);
                 ASSERT_EQ(x, total);

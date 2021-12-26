@@ -43,15 +43,16 @@ struct ShapesAppendTest : public Benchmark<ShapesAppendTest> {
 
   void tearDown() override {}
 
-  void buildRequest(size_t threadNumber, size_t threadCounter, size_t globalCounter,
-                    BenchmarkOperation::RequestData& requestData) const override {
+  void buildRequest(
+      size_t threadNumber, size_t threadCounter, size_t globalCounter,
+      BenchmarkOperation::RequestData& requestData) const override {
     size_t keyId = static_cast<size_t>(globalCounter / 2);
     std::string const key = "testkey" + StringUtils::itoa(keyId);
     size_t const mod = globalCounter % 2;
     if (mod == 0) {
-      requestData.url =
-          std::string("/_api/document?collection=" + _arangobench.collection()) +
-          "&silent=true";
+      requestData.url = std::string("/_api/document?collection=" +
+                                    _arangobench.collection()) +
+                        "&silent=true";
       requestData.type = rest::RequestType::POST;
 
       using namespace arangodb::velocypack;
@@ -64,15 +65,15 @@ struct ShapesAppendTest : public Benchmark<ShapesAppendTest> {
           mod = 100;
         }
         requestData.payload.add(
-            std::string("value") +
-                std::to_string(static_cast<uint64_t>((globalCounter + i) % mod)),
+            std::string("value") + std::to_string(static_cast<uint64_t>(
+                                       (globalCounter + i) % mod)),
             Value("some bogus string value to fill up the datafile..."));
       }
       requestData.payload.close();
       ;
     } else {
-      requestData.url =
-          std::string("/_api/document/" + _arangobench.collection() + "/" + key);
+      requestData.url = std::string("/_api/document/" +
+                                    _arangobench.collection() + "/" + key);
       requestData.type = rest::RequestType::GET;
     }
   }

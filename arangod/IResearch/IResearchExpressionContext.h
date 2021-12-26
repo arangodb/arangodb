@@ -54,7 +54,10 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
   explicit ViewExpressionContextBase(arangodb::transaction::Methods* trx,
                                      aql::QueryContext* query,
                                      aql::AqlFunctionsInternalCache* cache)
-      : ExpressionContext(), _trx(trx), _query(query), _aqlFunctionsInternalCache(cache) {}
+      : ExpressionContext(),
+        _trx(trx),
+        _query(query),
+        _aqlFunctionsInternalCache(cache) {}
 
   void registerWarning(ErrorCode errorCode, char const* msg) override final;
   void registerError(ErrorCode errorCode, char const* msg) override final;
@@ -67,7 +70,8 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
                                        velocypack::Options const* opts,
                                        bool& isEmptyExpression) override final;
 
-  arangodb::ValidatorBase* buildValidator(arangodb::velocypack::Slice const&) override final;
+  arangodb::ValidatorBase* buildValidator(
+      arangodb::velocypack::Slice const&) override final;
 
   TRI_vocbase_t& vocbase() const override final;
   /// may be inaccessible on some platforms
@@ -88,19 +92,23 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
 struct ViewExpressionContext final : public ViewExpressionContextBase {
   using VarInfoMap = std::unordered_map<aql::VariableId, aql::VarInfo>;
 
-  ViewExpressionContext(arangodb::transaction::Methods& trx, aql::QueryContext& query,
-                        aql::AqlFunctionsInternalCache& cache, aql::Variable const& outVar,
+  ViewExpressionContext(arangodb::transaction::Methods& trx,
+                        aql::QueryContext& query,
+                        aql::AqlFunctionsInternalCache& cache,
+                        aql::Variable const& outVar,
                         VarInfoMap const& varInfoMap, int nodeDepth)
       : ViewExpressionContextBase(&trx, &query, &cache),
         _outVar(outVar),
         _varInfoMap(varInfoMap),
         _nodeDepth(nodeDepth) {}
 
-  virtual bool isDataFromCollection(aql::Variable const* variable) const override {
+  virtual bool isDataFromCollection(
+      aql::Variable const* variable) const override {
     return variable->isDataFromCollection;
   }
 
-  virtual aql::AqlValue getVariableValue(aql::Variable const* variable, bool doCopy,
+  virtual aql::AqlValue getVariableValue(aql::Variable const* variable,
+                                         bool doCopy,
                                          bool& mustDestroy) const override;
 
   inline aql::Variable const& outVariable() const noexcept { return _outVar; }

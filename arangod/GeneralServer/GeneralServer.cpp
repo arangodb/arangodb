@@ -49,7 +49,8 @@ using namespace arangodb::rest;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-GeneralServer::GeneralServer(GeneralServerFeature& feature, uint64_t numIoThreads)
+GeneralServer::GeneralServer(GeneralServerFeature& feature,
+                             uint64_t numIoThreads)
     : _feature(feature), _endpointList(nullptr), _contexts() {
   auto& server = feature.server();
   for (size_t i = 0; i < numIoThreads; ++i) {
@@ -168,10 +169,9 @@ bool GeneralServer::openEndpoint(IoContext& ioContext, Endpoint* endpoint) {
 }
 
 IoContext& GeneralServer::selectIoContext() {
-  return *std::min_element(_contexts.begin(), _contexts.end(),
-                           [](auto const& a, auto const& b) {
-                             return a.clients() < b.clients();
-                           });
+  return *std::min_element(
+      _contexts.begin(), _contexts.end(),
+      [](auto const& a, auto const& b) { return a.clients() < b.clients(); });
 }
 
 #ifdef USE_ENTERPRISE
@@ -184,7 +184,8 @@ SslServerFeature::SslContextList GeneralServer::sslContexts() {
     _sslContexts = server().getFeature<SslServerFeature>().createSslContexts();
 #ifdef USE_ENTERPRISE
     if (_sslContexts->size() > 0) {
-      // Set a client hello callback such that we have a chance to change the SSL context:
+      // Set a client hello callback such that we have a chance to change the
+      // SSL context:
       SSL_CTX_set_client_hello_cb((*_sslContexts)[0].native_handle(),
                                   &clientHelloCallback, (void*)this);
     }
@@ -202,17 +203,20 @@ Result GeneralServer::reloadTLS() {
   try {
     {
       std::lock_guard<std::mutex> guard(_sslContextMutex);
-      _sslContexts = server().getFeature<SslServerFeature>().createSslContexts();
+      _sslContexts =
+          server().getFeature<SslServerFeature>().createSslContexts();
 #ifdef USE_ENTERPRISE
       if (_sslContexts->size() > 0) {
-        // Set a client hello callback such that we have a chance to change the SSL context:
+        // Set a client hello callback such that we have a chance to change the
+        // SSL context:
         SSL_CTX_set_client_hello_cb((*_sslContexts)[0].native_handle(),
                                     &clientHelloCallback, (void*)this);
       }
 #endif
     }
-    // Now cancel every acceptor once, such that a new AsioSocket is generated which will
-    // use the new context. Otherwise, the first connection will still use the old certs:
+    // Now cancel every acceptor once, such that a new AsioSocket is generated
+    // which will use the new context. Otherwise, the first connection will
+    // still use the old certs:
     for (auto& a : _acceptors) {
       a->cancel();
     }

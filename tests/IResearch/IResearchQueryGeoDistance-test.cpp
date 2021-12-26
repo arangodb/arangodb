@@ -51,7 +51,8 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
   // geo analyzer
   {
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
     // shape
@@ -94,8 +95,8 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
   // create view
   arangodb::iresearch::IResearchView* impl{};
   {
-    auto createJson =
-        VPackParser::fromJson(R"({ "name": "testView", "type": "arangosearch" })");
+    auto createJson = VPackParser::fromJson(
+        R"({ "name": "testView", "type": "arangosearch" })");
     auto logicalView = vocbase.createView(createJson->slice());
     ASSERT_FALSE(!logicalView);
 
@@ -111,9 +112,8 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
         }}
     })";
 
-    auto viewDefinition =
-        irs::string_utils::to_string(viewDefinitionTemplate,
-                                     static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition = irs::string_utils::to_string(
+        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -168,9 +168,9 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto doc : VPackArrayIterator(docs->slice())) {
@@ -190,13 +190,13 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
 
   // ensure presence of special a column for geo indices
   {
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::READ);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::READ);
     ASSERT_TRUE(trx.begin().ok());
 
-    auto snapshot =
-        impl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    auto snapshot = impl->snapshot(
+        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     ASSERT_NE(nullptr, snapshot);
     ASSERT_EQ(1, snapshot->size());
     ASSERT_EQ(insertedDocs.size(), snapshot->docs_count());
@@ -281,8 +281,9 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
   // test missing field
   {
     std::vector<arangodb::velocypack::Slice> expected = {};
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET origin = GEO_POINT(37.607768, 55.70892)
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_DISTANCE(d.missing, origin) < 300, 'mygeojson')
            RETURN d)");
@@ -295,8 +296,9 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
   // test missing field
   {
     std::vector<arangodb::velocypack::Slice> expected = {};
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET origin = GEO_POINT(37.607768, 55.70892)
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_DISTANCE(origin, d.missing) < 300, 'mygeojson')
            RETURN d)");
@@ -309,8 +311,9 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
   // test missing analyzer
   {
     std::vector<arangodb::velocypack::Slice> expected = {};
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET origin = GEO_POINT(37.607768, 55.70892)
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH GEO_DISTANCE(d.missing, origin) < 300
            RETURN d)");
@@ -323,8 +326,9 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
   // test missing analyzer
   {
     std::vector<arangodb::velocypack::Slice> expected = {};
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET origin = GEO_POINT(37.607768, 55.70892)
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH GEO_DISTANCE(origin, d.missing) < 300
            RETURN d)");
@@ -335,10 +339,11 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
   }
 
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[16].slice(),
-                                                         insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET origin = GEO_POINT(37.607768, 55.70892)
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[16].slice(), insertedDocs[17].slice()};
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) < 300, 'mygeojson')
            SORT d.id ASC
@@ -357,10 +362,11 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
   }
 
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[16].slice(),
-                                                         insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET origin = GEO_POINT(37.607768, 55.70892)
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[16].slice(), insertedDocs[17].slice()};
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) < 300, 'mygeocentroid')
            SORT d.id ASC
@@ -379,10 +385,11 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
   }
 
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[16].slice(),
-                                                         insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET origin = GEO_POINT(37.607768, 55.70892)
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[16].slice(), insertedDocs[17].slice()};
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) < 300, 'mygeopoint')
            SORT d.id ASC
@@ -406,8 +413,9 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
         insertedDocs[17].slice(),
         insertedDocs[28].slice(),
     };
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET origin = GEO_POINT(37.607768, 55.70892)
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) < 550, 'mygeojson')
            SORT d.id ASC
@@ -431,8 +439,9 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
         insertedDocs[17].slice(),
         insertedDocs[28].slice(),
     };
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET origin = GEO_POINT(37.607768, 55.70892)
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) < 550, 'mygeocentroid')
            SORT d.id ASC
@@ -451,10 +460,11 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
   }
 
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[16].slice(),
-                                                         insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET origin = GEO_POINT(37.607768, 55.70892)
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[16].slice(), insertedDocs[17].slice()};
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) < 550, 'mygeopoint')
            SORT d.id ASC
@@ -473,9 +483,11 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
   }
 
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[16].slice()};
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET origin = GEO_POINT(37.607768, 55.70892)
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[16].slice()};
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) < 200, 'mygeojson')
            SORT d.id ASC
@@ -494,9 +506,11 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
   }
 
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[16].slice()};
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET origin = GEO_POINT(37.607768, 55.70892)
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[16].slice()};
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) < 180.24, 'mygeojson')
            SORT d.id ASC
@@ -515,9 +529,11 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
   }
 
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[12].slice()};
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET origin = GEO_POINT(37.613663, 55.704002)
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[12].slice()};
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.613663, 55.704002)
            FOR d IN testView
            SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) == 0, 'mygeojson')
            SORT d.id ASC
@@ -536,9 +552,11 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
   }
 
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[12].slice()};
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET origin = GEO_POINT(37.613663, 55.704002)
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[12].slice()};
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.613663, 55.704002)
            FOR d IN testView
            SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) >= 0 && GEO_DISTANCE(d.geometry, origin) <= 0, 'mygeojson')
            SORT d.id ASC
@@ -557,9 +575,11 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
   }
 
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[12].slice()};
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET origin = GEO_POINT(37.613663, 55.704002)
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[12].slice()};
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.613663, 55.704002)
            FOR d IN testView
            SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) >= 0, 'mygeopoint') && ANALYZER(GEO_DISTANCE(d.geometry, origin) <= 0, 'mygeojson')
            SORT d.id ASC
@@ -578,8 +598,9 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
   }
 
   {
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET origin = GEO_POINT(37.613663, 55.704002)
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.613663, 55.704002)
            FOR d IN testView
            SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) > 0 && GEO_DISTANCE(d.geometry, origin) < 0, 'mygeojson')
            SORT d.id ASC
@@ -591,9 +612,11 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
   }
 
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[12].slice()};
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET origin = GEO_POINT(37.613663, 55.704002)
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[12].slice()};
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.613663, 55.704002)
            FOR d IN testView
            SEARCH ANALYZER(GEO_DISTANCE(origin, d.geometry) == 0, 'mygeojson')
            SORT d.id ASC
@@ -620,8 +643,9 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
                    std::back_inserter(expected),
                    [](VPackBuilder const& doc) { return doc.slice(); });
 
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET origin = GEO_POINT(37.613663, 55.704002)
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.613663, 55.704002)
            FOR d IN testView
            SEARCH ANALYZER(true && GEO_DISTANCE(origin, d.geometry) != 0, 'mygeojson')
            SORT d.id ASC
@@ -648,8 +672,9 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
                    std::back_inserter(expected),
                    [](VPackBuilder const& doc) { return doc.slice(); });
 
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET origin = GEO_POINT(37.613663, 55.704002)
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.613663, 55.704002)
            FOR d IN testView
            SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) != 0, 'mygeocentroid')
            SORT d.id ASC
@@ -674,8 +699,9 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
         insertedDocs[25].slice(),
     };
 
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET origin = GEO_POINT(37.607768, 55.70892)
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) > 15000, 'mygeojson')
            SORT d.id ASC
@@ -700,8 +726,9 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
         insertedDocs[25].slice(),
     };
 
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET origin = GEO_POINT(37.607768, 55.70892)
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_DISTANCE(origin, d.geometry) >= 15000, 'mygeojson')
            SORT d.id ASC
@@ -725,8 +752,9 @@ TEST_P(IResearchQueryGeoDistanceTest, testGeoJson) {
         insertedDocs[24].slice(),
         insertedDocs[25].slice(),
     };
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET origin = GEO_POINT(37.607768, 55.70892)
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET origin = GEO_POINT(37.607768, 55.70892)
            FOR d IN testView
            SEARCH ANALYZER(GEO_DISTANCE(d.geometry, origin) >= 15000 && GEO_DISTANCE(d.geometry, origin) <= 20000, 'mygeopoint')
            SORT d.id ASC

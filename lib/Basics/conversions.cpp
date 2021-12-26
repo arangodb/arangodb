@@ -69,7 +69,8 @@ double TRI_DoubleString(char const* str) {
 
   if (*endptr != '\0') {
     TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
-  } else if (errno == ERANGE && (result == HUGE_VAL || result == -HUGE_VAL || result == 0)) {
+  } else if (errno == ERANGE &&
+             (result == HUGE_VAL || result == -HUGE_VAL || result == 0)) {
     TRI_set_errno(TRI_ERROR_NUMERIC_OVERFLOW);
   }
 

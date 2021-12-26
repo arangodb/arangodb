@@ -35,7 +35,8 @@
 #include "Utils/ExecContext.h"
 
 namespace {
-bool authorized(std::pair<std::string, arangodb::rest::AsyncJobResult> const& job) {
+bool authorized(
+    std::pair<std::string, arangodb::rest::AsyncJobResult> const& job) {
   arangodb::ExecContext const& exec = arangodb::ExecContext::current();
   if (exec.isSuperuser()) {
     return true;
@@ -232,8 +233,8 @@ std::vector<AsyncJobResult::IdType> AsyncJobManager::done(size_t maxCount) {
 /// @brief returns the list of jobs by status
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(AsyncJobResult::Status status,
-                                                              size_t maxCount) {
+std::vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(
+    AsyncJobResult::Status status, size_t maxCount) {
   std::vector<AsyncJobResult::IdType> jobs;
 
   {

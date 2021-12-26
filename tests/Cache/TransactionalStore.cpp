@@ -85,8 +85,8 @@ TransactionalStore::TransactionalStore(Manager* manager)
   options.create_if_missing = true;
   options.max_open_files = 128;
 
-  auto status = rocksdb::TransactionDB::Open(options, rocksdb::TransactionDBOptions(),
-                                             _directory.c_str(), &_db);
+  auto status = rocksdb::TransactionDB::Open(
+      options, rocksdb::TransactionDBOptions(), _directory.c_str(), &_db);
   if (!status.ok()) {
     throw;
   }
@@ -102,7 +102,8 @@ TransactionalStore::~TransactionalStore() {
 
 Cache* TransactionalStore::cache() { return _cache.get(); }
 
-TransactionalStore::Transaction* TransactionalStore::beginTransaction(bool readOnly) {
+TransactionalStore::Transaction* TransactionalStore::beginTransaction(
+    bool readOnly) {
   auto cache = _manager->beginTransaction(readOnly);
   auto rocks = _db->BeginTransaction(_writeOptions, _txOptions);
   rocks->SetSnapshot();
@@ -149,7 +150,8 @@ bool TransactionalStore::insert(TransactionalStore::Transaction* tx,
     // now write to rocksdb
     rocksdb::Slice kSlice(reinterpret_cast<char const*>(&(document.key)),
                           sizeof(std::uint64_t));
-    rocksdb::Slice vSlice(reinterpret_cast<char const*>(&document), sizeof(Document));
+    rocksdb::Slice vSlice(reinterpret_cast<char const*>(&document),
+                          sizeof(Document));
     auto status = tx->rocks->Put(kSlice, vSlice);
     inserted = status.ok();
   }
@@ -181,7 +183,8 @@ bool TransactionalStore::update(TransactionalStore::Transaction* tx,
     // now write to rocksdb
     rocksdb::Slice kSlice(reinterpret_cast<char const*>(&(document.key)),
                           sizeof(std::uint64_t));
-    rocksdb::Slice vSlice(reinterpret_cast<char const*>(&document), sizeof(Document));
+    rocksdb::Slice vSlice(reinterpret_cast<char const*>(&document),
+                          sizeof(Document));
     auto status = tx->rocks->Put(kSlice, vSlice);
     updated = status.ok();
   }
@@ -197,7 +200,8 @@ bool TransactionalStore::update(TransactionalStore::Transaction* tx,
   return updated;
 }
 
-bool TransactionalStore::remove(TransactionalStore::Transaction* tx, std::uint64_t key) {
+bool TransactionalStore::remove(TransactionalStore::Transaction* tx,
+                                std::uint64_t key) {
   bool useInternalTransaction = (tx == nullptr);
   if (useInternalTransaction) {
     tx = beginTransaction(false);
@@ -226,8 +230,8 @@ bool TransactionalStore::remove(TransactionalStore::Transaction* tx, std::uint64
   return removed;
 }
 
-TransactionalStore::Document TransactionalStore::lookup(TransactionalStore::Transaction* tx,
-                                                        std::uint64_t key) {
+TransactionalStore::Document TransactionalStore::lookup(
+    TransactionalStore::Transaction* tx, std::uint64_t key) {
   bool useInternalTransaction = (tx == nullptr);
   if (useInternalTransaction) {
     tx = beginTransaction(true);

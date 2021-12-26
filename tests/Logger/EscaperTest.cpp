@@ -55,8 +55,9 @@ class EscaperTest : public ::testing::Test {
   }
 };
 
-template <typename EscaperType>
-void verifyExpectedValues(std::string const& inputString, std::string const& expectedOutput,
+template<typename EscaperType>
+void verifyExpectedValues(std::string const& inputString,
+                          std::string const& expectedOutput,
                           size_t expectedSize, EscaperType& escaper) {
   size_t messageSize = escaper.determineOutputBufferSize(inputString);
   EXPECT_EQ(messageSize, expectedSize);

@@ -28,7 +28,7 @@
 #include <velocypack/Iterator.h>
 
 namespace {
-template <typename T>
+template<typename T>
 arangodb::velocypack::Builder& addRef(       // add a value
     arangodb::velocypack::Builder& builder,  // builder
     irs::basic_string_ref<T> const& value    // value
@@ -36,7 +36,8 @@ arangodb::velocypack::Builder& addRef(       // add a value
   // store nulls verbatim
   if (value.null()) {
     builder.add(  // add value
-        arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null)  // value
+        arangodb::velocypack::Value(
+            arangodb::velocypack::ValueType::Null)  // value
     );
   } else {
     builder.add(arangodb::iresearch::toValuePair(value));
@@ -45,23 +46,26 @@ arangodb::velocypack::Builder& addRef(       // add a value
   return builder;
 }
 
-template <typename T>
+template<typename T>
 arangodb::velocypack::Builder& addRef(       // add a value
     arangodb::velocypack::Builder& builder,  // builder
     irs::string_ref const& key,              // key
     irs::basic_string_ref<T> const& value    // value
 ) {
-  TRI_ASSERT(!key.null());  // Builder uses memcpy(...) which cannot handle nullptr
+  TRI_ASSERT(
+      !key.null());  // Builder uses memcpy(...) which cannot handle nullptr
 
   // store nulls verbatim
   if (value.null()) {
     builder.add(      // add value
         key.c_str(),  // key data
         key.size(),   // key size
-        arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null)  // value
+        arangodb::velocypack::Value(
+            arangodb::velocypack::ValueType::Null)  // value
     );
   } else {
-    builder.add(key.c_str(), key.size(), arangodb::iresearch::toValuePair(value));
+    builder.add(key.c_str(), key.size(),
+                arangodb::iresearch::toValuePair(value));
   }
 
   return builder;
@@ -122,9 +126,10 @@ bool mergeSlice(arangodb::velocypack::Builder& builder,
   return false;
 }
 
-bool mergeSliceSkipKeys(arangodb::velocypack::Builder& builder,
-                        arangodb::velocypack::Slice const& slice,
-                        std::function<bool(irs::string_ref const& key)> const& acceptor) {
+bool mergeSliceSkipKeys(
+    arangodb::velocypack::Builder& builder,
+    arangodb::velocypack::Slice const& slice,
+    std::function<bool(irs::string_ref const& key)> const& acceptor) {
   if (!builder.isOpenObject() || !slice.isObject()) {
     return mergeSlice(builder, slice);  // no keys to skip for non-objects
   }

@@ -40,7 +40,8 @@ TEST(SpinLockTest, testSpinLocker) {
 
   // write
   {
-    SpinLocker guard(SpinLocker::Mode::Write, lock, true, SpinLocker::Effort::Succeed);
+    SpinLocker guard(SpinLocker::Mode::Write, lock, true,
+                     SpinLocker::Effort::Succeed);
     ASSERT_TRUE(lock.isLocked());
     ASSERT_FALSE(lock.isLockedRead());
     ASSERT_TRUE(lock.isLockedWrite());
@@ -49,7 +50,8 @@ TEST(SpinLockTest, testSpinLocker) {
   ASSERT_FALSE(lock.isLocked());
 
   {
-    SpinLocker guard(SpinLocker::Mode::Write, lock, false, SpinLocker::Effort::Succeed);
+    SpinLocker guard(SpinLocker::Mode::Write, lock, false,
+                     SpinLocker::Effort::Succeed);
     ASSERT_FALSE(lock.isLocked());
     ASSERT_FALSE(lock.isLockedRead());
     ASSERT_FALSE(lock.isLockedWrite());
@@ -59,7 +61,8 @@ TEST(SpinLockTest, testSpinLocker) {
 
   // read
   {
-    SpinLocker guard(SpinLocker::Mode::Read, lock, true, SpinLocker::Effort::Succeed);
+    SpinLocker guard(SpinLocker::Mode::Read, lock, true,
+                     SpinLocker::Effort::Succeed);
     ASSERT_TRUE(lock.isLocked());
     ASSERT_TRUE(lock.isLockedRead());
     ASSERT_FALSE(lock.isLockedWrite());
@@ -68,7 +71,8 @@ TEST(SpinLockTest, testSpinLocker) {
   ASSERT_FALSE(lock.isLocked());
 
   {
-    SpinLocker guard(SpinLocker::Mode::Read, lock, false, SpinLocker::Effort::Succeed);
+    SpinLocker guard(SpinLocker::Mode::Read, lock, false,
+                     SpinLocker::Effort::Succeed);
     ASSERT_FALSE(lock.isLocked());
     ASSERT_FALSE(lock.isLockedRead());
     ASSERT_FALSE(lock.isLockedWrite());
@@ -86,14 +90,16 @@ TEST(SpinLockTest, testNestedSpinLocker) {
 
   // write
   {
-    SpinLocker guard(SpinLocker::Mode::Write, lock, true, SpinLocker::Effort::Succeed);
+    SpinLocker guard(SpinLocker::Mode::Write, lock, true,
+                     SpinLocker::Effort::Succeed);
     ASSERT_TRUE(lock.isLocked());
     ASSERT_FALSE(lock.isLockedRead());
     ASSERT_TRUE(lock.isLockedWrite());
     ASSERT_TRUE(guard.isLocked());
 
     {
-      SpinLocker inner(SpinLocker::Mode::Write, lock, true, SpinLocker::Effort::Try);
+      SpinLocker inner(SpinLocker::Mode::Write, lock, true,
+                       SpinLocker::Effort::Try);
       ASSERT_TRUE(lock.isLocked());
       ASSERT_FALSE(lock.isLockedRead());
       ASSERT_TRUE(lock.isLockedWrite());
@@ -106,7 +112,8 @@ TEST(SpinLockTest, testNestedSpinLocker) {
     ASSERT_TRUE(guard.isLocked());
 
     {
-      SpinLocker inner(SpinLocker::Mode::Read, lock, true, SpinLocker::Effort::Try);
+      SpinLocker inner(SpinLocker::Mode::Read, lock, true,
+                       SpinLocker::Effort::Try);
       ASSERT_TRUE(lock.isLocked());
       ASSERT_FALSE(lock.isLockedRead());
       ASSERT_TRUE(lock.isLockedWrite());
@@ -135,14 +142,16 @@ TEST(SpinLockTest, testNestedSpinLocker) {
 
   // read
   {
-    SpinLocker guard(SpinLocker::Mode::Read, lock, true, SpinLocker::Effort::Succeed);
+    SpinLocker guard(SpinLocker::Mode::Read, lock, true,
+                     SpinLocker::Effort::Succeed);
     ASSERT_TRUE(lock.isLocked());
     ASSERT_TRUE(lock.isLockedRead());
     ASSERT_FALSE(lock.isLockedWrite());
     ASSERT_TRUE(guard.isLocked());
 
     {
-      SpinLocker inner(SpinLocker::Mode::Write, lock, true, SpinLocker::Effort::Try);
+      SpinLocker inner(SpinLocker::Mode::Write, lock, true,
+                       SpinLocker::Effort::Try);
       ASSERT_TRUE(lock.isLocked());
       ASSERT_TRUE(lock.isLockedRead());
       ASSERT_FALSE(lock.isLockedWrite());
@@ -155,7 +164,8 @@ TEST(SpinLockTest, testNestedSpinLocker) {
     ASSERT_TRUE(guard.isLocked());
 
     {
-      SpinLocker inner(SpinLocker::Mode::Read, lock, true, SpinLocker::Effort::Try);
+      SpinLocker inner(SpinLocker::Mode::Read, lock, true,
+                       SpinLocker::Effort::Try);
       ASSERT_TRUE(lock.isLocked());
       ASSERT_TRUE(lock.isLockedRead());
       ASSERT_FALSE(lock.isLockedWrite());

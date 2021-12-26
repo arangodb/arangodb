@@ -52,19 +52,20 @@ class EdgeCollectionInfo;
 
 namespace pregel {
 
-template <typename T>
+template<typename T>
 struct TypedBuffer;
 class WorkerConfig;
-template <typename V, typename E>
+template<typename V, typename E>
 struct GraphFormat;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief carry graph data for a worker job. NOT THREAD SAFE ON DOCUMENT LOADS
 ////////////////////////////////////////////////////////////////////////////////
-template <typename V, typename E>
+template<typename V, typename E>
 class GraphStore final {
  public:
-  GraphStore(TRI_vocbase_t& vocbase, uint64_t executionNumber, GraphFormat<V, E>* graphFormat);
+  GraphStore(TRI_vocbase_t& vocbase, uint64_t executionNumber,
+             GraphFormat<V, E>* graphFormat);
 
   uint64_t numberVertexSegments() const { return _vertices.size(); }
   uint64_t localVertexCount() const { return _localVertexCount; }
@@ -90,7 +91,8 @@ class GraphStore final {
   ReportManager* _reports;
 
  private:
-  void loadVertices(ShardID const& vertexShard, std::vector<ShardID> const& edgeShards);
+  void loadVertices(ShardID const& vertexShard,
+                    std::vector<ShardID> const& edgeShards);
   void loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex,
                  ShardID const& edgeShard, std::string const& documentID,
                  std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>& edges,

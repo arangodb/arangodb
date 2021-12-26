@@ -74,20 +74,25 @@ class ReplicationClientsProgressTracker {
   ~ReplicationClientsProgressTracker();
 #endif
 
-  ReplicationClientsProgressTracker(ReplicationClientsProgressTracker const&) = delete;
-  ReplicationClientsProgressTracker& operator=(ReplicationClientsProgressTracker const&) = delete;
+  ReplicationClientsProgressTracker(ReplicationClientsProgressTracker const&) =
+      delete;
+  ReplicationClientsProgressTracker& operator=(
+      ReplicationClientsProgressTracker const&) = delete;
 
   /// @brief simply extend the lifetime of a specific syncer, so that its entry
   /// does not expire does not update the syncer's lastServedTick value
-  void extend(SyncerId syncerId, ServerId clientId, std::string const& clientInfo, double ttl);
+  void extend(SyncerId syncerId, ServerId clientId,
+              std::string const& clientInfo, double ttl);
 
   /// @brief simply update the progress of a specific syncer, so that its entry
   /// does not expire this will update the syncer's lastServedTick value
-  void track(SyncerId syncerId, ServerId clientId, std::string const& clientInfo,
-             TRI_voc_tick_t lastServedTick, double ttl);
+  void track(SyncerId syncerId, ServerId clientId,
+             std::string const& clientInfo, TRI_voc_tick_t lastServedTick,
+             double ttl);
 
   /// @brief remove a specific syncer's entry
-  void untrack(SyncerId syncerId, ServerId clientId, std::string const& clientInfo);
+  void untrack(SyncerId syncerId, ServerId clientId,
+               std::string const& clientInfo);
 
   /// @brief serialize the existing syncers to a VelocyPack builder
   void toVelocyPack(velocypack::Builder& builder) const;
@@ -104,9 +109,10 @@ class ReplicationClientsProgressTracker {
  private:
   // Make sure the underlying integer types for SyncerIDs and ClientIDs are the
   // same, so we can use one entry
-  static_assert(std::is_same<decltype(SyncerId::value), ServerId::BaseType>::value,
-                "Assuming identical underlying integer types. If these are "
-                "changed, the client-map key must be changed, too.");
+  static_assert(
+      std::is_same<decltype(SyncerId::value), ServerId::BaseType>::value,
+      "Assuming identical underlying integer types. If these are "
+      "changed, the client-map key must be changed, too.");
   enum class KeyType { INVALID, SYNCER_ID, SERVER_ID };
   union ClientKeyUnion {
     SyncerId syncerId;
@@ -137,7 +143,8 @@ class ReplicationClientsProgressTracker {
   };
   class ClientEqual {
    public:
-    inline bool operator()(ClientKey const& left, ClientKey const& right) const noexcept {
+    inline bool operator()(ClientKey const& left,
+                           ClientKey const& right) const noexcept {
       if (left.first != right.first) {
         return false;
       }
@@ -156,11 +163,13 @@ class ReplicationClientsProgressTracker {
     }
   };
 
-  static inline ClientKey getKey(SyncerId const syncerId, ServerId const clientId) {
+  static inline ClientKey getKey(SyncerId const syncerId,
+                                 ServerId const clientId) {
     // For backwards compatible APIs, we might not have a syncer ID;
-    // fall back to the clientId in that case. SyncerId was introduced in 3.4.9 and 3.5.0.
-    // The only public API using this, /_api/wal/tail, marked the serverId
-    // parameter (corresponding to clientId here) as deprecated in 3.5.0.
+    // fall back to the clientId in that case. SyncerId was introduced in 3.4.9
+    // and 3.5.0. The only public API using this, /_api/wal/tail, marked the
+    // serverId parameter (corresponding to clientId here) as deprecated
+    // in 3.5.0.
 
     // Also, so these values cannot interfere with each other, prefix them to
     // make them disjoint.
@@ -183,7 +192,9 @@ class ReplicationClientsProgressTracker {
   mutable basics::ReadWriteLock _lock;
 
   /// @brief mapping from (SyncerId | ClientServerId) -> progress
-  std::unordered_map<ClientKey, ReplicationClientProgress, ClientHash, ClientEqual> _clients;
+  std::unordered_map<ClientKey, ReplicationClientProgress, ClientHash,
+                     ClientEqual>
+      _clients;
 };
 
 }  // namespace arangodb

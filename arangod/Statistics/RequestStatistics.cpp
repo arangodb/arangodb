@@ -41,9 +41,13 @@ static size_t const QUEUE_SIZE = 64 * 1024 - 2;  // current (1.62) boost maximum
 
 static std::unique_ptr<RequestStatistics[]> _statisticsBuffer;
 
-static boost::lockfree::queue<RequestStatistics*, boost::lockfree::capacity<QUEUE_SIZE>> _freeList;
+static boost::lockfree::queue<RequestStatistics*,
+                              boost::lockfree::capacity<QUEUE_SIZE>>
+    _freeList;
 
-static boost::lockfree::queue<RequestStatistics*, boost::lockfree::capacity<QUEUE_SIZE>> _finishedList;
+static boost::lockfree::queue<RequestStatistics*,
+                              boost::lockfree::capacity<QUEUE_SIZE>>
+    _finishedList;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
@@ -129,7 +133,8 @@ void RequestStatistics::process(RequestStatistics* statistics) {
       }
 
       statistics::RequestFigures& figures =
-          isSuperuser ? statistics::SuperuserRequestFigures : statistics::UserRequestFigures;
+          isSuperuser ? statistics::SuperuserRequestFigures
+                      : statistics::UserRequestFigures;
 
       figures.totalTimeDistribution.addFigure(totalTime);
 
@@ -184,10 +189,12 @@ void RequestStatistics::release() {
   TRI_ASSERT(ok);
 }
 
-void RequestStatistics::getSnapshot(Snapshot& snapshot, stats::RequestStatisticsSource source) {
-  statistics::RequestFigures& figures = source == stats::RequestStatisticsSource::USER
-                                            ? statistics::UserRequestFigures
-                                            : statistics::SuperuserRequestFigures;
+void RequestStatistics::getSnapshot(Snapshot& snapshot,
+                                    stats::RequestStatisticsSource source) {
+  statistics::RequestFigures& figures =
+      source == stats::RequestStatisticsSource::USER
+          ? statistics::UserRequestFigures
+          : statistics::SuperuserRequestFigures;
 
   snapshot.totalTime = figures.totalTimeDistribution;
   snapshot.requestTime = figures.requestTimeDistribution;
@@ -198,12 +205,17 @@ void RequestStatistics::getSnapshot(Snapshot& snapshot, stats::RequestStatistics
 
   if (source == stats::RequestStatisticsSource::ALL) {
     TRI_ASSERT(&figures == &statistics::SuperuserRequestFigures);
-    snapshot.totalTime.add(statistics::UserRequestFigures.totalTimeDistribution);
-    snapshot.requestTime.add(statistics::UserRequestFigures.requestTimeDistribution);
-    snapshot.queueTime.add(statistics::UserRequestFigures.queueTimeDistribution);
+    snapshot.totalTime.add(
+        statistics::UserRequestFigures.totalTimeDistribution);
+    snapshot.requestTime.add(
+        statistics::UserRequestFigures.requestTimeDistribution);
+    snapshot.queueTime.add(
+        statistics::UserRequestFigures.queueTimeDistribution);
     snapshot.ioTime.add(statistics::UserRequestFigures.ioTimeDistribution);
-    snapshot.bytesSent.add(statistics::UserRequestFigures.bytesSentDistribution);
-    snapshot.bytesReceived.add(statistics::UserRequestFigures.bytesReceivedDistribution);
+    snapshot.bytesSent.add(
+        statistics::UserRequestFigures.bytesSentDistribution);
+    snapshot.bytesReceived.add(
+        statistics::UserRequestFigures.bytesReceivedDistribution);
   }
 }
 
@@ -213,8 +225,9 @@ std::string RequestStatistics::Item::timingsCsv() const {
 
   ss << std::setprecision(9) << std::fixed << "read,"
      << (_stat->_readEnd - _stat->_readStart) << ",queue,"
-     << (_stat->_queueEnd - _stat->_queueStart) << ",queue-size," << _stat->_queueSize
-     << ",request," << (_stat->_requestEnd - _stat->_requestStart) << ",total,"
+     << (_stat->_queueEnd - _stat->_queueStart) << ",queue-size,"
+     << _stat->_queueSize << ",request,"
+     << (_stat->_requestEnd - _stat->_requestStart) << ",total,"
      << (StatisticsFeature::time() - _stat->_readStart);
 
   return ss.str();

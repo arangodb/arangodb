@@ -43,13 +43,16 @@ bool Section::hasOptions() const {
 
 // print help for a section
 // the special search string "." will show help for all sections, even if hidden
-void Section::printHelp(std::string const& search, size_t tw, size_t ow, bool colors) const {
+void Section::printHelp(std::string const& search, size_t tw, size_t ow,
+                        bool colors) const {
   if (search != "." && (hidden || !hasOptions())) {
     return;
   }
 
-  std::cout << "Section '" << (colors ? ShellColorsFeature::SHELL_COLOR_BRIGHT : "")
-            << displayName() << (colors ? ShellColorsFeature::SHELL_COLOR_RESET : "")
+  std::cout << "Section '"
+            << (colors ? ShellColorsFeature::SHELL_COLOR_BRIGHT : "")
+            << displayName()
+            << (colors ? ShellColorsFeature::SHELL_COLOR_RESET : "")
             << "' (configure " << description << ")";
 
   if (!link.empty()) {

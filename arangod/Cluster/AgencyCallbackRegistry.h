@@ -45,7 +45,8 @@ class AgencyCallbackRegistry {
   ~AgencyCallbackRegistry();
 
   /// @brief register a callback
-  [[nodiscard]] Result registerCallback(std::shared_ptr<AgencyCallback> cb, bool local = true);
+  [[nodiscard]] Result registerCallback(std::shared_ptr<AgencyCallback> cb,
+                                        bool local = true);
 
   /// @brief unregister a callback
   bool unregisterCallback(std::shared_ptr<AgencyCallback> cb);

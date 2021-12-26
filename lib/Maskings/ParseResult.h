@@ -25,7 +25,7 @@
 
 #include "Basics/Common.h"
 
-template <typename T>
+template<typename T>
 struct ParseResult {
   enum StatusCode : int {
     VALID,

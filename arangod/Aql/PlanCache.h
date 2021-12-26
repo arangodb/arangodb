@@ -63,10 +63,12 @@ class PlanCache {
 
  public:
   /// @brief lookup a plan in the cache
-  std::shared_ptr<PlanCacheEntry> lookup(TRI_vocbase_t*, uint64_t, QueryString const&);
+  std::shared_ptr<PlanCacheEntry> lookup(TRI_vocbase_t*, uint64_t,
+                                         QueryString const&);
 
   /// @brief store a plan in the cache
-  void store(TRI_vocbase_t*, uint64_t, QueryString const&, ExecutionPlan const*);
+  void store(TRI_vocbase_t*, uint64_t, QueryString const&,
+             ExecutionPlan const*);
 
   /// @brief invalidate all plans for a particular database
   void invalidate(TRI_vocbase_t*);
@@ -79,7 +81,10 @@ class PlanCache {
   arangodb::basics::ReadWriteLock _lock;
 
   /// @brief cached query plans, organized per database
-  std::unordered_map<TRI_vocbase_t*, std::unordered_map<uint64_t, std::shared_ptr<PlanCacheEntry>>> _plans;
+  std::unordered_map<
+      TRI_vocbase_t*,
+      std::unordered_map<uint64_t, std::shared_ptr<PlanCacheEntry>>>
+      _plans;
 };
 }  // namespace aql
 }  // namespace arangodb

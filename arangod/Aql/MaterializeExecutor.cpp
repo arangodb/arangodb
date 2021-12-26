@@ -32,10 +32,11 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-template <typename T>
-arangodb::IndexIterator::DocumentCallback MaterializeExecutor<T>::ReadContext::copyDocumentCallback(
-    ReadContext& ctx) {
-  typedef std::function<arangodb::IndexIterator::DocumentCallback(ReadContext&)> CallbackFactory;
+template<typename T>
+arangodb::IndexIterator::DocumentCallback
+MaterializeExecutor<T>::ReadContext::copyDocumentCallback(ReadContext& ctx) {
+  typedef std::function<arangodb::IndexIterator::DocumentCallback(ReadContext&)>
+      CallbackFactory;
   static CallbackFactory const callbackFactory{[](ReadContext& ctx) {
     return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
       TRI_ASSERT(ctx._outputRow);
@@ -45,8 +46,8 @@ arangodb::IndexIterator::DocumentCallback MaterializeExecutor<T>::ReadContext::c
       arangodb::aql::AqlValue a{arangodb::aql::AqlValueHintCopy(doc.begin())};
       bool mustDestroy = true;
       arangodb::aql::AqlValueGuard guard{a, mustDestroy};
-      ctx._outputRow->moveValueInto(ctx._infos->outputMaterializedDocumentRegId(),
-                                    *ctx._inputRow, guard);
+      ctx._outputRow->moveValueInto(
+          ctx._infos->outputMaterializedDocumentRegId(), *ctx._inputRow, guard);
       return true;
     };
   }};
@@ -54,21 +55,25 @@ arangodb::IndexIterator::DocumentCallback MaterializeExecutor<T>::ReadContext::c
   return callbackFactory(ctx);
 }
 
-template <typename T>
+template<typename T>
 arangodb::aql::MaterializerExecutorInfos<T>::MaterializerExecutorInfos(
-    T collectionSource, RegisterId inNmDocId, RegisterId outDocRegId, aql::QueryContext& query)
+    T collectionSource, RegisterId inNmDocId, RegisterId outDocRegId,
+    aql::QueryContext& query)
     : _collectionSource(collectionSource),
       _inNonMaterializedDocRegId(inNmDocId),
       _outMaterializedDocumentRegId(outDocRegId),
       _query(query) {}
 
-template <typename T>
-arangodb::aql::MaterializeExecutor<T>::MaterializeExecutor(MaterializeExecutor<T>::Fetcher& fetcher,
-                                                           Infos& infos)
-    : _trx(infos.query().newTrxContext()), _readDocumentContext(infos), _infos(infos) {}
+template<typename T>
+arangodb::aql::MaterializeExecutor<T>::MaterializeExecutor(
+    MaterializeExecutor<T>::Fetcher& fetcher, Infos& infos)
+    : _trx(infos.query().newTrxContext()),
+      _readDocumentContext(infos),
+      _infos(infos) {}
 
-template <typename T>
-std::tuple<ExecutorState, NoStats, AqlCall> arangodb::aql::MaterializeExecutor<T>::produceRows(
+template<typename T>
+std::tuple<ExecutorState, NoStats, AqlCall>
+arangodb::aql::MaterializeExecutor<T>::produceRows(
     AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
@@ -96,10 +101,12 @@ std::tuple<ExecutorState, NoStats, AqlCall> arangodb::aql::MaterializeExecutor<T
     TRI_ASSERT(collection != nullptr);
     _readDocumentContext._inputRow = &input;
     _readDocumentContext._outputRow = &output;
-    written = collection->getPhysical()
-                  ->read(&_trx, LocalDocumentId(input.getValue(docRegId).slice().getUInt()),
-                         callback, ReadOwnWrites::no)
-                  .ok();
+    written =
+        collection->getPhysical()
+            ->read(&_trx,
+                   LocalDocumentId(input.getValue(docRegId).slice().getUInt()),
+                   callback, ReadOwnWrites::no)
+            .ok();
     if (written) {
       output.advanceRow();
     }
@@ -108,8 +115,9 @@ std::tuple<ExecutorState, NoStats, AqlCall> arangodb::aql::MaterializeExecutor<T
   return {inputRange.upstreamState(), NoStats{}, upstreamCall};
 }
 
-template <typename T>
-std::tuple<ExecutorState, NoStats, size_t, AqlCall> arangodb::aql::MaterializeExecutor<T>::skipRowsRange(
+template<typename T>
+std::tuple<ExecutorState, NoStats, size_t, AqlCall>
+arangodb::aql::MaterializeExecutor<T>::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
   size_t skipped = 0;
 

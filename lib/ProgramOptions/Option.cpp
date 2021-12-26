@@ -37,7 +37,12 @@ using namespace arangodb::options;
 // create an option, consisting of single string
 Option::Option(std::string const& value, std::string const& description,
                Parameter* parameter, std::underlying_type<Flags>::type flags)
-    : section(), name(), description(description), shorthand(), parameter(parameter), flags(flags) {
+    : section(),
+      name(),
+      description(description),
+      shorthand(),
+      parameter(parameter),
+      flags(flags) {
   auto parts = splitName(value);
   section = parts.first;
   name = parts.second;
@@ -81,7 +86,8 @@ std::string Option::toVersionString(uint32_t version) const {
 }
 
 // format multiple version strings
-std::string Option::toVersionString(std::vector<uint32_t> const& versions) const {
+std::string Option::toVersionString(
+    std::vector<uint32_t> const& versions) const {
   std::string result;
   for (auto const& it : versions) {
     if (!result.empty()) {
@@ -106,7 +112,8 @@ std::string Option::deprecatedInString() const {
 
 // print help for an option
 // the special search string "." will show help for all sections, even if hidden
-void Option::printHelp(std::string const& search, size_t tw, size_t ow, bool) const {
+void Option::printHelp(std::string const& search, size_t tw, size_t ow,
+                       bool) const {
   if (search == "." || !hasFlag(arangodb::options::Flags::Hidden)) {
     std::cout << "  " << pad(nameWithType(), ow) << "   ";
 
@@ -191,7 +198,8 @@ std::pair<std::string, std::string> Option::splitName(std::string name) {
   return std::make_pair(section, name);
 }
 
-std::vector<std::string> Option::wordwrap(std::string const& value, size_t size) {
+std::vector<std::string> Option::wordwrap(std::string const& value,
+                                          size_t size) {
   std::vector<std::string> result;
   std::string next = value;
 

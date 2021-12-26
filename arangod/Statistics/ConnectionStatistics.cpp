@@ -37,7 +37,9 @@ static size_t const QUEUE_SIZE = 64 * 1024 - 2;  // current (1.62) boost maximum
 
 static std::unique_ptr<ConnectionStatistics[]> _statisticsBuffer;
 
-static boost::lockfree::queue<ConnectionStatistics*, boost::lockfree::capacity<QUEUE_SIZE>> _freeList;
+static boost::lockfree::queue<ConnectionStatistics*,
+                              boost::lockfree::capacity<QUEUE_SIZE>>
+    _freeList;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods

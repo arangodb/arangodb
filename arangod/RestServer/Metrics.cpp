@@ -51,7 +51,8 @@ std::ostream& operator<<(std::ostream& o, Metrics::hist_type const& v) {
   return o;
 }
 
-Metric::Metric(std::string const& name, std::string const& help, std::string const& labels)
+Metric::Metric(std::string const& name, std::string const& help,
+               std::string const& labels)
     : _name(name), _help(help), _labels(labels) {}
 
 Metric::~Metric() = default;

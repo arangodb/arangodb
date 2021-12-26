@@ -53,7 +53,8 @@ class ConditionFinder final
   bool producesEmptyResult() const { return _producesEmptyResult; }
 
  protected:
-  bool handleFilterCondition(ExecutionNode* en, std::unique_ptr<Condition> const& condition);
+  bool handleFilterCondition(ExecutionNode* en,
+                             std::unique_ptr<Condition> const& condition);
   void handleSortCondition(ExecutionNode* en, Variable const* outVar,
                            std::unique_ptr<Condition> const& condition,
                            std::unique_ptr<SortCondition>& sortCondition);

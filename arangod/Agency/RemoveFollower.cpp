@@ -32,9 +32,11 @@
 using namespace arangodb::consensus;
 
 RemoveFollower::RemoveFollower(Node const& snapshot, AgentInterface* agent,
-                               std::string const& jobId, std::string const& creator,
+                               std::string const& jobId,
+                               std::string const& creator,
                                std::string const& database,
-                               std::string const& collection, std::string const& shard)
+                               std::string const& collection,
+                               std::string const& shard)
     : Job(NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
@@ -119,7 +121,8 @@ bool RemoveFollower::create(std::shared_ptr<VPackBuilder> envelope) {
 
   _status = NOTFOUND;
 
-  LOG_TOPIC("83bf8", INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
+  LOG_TOPIC("83bf8", INFO, Logger::SUPERVISION)
+      << "Failed to insert job " + _jobId;
   return false;
 }
 
@@ -133,7 +136,9 @@ bool RemoveFollower::start(bool&) {
     return false;
   }
   Node const& collection =
-      _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection).value().get();
+      _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection)
+          .value()
+          .get();
   if (collection.has("distributeShardsLike")) {
     finish("", "", false,
            "collection must not have 'distributeShardsLike' attribute");
@@ -159,7 +164,8 @@ bool RemoveFollower::start(bool&) {
     if (replFact2 && *replFact2 == StaticStrings::Satellite) {
       // satellites => distribute to every server
       auto available = Job::availableServers(_snapshot);
-      desiredReplFactor = Job::countGoodOrBadServersInList(_snapshot, available);
+      desiredReplFactor =
+          Job::countGoodOrBadServersInList(_snapshot, available);
     }
   }
 
@@ -182,9 +188,11 @@ bool RemoveFollower::start(bool&) {
       clones(_snapshot, _database, _collection, _shard);
 
   // Now find some new servers to remove:
-  std::unordered_map<std::string, int> overview;  // get an overview over the servers
-                                                  // -1 : not "GOOD", can be in sync, or leader, or not
-                                                  // >=0: number of servers for which it is in sync or confirmed leader
+  std::unordered_map<std::string, int>
+      overview;  // get an overview over the servers
+                 // -1 : not "GOOD", can be in sync, or leader, or not
+                 // >=0: number of servers for which it is in sync or confirmed
+                 // leader
   bool leaderBad = false;
   for (VPackSlice srv : VPackArrayIterator(planned)) {
     std::string serverName = srv.copyString();
@@ -199,7 +207,8 @@ bool RemoveFollower::start(bool&) {
   }
   doForAllShards(_snapshot, _database, shardsLikeMe,
                  [&planned, &overview, &leaderBad](Slice plan, Slice current,
-                                                   std::string& planPath, std::string& curPath) {
+                                                   std::string& planPath,
+                                                   std::string& curPath) {
                    if (current.length() > 0) {
                      if (current[0].copyString() != planned[0].copyString()) {
                        leaderBad = true;
@@ -286,7 +295,8 @@ bool RemoveFollower::start(bool&) {
       // Now choose servers that are not in sync for all shards:
       for (auto const& it : reversedPlannedServers) {
         auto const pair = *overview.find(it);
-        if (pair.second >= 0 && static_cast<size_t>(pair.second) < shardsLikeMe.size()) {
+        if (pair.second >= 0 &&
+            static_cast<size_t>(pair.second) < shardsLikeMe.size()) {
           chosenToRemove.insert(pair.first);
           --currentReplFactor;
         }
@@ -301,8 +311,10 @@ bool RemoveFollower::start(bool&) {
           if (pair.second >= 0 &&
               static_cast<size_t>(pair.second) >= shardsLikeMe.size() &&
               pair.first != planned[0].copyString()) {
-            if (Job::isInServerList(_snapshot, toBeCleanedPrefix, pair.first, true) ||
-                Job::isInServerList(_snapshot, cleanedPrefix, pair.first, true)) {
+            if (Job::isInServerList(_snapshot, toBeCleanedPrefix, pair.first,
+                                    true) ||
+                Job::isInServerList(_snapshot, cleanedPrefix, pair.first,
+                                    true)) {
               // Prefer those cleaned or to be cleaned servers
               chosenToRemove.insert(pair.first);
               --currentReplFactor;
@@ -319,8 +331,10 @@ bool RemoveFollower::start(bool&) {
             if (pair.second >= 0 &&
                 static_cast<size_t>(pair.second) >= shardsLikeMe.size() &&
                 pair.first != planned[0].copyString()) {
-              if (!Job::isInServerList(_snapshot, toBeCleanedPrefix, pair.first, true) &&
-                  !Job::isInServerList(_snapshot, cleanedPrefix, pair.first, true)) {
+              if (!Job::isInServerList(_snapshot, toBeCleanedPrefix, pair.first,
+                                       true) &&
+                  !Job::isInServerList(_snapshot, cleanedPrefix, pair.first,
+                                       true)) {
                 chosenToRemove.insert(pair.first);
                 --currentReplFactor;
               }
@@ -384,20 +398,21 @@ bool RemoveFollower::start(bool&) {
       addRemoveJobFromSomewhere(trx, "ToDo", _jobId);
 
       // --- Plan changes
-      doForAllShards(_snapshot, _database, shardsLikeMe,
-                     [&trx, &chosenToRemove](Slice plan, Slice current,
-                                             std::string& planPath, std::string& curPath) {
-                       trx.add(VPackValue(planPath));
-                       {
-                         VPackArrayBuilder serverList(&trx);
-                         for (VPackSlice srv : VPackArrayIterator(plan)) {
-                           if (chosenToRemove.find(srv.copyString()) ==
-                               chosenToRemove.end()) {
-                             trx.add(srv);
-                           }
-                         }
-                       }
-                     });
+      doForAllShards(
+          _snapshot, _database, shardsLikeMe,
+          [&trx, &chosenToRemove](Slice plan, Slice current,
+                                  std::string& planPath, std::string& curPath) {
+            trx.add(VPackValue(planPath));
+            {
+              VPackArrayBuilder serverList(&trx);
+              for (VPackSlice srv : VPackArrayIterator(plan)) {
+                if (chosenToRemove.find(srv.copyString()) ==
+                    chosenToRemove.end()) {
+                  trx.add(srv);
+                }
+              }
+            }
+          });
 
       addIncreasePlanVersion(trx);
     }  // mutation part of transaction done

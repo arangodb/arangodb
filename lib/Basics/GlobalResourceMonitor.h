@@ -74,8 +74,9 @@ class alignas(64) GlobalResourceMonitor final {
   /// throw Note: value must be >= 0
   void decreaseMemoryUsage(std::int64_t value) noexcept;
 
-  /// @brief Unconditionally updates the current memory usage with the given value.
-  /// Since the parameter is signed, this method can increase or decrease!
+  /// @brief Unconditionally updates the current memory usage with the given
+  /// value. Since the parameter is signed, this method can increase or
+  /// decrease!
   void forceUpdateMemoryUsage(std::int64_t value) noexcept;
 
   /// @brief returns a reference to a global shared instance

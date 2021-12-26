@@ -49,7 +49,8 @@ class TransactionId : public basics::Identifier {
 
   uint32_t serverId() const;
 
-  /// @brief create a child transaction (coordinator -> leader; leader -> follower)
+  /// @brief create a child transaction (coordinator -> leader; leader ->
+  /// follower)
   TransactionId child();
 
  public:

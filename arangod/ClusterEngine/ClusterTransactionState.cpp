@@ -43,16 +43,19 @@
 using namespace arangodb;
 
 /// @brief transaction type
-ClusterTransactionState::ClusterTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                                                 transaction::Options const& options)
+ClusterTransactionState::ClusterTransactionState(
+    TRI_vocbase_t& vocbase, TransactionId tid,
+    transaction::Options const& options)
     : TransactionState(vocbase, tid, options) {
   TRI_ASSERT(isCoordinator());
   // we have to read revisions here as validateAndOptimize is executed before
   // transaction is started and during validateAndOptimize some simple
-  // function calls could be executed and calls requires valid analyzers revisions.
-  acceptAnalyzersRevision(
-      _vocbase.server().getFeature<arangodb::ClusterFeature>().clusterInfo().getQueryAnalyzersRevision(
-          vocbase.name()));
+  // function calls could be executed and calls requires valid analyzers
+  // revisions.
+  acceptAnalyzersRevision(_vocbase.server()
+                              .getFeature<arangodb::ClusterFeature>()
+                              .clusterInfo()
+                              .getQueryAnalyzersRevision(vocbase.name()));
 }
 
 /// @brief start a transaction
@@ -66,8 +69,10 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
   // set hints
   _hints = hints;
-  auto& stats =
-      _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics;
+  auto& stats = _vocbase.server()
+                    .getFeature<MetricsFeature>()
+                    .serverStatistics()
+                    ._transactionsStatistics;
 
   auto cleanup = scopeGuard([&]() noexcept {
     updateStatus(transaction::Status::ABORTED);
@@ -109,8 +114,8 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     // if there is only one server we may defer the lazy locking
     // until the first actual operation (should save one request)
     if (leaders.size() > 1) {
-      res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders,
-                                                         transaction::MethodsApi::Synchronous)
+      res = ClusterTrxMethods::beginTransactionOnLeaders(
+                *this, leaders, transaction::MethodsApi::Synchronous)
                 .get();
       if (res.fail()) {  // something is wrong
         return res;
@@ -123,7 +128,8 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 }
 
 /// @brief commit a transaction
-Result ClusterTransactionState::commitTransaction(transaction::Methods* activeTrx) {
+Result ClusterTransactionState::commitTransaction(
+    transaction::Methods* activeTrx) {
   LOG_TRX("927c0", TRACE, this)
       << "committing " << AccessMode::typeString(_type) << " transaction";
 
@@ -142,7 +148,8 @@ Result ClusterTransactionState::commitTransaction(transaction::Methods* activeTr
 }
 
 /// @brief abort and rollback a transaction
-Result ClusterTransactionState::abortTransaction(transaction::Methods* activeTrx) {
+Result ClusterTransactionState::abortTransaction(
+    transaction::Methods* activeTrx) {
   LOG_TRX("fc653", TRACE, this)
       << "aborting " << AccessMode::typeString(_type) << " transaction";
   TRI_ASSERT(_status == transaction::Status::RUNNING);

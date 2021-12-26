@@ -49,12 +49,14 @@ static const char* SAMPLE_KEY = "01234567890123456789012345678901";
 
 TEST(EncryptionProviderTest, simple) {
   // hand rolled AES-256-CTR mode
-  arangodb::enterprise::EncryptionProvider hwprovider(rocksdb::Slice(SAMPLE_KEY, 32),
-                                                      /*allowAcceleration*/ true);
+  arangodb::enterprise::EncryptionProvider hwprovider(
+      rocksdb::Slice(SAMPLE_KEY, 32),
+      /*allowAcceleration*/ true);
 
   // openssl EVP variant
-  arangodb::enterprise::EncryptionProvider evpprovider(rocksdb::Slice(SAMPLE_KEY, 32),
-                                                       /*allow*/ false);
+  arangodb::enterprise::EncryptionProvider evpprovider(
+      rocksdb::Slice(SAMPLE_KEY, 32),
+      /*allow*/ false);
 
   // hand-rolled CTR mode with the openssl software-only AES_encrypt
   auto cipher = std::make_shared<arangodb::enterprise::AES256BlockCipher>(
@@ -79,15 +81,17 @@ TEST(EncryptionProviderTest, simple) {
     }
 
     size_t offset = RandomGenerator::interval(0, kBuffSize / 2);
-    size_t len =
-        RandomGenerator::interval(0, static_cast<std::int32_t>(kBuffSize - offset));
+    size_t len = RandomGenerator::interval(
+        0, static_cast<std::int32_t>(kBuffSize - offset));
 
     softprovider.CreateNewPrefix("", prefix.data(), prefix.size());
     rocksdb::Slice prefixSlice(prefix);
 
-    std::unique_ptr<rocksdb::BlockAccessCipherStream> streamIntel, streamEVP, streamSW;
+    std::unique_ptr<rocksdb::BlockAccessCipherStream> streamIntel, streamEVP,
+        streamSW;
     ASSERT_TRUE(
-        hwprovider.CreateCipherStream("", opts, prefixSlice, &streamIntel).ok());
+        hwprovider.CreateCipherStream("", opts, prefixSlice, &streamIntel)
+            .ok());
     ASSERT_TRUE(
         evpprovider.CreateCipherStream("", opts, prefixSlice, &streamEVP).ok());
     ASSERT_TRUE(
@@ -111,7 +115,8 @@ TEST(EncryptionProviderTest, simple) {
     ASSERT_EQ(memcmp(buffer2.data(), buffer3.data(), 16), 0);
 
     // encrypt data at offset
-    ASSERT_TRUE(streamIntel->Encrypt(offset, buffer1.data() + offset, len).ok());
+    ASSERT_TRUE(
+        streamIntel->Encrypt(offset, buffer1.data() + offset, len).ok());
     ASSERT_TRUE(streamEVP->Encrypt(offset, buffer2.data() + offset, len).ok());
     ASSERT_TRUE(streamSW->Encrypt(offset, buffer3.data() + offset, len).ok());
 
@@ -120,7 +125,8 @@ TEST(EncryptionProviderTest, simple) {
     ASSERT_EQ(memcmp(buffer2.data() + offset, buffer3.data() + offset, len), 0);
 
     // decrypt data at offset
-    ASSERT_TRUE(streamIntel->Decrypt(offset, buffer1.data() + offset, len).ok());
+    ASSERT_TRUE(
+        streamIntel->Decrypt(offset, buffer1.data() + offset, len).ok());
     ASSERT_TRUE(streamEVP->Decrypt(offset, buffer2.data() + offset, len).ok());
     ASSERT_TRUE(streamSW->Decrypt(offset, buffer3.data() + offset, len).ok());
 
@@ -133,12 +139,14 @@ TEST(EncryptionProviderTest, simple) {
 
 TEST(EncryptionProviderTest, microbenchmark) {
   // hand rolled AES-256-CTR mode
-  arangodb::enterprise::EncryptionProvider hwprovider(rocksdb::Slice(SAMPLE_KEY, 32),
-                                                      /*allowAcceleration*/ true);
+  arangodb::enterprise::EncryptionProvider hwprovider(
+      rocksdb::Slice(SAMPLE_KEY, 32),
+      /*allowAcceleration*/ true);
 
   // openssl EVP AES-256-CTR mode
-  arangodb::enterprise::EncryptionProvider evpprovider(rocksdb::Slice(SAMPLE_KEY, 32),
-                                                       /*allow*/ false);
+  arangodb::enterprise::EncryptionProvider evpprovider(
+      rocksdb::Slice(SAMPLE_KEY, 32),
+      /*allow*/ false);
 
   // this is the hand-rolled CTR mode with the openssl software-only AES_encrypt
   auto cipher = std::make_shared<arangodb::enterprise::AES256BlockCipher>(
@@ -163,10 +171,14 @@ TEST(EncryptionProviderTest, microbenchmark) {
   softprovider.CreateNewPrefix("", prefix.data(), prefix.size());
   rocksdb::Slice prefixSlice(prefix);
 
-  std::unique_ptr<rocksdb::BlockAccessCipherStream> streamIntel, streamEVP, streamSf;
-  ASSERT_TRUE(hwprovider.CreateCipherStream("", opts, prefixSlice, &streamIntel).ok());
-  ASSERT_TRUE(evpprovider.CreateCipherStream("", opts, prefixSlice, &streamEVP).ok());
-  ASSERT_TRUE(softprovider.CreateCipherStream("", opts, prefixSlice, &streamSf).ok());
+  std::unique_ptr<rocksdb::BlockAccessCipherStream> streamIntel, streamEVP,
+      streamSf;
+  ASSERT_TRUE(
+      hwprovider.CreateCipherStream("", opts, prefixSlice, &streamIntel).ok());
+  ASSERT_TRUE(
+      evpprovider.CreateCipherStream("", opts, prefixSlice, &streamEVP).ok());
+  ASSERT_TRUE(
+      softprovider.CreateCipherStream("", opts, prefixSlice, &streamSf).ok());
   ASSERT_NE(streamIntel, nullptr);
   ASSERT_NE(streamEVP, nullptr);
   ASSERT_NE(streamSf, nullptr);

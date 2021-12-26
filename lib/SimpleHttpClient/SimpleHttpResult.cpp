@@ -102,10 +102,12 @@ std::string SimpleHttpResult::getResultTypeMessage() const {
 }
 
 void SimpleHttpResult::addHeaderField(char const* line, size_t length) {
-  auto find = static_cast<char const*>(memchr(static_cast<void const*>(line), ':', length));
+  auto find = static_cast<char const*>(
+      memchr(static_cast<void const*>(line), ':', length));
 
   if (find == nullptr) {
-    find = static_cast<char const*>(memchr(static_cast<void const*>(line), ' ', length));
+    find = static_cast<char const*>(
+        memchr(static_cast<void const*>(line), ' ', length));
   }
 
   if (find != nullptr) {
@@ -146,7 +148,8 @@ void SimpleHttpResult::addHeaderField(char const* key, size_t keyLength,
         _foundHeader = true;
 
         // we assume the status code is 3 chars long
-        if ((value[0] >= '0' && value[0] <= '9') && (value[1] >= '0' && value[1] <= '9') &&
+        if ((value[0] >= '0' && value[0] <= '9') &&
+            (value[1] >= '0' && value[1] <= '9') &&
             (value[2] >= '0' && value[2] <= '9')) {
           // set response code
           setHttpReturnCode(100 * (value[0] - '0') + 10 * (value[1] - '0') +
@@ -170,20 +173,26 @@ void SimpleHttpResult::addHeaderField(char const* key, size_t keyLength,
   else if (keyString[0] == 'c') {
     if (keyLength == strlen("content-length") &&
         keyString == "content-length") {
-      setContentLength(NumberUtils::atoi_zero<size_t>(value, value + valueLength));
+      setContentLength(
+          NumberUtils::atoi_zero<size_t>(value, value + valueLength));
     } else if (keyLength == strlen("content-encoding") &&
                keyString == "content-encoding") {
-      if (valueLength == strlen("deflate") && (value[0] == 'd' || value[0] == 'D') &&
-          (value[1] == 'e' || value[1] == 'E') && (value[2] == 'f' || value[2] == 'F') &&
-          (value[3] == 'l' || value[3] == 'L') && (value[4] == 'a' || value[4] == 'A') &&
-          (value[5] == 't' || value[5] == 'T') && (value[6] == 'e' || value[6] == 'E')) {
+      if (valueLength == strlen("deflate") &&
+          (value[0] == 'd' || value[0] == 'D') &&
+          (value[1] == 'e' || value[1] == 'E') &&
+          (value[2] == 'f' || value[2] == 'F') &&
+          (value[3] == 'l' || value[3] == 'L') &&
+          (value[4] == 'a' || value[4] == 'A') &&
+          (value[5] == 't' || value[5] == 'T') &&
+          (value[6] == 'e' || value[6] == 'E')) {
         _deflated = true;
       }
     } else if (keyLength == strlen("content-type") &&
                keyString == "content-type") {
       size_t const length = strlen("application/json");
 
-      if (valueLength >= length && memcmp(value, "application/json", length) == 0) {
+      if (valueLength >= length &&
+          memcmp(value, "application/json", length) == 0) {
         // content-type is JSON
         char const* ptr = value + length;
         // but only if not followed by anything unexpected
@@ -195,10 +204,14 @@ void SimpleHttpResult::addHeaderField(char const* key, size_t keyLength,
   else if (keyString[0] == 't') {
     if (keyLength == strlen("transfer-encoding") &&
         keyString == "transfer-encoding") {
-      if (valueLength == strlen("chunked") && (value[0] == 'c' || value[0] == 'C') &&
-          (value[1] == 'h' || value[1] == 'H') && (value[2] == 'u' || value[2] == 'U') &&
-          (value[3] == 'n' || value[3] == 'N') && (value[4] == 'k' || value[4] == 'K') &&
-          (value[5] == 'e' || value[5] == 'E') && (value[6] == 'd' || value[6] == 'D')) {
+      if (valueLength == strlen("chunked") &&
+          (value[0] == 'c' || value[0] == 'C') &&
+          (value[1] == 'h' || value[1] == 'H') &&
+          (value[2] == 'u' || value[2] == 'U') &&
+          (value[3] == 'n' || value[3] == 'N') &&
+          (value[4] == 'k' || value[4] == 'K') &&
+          (value[5] == 'e' || value[5] == 'E') &&
+          (value[6] == 'd' || value[6] == 'D')) {
         _chunked = true;
       }
     }
@@ -207,7 +220,8 @@ void SimpleHttpResult::addHeaderField(char const* key, size_t keyLength,
   _headerFields[std::move(keyString)] = std::string(value, valueLength);
 }
 
-std::string SimpleHttpResult::getHeaderField(std::string const& name, bool& found) const {
+std::string SimpleHttpResult::getHeaderField(std::string const& name,
+                                             bool& found) const {
   auto find = _headerFields.find(name);
 
   if (find == _headerFields.end()) {

@@ -34,7 +34,8 @@ class DocumentIndexExpressionContext final : public QueryExpressionContext {
   DocumentIndexExpressionContext(transaction::Methods& trx, QueryContext& query,
                                  AqlFunctionsInternalCache& cache,
                                  AqlValue (*getValue)(void const* ctx,
-                                                      Variable const* var, bool doCopy),
+                                                      Variable const* var,
+                                                      bool doCopy),
                                  void const* ctx);
 
   ~DocumentIndexExpressionContext() = default;

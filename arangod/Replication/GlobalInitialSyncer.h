@@ -37,13 +37,15 @@ class GlobalInitialSyncer : public InitialSyncer {
   explicit GlobalInitialSyncer(ReplicationApplierConfiguration const&);
 
  public:
-  static std::shared_ptr<GlobalInitialSyncer> create(ReplicationApplierConfiguration const&);
+  static std::shared_ptr<GlobalInitialSyncer> create(
+      ReplicationApplierConfiguration const&);
 
   ~GlobalInitialSyncer();
 
   /// @brief run method, performs a full synchronization
   /// public method, catches exceptions
-  arangodb::Result run(bool incremental, char const* context = nullptr) override;
+  arangodb::Result run(bool incremental,
+                       char const* context = nullptr) override;
 
   /// @brief fetch the server's inventory, public method
   Result getInventory(arangodb::velocypack::Builder& builder);

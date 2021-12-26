@@ -37,14 +37,14 @@
 
 namespace arangodb {
 
-RocksDBShaCalculatorThread::RocksDBShaCalculatorThread(application_features::ApplicationServer& server,
-                                                       std::string const& name)
+RocksDBShaCalculatorThread::RocksDBShaCalculatorThread(
+    application_features::ApplicationServer& server, std::string const& name)
     : Thread(server, name) {}
 
 // must call Thread::shutdown() in order to properly shutdown
 RocksDBShaCalculatorThread::~RocksDBShaCalculatorThread() { shutdown(); }
 
-template <typename T>
+template<typename T>
 bool RocksDBShaCalculatorThread::isSstFilename(T const& filename) const {
   // length of  ".sst" is 4, but the actual filename should be something
   // like xxxxxx.sst
@@ -113,7 +113,8 @@ void RocksDBShaCalculatorThread::run() {
       mutexLock.unlock();
 
       if (runFullCheck) {
-        // we could find files that subsequently post to _pendingOperations ... no worries.
+        // we could find files that subsequently post to _pendingOperations ...
+        // no worries.
         checkMissingShaFiles(getRocksDBPath(), 3 * 60);
         // need not to be written to in the past 3 minutes!
       }
@@ -159,7 +160,8 @@ void RocksDBShaCalculatorThread::signalLoop() {
   lock.signal();
 }
 
-std::pair<bool, std::string> RocksDBShaCalculatorThread::shaCalcFile(std::string const& filename) {
+std::pair<bool, std::string> RocksDBShaCalculatorThread::shaCalcFile(
+    std::string const& filename) {
   LOG_TOPIC("af088", DEBUG, arangodb::Logger::ENGINES)
       << "shaCalcFile: computing " << filename;
 
@@ -178,7 +180,8 @@ std::pair<bool, std::string> RocksDBShaCalculatorThread::shaCalcFile(std::string
     }
 
     LOG_TOPIC("8f7ef", DEBUG, arangodb::Logger::ENGINES)
-        << "shaCalcFile: TRI_WriteFile failed with " << res << " for " << newfile;
+        << "shaCalcFile: TRI_WriteFile failed with " << res << " for "
+        << newfile;
   } else {
     LOG_TOPIC("7f3fd", DEBUG, arangodb::Logger::ENGINES)
         << "shaCalcFile:  TRI_ProcessFile failed for " << filename;
@@ -247,8 +250,8 @@ std::string RocksDBShaCalculatorThread::getRocksDBPath() {
 ///        have a matching .sha. (and delete any none matched .sha. files)
 ///        Will only consider .sst files which have not been written to for
 ///        `requireAge` seconds.
-void RocksDBShaCalculatorThread::checkMissingShaFiles(std::string const& pathname,
-                                                      int64_t requireAge) {
+void RocksDBShaCalculatorThread::checkMissingShaFiles(
+    std::string const& pathname, int64_t requireAge) {
   std::vector<std::string> filelist = TRI_FilesDirectory(pathname.c_str());
 
   // sorting will put xxxxxx.sha.yyy just before xxxxxx.sst
@@ -267,7 +270,8 @@ void RocksDBShaCalculatorThread::checkMissingShaFiles(std::string const& pathnam
     // cppcheck-suppress derefInvalidIteratorRedundantCheck
     std::string::size_type shaIdx = iter->find(".sha.");
     if (std::string::npos != shaIdx) {
-      // two cases: 1. its .sst follows so skip both, 2. no matching .sst, so delete
+      // two cases: 1. its .sst follows so skip both, 2. no matching .sst, so
+      // delete
       tempname = iter->substr(0, shaIdx) + ".sst";
       TRI_ASSERT(tempname == TRI_Basename(tempname));
 
@@ -284,7 +288,8 @@ void RocksDBShaCalculatorThread::checkMissingShaFiles(std::string const& pathnam
         MUTEX_LOCKER(mutexLock, _pendingMutex);
         _calculatedHashes[tempname] = std::move(hash);
       } else {
-        std::string tempPath = basics::FileUtils::buildFilename(pathname, *iter);
+        std::string tempPath =
+            basics::FileUtils::buildFilename(pathname, *iter);
         LOG_TOPIC("4eac9", DEBUG, arangodb::Logger::ENGINES)
             << "checkMissingShaFiles:"
                " Deleting file "
@@ -295,7 +300,8 @@ void RocksDBShaCalculatorThread::checkMissingShaFiles(std::string const& pathnam
         MUTEX_LOCKER(mutexLock, _pendingMutex);
         _calculatedHashes.erase(tempname);
       }
-    } else if (iter->size() > 4 && iter->compare(iter->size() - 4, 4, ".sst") == 0) {
+    } else if (iter->size() > 4 &&
+               iter->compare(iter->size() - 4, 4, ".sst") == 0) {
       // we only get here if we found an .sst find but no .sha file directly
       // in front of it!
       MUTEX_LOCKER(mutexLock, _pendingMutex);
@@ -306,13 +312,14 @@ void RocksDBShaCalculatorThread::checkMissingShaFiles(std::string const& pathnam
         mutexLock.unlock();
 
         // reaching this point means no .sha. preceeded, now check the
-        // modification time, if younger than a few mins, just leave it, otherwise,
-        // we create a sha file. This is to ensure that sha files are eventually
-        // generated if somebody switches on backup after the fact. However,
-        // normally, the shas should only be computed when the sst file has
-        // been fully written, which can only be guaranteed if we got a
+        // modification time, if younger than a few mins, just leave it,
+        // otherwise, we create a sha file. This is to ensure that sha files are
+        // eventually generated if somebody switches on backup after the fact.
+        // However, normally, the shas should only be computed when the sst file
+        // has been fully written, which can only be guaranteed if we got a
         // creation event.
-        std::string tempPath = basics::FileUtils::buildFilename(pathname, *iter);
+        std::string tempPath =
+            basics::FileUtils::buildFilename(pathname, *iter);
         int64_t now = ::time(nullptr);
         int64_t modTime = 0;
         auto r = TRI_MTimeFile(tempPath.c_str(), &modTime);
@@ -341,8 +348,8 @@ void RocksDBShaCalculatorThread::checkMissingShaFiles(std::string const& pathnam
 }
 
 /// @brief Setup the object, clearing variables, but do no real work
-RocksDBShaCalculator::RocksDBShaCalculator(application_features::ApplicationServer& server,
-                                           bool startThread)
+RocksDBShaCalculator::RocksDBShaCalculator(
+    application_features::ApplicationServer& server, bool startThread)
     : _shaThread(server, "Sha256Thread") {
   if (startThread) {
     _shaThread.start(&_threadDone);
@@ -370,23 +377,25 @@ void RocksDBShaCalculator::waitForShutdown() {
   // now we are sure the SHA thread is not running anymore
 }
 
-void RocksDBShaCalculator::OnFlushCompleted(rocksdb::DB* db,
-                                            const rocksdb::FlushJobInfo& flush_job_info) {
+void RocksDBShaCalculator::OnFlushCompleted(
+    rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) {
   _shaThread.queueShaCalcFile(flush_job_info.file_path);
 }
 
-void RocksDBShaCalculator::OnTableFileDeleted(const rocksdb::TableFileDeletionInfo& info) {
+void RocksDBShaCalculator::OnTableFileDeleted(
+    const rocksdb::TableFileDeletionInfo& info) {
   _shaThread.queueDeleteFile(info.file_path);
 }
 
-void RocksDBShaCalculator::OnCompactionCompleted(rocksdb::DB* db,
-                                                 const rocksdb::CompactionJobInfo& ci) {
+void RocksDBShaCalculator::OnCompactionCompleted(
+    rocksdb::DB* db, const rocksdb::CompactionJobInfo& ci) {
   for (auto const& filename : ci.output_files) {
     _shaThread.queueShaCalcFile(filename);
   }
 }
 
-void RocksDBShaCalculator::checkMissingShaFiles(std::string const& pathname, int64_t requireAge) {
+void RocksDBShaCalculator::checkMissingShaFiles(std::string const& pathname,
+                                                int64_t requireAge) {
   _shaThread.checkMissingShaFiles(pathname, requireAge);
 }
 

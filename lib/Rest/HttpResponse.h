@@ -72,9 +72,11 @@ class HttpResponse : public GeneralResponse {
  public:
   void reset(ResponseCode code) override final;
 
-  void addPayload(velocypack::Slice const&, velocypack::Options const* = nullptr,
+  void addPayload(velocypack::Slice const&,
+                  velocypack::Options const* = nullptr,
                   bool resolve_externals = true) override final;
-  void addPayload(velocypack::Buffer<uint8_t>&&, velocypack::Options const* = nullptr,
+  void addPayload(velocypack::Buffer<uint8_t>&&,
+                  velocypack::Options const* = nullptr,
                   bool resolve_externals = true) override final;
   void addRawPayload(velocypack::StringRef payload) override final;
 
@@ -100,7 +102,8 @@ class HttpResponse : public GeneralResponse {
   }
 
   void addPayloadInternal(uint8_t const* data, size_t length,
-                          velocypack::Options const* options, bool resolveExternals);
+                          velocypack::Options const* options,
+                          bool resolveExternals);
 
  private:
   std::vector<std::string> _cookies;

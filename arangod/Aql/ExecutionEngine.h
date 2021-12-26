@@ -58,7 +58,8 @@ class ExecutionEngine {
  public:
   /// @brief create the engine
   ExecutionEngine(EngineId eId, QueryContext& query,
-                  AqlItemBlockManager& itemBlockManager, SerializationFormat format,
+                  AqlItemBlockManager& itemBlockManager,
+                  SerializationFormat format,
                   std::shared_ptr<SharedQueryState> sharedState = nullptr);
 
   /// @brief destroy the engine, frees all assigned blocks
@@ -67,7 +68,8 @@ class ExecutionEngine {
  public:
   // @brief create an execution engine from a plan
   static void instantiateFromPlan(Query& query, ExecutionPlan& plan,
-                                  bool planRegisters, SerializationFormat format);
+                                  bool planRegisters,
+                                  SerializationFormat format);
 
   /// @brief Prepares execution blocks for executing provided plan
   /// @param plan plan to execute, should be without cluster nodes. Only local
@@ -91,7 +93,8 @@ class ExecutionEngine {
   std::shared_ptr<SharedQueryState> sharedState() const { return _sharedState; }
 
   /// @brief initializeCursor, could be called multiple times
-  std::pair<ExecutionState, Result> initializeCursor(SharedAqlItemBlockPtr&& items, size_t pos);
+  std::pair<ExecutionState, Result> initializeCursor(
+      SharedAqlItemBlockPtr&& items, size_t pos);
 
   auto execute(AqlCallStack const& stack)
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
@@ -127,13 +130,15 @@ class ExecutionEngine {
   ///  @brief collected execution stats
   void collectExecutionStats(ExecutionStats& other);
 
-  bool waitForSatellites(aql::QueryContext& query, Collection const* collection) const;
+  bool waitForSatellites(aql::QueryContext& query,
+                         Collection const* collection) const;
 
   std::vector<arangodb::cluster::CallbackGuard>& rebootTrackers();
 
 #ifdef USE_ENTERPRISE
-  static void parallelizeTraversals(aql::Query& query, ExecutionPlan& plan,
-                                    std::map<aql::ExecutionNodeId, aql::ExecutionNodeId>& aliases);
+  static void parallelizeTraversals(
+      aql::Query& query, ExecutionPlan& plan,
+      std::map<aql::ExecutionNodeId, aql::ExecutionNodeId>& aliases);
 #endif
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -148,7 +153,8 @@ class ExecutionEngine {
   /// Also sets root execution block as engine root
   void setupEngineRoot(ExecutionBlock& planRoot);
 
-  static void initializeConstValueBlock(ExecutionPlan& plan, AqlItemBlockManager& mgr);
+  static void initializeConstValueBlock(ExecutionPlan& plan,
+                                        AqlItemBlockManager& mgr);
 
   const EngineId _engineId;
 

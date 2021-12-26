@@ -43,7 +43,8 @@ class ArangoClientHelper {
   static std::string rewriteLocation(void* data, std::string const& location);
 
  public:
-  std::string getHttpErrorMessage(httpclient::SimpleHttpResult* result, ErrorCode* err);
+  std::string getHttpErrorMessage(httpclient::SimpleHttpResult* result,
+                                  ErrorCode* err);
   bool getArangoIsCluster(ErrorCode* err);
 
  protected:

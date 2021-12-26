@@ -120,12 +120,15 @@ class ConnectionPool final {
     //    uint64_t bytesSend;
     //    uint64_t bytesReceived;
     //    uint64_t numRequests;
-    containers::SmallVector<std::shared_ptr<Context>>::allocator_type::arena_type arena;
+    containers::SmallVector<
+        std::shared_ptr<Context>>::allocator_type::arena_type arena;
     containers::SmallVector<std::shared_ptr<Context>> list{arena};
   };
 
-  TEST_VIRTUAL std::shared_ptr<fuerte::Connection> createConnection(fuerte::ConnectionBuilder&);
-  ConnectionPtr selectConnection(std::string const& endpoint, Bucket& bucket, bool& isFromPool);
+  TEST_VIRTUAL std::shared_ptr<fuerte::Connection> createConnection(
+      fuerte::ConnectionBuilder&);
+  ConnectionPtr selectConnection(std::string const& endpoint, Bucket& bucket,
+                                 bool& isFromPool);
 
  private:
   Config const _config;

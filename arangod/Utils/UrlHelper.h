@@ -95,7 +95,8 @@ class Port {
 
 class Authority {
  public:
-  Authority(std::optional<UserInfo> userInfo, Host host, std::optional<Port> port);
+  Authority(std::optional<UserInfo> userInfo, Host host,
+            std::optional<Port> port);
 
   std::optional<UserInfo> const& userInfo() const noexcept;
   Host const& host() const noexcept;
@@ -166,7 +167,8 @@ class Fragment {
 
 class Url {
  public:
-  Url(Scheme, std::optional<Authority>, Path, std::optional<Query>, std::optional<Fragment>);
+  Url(Scheme, std::optional<Authority>, Path, std::optional<Query>,
+      std::optional<Fragment>);
 
   std::string toString() const;
 

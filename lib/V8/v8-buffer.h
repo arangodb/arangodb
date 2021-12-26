@@ -222,7 +222,8 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
   /// @brief C++ API for constructing fast buffer
   //////////////////////////////////////////////////////////////////////////////
 
-  static v8::Handle<v8::Object> New(v8::Isolate* isolate, v8::Handle<v8::String> string);
+  static v8::Handle<v8::Object> New(v8::Isolate* isolate,
+                                    v8::Handle<v8::String> string);
 
   static V8Buffer* New(v8::Isolate* isolate, size_t length);
 

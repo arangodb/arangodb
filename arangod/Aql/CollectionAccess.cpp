@@ -46,7 +46,8 @@ CollectionAccess::CollectionAccess(aql::Collection const* collection)
 CollectionAccess::CollectionAccess(aql::Collections const* const collections,
                                    velocypack::Slice const slice) {
   if (slice.get("prototype").isString()) {
-    _prototypeCollection = collections->get(slice.get("prototype").copyString());
+    _prototypeCollection =
+        collections->get(slice.get("prototype").copyString());
   }
   auto colName = slice.get("collection").copyString();
   _collection = collections->get(colName);
@@ -80,11 +81,13 @@ void CollectionAccess::setPrototype(aql::Collection const* prototypeCollection,
   _prototypeOutVariable = prototypeOutVariable;
 }
 
-auto CollectionAccess::prototypeCollection() const noexcept -> aql::Collection const* {
+auto CollectionAccess::prototypeCollection() const noexcept
+    -> aql::Collection const* {
   return _prototypeCollection;
 }
 
-auto CollectionAccess::prototypeOutVariable() const noexcept -> aql::Variable const* {
+auto CollectionAccess::prototypeOutVariable() const noexcept
+    -> aql::Variable const* {
   return _prototypeOutVariable;
 }
 
@@ -96,11 +99,13 @@ bool CollectionAccess::isUsedAsSatellite() const noexcept {
   return _isSatelliteOf != std::nullopt;
 }
 
-auto CollectionAccess::getSatelliteOf(std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById) const
+auto CollectionAccess::getSatelliteOf(
+    std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById) const
     -> ExecutionNode* {
   if (_isSatelliteOf.has_value()) {
     auto* parentNode = nodesById.at(_isSatelliteOf.value());
-    auto* parentColAccess = ExecutionNode::castTo<CollectionAccessingNode*>(parentNode);
+    auto* parentColAccess =
+        ExecutionNode::castTo<CollectionAccessingNode*>(parentNode);
     if (parentColAccess->isUsedAsSatellite()) {
       parentNode = parentColAccess->getSatelliteOf(nodesById);
       // recursive path compression if our prototype has a prototype itself
@@ -113,6 +118,7 @@ auto CollectionAccess::getSatelliteOf(std::unordered_map<ExecutionNodeId, Execut
   }
 }
 
-auto CollectionAccess::getRawSatelliteOf() const -> std::optional<ExecutionNodeId> {
+auto CollectionAccess::getRawSatelliteOf() const
+    -> std::optional<ExecutionNodeId> {
   return _isSatelliteOf;
 }

@@ -75,8 +75,8 @@ class CollectionAccess {
   /// satellite of, if any.
   /// This will make a recursive lookup, so if A isSatelliteOf B, and B
   /// isSatelliteOf C, A.getSatelliteOf() will return C.
-  auto getSatelliteOf(std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById) const
-      -> ExecutionNode*;
+  auto getSatelliteOf(std::unordered_map<ExecutionNodeId, ExecutionNode*> const&
+                          nodesById) const -> ExecutionNode*;
 
   auto getRawSatelliteOf() const -> std::optional<ExecutionNodeId>;
 

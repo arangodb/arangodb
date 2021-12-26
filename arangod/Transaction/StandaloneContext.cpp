@@ -58,7 +58,8 @@ std::shared_ptr<Context> StandaloneContext::clone() const {
 }
 
 /// @brief create a context, returned in a shared ptr
-/*static*/ std::shared_ptr<transaction::Context> transaction::StandaloneContext::Create(TRI_vocbase_t& vocbase) {
+/*static*/ std::shared_ptr<transaction::Context>
+transaction::StandaloneContext::Create(TRI_vocbase_t& vocbase) {
   return std::make_shared<transaction::StandaloneContext>(vocbase);
 }
 

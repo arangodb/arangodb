@@ -27,7 +27,8 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::test;
 
-auto TestReplicatedLog::becomeFollower(ParticipantId const& id, LogTerm term, ParticipantId leaderId)
+auto TestReplicatedLog::becomeFollower(ParticipantId const& id, LogTerm term,
+                                       ParticipantId leaderId)
     -> std::shared_ptr<DelayedFollowerLog> {
   auto ptr = ReplicatedLog::becomeFollower(id, term, std::move(leaderId));
   return std::make_shared<DelayedFollowerLog>(ptr);
@@ -35,7 +36,8 @@ auto TestReplicatedLog::becomeFollower(ParticipantId const& id, LogTerm term, Pa
 
 auto TestReplicatedLog::becomeLeader(
     ParticipantId const& id, LogTerm term,
-    std::vector<std::shared_ptr<replicated_log::AbstractFollower>> const& follower,
+    std::vector<std::shared_ptr<replicated_log::AbstractFollower>> const&
+        follower,
     std::size_t writeConcern) -> std::shared_ptr<replicated_log::LogLeader> {
   LogConfig config;
   config.writeConcern = writeConcern;

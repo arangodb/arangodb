@@ -34,12 +34,14 @@ struct HISTOGRAMLINSCALE {
 struct COUNTER : arangodb::metrics::CounterBuilder<COUNTER> {
   COUNTER() { _name = "COUNTER", _help = "one counter"; }
 };
-struct HISTOGRAMLOG : arangodb::metrics::HistogramBuilder<HISTOGRAMLOG, HISTOGRAMLOGSCALE> {
+struct HISTOGRAMLOG
+    : arangodb::metrics::HistogramBuilder<HISTOGRAMLOG, HISTOGRAMLOGSCALE> {
   HISTOGRAMLOG() {
     _name = "HISTOGRAMLOG", _help = "one histogram with log scale";
   }
 };
-struct HISTOGRAMLIN : arangodb::metrics::HistogramBuilder<HISTOGRAMLIN, HISTOGRAMLINSCALE> {
+struct HISTOGRAMLIN
+    : arangodb::metrics::HistogramBuilder<HISTOGRAMLIN, HISTOGRAMLINSCALE> {
   HISTOGRAMLIN() {
     _name = "HISTOGRAMLIN", _help = "one histogram with lin scale";
   }

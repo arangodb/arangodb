@@ -76,8 +76,8 @@ class RocksDBReplicationManager {
   /// not
   //////////////////////////////////////////////////////////////////////////////
 
-  RocksDBReplicationContext* find(RocksDBReplicationId,
-                                  double ttl = replutils::BatchInfo::DefaultTimeout);
+  RocksDBReplicationContext* find(
+      RocksDBReplicationId, double ttl = replutils::BatchInfo::DefaultTimeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find an existing context by id and extend lifetime
@@ -148,7 +148,8 @@ class RocksDBReplicationManager {
   /// @brief list of current contexts
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<RocksDBReplicationId, RocksDBReplicationContext*> _contexts;
+  std::unordered_map<RocksDBReplicationId, RocksDBReplicationContext*>
+      _contexts;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not a shutdown is in progress
@@ -167,7 +168,8 @@ class RocksDBReplicationContextGuard {
     }
   }
 
-  RocksDBReplicationContextGuard(RocksDBReplicationContextGuard&& other) noexcept
+  RocksDBReplicationContextGuard(
+      RocksDBReplicationContextGuard&& other) noexcept
       : _manager(other._manager), _ctx(other._ctx) {
     other._ctx = nullptr;
   }

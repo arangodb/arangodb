@@ -30,7 +30,8 @@
 
 namespace arangodb::cache {
 
-const std::size_t CachedValue::_headerAllocSize = sizeof(CachedValue) + CachedValue::_padding;
+const std::size_t CachedValue::_headerAllocSize =
+    sizeof(CachedValue) + CachedValue::_padding;
 
 CachedValue* CachedValue::copy() const {
   // cppcheck detects a memory leak here for "buf", but this is a false
@@ -58,7 +59,8 @@ CachedValue* CachedValue::construct(void const* k, std::size_t kSize,
   // cppcheck-suppress *
   std::uint8_t* buf = new std::uint8_t[_headerAllocSize + kSize + vSize];
   std::uint8_t* aligned = reinterpret_cast<std::uint8_t*>(
-      (reinterpret_cast<std::size_t>(buf) + _headerAllocOffset) & _headerAllocMask);
+      (reinterpret_cast<std::size_t>(buf) + _headerAllocOffset) &
+      _headerAllocMask);
   std::size_t offset = buf - aligned;
   // ctor of CachedValue is noexcept
   // cppcheck-suppress memleak
@@ -85,7 +87,8 @@ CachedValue::CachedValue(std::size_t off, void const* k, std::size_t kSize,
 
 CachedValue::CachedValue(CachedValue const& other) noexcept
     : _refCount(0), _keySize(other._keySize), _valueSize(other._valueSize) {
-  std::memcpy(const_cast<std::uint8_t*>(key()), other.key(), keySize() + valueSize());
+  std::memcpy(const_cast<std::uint8_t*>(key()), other.key(),
+              keySize() + valueSize());
 }
 
 }  // namespace arangodb::cache

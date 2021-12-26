@@ -30,7 +30,7 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
 namespace arangodb::futures {
-template <typename T>
+template<typename T>
 class Future;
 }
 
@@ -55,16 +55,17 @@ struct FollowerState {
 
   static auto withUpToDate() noexcept -> FollowerState;
   static auto withErrorBackoff(std::chrono::duration<double, std::milli>,
-                               std::size_t retryCount) noexcept -> FollowerState;
-  static auto withRequestInFlight(std::chrono::duration<double, std::milli>) noexcept
+                               std::size_t retryCount) noexcept
       -> FollowerState;
+  static auto withRequestInFlight(
+      std::chrono::duration<double, std::milli>) noexcept -> FollowerState;
   static auto fromVelocyPack(velocypack::Slice) -> FollowerState;
   void toVelocyPack(velocypack::Builder&) const;
 
   FollowerState() = default;
 
  private:
-  template <typename... Args>
+  template<typename... Args>
   explicit FollowerState(std::in_place_t, Args&&... args)
       : value(std::forward<Args>(args)...) {}
 };
@@ -85,7 +86,8 @@ enum class AppendEntriesErrorReason {
   COMMUNICATION_ERROR,
 };
 
-[[nodiscard]] auto to_string(AppendEntriesErrorReason reason) noexcept -> std::string_view;
+[[nodiscard]] auto to_string(AppendEntriesErrorReason reason) noexcept
+    -> std::string_view;
 
 struct LogStatistics {
   TermIndexPair spearHead{};
@@ -93,7 +95,8 @@ struct LogStatistics {
   LogIndex firstIndex{};
 
   void toVelocyPack(velocypack::Builder& builder) const;
-  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice slice) -> LogStatistics;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice slice)
+      -> LogStatistics;
 };
 
 struct AbstractFollower {

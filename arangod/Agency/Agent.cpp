@@ -83,7 +83,8 @@ std::string const privApiPrefix("/_api/agency_priv/");
 std::string const NO_LEADER("");
 
 /// Agent configuration
-Agent::Agent(application_features::ApplicationServer& server, config_t const& config)
+Agent::Agent(application_features::ApplicationServer& server,
+             config_t const& config)
     : Thread(server, "Agent"),
       _constituent(server),
       _supervision(server),
@@ -215,7 +216,8 @@ priv_rpc_ret_t Agent::requestVote(term_t termOfPeer, std::string const& id,
   if (timeoutMult != -1 && timeoutMult != _config.timeoutMult()) {
     adjustTimeoutMult(timeoutMult);
     LOG_TOPIC("81f2a", WARN, Logger::AGENCY)
-        << "Voter: setting timeout multiplier to " << timeoutMult << " for next term.";
+        << "Voter: setting timeout multiplier to " << timeoutMult
+        << " for next term.";
   }
 
   bool doIVote = _constituent.vote(termOfPeer, id, lastLogIndex, lastLogTerm);
@@ -281,7 +283,8 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
 
     LOG_TOPIC("37e05", DEBUG, Logger::AGENCY)
         << "waitFor: index: " << index << " _commitIndex: " << ci
-        << " _lastCommitIndex: " << lastCommitIndex << " elapsedTime: " << d.count();
+        << " _lastCommitIndex: " << lastCommitIndex
+        << " elapsedTime: " << d.count();
 
     if (d.count() >= timeout) {
       return Agent::raft_commit_t::TIMEOUT;
@@ -354,7 +357,8 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
       }
       LOG_TOPIC("9ee0c", DEBUG, Logger::AGENCY)
           << "Setting _lastEmptyAcked[" << peerId << "] to time "
-          << std::chrono::duration_cast<std::chrono::microseconds>(n.time_since_epoch())
+          << std::chrono::duration_cast<std::chrono::microseconds>(
+                 n.time_since_epoch())
                  .count();
       _lastEmptyAcked[peerId] = n;
     }
@@ -373,12 +377,14 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
     auto& [lastTime, lastIndex] = _lastAckedIndex[peerId];
     LOG_TOPIC("9ee0b", DEBUG, Logger::AGENCY)
         << "Setting _lastAcked[" << peerId << "] to time "
-        << std::chrono::duration_cast<std::chrono::microseconds>(t.time_since_epoch())
+        << std::chrono::duration_cast<std::chrono::microseconds>(
+               t.time_since_epoch())
                .count();
     lastTime = t;
     if (index > lastIndex) {  // progress this follower?
       lastIndex = index;
-      if (toLog > 0) {  // We want to reset the wait time only if a package callback
+      if (toLog >
+          0) {  // We want to reset the wait time only if a package callback
         LOG_TOPIC("ba4d2", DEBUG, Logger::AGENCY)
             << "Got call back of " << toLog
             << " logs, resetting _earliestPackage to now for id " << peerId;
@@ -435,8 +441,8 @@ void Agent::logsForTrigger() {
   auto builder = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder e(builder.get());
-    auto const logs =
-        _state.get(_lowestPromise, _commitIndex.load(std::memory_order_relaxed));
+    auto const logs = _state.get(_lowestPromise,
+                                 _commitIndex.load(std::memory_order_relaxed));
 
     TRI_ASSERT(!logs.empty());
     if (!logs.empty()) {
@@ -458,7 +464,8 @@ void Agent::logsForTrigger() {
 }
 
 /// Followers' append entries
-priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leaderId,
+priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term,
+                                           std::string const& leaderId,
                                            index_t prevIndex, term_t prevTerm,
                                            index_t leaderCommitIndex,
                                            query_t const& queries) {
@@ -513,7 +520,8 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
       {
         WRITE_LOCKER(oLocker, _outputLock);
         auto ci = _commitIndex.load(std::memory_order_relaxed);
-        index_t const tmp = std::max(ci, std::min(leaderCommitIndex, lastIndex));
+        index_t const tmp =
+            std::max(ci, std::min(leaderCommitIndex, lastIndex));
         if (tmp > ci) {
           logsForTrigger();
         }
@@ -535,8 +543,9 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
       ok = false;
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC("bedb8", DEBUG, Logger::AGENCY) << "Exception during log append: " << __FILE__
-                                              << __LINE__ << " " << e.what();
+    LOG_TOPIC("bedb8", DEBUG, Logger::AGENCY)
+        << "Exception during log append: " << __FILE__ << __LINE__ << " "
+        << e.what();
   }
 
   {
@@ -551,7 +560,8 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
     _local_index = tmp;
     _waitForCV.broadcast();
     if (leaderCommitIndex >= _state.nextCompactionAfter() &&
-        payload[nqs - 1].get("index").getNumber<index_t>() >= _state.nextCompactionAfter()) {
+        payload[nqs - 1].get("index").getNumber<index_t>() >=
+            _state.nextCompactionAfter()) {
       _compactor.wakeUp();
     }
   }
@@ -560,7 +570,8 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
       << "Finished AppendEntriesRPC from " << leaderId << " with term " << term;
 
   _append_hist_msec.count(
-      duration<float, std::milli>(high_resolution_clock::now() - start).count());
+      duration<float, std::milli>(high_resolution_clock::now() - start)
+          .count());
 
   return priv_rpc_ret_t(ok, t);
 }
@@ -618,23 +629,27 @@ void Agent::sendAppendEntriesRPC() {
       index_t commitIndex = _commitIndex.load(std::memory_order_relaxed);
 
       // If the follower is behind our first log entry send last snapshot and
-      // following logs. Else try to have the follower catch up in regular order.
+      // following logs. Else try to have the follower catch up in regular
+      // order.
       bool needSnapshot = lastConfirmed < _state.firstIndex();
       if (needSnapshot) {
         lastConfirmed = _state.lastCompactionAt() - 1;
       }
 
-      LOG_TOPIC("7c578", TRACE, Logger::AGENCY) << "Getting unconfirmed from " << lastConfirmed
-                                                << " to " << lastConfirmed + 99;
+      LOG_TOPIC("7c578", TRACE, Logger::AGENCY)
+          << "Getting unconfirmed from " << lastConfirmed << " to "
+          << lastConfirmed + 99;
       // If lastConfirmed is one minus the first log entry, then this is
       // corrected in _state::get and we only get from the beginning of the
       // log.
-      std::vector<log_t> unconfirmed = _state.get(lastConfirmed, lastConfirmed + 99);
+      std::vector<log_t> unconfirmed =
+          _state.get(lastConfirmed, lastConfirmed + 99);
 
       lockTime = steady_clock::now() - startTime;
       if (lockTime.count() > 0.2) {
         LOG_TOPIC("03cb9", WARN, Logger::AGENCY)
-            << "Finding unconfirmed entries took too long: " << lockTime.count();
+            << "Finding unconfirmed entries took too long: "
+            << lockTime.count();
       }
 
       // Note that despite compaction this vector can never be empty, since
@@ -643,7 +658,8 @@ void Agent::sendAppendEntriesRPC() {
       if (unconfirmed.empty()) {
         LOG_TOPIC("0b993", ERR, Logger::AGENCY)
             << "Unexpected empty unconfirmed: "
-            << "lastConfirmed=" << lastConfirmed << " commitIndex=" << commitIndex;
+            << "lastConfirmed=" << lastConfirmed
+            << " commitIndex=" << commitIndex;
         TRI_ASSERT(false);
       }
 
@@ -654,12 +670,14 @@ void Agent::sendAppendEntriesRPC() {
 
       duration<double> m = steady_clock::now() - lastSent;
 
-      if (m.count() > _config.minPing() && lastSent.time_since_epoch().count() != 0) {
+      if (m.count() > _config.minPing() &&
+          lastSent.time_since_epoch().count() != 0) {
         LOG_TOPIC("0ddbd", DEBUG, Logger::AGENCY)
             << "Note: sent out last AppendEntriesRPC "
             << "to follower " << followerId
             << " more than minPing ago: " << m.count() << " lastAcked: "
-            << duration_cast<duration<double>>(lastAcked.time_since_epoch()).count();
+            << duration_cast<duration<double>>(lastAcked.time_since_epoch())
+                   .count();
       }
       index_t lowest = unconfirmed.front().index;
 
@@ -673,7 +691,8 @@ void Agent::sendAppendEntriesRPC() {
         // latest snapshot instead:
         bool success = false;
         try {
-          success = _state.loadLastCompactedSnapshot(snapshot, snapshotIndex, snapshotTerm);
+          success = _state.loadLastCompactedSnapshot(snapshot, snapshotIndex,
+                                                     snapshotTerm);
         } catch (std::exception const& e) {
           LOG_TOPIC("f2287", WARN, Logger::AGENCY)
               << "Exception thrown by loadLastCompactedSnapshot: " << e.what();
@@ -760,9 +779,11 @@ void Agent::sendAppendEntriesRPC() {
                  std::to_string(std::llround(steadyClockToDouble() * 1000)));
 
       // Send request
-      auto ac = std::make_shared<AgentCallback>(this, followerId, highest, toLog);
-      network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post,
-                           "/_api/agency_priv/appendEntries", std::move(buffer), reqOpts)
+      auto ac =
+          std::make_shared<AgentCallback>(this, followerId, highest, toLog);
+      network::sendRequest(
+          cp, _config.poolAt(followerId), fuerte::RestVerb::Post,
+          "/_api/agency_priv/appendEntries", std::move(buffer), reqOpts)
           .thenValue([=](network::Response r) { ac->operator()(r); });
 
       // Note the timeout is relatively long, but due to the 30 seconds
@@ -781,8 +802,10 @@ void Agent::sendAppendEntriesRPC() {
           << "Appending (" << (uint64_t)(TRI_microtime() * 1000000000.0) << ") "
           << unconfirmed.size() - 1 << " entries up to index " << highest
           << (needSnapshot ? " and a snapshot" : "") << " to follower "
-          << followerId << ". Next real log contact to " << followerId << " in: "
-          << std::chrono::duration<double, std::milli>(earliestPackage - steady_clock::now())
+          << followerId << ". Next real log contact to " << followerId
+          << " in: "
+          << std::chrono::duration<double, std::milli>(earliestPackage -
+                                                       steady_clock::now())
                  .count()
           << "ms";
     }
@@ -825,22 +848,26 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
 
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
-  reqOpts.timeout = network::Timeout(3 * _config.minPing() * _config.timeoutMult());
+  reqOpts.timeout =
+      network::Timeout(3 * _config.minPing() * _config.timeoutMult());
   reqOpts.param("term", std::to_string(_constituent.term()))
       .param("leaderId", id())
       .param("prevLogIndex", "0")
       .param("prevLogTerm", "0")
       .param("leaderCommit", std::to_string(commitIndex))
-      .param("senderTimeStamp", std::to_string(std::llround(steadyClockToDouble() * 1000)));
+      .param("senderTimeStamp",
+             std::to_string(std::llround(steadyClockToDouble() * 1000)));
 
   double now = TRI_microtime();
   network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post,
-                       "/_api/agency_priv/appendEntries", std::move(buffer), reqOpts)
+                       "/_api/agency_priv/appendEntries", std::move(buffer),
+                       reqOpts)
       .thenValue([=](network::Response r) { ac->operator()(r); });
   double diff = TRI_microtime() - now;
   if (diff > 0.01) {
     LOG_TOPIC("cfb7c", DEBUG, Logger::AGENCY)
-        << "Calling network::sendRequest took more than 1/100 of a second: " << diff;
+        << "Calling network::sendRequest took more than 1/100 of a second: "
+        << diff;
   }
 
   _constituent.notifyHeartbeatSent(followerId);
@@ -851,7 +878,8 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
   diff = TRI_microtime() - now;
   if (diff > 0.01) {
     LOG_TOPIC("cfb7b", DEBUG, Logger::AGENCY)
-        << "Logging of a line took more than 1/100 of a second, this is bad:" << diff;
+        << "Logging of a line took more than 1/100 of a second, this is bad:"
+        << diff;
   }
 }
 
@@ -911,8 +939,8 @@ void Agent::advanceCommitIndex() {
   }
 }
 
-std::tuple<futures::Future<query_t>, bool, std::string> Agent::poll(index_t const& index,
-                                                                    double const& timeout) {
+std::tuple<futures::Future<query_t>, bool, std::string> Agent::poll(
+    index_t const& index, double const& timeout) {
   using namespace std::chrono;
 
   // Please note that the AgencyCache on coordinators and dbservers depends
@@ -946,7 +974,8 @@ std::tuple<futures::Future<query_t>, bool, std::string> Agent::poll(index_t cons
       VPackObjectBuilder r(builder.get());
       builder->add(VPackValue("result"));
       VPackObjectBuilder r2(builder.get());
-      builder->add("commitIndex", VPackValue(_commitIndex.load(std::memory_order_relaxed)));
+      builder->add("commitIndex",
+                   VPackValue(_commitIndex.load(std::memory_order_relaxed)));
       builder->add("firstIndex", VPackValue(0));
       builder->add(VPackValue("readDB"));
       _readDB.get("", *builder, true);
@@ -975,15 +1004,16 @@ std::tuple<futures::Future<query_t>, bool, std::string> Agent::poll(index_t cons
   }
 
   std::lock_guard guard(_promLock);
-  auto tp = steady_clock::now() + duration_cast<milliseconds>(duration<double>(timeout));
+  auto tp = steady_clock::now() +
+            duration_cast<milliseconds>(duration<double>(timeout));
 
   try {
     auto res = _promises.emplace(tp, futures::Promise<query_t>());
     if (_lowestPromise > index) {
       _lowestPromise = index;
     }
-    return std::tuple<futures::Future<query_t>, bool, std::string>{res->second.getFuture(),
-                                                                   true, std::string()};
+    return std::tuple<futures::Future<query_t>, bool, std::string>{
+        res->second.getFuture(), true, std::string()};
   } catch (...) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Failed to add promise for polling");
@@ -1002,7 +1032,8 @@ void Agent::activateAgency() {
   syncActiveAndAcknowledged();
 
   try {
-    _state.persistActiveAgents(_config.activeToBuilder(), _config.poolToBuilder());
+    _state.persistActiveAgents(_config.activeToBuilder(),
+                               _config.poolToBuilder());
   } catch (std::exception const& e) {
     LOG_TOPIC("6578d", FATAL, Logger::AGENCY)
         << "Failed to persist active agency: " << e.what();
@@ -1094,27 +1125,30 @@ bool Agent::challengeLeadership() {
       // ensure that a leader resigns before another one even starts an
       // election. However, the Raft paper does not mention this at all. Rather,
       // in the paper it is written that the leader should resign immediately if
-      // it sees a higher term from another server. Currently we have not implemented
-      // to return the follower's term with a response to AppendEntriesRPC, so
-      // the leader cannot find out a higher term this way. The leader can,
-      // however, see a higher term in the incoming AppendEntriesRPC a new
-      // leader sends out, and it will immediately resign if it sees that. For
-      // the moment, this value here can stay. We should soon implement sending
-      // the follower's term back with each response and probably get rid of
-      // this method altogether, but this requires a bit more thought.
+      // it sees a higher term from another server. Currently we have not
+      // implemented to return the follower's term with a response to
+      // AppendEntriesRPC, so the leader cannot find out a higher term this way.
+      // The leader can, however, see a higher term in the incoming
+      // AppendEntriesRPC a new leader sends out, and it will immediately resign
+      // if it sees that. For the moment, this value here can stay. We should
+      // soon implement sending the follower's term back with each response and
+      // probably get rid of this method altogether, but this requires a bit
+      // more thought.
       if (_config.maxPing() * _config.timeoutMult() > m.count()) {
         ++good;
       }
     }
   }
-  LOG_TOPIC("0e75d", DEBUG, Logger::AGENCY) << "challengeLeadership: good=" << good;
+  LOG_TOPIC("0e75d", DEBUG, Logger::AGENCY)
+      << "challengeLeadership: good=" << good;
 
   return (good < size() / 2);  // not counting myself
 }
 
 /// Get last acknowledged responses on leader
 void Agent::lastAckedAgo(Builder& ret) const {
-  std::unordered_map<std::string, std::pair<SteadyTimePoint, index_t>> lastAckedIndex;
+  std::unordered_map<std::string, std::pair<SteadyTimePoint, index_t>>
+      lastAckedIndex;
   std::unordered_map<std::string, SteadyTimePoint> lastSent;
   index_t lastCompactionAt, nextCompactionAfter;
 
@@ -1126,11 +1160,14 @@ void Agent::lastAckedAgo(Builder& ret) const {
     nextCompactionAfter = _state.nextCompactionAfter();
   }
 
-  auto dur2str = [&](std::string const& key, SteadyTimePoint const& time) -> double {
+  auto dur2str = [&](std::string const& key,
+                     SteadyTimePoint const& time) -> double {
     return id() == key
                ? 0.0
                : 1.0e-3 *
-                     std::floor(duration<double>(steady_clock::now() - time).count() * 1.0e3);
+                     std::floor(
+                         duration<double>(steady_clock::now() - time).count() *
+                         1.0e3);
   };
 
   ret.add("lastCompactionAt", VPackValue(lastCompactionAt));
@@ -1152,7 +1189,8 @@ void Agent::lastAckedAgo(Builder& ret) const {
         ret.add("lastAckedIndex", VPackValue(pair.second));
         if (key != id()) {
           if (lsit != lastSent.end()) {
-            ret.add("lastAppend", VPackValue(dur2str(lsit->first, lsit->second)));
+            ret.add("lastAppend",
+                    VPackValue(dur2str(lsit->first, lsit->second)));
           } else {
             ret.add("lastAppend", VPackValue(dur2str(key, pair.first)));
             // This is just for the above mentioned case, which will very
@@ -1223,7 +1261,8 @@ trans_ret_t Agent::transact(query_t const& queries) {
         check_ret_t res = _spearhead.applyTransaction(query);
         if (res.successful()) {
           maxind = (query.length() == 3 && query[2].isString())
-                       ? _state.logLeaderSingle(query[0], currentTerm, query[2].copyString())
+                       ? _state.logLeaderSingle(query[0], currentTerm,
+                                                query[2].copyString())
                        : _state.logLeaderSingle(query[0], currentTerm);
           ret->add(VPackValue(maxind));
         } else {
@@ -1348,7 +1387,8 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
   // to use leading() or _constituent.leading() here, but can simply
   // look at the leaderID.
   auto leader = _constituent.leaderID();
-  if ((!loaded() && wmode != WriteMode(true, true)) || (multihost && leader != id())) {
+  if ((!loaded() && wmode != WriteMode(true, true)) ||
+      (multihost && leader != id())) {
     ++_write_no_leader;
     return write_ret_t(false, leader);
   }
@@ -1363,7 +1403,8 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
   {
     auto slice = query->slice();
     addTrxsOngoing(slice);  // remember that these are ongoing
-    auto sg = arangodb::scopeGuard([&]() noexcept { removeTrxsOngoing(slice); });
+    auto sg =
+        arangodb::scopeGuard([&]() noexcept { removeTrxsOngoing(slice); });
     // Note that once the transactions are in our log, we can remove them
     // from the list of ongoing ones, although they might not yet be committed.
     // This is because then, inquire will find them in the log and draw its
@@ -1392,7 +1433,8 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
       query_t chunk = std::make_shared<Builder>();
       {
         VPackArrayBuilder b(chunk.get());
-        for (size_t j = 0; j < _config.maxAppendSize() && l < ntrans; ++j, ++l) {
+        for (size_t j = 0; j < _config.maxAppendSize() && l < ntrans;
+             ++j, ++l) {
           chunk->add(slice.at(l));
         }
       }
@@ -1418,7 +1460,8 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
       indices.insert(indices.end(), tmp.begin(), tmp.end());
     }
     _write_hist_msec.count(
-        duration<float, std::milli>(high_resolution_clock::now() - start).count());
+        duration<float, std::milli>(high_resolution_clock::now() - start)
+            .count());
   }
 
   // Maximum log index
@@ -1512,7 +1555,8 @@ void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
   auto pit = _promises.begin();
   while (pit != _promises.end()) {
     if (pit->first < tp) {
-      auto pp = std::make_shared<futures::Promise<query_t>>(std::move(pit->second));
+      auto pp =
+          std::make_shared<futures::Promise<query_t>>(std::move(pit->second));
       scheduler->queue(RequestLane::CLUSTER_INTERNAL,
                        [pp, qu] { pp->setValue(qu); });
       pit = _promises.erase(pit);
@@ -1602,7 +1646,8 @@ void Agent::run() {
           {
             READ_LOCKER(oLocker, _outputLock);
             if (leading() && getPrepareLeadership() == 2 &&
-                _commitIndex.load(std::memory_order_relaxed) == _state.lastIndex()) {
+                _commitIndex.load(std::memory_order_relaxed) ==
+                    _state.lastIndex()) {
               commenceService = true;
             }
           }
@@ -1657,10 +1702,12 @@ void Agent::persistConfiguration(term_t t) {
             VPackObjectBuilder aa(agency.get());
             agency->add("term", VPackValue(t));
             agency->add(config_t::idStr, VPackValue(id()));
-            agency->add(config_t::activeStr, _config.activeToBuilder()->slice());
+            agency->add(config_t::activeStr,
+                        _config.activeToBuilder()->slice());
             agency->add(config_t::poolStr, _config.poolToBuilder()->slice());
             agency->add("size", VPackValue(size()));
-            agency->add(config_t::timeoutMultStr, VPackValue(_config.timeoutMult()));
+            agency->add(config_t::timeoutMultStr,
+                        VPackValue(_config.timeoutMult()));
           }
         }
       }
@@ -1781,23 +1828,26 @@ void Agent::updatePeerEndpoint(query_t const& message) {
   VPackSlice slice = message->slice();
 
   if (!slice.isObject() || slice.length() == 0) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT,
-                                   std::string("Improper greeting: ") + slice.toJson());
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT,
+        std::string("Improper greeting: ") + slice.toJson());
   }
 
   std::string uuid, endpoint;
   try {
     uuid = slice.keyAt(0).copyString();
   } catch (std::exception const& e) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT,
-                                   std::string("Cannot deal with UUID: ") + e.what());
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT,
+        std::string("Cannot deal with UUID: ") + e.what());
   }
 
   try {
     endpoint = slice.valueAt(0).copyString();
   } catch (std::exception const& e) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT,
-                                   std::string("Cannot deal with UUID: ") + e.what());
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT,
+        std::string("Cannot deal with UUID: ") + e.what());
   }
 
   updatePeerEndpoint(uuid, endpoint);
@@ -1831,7 +1881,8 @@ void Agent::notify(query_t const& message) {
   if (!slice.hasKey("term")) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM);
   }
-  _constituent.update(slice.get("id").copyString(), slice.get("term").getUInt());
+  _constituent.update(slice.get("id").copyString(),
+                      slice.get("term").getUInt());
 
   if (!slice.hasKey("active") || !slice.get("active").isArray()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_ACTIVE);
@@ -1851,7 +1902,8 @@ void Agent::notify(query_t const& message) {
 
   _config.update(message);
 
-  _state.persistActiveAgents(_config.activeToBuilder(), _config.poolToBuilder());
+  _state.persistActiveAgents(_config.activeToBuilder(),
+                             _config.poolToBuilder());
   // update causes the list of peers to change potentially
   syncActiveAndAcknowledged();
 }
@@ -1882,7 +1934,8 @@ void Agent::rebuildDBs() {
   // Apply logs from last applied index to leader's commit index
   LOG_TOPIC("b12cb", DEBUG, Logger::AGENCY)
       << "Rebuilding key-value stores from index " << lastCompactionIndex
-      << " to " << _commitIndex.load(std::memory_order_relaxed) << " " << _state;
+      << " to " << _commitIndex.load(std::memory_order_relaxed) << " "
+      << _state;
 
   {
     auto logs = _state.slices(lastCompactionIndex + 1,
@@ -1892,7 +1945,8 @@ void Agent::rebuildDBs() {
   }
   _spearhead = _readDB;
 
-  LOG_TOPIC("a66dc", INFO, Logger::AGENCY) << id() << " rebuilt key-value stores - serving.";
+  LOG_TOPIC("a66dc", INFO, Logger::AGENCY)
+      << id() << " rebuilt key-value stores - serving.";
 }
 
 /// Compact read db
@@ -2010,12 +2064,13 @@ void Agent::setPersistedState(VPackSlice const& compaction) {
     WRITE_LOCKER(oLocker, _outputLock);
     CONDITION_LOCKER(guard, _waitForCV);
     _readDB = compaction;
-    _commitIndex =
-        arangodb::basics::StringUtils::uint64(compaction.get("_key").copyString());
+    _commitIndex = arangodb::basics::StringUtils::uint64(
+        compaction.get("_key").copyString());
     _local_index = _commitIndex.load(std::memory_order_relaxed);
     _waitForCV.broadcast();
   } catch (std::exception const& e) {
-    LOG_TOPIC("70844", ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
+    LOG_TOPIC("70844", ERR, Logger::AGENCY)
+        << e.what() << " " << __FILE__ << __LINE__;
   }
 }
 
@@ -2029,7 +2084,8 @@ bool Agent::booting() { return (!_config.poolComplete()); }
 /// Compare whatever is in our list already. (ASSERT identity)
 /// If I know more immediately contact peer with my list.
 query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
-  LOG_TOPIC("1ae7b", DEBUG, Logger::AGENCY) << "Incoming gossip: " << slice.toJson();
+  LOG_TOPIC("1ae7b", DEBUG, Logger::AGENCY)
+      << "Incoming gossip: " << slice.toJson();
 
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -2084,7 +2140,8 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
   }
 
   LOG_TOPIC("9d2d9", TRACE, Logger::AGENCY)
-      << "Gossip " << ((isCallback) ? "callback" : "call") << " from " << endpoint;
+      << "Gossip " << ((isCallback) ? "callback" : "call") << " from "
+      << endpoint;
 
   if (!slice.hasKey("pool") || !slice.get("pool").isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -2093,7 +2150,8 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
   }
   VPackSlice pslice = slice.get("pool");
 
-  LOG_TOPIC("65dd8", TRACE, Logger::AGENCY) << "Received gossip " << slice.toJson();
+  LOG_TOPIC("65dd8", TRACE, Logger::AGENCY)
+      << "Received gossip " << slice.toJson();
   for (auto pair : VPackObjectIterator(pslice)) {
     if (!pair.value.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -2170,7 +2228,8 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
         }
 
         LOG_TOPIC("e85f0", DEBUG, Logger::AGENCY)
-            << "persisting new agency configuration via RAFT: " << query->toJson();
+            << "persisting new agency configuration via RAFT: "
+            << query->toJson();
 
         // Do write
         write_ret_t ret;
@@ -2178,9 +2237,11 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
           ret = write(query, WriteMode(false, true));
           arangodb::consensus::index_t max_index = 0;
           if (ret.indices.size() > 0) {
-            max_index = *std::max_element(ret.indices.begin(), ret.indices.end());
+            max_index =
+                *std::max_element(ret.indices.begin(), ret.indices.end());
           }
-          if (max_index > 0) {  // We have a RAFT index. Wait for the RAFT commit.
+          if (max_index >
+              0) {  // We have a RAFT index. Wait for the RAFT commit.
             auto result = waitFor(max_index);
             if (result != Agent::raft_commit_t::OK) {
               err =
@@ -2264,7 +2325,8 @@ void Agent::emptyCbTrashBin() {
     _cbtLock.assertNotLockedByCurrentThread();
     MUTEX_LOCKER(lock, _cbtLock);
 
-    auto early = std::chrono::duration_cast<std::chrono::seconds>(clock::now() - _callbackLastPurged)
+    auto early = std::chrono::duration_cast<std::chrono::seconds>(
+                     clock::now() - _callbackLastPurged)
                      .count() < 10;
 
     if (early || _callbackTrashBin.empty()) {
@@ -2294,7 +2356,8 @@ void Agent::emptyCbTrashBin() {
     _callbackLastPurged = std::chrono::steady_clock::now();
   }
 
-  LOG_TOPIC("12ad3", DEBUG, Logger::AGENCY) << "unobserving: " << envelope->toJson();
+  LOG_TOPIC("12ad3", DEBUG, Logger::AGENCY)
+      << "unobserving: " << envelope->toJson();
 
   // This is a best effort attempt. If either the queueing or the write fail,
   // while above _callbackTrashBin has been cleaned, entries will repopulate
@@ -2338,12 +2401,14 @@ query_t Agent::buildDB(arangodb::consensus::index_t index) {
   {
     if (index > oldIndex) {
       auto logs = _state.slices(oldIndex + 1, index);
-      store.applyLogEntries(logs, index, term, false /* do not perform callbacks */);
+      store.applyLogEntries(logs, index, term,
+                            false /* do not perform callbacks */);
     } else {
       VPackBuilder logs;
       logs.openArray();
       logs.close();
-      store.applyLogEntries(logs, index, term, false /* do not perform callbacks */);
+      store.applyLogEntries(logs, index, term,
+                            false /* do not perform callbacks */);
     }
   }
 
@@ -2357,7 +2422,8 @@ void Agent::addTrxsOngoing(Slice trxs) {
   try {
     MUTEX_LOCKER(guard, _trxsLock);
     for (auto const& trx : VPackArrayIterator(trxs)) {
-      if (trx.isArray() && trx.length() == 3 && trx[0].isObject() && trx[2].isString()) {
+      if (trx.isArray() && trx.length() == 3 && trx[0].isObject() &&
+          trx[2].isString()) {
         // only those are interesting:
         _ongoingTrxs.insert(trx[2].copyString());
       }
@@ -2370,7 +2436,8 @@ void Agent::removeTrxsOngoing(Slice trxs) noexcept {
   try {
     MUTEX_LOCKER(guard, _trxsLock);
     for (auto const& trx : VPackArrayIterator(trxs)) {
-      if (trx.isArray() && trx.length() == 3 && trx[0].isObject() && trx[2].isString()) {
+      if (trx.isArray() && trx.length() == 3 && trx[0].isObject() &&
+          trx[2].isString()) {
         // only those are interesting:
         _ongoingTrxs.erase(trx[2].copyString());
       }
@@ -2405,14 +2472,16 @@ void Agent::updateSomeConfigValues(VPackSlice data) {
   VPackSlice slice = data.get("okThreshold");
   if (slice.isNumber()) {
     d = slice.getNumber<double>();
-    LOG_TOPIC("12341", DEBUG, Logger::SUPERVISION) << "Updating okThreshold to " << d;
+    LOG_TOPIC("12341", DEBUG, Logger::SUPERVISION)
+        << "Updating okThreshold to " << d;
     _config.setSupervisionOkThreshold(d);
     _supervision.setOkThreshold(d);
   }
   slice = data.get("gracePeriod");
   if (slice.isNumber()) {
     d = slice.getNumber<double>();
-    LOG_TOPIC("12342", DEBUG, Logger::SUPERVISION) << "Updating gracePeriod to " << d;
+    LOG_TOPIC("12342", DEBUG, Logger::SUPERVISION)
+        << "Updating gracePeriod to " << d;
     _config.setSupervisionGracePeriod(d);
     _supervision.setGracePeriod(d);
   }
@@ -2429,7 +2498,8 @@ void Agent::syncActiveAndAcknowledged() {
   {
     _tiLock.assertNotLockedByCurrentThread();
     MUTEX_LOCKER(tiLocker, _tiLock);
-    // The number of Agents is small, so we can afford to always scan linearly here
+    // The number of Agents is small, so we can afford to always scan linearly
+    // here
     for (auto const& peer : _config.active()) {
       if (_lastAckedIndex.find(peer) == _lastAckedIndex.end()) {
         _lastAckedIndex.emplace(peer, std::make_pair(steady_clock::now(), 0));

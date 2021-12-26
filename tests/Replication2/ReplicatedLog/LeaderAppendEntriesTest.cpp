@@ -141,7 +141,8 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_set_by_config) {
   auto config = LogConfig{};
   config.waitForSync = true;
   config.writeConcern = 2;
-  auto leader = leaderLog->becomeLeader(config, "leader", LogTerm{4}, {follower});
+  auto leader =
+      leaderLog->becomeLeader(config, "leader", LogTerm{4}, {follower});
 
   auto const firstIdx =
       leader->insert(LogPayload::createFromString("first entry"), false,
@@ -165,7 +166,8 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_set_by_config) {
   }
 }
 
-// TODO Enable this test, it's currently known to fail, as it's not yet implemented.
+// TODO Enable this test, it's currently known to fail, as it's not yet
+// implemented.
 TEST_F(LeaderAppendEntriesTest, DISABLED_test_wait_for_sync_flag_set_by_param) {
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto follower = std::make_shared<FakeFollower>("follower");
@@ -173,7 +175,8 @@ TEST_F(LeaderAppendEntriesTest, DISABLED_test_wait_for_sync_flag_set_by_param) {
   auto config = LogConfig{};
   config.waitForSync = false;
   config.writeConcern = 2;
-  auto leader = leaderLog->becomeLeader(config, "leader", LogTerm{4}, {follower});
+  auto leader =
+      leaderLog->becomeLeader(config, "leader", LogTerm{4}, {follower});
 
   auto const firstIdx =
       leader->insert(LogPayload::createFromString("first entry"), true,

@@ -36,7 +36,8 @@ void UnconfiguredStatus::toVelocyPack(velocypack::Builder& builder) const {
   builder.add("role", VPackValue("unconfigured"));
 }
 
-auto UnconfiguredStatus::fromVelocyPack(velocypack::Slice slice) -> UnconfiguredStatus {
+auto UnconfiguredStatus::fromVelocyPack(velocypack::Slice slice)
+    -> UnconfiguredStatus {
   TRI_ASSERT(slice.get("role").isEqualString("unconfigured"));
   return {};
 }
@@ -57,7 +58,8 @@ auto FollowerStatus::fromVelocyPack(velocypack::Slice slice) -> FollowerStatus {
   TRI_ASSERT(slice.get("role").isEqualString(StaticStrings::Follower));
   FollowerStatus status;
   status.term = slice.get(StaticStrings::Term).extract<LogTerm>();
-  status.largestCommonIndex = slice.get("largestCommonIndex").extract<LogIndex>();
+  status.largestCommonIndex =
+      slice.get("largestCommonIndex").extract<LogIndex>();
   status.local = LogStatistics::fromVelocyPack(slice);
   if (auto leader = slice.get(StaticStrings::Leader); !leader.isNone()) {
     status.leader = leader.copyString();
@@ -87,10 +89,12 @@ auto LeaderStatus::fromVelocyPack(velocypack::Slice slice) -> LeaderStatus {
   LeaderStatus status;
   status.term = slice.get(StaticStrings::Term).extract<LogTerm>();
   status.local = LogStatistics::fromVelocyPack(slice.get("local"));
-  status.largestCommonIndex = slice.get("largestCommonIndex").extract<LogIndex>();
+  status.largestCommonIndex =
+      slice.get("largestCommonIndex").extract<LogIndex>();
   status.commitLagMS = std::chrono::duration<double, std::milli>{
       slice.get("commitLagMS").extract<double>()};
-  for (auto [key, value] : VPackObjectIterator(slice.get(StaticStrings::Follower))) {
+  for (auto [key, value] :
+       VPackObjectIterator(slice.get(StaticStrings::Follower))) {
     auto id = ParticipantId{key.copyString()};
     auto stat = FollowerStatistics::fromVelocyPack(value);
     status.follower.emplace(std::move(id), stat);
@@ -110,12 +114,14 @@ void FollowerStatistics::toVelocyPack(velocypack::Builder& builder) const {
   internalState.toVelocyPack(builder);
 }
 
-auto FollowerStatistics::fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics {
+auto FollowerStatistics::fromVelocyPack(velocypack::Slice slice)
+    -> FollowerStatistics {
   FollowerStatistics stats;
   stats.commitIndex = slice.get(StaticStrings::CommitIndex).extract<LogIndex>();
-  stats.spearHead = TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
-  stats.lastErrorReason =
-      AppendEntriesErrorReason{slice.get("lastErrorReason").getNumericValue<int>()};
+  stats.spearHead =
+      TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
+  stats.lastErrorReason = AppendEntriesErrorReason{
+      slice.get("lastErrorReason").getNumericValue<int>()};
   stats.lastRequestLatencyMS = std::chrono::duration<double, std::milli>{
       slice.get("lastRequestLatencyMS").getDouble()};
   stats.internalState = FollowerState::fromVelocyPack(slice.get("state"));
@@ -124,29 +130,27 @@ auto FollowerStatistics::fromVelocyPack(velocypack::Slice slice) -> FollowerStat
 
 auto LogStatus::getCurrentTerm() const noexcept -> std::optional<LogTerm> {
   return std::visit(
-      overload{[&](replicated_log::UnconfiguredStatus) -> std::optional<LogTerm> {
-                 return std::nullopt;
-               },
-               [&](replicated_log::LeaderStatus const& s) -> std::optional<LogTerm> {
-                 return s.term;
-               },
-               [&](replicated_log::FollowerStatus const& s) -> std::optional<LogTerm> {
-                 return s.term;
-               }},
+      overload{
+          [&](replicated_log::UnconfiguredStatus) -> std::optional<LogTerm> {
+            return std::nullopt;
+          },
+          [&](replicated_log::LeaderStatus const& s) -> std::optional<LogTerm> {
+            return s.term;
+          },
+          [&](replicated_log::FollowerStatus const& s)
+              -> std::optional<LogTerm> { return s.term; }},
       _variant);
 }
 
-auto LogStatus::getLocalStatistics() const noexcept -> std::optional<LogStatistics> {
+auto LogStatus::getLocalStatistics() const noexcept
+    -> std::optional<LogStatistics> {
   return std::visit(
-      overload{[&](replicated_log::UnconfiguredStatus const& s) -> std::optional<LogStatistics> {
-                 return std::nullopt;
-               },
-               [&](replicated_log::LeaderStatus const& s) -> std::optional<LogStatistics> {
-                 return s.local;
-               },
-               [&](replicated_log::FollowerStatus const& s) -> std::optional<LogStatistics> {
-                 return s.local;
-               }},
+      overload{[&](replicated_log::UnconfiguredStatus const& s)
+                   -> std::optional<LogStatistics> { return std::nullopt; },
+               [&](replicated_log::LeaderStatus const& s)
+                   -> std::optional<LogStatistics> { return s.local; },
+               [&](replicated_log::FollowerStatus const& s)
+                   -> std::optional<LogStatistics> { return s.local; }},
       _variant);
 }
 

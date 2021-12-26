@@ -51,7 +51,9 @@ using namespace arangodb::options;
 // -----------------------------------------------------------------------------
 
 MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Metrics"), _export(true), _exportReadWriteMetrics(false) {
+    : ApplicationFeature(server, "Metrics"),
+      _export(true),
+      _exportReadWriteMetrics(false) {
   setOptional(false);
   startsAfter<LoggerFeature>();
   startsBefore<GreetingsFeaturePhase>();
@@ -365,32 +367,37 @@ void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       std::make_unique<ServerStatistics>(*this, StatisticsFeature::time());
 
   options
-      ->addOption("--server.export-metrics-api", "turn metrics API on or off",
-                  new BooleanParameter(&_export),
-                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption(
+          "--server.export-metrics-api", "turn metrics API on or off",
+          new BooleanParameter(&_export),
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setIntroducedIn(30600);
 
   options
-      ->addOption("--server.export-read-write-metrics",
-                  "turn metrics for document read/write metrics on or off",
-                  new BooleanParameter(&_exportReadWriteMetrics),
-                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption(
+          "--server.export-read-write-metrics",
+          "turn metrics for document read/write metrics on or off",
+          new BooleanParameter(&_exportReadWriteMetrics),
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setIntroducedIn(30707);
 }
 
-auto MetricsFeature::doAdd(metrics::Builder& builder) -> std::shared_ptr<::Metric> {
+auto MetricsFeature::doAdd(metrics::Builder& builder)
+    -> std::shared_ptr<::Metric> {
   auto metric = builder.build();
   auto key = builder.key();
   bool success = false;
   {
     std::lock_guard<std::recursive_mutex> guard(_lock);
     success = _registry
-                  .try_emplace(std::move(key), std::dynamic_pointer_cast<::Metric>(metric))
+                  .try_emplace(std::move(key),
+                               std::dynamic_pointer_cast<::Metric>(metric))
                   .second;
   }
   if (!success) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, builder.type() + builder.name() +
-                                                           " already exists");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        builder.type() + builder.name() + " already exists");
   }
 
   return metric;
@@ -433,8 +440,9 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
     if (_globalLabels.find("role") == _globalLabels.end() &&
         ServerState::instance() != nullptr &&
         ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED) {
-      _globalLabels.try_emplace("role", ServerState::roleToString(
-                                            ServerState::instance()->getRole()));
+      _globalLabels.try_emplace(
+          "role",
+          ServerState::roleToString(ServerState::instance()->getRole()));
       changed = true;
     }
     if (changed) {
@@ -480,7 +488,8 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
           }
         }
         alternativeName = name;
-      } else if (auto iter = v2suppressions.find(name); iter != v2suppressions.end()) {
+      } else if (auto iter = v2suppressions.find(name);
+                 iter != v2suppressions.end()) {
         continue;
       }
       if (lastType != name) {

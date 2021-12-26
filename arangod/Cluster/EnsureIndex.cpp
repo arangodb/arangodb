@@ -45,7 +45,8 @@ using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
-EnsureIndex::EnsureIndex(MaintenanceFeature& feature, ActionDescription const& desc)
+EnsureIndex::EnsureIndex(MaintenanceFeature& feature,
+                         ActionDescription const& desc)
     : ActionBase(feature, desc) {
   std::stringstream error;
 
@@ -80,7 +81,8 @@ EnsureIndex::EnsureIndex(MaintenanceFeature& feature, ActionDescription const& d
   TRI_ASSERT(desc.has(FIELDS));
 
   if (!error.str().empty()) {
-    LOG_TOPIC("8473a", ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+    LOG_TOPIC("8473a", ERR, Logger::MAINTENANCE)
+        << "EnsureIndex: " << error.str();
     result(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
@@ -104,8 +106,10 @@ bool EnsureIndex::first() {
     auto col = vocbase->lookupCollection(shard);
     if (col == nullptr) {
       std::stringstream error;
-      error << "failed to lookup local collection " << shard << " in database " + database;
-      LOG_TOPIC("12767", ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+      error << "failed to lookup local collection " << shard
+            << " in database " + database;
+      LOG_TOPIC("12767", ERR, Logger::MAINTENANCE)
+          << "EnsureIndex: " << error.str();
       result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       return false;
     }
@@ -119,7 +123,8 @@ bool EnsureIndex::first() {
 
     if (_priority != maintenance::SLOW_OP_PRIORITY) {
       uint64_t docCount = 0;
-      if (Result res = arangodb::maintenance::collectionCount(*col, docCount); res.fail()) {
+      if (Result res = arangodb::maintenance::collectionCount(*col, docCount);
+          res.fail()) {
         std::stringstream error;
         error << "failed to get count of local collection " << shard
               << " in database " << database << ": " << res.errorMessage();
@@ -146,7 +151,8 @@ bool EnsureIndex::first() {
     }
 
     VPackBuilder index;
-    auto res = methods::Indexes::ensureIndex(col.get(), body.slice(), true, index);
+    auto res =
+        methods::Indexes::ensureIndex(col.get(), body.slice(), true, index);
     result(res);
 
     if (res.ok()) {
@@ -162,9 +168,10 @@ bool EnsureIndex::first() {
 
       if (!res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
           !res.is(TRI_ERROR_BAD_PARAMETER)) {
-        // "unique constraint violated" is an expected error that can happen at any time.
-        // it does not justify logging and alerting DBAs. The error will be passed back
-        // to the caller anyway, so not logging it seems to be good.
+        // "unique constraint violated" is an expected error that can happen at
+        // any time. it does not justify logging and alerting DBAs. The error
+        // will be passed back to the caller anyway, so not logging it seems to
+        // be good.
         LOG_TOPIC("bc555", WARN, Logger::MAINTENANCE)
             << "EnsureIndex: " << _description << ", error: " << error.str();
       }
@@ -178,7 +185,8 @@ bool EnsureIndex::first() {
         eb.add(ID, VPackValue(id));
       }
 
-      LOG_TOPIC("397e2", DEBUG, Logger::MAINTENANCE) << "Reporting error " << eb.toJson();
+      LOG_TOPIC("397e2", DEBUG, Logger::MAINTENANCE)
+          << "Reporting error " << eb.toJson();
 
       // FIXMEMAINTENANCE: If this action is refused due to missing
       // components in description, no IndexError gets produced. But
@@ -193,7 +201,8 @@ bool EnsureIndex::first() {
   } catch (std::exception const& e) {  // Guard failed?
     std::stringstream error;
     error << "action " << _description << " failed with exception " << e.what();
-    LOG_TOPIC("445e5", WARN, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+    LOG_TOPIC("445e5", WARN, Logger::MAINTENANCE)
+        << "EnsureIndex: " << error.str();
     result(TRI_ERROR_INTERNAL, error.str());
     return false;
   }

@@ -63,19 +63,21 @@ std::unique_ptr<VPackBuilder> merge(VPackSlice document, std::string const& key,
 }
 }  // namespace
 
-template <typename Modifier>
-SingleRemoteModificationExecutor<Modifier>::SingleRemoteModificationExecutor(Fetcher& fetcher,
-                                                                             Infos& info)
+template<typename Modifier>
+SingleRemoteModificationExecutor<Modifier>::SingleRemoteModificationExecutor(
+    Fetcher& fetcher, Infos& info)
     : _trx(info._query.newTrxContext()),
       _info(info),
       _upstreamState(ExecutionState::HASMORE) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
 };
 
-template <typename Modifier>
+template<typename Modifier>
 [[nodiscard]] auto SingleRemoteModificationExecutor<Modifier>::produceRows(
     AqlItemBlockInputRange& input, OutputAqlItemRow& output)
-    -> std::tuple<ExecutorState, typename SingleRemoteModificationExecutor<Modifier>::Stats, AqlCall> {
+    -> std::tuple<ExecutorState,
+                  typename SingleRemoteModificationExecutor<Modifier>::Stats,
+                  AqlCall> {
   auto stats = Stats{};
 
   if (input.hasDataRow()) {
@@ -89,10 +91,12 @@ template <typename Modifier>
   return {input.upstreamState(), stats, AqlCall{}};
 }
 
-template <typename Modifier>
+template<typename Modifier>
 [[nodiscard]] auto SingleRemoteModificationExecutor<Modifier>::skipRowsRange(
     AqlItemBlockInputRange& input, AqlCall& call)
-    -> std::tuple<ExecutorState, typename SingleRemoteModificationExecutor<Modifier>::Stats, size_t, AqlCall> {
+    -> std::tuple<ExecutorState,
+                  typename SingleRemoteModificationExecutor<Modifier>::Stats,
+                  size_t, AqlCall> {
   auto stats = Stats{};
 
   if (input.hasDataRow()) {
@@ -106,9 +110,11 @@ template <typename Modifier>
   return {input.upstreamState(), stats, 0, AqlCall{}};
 }
 
-template <typename Modifier>
-auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOperation(
-    InputAqlItemRow& input, Stats& stats) -> OperationResult {
+template<typename Modifier>
+auto SingleRemoteModificationExecutor<
+    Modifier>::doSingleRemoteModificationOperation(InputAqlItemRow& input,
+                                                   Stats& stats)
+    -> OperationResult {
   _info._options.silent = false;
   _info._options.returnOld =
       _info._options.returnOld || _info._outputRegisterId.isValid();
@@ -123,7 +129,8 @@ auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
 
   int possibleWrites = 0;  // TODO - get real statistic values!
 
-  if (_info._key.empty() && _info._input1RegisterId.value() == RegisterId::maxRegisterId) {
+  if (_info._key.empty() &&
+      _info._input1RegisterId.value() == RegisterId::maxRegisterId) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
                                    "missing document reference");
   }
@@ -143,9 +150,11 @@ auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
   }
 
   if (isIndex) {
-    result = _trx.document(_info._aqlCollection->name(), inSlice, _info._options);
+    result =
+        _trx.document(_info._aqlCollection->name(), inSlice, _info._options);
   } else if (isInsert) {
-    if (_info._options.returnOld && !_info._options.isOverwriteModeUpdateReplace()) {
+    if (_info._options.returnOld &&
+        !_info._options.isOverwriteModeUpdateReplace()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
           "OLD is only available when using INSERT with overwriteModes "
@@ -157,12 +166,15 @@ auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
     result = _trx.remove(_info._aqlCollection->name(), inSlice, _info._options);
     possibleWrites = 1;
   } else if (isReplace) {
-    if (_info._replaceIndex && _info._input1RegisterId.value() == RegisterId::maxRegisterId) {
+    if (_info._replaceIndex &&
+        _info._input1RegisterId.value() == RegisterId::maxRegisterId) {
       // we have a FOR .. IN FILTER doc._key == ... REPLACE - no WITH.
       // in this case replace needs to behave as if it was UPDATE.
-      result = _trx.update(_info._aqlCollection->name(), inSlice, _info._options);
+      result =
+          _trx.update(_info._aqlCollection->name(), inSlice, _info._options);
     } else {
-      result = _trx.replace(_info._aqlCollection->name(), inSlice, _info._options);
+      result =
+          _trx.replace(_info._aqlCollection->name(), inSlice, _info._options);
     }
     possibleWrites = 1;
   } else if (isUpdate) {
@@ -174,13 +186,15 @@ auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
   if (!result.ok()) {
     if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
         (isIndex || (isUpdate && _info._replaceIndex) ||
-         (isRemove && _info._replaceIndex) || (isReplace && _info._replaceIndex))) {
+         (isRemove && _info._replaceIndex) ||
+         (isReplace && _info._replaceIndex))) {
       // document not there is not an error in this situation.
       // FOR ... FILTER ... REMOVE wouldn't invoke REMOVE in first place, so
       // don't throw an excetpion.
       return result;
     } else if (!_info._ignoreErrors) {  // TODO remove if
-      THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
+      THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(),
+                                     result.errorMessage());
     }
 
     if (isIndex) {
@@ -193,12 +207,16 @@ auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
   return result;
 }
 
-template <typename Modifier>
-auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOutput(
-    InputAqlItemRow& input, OutputAqlItemRow& output, OperationResult& result) -> void {
+template<typename Modifier>
+auto SingleRemoteModificationExecutor<
+    Modifier>::doSingleRemoteModificationOutput(InputAqlItemRow& input,
+                                                OutputAqlItemRow& output,
+                                                OperationResult& result)
+    -> void {
   OperationOptions& options = _info._options;
 
-  if (!(_info._outputRegisterId.isValid() || _info._outputOldRegisterId.isValid() ||
+  if (!(_info._outputRegisterId.isValid() ||
+        _info._outputOldRegisterId.isValid() ||
         _info._outputNewRegisterId.isValid())) {
     if (_info._hasParent) {
       output.copyRow(input);
@@ -222,7 +240,8 @@ auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOutpu
   VPackSlice oldDocument = VPackSlice::nullSlice();
   VPackSlice newDocument = VPackSlice::nullSlice();
   if (!isIndex && outDocument.isObject()) {
-    if (_info._outputNewRegisterId.isValid() && outDocument.hasKey(StaticStrings::New)) {
+    if (_info._outputNewRegisterId.isValid() &&
+        outDocument.hasKey(StaticStrings::New)) {
       newDocument = outDocument.get(StaticStrings::New);
     }
     if (outDocument.hasKey(StaticStrings::Old)) {
@@ -233,7 +252,8 @@ auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOutpu
     }
   }
 
-  TRI_ASSERT(_info._outputRegisterId.isValid() || _info._outputOldRegisterId.isValid() ||
+  TRI_ASSERT(_info._outputRegisterId.isValid() ||
+             _info._outputOldRegisterId.isValid() ||
              _info._outputNewRegisterId.isValid());
 
   // place documents as in the out variable slots of the result

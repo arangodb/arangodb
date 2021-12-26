@@ -41,27 +41,33 @@ using namespace arangodb::aql;
 // --SECTION--                          ViewExpressionContextBase implementation
 // -----------------------------------------------------------------------------
 
-void ViewExpressionContextBase::registerWarning(ErrorCode errorCode, char const* msg) {
+void ViewExpressionContextBase::registerWarning(ErrorCode errorCode,
+                                                char const* msg) {
   _query->warnings().registerWarning(errorCode, msg);
 }
 
-void ViewExpressionContextBase::registerError(ErrorCode errorCode, char const* msg) {
+void ViewExpressionContextBase::registerError(ErrorCode errorCode,
+                                              char const* msg) {
   _query->warnings().registerError(errorCode, msg);
 }
 
-icu::RegexMatcher* ViewExpressionContextBase::buildRegexMatcher(char const* ptr, size_t length,
-                                                                bool caseInsensitive) {
-  return _aqlFunctionsInternalCache->buildRegexMatcher(ptr, length, caseInsensitive);
+icu::RegexMatcher* ViewExpressionContextBase::buildRegexMatcher(
+    char const* ptr, size_t length, bool caseInsensitive) {
+  return _aqlFunctionsInternalCache->buildRegexMatcher(ptr, length,
+                                                       caseInsensitive);
 }
 
-icu::RegexMatcher* ViewExpressionContextBase::buildLikeMatcher(char const* ptr, size_t length,
-                                                               bool caseInsensitive) {
-  return _aqlFunctionsInternalCache->buildLikeMatcher(ptr, length, caseInsensitive);
+icu::RegexMatcher* ViewExpressionContextBase::buildLikeMatcher(
+    char const* ptr, size_t length, bool caseInsensitive) {
+  return _aqlFunctionsInternalCache->buildLikeMatcher(ptr, length,
+                                                      caseInsensitive);
 }
 
 icu::RegexMatcher* ViewExpressionContextBase::buildSplitMatcher(
-    AqlValue splitExpression, velocypack::Options const* opts, bool& isEmptyExpression) {
-  return _aqlFunctionsInternalCache->buildSplitMatcher(splitExpression, opts, isEmptyExpression);
+    AqlValue splitExpression, velocypack::Options const* opts,
+    bool& isEmptyExpression) {
+  return _aqlFunctionsInternalCache->buildSplitMatcher(splitExpression, opts,
+                                                       isEmptyExpression);
 }
 
 arangodb::ValidatorBase* ViewExpressionContextBase::buildValidator(
@@ -81,7 +87,8 @@ bool ViewExpressionContextBase::killed() const { return _query->killed(); }
 // --SECTION--                              ViewExpressionContext implementation
 // -----------------------------------------------------------------------------
 
-AqlValue ViewExpressionContext::getVariableValue(Variable const* var, bool doCopy,
+AqlValue ViewExpressionContext::getVariableValue(Variable const* var,
+                                                 bool doCopy,
                                                  bool& mustDestroy) const {
   TRI_ASSERT(var);
 

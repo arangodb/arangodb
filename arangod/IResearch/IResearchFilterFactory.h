@@ -54,7 +54,8 @@ struct FilterFactory {
   /// @brief determine if the 'node' can be converted into an iresearch filter
   ///        if 'filter' != nullptr then also append the iresearch filter there
   ////////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result filter(irs::boolean_filter* filter, QueryContext const& ctx,
+  static arangodb::Result filter(irs::boolean_filter* filter,
+                                 QueryContext const& ctx,
                                  arangodb::aql::AstNode const& node);
 };  // FilterFactory
 

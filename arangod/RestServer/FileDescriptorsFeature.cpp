@@ -79,19 +79,21 @@ struct FileDescriptors {
   static rlim_t recommendedMinimum() {
     // check if we are running under Valgrind...
     char const* v = getenv("LD_PRELOAD");
-    if (v != nullptr &&
-        (strstr(v, "/valgrind/") != nullptr || strstr(v, "/vgpreload") != nullptr)) {
+    if (v != nullptr && (strstr(v, "/valgrind/") != nullptr ||
+                         strstr(v, "/vgpreload") != nullptr)) {
       // valgrind will somehow reset the ulimit values to some very low values.
       return requiredMinimum;
     }
 
 #ifdef __APPLE__
-    // some MacOS versions disallow raising file descriptor limits higher than this 🙄
+    // some MacOS versions disallow raising file descriptor limits higher than
+    // this 🙄
     return 8192;
 #else
-    // on Linux, we will also use 8192 for now. this should be low enough so that it
-    // doesn't cause too much trouble when upgrading. however, this is not a high
-    // enough value to operate with larger amounts of data! it is a MINIMUM!
+    // on Linux, we will also use 8192 for now. this should be low enough so
+    // that it doesn't cause too much trouble when upgrading. however, this is
+    // not a high enough value to operate with larger amounts of data! it is a
+    // MINIMUM!
     return 8192;
 #endif
   }
@@ -109,14 +111,16 @@ struct FileDescriptors {
   }
 };
 
-FileDescriptorsFeature::FileDescriptorsFeature(application_features::ApplicationServer& server)
+FileDescriptorsFeature::FileDescriptorsFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, "FileDescriptors"),
       _descriptorsMinimum(FileDescriptors::recommendedMinimum()) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 }
 
-void FileDescriptorsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void FileDescriptorsFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--server.descriptors-minimum",
       "minimum number of file descriptors needed to start (0 = no minimum)",
@@ -126,7 +130,8 @@ void FileDescriptorsFeature::collectOptions(std::shared_ptr<ProgramOptions> opti
                                    arangodb::options::Flags::OsMac));
 }
 
-void FileDescriptorsFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void FileDescriptorsFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> options) {
   if (_descriptorsMinimum > 0 &&
       (_descriptorsMinimum < FileDescriptors::requiredMinimum ||
        _descriptorsMinimum > std::numeric_limits<rlim_t>::max())) {
@@ -148,14 +153,16 @@ void FileDescriptorsFeature::start() {
       << FileDescriptors::stringify(current.hard) << ", soft limit is "
       << FileDescriptors::stringify(current.soft);
 
-  rlim_t const required = std::max<rlim_t>(static_cast<rlim_t>(_descriptorsMinimum),
-                                           FileDescriptors::requiredMinimum);
+  rlim_t const required =
+      std::max<rlim_t>(static_cast<rlim_t>(_descriptorsMinimum),
+                       FileDescriptors::requiredMinimum);
 
   if (current.soft < required) {
     std::stringstream s;
     s << "file-descriptors (nofiles) soft limit is too low, currently "
-      << FileDescriptors::stringify(current.soft) << ". please raise to at least "
-      << required << " (e.g. via ulimit -n " << required << ") or"
+      << FileDescriptors::stringify(current.soft)
+      << ". please raise to at least " << required << " (e.g. via ulimit -n "
+      << required << ") or"
       << " adjust the value of the startup option "
          "--servers.descriptors-minimum";
     if (_descriptorsMinimum == 0) {
@@ -179,7 +186,8 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
     if (recommended > 0) {
       if (current.hard < recommended) {
         LOG_TOPIC("0835c", DEBUG, arangodb::Logger::SYSCALL)
-            << "hard limit " << current.hard << " is too small, trying to raise";
+            << "hard limit " << current.hard
+            << " is too small, trying to raise";
 
         FileDescriptors copy = current;
         copy.hard = recommended;
@@ -203,7 +211,8 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
 #endif
       if (current.soft < recommended) {
         LOG_TOPIC("2940e", DEBUG, arangodb::Logger::SYSCALL)
-            << "soft limit " << current.soft << " is too small, trying to raise";
+            << "soft limit " << current.soft
+            << " is too small, trying to raise";
 
         FileDescriptors copy = current;
         copy.soft = recommended;

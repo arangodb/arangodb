@@ -57,7 +57,8 @@ AqlExecuteResult::AqlExecuteResult(ExecutionState state, SkipResult skipped,
 
   // noskip && no data => state != HASMORE
   // <=> skipped || data || state != HASMORE
-  TRI_ASSERT(!_skipped.nothingSkipped() || (_block != nullptr && _block->numRows() > 0) ||
+  TRI_ASSERT(!_skipped.nothingSkipped() ||
+             (_block != nullptr && _block->numRows() > 0) ||
              _state != ExecutionState::HASMORE);
 }
 
@@ -73,8 +74,9 @@ auto AqlExecuteResult::block() const noexcept -> SharedAqlItemBlockPtr const& {
   return _block;
 }
 
-void AqlExecuteResult::toVelocyPack(velocypack::Builder& builder,
-                                    velocypack::Options const* const options) const {
+void AqlExecuteResult::toVelocyPack(
+    velocypack::Builder& builder,
+    velocypack::Options const* const options) const {
   using namespace arangodb::velocypack;
   auto const stateToValue = [](ExecutionState state) -> Value {
     switch (state) {
@@ -108,9 +110,10 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
     -> ResultT<AqlExecuteResult> {
   if (ADB_UNLIKELY(!slice.isObject())) {
     using namespace std::string_literals;
-    return Result(TRI_ERROR_TYPE_ERROR,
-                  "When deserializating AqlExecuteResult: Expected object, got "s +
-                      slice.typeName());
+    return Result(
+        TRI_ERROR_TYPE_ERROR,
+        "When deserializating AqlExecuteResult: Expected object, got "s +
+            slice.typeName());
   }
 
   auto expectedPropertiesFound = std::map<std::string_view, bool>{};
@@ -122,7 +125,8 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
   auto skipped = SkipResult{};
   auto block = SharedAqlItemBlockPtr{};
 
-  auto const readState = [](velocypack::Slice slice) -> ResultT<ExecutionState> {
+  auto const readState =
+      [](velocypack::Slice slice) -> ResultT<ExecutionState> {
     if (ADB_UNLIKELY(!slice.isString())) {
       auto message = std::string{
           "When deserializing AqlExecuteResult: When reading state: "
@@ -145,7 +149,9 @@ auto AqlExecuteResult::fromVelocyPack(velocypack::Slice const slice,
     }
   };
 
-  auto const readBlock = [&itemBlockManager](velocypack::Slice slice) -> ResultT<SharedAqlItemBlockPtr> {
+  auto const readBlock =
+      [&itemBlockManager](
+          velocypack::Slice slice) -> ResultT<SharedAqlItemBlockPtr> {
     if (slice.isNull()) {
       return SharedAqlItemBlockPtr{nullptr};
     }

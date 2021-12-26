@@ -49,7 +49,8 @@ class ExportFeature final : public application_features::ApplicationFeature,
   ExportFeature(application_features::ApplicationServer& server, int* result);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions> options) override;
+  void validateOptions(
+      std::shared_ptr<options::ProgramOptions> options) override;
   void prepare() override final;
   void start() override final;
 
@@ -67,9 +68,9 @@ class ExportFeature final : public application_features::ApplicationFeature,
                         std::string const& name, int deep = 0);
 
   void writeToFile(ManagedDirectory::File& fd, std::string const& string);
-  std::shared_ptr<VPackBuilder> httpCall(httpclient::SimpleHttpClient* httpClient,
-                                         std::string const& url, arangodb::rest::RequestType,
-                                         std::string postBody = "");
+  std::shared_ptr<VPackBuilder> httpCall(
+      httpclient::SimpleHttpClient* httpClient, std::string const& url,
+      arangodb::rest::RequestType, std::string postBody = "");
 
   void appendCsvStringValue(std::string& output, std::string const& value);
 

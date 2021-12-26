@@ -33,24 +33,28 @@ namespace iresearch {
   return true;
 }
 
-/*static*/ irs::analysis::analyzer::ptr IdentityAnalyzer::make(irs::string_ref const& /*args*/) {
+/*static*/ irs::analysis::analyzer::ptr IdentityAnalyzer::make(
+    irs::string_ref const& /*args*/) {
   return std::make_unique<IdentityAnalyzer>();
 }
 
-/*static*/ bool IdentityAnalyzer::normalize_json(const irs::string_ref& /*args*/,
-                                                 std::string& out) {
+/*static*/ bool IdentityAnalyzer::normalize_json(
+    const irs::string_ref& /*args*/, std::string& out) {
   out = "{}";
   return true;
 }
 
-/*static*/ irs::analysis::analyzer::ptr IdentityAnalyzer::make_json(irs::string_ref const& /*args*/) {
+/*static*/ irs::analysis::analyzer::ptr IdentityAnalyzer::make_json(
+    irs::string_ref const& /*args*/) {
   return std::make_unique<IdentityAnalyzer>();
 }
 
 IdentityAnalyzer::IdentityAnalyzer() noexcept
-    : irs::analysis::analyzer(irs::type<IdentityAnalyzer>::get()), _empty(true) {}
+    : irs::analysis::analyzer(irs::type<IdentityAnalyzer>::get()),
+      _empty(true) {}
 
-irs::attribute* IdentityAnalyzer::get_mutable(irs::type_info::type_id type) noexcept {
+irs::attribute* IdentityAnalyzer::get_mutable(
+    irs::type_info::type_id type) noexcept {
   if (type == irs::type<irs::increment>::id()) {
     return &_inc;
   }

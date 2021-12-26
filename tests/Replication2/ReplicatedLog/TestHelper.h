@@ -69,7 +69,8 @@ struct ReplicatedLogTest : ::testing::Test {
                                                LoggerContext(Logger::FIXME));
   }
 
-  auto makeReplicatedLogWithAsyncMockLog(LogId id) -> std::shared_ptr<TestReplicatedLog> {
+  auto makeReplicatedLogWithAsyncMockLog(LogId id)
+      -> std::shared_ptr<TestReplicatedLog> {
     auto persisted = std::make_shared<AsyncMockLog>(id);
     _persistedLogs[id] = persisted;
     auto core = std::make_unique<LogCore>(persisted);
@@ -81,7 +82,8 @@ struct ReplicatedLogTest : ::testing::Test {
 
   auto stopAsyncMockLogs() -> void {
     for (auto const& it : _persistedLogs) {
-      if (auto log = std::dynamic_pointer_cast<AsyncMockLog>(it.second); log != nullptr) {
+      if (auto log = std::dynamic_pointer_cast<AsyncMockLog>(it.second);
+          log != nullptr) {
         log->stop();
       }
     }

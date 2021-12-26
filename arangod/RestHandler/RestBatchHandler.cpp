@@ -40,8 +40,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestBatchHandler::RestBatchHandler(application_features::ApplicationServer& server,
-                                   GeneralRequest* request, GeneralResponse* response)
+RestBatchHandler::RestBatchHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response), _errors(0) {}
 
 RestBatchHandler::~RestBatchHandler() = default;
@@ -97,7 +98,8 @@ void RestBatchHandler::processSubHandlerResult(RestHandler const& handler) {
   // append content-id if it is present
   if (_helper.contentId != nullptr) {
     httpResponse->body().appendText(
-        "\r\nContent-Id: " + std::string(_helper.contentId, _helper.contentIdLength));
+        "\r\nContent-Id: " +
+        std::string(_helper.contentId, _helper.contentIdLength));
   }
 
   httpResponse->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
@@ -120,8 +122,9 @@ void RestBatchHandler::processSubHandlerResult(RestHandler const& handler) {
     httpResponse->body().appendText(_boundary + "--");
 
     if (_errors > 0) {
-      httpResponse->setHeaderNC(StaticStrings::Errors,
-                                StringUtils::itoa(static_cast<uint64_t>(_errors)));
+      httpResponse->setHeaderNC(
+          StaticStrings::Errors,
+          StringUtils::itoa(static_cast<uint64_t>(_errors)));
     }
     wakeupHandler();
   } else {
@@ -133,7 +136,8 @@ void RestBatchHandler::processSubHandlerResult(RestHandler const& handler) {
 
 bool RestBatchHandler::executeNextHandler() {
   // get authorization header. we will inject this into the subparts
-  std::string const& authorization = _request->header(StaticStrings::Authorization);
+  std::string const& authorization =
+      _request->header(StaticStrings::Authorization);
 
   // get the next part from the multipart message
   if (!extractPart(_helper)) {
@@ -180,8 +184,9 @@ bool RestBatchHandler::executeNextHandler() {
   LOG_TOPIC("910e9", TRACE, arangodb::Logger::REPLICATION)
       << "part header is: " << std::string(headerStart, headerLength);
 
-  auto request = std::make_unique<HttpRequest>(_request->connectionInfo(), /*messageId*/ 1,
-                                               /*allowMethodOverride*/ false);
+  auto request =
+      std::make_unique<HttpRequest>(_request->connectionInfo(), /*messageId*/ 1,
+                                    /*allowMethodOverride*/ false);
   if (0 < headerLength) {
     auto buff = std::make_unique<char[]>(headerLength + 1);
     memcpy(buff.get(), headerStart, headerLength);
@@ -217,8 +222,10 @@ bool RestBatchHandler::executeNextHandler() {
     auto response =
         std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR, 1,
                                        std::make_unique<StringBuffer>(false));
-    auto& factory = server().getFeature<GeneralServerFeature>().handlerFactory();
-    handler = factory.createHandler(server(), std::move(request), std::move(response));
+    auto& factory =
+        server().getFeature<GeneralServerFeature>().handlerFactory();
+    handler = factory.createHandler(server(), std::move(request),
+                                    std::move(response));
 
     if (handler == nullptr) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
@@ -232,22 +239,24 @@ bool RestBatchHandler::executeNextHandler() {
   auto const lane = RequestLane::CLIENT_V8;
 
   // now schedule the real handler
-  bool ok = SchedulerFeature::SCHEDULER->tryBoundedQueue(lane, [this, self = shared_from_this(),
-                                                                handler]() {
-    // start to work for this handler
-    // ignore any errors here, will be handled later by inspecting the response
-    try {
-      ExecContextScope scope(nullptr);  // workaround because of assertions
-      handler->runHandler([this, self](RestHandler* handler) {
-        processSubHandlerResult(*handler);
+  bool ok = SchedulerFeature::SCHEDULER->tryBoundedQueue(
+      lane, [this, self = shared_from_this(), handler]() {
+        // start to work for this handler
+        // ignore any errors here, will be handled later by inspecting the
+        // response
+        try {
+          ExecContextScope scope(nullptr);  // workaround because of assertions
+          handler->runHandler([this, self](RestHandler* handler) {
+            processSubHandlerResult(*handler);
+          });
+        } catch (...) {
+          processSubHandlerResult(*handler);
+        }
       });
-    } catch (...) {
-      processSubHandlerResult(*handler);
-    }
-  });
 
   if (!ok) {
-    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_QUEUE_FULL);
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                  TRI_ERROR_QUEUE_FULL);
     return false;
   }
 
@@ -261,7 +270,8 @@ RestStatus RestBatchHandler::executeHttp() {
   auto const type = _request->requestType();
 
   if (type != rest::RequestType::POST && type != rest::RequestType::PUT) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 
@@ -285,8 +295,9 @@ RestStatus RestBatchHandler::executeHttp() {
   VPackStringRef bodyStr = _request->rawPayload();
 
   // setup some auxiliary structures to parse the multipart message
-  _multipartMessage = MultipartMessage{_boundary.data(), _boundary.size(),
-                                       bodyStr.data(), bodyStr.data() + bodyStr.size()};
+  _multipartMessage =
+      MultipartMessage{_boundary.data(), _boundary.size(), bodyStr.data(),
+                       bodyStr.data() + bodyStr.size()};
 
   _helper.message = _multipartMessage;
   _helper.searchStart = _multipartMessage.messageStart;
@@ -493,7 +504,8 @@ bool RestBatchHandler::extractPart(SearchHelper& helper) {
     }
 
     // split key/value of header
-    char const* colon = static_cast<char const*>(memchr(found, (int)':', eol - found));
+    char const* colon =
+        static_cast<char const*>(memchr(found, (int)':', eol - found));
 
     if (nullptr == colon) {
       // invalid header, not containing ':'
@@ -524,7 +536,8 @@ bool RestBatchHandler::extractPart(SearchHelper& helper) {
           hasTypeHeader = true;
         } else {
           LOG_TOPIC("f7836", WARN, arangodb::Logger::REPLICATION)
-              << "unexpected content-type '" << value << "' for multipart-message. expected: '"
+              << "unexpected content-type '" << value
+              << "' for multipart-message. expected: '"
               << StaticStrings::BatchContentType << "'";
         }
       } else if ("content-id" == key) {

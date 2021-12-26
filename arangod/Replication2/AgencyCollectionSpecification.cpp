@@ -33,7 +33,8 @@ using namespace arangodb::basics;
 
 CollectionGroup::CollectionGroup(VPackSlice slice)
     : id(CollectionGroupId{
-          slice.get(StaticStrings::Id).extract<CollectionGroupId::Identifier::BaseType>()}),
+          slice.get(StaticStrings::Id)
+              .extract<CollectionGroupId::Identifier::BaseType>()}),
       attributes(slice.get("attributes")) {
   {
     auto cs = slice.get("collections");

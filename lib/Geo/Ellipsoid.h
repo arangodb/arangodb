@@ -39,7 +39,8 @@ class Ellipsoid {
   inline double poles_radius() const noexcept {
     return (1.0 - _flattening) * _equatorRadius;
   }
-  // Flattening, see http://en.wikipedia.org/w/index.php?title=Flattening&oldid=602517763
+  // Flattening, see
+  // http://en.wikipedia.org/w/index.php?title=Flattening&oldid=602517763
   inline double flattening() const noexcept { return _flattening; }
 
  private:

@@ -113,7 +113,8 @@ static std::unique_ptr<fuerte::Response> generateCountResponse(uint64_t count) {
 
   fuerte::ResponseHeader header;
   header.contentType(fuerte::ContentType::VPack);
-  std::unique_ptr<fuerte::Response> response(new fuerte::Response(std::move(header)));
+  std::unique_ptr<fuerte::Response> response(
+      new fuerte::Response(std::move(header)));
   response->setPayload(std::move(responseBuffer), /*offset*/ 0);
 
   TRI_ASSERT(!response->slices().empty());
@@ -123,11 +124,14 @@ static std::unique_ptr<fuerte::Response> generateCountResponse(uint64_t count) {
 
 class ShardDistributionReporterTest
     : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER,
+                                            arangodb::LogLevel::FATAL> {
  protected:
   arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
+  std::vector<
+      std::pair<arangodb::application_features::ApplicationFeature&, bool>>
+      features;
 
   fakeit::Mock<ClusterInfo> infoMock;
   ClusterInfo& ci;
@@ -192,8 +196,9 @@ class ShardDistributionReporterTest
     aliases[dbserver2] = dbserver2short;
     aliases[dbserver3] = dbserver3short;
 
-    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
-                          false);  // required for TRI_vocbase_t::dropCollection(...)
+    features.emplace_back(
+        server.addFeature<arangodb::DatabaseFeature>(),
+        false);  // required for TRI_vocbase_t::dropCollection(...)
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector, false);
     selector.setEngineTesting(&engine);
@@ -205,34 +210,38 @@ class ShardDistributionReporterTest
       f.first.prepare();
     }
 
-    vocbase = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                              testDBInfo(server));
-    col = std::make_unique<arangodb::LogicalCollection>(*vocbase, json->slice(), true);
+    vocbase = std::make_unique<TRI_vocbase_t>(
+        TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
+    col = std::make_unique<arangodb::LogicalCollection>(*vocbase, json->slice(),
+                                                        true);
 
     col->setShardMap(shards);
 
     // Now we fake the calls
-    fakeit::When(Method(infoMock, getCollections)).AlwaysDo([&](DatabaseID const& dbId) {
-      EXPECT_TRUE(dbId == dbname);
-      return allCollections;
-    });
+    fakeit::When(Method(infoMock, getCollections))
+        .AlwaysDo([&](DatabaseID const& dbId) {
+          EXPECT_TRUE(dbId == dbname);
+          return allCollections;
+        });
     // Now we fake the single collection call
-    fakeit::When(Method(infoMock, getCollection)).AlwaysDo([&](DatabaseID const& dbId, CollectionID const& colId) {
-      EXPECT_TRUE(dbId == dbname);
-      // EXPECT_TRUE(colId == colName);
-      EXPECT_TRUE(allCollections.size() > 0);
+    fakeit::When(Method(infoMock, getCollection))
+        .AlwaysDo([&](DatabaseID const& dbId, CollectionID const& colId) {
+          EXPECT_TRUE(dbId == dbname);
+          // EXPECT_TRUE(colId == colName);
+          EXPECT_TRUE(allCollections.size() > 0);
 
-      for (auto const& c : allCollections) {
-        if (c->name() == colId) {
-          return c;
-        }
-      }
+          for (auto const& c : allCollections) {
+            if (c->name() == colId) {
+              return c;
+            }
+          }
 
-      EXPECT_TRUE(false);
-      return std::shared_ptr<LogicalCollection>(nullptr);
-    });
+          EXPECT_TRUE(false);
+          return std::shared_ptr<LogicalCollection>(nullptr);
+        });
     fakeit::When(Method(infoMock, getServerAliases)).AlwaysReturn(aliases);
-    fakeit::When(Method(infoMock, getCollectionCurrent).Using(dbname, cidString))
+    fakeit::When(
+        Method(infoMock, getCollectionCurrent).Using(dbname, cidString))
         .AlwaysDo([&](DatabaseID const& dbId, CollectionID const& cId) {
           EXPECT_TRUE(dbId == dbname);
           EXPECT_TRUE(cId == cidString);
@@ -250,8 +259,9 @@ class ShardDistributionReporterTest
   }
 };
 
-TEST_F(ShardDistributionReporterTest,
-       a_healthy_instance_a_single_collection_of_three_shards_and_three_replicas) {
+TEST_F(
+    ShardDistributionReporterTest,
+    a_healthy_instance_a_single_collection_of_three_shards_and_three_replicas) {
   // Simlated situation:
   // s1 is in-sync: DBServer1 <- DBServer2, DBServer3
 
@@ -272,22 +282,25 @@ TEST_F(ShardDistributionReporterTest,
 
   col->setShardMap(shards);
 
-  currentShards.emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
+  currentShards.emplace(s1,
+                        std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
   currentShards.emplace(s2, std::vector<ServerID>{dbserver2});
   currentShards.emplace(s3, std::vector<ServerID>{dbserver3, dbserver2});
 
   allCollections.emplace_back(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
-  fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
-    EXPECT_TRUE(((sid == s1) || (sid == s2) || (sid == s3)));
-    return currentShards[sid];
-  });
+  fakeit::When(Method(infoCurrentMock, servers))
+      .AlwaysDo([&](ShardID const& sid) {
+        EXPECT_TRUE(((sid == s1) || (sid == s2) || (sid == s3)));
+        return currentShards[sid];
+      });
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
                           arangodb::fuerte::RestVerb reqType,
-                          std::string const& path, velocypack::Buffer<uint8_t> body,
+                          std::string const& path,
+                          velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& opts,
                           network::Headers headerFields) -> network::FutureRes {
     EXPECT_TRUE(reqType == fuerte::RestVerb::Get);
@@ -383,7 +396,8 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver2short) {
+            if (arangodb::velocypack::StringRef(firstFollower) ==
+                dbserver2short) {
               ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
             } else {
               ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
@@ -421,7 +435,8 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver1short) {
+            if (arangodb::velocypack::StringRef(firstFollower) ==
+                dbserver1short) {
               ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
             } else {
               ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
@@ -459,7 +474,8 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver1short) {
+            if (arangodb::velocypack::StringRef(firstFollower) ==
+                dbserver1short) {
               ASSERT_TRUE(secondFollower.copyString() == dbserver2short);
             } else {
               ASSERT_TRUE(firstFollower.copyString() == dbserver2short);
@@ -505,7 +521,8 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver2short) {
+            if (arangodb::velocypack::StringRef(firstFollower) ==
+                dbserver2short) {
               ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
             } else {
               ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
@@ -607,7 +624,8 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver2short) {
+            if (arangodb::velocypack::StringRef(firstFollower) ==
+                dbserver2short) {
               ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
             } else {
               ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
@@ -645,7 +663,8 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver1short) {
+            if (arangodb::velocypack::StringRef(firstFollower) ==
+                dbserver1short) {
               ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
             } else {
               ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
@@ -697,7 +716,8 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver1short) {
+            if (arangodb::velocypack::StringRef(firstFollower) ==
+                dbserver1short) {
               ASSERT_TRUE(secondFollower.copyString() == dbserver2short);
             } else {
               ASSERT_TRUE(firstFollower.copyString() == dbserver2short);
@@ -757,7 +777,8 @@ TEST_F(ShardDistributionReporterTest,
             ASSERT_TRUE(secondFollower.isString());
 
             // We do not guarentee any ordering here
-            if (arangodb::velocypack::StringRef(firstFollower) == dbserver2short) {
+            if (arangodb::velocypack::StringRef(firstFollower) ==
+                dbserver2short) {
               ASSERT_TRUE(secondFollower.copyString() == dbserver3short);
             } else {
               ASSERT_TRUE(firstFollower.copyString() == dbserver3short);
@@ -811,8 +832,9 @@ TEST_F(ShardDistributionReporterTest,
     }
   }
 }
-TEST_F(ShardDistributionReporterTest,
-       testing_collection_distribution_for_database_a_single_collection_of_three_shards_and_three_replicas) {
+TEST_F(
+    ShardDistributionReporterTest,
+    testing_collection_distribution_for_database_a_single_collection_of_three_shards_and_three_replicas) {
   shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
 
   col->setShardMap(shards);
@@ -822,10 +844,11 @@ TEST_F(ShardDistributionReporterTest,
   allCollections.emplace_back(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
-  fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
-    EXPECT_TRUE(sid == s1);
-    return currentShards[sid];
-  });
+  fakeit::When(Method(infoCurrentMock, servers))
+      .AlwaysDo([&](ShardID const& sid) {
+        EXPECT_TRUE(sid == s1);
+        return currentShards[sid];
+      });
 
   uint64_t leaderCount = 1337;
   uint64_t smallerFollowerCount = 456;
@@ -834,7 +857,8 @@ TEST_F(ShardDistributionReporterTest,
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
                           arangodb::fuerte::RestVerb reqType,
-                          std::string const& path, velocypack::Buffer<uint8_t> body,
+                          std::string const& path,
+                          velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
     EXPECT_TRUE(reqOpts.database == "UnitTestDB");
@@ -865,9 +889,11 @@ TEST_F(ShardDistributionReporterTest,
       {  // The minimum should be reported
         VPackBuilder resultBuilder;
         ShardDistributionReporter testee(&ci, sender);
-        testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
+        testee.getCollectionDistributionForDatabase(dbname, colName,
+                                                    resultBuilder);
 
-        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, smallerFollowerCount,
+        VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount,
+                      smallerFollowerCount,
                       double(smallerFollowerCount + largerFollowerCount) /
                           double(2.0) / double(leaderCount));
       }
@@ -880,7 +906,8 @@ TEST_F(ShardDistributionReporterTest,
       {  // The maximum should be reported
         VPackBuilder resultBuilder;
         ShardDistributionReporter testee(&ci, sender);
-        testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
+        testee.getCollectionDistributionForDatabase(dbname, colName,
+                                                    resultBuilder);
 
         // follower has more docs than leader. cap follower pct to 1.0
         VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount,
@@ -895,7 +922,8 @@ TEST_F(ShardDistributionReporterTest,
       {  // The lesser should be reported
         VPackBuilder resultBuilder;
         ShardDistributionReporter testee(&ci, sender);
-        testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
+        testee.getCollectionDistributionForDatabase(dbname, colName,
+                                                    resultBuilder);
 
         // follower has more docs than leader. cap follower pct to 1.0
         VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount,
@@ -905,8 +933,9 @@ TEST_F(ShardDistributionReporterTest,
   }
 }
 
-TEST_F(ShardDistributionReporterTest,
-       testing_distribution_for_database_an_unhealthy_cluster_the_leader_doesnt_respond) {
+TEST_F(
+    ShardDistributionReporterTest,
+    testing_distribution_for_database_an_unhealthy_cluster_the_leader_doesnt_respond) {
   shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
 
   col->setShardMap(shards);
@@ -916,15 +945,17 @@ TEST_F(ShardDistributionReporterTest,
   allCollections.emplace_back(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
-  fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
-    EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
-    return currentShards[sid];
-  });
+  fakeit::When(Method(infoCurrentMock, servers))
+      .AlwaysDo([&](ShardID const& sid) {
+        EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
+        return currentShards[sid];
+      });
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
                           arangodb::fuerte::RestVerb reqType,
-                          std::string const& path, velocypack::Buffer<uint8_t> body,
+                          std::string const& path,
+                          velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
     EXPECT_TRUE(reqOpts.database == "UnitTestDB");
@@ -953,8 +984,9 @@ TEST_F(ShardDistributionReporterTest,
   }
 }
 
-TEST_F(ShardDistributionReporterTest,
-       testing_distribution_for_database_an_unhealthy_cluster_one_follower_does_not_respond) {
+TEST_F(
+    ShardDistributionReporterTest,
+    testing_distribution_for_database_an_unhealthy_cluster_one_follower_does_not_respond) {
   shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
 
   col->setShardMap(shards);
@@ -964,10 +996,11 @@ TEST_F(ShardDistributionReporterTest,
   allCollections.emplace_back(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
-  fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
-    EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
-    return currentShards[sid];
-  });
+  fakeit::When(Method(infoCurrentMock, servers))
+      .AlwaysDo([&](ShardID const& sid) {
+        EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
+        return currentShards[sid];
+      });
 
   uint64_t leaderCount = 1337;
   uint64_t largerFollowerCount = 1111;
@@ -975,7 +1008,8 @@ TEST_F(ShardDistributionReporterTest,
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
                           arangodb::fuerte::RestVerb reqType,
-                          std::string const& path, velocypack::Buffer<uint8_t> body,
+                          std::string const& path,
+                          velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
     EXPECT_TRUE(reqOpts.database == "UnitTestDB");
@@ -1006,8 +1040,9 @@ TEST_F(ShardDistributionReporterTest,
   }
 }
 
-TEST_F(ShardDistributionReporterTest,
-       testing_distribution_for_database_an_unhealthy_cluster_no_follower_responds) {
+TEST_F(
+    ShardDistributionReporterTest,
+    testing_distribution_for_database_an_unhealthy_cluster_no_follower_responds) {
   shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
 
   col->setShardMap(shards);
@@ -1017,17 +1052,19 @@ TEST_F(ShardDistributionReporterTest,
   allCollections.emplace_back(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
-  fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
-    EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
-    return currentShards[sid];
-  });
+  fakeit::When(Method(infoCurrentMock, servers))
+      .AlwaysDo([&](ShardID const& sid) {
+        EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
+        return currentShards[sid];
+      });
 
   uint64_t leaderCount = 1337;
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
                           arangodb::fuerte::RestVerb reqType,
-                          std::string const& path, velocypack::Buffer<uint8_t> body,
+                          std::string const& path,
+                          velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
     EXPECT_TRUE(reqOpts.database == "UnitTestDB");
@@ -1058,8 +1095,9 @@ TEST_F(ShardDistributionReporterTest,
   }
 }
 
-TEST_F(ShardDistributionReporterTest,
-       testing_collection_distribution_for_database_an_unhealthy_cluster_the_leader_doesnt_respond) {
+TEST_F(
+    ShardDistributionReporterTest,
+    testing_collection_distribution_for_database_an_unhealthy_cluster_the_leader_doesnt_respond) {
   shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
 
   col->setShardMap(shards);
@@ -1069,15 +1107,17 @@ TEST_F(ShardDistributionReporterTest,
   allCollections.emplace_back(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
-  fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
-    EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
-    return currentShards[sid];
-  });
+  fakeit::When(Method(infoCurrentMock, servers))
+      .AlwaysDo([&](ShardID const& sid) {
+        EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
+        return currentShards[sid];
+      });
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
                           arangodb::fuerte::RestVerb reqType,
-                          std::string const& path, velocypack::Buffer<uint8_t> body,
+                          std::string const& path,
+                          velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
     EXPECT_TRUE(reqOpts.database == "UnitTestDB");
@@ -1106,8 +1146,9 @@ TEST_F(ShardDistributionReporterTest,
   }
 }
 
-TEST_F(ShardDistributionReporterTest,
-       testing_collection_distribution_for_database_an_unhealthy_cluster_one_follower_doesnt_respond) {
+TEST_F(
+    ShardDistributionReporterTest,
+    testing_collection_distribution_for_database_an_unhealthy_cluster_one_follower_doesnt_respond) {
   shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
 
   col->setShardMap(shards);
@@ -1117,10 +1158,11 @@ TEST_F(ShardDistributionReporterTest,
   allCollections.emplace_back(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
-  fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
-    EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
-    return currentShards[sid];
-  });
+  fakeit::When(Method(infoCurrentMock, servers))
+      .AlwaysDo([&](ShardID const& sid) {
+        EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
+        return currentShards[sid];
+      });
 
   uint64_t leaderCount = 1337;
   uint64_t largerFollowerCount = 1111;
@@ -1128,7 +1170,8 @@ TEST_F(ShardDistributionReporterTest,
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
                           arangodb::fuerte::RestVerb reqType,
-                          std::string const& path, velocypack::Buffer<uint8_t> body,
+                          std::string const& path,
+                          velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
     EXPECT_TRUE(reqOpts.database == "UnitTestDB");
@@ -1155,13 +1198,15 @@ TEST_F(ShardDistributionReporterTest,
     VPackBuilder resultBuilder;
     ShardDistributionReporter testee(&ci, sender);
     testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
-    VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, largerFollowerCount,
+    VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount,
+                  largerFollowerCount,
                   double(largerFollowerCount) / 1.0 / double(leaderCount));
   }
 }
 
-TEST_F(ShardDistributionReporterTest,
-       testing_collection_distribution_for_database_an_unhealthy_cluster_no_follower_responds) {
+TEST_F(
+    ShardDistributionReporterTest,
+    testing_collection_distribution_for_database_an_unhealthy_cluster_no_follower_responds) {
   shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
 
   col->setShardMap(shards);
@@ -1171,17 +1216,19 @@ TEST_F(ShardDistributionReporterTest,
   allCollections.emplace_back(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
-  fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
-    EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
-    return currentShards[sid];
-  });
+  fakeit::When(Method(infoCurrentMock, servers))
+      .AlwaysDo([&](ShardID const& sid) {
+        EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
+        return currentShards[sid];
+      });
 
   uint64_t leaderCount = 1337;
 
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
                           arangodb::fuerte::RestVerb reqType,
-                          std::string const& path, velocypack::Buffer<uint8_t> body,
+                          std::string const& path,
+                          velocypack::Buffer<uint8_t> body,
                           network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
     EXPECT_TRUE(reqOpts.database == "UnitTestDB");

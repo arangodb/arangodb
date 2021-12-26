@@ -22,7 +22,7 @@ namespace std {
 
 struct bad_array_length_ {};
 
-template <class T>
+template<class T>
 struct dynarray {
   // types:
   typedef T value_type;

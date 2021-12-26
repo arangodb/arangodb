@@ -38,7 +38,7 @@
 namespace arangodb {
 
 namespace velocypack {
-template <typename T>
+template<typename T>
 class Buffer;
 }
 
@@ -177,7 +177,8 @@ class GeoJSONAnalyzer final : public GeoAnalyzer {
 
 // FIXME remove kludge
 inline bool isGeoAnalyzer(irs::string_ref const& type) noexcept {
-  return type == GeoJSONAnalyzer::type_name() || type == GeoPointAnalyzer::type_name();
+  return type == GeoJSONAnalyzer::type_name() ||
+         type == GeoPointAnalyzer::type_name();
 }
 
 }  // namespace iresearch

@@ -51,7 +51,8 @@ bool parseShape(VPackSlice slice, geo::ShapeContainer& shape, bool onlyPoint) {
     res = shape.parseCoordinates(slice, /*geoJson*/ true);
   } else {
     LOG_TOPIC("4449c", WARN, arangodb::iresearch::TOPIC)
-        << "Geo JSON or array of coordinates expected, got '" << slice.typeName() << "'";
+        << "Geo JSON or array of coordinates expected, got '"
+        << slice.typeName() << "'";
 
     return false;
   }

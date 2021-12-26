@@ -51,11 +51,13 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
   void collectionRepresentation(std::string const& name, bool showProperties,
                                 FiguresType showFigures, CountType showCount);
 
-  void collectionRepresentation(std::shared_ptr<LogicalCollection> coll, bool showProperties,
-                                FiguresType showFigures, CountType showCount);
+  void collectionRepresentation(std::shared_ptr<LogicalCollection> coll,
+                                bool showProperties, FiguresType showFigures,
+                                CountType showCount);
 
-  void collectionRepresentation(methods::Collections::Context& ctxt, bool showProperties,
-                                FiguresType showFigures, CountType showCount);
+  void collectionRepresentation(methods::Collections::Context& ctxt,
+                                bool showProperties, FiguresType showFigures,
+                                CountType showCount);
 
   futures::Future<futures::Unit> collectionRepresentationAsync(
       methods::Collections::Context& ctxt, bool showProperties,

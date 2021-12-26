@@ -40,7 +40,9 @@ uint32_t log2(uint32_t value) noexcept {
 
 #if (defined(__GNUC__) || defined(__clang__))
   return (8 * sizeof(unsigned long)) -
-         static_cast<uint32_t>(__builtin_clzl(static_cast<unsigned long>(value))) - 1;
+         static_cast<uint32_t>(
+             __builtin_clzl(static_cast<unsigned long>(value))) -
+         1;
 #elif defined(_MSC_VER)
   unsigned long index;
   _BitScanReverse(&index, static_cast<unsigned long>(value));

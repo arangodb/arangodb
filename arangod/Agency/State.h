@@ -64,7 +64,8 @@ class State {
 
   /// @brief Log entries (leader)
   std::vector<index_t> logLeaderMulti(query_t const& query,
-                                      std::vector<apply_ret_t> const& indices, term_t term);
+                                      std::vector<apply_ret_t> const& indices,
+                                      term_t term);
 
   /// @brief Single log entry (leader)
   index_t logLeaderSingle(velocypack::Slice const& slice, term_t term,
@@ -78,7 +79,8 @@ class State {
 
   /// @brief Get complete log entries bound by lower and upper bounds.
   ///        Default: [first, last]
-  std::vector<log_t> get(index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
+  std::vector<log_t> get(
+      index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
 
   /// @brief load a compacted snapshot, returns the number of entries read.
   uint64_t toVelocyPack(index_t lastIndex, VPackBuilder& builder) const;
@@ -100,7 +102,8 @@ class State {
    * @param rbegin Start of range
    * @param end    End of range
    */
-  void logEraseNoLock(std::deque<log_t>::iterator rbegin, std::deque<log_t>::iterator rend);
+  void logEraseNoLock(std::deque<log_t>::iterator rbegin,
+                      std::deque<log_t>::iterator rend);
 
   /**
    * @brief Emplace log entry at back
@@ -128,8 +131,8 @@ class State {
 
   /// @brief Get complete logged commands by lower and upper bounds.
   ///        Default: [first, last]
-  arangodb::velocypack::Builder slices(index_t = 0,
-                                       index_t = (std::numeric_limits<uint64_t>::max)()) const;
+  arangodb::velocypack::Builder slices(
+      index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
 
   /// @brief log entry at index i
   log_t operator[](index_t) const;
@@ -167,7 +170,8 @@ class State {
   }
 
   /// @brief compact state machine
-  bool compact(arangodb::consensus::index_t cind, arangodb::consensus::index_t keep);
+  bool compact(arangodb::consensus::index_t cind,
+               arangodb::consensus::index_t keep);
 
  private:
   /// @brief Remove RAFT conflicts. i.e. All indices, where higher term version
@@ -201,7 +205,8 @@ class State {
   /// The returned builder has the complete state of the agency and index
   /// is set to the index of the last log entry.
   static std::shared_ptr<VPackBuilder> latestAgencyState(TRI_vocbase_t& vocbase,
-                                                         index_t& index, term_t& term);
+                                                         index_t& index,
+                                                         term_t& term);
 
  private:
   /// @brief Persist a compaction snapshot
@@ -218,8 +223,9 @@ class State {
                             arangodb::consensus::term_t term);
 
   /// @brief Log single log entry. Must be guarded by caller.
-  index_t logNonBlocking(index_t idx, velocypack::Slice const& slice, term_t term,
-                         uint64_t millis, std::string const& clientId = std::string(),
+  index_t logNonBlocking(index_t idx, velocypack::Slice const& slice,
+                         term_t term, uint64_t millis,
+                         std::string const& clientId = std::string(),
                          bool leading = false, bool reconfiguration = false);
 
   /// @brief Save currentTerm, votedFor, log entries
@@ -228,7 +234,8 @@ class State {
 
   /// @brief Save currentTerm, votedFor, log entries for reconfiguration
   bool persistConf(index_t, term_t, uint64_t,
-                   arangodb::velocypack::Slice const&, std::string const&) const;
+                   arangodb::velocypack::Slice const&,
+                   std::string const&) const;
 
   bool saveCompacted();
 
@@ -248,10 +255,12 @@ class State {
   bool ensureCollection(std::string const& name, bool drop);
 
   /// @brief Compact persisted logs
-  bool compactPersisted(arangodb::consensus::index_t cind, arangodb::consensus::index_t keep);
+  bool compactPersisted(arangodb::consensus::index_t cind,
+                        arangodb::consensus::index_t keep);
 
   /// @brief Compact RAM logs
-  bool compactVolatile(arangodb::consensus::index_t cind, arangodb::consensus::index_t keep);
+  bool compactVolatile(arangodb::consensus::index_t cind,
+                       arangodb::consensus::index_t keep);
 
   /// @brief Remove obsolete logs
   bool removeObsolete(arangodb::consensus::index_t cind);

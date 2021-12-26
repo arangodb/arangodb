@@ -26,23 +26,25 @@ namespace arangodb {
 namespace velocypack {
 
 namespace deserializer {
-template <auto EnumValue, typename Value, bool hidden = false>
+template<auto EnumValue, typename Value, bool hidden = false>
 struct enum_member {
   using enum_type = decltype(EnumValue);
   using value_type = Value;
   static constexpr auto is_hidden = hidden;
 };
 
-template <typename Enum, typename... Pairs>
+template<typename Enum, typename... Pairs>
 struct enum_deserializer {
   static_assert(utilities::always_false_v<Enum>,
                 "Invalid enum_deserializer specification. Are all values "
                 "members of the enum?");
 };
 
-template <typename Enum, typename... Values, Enum... EnumValues, bool... IsHidden>
+template<typename Enum, typename... Values, Enum... EnumValues,
+         bool... IsHidden>
 struct enum_deserializer<Enum, enum_member<EnumValues, Values, IsHidden>...> {
-  using plan = enum_deserializer<Enum, enum_member<EnumValues, Values, IsHidden>...>;
+  using plan =
+      enum_deserializer<Enum, enum_member<EnumValues, Values, IsHidden>...>;
   using constructed_type = Enum;
   using factory = utilities::identity_factory<Enum>;
 };
@@ -50,31 +52,35 @@ struct enum_deserializer<Enum, enum_member<EnumValues, Values, IsHidden>...> {
 }  // namespace deserializer
 
 namespace deserializer::executor {
-template <typename Enum, typename... Values, Enum... EnumValues, bool... IsHidden, typename H>
-struct deserialize_plan_executor<enum_deserializer<Enum, enum_member<EnumValues, Values, IsHidden>...>, H> {
+template<typename Enum, typename... Values, Enum... EnumValues,
+         bool... IsHidden, typename H>
+struct deserialize_plan_executor<
+    enum_deserializer<Enum, enum_member<EnumValues, Values, IsHidden>...>, H> {
   using value_type = Enum;
   using tuple_type = std::tuple<value_type>;
   using result_type = result<tuple_type, deserialize_error>;
 
-  template <typename...>
+  template<typename...>
   struct type_list {};
-  template <typename, bool>
+  template<typename, bool>
   struct value_hidden_pair {};
 
-  template <typename V, bool hidden, bool... hiddens, typename... Vs>
-  static std::string joinValues(
-      type_list<value_hidden_pair<V, hidden>, value_hidden_pair<Vs, hiddens>...>) {
+  template<typename V, bool hidden, bool... hiddens, typename... Vs>
+  static std::string joinValues(type_list<value_hidden_pair<V, hidden>,
+                                          value_hidden_pair<Vs, hiddens>...>) {
     static_assert(!hidden, "please make the first entry not hidden");
-    return to_string(V{}) + ((hiddens ? std::string{} : (", " + to_string(Vs{}))) + ...);
+    return to_string(V{}) +
+           ((hiddens ? std::string{} : (", " + to_string(Vs{}))) + ...);
   }
 
   static constexpr bool all_strings = (values::is_string_v<Values> && ...);
 
-  template <typename C>
+  template<typename C>
   static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
                      typename H::state_type hints, C&&) -> result_type {
     using comparator_hints =
-        std::conditional_t<all_strings, hints::hint_list<hints::is_string>, hints::hint_list_empty>;
+        std::conditional_t<all_strings, hints::hint_list<hints::is_string>,
+                           hints::hint_list_empty>;
 
     if (!all_strings || s.isString()) {
       Enum result;

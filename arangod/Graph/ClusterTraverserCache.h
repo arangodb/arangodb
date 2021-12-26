@@ -55,17 +55,18 @@ struct BaseOptions;
 
 class ClusterTraverserCache final : public TraverserCache {
  public:
-  ClusterTraverserCache(aql::QueryContext& query,
-                        std::unordered_map<ServerID, aql::EngineId> const* engines,
-                        BaseOptions*);
+  ClusterTraverserCache(
+      aql::QueryContext& query,
+      std::unordered_map<ServerID, aql::EngineId> const* engines, BaseOptions*);
 
   ~ClusterTraverserCache() = default;
 
-  using Cache =
-      std::unordered_map<arangodb::velocypack::HashedStringRef, arangodb::velocypack::Slice>;
+  using Cache = std::unordered_map<arangodb::velocypack::HashedStringRef,
+                                   arangodb::velocypack::Slice>;
 
   /// @brief will convert the EdgeDocumentToken to a slice
-  arangodb::velocypack::Slice lookupToken(EdgeDocumentToken const& token) override;
+  arangodb::velocypack::Slice lookupToken(
+      EdgeDocumentToken const& token) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document stored within the token
@@ -85,7 +86,8 @@ class ClusterTraverserCache final : public TraverserCache {
   ///        The document will either be fetched from storage or looked up in
   ///        the datalake (on the coordinator)
   //////////////////////////////////////////////////////////////////////////////
-  aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const& idToken) override;
+  aql::AqlValue fetchEdgeAqlResult(
+      graph::EdgeDocumentToken const& idToken) override;
 
   std::unordered_map<ServerID, aql::EngineId> const* engines() const {
     return _engines;

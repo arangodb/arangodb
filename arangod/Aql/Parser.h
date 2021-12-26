@@ -105,10 +105,12 @@ class Parser {
                           std::string_view data, int line, int column);
 
   /// @brief register a parse error, position is specified as line / column
-  void registerParseError(ErrorCode errorCode, std::string_view data, int line, int column);
+  void registerParseError(ErrorCode errorCode, std::string_view data, int line,
+                          int column);
 
   /// @brief register a warning
-  void registerWarning(ErrorCode errorCode, std::string_view data, int line, int column);
+  void registerWarning(ErrorCode errorCode, std::string_view data, int line,
+                       int column);
 
   /// @brief push an AstNode array element on top of the stack
   /// the array must be removed from the stack via popArray

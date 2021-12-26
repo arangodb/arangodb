@@ -101,9 +101,10 @@ static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> arg,
 /// will remain open afterwards!
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val,
-                           bool extendedNames, std::string& collectionName,
-                           VPackBuilder& builder, bool includeRev) {
+bool ExtractDocumentHandle(v8::Isolate* isolate,
+                           v8::Handle<v8::Value> const val, bool extendedNames,
+                           std::string& collectionName, VPackBuilder& builder,
+                           bool includeRev) {
   auto context = TRI_IGETC;
   // reset the collection identifier and the revision
   TRI_ASSERT(collectionName.empty());
@@ -112,7 +113,8 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
 
   // extract the document identifier and revision from a string
   if (val->IsString()) {
-    bool res = ParseDocumentHandle(isolate, val, extendedNames, collectionName, key);
+    bool res =
+        ParseDocumentHandle(isolate, val, extendedNames, collectionName, key);
     if (res) {
       if (key.get() == nullptr) {
         return false;
@@ -135,14 +137,16 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
       v8::Handle<v8::Value> didVal =
           obj->Get(context, _IdKey).FromMaybe(v8::Local<v8::Value>());
 
-      if (!ParseDocumentHandle(isolate, didVal, extendedNames, collectionName, key)) {
+      if (!ParseDocumentHandle(isolate, didVal, extendedNames, collectionName,
+                               key)) {
         return false;
       }
     } else if (TRI_HasRealNamedProperty(context, isolate, obj, _KeyKey)) {
       v8::Handle<v8::Value> didVal =
           obj->Get(context, _KeyKey).FromMaybe(v8::Local<v8::Value>());
 
-      if (!ParseDocumentHandle(isolate, didVal, extendedNames, collectionName, key)) {
+      if (!ParseDocumentHandle(isolate, didVal, extendedNames, collectionName,
+                               key)) {
         return false;
       }
     } else {
@@ -153,7 +157,8 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
       return false;
     }
     // If we get here we have a valid key
-    builder.add(StaticStrings::KeyString, VPackValue(reinterpret_cast<char*>(key.get())));
+    builder.add(StaticStrings::KeyString,
+                VPackValue(reinterpret_cast<char*>(key.get())));
 
     if (!includeRev) {
       return true;

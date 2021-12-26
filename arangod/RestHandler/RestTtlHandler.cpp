@@ -37,7 +37,8 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestTtlHandler::RestTtlHandler(application_features::ApplicationServer& server,
-                               GeneralRequest* request, GeneralResponse* response)
+                               GeneralRequest* request,
+                               GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestTtlHandler::execute() {
@@ -65,8 +66,8 @@ RestStatus RestTtlHandler::handleProperties() {
   rest::RequestType const type = _request->requestType();
   if (type == rest::RequestType::GET) {
     VPackBuilder builder;
-    Result result =
-        methods::Ttl::getProperties(_vocbase.server().getFeature<TtlFeature>(), builder);
+    Result result = methods::Ttl::getProperties(
+        _vocbase.server().getFeature<TtlFeature>(), builder);
 
     if (result.fail()) {
       generateError(result);
@@ -85,8 +86,8 @@ RestStatus RestTtlHandler::handleProperties() {
     }
 
     VPackBuilder builder;
-    Result result =
-        methods::Ttl::setProperties(_vocbase.server().getFeature<TtlFeature>(), body, builder);
+    Result result = methods::Ttl::setProperties(
+        _vocbase.server().getFeature<TtlFeature>(), body, builder);
 
     if (result.fail()) {
       generateError(result);
@@ -97,7 +98,8 @@ RestStatus RestTtlHandler::handleProperties() {
     return RestStatus::DONE;
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -106,8 +108,8 @@ RestStatus RestTtlHandler::handleStatistics() {
   rest::RequestType const type = _request->requestType();
   if (type == rest::RequestType::GET) {
     VPackBuilder builder;
-    Result result =
-        methods::Ttl::getStatistics(_vocbase.server().getFeature<TtlFeature>(), builder);
+    Result result = methods::Ttl::getStatistics(
+        _vocbase.server().getFeature<TtlFeature>(), builder);
 
     if (result.fail()) {
       generateError(result);
@@ -118,6 +120,7 @@ RestStatus RestTtlHandler::handleStatistics() {
     return RestStatus::DONE;
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }

@@ -44,14 +44,16 @@ VersionFeature::VersionFeature(application_features::ApplicationServer& server)
 }
 
 void VersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--version", "reports the version and exits",
-                     new BooleanParameter(&_printVersion),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Command));
+  options->addOption(
+      "--version", "reports the version and exits",
+      new BooleanParameter(&_printVersion),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Command));
 
   options
       ->addOption("--version-json", "reports the version as JSON and exits",
                   new BooleanParameter(&_printVersionJson),
-                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Command))
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Command))
       .setIntroducedIn(30900);
 }
 

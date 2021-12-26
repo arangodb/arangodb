@@ -32,7 +32,8 @@ namespace details {
 //
 // This is for example useful to make sure methods are checked if someone adds
 // member variables to classes or structs
-template <typename Scrutinee, std::size_t ExpectedSize, std::size_t Size = sizeof(Scrutinee)>
+template<typename Scrutinee, std::size_t ExpectedSize,
+         std::size_t Size = sizeof(Scrutinee)>
 void static_assert_size() {
   static_assert(ExpectedSize == Size, "Type does not have the expected size.");
 }

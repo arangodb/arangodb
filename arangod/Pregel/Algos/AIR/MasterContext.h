@@ -48,7 +48,8 @@ struct MasterContext : ::arangodb::pregel::MasterContext {
   greenspun::EvalResult air_Finish(greenspun::Machine& ctx, VPackSlice params,
                                    VPackBuilder& result);
   greenspun::EvalResult air_VertexCount(greenspun::Machine& ctx,
-                                        VPackSlice params, VPackBuilder& result);
+                                        VPackSlice params,
+                                        VPackBuilder& result);
   greenspun::EvalResult air_AccumRef(greenspun::Machine& ctx, VPackSlice params,
                                      VPackBuilder& result);
   greenspun::EvalResult air_AccumSet(greenspun::Machine& ctx, VPackSlice params,
@@ -56,7 +57,8 @@ struct MasterContext : ::arangodb::pregel::MasterContext {
   greenspun::EvalResult air_AccumClear(greenspun::Machine& ctx,
                                        VPackSlice params, VPackBuilder& result);
   greenspun::EvalResult air_GlobalSuperstep(greenspun::Machine& ctx,
-                                            VPackSlice params, VPackBuilder& result);
+                                            VPackSlice params,
+                                            VPackBuilder& result);
 
   bool gotoPhase(std::string_view nextPhase);
   void finish();
@@ -68,13 +70,15 @@ struct MasterContext : ::arangodb::pregel::MasterContext {
 
   void serializeValues(VPackBuilder& msg) override;
 
-  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> const& globalAccumulators();
+  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> const&
+  globalAccumulators();
 
  private:
   ProgrammablePregelAlgorithm const* _algo;
   greenspun::Machine _airMachine;
 
-  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>> _globalAccumulators;
+  std::map<std::string, std::unique_ptr<AccumulatorBase>, std::less<>>
+      _globalAccumulators;
 
   ContinuationResult _userSelectedNext = ContinuationResult::DONT_CARE;
 };

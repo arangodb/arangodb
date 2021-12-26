@@ -40,7 +40,8 @@
 
 namespace arangodb::greenspun {
 
-EvalResult Prim_Min(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Min(Machine& ctx, VPackSlice const params,
+                    VPackBuilder& result) {
   bool set = false;
   auto tmp = double{0};
   for (auto p : VPackArrayIterator(params)) {
@@ -63,7 +64,8 @@ EvalResult Prim_Min(Machine& ctx, VPackSlice const params, VPackBuilder& result)
   return {};
 }
 
-EvalResult Prim_Max(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Max(Machine& ctx, VPackSlice const params,
+                    VPackBuilder& result) {
   bool set = false;
   auto tmp = double{0};
   for (auto p : VPackArrayIterator(params)) {
@@ -86,7 +88,8 @@ EvalResult Prim_Max(Machine& ctx, VPackSlice const params, VPackBuilder& result)
   return {};
 }
 
-EvalResult Prim_Avg(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Avg(Machine& ctx, VPackSlice const params,
+                    VPackBuilder& result) {
   auto tmp = double{0};
   for (auto p : VPackArrayIterator(params)) {
     if (p.isNumber<double>()) {
@@ -100,7 +103,8 @@ EvalResult Prim_Avg(Machine& ctx, VPackSlice const params, VPackBuilder& result)
   return {};
 }
 
-EvalResult Prim_Add(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Add(Machine& ctx, VPackSlice const params,
+                    VPackBuilder& result) {
   auto tmp = double{0};
   for (auto p : VPackArrayIterator(params)) {
     if (p.isNumber<double>()) {
@@ -113,7 +117,8 @@ EvalResult Prim_Add(Machine& ctx, VPackSlice const params, VPackBuilder& result)
   return {};
 }
 
-EvalResult Prim_Sub(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Sub(Machine& ctx, VPackSlice const params,
+                    VPackBuilder& result) {
   auto tmp = double{0};
   auto iter = VPackArrayIterator(params);
   if (iter.valid()) {
@@ -133,7 +138,8 @@ EvalResult Prim_Sub(Machine& ctx, VPackSlice const params, VPackBuilder& result)
   return {};
 }
 
-EvalResult Prim_Mul(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Mul(Machine& ctx, VPackSlice const params,
+                    VPackBuilder& result) {
   auto tmp = double{1};
   for (auto p : VPackArrayIterator(params)) {
     if (!p.isNumber<double>()) {
@@ -145,7 +151,8 @@ EvalResult Prim_Mul(Machine& ctx, VPackSlice const params, VPackBuilder& result)
   return {};
 }
 
-EvalResult Prim_Div(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Div(Machine& ctx, VPackSlice const params,
+                    VPackBuilder& result) {
   auto tmp = double{1};
   auto iter = VPackArrayIterator(params);
   if (iter.valid()) {
@@ -169,8 +176,9 @@ EvalResult Prim_Div(Machine& ctx, VPackSlice const params, VPackBuilder& result)
   return {};
 }
 
-template <typename T>
-EvalResult Prim_CmpHuh(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+template<typename T>
+EvalResult Prim_CmpHuh(Machine& ctx, VPackSlice const params,
+                       VPackBuilder& result) {
   auto iter = VPackArrayIterator(params);
   if (iter.valid()) {
     auto proto = *iter;
@@ -181,7 +189,8 @@ EvalResult Prim_CmpHuh(Machine& ctx, VPackSlice const params, VPackBuilder& resu
         auto other = *iter;
         if (!other.isNumber()) {
           return EvalError("Expected numerical value at parameter " +
-                           std::to_string(iter.index()) + ", found: " + other.toJson());
+                           std::to_string(iter.index()) +
+                           ", found: " + other.toJson());
         }
 
         if (!T{}(value, other.getNumber<double>())) {
@@ -212,7 +221,8 @@ EvalResult Prim_CmpHuh(Machine& ctx, VPackSlice const params, VPackBuilder& resu
         auto other = *iter;
         if (!other.isString()) {
           return EvalError("Expected string value at parameter " +
-                           std::to_string(iter.index()) + ", found: " + other.toJson());
+                           std::to_string(iter.index()) +
+                           ", found: " + other.toJson());
         }
         if (!T{}(value, other.stringView())) {
           result.add(VPackValue(false));
@@ -220,30 +230,35 @@ EvalResult Prim_CmpHuh(Machine& ctx, VPackSlice const params, VPackBuilder& resu
         }
       }
     } else {
-      return EvalError("Cannot compare values of given type, found: " + proto.toJson());
+      return EvalError("Cannot compare values of given type, found: " +
+                       proto.toJson());
     }
   }
   result.add(VPackValue(true));
   return {};
 }
 
-EvalResult Prim_VarRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_VarRef(Machine& ctx, VPackSlice const params,
+                       VPackBuilder& result) {
   if (params.length() == 1) {
     auto nameSlice = params.at(0);
     if (nameSlice.isString()) {
       return ctx.getVariable(nameSlice.copyString(), result);
     }
   }
-  return EvalError("expecting a single string parameter, found " + params.toJson());
+  return EvalError("expecting a single string parameter, found " +
+                   params.toJson());
 }
 
-EvalResult Prim_VarSet(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_VarSet(Machine& ctx, VPackSlice const params,
+                       VPackBuilder& result) {
   if (!params.isArray() && params.length() != 2) {
     return EvalError("expected exactly two parameters");
   }
 
   auto&& [key, slice] =
-      arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(params);
+      arangodb::basics::VelocyPackHelper::unpackTuple<VPackSlice, VPackSlice>(
+          params);
   if (!slice.isObject()) {
     return EvalError("expect second parameter to be an object");
   }
@@ -268,7 +283,8 @@ std::list<std::string> createObjectPaths(velocypack::Slice object,
   return currentPath;
 }
 
-EvalResult Prim_IntToStr(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_IntToStr(Machine& ctx, VPackSlice const params,
+                         VPackBuilder& result) {
   if (params.length() != 1) {
     return EvalError("expected a single argument");
   }
@@ -281,7 +297,8 @@ EvalResult Prim_IntToStr(Machine& ctx, VPackSlice const params, VPackBuilder& re
   return {};
 }
 
-EvalResult Prim_ToJsonString(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_ToJsonString(Machine& ctx, VPackSlice const params,
+                             VPackBuilder& result) {
   if (params.length() != 1) {
     return EvalError("expected a single argument");
   }
@@ -292,7 +309,8 @@ EvalResult Prim_ToJsonString(Machine& ctx, VPackSlice const params, VPackBuilder
   return {};
 }
 
-EvalResult Prim_FalseHuh(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_FalseHuh(Machine& ctx, VPackSlice const params,
+                         VPackBuilder& result) {
   if (params.length() != 1) {
     return EvalError("expected a single argument");
   }
@@ -300,7 +318,8 @@ EvalResult Prim_FalseHuh(Machine& ctx, VPackSlice const params, VPackBuilder& re
   return {};
 }
 
-EvalResult Prim_TrueHuh(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_TrueHuh(Machine& ctx, VPackSlice const params,
+                        VPackBuilder& result) {
   if (params.length() != 1) {
     return EvalError("expected a single argument");
   }
@@ -308,7 +327,8 @@ EvalResult Prim_TrueHuh(Machine& ctx, VPackSlice const params, VPackBuilder& res
   return {};
 }
 
-EvalResult Prim_Not(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Not(Machine& ctx, VPackSlice const params,
+                    VPackBuilder& result) {
   if (params.length() != 1) {
     return EvalError("expected a single argument");
   }
@@ -316,7 +336,8 @@ EvalResult Prim_Not(Machine& ctx, VPackSlice const params, VPackBuilder& result)
   return {};
 }
 
-EvalResult Prim_Report(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Report(Machine& ctx, VPackSlice const params,
+                       VPackBuilder& result) {
   result.add(VPackSlice::nullSlice());
   return ctx.print(paramsToString(params));
   ;
@@ -332,11 +353,13 @@ EvalResult Machine::print(const std::string& msg) const {
   }
 }
 
-EvalResult Prim_Error(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_Error(Machine& ctx, VPackSlice const params,
+                      VPackBuilder& result) {
   return EvalError(paramsToString(params));
 }
 
-EvalResult Prim_Lambda(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_Lambda(Machine& ctx, VPackSlice const paramsList,
+                       VPackBuilder& result) {
   VPackArrayIterator paramIterator(paramsList);
   if (!paramIterator.valid()) {
     return EvalError(
@@ -347,22 +370,26 @@ EvalResult Prim_Lambda(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
   if (captures.isArray()) {
     for (auto&& name : VPackArrayIterator(captures)) {
       if (!name.isString()) {
-        return EvalError("in capture list: expected name, found: " + name.toJson());
+        return EvalError("in capture list: expected name, found: " +
+                         name.toJson());
       }
     }
   } else {
-    return EvalError("capture list: expected array, found: " + captures.toJson());
+    return EvalError("capture list: expected array, found: " +
+                     captures.toJson());
   }
 
   auto params = *paramIterator++;
   if (params.isArray()) {
     for (auto&& name : VPackArrayIterator(params)) {
       if (!name.isString()) {
-        return EvalError("in parameter list: expected name, found: " + name.toJson());
+        return EvalError("in parameter list: expected name, found: " +
+                         name.toJson());
       }
     }
   } else {
-    return EvalError("parameter list: expected array, found: " + captures.toJson());
+    return EvalError("parameter list: expected array, found: " +
+                     captures.toJson());
   }
 
   if (!paramIterator.valid()) {
@@ -391,7 +418,8 @@ EvalResult Prim_Lambda(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
   return {};
 }
 
-EvalResult Prim_Apply(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_Apply(Machine& ctx, VPackSlice const paramsList,
+                      VPackBuilder& result) {
   if (!paramsList.isArray() || paramsList.length() != 2) {
     return EvalError(
         "expected one function argument on one list of parameters");
@@ -400,13 +428,16 @@ EvalResult Prim_Apply(Machine& ctx, VPackSlice const paramsList, VPackBuilder& r
   auto functionSlice = paramsList.at(0);
   auto parameters = paramsList.at(1);
   if (!parameters.isArray()) {
-    return EvalError("expected list of parameters, found: " + parameters.toJson());
+    return EvalError("expected list of parameters, found: " +
+                     parameters.toJson());
   }
 
-  return EvaluateApply(ctx, functionSlice, VPackArrayIterator(parameters), result, false);
+  return EvaluateApply(ctx, functionSlice, VPackArrayIterator(parameters),
+                       result, false);
 }
 
-EvalResult Prim_Identity(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_Identity(Machine& ctx, VPackSlice const paramsList,
+                         VPackBuilder& result) {
   if (!paramsList.isArray() || paramsList.length() != 1) {
     return EvalError("expecting a single argument");
   }
@@ -415,7 +446,8 @@ EvalResult Prim_Identity(Machine& ctx, VPackSlice const paramsList, VPackBuilder
   return {};
 }
 
-EvalResult Prim_Map(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_Map(Machine& ctx, VPackSlice const paramsList,
+                    VPackBuilder& result) {
   if (!paramsList.isArray() || paramsList.length() != 2) {
     return EvalError("expecting two arguments, a function and a list");
   }
@@ -433,10 +465,12 @@ EvalResult Prim_Map(Machine& ctx, VPackSlice const paramsList, VPackBuilder& res
         parameter.add(*iter);
       }
 
-      auto res = EvaluateApply(ctx, functionSlice,
-                               VPackArrayIterator(parameter.slice()), result, false);
+      auto res =
+          EvaluateApply(ctx, functionSlice,
+                        VPackArrayIterator(parameter.slice()), result, false);
       if (res.fail()) {
-        return res.error().wrapMessage("when mapping pair " + parameter.toJson());
+        return res.error().wrapMessage("when mapping pair " +
+                                       parameter.toJson());
       }
     }
   } else if (list.isObject()) {
@@ -452,9 +486,11 @@ EvalResult Prim_Map(Machine& ctx, VPackSlice const paramsList, VPackBuilder& res
       VPackBuilder tempBuffer;
 
       auto res = EvaluateApply(ctx, functionSlice,
-                               VPackArrayIterator(parameter.slice()), tempBuffer, false);
+                               VPackArrayIterator(parameter.slice()),
+                               tempBuffer, false);
       if (res.fail()) {
-        return res.error().wrapMessage("when mapping pair " + parameter.toJson());
+        return res.error().wrapMessage("when mapping pair " +
+                                       parameter.toJson());
       }
 
       result.add(iter.key());
@@ -467,7 +503,8 @@ EvalResult Prim_Map(Machine& ctx, VPackSlice const paramsList, VPackBuilder& res
   return {};
 }
 
-EvalResult Prim_Reduce(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_Reduce(Machine& ctx, VPackSlice const paramsList,
+                       VPackBuilder& result) {
   if (!paramsList.isArray() || paramsList.length() < 2) {
     return EvalError(
         "expecting at least two arguments, a function and two dicts");
@@ -508,8 +545,9 @@ EvalResult Prim_Reduce(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
       buildLambdaParameters(parameter, iter);
 
       result.clear();
-      EvalResult res = EvaluateApply(ctx, functionSlice,
-                                     VPackArrayIterator(parameter.slice()), result, false);
+      EvalResult res =
+          EvaluateApply(ctx, functionSlice,
+                        VPackArrayIterator(parameter.slice()), result, false);
       if (res.fail()) {
         return res.error().wrapMessage("when reducing array parameters " +
                                        parameter.toJson());
@@ -525,8 +563,9 @@ EvalResult Prim_Reduce(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
       buildLambdaParameters(parameter, iter);
 
       result.clear();
-      auto res = EvaluateApply(ctx, functionSlice,
-                               VPackArrayIterator(parameter.slice()), result, false);
+      auto res =
+          EvaluateApply(ctx, functionSlice,
+                        VPackArrayIterator(parameter.slice()), result, false);
       if (res.fail()) {
         return res.error().wrapMessage("when reducing object parameters " +
                                        parameter.toJson());
@@ -548,15 +587,16 @@ EvalResult Prim_Reduce(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
     }
   } else {
     return EvalError("expected either object or array as input value, found: " +
-                     inputValue.toJson() +
-                     ". Accumulator can be any type: " + inputAccumulator.toJson() +
+                     inputValue.toJson() + ". Accumulator can be any type: " +
+                     inputAccumulator.toJson() +
                      " (depends on lambda definition");
   }
 
   return {};
 }
 
-EvalResult Prim_Filter(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_Filter(Machine& ctx, VPackSlice const paramsList,
+                       VPackBuilder& result) {
   if (!paramsList.isArray() || paramsList.length() != 2) {
     return EvalError(
         "expecting two arguments, a function and a list or object");
@@ -577,9 +617,11 @@ EvalResult Prim_Filter(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
 
       VPackBuilder filterResult;
       auto res = EvaluateApply(ctx, functionSlice,
-                               VPackArrayIterator(parameter.slice()), filterResult, false);
+                               VPackArrayIterator(parameter.slice()),
+                               filterResult, false);
       if (res.fail()) {
-        return res.error().wrapMessage("when filtering pair " + parameter.toJson());
+        return res.error().wrapMessage("when filtering pair " +
+                                       parameter.toJson());
       }
 
       if (ValueConsideredTrue(filterResult.slice())) {
@@ -598,9 +640,11 @@ EvalResult Prim_Filter(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
 
       VPackBuilder filterResult;
       auto res = EvaluateApply(ctx, functionSlice,
-                               VPackArrayIterator(parameter.slice()), filterResult, false);
+                               VPackArrayIterator(parameter.slice()),
+                               filterResult, false);
       if (res.fail()) {
-        return res.error().wrapMessage("when mapping pair " + parameter.toJson());
+        return res.error().wrapMessage("when mapping pair " +
+                                       parameter.toJson());
       }
       if (ValueConsideredTrue(filterResult.slice())) {
         result.add(iter.key());
@@ -614,15 +658,18 @@ EvalResult Prim_Filter(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
   return {};
 }
 
-EvalResult Prim_Foldl(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_Foldl(Machine& ctx, VPackSlice const paramsList,
+                      VPackBuilder& result) {
   return EvalError("Prim_Foldl not implemented");
 }
 
-EvalResult Prim_Foldl1(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_Foldl1(Machine& ctx, VPackSlice const paramsList,
+                       VPackBuilder& result) {
   return EvalError("Prim_Foldl1 not implemented");
 }
 
-EvalResult Prim_NumberHuh(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_NumberHuh(Machine& ctx, VPackSlice const paramsList,
+                          VPackBuilder& result) {
   auto res = extract<VPackSlice>(paramsList);
   if (!res) {
     return std::move(res).asResult();
@@ -633,7 +680,8 @@ EvalResult Prim_NumberHuh(Machine& ctx, VPackSlice const paramsList, VPackBuilde
   return {};
 }
 
-EvalResult Prim_NullHuh(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_NullHuh(Machine& ctx, VPackSlice const paramsList,
+                        VPackBuilder& result) {
   auto res = extract<VPackSlice>(paramsList);
   if (!res) {
     return std::move(res).asResult();
@@ -644,7 +692,8 @@ EvalResult Prim_NullHuh(Machine& ctx, VPackSlice const paramsList, VPackBuilder&
   return {};
 }
 
-EvalResult Prim_BoolHuh(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_BoolHuh(Machine& ctx, VPackSlice const paramsList,
+                        VPackBuilder& result) {
   auto res = extract<VPackSlice>(paramsList);
   if (!res) {
     return std::move(res).asResult();
@@ -655,7 +704,8 @@ EvalResult Prim_BoolHuh(Machine& ctx, VPackSlice const paramsList, VPackBuilder&
   return {};
 }
 
-EvalResult Prim_Assert(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_Assert(Machine& ctx, VPackSlice const paramsList,
+                       VPackBuilder& result) {
   VPackArrayIterator iter(paramsList);
   if (!iter.valid()) {
     return EvalError("expected at least one argument");
@@ -679,12 +729,14 @@ double rand_source_query() {
   return static_cast<double>(std::rand()) / RAND_MAX;
 }
 
-EvalResult Prim_Rand(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_Rand(Machine& ctx, VPackSlice const paramsList,
+                     VPackBuilder& result) {
   result.add(VPackValue(rand_source_query()));
   return {};
 }
 
-EvalResult Prim_RandRange(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_RandRange(Machine& ctx, VPackSlice const paramsList,
+                          VPackBuilder& result) {
   auto res = extract<double, double>(paramsList);
   if (!res) {
     return res.error();
@@ -697,7 +749,8 @@ EvalResult Prim_RandRange(Machine& ctx, VPackSlice const paramsList, VPackBuilde
   return {};
 }
 
-EvalResult Prim_ToJson(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_ToJson(Machine& ctx, VPackSlice const paramsList,
+                       VPackBuilder& result) {
   auto res = extract<VPackSlice>(paramsList);
   if (res.fail()) {
     return res.error();
@@ -708,7 +761,8 @@ EvalResult Prim_ToJson(Machine& ctx, VPackSlice const paramsList, VPackBuilder& 
   return {};
 }
 
-EvalResult Prim_FromJson(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_FromJson(Machine& ctx, VPackSlice const paramsList,
+                         VPackBuilder& result) {
   auto res = extract<std::string>(paramsList);
   if (res.fail()) {
     return res.error();
@@ -724,7 +778,8 @@ EvalResult Prim_FromJson(Machine& ctx, VPackSlice const paramsList, VPackBuilder
   }
 }
 
-void RegisterFunction(Machine& ctx, std::string_view name, Machine::function_type&& f) {
+void RegisterFunction(Machine& ctx, std::string_view name,
+                      Machine::function_type&& f) {
   ctx.setFunction(name, std::move(f));
 }
 
@@ -769,9 +824,15 @@ void RegisterAllPrimitives(Machine& ctx) {
   // Functional stuff
   ctx.setFunction("id", Prim_Identity);
   ctx.setFunction("apply", Prim_Apply);
-  ctx.setFunction("map", Prim_Map);  // ["map", <func(index, value) -> value>, <list>] or ["map", <func(key, value) -> value>, <dict>]
-  ctx.setFunction("reduce", Prim_Reduce);  // ["reduce", value, <func(index, value, accumulator), accumulator]
-  ctx.setFunction("filter", Prim_Filter);  // ["filter", <func(index, value) -> bool>, <list>] or ["filter", <func(key, value) -> bool>, <dict>]
+  ctx.setFunction("map",
+                  Prim_Map);  // ["map", <func(index, value) -> value>, <list>]
+                              // or ["map", <func(key, value) -> value>, <dict>]
+  ctx.setFunction("reduce", Prim_Reduce);  // ["reduce", value, <func(index,
+                                           // value, accumulator), accumulator]
+  ctx.setFunction(
+      "filter",
+      Prim_Filter);  // ["filter", <func(index, value) -> bool>, <list>] or
+                     // ["filter", <func(key, value) -> bool>, <dict>]
   ctx.setFunction("foldl", Prim_Foldl);
   ctx.setFunction("foldl1", Prim_Foldl1);
 

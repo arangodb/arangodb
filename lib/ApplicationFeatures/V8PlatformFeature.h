@@ -46,7 +46,8 @@ namespace options {
 class ProgramOptions;
 }
 
-class V8PlatformFeature final : public application_features::ApplicationFeature {
+class V8PlatformFeature final
+    : public application_features::ApplicationFeature {
  private:
   struct IsolateData {
     bool _outOfMemory = false;

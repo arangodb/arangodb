@@ -90,10 +90,9 @@ TEST_P(IResearchQueryStartsWithTest, test) {
           "includeAllFields": true }
     }})";
 
-    auto viewDefinition =
-        irs::string_utils::to_string(viewDefinitionTemplate,
-                                     static_cast<uint32_t>(linkVersion()),
-                                     static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition = irs::string_utils::to_string(
+        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()),
+        static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(viewDefinition);
     EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
@@ -101,7 +100,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+    view->properties(builder,
+                     arangodb::LogicalDataSource::Serialization::Properties);
     builder.close();
 
     auto slice = builder.slice();
@@ -120,9 +120,9 @@ TEST_P(IResearchQueryStartsWithTest, test) {
   {
     arangodb::OperationOptions opt;
 
-    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
-                                       arangodb::transaction::Options());
+    arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
+        EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
@@ -131,19 +131,20 @@ TEST_P(IResearchQueryStartsWithTest, test) {
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential.json");
 
-      auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
+          resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
       size_t i = 0;
 
-      std::shared_ptr<arangodb::LogicalCollection> collections[]{logicalCollection1,
-                                                                 logicalCollection2};
+      std::shared_ptr<arangodb::LogicalCollection> collections[]{
+          logicalCollection1, logicalCollection2};
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
-        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
+        auto const res =
+            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
         ++i;
       }
@@ -249,9 +250,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
   // execution outside arangosearch (true)
   {
-    auto queryResult =
-        arangodb::tests::executeQuery(vocbase,
-                                      "RETURN starts_with('abc', 'a')");
+    auto queryResult = arangodb::tests::executeQuery(
+        vocbase, "RETURN starts_with('abc', 'a')");
     ASSERT_TRUE(queryResult.result.ok());
 
     auto result = queryResult.data->slice();
@@ -269,9 +269,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
   // execution outside arangosearch (true) via []
   {
-    auto queryResult =
-        arangodb::tests::executeQuery(vocbase,
-                                      "RETURN starts_with('abc', ['a', 'ab'])");
+    auto queryResult = arangodb::tests::executeQuery(
+        vocbase, "RETURN starts_with('abc', ['a', 'ab'])");
     ASSERT_TRUE(queryResult.result.ok());
 
     auto result = queryResult.data->slice();
@@ -365,9 +364,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
   // execution outside arangosearch (true)
   {
-    auto queryResult =
-        arangodb::tests::executeQuery(vocbase,
-                                      "RETURN starts_with('abc', 'abc')");
+    auto queryResult = arangodb::tests::executeQuery(
+        vocbase, "RETURN starts_with('abc', 'abc')");
     ASSERT_TRUE(queryResult.result.ok());
 
     auto result = queryResult.data->slice();
@@ -404,9 +402,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
   // execution outside arangosearch (false)
   {
-    auto queryResult =
-        arangodb::tests::executeQuery(vocbase,
-                                      "RETURN starts_with('a', 'abc')");
+    auto queryResult = arangodb::tests::executeQuery(
+        vocbase, "RETURN starts_with('a', 'abc')");
     ASSERT_TRUE(queryResult.result.ok());
 
     auto result = queryResult.data->slice();
@@ -424,9 +421,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
   // execution outside arangosearch (false) via []
   {
-    auto queryResult =
-        arangodb::tests::executeQuery(vocbase,
-                                      "RETURN starts_with('a', ['abc', 'ab'])");
+    auto queryResult = arangodb::tests::executeQuery(
+        vocbase, "RETURN starts_with('a', ['abc', 'ab'])");
     ASSERT_TRUE(queryResult.result.ok());
 
     auto result = queryResult.data->slice();
@@ -463,9 +459,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
   // execution outside arangosearch (true) via [] empty array min match count 0
   {
-    auto queryResult =
-        arangodb::tests::executeQuery(vocbase,
-                                      "RETURN starts_with('abc', [], 0)");
+    auto queryResult = arangodb::tests::executeQuery(
+        vocbase, "RETURN starts_with('abc', [], 0)");
     ASSERT_TRUE(queryResult.result.ok());
 
     auto result = queryResult.data->slice();
@@ -481,7 +476,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
     }
   }
 
-  // execution outside arangosearch (true) via [] min match count 0, 1 not success
+  // execution outside arangosearch (true) via [] min match count 0, 1 not
+  // success
   {
     auto queryResult = arangodb::tests::executeQuery(
         vocbase, "RETURN starts_with('abc', ['b', 'd'], 0)");
@@ -595,7 +591,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
     }
   }
 
-  // execution outside arangosearch (false) via [] min match count > length 2 not success
+  // execution outside arangosearch (false) via [] min match count > length 2
+  // not success
   {
     auto queryResult = arangodb::tests::executeQuery(
         vocbase, "RETURN starts_with('abc', ['b', 'd'], 3)");
@@ -614,7 +611,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
     }
   }
 
-  // execution outside arangosearch (false) via [] min match count > length 2 success
+  // execution outside arangosearch (false) via [] min match count > length 2
+  // success
   {
     auto queryResult = arangodb::tests::executeQuery(
         vocbase, "RETURN starts_with('abc', ['a', 'ab'], 3)");
@@ -650,9 +648,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
   // execution outside arangosearch (wrong args) via []
   {
-    auto queryResult =
-        arangodb::tests::executeQuery(vocbase,
-                                      "RETURN starts_with(1, ['abc', 'def'])");
+    auto queryResult = arangodb::tests::executeQuery(
+        vocbase, "RETURN starts_with(1, ['abc', 'def'])");
     ASSERT_TRUE(queryResult.result.ok());
     auto result = queryResult.data->slice();
     EXPECT_TRUE(result.isArray());
@@ -666,9 +663,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
   // execution outside arangosearch (wrong args)
   {
-    auto queryResult =
-        arangodb::tests::executeQuery(vocbase,
-                                      "RETURN starts_with(true, 'abc')");
+    auto queryResult = arangodb::tests::executeQuery(
+        vocbase, "RETURN starts_with(true, 'abc')");
     ASSERT_TRUE(queryResult.result.ok());
     auto result = queryResult.data->slice();
     EXPECT_TRUE(result.isArray());
@@ -697,9 +693,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
   // execution outside arangosearch (wrong args)
   {
-    auto queryResult =
-        arangodb::tests::executeQuery(vocbase,
-                                      "RETURN starts_with(null, 'abc')");
+    auto queryResult = arangodb::tests::executeQuery(
+        vocbase, "RETURN starts_with(null, 'abc')");
     ASSERT_TRUE(queryResult.result.ok());
     auto result = queryResult.data->slice();
     EXPECT_TRUE(result.isArray());
@@ -743,9 +738,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
   // execution outside arangosearch (wrong args) via []
   {
-    auto queryResult =
-        arangodb::tests::executeQuery(vocbase,
-                                      "RETURN starts_with('a', [1, 2])");
+    auto queryResult = arangodb::tests::executeQuery(
+        vocbase, "RETURN starts_with('a', [1, 2])");
     ASSERT_TRUE(queryResult.result.ok());
     auto result = queryResult.data->slice();
     EXPECT_TRUE(result.isArray());
@@ -774,9 +768,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
   // execution outside arangosearch (wrong args) via []
   {
-    auto queryResult =
-        arangodb::tests::executeQuery(vocbase,
-                                      "RETURN starts_with('a', [null])");
+    auto queryResult = arangodb::tests::executeQuery(
+        vocbase, "RETURN starts_with('a', [null])");
     ASSERT_TRUE(queryResult.result.ok());
     auto result = queryResult.data->slice();
     EXPECT_TRUE(result.isArray());
@@ -805,9 +798,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
   // execution outside arangosearch (wrong args) via []
   {
-    auto queryResult =
-        arangodb::tests::executeQuery(vocbase,
-                                      "RETURN starts_with('a', [true, false])");
+    auto queryResult = arangodb::tests::executeQuery(
+        vocbase, "RETURN starts_with('a', [true, false])");
     ASSERT_TRUE(queryResult.result.ok());
     auto result = queryResult.data->slice();
     EXPECT_TRUE(result.isArray());
@@ -821,8 +813,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
   // exact term, unordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs{
-        {"A", &insertedDocs[0]}};
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+        expectedDocs{{"A", &insertedDocs[0]}};
 
     auto queryResult = arangodb::tests::executeQuery(
         vocbase, "FOR d IN testView SEARCH starts_with(d.name, 'A') RETURN d");
@@ -841,9 +833,10 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved, true));
+      EXPECT_TRUE(0 ==
+                  arangodb::basics::VelocyPackHelper::compare(
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -851,8 +844,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
   // exact term, unordered via []
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs{
-        {"A", &insertedDocs[0]}, {"B", &insertedDocs[1]}};
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+        expectedDocs{{"A", &insertedDocs[0]}, {"B", &insertedDocs[1]}};
 
     auto queryResult = arangodb::tests::executeQuery(
         vocbase,
@@ -872,17 +865,18 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved, true));
+      EXPECT_TRUE(0 ==
+                  arangodb::basics::VelocyPackHelper::compare(
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
   }
 
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs{
-        {"A", &insertedDocs[0]}, {"B", &insertedDocs[1]}};
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+        expectedDocs{{"A", &insertedDocs[0]}, {"B", &insertedDocs[1]}};
 
     auto queryResult = arangodb::tests::executeQuery(
         vocbase,
@@ -903,9 +897,10 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved, true));
+      EXPECT_TRUE(0 ==
+                  arangodb::basics::VelocyPackHelper::compare(
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -923,8 +918,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
   // exact term, unordered via [] min match count = 1
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs{
-        {"A", &insertedDocs[0]}, {"B", &insertedDocs[1]}};
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+        expectedDocs{{"A", &insertedDocs[0]}, {"B", &insertedDocs[1]}};
 
     auto queryResult = arangodb::tests::executeQuery(
         vocbase,
@@ -944,9 +939,10 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved, true));
+      EXPECT_TRUE(0 ==
+                  arangodb::basics::VelocyPackHelper::compare(
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -954,8 +950,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
   // exact term, ordered
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs{
-        {"A", &insertedDocs[0]}};
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+        expectedDocs{{"A", &insertedDocs[0]}};
 
     auto queryResult = arangodb::tests::executeQuery(
         vocbase,
@@ -976,9 +972,10 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved, true));
+      EXPECT_TRUE(0 ==
+                  arangodb::basics::VelocyPackHelper::compare(
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -986,8 +983,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
   // exact term, ordered via []
   {
-    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs{
-        {"A", &insertedDocs[0]}, {"B", &insertedDocs[1]}};
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*>
+        expectedDocs{{"A", &insertedDocs[0]}, {"B", &insertedDocs[1]}};
 
     auto queryResult = arangodb::tests::executeQuery(
         vocbase,
@@ -1009,9 +1006,10 @@ TEST_P(IResearchQueryStartsWithTest, test) {
 
       auto expectedDoc = expectedDocs.find(key);
       ASSERT_NE(expectedDoc, expectedDocs.end());
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved, true));
+      EXPECT_TRUE(0 ==
+                  arangodb::basics::VelocyPackHelper::compare(
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     EXPECT_TRUE(expectedDocs.empty());
@@ -1046,9 +1044,10 @@ TEST_P(IResearchQueryStartsWithTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved, true));
+      EXPECT_TRUE(0 ==
+                  arangodb::basics::VelocyPackHelper::compare(
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, expectedDocs.rend());
@@ -1084,9 +1083,10 @@ TEST_P(IResearchQueryStartsWithTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved, true));
+      EXPECT_TRUE(0 ==
+                  arangodb::basics::VelocyPackHelper::compare(
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, expectedDocs.rend());
@@ -1131,15 +1131,17 @@ TEST_P(IResearchQueryStartsWithTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved, true));
+      EXPECT_TRUE(0 ==
+                  arangodb::basics::VelocyPackHelper::compare(
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
-  // d.prefix = bca*|def*, d.seq DESC via [] min match count = 0 (true), 1 not success
+  // d.prefix = bca*|def*, d.seq DESC via [] min match count = 0 (true), 1 not
+  // success
   {
     std::map<ptrdiff_t, arangodb::ManagedDocumentResult const*> expectedDocs;
     for (auto const& doc : insertedDocs) {
@@ -1163,15 +1165,17 @@ TEST_P(IResearchQueryStartsWithTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved, true));
+      EXPECT_TRUE(0 ==
+                  arangodb::basics::VelocyPackHelper::compare(
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, expectedDocs.rend());
   }
 
-  // d.prefix = abc*|def*, d.seq DESC via [] min match count = 0 (true), 1 success
+  // d.prefix = abc*|def*, d.seq DESC via [] min match count = 0 (true), 1
+  // success
   {
     std::map<ptrdiff_t, arangodb::ManagedDocumentResult const*> expectedDocs;
     for (auto const& doc : insertedDocs) {
@@ -1195,9 +1199,10 @@ TEST_P(IResearchQueryStartsWithTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved, true));
+      EXPECT_TRUE(0 ==
+                  arangodb::basics::VelocyPackHelper::compare(
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, expectedDocs.rend());
@@ -1233,9 +1238,10 @@ TEST_P(IResearchQueryStartsWithTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved, true));
+      EXPECT_TRUE(0 ==
+                  arangodb::basics::VelocyPackHelper::compare(
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, expectedDocs.rend());
@@ -1288,9 +1294,10 @@ TEST_P(IResearchQueryStartsWithTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved, true));
+      EXPECT_TRUE(0 ==
+                  arangodb::basics::VelocyPackHelper::compare(
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, expectedDocs.rend());
@@ -1313,7 +1320,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
     EXPECT_FALSE(resultIt.valid());
   }
 
-  // d.prefix = abc*|def*, d.seq DESC via [] min match count = 3 (false), 2 not success
+  // d.prefix = abc*|def*, d.seq DESC via [] min match count = 3 (false), 2 not
+  // success
   {
     auto queryResult = arangodb::tests::executeQuery(
         vocbase,
@@ -1330,7 +1338,8 @@ TEST_P(IResearchQueryStartsWithTest, test) {
     EXPECT_FALSE(resultIt.valid());
   }
 
-  // d.prefix = abc*|ab*, d.seq DESC via [] min match count = 3 (false), 2 success
+  // d.prefix = abc*|ab*, d.seq DESC via [] min match count = 3 (false), 2
+  // success
   {
     auto queryResult = arangodb::tests::executeQuery(
         vocbase,
@@ -1375,9 +1384,10 @@ TEST_P(IResearchQueryStartsWithTest, test) {
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved, true));
+      EXPECT_TRUE(0 ==
+                  arangodb::basics::VelocyPackHelper::compare(
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, expectedDocs.rend());
@@ -1411,9 +1421,10 @@ TEST_P(IResearchQueryStartsWithTest, test) {
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved, true));
+      EXPECT_TRUE(0 ==
+                  arangodb::basics::VelocyPackHelper::compare(
+                      arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                      resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, expectedDocs.rend());

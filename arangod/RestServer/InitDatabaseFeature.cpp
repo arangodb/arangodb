@@ -61,32 +61,38 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-InitDatabaseFeature::InitDatabaseFeature(application_features::ApplicationServer& server,
-                                         std::vector<std::type_index> const& nonServerFeatures)
+InitDatabaseFeature::InitDatabaseFeature(
+    application_features::ApplicationServer& server,
+    std::vector<std::type_index> const& nonServerFeatures)
     : ApplicationFeature(server, "InitDatabase"),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
 }
 
-void InitDatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--database.init-database", "initializes an empty database",
-                     new BooleanParameter(&_initDatabase),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
-                                                         arangodb::options::Flags::Command));
+void InitDatabaseFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
+  options->addOption(
+      "--database.init-database", "initializes an empty database",
+      new BooleanParameter(&_initDatabase),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
+                                          arangodb::options::Flags::Command));
 
-  options->addOption("--database.restore-admin",
-                     "resets the admin users and sets a new password",
-                     new BooleanParameter(&_restoreAdmin),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
-                                                         arangodb::options::Flags::Command));
+  options->addOption(
+      "--database.restore-admin",
+      "resets the admin users and sets a new password",
+      new BooleanParameter(&_restoreAdmin),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
+                                          arangodb::options::Flags::Command));
 
-  options->addOption("--database.password", "initial password of root user",
-                     new StringParameter(&_password),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption(
+      "--database.password", "initial password of root user",
+      new StringParameter(&_password),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
-void InitDatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void InitDatabaseFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> options) {
   ProgramOptions::ProcessingResult const& result = options->processingResult();
   _seenPassword = result.touched("database.password");
 
@@ -96,8 +102,8 @@ void InitDatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> option
 
     // we can turn off all warnings about environment here, because they
     // wil show up on a regular start later anyway
-    server().disableFeatures(
-        std::vector<std::type_index>{std::type_index(typeid(EnvironmentFeature))});
+    server().disableFeatures(std::vector<std::type_index>{
+        std::type_index(typeid(EnvironmentFeature))});
   }
 }
 
@@ -149,11 +155,13 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
   std::cout << message << ": " << std::flush;
 #ifdef _WIN32
   TRI_SetStdinVisibility(false);
-  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_SetStdinVisibility(true); });
+  auto sg =
+      arangodb::scopeGuard([&]() noexcept { TRI_SetStdinVisibility(true); });
   std::wstring wpassword;
   _setmode(_fileno(stdin), _O_U16TEXT);
   std::getline(std::wcin, wpassword);
-  icu::UnicodeString pw(wpassword.c_str(), static_cast<int32_t>(wpassword.length()));
+  icu::UnicodeString pw(wpassword.c_str(),
+                        static_cast<int32_t>(wpassword.length()));
   pw.toUTF8String<std::string>(password);
 #else
 #ifdef TRI_HAVE_TERMIOS_H

@@ -83,7 +83,8 @@ std::size_t countKeys(rocksdb::DB* db, rocksdb::ColumnFamilyHandle* cf) {
 
 /// @brief iterate over all keys in range and count them
 std::size_t countKeyRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
-                          rocksdb::Snapshot const* snapshot, bool prefixSameAsStart) {
+                          rocksdb::Snapshot const* snapshot,
+                          bool prefixSameAsStart) {
   // note: snapshot may be a nullptr!
   rocksdb::Slice lower(bounds.start());
   rocksdb::Slice upper(bounds.end());
@@ -136,7 +137,8 @@ bool hasKeys(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
 /// Should mainly be used to implement the drop() call
 Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
                         bool prefixSameAsStart, bool useRangeDelete) {
-  LOG_TOPIC("95aeb", DEBUG, Logger::ENGINES) << "removing large range: " << bounds;
+  LOG_TOPIC("95aeb", DEBUG, Logger::ENGINES)
+      << "removing large range: " << bounds;
 
   rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
   rocksdb::DB* bDB = db->GetRootDB();
@@ -247,18 +249,27 @@ Result compactAll(rocksdb::DB* db, bool changeLevel,
   options.canceled = canceled;
   options.change_level = changeLevel;
   options.bottommost_level_compaction =
-      compactBottomMostLevel ? rocksdb::BottommostLevelCompaction::kForceOptimized
-                             : rocksdb::BottommostLevelCompaction::kIfHaveCompactionFilter;
+      compactBottomMostLevel
+          ? rocksdb::BottommostLevelCompaction::kForceOptimized
+          : rocksdb::BottommostLevelCompaction::kIfHaveCompactionFilter;
 
   std::initializer_list<rocksdb::ColumnFamilyHandle*> const cfs = {
-      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
-      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
-      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex),
-      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::EdgeIndex),
-      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::VPackIndex),
-      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex),
-      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::FulltextIndex),
-      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::ReplicatedLogs),
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::Definitions),
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::Documents),
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::PrimaryIndex),
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::EdgeIndex),
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::VPackIndex),
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::GeoIndex),
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::FulltextIndex),
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::ReplicatedLogs),
   };
 
   LOG_TOPIC("d8a5d", INFO, arangodb::Logger::ENGINES)

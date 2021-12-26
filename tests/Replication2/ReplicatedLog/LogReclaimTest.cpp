@@ -72,20 +72,21 @@ TEST_F(ReplicatedLogTest, reclaim_follower_after_term_change) {
 
   auto idx = leader->insert(LogPayload::createFromString("payload"), false,
                             LogLeader::doNotTriggerAsyncReplication);
-  auto f = follower->waitFor(idx).then([&](futures::Try<WaitForResult>&& quorum) {
-    EXPECT_TRUE(quorum.hasException());
-    try {
-      quorum.throwIfFailed();
-    } catch (basics::Exception const& ex) {
-      EXPECT_EQ(ex.code(), TRI_ERROR_REPLICATION_LEADER_CHANGE);
-    } catch (std::exception const& e) {
-      ADD_FAILURE() << "unexpected exception: " << e.what();
-    } catch (...) {
-      ADD_FAILURE() << "unexpected exception";
-    }
+  auto f =
+      follower->waitFor(idx).then([&](futures::Try<WaitForResult>&& quorum) {
+        EXPECT_TRUE(quorum.hasException());
+        try {
+          quorum.throwIfFailed();
+        } catch (basics::Exception const& ex) {
+          EXPECT_EQ(ex.code(), TRI_ERROR_REPLICATION_LEADER_CHANGE);
+        } catch (std::exception const& e) {
+          ADD_FAILURE() << "unexpected exception: " << e.what();
+        } catch (...) {
+          ADD_FAILURE() << "unexpected exception";
+        }
 
-    return leaderLog->getLeader();
-  });
+        return leaderLog->getLeader();
+      });
 
   followerLog->becomeLeader("leader", LogTerm{2}, {follower}, 1);
   ASSERT_TRUE(f.isReady());

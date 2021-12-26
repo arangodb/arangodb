@@ -70,7 +70,8 @@ static void InitSafetyOverhead(char* p, size_t length) {
 /// @brief sliceArgs
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool sliceArgs(v8::Isolate* isolate, v8::Local<v8::Value> const& start_arg,
+static inline bool sliceArgs(v8::Isolate* isolate,
+                             v8::Local<v8::Value> const& start_arg,
                              v8::Local<v8::Value> const& end_arg,
                              V8Buffer* parent, int32_t& start, int32_t& end) {
   if (!start_arg->IsInt32() || !end_arg->IsInt32()) {
@@ -157,7 +158,8 @@ static size_t Base64DecodedSize(char const* src, size_t size) {
 /// @brief ByteLength
 ////////////////////////////////////////////////////////////////////////////////
 
-static size_t ByteLengthString(v8::Isolate* isolate, v8::Handle<v8::String> string,
+static size_t ByteLengthString(v8::Isolate* isolate,
+                               v8::Handle<v8::String> string,
                                TRI_V8_encoding_t enc) {
   v8::HandleScope scope(isolate);
 
@@ -185,7 +187,8 @@ static void Encode(v8::FunctionCallbackInfo<v8::Value> const& args,
   v8::Isolate* isolate = args.GetIsolate();
 
   if (enc == BUFFER) {
-    TRI_V8_RETURN(TRI_V8_PAIR_STRING(isolate, static_cast<char const*>(buf), len));
+    TRI_V8_RETURN(
+        TRI_V8_PAIR_STRING(isolate, static_cast<char const*>(buf), len));
   }
 
   if (!len) {
@@ -201,14 +204,16 @@ static void Encode(v8::FunctionCallbackInfo<v8::Value> const& args,
       twobytebuf[i] = cbuf[i];
     }
 
-    v8::Local<v8::String> chunk = TRI_V8_STRING_UTF16(isolate, twobytebuf, (int)len);
+    v8::Local<v8::String> chunk =
+        TRI_V8_STRING_UTF16(isolate, twobytebuf, (int)len);
     delete[] twobytebuf;  // TODO use ExternalTwoByteString?
 
     TRI_V8_RETURN(chunk);
   }
 
   // utf8 or ascii enc
-  v8::Local<v8::String> chunk = TRI_V8_PAIR_STRING(isolate, (char const*)buf, (int)len);
+  v8::Local<v8::String> chunk =
+      TRI_V8_PAIR_STRING(isolate, (char const*)buf, (int)len);
   TRI_V8_RETURN(chunk);
 }
 
@@ -222,8 +227,9 @@ static void Encode(v8::FunctionCallbackInfo<v8::Value> const& args,
 /// @brief constructor template
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FromConstructorTemplate(v8::Isolate* isolate, v8::Local<v8::FunctionTemplate> t,
-                                    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void FromConstructorTemplate(
+    v8::Isolate* isolate, v8::Local<v8::FunctionTemplate> t,
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Local<v8::Value> argv[32];
   size_t argc = args.Length();
 
@@ -235,9 +241,10 @@ static void FromConstructorTemplate(v8::Isolate* isolate, v8::Local<v8::Function
     argv[i] = args[(int)i];
   }
 
-  v8::MaybeLocal<v8::Object> ret = t->GetFunction(TRI_IGETC)
-                                       .FromMaybe(v8::Local<v8::Function>())
-                                       ->NewInstance(TRI_IGETC, (int)argc, argv);
+  v8::MaybeLocal<v8::Object> ret =
+      t->GetFunction(TRI_IGETC)
+          .FromMaybe(v8::Local<v8::Function>())
+          ->NewInstance(TRI_IGETC, (int)argc, argv);
 
   TRI_V8_RETURN(ret.FromMaybe(v8::Local<v8::Object>()));
 }
@@ -393,7 +400,8 @@ static unsigned hex2bin(char c) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static ssize_t DecodeWrite(v8::Isolate* isolate, char* buf, size_t buflen,
-                           v8::Handle<v8::Value> val, TRI_V8_encoding_t encoding) {
+                           v8::Handle<v8::Value> val,
+                           TRI_V8_encoding_t encoding) {
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
 
@@ -424,15 +432,17 @@ static ssize_t DecodeWrite(v8::Isolate* isolate, char* buf, size_t buflen,
     v8::Local<v8::Value> arg = TRI_V8_ASCII_STRING(isolate, "binary");
     v8::Handle<v8::Object> object = val.As<v8::Object>();
     v8::Local<v8::Function> callback =
-        TRI_GetProperty(context, isolate, object, "toString").As<v8::Function>();
-    str = TRI_GET_STRING(
-        callback->Call(TRI_IGETC, object, 1, &arg).FromMaybe(v8::Local<v8::Value>()));
+        TRI_GetProperty(context, isolate, object, "toString")
+            .As<v8::Function>();
+    str = TRI_GET_STRING(callback->Call(TRI_IGETC, object, 1, &arg)
+                             .FromMaybe(v8::Local<v8::Value>()));
   } else {
     str = TRI_GET_STRING(val);
   }
 
   if (encoding == UTF8) {
-    str->WriteUtf8(isolate, buf, (int)buflen, NULL, v8::String::HINT_MANY_WRITES_EXPECTED);
+    str->WriteUtf8(isolate, buf, (int)buflen, NULL,
+                   v8::String::HINT_MANY_WRITES_EXPECTED);
     return (ssize_t)buflen;
   }
 
@@ -447,7 +457,8 @@ static ssize_t DecodeWrite(v8::Isolate* isolate, char* buf, size_t buflen,
 
   uint16_t* twobytebuf = new uint16_t[buflen];
 
-  str->Write(isolate, twobytebuf, 0, (int)buflen, v8::String::HINT_MANY_WRITES_EXPECTED);
+  str->Write(isolate, twobytebuf, 0, (int)buflen,
+             v8::String::HINT_MANY_WRITES_EXPECTED);
 
   for (size_t i = 0; i < buflen; i++) {
     unsigned char* b = reinterpret_cast<unsigned char*>(&twobytebuf[i]);
@@ -491,7 +502,8 @@ static void Swizzle(char* buf, size_t len) {
 /// @brief parses an encoding
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_V8_encoding_t ParseEncoding(v8::Isolate* isolate, v8::Handle<v8::Value> encoding_v,
+static TRI_V8_encoding_t ParseEncoding(v8::Isolate* isolate,
+                                       v8::Handle<v8::Value> encoding_v,
                                        TRI_V8_encoding_t defenc) {
   v8::HandleScope scope(isolate);
 
@@ -561,7 +573,8 @@ void V8Buffer::New(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// @brief C++ API for constructing fast buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> V8Buffer::New(v8::Isolate* isolate, v8::Handle<v8::String> string) {
+v8::Handle<v8::Object> V8Buffer::New(v8::Isolate* isolate,
+                                     v8::Handle<v8::String> string) {
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
   auto context = TRI_IGETC;
 
@@ -591,7 +604,8 @@ v8::Handle<v8::Object> V8Buffer::New(v8::Isolate* isolate, v8::Handle<v8::String
 V8Buffer* V8Buffer::New(v8::Isolate* isolate, size_t length) {
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
 
-  v8::Local<v8::Value> arg = v8::Integer::NewFromUnsigned(isolate, (uint32_t)length);
+  v8::Local<v8::Value> arg =
+      v8::Integer::NewFromUnsigned(isolate, (uint32_t)length);
   TRI_GET_GLOBAL(BufferTempl, v8::FunctionTemplate);
   v8::Local<v8::Object> b = BufferTempl->GetFunction(TRI_IGETC)
                                 .FromMaybe(v8::Local<v8::Function>())
@@ -652,10 +666,12 @@ V8Buffer::~V8Buffer() { replace(_isolate, NULL, 0, NULL, NULL, true); }
 /// @brief private constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8Buffer::V8Buffer(v8::Isolate* isolate, v8::Handle<v8::Object> wrapper, size_t length)
-    : V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID>(isolate, this, nullptr, wrapper),  // TODO: warning C4355: 'this' :
-                                                                                // used in base member initializer
-                                                                                // list
+V8Buffer::V8Buffer(v8::Isolate* isolate, v8::Handle<v8::Object> wrapper,
+                   size_t length)
+    : V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID>(
+          isolate, this, nullptr, wrapper),  // TODO: warning C4355: 'this' :
+                                             // used in base member initializer
+                                             // list
       _length(0),
       _data(nullptr),
       _callback(nullptr) {
@@ -723,7 +739,8 @@ void V8Buffer::replace(v8::Isolate* isolate, char* data, size_t length,
       memcpy(_data, data, _length);
     }
 
-    isolate->AdjustAmountOfExternalAllocatedMemory(sizeof(V8Buffer) + _length + SAFETY_OVERHEAD);
+    isolate->AdjustAmountOfExternalAllocatedMemory(sizeof(V8Buffer) + _length +
+                                                   SAFETY_OVERHEAD);
   } else {
     _data = NULL;
   }
@@ -1012,8 +1029,9 @@ static void JS_Copy(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_RANGE_ERROR("sourceEnd out of bounds");
   }
 
-  size_t to_copy = MIN(MIN(source_end - source_start, target_length - target_start),
-                       source->_length - source_start);
+  size_t to_copy =
+      MIN(MIN(source_end - source_start, target_length - target_start),
+          source->_length - source_start);
 
   // need to use slightly slower memmove is the ranges might overlap
   memmove((void*)(target_data + target_start),
@@ -1093,9 +1111,9 @@ static void JS_Ucs2Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   uint16_t* p = (uint16_t*)(buffer->_data + offset);
 
-  int written =
-      s->Write(isolate, p, 0, (int)max_length,
-               (v8::String::HINT_MANY_WRITES_EXPECTED | v8::String::NO_NULL_TERMINATION));
+  int written = s->Write(isolate, p, 0, (int)max_length,
+                         (v8::String::HINT_MANY_WRITES_EXPECTED |
+                          v8::String::NO_NULL_TERMINATION));
 
   TRI_V8_RETURN(v8::Integer::New(isolate, written * 2));
 }
@@ -1191,9 +1209,10 @@ static void JS_AsciiWrite(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   char* p = buffer->_data + offset;
 
-  int written =
-      s->WriteOneByte(isolate, reinterpret_cast<uint8_t*>(p), 0, (int)max_length,
-                      (v8::String::HINT_MANY_WRITES_EXPECTED | v8::String::NO_NULL_TERMINATION));
+  int written = s->WriteOneByte(isolate, reinterpret_cast<uint8_t*>(p), 0,
+                                (int)max_length,
+                                (v8::String::HINT_MANY_WRITES_EXPECTED |
+                                 v8::String::NO_NULL_TERMINATION));
   TRI_V8_RETURN(v8::Integer::New(isolate, written));
 }
 
@@ -1307,7 +1326,7 @@ static void JS_BinaryWrite(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// @brief reads a float (generic version)
 ////////////////////////////////////////////////////////////////////////////////
 
-template <typename T, bool ENDIANNESS>
+template<typename T, bool ENDIANNESS>
 static void ReadFloatGeneric(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
@@ -1380,7 +1399,7 @@ static void JS_ReadDoubleBE(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// @brief writes a float (generic version)
 ////////////////////////////////////////////////////////////////////////////////
 
-template <typename T, bool ENDIANNESS>
+template<typename T, bool ENDIANNESS>
 static void WriteFloatGeneric(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
@@ -1468,15 +1487,16 @@ static void JS_ByteLength(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Local<v8::String> s = TRI_GET_STRING(args[0]);
   TRI_V8_encoding_t e = ParseEncoding(isolate, args[1], UTF8);
 
-  TRI_V8_RETURN(v8::Integer::New(isolate, (int32_t)ByteLengthString(isolate, s, e)));
+  TRI_V8_RETURN(
+      v8::Integer::New(isolate, (int32_t)ByteLengthString(isolate, s, e)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects an indexed attribute from the buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-static void MapGetIndexedBuffer(uint32_t idx,
-                                const v8::PropertyCallbackInfo<v8::Value>& args) {
+static void MapGetIndexedBuffer(
+    uint32_t idx, const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
@@ -1487,7 +1507,8 @@ static void MapGetIndexedBuffer(uint32_t idx,
     // seems object has become a FastBuffer already
     if (TRI_HasProperty(context, isolate, self, "parent")) {
       v8::Handle<v8::Value> parent =
-          self->Get(context, TRI_V8_ASCII_STRING(isolate, "parent")).FromMaybe(v8::Handle<v8::Value>());
+          self->Get(context, TRI_V8_ASCII_STRING(isolate, "parent"))
+              .FromMaybe(v8::Handle<v8::Value>());
       if (!parent->IsObject()) {
         TRI_V8_RETURN(v8::Handle<v8::Value>());
       }
@@ -1502,15 +1523,17 @@ static void MapGetIndexedBuffer(uint32_t idx,
     TRI_V8_RETURN(v8::Handle<v8::Value>());
   }
 
-  TRI_V8_RETURN(v8::Integer::NewFromUnsigned(isolate, ((uint8_t)buffer->_data[idx])));
+  TRI_V8_RETURN(
+      v8::Integer::NewFromUnsigned(isolate, ((uint8_t)buffer->_data[idx])));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets an indexed attribute in the buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-static void MapSetIndexedBuffer(uint32_t idx, v8::Local<v8::Value> value,
-                                const v8::PropertyCallbackInfo<v8::Value>& args) {
+static void MapSetIndexedBuffer(
+    uint32_t idx, v8::Local<v8::Value> value,
+    const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
@@ -1521,7 +1544,8 @@ static void MapSetIndexedBuffer(uint32_t idx, v8::Local<v8::Value> value,
     // seems object has become a FastBuffer already
     if (TRI_HasProperty(context, isolate, self, "parent")) {
       v8::Handle<v8::Value> parent =
-          self->Get(context, TRI_V8_ASCII_STRING(isolate, "parent")).FromMaybe(v8::Handle<v8::Value>());
+          self->Get(context, TRI_V8_ASCII_STRING(isolate, "parent"))
+              .FromMaybe(v8::Handle<v8::Value>());
       if (!parent->IsObject()) {
         TRI_V8_RETURN(v8::Handle<v8::Value>());
       }
@@ -1540,7 +1564,8 @@ static void MapSetIndexedBuffer(uint32_t idx, v8::Local<v8::Value> value,
 
   buffer->_data[idx] = (char)val;
 
-  TRI_V8_RETURN(v8::Integer::NewFromUnsigned(isolate, ((uint8_t)buffer->_data[idx])));
+  TRI_V8_RETURN(
+      v8::Integer::NewFromUnsigned(isolate, ((uint8_t)buffer->_data[idx])));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1562,8 +1587,8 @@ void TRI_InitV8Buffer(v8::Isolate* isolate) {
 
   TRI_v8_global_t* v8g = TRI_GetV8Globals(isolate);
 
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "BYTELENGTH"), JS_ByteLength);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "BYTELENGTH"), JS_ByteLength);
 
   // .............................................................................
   // generate the general SlowBuffer template
@@ -1584,35 +1609,57 @@ void TRI_InitV8Buffer(v8::Isolate* isolate) {
   v8g->BufferTempl.Reset(isolate, ft);
 
   // copy free
-  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "binarySlice"), JS_BinarySlice);
-  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "asciiSlice"), JS_AsciiSlice);
-  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "base64Slice"), JS_Base64Slice);
-  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "ucs2Slice"), JS_Ucs2Slice);
-  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "hexSlice"), JS_HexSlice);
-  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "utf8Slice"), JS_Utf8Slice);
+  TRI_V8_AddProtoMethod(
+      isolate, ft, TRI_V8_ASCII_STRING(isolate, "binarySlice"), JS_BinarySlice);
+  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "asciiSlice"),
+                        JS_AsciiSlice);
+  TRI_V8_AddProtoMethod(
+      isolate, ft, TRI_V8_ASCII_STRING(isolate, "base64Slice"), JS_Base64Slice);
+  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "ucs2Slice"),
+                        JS_Ucs2Slice);
+  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "hexSlice"),
+                        JS_HexSlice);
+  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "utf8Slice"),
+                        JS_Utf8Slice);
 
-  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "utf8Write"), JS_Utf8Write);
-  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "asciiWrite"), JS_AsciiWrite);
-  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "binaryWrite"), JS_BinaryWrite);
-  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "base64Write"), JS_Base64Write);
-  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "ucs2Write"), JS_Ucs2Write);
-  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "hexWrite"), JS_HexWrite);
-  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "readFloatLE"), JS_ReadFloatLE);
-  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "readFloatBE"), JS_ReadFloatBE);
+  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "utf8Write"),
+                        JS_Utf8Write);
+  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "asciiWrite"),
+                        JS_AsciiWrite);
+  TRI_V8_AddProtoMethod(
+      isolate, ft, TRI_V8_ASCII_STRING(isolate, "binaryWrite"), JS_BinaryWrite);
+  TRI_V8_AddProtoMethod(
+      isolate, ft, TRI_V8_ASCII_STRING(isolate, "base64Write"), JS_Base64Write);
+  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "ucs2Write"),
+                        JS_Ucs2Write);
+  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "hexWrite"),
+                        JS_HexWrite);
+  TRI_V8_AddProtoMethod(
+      isolate, ft, TRI_V8_ASCII_STRING(isolate, "readFloatLE"), JS_ReadFloatLE);
+  TRI_V8_AddProtoMethod(
+      isolate, ft, TRI_V8_ASCII_STRING(isolate, "readFloatBE"), JS_ReadFloatBE);
   TRI_V8_AddProtoMethod(isolate, ft,
-                        TRI_V8_ASCII_STRING(isolate, "readDoubleLE"), JS_ReadDoubleLE);
+                        TRI_V8_ASCII_STRING(isolate, "readDoubleLE"),
+                        JS_ReadDoubleLE);
   TRI_V8_AddProtoMethod(isolate, ft,
-                        TRI_V8_ASCII_STRING(isolate, "readDoubleBE"), JS_ReadDoubleBE);
+                        TRI_V8_ASCII_STRING(isolate, "readDoubleBE"),
+                        JS_ReadDoubleBE);
   TRI_V8_AddProtoMethod(isolate, ft,
-                        TRI_V8_ASCII_STRING(isolate, "writeFloatLE"), JS_WriteFloatLE);
+                        TRI_V8_ASCII_STRING(isolate, "writeFloatLE"),
+                        JS_WriteFloatLE);
   TRI_V8_AddProtoMethod(isolate, ft,
-                        TRI_V8_ASCII_STRING(isolate, "writeFloatBE"), JS_WriteFloatBE);
+                        TRI_V8_ASCII_STRING(isolate, "writeFloatBE"),
+                        JS_WriteFloatBE);
   TRI_V8_AddProtoMethod(isolate, ft,
-                        TRI_V8_ASCII_STRING(isolate, "writeDoubleLE"), JS_WriteDoubleLE);
+                        TRI_V8_ASCII_STRING(isolate, "writeDoubleLE"),
+                        JS_WriteDoubleLE);
   TRI_V8_AddProtoMethod(isolate, ft,
-                        TRI_V8_ASCII_STRING(isolate, "writeDoubleBE"), JS_WriteDoubleBE);
-  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "fill"), JS_Fill);
-  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "copy"), JS_Copy);
+                        TRI_V8_ASCII_STRING(isolate, "writeDoubleBE"),
+                        JS_WriteDoubleBE);
+  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "fill"),
+                        JS_Fill);
+  TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "copy"),
+                        JS_Copy);
 
   // create the exports
   v8::Handle<v8::ObjectTemplate> exports = v8::ObjectTemplate::New(isolate);

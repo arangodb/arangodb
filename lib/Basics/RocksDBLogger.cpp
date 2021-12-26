@@ -39,7 +39,8 @@ RocksDBLogger::RocksDBLogger(rocksdb::InfoLogLevel level)
     : rocksdb::Logger(level), _enabled(true) {}
 RocksDBLogger::~RocksDBLogger() = default;
 
-void RocksDBLogger::Logv(const rocksdb::InfoLogLevel logLevel, char const* format, va_list ap) {
+void RocksDBLogger::Logv(const rocksdb::InfoLogLevel logLevel,
+                         char const* format, va_list ap) {
   if (logLevel < GetInfoLogLevel()) {
     return;
   }

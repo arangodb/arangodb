@@ -53,7 +53,8 @@ struct FakeAbstractFollower : replicated_log::AbstractFollower {
   ParticipantId id;
 };
 
-struct ReplicationMaintenanceActionTest : ReplicatedLogTest, algorithms::LogActionContext {
+struct ReplicationMaintenanceActionTest : ReplicatedLogTest,
+                                          algorithms::LogActionContext {
   auto dropReplicatedLog(LogId id) -> Result final {
     if (auto it = logs.find(id); it != logs.end()) {
       logs.erase(it);
@@ -63,7 +64,8 @@ struct ReplicationMaintenanceActionTest : ReplicatedLogTest, algorithms::LogActi
     }
   }
 
-  auto ensureReplicatedLog(LogId id) -> std::shared_ptr<replicated_log::ReplicatedLog> final {
+  auto ensureReplicatedLog(LogId id)
+      -> std::shared_ptr<replicated_log::ReplicatedLog> final {
     if (auto it = logs.find(id); it != logs.end()) {
       return it->second;
     }
@@ -83,7 +85,8 @@ struct ReplicationMaintenanceActionTest : ReplicatedLogTest, algorithms::LogActi
 
 TEST_F(ReplicationMaintenanceActionTest, drop_replicated_log) {
   auto const logId = LogId{12};
-  algorithms::updateReplicatedLog(*this, ParticipantId{"A"}, RebootId{17}, logId, nullptr);
+  algorithms::updateReplicatedLog(*this, ParticipantId{"A"}, RebootId{17},
+                                  logId, nullptr);
 
   ASSERT_EQ(logs.size(), 0);
 }
@@ -122,12 +125,14 @@ TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader) {
   ASSERT_EQ(logs.size(), 1);
   auto& log = logs.at(logId);
   EXPECT_EQ(log->getParticipant()->getTerm().value(), LogTerm{8});
-  auto status = std::get<LeaderStatus>(log->getParticipant()->getStatus().getVariant());
+  auto status =
+      std::get<LeaderStatus>(log->getParticipant()->getStatus().getVariant());
   EXPECT_EQ(status.follower.size(), 1);
   EXPECT_NE(status.follower.find(serverId), status.follower.end());
 }
 
-TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader_wrong_reboot_id) {
+TEST_F(ReplicationMaintenanceActionTest,
+       create_replicated_log_leader_wrong_reboot_id) {
   auto const logId = LogId{12};
   auto const serverId = ParticipantId{"A"};
 
@@ -148,7 +153,8 @@ TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader_wrong_rebo
       log->getParticipant()->getStatus().getVariant()));
 }
 
-TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader_with_follower) {
+TEST_F(ReplicationMaintenanceActionTest,
+       create_replicated_log_leader_with_follower) {
   auto const logId = LogId{12};
   auto const serverId = ParticipantId{"A"};
   auto const followerId = ParticipantId{"B"};
@@ -167,7 +173,8 @@ TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader_with_follo
   ASSERT_EQ(logs.size(), 1);
   auto& log = logs.at(logId);
   EXPECT_EQ(log->getParticipant()->getTerm().value(), LogTerm{8});
-  auto status = std::get<LeaderStatus>(log->getParticipant()->getStatus().getVariant());
+  auto status =
+      std::get<LeaderStatus>(log->getParticipant()->getStatus().getVariant());
   EXPECT_EQ(status.follower.size(), 2);
   EXPECT_NE(status.follower.find(serverId), status.follower.end());
   EXPECT_NE(status.follower.find(followerId), status.follower.end());

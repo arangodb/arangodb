@@ -167,7 +167,8 @@ TEST(EndpointTest, EndpointDomains) {
   CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org", domain, AF_INET);
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8529", domain, AF_INET);
   CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8529", domain, AF_INET);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org:8529", domain, AF_INET);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org:8529", domain,
+                         AF_INET);
   CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]", domain, AF_INET6);
   CHECK_ENDPOINT_FEATURE(client, "tcp://[::]", domain, AF_INET6);
   CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:8529", domain, AF_INET6);
@@ -176,14 +177,16 @@ TEST(EndpointTest, EndpointDomains) {
                          "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529",
                          domain, AF_INET6);
   CHECK_ENDPOINT_FEATURE(
-      client, "http@tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", domain, AF_INET6);
+      client, "http@tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529",
+      domain, AF_INET6);
   CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", domain, AF_INET);
   CHECK_ENDPOINT_FEATURE(client, "ssl://192.168.173.13", domain, AF_INET);
   CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", domain, AF_INET);
   CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org", domain, AF_INET);
   CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:8529", domain, AF_INET);
   CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8529", domain, AF_INET);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", domain, AF_INET);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", domain,
+                         AF_INET);
   CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", domain, AF_INET6);
   CHECK_ENDPOINT_FEATURE(client, "ssl://[::]", domain, AF_INET6);
   CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:8529", domain, AF_INET6);
@@ -192,12 +195,15 @@ TEST(EndpointTest, EndpointDomains) {
                          "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529",
                          domain, AF_INET6);
   CHECK_ENDPOINT_FEATURE(
-      client, "http@ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", domain, AF_INET6);
+      client, "http@ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529",
+      domain, AF_INET6);
 
 #ifndef _WIN32
   CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", domain, AF_UNIX);
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", domain, AF_UNIX);
-  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock", domain, AF_UNIX);
+  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", domain,
+                         AF_UNIX);
+  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock", domain,
+                         AF_UNIX);
 #endif
 }
 
@@ -295,9 +301,12 @@ TEST(EndpointTest, EndpointDomainTypes) {
 TEST(EndpointTest, EndpointPorts) {
   Endpoint* e;
 
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", port, EndpointIp::_defaultPortHttp);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", port, EndpointIp::_defaultPortHttp);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org", port, EndpointIp::_defaultPortHttp);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", port,
+                         EndpointIp::_defaultPortHttp);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", port,
+                         EndpointIp::_defaultPortHttp);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org", port,
+                         EndpointIp::_defaultPortHttp);
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8529", port, 8529);
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8532", port, 8532);
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:80", port, 80);
@@ -309,9 +318,12 @@ TEST(EndpointTest, EndpointPorts) {
   CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:443", port, 443);
   CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:65535", port, 65535);
   CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org:8529", port, 8529);
-  CHECK_ENDPOINT_FEATURE(client, "http@tcp://www.arangodb.org:8529", port, 8529);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]", port, EndpointIp::_defaultPortHttp);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]", port, EndpointIp::_defaultPortHttp);
+  CHECK_ENDPOINT_FEATURE(client, "http@tcp://www.arangodb.org:8529", port,
+                         8529);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]", port,
+                         EndpointIp::_defaultPortHttp);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]", port,
+                         EndpointIp::_defaultPortHttp);
   CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:8529", port, 8529);
   CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:8532", port, 8532);
   CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:80", port, 80);
@@ -322,14 +334,18 @@ TEST(EndpointTest, EndpointPorts) {
   CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:80", port, 80);
   CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:443", port, 443);
   CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:65535", port, 65535);
-  CHECK_ENDPOINT_FEATURE(client,
-                         "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", port, 666);
   CHECK_ENDPOINT_FEATURE(
-      client, "http@tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", port, 666);
+      client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", port, 666);
+  CHECK_ENDPOINT_FEATURE(
+      client, "http@tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", port,
+      666);
 
-  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", port, EndpointIp::_defaultPortHttp);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", port, EndpointIp::_defaultPortHttp);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org", port, EndpointIp::_defaultPortHttp);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", port,
+                         EndpointIp::_defaultPortHttp);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", port,
+                         EndpointIp::_defaultPortHttp);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org", port,
+                         EndpointIp::_defaultPortHttp);
   CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:8529", port, 8529);
   CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:8532", port, 8532);
   CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:80", port, 80);
@@ -341,9 +357,12 @@ TEST(EndpointTest, EndpointPorts) {
   CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:443", port, 443);
   CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:65535", port, 65535);
   CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", port, 8529);
-  CHECK_ENDPOINT_FEATURE(client, "http@ssl://www.arangodb.org:8529", port, 8529);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", port, EndpointIp::_defaultPortHttp);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]", port, EndpointIp::_defaultPortHttp);
+  CHECK_ENDPOINT_FEATURE(client, "http@ssl://www.arangodb.org:8529", port,
+                         8529);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", port,
+                         EndpointIp::_defaultPortHttp);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]", port,
+                         EndpointIp::_defaultPortHttp);
   CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:8529", port, 8529);
   CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:8532", port, 8532);
   CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:80", port, 80);
@@ -354,15 +373,17 @@ TEST(EndpointTest, EndpointPorts) {
   CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:80", port, 80);
   CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:443", port, 443);
   CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:65535", port, 65535);
-  CHECK_ENDPOINT_FEATURE(client,
-                         "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", port, 666);
   CHECK_ENDPOINT_FEATURE(
-      client, "http@ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", port, 666);
+      client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", port, 666);
+  CHECK_ENDPOINT_FEATURE(
+      client, "http@ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", port,
+      666);
 
 #ifndef _WIN32
   CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", port, 0);
   CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", port, 0);
-  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock", port, 0);
+  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock", port,
+                         0);
 #endif
 }
 
@@ -562,15 +583,15 @@ TEST(EndpointTest, EndpointHostString) {
   CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8529", hostAndPort, "[::]:8529");
   CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:80", hostAndPort, "[::]:80");
   CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8080", hostAndPort, "[::]:8080");
-  CHECK_ENDPOINT_FEATURE(client,
-                         "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]", hostAndPort,
-                         "[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529");
-  CHECK_ENDPOINT_FEATURE(client,
-                         "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", hostAndPort,
-                         "[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529");
-  CHECK_ENDPOINT_FEATURE(client,
-                         "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:777", hostAndPort,
-                         "[2001:0db8:0000:0000:0000:ff00:0042:8329]:777");
+  CHECK_ENDPOINT_FEATURE(
+      client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]", hostAndPort,
+      "[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529");
+  CHECK_ENDPOINT_FEATURE(
+      client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529",
+      hostAndPort, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529");
+  CHECK_ENDPOINT_FEATURE(
+      client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:777",
+      hostAndPort, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:777");
   CHECK_ENDPOINT_FEATURE(
       client, "http@tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:777",
       hostAndPort, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:777");
@@ -605,21 +626,22 @@ TEST(EndpointTest, EndpointHostString) {
   CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:32768", hostAndPort,
                          "[127.0.0.1]:32768");
   CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:8529", hostAndPort, "[::]:8529");
-  CHECK_ENDPOINT_FEATURE(client,
-                         "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]", hostAndPort,
-                         "[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529");
-  CHECK_ENDPOINT_FEATURE(client,
-                         "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", hostAndPort,
-                         "[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529");
-  CHECK_ENDPOINT_FEATURE(client,
-                         "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:994", hostAndPort,
-                         "[2001:0db8:0000:0000:0000:ff00:0042:8329]:994");
+  CHECK_ENDPOINT_FEATURE(
+      client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]", hostAndPort,
+      "[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529");
+  CHECK_ENDPOINT_FEATURE(
+      client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529",
+      hostAndPort, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529");
+  CHECK_ENDPOINT_FEATURE(
+      client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:994",
+      hostAndPort, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:994");
   CHECK_ENDPOINT_FEATURE(
       client, "http@ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:994",
       hostAndPort, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:994");
 
 #ifndef _WIN32
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", hostAndPort, "localhost");
+  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", hostAndPort,
+                         "localhost");
   CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", hostAndPort,
                          "localhost");
   CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock",
@@ -762,7 +784,8 @@ TEST(EndpointTest, EndpointClientSslIpV6WithPortHttp) {
   EXPECT_TRUE(AF_INET6 == e->domain());
   EXPECT_TRUE("0001:0002:0003:0004:0005:0006:0007:0008" == e->host());
   EXPECT_TRUE(43425 == e->port());
-  EXPECT_TRUE("[0001:0002:0003:0004:0005:0006:0007:0008]:43425" == e->hostAndPort());
+  EXPECT_TRUE("[0001:0002:0003:0004:0005:0006:0007:0008]:43425" ==
+              e->hostAndPort());
   EXPECT_TRUE(false == e->isConnected());
   delete e;
 }

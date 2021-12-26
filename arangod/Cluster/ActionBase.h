@@ -162,7 +162,8 @@ class ActionBase {
 
   /// @brief Set the contained result object
   void result(Result const& result);
-  void result(ErrorCode errorNumber, std::string const& errorMessage = std::string());
+  void result(ErrorCode errorNumber,
+              std::string const& errorMessage = std::string());
 
   /// @brief When object was constructed
   std::chrono::system_clock::time_point getCreateTime() const {

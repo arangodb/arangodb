@@ -31,7 +31,8 @@ using namespace arangodb::aql;
 
 TraverserEngineShardLists::TraverserEngineShardLists(
     GraphNode const* node, ServerID const& server,
-    std::unordered_map<ShardID, ServerID> const& shardMapping, QueryContext& query)
+    std::unordered_map<ShardID, ServerID> const& shardMapping,
+    QueryContext& query)
     : _node(node), _hasShard(false) {
   auto const& edges = _node->edgeColls();
   TRI_ASSERT(!edges.empty());
@@ -66,24 +67,25 @@ TraverserEngineShardLists::TraverserEngineShardLists(
       _inaccessible.insert(std::to_string(col->id().id()));
     }
 #endif
-    auto shards = getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards),
-                                    col->isSatellite() && node->isSmart());
+    auto shards =
+        getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards),
+                          col->isSatellite() && node->isSmart());
     _vertexCollections.try_emplace(col->name(), std::move(shards));
   }
 }
 
 std::vector<ShardID> TraverserEngineShardLists::getAllLocalShards(
-    std::unordered_map<ShardID, ServerID> const& shardMapping, ServerID const& server,
-    std::shared_ptr<std::vector<std::string>> shardIds, bool allowReadFromFollower) {
+    std::unordered_map<ShardID, ServerID> const& shardMapping,
+    ServerID const& server, std::shared_ptr<std::vector<std::string>> shardIds,
+    bool allowReadFromFollower) {
   std::vector<ShardID> localShards;
   for (auto const& shard : *shardIds) {
     auto const& it = shardMapping.find(shard);
     if (it == shardMapping.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "no entry for shard '" + shard +
-                                         "' in shard mapping table (" +
-                                         std::to_string(shardMapping.size()) +
-                                         " entries)");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          "no entry for shard '" + shard + "' in shard mapping table (" +
+              std::to_string(shardMapping.size()) + " entries)");
     }
     if (it->second == server) {
       localShards.emplace_back(shard);
@@ -97,7 +99,8 @@ std::vector<ShardID> TraverserEngineShardLists::getAllLocalShards(
   return localShards;
 }
 
-void TraverserEngineShardLists::serializeIntoBuilder(VPackBuilder& infoBuilder) const {
+void TraverserEngineShardLists::serializeIntoBuilder(
+    VPackBuilder& infoBuilder) const {
   TRI_ASSERT(_hasShard);
   TRI_ASSERT(infoBuilder.isOpenArray());
   infoBuilder.openObject();

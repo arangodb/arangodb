@@ -53,7 +53,8 @@ TEST_P(IResearchQueryGeoContainsTest, test) {
 
   // geo analyzer
   {
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
     // shape
@@ -96,8 +97,8 @@ TEST_P(IResearchQueryGeoContainsTest, test) {
   // create view
   arangodb::iresearch::IResearchView* impl{};
   {
-    auto createJson =
-        VPackParser::fromJson(R"({ "name": "testView", "type": "arangosearch" })");
+    auto createJson = VPackParser::fromJson(
+        R"({ "name": "testView", "type": "arangosearch" })");
     auto logicalView = vocbase.createView(createJson->slice());
     ASSERT_FALSE(!logicalView);
 
@@ -113,9 +114,8 @@ TEST_P(IResearchQueryGeoContainsTest, test) {
         }}
     })";
 
-    auto viewDefinition =
-        irs::string_utils::to_string(viewDefinitionTemplate,
-                                     static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition = irs::string_utils::to_string(
+        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -170,9 +170,9 @@ TEST_P(IResearchQueryGeoContainsTest, test) {
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto doc : VPackArrayIterator(docs->slice())) {
@@ -192,13 +192,13 @@ TEST_P(IResearchQueryGeoContainsTest, test) {
 
   // ensure presence of special a column for geo indices
   {
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::READ);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::READ);
     ASSERT_TRUE(trx.begin().ok());
 
-    auto snapshot =
-        impl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    auto snapshot = impl->snapshot(
+        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     ASSERT_NE(nullptr, snapshot);
     ASSERT_EQ(1, snapshot->size());
     ASSERT_EQ(insertedDocs.size(), snapshot->docs_count());
@@ -235,16 +235,18 @@ TEST_P(IResearchQueryGeoContainsTest, test) {
       auto doc = insertedDocs.begin();
       arangodb::geo::ShapeContainer shape;
       for (; it->next(); ++doc) {
-        ASSERT_TRUE(
-            arangodb::geo::geojson::parseRegion(doc->slice().get("geometry"), shape)
-                .ok());
+        ASSERT_TRUE(arangodb::geo::geojson::parseRegion(
+                        doc->slice().get("geometry"), shape)
+                        .ok());
         S2LatLng const centroid(shape.centroid());
 
         auto const storedValue = arangodb::iresearch::slice(payload->value);
         ASSERT_TRUE(storedValue.isArray());
         ASSERT_EQ(2, storedValue.length());
-        EXPECT_DOUBLE_EQ(centroid.lng().degrees(), storedValue.at(0).getDouble());
-        EXPECT_DOUBLE_EQ(centroid.lat().degrees(), storedValue.at(1).getDouble());
+        EXPECT_DOUBLE_EQ(centroid.lng().degrees(),
+                         storedValue.at(0).getDouble());
+        EXPECT_DOUBLE_EQ(centroid.lat().degrees(),
+                         storedValue.at(1).getDouble());
       }
       ASSERT_EQ(doc, insertedDocs.end());
     }
@@ -407,9 +409,9 @@ TEST_P(IResearchQueryGeoContainsTest, test) {
   }
 
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[16].slice(),
-                                                         insertedDocs[17].slice(),
-                                                         insertedDocs[28].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[16].slice(), insertedDocs[17].slice(),
+        insertedDocs[28].slice()};
     auto result = arangodb::tests::executeQuery(vocbase,
                                                 R"(LET box = GEO_POLYGON([
              [37.602682, 55.706853],
@@ -436,9 +438,9 @@ TEST_P(IResearchQueryGeoContainsTest, test) {
   }
 
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[16].slice(),
-                                                         insertedDocs[17].slice(),
-                                                         insertedDocs[28].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[16].slice(), insertedDocs[17].slice(),
+        insertedDocs[28].slice()};
     auto result = arangodb::tests::executeQuery(vocbase,
                                                 R"(LET box = GEO_POLYGON([
              [37.602682, 55.706853],
@@ -465,8 +467,8 @@ TEST_P(IResearchQueryGeoContainsTest, test) {
   }
 
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[16].slice(),
-                                                         insertedDocs[17].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[16].slice(), insertedDocs[17].slice()};
     auto result = arangodb::tests::executeQuery(vocbase,
                                                 R"(LET box = GEO_POLYGON([
              [37.602682, 55.706853],
@@ -493,7 +495,8 @@ TEST_P(IResearchQueryGeoContainsTest, test) {
   }
 
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[28].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[28].slice()};
     auto result = arangodb::tests::executeQuery(vocbase,
                                                 R"(LET box = GEO_POLYGON([
              [37.602682, 55.706853],
@@ -520,9 +523,11 @@ TEST_P(IResearchQueryGeoContainsTest, test) {
   }
 
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[21].slice()};
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET point = GEO_POINT(37.73735,  55.816715)
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[21].slice()};
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET point = GEO_POINT(37.73735,  55.816715)
            FOR d IN testView
            SEARCH ANALYZER(GEO_CONTAINS(point, d.geometry), 'mygeojson')
            SORT d.id ASC
@@ -541,9 +546,11 @@ TEST_P(IResearchQueryGeoContainsTest, test) {
   }
 
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[21].slice()};
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(LET point = GEO_POINT(37.73735,  55.816715)
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[21].slice()};
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        R"(LET point = GEO_POINT(37.73735,  55.816715)
            FOR d IN testView
            SEARCH ANALYZER(GEO_CONTAINS(d.geometry, point), 'mygeojson')
            SORT d.id ASC
@@ -600,7 +607,8 @@ TEST_P(IResearchQueryGeoContainsTest, test) {
   }
 
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[28].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[28].slice()};
 
     // box lies within an indexed polygon
     auto result = arangodb::tests::executeQuery(vocbase,

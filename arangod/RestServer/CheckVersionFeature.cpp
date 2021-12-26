@@ -51,9 +51,9 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-CheckVersionFeature::CheckVersionFeature(application_features::ApplicationServer& server,
-                                         int* result,
-                                         std::vector<std::type_index> const& nonServerFeatures)
+CheckVersionFeature::CheckVersionFeature(
+    application_features::ApplicationServer& server, int* result,
+    std::vector<std::type_index> const& nonServerFeatures)
     : ApplicationFeature(server, "CheckVersion"),
       _checkVersion(false),
       _result(result),
@@ -68,17 +68,20 @@ CheckVersionFeature::CheckVersionFeature(application_features::ApplicationServer
   startsAfter<SystemDatabaseFeature>();
 }
 
-void CheckVersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void CheckVersionFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("check-version", "database.check-version");
 
-  options->addOption("--database.check-version",
-                     "checks the versions of the database and exit",
-                     new BooleanParameter(&_checkVersion),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
-                                                         arangodb::options::Flags::Command));
+  options->addOption(
+      "--database.check-version",
+      "checks the versions of the database and exit",
+      new BooleanParameter(&_checkVersion),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
+                                          arangodb::options::Flags::Command));
 }
 
-void CheckVersionFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void CheckVersionFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> options) {
   if (!_checkVersion) {
     return;
   }
@@ -92,7 +95,8 @@ void CheckVersionFeature::validateOptions(std::shared_ptr<ProgramOptions> option
   LoggerFeature& logger = server().getFeature<LoggerFeature>();
   logger.disableThreaded();
 
-  ReplicationFeature& replicationFeature = server().getFeature<ReplicationFeature>();
+  ReplicationFeature& replicationFeature =
+      server().getFeature<ReplicationFeature>();
   replicationFeature.disableReplicationApplier();
 
   DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
@@ -100,8 +104,8 @@ void CheckVersionFeature::validateOptions(std::shared_ptr<ProgramOptions> option
 
   // we can turn off all warnings about environment here, because they
   // wil show up on a regular start later anyway
-  server().disableFeatures(
-      std::vector<std::type_index>{std::type_index(typeid(EnvironmentFeature))});
+  server().disableFeatures(std::vector<std::type_index>{
+      std::type_index(typeid(EnvironmentFeature))});
 }
 
 void CheckVersionFeature::start() {
@@ -133,7 +137,8 @@ void CheckVersionFeature::checkVersion() {
   LOG_TOPIC("449fd", TRACE, arangodb::Logger::STARTUP)
       << "starting version check";
 
-  DatabasePathFeature& databasePathFeature = server().getFeature<DatabasePathFeature>();
+  DatabasePathFeature& databasePathFeature =
+      server().getFeature<DatabasePathFeature>();
 
   LOG_TOPIC("73006", TRACE, arangodb::Logger::STARTUP)
       << "database path is: '" << databasePathFeature.directory() << "'";
@@ -153,7 +158,8 @@ void CheckVersionFeature::checkVersion() {
         res.status == methods::VersionResult::CANNOT_READ_VERSION_FILE) {
       if (ignoreDatafileErrors) {
         // try to install a fresh new, empty VERSION file instead
-        if (methods::Version::write(vocbase, std::map<std::string, bool>(), true)
+        if (methods::Version::write(vocbase, std::map<std::string, bool>(),
+                                    true)
                 .ok()) {
           // give it another try
           res = methods::Version::check(vocbase);
@@ -166,7 +172,8 @@ void CheckVersionFeature::checkVersion() {
       }
     } else if (res.status == methods::VersionResult::NO_VERSION_FILE) {
       // try to install a fresh new, empty VERSION file instead
-      if (methods::Version::write(vocbase, std::map<std::string, bool>(), true).ok()) {
+      if (methods::Version::write(vocbase, std::map<std::string, bool>(), true)
+              .ok()) {
         // give it another try
         res = methods::Version::check(vocbase);
       }
@@ -188,7 +195,8 @@ void CheckVersionFeature::checkVersion() {
       LOG_TOPIC("ef6ca", WARN, arangodb::Logger::FIXME)
           << "Database version check failed for '" << vocbase->name()
           << "': downgrade needed";
-    } else if (res.status == methods::VersionResult::UPGRADE_NEEDED && *_result == 1) {
+    } else if (res.status == methods::VersionResult::UPGRADE_NEEDED &&
+               *_result == 1) {
       // this is safe to do even if further databases will be checked
       // because we will never set the status back to success
       *_result = 2;

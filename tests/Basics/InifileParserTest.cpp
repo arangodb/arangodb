@@ -63,9 +63,8 @@ TEST(InifileParserTest, test_options) {
   std::string anotherStringValueWithAnInlineComment = "gaw";
   std::string aStringValueNotSet = "meow";
 
-  std::unordered_set<std::string> soundsPorksMake = {"foo",   "bar",
-                                                     "blub",  "snuggles",
-                                                     "slurp", "oink"};
+  std::unordered_set<std::string> soundsPorksMake = {
+      "foo", "bar", "blub", "snuggles", "slurp", "oink"};
   std::vector<std::string> porkSounds = {"slurp"};
   std::vector<std::string> strangePorkSounds = {"slurp", "snuggles"};
 
@@ -79,16 +78,19 @@ TEST(InifileParserTest, test_options) {
                     new UInt64Parameter(&maxWriteBufferNumber));
   options.addOption("--rocksdb.max-total-wal-size", "bla",
                     new UInt64Parameter(&maxTotalWalSize));
-  options.addOption("--rocksdb.block-cache-size", "bla", new UInt64Parameter(&blockCacheSize));
+  options.addOption("--rocksdb.block-cache-size", "bla",
+                    new UInt64Parameter(&blockCacheSize));
   options.addOption("--rocksdb.enforce-block-cache-size-limit", "bla",
                     new BooleanParameter(&enforceBlockCacheSizeLimit));
 
   options.addSection("cache", "bla");
   options.addOption("--cache.size", "bla", new UInt64Parameter(&cacheSize));
-  options.addOption("--cache.nono-set-option", "bla", new UInt64Parameter(&nonoSetOption));
+  options.addOption("--cache.nono-set-option", "bla",
+                    new UInt64Parameter(&nonoSetOption));
 
   options.addSection("pork", "bla");
-  options.addOption("--pork.a-boolean", "bla", new BooleanParameter(&aBoolean, true));
+  options.addOption("--pork.a-boolean", "bla",
+                    new BooleanParameter(&aBoolean, true));
   options.addOption("--pork.a-boolean-true", "bla",
                     new BooleanParameter(&aBooleanTrue, true));
   options.addOption("--pork.a-boolean-false", "bla",
@@ -110,24 +112,30 @@ TEST(InifileParserTest, test_options) {
   options.addOption("--pork.a-double", "bla", new DoubleParameter(&aDouble));
   options.addOption("--pork.a-double-with-a-comment", "bla",
                     new DoubleParameter(&aDoubleWithAComment));
-  options.addOption("--pork.a-double-not-set", "bla", new DoubleParameter(&aDoubleNotSet));
+  options.addOption("--pork.a-double-not-set", "bla",
+                    new DoubleParameter(&aDoubleNotSet));
   options.addOption("--pork.a-string-value-empty", "bla",
                     new StringParameter(&aStringValueEmpty));
-  options.addOption("--pork.a-string-value", "bla", new StringParameter(&aStringValue));
+  options.addOption("--pork.a-string-value", "bla",
+                    new StringParameter(&aStringValue));
   options.addOption("--pork.a-string-value-with-an-inline-comment", "bla",
                     new StringParameter(&aStringValueWithAnInlineComment));
-  options.addOption("--pork.another-string-value-with-an-inline-comment", "bla",
-                    new StringParameter(&anotherStringValueWithAnInlineComment));
+  options.addOption(
+      "--pork.another-string-value-with-an-inline-comment", "bla",
+      new StringParameter(&anotherStringValueWithAnInlineComment));
   options.addOption("--pork.a-string-value-not-set", "bla",
                     new StringParameter(&aStringValueNotSet));
-  options.addOption("--pork.sounds", "which sounds do pigs make?",
-                    new DiscreteValuesVectorParameter<StringParameter>(&porkSounds, soundsPorksMake),
-                    arangodb::options::makeDefaultFlags(options::Flags::FlushOnFirst));
+  options.addOption(
+      "--pork.sounds", "which sounds do pigs make?",
+      new DiscreteValuesVectorParameter<StringParameter>(&porkSounds,
+                                                         soundsPorksMake),
+      arangodb::options::makeDefaultFlags(options::Flags::FlushOnFirst));
 
-  options.addOption("--pork.strange-sounds",
-                    "which strange sounds do pigs make?",
-                    new DiscreteValuesVectorParameter<StringParameter>(&strangePorkSounds, soundsPorksMake),
-                    arangodb::options::makeDefaultFlags(options::Flags::FlushOnFirst));
+  options.addOption(
+      "--pork.strange-sounds", "which strange sounds do pigs make?",
+      new DiscreteValuesVectorParameter<StringParameter>(&strangePorkSounds,
+                                                         soundsPorksMake),
+      arangodb::options::makeDefaultFlags(options::Flags::FlushOnFirst));
 
   auto contents = R"data(
 [rocksdb]

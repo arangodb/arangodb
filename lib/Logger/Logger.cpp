@@ -111,7 +111,8 @@ void LogMessage::shrink(std::size_t maxLength) {
 std::atomic<bool> Logger::_active(false);
 std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
 
-LogTimeFormats::TimeFormat Logger::_timeFormat(LogTimeFormats::TimeFormat::UTCDateString);
+LogTimeFormats::TimeFormat Logger::_timeFormat(
+    LogTimeFormats::TimeFormat::UTCDateString);
 bool Logger::_showIds(false);
 bool Logger::_showLineNumber(false);
 bool Logger::_shortenFilenames(true);
@@ -373,7 +374,8 @@ void Logger::setUseJson(bool value) {
   _useJson = value;
 }
 
-bool Logger::translateLogLevel(std::string const& l, bool isGeneral, LogLevel& level) noexcept {
+bool Logger::translateLogLevel(std::string const& l, bool isGeneral,
+                               LogLevel& level) noexcept {
   if (l == "fatal") {
     level = LogLevel::FATAL;
   } else if (l == "error" || l == "err") {
@@ -416,8 +418,9 @@ std::string const& Logger::translateLogLevel(LogLevel level) noexcept {
   return UNKNOWN;
 }
 
-void Logger::log(char const* logid, char const* function, char const* file, int line,
-                 LogLevel level, size_t topicId, std::string const& message) try {
+void Logger::log(char const* logid, char const* function, char const* file,
+                 int line, LogLevel level, size_t topicId,
+                 std::string const& message) try {
   TRI_ASSERT(logid != nullptr);
 
   // we only determine our pid once, as currentProcessId() will
@@ -449,7 +452,8 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
         out.push_back('"');
       }
       // value of date/time is always safe to print
-      LogTimeFormats::writeTime(out, _timeFormat, std::chrono::system_clock::now());
+      LogTimeFormats::writeTime(out, _timeFormat,
+                                std::chrono::system_clock::now());
       if (LogTimeFormats::isStringFormat(_timeFormat)) {
         out.push_back('"');
       }
@@ -582,7 +586,8 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
     }
 
     // human readable format
-    LogTimeFormats::writeTime(out, _timeFormat, std::chrono::system_clock::now());
+    LogTimeFormats::writeTime(out, _timeFormat,
+                              std::chrono::system_clock::now());
     out.push_back(' ');
 
     // output prefix
@@ -679,25 +684,28 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
   auto msg = std::make_unique<LogMessage>(function, file, line, level, topicId,
                                           std::move(out), offset, shrunk);
 
-  append(defaultLogGroup(), msg, false, [level, topicId](std::unique_ptr<LogMessage>& msg) -> void {
-    LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
-                                          level, topicId, msg->_message.data(),
-                                          msg->_message.size(), true);
-  });
+  append(defaultLogGroup(), msg, false,
+         [level, topicId](std::unique_ptr<LogMessage>& msg) -> void {
+           LogAppenderStdStream::writeLogMessage(
+               STDERR_FILENO, (isatty(STDERR_FILENO) == 1), level, topicId,
+               msg->_message.data(), msg->_message.size(), true);
+         });
 } catch (...) {
   // logging itself must never cause an exeption to escape
 }
 
-void Logger::append(LogGroup& group, std::unique_ptr<LogMessage>& msg, bool forceDirect,
-                    std::function<void(std::unique_ptr<LogMessage>&)> const& inactive) {
+void Logger::append(
+    LogGroup& group, std::unique_ptr<LogMessage>& msg, bool forceDirect,
+    std::function<void(std::unique_ptr<LogMessage>&)> const& inactive) {
   // check if we need to shrink the message here
   if (!msg->shrunk()) {
     msg->shrink(group.maxLogEntryLength());
   }
 
-  // first log to all "global" appenders, which are the in-memory ring buffer logger plus
-  // some Windows-specifc appenders for the debug output window and the Windows event log.
-  // note that these loggers do not require any configuration so we can always and safely invoke them.
+  // first log to all "global" appenders, which are the in-memory ring buffer
+  // logger plus some Windows-specifc appenders for the debug output window and
+  // the Windows event log. note that these loggers do not require any
+  // configuration so we can always and safely invoke them.
   LogAppender::logGlobal(group, *msg);
 
   if (!_active.load(std::memory_order_acquire)) {
@@ -732,7 +740,8 @@ void Logger::append(LogGroup& group, std::unique_ptr<LogMessage>& msg, bool forc
 /// @brief initializes the logging component
 ////////////////////////////////////////////////////////////////////////////////
 
-void Logger::initialize(application_features::ApplicationServer& server, bool threaded) {
+void Logger::initialize(application_features::ApplicationServer& server,
+                        bool threaded) {
   if (_active.exchange(true, std::memory_order_acquire)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Logger already initialized");

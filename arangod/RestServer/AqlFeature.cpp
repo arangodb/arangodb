@@ -106,8 +106,9 @@ void AqlFeature::stop() {
       break;
     }
     LOG_TOPIC_IF("63d54", INFO, Logger::QUERIES, (i++ % 64) == 0)
-        << "AQLFeature shutdown, waiting for " << n << " registered queries to terminate and for "
-        << m << " feature leases to be released";
+        << "AQLFeature shutdown, waiting for " << n
+        << " registered queries to terminate and for " << m
+        << " feature leases to be released";
     std::this_thread::sleep_for(std::chrono::milliseconds(250));
   }
 }

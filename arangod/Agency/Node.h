@@ -187,7 +187,8 @@ class Node final {
   Node& getOrCreate(std::vector<std::string> const& pv);
 
   /// @brief Get node specified by path vector
-  std::optional<std::reference_wrapper<Node const>> get(std::vector<std::string> const& pv) const;
+  std::optional<std::reference_wrapper<Node const>> get(
+      std::vector<std::string> const& pv) const;
 
   /// @brief Get root node
   Node const& root() const;
@@ -204,12 +205,14 @@ class Node final {
   /// @brief Apply single slice
   bool applies(arangodb::velocypack::Slice const&);
 
-  /// @brief Return all keys of an object node. Result will be empty for non-objects.
+  /// @brief Return all keys of an object node. Result will be empty for
+  /// non-objects.
   std::vector<std::string> keys() const;
 
   /// @brief handle "op" keys in write json
-  template <Operation Oper>
-  arangodb::ResultT<std::shared_ptr<Node>> handle(arangodb::velocypack::Slice const&);
+  template<Operation Oper>
+  arangodb::ResultT<std::shared_ptr<Node>> handle(
+      arangodb::velocypack::Slice const&);
 
   /// @brief Create Builder representing this store
   void toBuilder(Builder&, bool showHidden = false) const;
@@ -275,7 +278,8 @@ class Node final {
 
   /// @brief accessor to Node object
   /// @return  returns nullopt if not found or type doesn't match
-  std::optional<std::reference_wrapper<Node const>> hasAsNode(std::string const&) const noexcept;
+  std::optional<std::reference_wrapper<Node const>> hasAsNode(
+      std::string const&) const noexcept;
 
   /// @brief accessor to Node object
   Node& hasAsWritableNode(std::string const&);
@@ -302,11 +306,13 @@ class Node final {
 
   /// @brief accessor to Node's _children
   /// @return  returns nullopt if not found or type doesn't match
-  std::optional<std::reference_wrapper<Children const>> hasAsChildren(std::string const&) const;
+  std::optional<std::reference_wrapper<Children const>> hasAsChildren(
+      std::string const&) const;
 
   /// @brief accessor to Node then write to builder
   /// @return  returns true if url exists
-  [[nodiscard]] bool hasAsBuilder(std::string const&, Builder&, bool showHidden = false) const;
+  [[nodiscard]] bool hasAsBuilder(std::string const&, Builder&,
+                                  bool showHidden = false) const;
 
   /// @brief accessor to Node's value as a Builder object
   /// @return  returns nullopt if not found or type doesn't match
@@ -323,7 +329,8 @@ class Node final {
   Node& getOrCreate(std::string const& path);
 
   /// @brief Get node specified by path string
-  std::optional<std::reference_wrapper<Node const>> get(std::string const& path) const;
+  std::optional<std::reference_wrapper<Node const>> get(
+      std::string const& path) const;
 
   /// @brief Get string value (throws if type NODE or if conversion fails)
   std::optional<std::string> getString() const;
@@ -343,7 +350,7 @@ class Node final {
   /// @brief Get double value (throws if type NODE or if conversion fails)
   std::optional<double> getDouble() const noexcept;
 
-  template <typename T>
+  template<typename T>
   auto getNumberUnlessExpiredWithDefault() -> T {
     if (ADB_LIKELY(!lifetimeExpired())) {
       try {
@@ -355,8 +362,8 @@ class Node final {
     return T{0};
   }
 
-  static auto getIntWithDefault(Slice slice, std::string_view key, std::int64_t def)
-      -> std::int64_t;
+  static auto getIntWithDefault(Slice slice, std::string_view key,
+                                std::int64_t def) -> std::int64_t;
 
   bool isReadLockable(const VPackStringRef& by) const;
   bool isWriteLockable(const VPackStringRef& by) const;
@@ -387,7 +394,8 @@ class Node final {
   bool lifetimeExpired() const;
 
   /// @brief Add time to live entry
-  bool addTimeToLive(std::chrono::time_point<std::chrono::system_clock> const& tp);
+  bool addTimeToLive(
+      std::chrono::time_point<std::chrono::system_clock> const& tp);
 
   /// @brief Remove time to live entry
   bool removeTimeToLive();

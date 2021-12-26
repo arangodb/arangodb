@@ -69,7 +69,8 @@ class DocumentProducingNode {
   /// @brief whether or not the node has an early pruning filter condition
   bool hasFilter() const { return _filter != nullptr; }
 
-  void toVelocyPack(arangodb::velocypack::Builder& builder, unsigned flags) const;
+  void toVelocyPack(arangodb::velocypack::Builder& builder,
+                    unsigned flags) const;
 
   void setCountFlag() { _count = true; }
 

@@ -36,7 +36,8 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SharedQueryState::SharedQueryState(application_features::ApplicationServer& server)
+SharedQueryState::SharedQueryState(
+    application_features::ApplicationServer& server)
     : _server(server),
       _wakeupCb(nullptr),
       _numWakeups(0),
@@ -134,33 +135,33 @@ void SharedQueryState::queueHandler() {
                         ? RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR
                         : RequestLane::CLUSTER_AQL;
 
-  bool queued = scheduler->tryBoundedQueue(lane, [self = shared_from_this(),
-                                                  cb = _wakeupCb, v = _cbVersion]() {
-    std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
+  bool queued = scheduler->tryBoundedQueue(
+      lane, [self = shared_from_this(), cb = _wakeupCb, v = _cbVersion]() {
+        std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
 
-    do {
-      bool cntn = false;
-      try {
-        cntn = cb();
-      } catch (...) {
-      }
+        do {
+          bool cntn = false;
+          try {
+            cntn = cb();
+          } catch (...) {
+          }
 
-      lck.lock();
-      if (v == self->_cbVersion) {
-        unsigned c = self->_numWakeups--;
-        TRI_ASSERT(c > 0);
-        if (c == 1 || !cntn || !self->_valid) {
-          break;
-        }
-      } else {
-        return;
-      }
-      lck.unlock();
-    } while (true);
+          lck.lock();
+          if (v == self->_cbVersion) {
+            unsigned c = self->_numWakeups--;
+            TRI_ASSERT(c > 0);
+            if (c == 1 || !cntn || !self->_valid) {
+              break;
+            }
+          } else {
+            return;
+          }
+          lck.unlock();
+        } while (true);
 
-    TRI_ASSERT(lck);
-    self->queueHandler();
-  });
+        TRI_ASSERT(lck);
+        self->queueHandler();
+      });
 
   if (!queued) {  // just invalidate
     _wakeupCb = nullptr;

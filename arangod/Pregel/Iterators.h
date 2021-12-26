@@ -28,7 +28,7 @@
 namespace arangodb {
 namespace pregel {
 
-template <typename M>
+template<typename M>
 class MessageIterator {
   M const* _data;
   const size_t _size;
@@ -82,7 +82,7 @@ class MessageIterator {
   size_t size() const { return _size; }
 };
 
-template <typename T>
+template<typename T>
 class RangeIterator {
  private:
   std::vector<std::unique_ptr<TypedBuffer<T>>>& _buffers;

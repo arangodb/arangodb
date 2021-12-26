@@ -41,9 +41,11 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
     LogicalCollection& collection, rocksdb::Snapshot const* snapshot)
     : RevisionReplicationIterator(collection),
       _bounds(RocksDBKeyBounds::CollectionDocuments(
-          static_cast<RocksDBCollection*>(collection.getPhysical())->objectId())),
+          static_cast<RocksDBCollection*>(collection.getPhysical())
+              ->objectId())),
       _rangeBound(_bounds.end()) {
-  auto& selector = collection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& selector =
+      collection.vocbase().server().getFeature<EngineSelectorFeature>();
   RocksDBEngine& engine = *static_cast<RocksDBEngine*>(&selector.engine());
   rocksdb::TransactionDB* db = engine.db();
 
@@ -74,7 +76,8 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
     LogicalCollection& collection, transaction::Methods& trx)
     : RevisionReplicationIterator(collection),
       _bounds(RocksDBKeyBounds::CollectionDocuments(
-          static_cast<RocksDBCollection*>(collection.getPhysical())->objectId())),
+          static_cast<RocksDBCollection*>(collection.getPhysical())
+              ->objectId())),
       _rangeBound(_bounds.end()) {
   RocksDBTransactionMethods* methods = RocksDBTransactionState::toMethods(&trx);
 
@@ -98,7 +101,8 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
 
 bool RocksDBRevisionReplicationIterator::hasMore() const {
   // TODO - check if the comparator is still necessary (thus the assertion)
-  TRI_ASSERT(!_iter->Valid() || _cmp->Compare(_iter->key(), _bounds.end()) <= 0);
+  TRI_ASSERT(!_iter->Valid() ||
+             _cmp->Compare(_iter->key(), _bounds.end()) <= 0);
   return _iter->Valid() && _cmp->Compare(_iter->key(), _bounds.end()) <= 0;
 }
 

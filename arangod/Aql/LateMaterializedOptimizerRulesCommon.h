@@ -56,7 +56,7 @@ struct AstAndColumnFieldData : AstAndFieldData {
   ptrdiff_t columnNumber{0};
 };
 
-template <typename T>
+template<typename T>
 struct NodeWithAttrs {
   using DataType = T;
 
@@ -76,8 +76,9 @@ struct NodeExpressionWithAttrs : NodeWithAttrs<AstAndFieldData> {
 using NodeWithAttrsColumn =
     latematerialized::NodeWithAttrs<latematerialized::AstAndColumnFieldData>;
 
-template <typename T>
-bool getReferencedAttributes(AstNode* node, Variable const* variable, T& nodeAttrs);
+template<typename T>
+bool getReferencedAttributes(AstNode* node, Variable const* variable,
+                             T& nodeAttrs);
 
 bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
               std::vector<arangodb::basics::AttributeName> const& attrs,

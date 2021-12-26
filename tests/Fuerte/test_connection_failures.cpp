@@ -47,8 +47,9 @@ static void tryToConnectExpectFailure(f::EventLoopService& eventLoopService,
   auto connection = cbuilder.connect(eventLoopService);
   // Send a first request. (HTTP connection is only started upon first request)
   auto request = f::createRequest(f::RestVerb::Get, "/_api/version");
-  connection->sendRequest(std::move(request), [&](f::Error, std::unique_ptr<f::Request>,
-                                                  std::unique_ptr<f::Response>) {});
+  connection->sendRequest(std::move(request),
+                          [&](f::Error, std::unique_ptr<f::Request>,
+                              std::unique_ptr<f::Response>) {});
 
   auto success = wg.wait_for(std::chrono::seconds(5));
   ASSERT_TRUE(success);

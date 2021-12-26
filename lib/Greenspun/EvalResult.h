@@ -55,7 +55,8 @@ struct EvalError {
     std::string message;
   };
 
-  using Frame = std::variant<ParamFrame, CallFrame, WrapFrame, SpecialFormFrame>;
+  using Frame =
+      std::variant<ParamFrame, CallFrame, WrapFrame, SpecialFormFrame>;
 
   explicit EvalError(std::string message) : message(std::move(message)) {}
   EvalError(EvalError const&) = default;
@@ -79,7 +80,8 @@ struct EvalError {
     for (auto&& p : VPackArrayIterator(parameter)) {
       parameterVec.push_back(p.toJson());
     }
-    frames.emplace_back(CallFrame{std::move(function), std::move(parameterVec)});
+    frames.emplace_back(
+        CallFrame{std::move(function), std::move(parameterVec)});
     return *this;
   }
 
@@ -94,7 +96,7 @@ struct EvalError {
   std::string message;
 };
 
-template <typename T>
+template<typename T>
 struct EvalResultT {
   bool ok() const { return hasValue(); }
   bool fail() const { return !ok(); }
@@ -114,7 +116,7 @@ struct EvalResultT {
 
   EvalResultT(T s) : _value(std::in_place_index<0>, std::move(s)) {}
 
-  template <typename F>
+  template<typename F>
   EvalResultT mapError(F&& f) {
     if (hasError()) {
       std::forward<F>(f)(error());
@@ -126,7 +128,7 @@ struct EvalResultT {
     return std::move(*this).map([](auto&&) -> std::monostate { return {}; });
   };
 
-  template <typename F>
+  template<typename F>
   auto map(F&& f) && -> EvalResultT<std::invoke_result_t<F, T&&>> {
     if (hasValue()) {
       return {f(value())};

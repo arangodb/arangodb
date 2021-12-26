@@ -45,7 +45,8 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
 
   IdentityAnalyzer() noexcept;
 
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override;
+  virtual irs::attribute* get_mutable(
+      irs::type_info::type_id type) noexcept override;
 
   virtual bool next() noexcept override {
     auto const empty = _empty;

@@ -37,22 +37,24 @@ struct CollectionCreationTest : public Benchmark<CollectionCreationTest> {
       : Benchmark<CollectionCreationTest>(arangobench) {}
 
   bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-    // unfortunately, we don't know how many collections we would need to clean up here
-    // because the user can choose a timed execution, so there would be no way to find out
-    // how many collections would be created in a timed execution.
+    // unfortunately, we don't know how many collections we would need to clean
+    // up here because the user can choose a timed execution, so there would be
+    // no way to find out how many collections would be created in a timed
+    // execution.
     return true;
   }
 
   void tearDown() override {}
 
-  void buildRequest(size_t threadNumber, size_t threadCounter, size_t globalCounter,
-                    BenchmarkOperation::RequestData& requestData) const override {
+  void buildRequest(
+      size_t threadNumber, size_t threadCounter, size_t globalCounter,
+      BenchmarkOperation::RequestData& requestData) const override {
     requestData.url = "/_api/collection";
     requestData.type = rest::RequestType::POST;
     using namespace arangodb::velocypack;
     requestData.payload.openObject();
-    requestData.payload.add("name", Value(_arangobench.collection() +
-                                          std::to_string(++_counter)));
+    requestData.payload.add(
+        "name", Value(_arangobench.collection() + std::to_string(++_counter)));
     requestData.payload.close();
   }
 

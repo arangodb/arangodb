@@ -44,8 +44,9 @@ struct Options;
 
 class VstRequest final : public GeneralRequest {
  public:
-  VstRequest(ConnectionInfo const& connectionInfo, velocypack::Buffer<uint8_t> buffer,
-             size_t payloadOffset, uint64_t messageId);
+  VstRequest(ConnectionInfo const& connectionInfo,
+             velocypack::Buffer<uint8_t> buffer, size_t payloadOffset,
+             uint64_t messageId);
 
   ~VstRequest() = default;
 

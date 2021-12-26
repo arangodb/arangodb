@@ -46,7 +46,8 @@ class MutexNode : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -59,7 +60,8 @@ class MutexNode : public ExecutionNode {
 
  protected:
   /// @brief export to VelocyPack
-  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override final;
 
  private:
   std::vector<std::string> _clients;

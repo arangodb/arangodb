@@ -50,9 +50,11 @@ class Projections {
   struct Projection {
     /// @brief the attribute path
     AttributeNamePath path;
-    /// @brief attribute position in a covering index entry. only valid if _supportsCoveringIndex is true
+    /// @brief attribute position in a covering index entry. only valid if
+    /// _supportsCoveringIndex is true
     uint16_t coveringIndexPosition;
-    /// @brief attribute length in a covering index entry. this can be shorter than the projection
+    /// @brief attribute length in a covering index entry. this can be shorter
+    /// than the projection
     uint16_t coveringIndexCutoff;
     /// @brief attribute type
     AttributeNamePath::Type type;
@@ -63,7 +65,8 @@ class Projections {
   /// @brief create projections from the vector of attributes passed.
   /// attributes will be sorted and made unique inside
   explicit Projections(std::vector<arangodb::aql::AttributeNamePath> paths);
-  explicit Projections(std::unordered_set<arangodb::aql::AttributeNamePath> const& paths);
+  explicit Projections(
+      std::unordered_set<arangodb::aql::AttributeNamePath> const& paths);
 
   Projections(Projections&&) = default;
   Projections& operator=(Projections&&) = default;
@@ -71,8 +74,9 @@ class Projections {
   Projections& operator=(Projections const&) = default;
 
   /// @brief determine if there is covering support by indexes passed
-  void determineIndexSupport(DataSourceId const& id,
-                             std::vector<transaction::Methods::IndexHandle> const& indexes);
+  void determineIndexSupport(
+      DataSourceId const& id,
+      std::vector<transaction::Methods::IndexHandle> const& indexes);
 
   /// @brief whether or not the projections are backed by a covering index
   bool supportsCoveringIndex() const noexcept { return _supportsCoveringIndex; }

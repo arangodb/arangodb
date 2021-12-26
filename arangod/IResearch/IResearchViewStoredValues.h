@@ -45,7 +45,8 @@ class IResearchViewStoredValues {
 
   struct StoredColumn {
     std::string name;
-    std::vector<std::pair<std::string, std::vector<basics::AttributeName>>> fields;
+    std::vector<std::pair<std::string, std::vector<basics::AttributeName>>>
+        fields;
     irs::type_info::type_id compression{getDefaultCompression()};
 
     bool operator==(StoredColumn const& rhs) const noexcept {
@@ -77,10 +78,11 @@ class IResearchViewStoredValues {
   bool fromVelocyPack(velocypack::Slice, std::string& error);
 
  private:
-  bool buildStoredColumnFromSlice(velocypack::Slice const& columnSlice,
-                                  std::unordered_set<std::string>& uniqueColumns,
-                                  std::vector<irs::string_ref>& fieldNames,
-                                  irs::type_info::type_id compression);
+  bool buildStoredColumnFromSlice(
+      velocypack::Slice const& columnSlice,
+      std::unordered_set<std::string>& uniqueColumns,
+      std::vector<irs::string_ref>& fieldNames,
+      irs::type_info::type_id compression);
 
   void clear() noexcept { _storedColumns.clear(); }
 

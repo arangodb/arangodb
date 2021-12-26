@@ -37,7 +37,8 @@ namespace aql {
 /// the values returned by this function are monotonically increasing,
 /// but not necessarily strictly monotonically increasing.
 double currentSteadyClockValue() {
-  return std::chrono::duration<double>(  // time since "start of clock" in seconds
+  return std::chrono::duration<double>(  // time since "start of clock" in
+                                         // seconds
              std::chrono::steady_clock::now().time_since_epoch())
       .count();
 }

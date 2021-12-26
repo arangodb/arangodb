@@ -64,8 +64,9 @@ AttributeNamePath::Type AttributeNamePath::type() const noexcept {
 }
 
 size_t AttributeNamePath::hash() const noexcept {
-  // intentionally not use std::hash() here, because its results are platform-dependent.
-  // however, we need portable hash values because we are testing for them in unit tests.
+  // intentionally not use std::hash() here, because its results are
+  // platform-dependent. however, we need portable hash values because we are
+  // testing for them in unit tests.
   uint64_t hash = 0x0404b00b1e5;
   for (auto const& it : path) {
     hash = fasthash64(it.data(), it.size(), hash);
@@ -78,7 +79,8 @@ std::string const& AttributeNamePath::operator[](size_t index) const noexcept {
   return path[index];
 }
 
-bool AttributeNamePath::operator==(AttributeNamePath const& other) const noexcept {
+bool AttributeNamePath::operator==(
+    AttributeNamePath const& other) const noexcept {
   if (path.size() != other.path.size()) {
     return false;
   }
@@ -90,7 +92,8 @@ bool AttributeNamePath::operator==(AttributeNamePath const& other) const noexcep
   return true;
 }
 
-bool AttributeNamePath::operator<(AttributeNamePath const& other) const noexcept {
+bool AttributeNamePath::operator<(
+    AttributeNamePath const& other) const noexcept {
   size_t const commonLength = std::min(size(), other.size());
   for (size_t i = 0; i < commonLength; ++i) {
     if (path[i] < other[i]) {
@@ -122,8 +125,8 @@ AttributeNamePath& AttributeNamePath::shortenTo(size_t length) {
   return *this;
 }
 
-/*static*/ size_t AttributeNamePath::commonPrefixLength(AttributeNamePath const& lhs,
-                                                        AttributeNamePath const& rhs) {
+/*static*/ size_t AttributeNamePath::commonPrefixLength(
+    AttributeNamePath const& lhs, AttributeNamePath const& rhs) {
   size_t numEqual = 0;
   size_t commonLength = std::min(lhs.size(), rhs.size());
   for (size_t i = 0; i < commonLength; ++i) {

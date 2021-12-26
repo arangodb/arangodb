@@ -361,7 +361,8 @@ constexpr auto TRI_ERROR_ARANGO_DATADIR_LOCKED = ErrorCode{1107};
 /// "cannot create/rename collection because directory already exists"
 /// Will be raised when the collection cannot be created because a directory of
 /// the same name already exists.
-constexpr auto TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS = ErrorCode{1108};
+constexpr auto TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS =
+    ErrorCode{1108};
 
 /// 1109: ERROR_ARANGO_MSYNC_FAILED
 /// "msync failed"
@@ -655,7 +656,8 @@ constexpr auto TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION = ErrorCode{1408};
 /// "invalid replication applier configuration"
 /// Will be raised when the configuration for the replication applier is
 /// invalid.
-constexpr auto TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION = ErrorCode{1410};
+constexpr auto TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION =
+    ErrorCode{1410};
 
 /// 1411: ERROR_REPLICATION_RUNNING
 /// "cannot perform operation while applier is running"
@@ -700,13 +702,15 @@ constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND = ErrorCode{1418};
 /// "not the log leader"
 /// Will be raised when a participant of a replicated log is ordered to do
 /// something only the leader can do
-constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER = ErrorCode{1419};
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER =
+    ErrorCode{1419};
 
 /// 1420: ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER
 /// "not a log follower"
 /// Will be raised when a participant of a replicated log is ordered to do
 /// something only a follower can do
-constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER = ErrorCode{1420};
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER =
+    ErrorCode{1420};
 
 /// 1421: ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED
 /// "follower rejected append entries request"
@@ -720,26 +724,30 @@ constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED =
 /// Will be raised when a leader instance of a replicated log rejects a request
 /// because it just resigned. This can also happen if the term changes (due to
 /// a configuration change), even if the leader stays the same.
-constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED = ErrorCode{1422};
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED =
+    ErrorCode{1422};
 
 /// 1423: ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED
 /// "a resigned follower instance rejected a request"
 /// Will be raised when a follower instance of a replicated log rejects a
 /// request because it just resigned. This can also happen if the term changes
 /// (due to a configuration change), even if the server stays a follower.
-constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED = ErrorCode{1423};
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED =
+    ErrorCode{1423};
 
 /// 1424: ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE
 /// "the replicated log of the participant is gone"
 /// Will be raised when a participant instance of a replicated log is no longer
 /// available.
-constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE = ErrorCode{1424};
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE =
+    ErrorCode{1424};
 
 /// 1425: ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM
 /// "an invalid term was given"
 /// Will be raised when a participant tries to change its term but found a
 /// invalid new term.
-constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM = ErrorCode{1425};
+constexpr auto TRI_ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM =
+    ErrorCode{1425};
 
 /// 1446: ERROR_CLUSTER_NOT_FOLLOWER
 /// "not a follower"
@@ -750,12 +758,14 @@ constexpr auto TRI_ERROR_CLUSTER_NOT_FOLLOWER = ErrorCode{1446};
 /// "follower transaction intermediate commit already performed"
 /// Will be raised when a follower transaction has already performed an
 /// intermediate commit and must be rolled back.
-constexpr auto TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED = ErrorCode{1447};
+constexpr auto TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED =
+    ErrorCode{1447};
 
 /// 1448: ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED
 /// "creating collection failed due to precondition"
 /// Will be raised when updating the plan on collection creation failed.
-constexpr auto TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED = ErrorCode{1448};
+constexpr auto TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED =
+    ErrorCode{1448};
 
 /// 1449: ERROR_CLUSTER_SERVER_UNKNOWN
 /// "got a request from an unknown server"
@@ -773,7 +783,8 @@ constexpr auto TRI_ERROR_CLUSTER_TOO_MANY_SHARDS = ErrorCode{1450};
 /// "could not create collection in plan"
 /// Will be raised when a Coordinator in a cluster cannot create an entry for a
 /// new collection in the Plan hierarchy in the Agency.
-constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN = ErrorCode{1454};
+constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN =
+    ErrorCode{1454};
 
 /// 1456: ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION
 /// "could not create collection"
@@ -791,13 +802,15 @@ constexpr auto TRI_ERROR_CLUSTER_TIMEOUT = ErrorCode{1457};
 /// "could not remove collection from plan"
 /// Will be raised when a Coordinator in a cluster cannot remove an entry for a
 /// collection in the Plan hierarchy in the Agency.
-constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN = ErrorCode{1458};
+constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN =
+    ErrorCode{1458};
 
 /// 1460: ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN
 /// "could not create database in plan"
 /// Will be raised when a Coordinator in a cluster cannot create an entry for a
 /// new database in the Plan hierarchy in the Agency.
-constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN = ErrorCode{1460};
+constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN =
+    ErrorCode{1460};
 
 /// 1461: ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE
 /// "could not create database"
@@ -809,13 +822,15 @@ constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE = ErrorCode{1461};
 /// "could not remove database from plan"
 /// Will be raised when a Coordinator in a cluster cannot remove an entry for a
 /// database in the Plan hierarchy in the Agency.
-constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN = ErrorCode{1462};
+constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN =
+    ErrorCode{1462};
 
 /// 1463: ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT
 /// "could not remove database from current"
 /// Will be raised when a Coordinator in a cluster cannot remove an entry for a
 /// database in the Current hierarchy in the Agency.
-constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT = ErrorCode{1463};
+constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT =
+    ErrorCode{1463};
 
 /// 1464: ERROR_CLUSTER_SHARD_GONE
 /// "no responsible shard found"
@@ -847,13 +862,15 @@ constexpr auto TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS = ErrorCode{1467};
 /// Will be raised if a Coordinator tries to find out which shard is
 /// responsible for a partial document, but cannot do this because not all
 /// sharding attributes are specified.
-constexpr auto TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN = ErrorCode{1468};
+constexpr auto TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN =
+    ErrorCode{1468};
 
 /// 1469: ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES
 /// "must not change the value of a shard key attribute"
 /// Will be raised if there is an attempt to update the value of a shard
 /// attribute.
-constexpr auto TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES = ErrorCode{1469};
+constexpr auto TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES =
+    ErrorCode{1469};
 
 /// 1470: ERROR_CLUSTER_UNSUPPORTED
 /// "unsupported operation or parameter for clusters"
@@ -877,7 +894,8 @@ constexpr auto TRI_ERROR_CLUSTER_READING_PLAN_AGENCY = ErrorCode{1472};
 /// "could not truncate collection"
 /// Will be raised if a Coordinator cannot truncate all shards of a cluster
 /// collection.
-constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION = ErrorCode{1473};
+constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION =
+    ErrorCode{1473};
 
 /// 1474: ERROR_CLUSTER_AQL_COMMUNICATION
 /// "error in cluster internal communication for AQL"
@@ -906,7 +924,8 @@ constexpr auto TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC = ErrorCode{1481};
 /// "could not create index in plan"
 /// Will be raised when a Coordinator in a cluster cannot create an entry for a
 /// new index in the Plan hierarchy in the Agency.
-constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN = ErrorCode{1482};
+constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN =
+    ErrorCode{1482};
 
 /// 1483: ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN
 /// "could not drop index in plan"
@@ -919,7 +938,8 @@ constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN = ErrorCode{1483};
 /// Will be raised if one tries to create a collection with a
 /// distributeShardsLike attribute which points to another collection that also
 /// has one.
-constexpr auto TRI_ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE = ErrorCode{1484};
+constexpr auto TRI_ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE =
+    ErrorCode{1484};
 
 /// 1485: ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE
 /// "must not drop collection while another has a distributeShardsLike
@@ -952,13 +972,15 @@ constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER = ErrorCode{1488};
 /// 1489: ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION
 /// "a shard leader refuses to perform a replication operation"
 /// Will be raised if a replication operation is refused by a shard leader.
-constexpr auto TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION = ErrorCode{1489};
+constexpr auto TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION =
+    ErrorCode{1489};
 
 /// 1490: ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION
 /// "a shard follower refuses to perform an operation"
 /// Will be raised if a replication operation is refused by a shard follower
 /// because it is coming from the wrong leader.
-constexpr auto TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION = ErrorCode{1490};
+constexpr auto TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION =
+    ErrorCode{1490};
 
 /// 1491: ERROR_CLUSTER_SHARD_LEADER_RESIGNED
 /// "a (former) shard leader refuses to perform an operation, because it has
@@ -988,7 +1010,8 @@ constexpr auto TRI_ERROR_CLUSTER_NOT_LEADER = ErrorCode{1496};
 /// "could not create view in plan"
 /// Will be raised when a Coordinator in a cluster cannot create an entry for a
 /// new View in the Plan hierarchy in the Agency.
-constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN = ErrorCode{1497};
+constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN =
+    ErrorCode{1497};
 
 /// 1498: ERROR_CLUSTER_VIEW_ID_EXISTS
 /// "view ID already exists"
@@ -1081,13 +1104,15 @@ constexpr auto TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN = ErrorCode{1540};
 /// "arguments: minimum: %d, maximum: %d"
 /// Will be raised when the number of arguments used in a function call does
 /// not match the expected number of arguments for the function.
-constexpr auto TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH = ErrorCode{1541};
+constexpr auto TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH =
+    ErrorCode{1541};
 
 /// 1542: ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH
 /// "invalid argument type in call to function '%s()'"
 /// Will be raised when the type of an argument used in a function call does
 /// not match the expected argument type.
-constexpr auto TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH = ErrorCode{1542};
+constexpr auto TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH =
+    ErrorCode{1542};
 
 /// 1543: ERROR_QUERY_INVALID_REGEX
 /// "invalid regex value"
@@ -1435,7 +1460,8 @@ constexpr auto TRI_ERROR_GRAPH_CREATE_MISSING_NAME = ErrorCode{1922};
 /// 1923: ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION
 /// "malformed edge definition"
 /// the edge definition is malformed. It has to be an array of objects.
-constexpr auto TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION = ErrorCode{1923};
+constexpr auto TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION =
+    ErrorCode{1923};
 
 /// 1924: ERROR_GRAPH_NOT_FOUND
 /// "graph '%s' not found"
@@ -1535,7 +1561,8 @@ constexpr auto TRI_ERROR_GRAPH_NO_INITIAL_COLLECTION = ErrorCode{1946};
 /// "referenced vertex collection is not part of the graph"
 /// the _from or _to collection specified for the edge refers to a vertex
 /// collection which is not used in any edge definition of the graph.
-constexpr auto TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED = ErrorCode{1947};
+constexpr auto TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED =
+    ErrorCode{1947};
 
 /// 1948: ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT
 /// "negative edge weight found"
@@ -1742,7 +1769,8 @@ constexpr auto TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE = ErrorCode{4006};
 /// "shard key value must be prefixed with the value of the smart join
 /// attribute" when using smartJoinAttribute for a collection, the shard key
 /// value must be prefixed with the value of the SmartJoin attribute.
-constexpr auto TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE = ErrorCode{4007};
+constexpr auto TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE =
+    ErrorCode{4007};
 
 /// 4008: ERROR_NO_SMART_JOIN_ATTRIBUTE
 /// "smart join attribute not given or invalid"
@@ -1754,7 +1782,8 @@ constexpr auto TRI_ERROR_NO_SMART_JOIN_ATTRIBUTE = ErrorCode{4008};
 /// "must not change the value of the smartJoinAttribute"
 /// Will be raised if there is an attempt to update the value of the
 /// smartJoinAttribute.
-constexpr auto TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE = ErrorCode{4009};
+constexpr auto TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE =
+    ErrorCode{4009};
 
 /// 4010: ERROR_INVALID_DISJOINT_SMART_EDGE
 /// "non disjoint edge found"
@@ -1810,7 +1839,8 @@ constexpr auto TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING = ErrorCode{20017};
 /// 20018: ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT
 /// "Inform message must contain object 'timeoutMult'"
 /// The inform message in the Agency must contain an object 'timeoutMult'.
-constexpr auto TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT = ErrorCode{20018};
+constexpr auto TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT =
+    ErrorCode{20018};
 
 /// 20021: ERROR_AGENCY_CANNOT_REBUILD_DBS
 /// "Cannot rebuild readDB and spearHead"
@@ -1913,7 +1943,8 @@ constexpr auto TRI_ERROR_HOT_BACKUP_DBSERVERS_AWOL = ErrorCode{7012};
 /// 7021: ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN
 /// "analyzers in plan could not be modified"
 /// Plan could not be modified while creating or deleting Analyzers revision
-constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN = ErrorCode{7021};
+constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN =
+    ErrorCode{7021};
 
 /// 8001: ERROR_AIR_EXECUTION_ERROR
 /// "error during AIR execution"

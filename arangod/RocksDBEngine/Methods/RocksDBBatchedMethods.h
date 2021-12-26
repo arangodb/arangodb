@@ -34,14 +34,18 @@ class RocksDBBatchedMethods final : public RocksDBMethods {
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
                       rocksdb::PinnableSlice*, ReadOwnWrites) override;
-  rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
+  rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
+                               rocksdb::Slice const&,
                                rocksdb::PinnableSlice*) override;
   rocksdb::Status Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
                       rocksdb::Slice const& val, bool assume_tracked) override;
-  rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+  rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*,
+                               RocksDBKey const& key,
                                rocksdb::Slice const& val) override;
-  rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
-  rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
+  rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*,
+                         RocksDBKey const& key) override;
+  rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*,
+                               RocksDBKey const&) override;
   void PutLogData(rocksdb::Slice const&) override;
 
  private:

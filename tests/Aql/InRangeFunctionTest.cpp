@@ -53,7 +53,8 @@ class InRangeFunctionTest : public ::testing::Test {
  protected:
   AqlValue evaluate(AqlValue const* attribute, AqlValue const* lower,
                     AqlValue const* upper, AqlValue const* includeLower,
-                    AqlValue const* includeUpper, std::set<int>* warnings = nullptr) {
+                    AqlValue const* includeUpper,
+                    std::set<int>* warnings = nullptr) {
     fakeit::Mock<ExpressionContext> expressionContextMock;
     ExpressionContext& expressionContext = expressionContextMock.get();
     fakeit::When(Method(expressionContextMock, registerWarning))
@@ -62,11 +63,11 @@ class InRangeFunctionTest : public ::testing::Test {
             warnings->insert(static_cast<int>(c));
           }
         });
-    TRI_vocbase_t mockVocbase(TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t mockVocbase(TRI_VOCBASE_TYPE_NORMAL,
+                              testDBInfo(server.server()));
     auto trx = server.createFakeTransaction();
-    fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&trx]() -> transaction::Methods& {
-      return *trx;
-    });
+    fakeit::When(Method(expressionContextMock, trx))
+        .AlwaysDo([&trx]() -> transaction::Methods& { return *trx; });
 
     SmallVector<AqlValue>::allocator_type::arena_type arena;
     SmallVector<AqlValue> params{arena};
@@ -100,7 +101,8 @@ class InRangeFunctionTest : public ::testing::Test {
     SCOPED_TRACE(testing::Message("assertInRangeFail failed on line:") << line);
     std::set<int> warnings;
     ASSERT_TRUE(
-        evaluate(attribute, lower, upper, includeLower, includeUpper, &warnings).isNull(false));
+        evaluate(attribute, lower, upper, includeLower, includeUpper, &warnings)
+            .isNull(false));
     ASSERT_EQ(expected_warnings, warnings);
   }
 
@@ -174,13 +176,17 @@ TEST_F(InRangeFunctionTest, testValidArgs) {
     AqlValue const StringVal("foo");
     assertInRange(__LINE__, true, &StringVal, &NullVal, &ObjectVal, true, true);
     assertInRange(__LINE__, true, &StringVal, &NullVal, &ArrayVal, true, true);
-    assertInRange(__LINE__, false, &StringVal, &ObjectVal, &NullVal, true, true);
+    assertInRange(__LINE__, false, &StringVal, &ObjectVal, &NullVal, true,
+                  true);
     assertInRange(__LINE__, false, &StringVal, &ArrayVal, &NullVal, true, true);
-    assertInRange(__LINE__, false, &StringVal, &ObjectVal, &ArrayVal, true, true);
-    assertInRange(__LINE__, false, &StringVal, &ArrayVal, &ObjectVal, true, true);
+    assertInRange(__LINE__, false, &StringVal, &ObjectVal, &ArrayVal, true,
+                  true);
+    assertInRange(__LINE__, false, &StringVal, &ArrayVal, &ObjectVal, true,
+                  true);
     assertInRange(__LINE__, false, &StringVal, &NullVal, &Int5, true, true);
     assertInRange(__LINE__, true, &StringVal, &NullVal, &StringVal, true, true);
-    assertInRange(__LINE__, false, &StringVal, &StringVal, &NullVal, true, true);
+    assertInRange(__LINE__, false, &StringVal, &StringVal, &NullVal, true,
+                  true);
     assertInRange(__LINE__, false, &StringVal, &StringVal, &Int5, true, true);
     assertInRange(__LINE__, true, &Int5, &NullVal, &StringVal, true, true);
     assertInRange(__LINE__, false, &Int5, &ArrayVal, &StringVal, true, true);
@@ -188,7 +194,8 @@ TEST_F(InRangeFunctionTest, testValidArgs) {
     assertInRange(__LINE__, true, &Int5, &NullVal, &ObjectVal, true, true);
     assertInRange(__LINE__, false, &ArrayVal, &NullVal, &StringVal, true, true);
     assertInRange(__LINE__, true, &ArrayVal, &NullVal, &ObjectVal, true, true);
-    assertInRange(__LINE__, true, &ArrayVal, &StringVal, &ObjectVal, true, true);
+    assertInRange(__LINE__, true, &ArrayVal, &StringVal, &ObjectVal, true,
+                  true);
     assertInRange(__LINE__, true, &ArrayVal, &Int5, &ObjectVal, true, true);
     assertInRange(__LINE__, true, &ObjectVal, &Int5, &ObjectVal, true, true);
     assertInRange(__LINE__, false, &ObjectVal, &Int5, &ObjectVal, true, false);

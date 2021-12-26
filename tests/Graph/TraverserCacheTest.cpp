@@ -55,7 +55,8 @@ class TraverserCacheTest : public ::testing::Test {
   std::unique_ptr<RefactoredTraverserCache> traverserCache{nullptr};
   std::shared_ptr<transaction::Context> queryContext{nullptr};
   std::unique_ptr<arangodb::transaction::Methods> trx{nullptr};
-  std::unordered_map<std::string, std::vector<std::string>> collectionToShardMap{};  // can be empty, only used in standalone mode
+  std::unordered_map<std::string, std::vector<std::string>>
+      collectionToShardMap{};  // can be empty, only used in standalone mode
   arangodb::ResourceMonitor* _monitor;
 
   TraverserCacheTest() : gdb(s.server, "testVocbase") {
@@ -63,17 +64,18 @@ class TraverserCacheTest : public ::testing::Test {
     queryContext = query.get()->newTrxContext();
     trx = std::make_unique<arangodb::transaction::Methods>(queryContext);
     _monitor = &query->resourceMonitor();
-    traverserCache =
-        std::make_unique<RefactoredTraverserCache>(trx.get(), query.get(),
-                                                   query->resourceMonitor(),
-                                                   stats, collectionToShardMap);
+    traverserCache = std::make_unique<RefactoredTraverserCache>(
+        trx.get(), query.get(), query->resourceMonitor(), stats,
+        collectionToShardMap);
   }
 
   ~TraverserCacheTest() = default;
 };
 
-TEST_F(TraverserCacheTest, it_should_return_a_null_aqlvalue_if_vertex_is_not_available) {
-  // prepare graph data - in this case, no data (no vertices and no edges, but collections v and e)
+TEST_F(TraverserCacheTest,
+       it_should_return_a_null_aqlvalue_if_vertex_is_not_available) {
+  // prepare graph data - in this case, no data (no vertices and no edges, but
+  // collections v and e)
   graph::MockGraph graph{};
   gdb.addGraph(graph);
 
@@ -86,8 +88,8 @@ TEST_F(TraverserCacheTest, it_should_return_a_null_aqlvalue_if_vertex_is_not_ava
   VPackBuilder builder;
 
   // NOTE: we do not have the data, so we get null for any vertex
-  traverserCache->insertVertexIntoResult(stats, arangodb::velocypack::HashedStringRef(id),
-                                         builder, false);
+  traverserCache->insertVertexIntoResult(
+      stats, arangodb::velocypack::HashedStringRef(id), builder, false);
   ASSERT_TRUE(builder.slice().isNull());
   auto all = query->warnings().all();
   ASSERT_EQ(all.size(), 1);
@@ -100,8 +102,10 @@ TEST_F(TraverserCacheTest, it_should_return_a_null_aqlvalue_if_vertex_is_not_ava
   EXPECT_EQ(stats.getScannedIndex(), 0);
 }
 
-TEST_F(TraverserCacheTest, it_should_on_request_return_the_id_aqlvalue_if_vertex_is_not_available) {
-  // prepare graph data - in this case, no data (no vertices and no edges, but collections v and e)
+TEST_F(TraverserCacheTest,
+       it_should_on_request_return_the_id_aqlvalue_if_vertex_is_not_available) {
+  // prepare graph data - in this case, no data (no vertices and no edges, but
+  // collections v and e)
   graph::MockGraph graph{};
   gdb.addGraph(graph);
 
@@ -114,8 +118,8 @@ TEST_F(TraverserCacheTest, it_should_on_request_return_the_id_aqlvalue_if_vertex
   VPackBuilder builder;
 
   // NOTE: we do not have the data, so we get null for any vertex
-  traverserCache->insertVertexIntoResult(stats, arangodb::velocypack::HashedStringRef(id),
-                                         builder, true);
+  traverserCache->insertVertexIntoResult(
+      stats, arangodb::velocypack::HashedStringRef(id), builder, true);
   ASSERT_FALSE(builder.slice().isNull());
   ASSERT_TRUE(builder.slice().isString());
   ASSERT_EQ(builder.slice().copyString(), "v/Vertex");
@@ -130,8 +134,10 @@ TEST_F(TraverserCacheTest, it_should_on_request_return_the_id_aqlvalue_if_vertex
   EXPECT_EQ(stats.getScannedIndex(), 0);
 }
 
-TEST_F(TraverserCacheTest, it_should_return_a_null_aqlvalue_if_edge_is_not_available) {
-  // prepare graph data - in this case, no data (no vertices and no edges, but collections v and e)
+TEST_F(TraverserCacheTest,
+       it_should_return_a_null_aqlvalue_if_edge_is_not_available) {
+  // prepare graph data - in this case, no data (no vertices and no edges, but
+  // collections v and e)
   graph::MockGraph graph{};
   gdb.addGraph(graph);
 
@@ -147,7 +153,8 @@ TEST_F(TraverserCacheTest, it_should_return_a_null_aqlvalue_if_edge_is_not_avail
   ASSERT_TRUE(builder.slice().isNull());
 }
 
-TEST_F(TraverserCacheTest, it_should_increase_memory_usage_when_persisting_a_string) {
+TEST_F(TraverserCacheTest,
+       it_should_increase_memory_usage_when_persisting_a_string) {
   auto memoryUsageBefore = _monitor->current();
 
   auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
@@ -161,8 +168,9 @@ TEST_F(TraverserCacheTest, it_should_increase_memory_usage_when_persisting_a_str
   EXPECT_EQ(memoryUsageBefore, _monitor->current());
 }
 
-TEST_F(TraverserCacheTest,
-       it_should_not_increase_memory_usage_twice_when_persisting_two_equal_strings) {
+TEST_F(
+    TraverserCacheTest,
+    it_should_not_increase_memory_usage_twice_when_persisting_two_equal_strings) {
   auto memoryUsageStart = _monitor->current();
 
   auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
@@ -180,7 +188,8 @@ TEST_F(TraverserCacheTest,
   EXPECT_EQ(memoryUsageStart, _monitor->current());
 }
 
-TEST_F(TraverserCacheTest, it_should_increase_memory_usage_twice_when_persisting_two_strings) {
+TEST_F(TraverserCacheTest,
+       it_should_increase_memory_usage_twice_when_persisting_two_strings) {
   auto memoryUsageStart = _monitor->current();
 
   auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
@@ -201,8 +210,9 @@ TEST_F(TraverserCacheTest, it_should_increase_memory_usage_twice_when_persisting
   EXPECT_EQ(memoryUsageStart, _monitor->current());
 }
 
-TEST_F(TraverserCacheTest,
-       it_should_increase_memory_usage_twice_when_persisting_a_string_clear_persist_again) {
+TEST_F(
+    TraverserCacheTest,
+    it_should_increase_memory_usage_twice_when_persisting_a_string_clear_persist_again) {
   auto memoryUsageBefore = _monitor->current();
 
   auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
@@ -224,7 +234,8 @@ TEST_F(TraverserCacheTest,
   EXPECT_EQ(memoryUsageBefore, _monitor->current());
 }
 
-TEST_F(TraverserCacheTest, it_should_not_increase_memory_usage_when_persisting_duplicate_string) {
+TEST_F(TraverserCacheTest,
+       it_should_not_increase_memory_usage_when_persisting_duplicate_string) {
   auto memoryUsageBefore = _monitor->current();
 
   auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
@@ -244,7 +255,8 @@ TEST_F(TraverserCacheTest, it_should_not_increase_memory_usage_when_persisting_d
 }
 
 TEST_F(TraverserCacheTest, it_should_insert_a_vertex_into_a_result_builder) {
-  // prepare graph data - in this case, no data (no vertices and no edges, but collections v and e)
+  // prepare graph data - in this case, no data (no vertices and no edges, but
+  // collections v and e)
   graph::MockGraph graph{};
   graph.addEdge(0, 1);
   gdb.addGraph(graph);
@@ -254,8 +266,8 @@ TEST_F(TraverserCacheTest, it_should_insert_a_vertex_into_a_result_builder) {
   HashedStringRef id{doc.get("_id")};
   VPackBuilder builder;
 
-  traverserCache->insertVertexIntoResult(stats, arangodb::velocypack::HashedStringRef(id),
-                                         builder, false);
+  traverserCache->insertVertexIntoResult(
+      stats, arangodb::velocypack::HashedStringRef(id), builder, false);
   EXPECT_TRUE(builder.slice().get("_key").isString());
   EXPECT_EQ(builder.slice().get("_key").toString(), "0");
 
@@ -279,7 +291,8 @@ TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
   bool called = false;
   auto result = col->getPhysical()->read(
       trx.get(), arangodb::velocypack::StringRef{edgeKey},
-      [&fetchedDocumentId, &called, &edgeKey](LocalDocumentId const& ldid, VPackSlice edgeDocument) {
+      [&fetchedDocumentId, &called, &edgeKey](LocalDocumentId const& ldid,
+                                              VPackSlice edgeDocument) {
         fetchedDocumentId = ldid.id();
         called = true;
         EXPECT_TRUE(edgeDocument.isObject());

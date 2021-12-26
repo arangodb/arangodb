@@ -37,8 +37,9 @@ enum class ClusterCollectionCreationState { INIT, FAILED, DONE };
 
 struct ClusterCollectionCreationInfo {
   ClusterCollectionCreationInfo(std::string cID, uint64_t shards,
-                                uint64_t replicationFactor, uint64_t writeConcern,
-                                bool waitForRep, velocypack::Slice const& slice,
+                                uint64_t replicationFactor,
+                                uint64_t writeConcern, bool waitForRep,
+                                velocypack::Slice const& slice,
                                 std::string coordinatorId, RebootId rebootId);
 
   std::string const collectionID;

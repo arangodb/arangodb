@@ -102,9 +102,11 @@ class LogAppenderFile : public LogAppenderStream {
   static void closeAll();
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  static std::vector<std::tuple<int, std::string, LogAppenderFile*>> getAppenders();
+  static std::vector<std::tuple<int, std::string, LogAppenderFile*>>
+  getAppenders();
 
-  static void setAppenders(std::vector<std::tuple<int, std::string, LogAppenderFile*>> const& fds);
+  static void setAppenders(
+      std::vector<std::tuple<int, std::string, LogAppenderFile*>> const& fds);
 #endif
 
   static void setFileMode(int mode) { _fileMode = mode; }
@@ -127,8 +129,9 @@ class LogAppenderStdStream : public LogAppenderStream {
 
   std::string details() const override final { return std::string(); }
 
-  static void writeLogMessage(int fd, bool useColors, LogLevel level, size_t topicId,
-                              char const* p, size_t length, bool appendNewline);
+  static void writeLogMessage(int fd, bool useColors, LogLevel level,
+                              size_t topicId, char const* p, size_t length,
+                              bool appendNewline);
 
  private:
   void writeLogMessage(LogLevel level, size_t topicId, char const* buffer,

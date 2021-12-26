@@ -61,7 +61,8 @@ ExecutionBlockImpl<AsyncExecutor>::execute(AqlCallStack const& stack) {
 }
 
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
-ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(AqlCallStack const& stack) {
+ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
+    AqlCallStack const& stack) {
   //  if (getQuery().killed()) {
   //    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   //  }
@@ -87,27 +88,28 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(AqlCallStack const& stack
   TRI_ASSERT(_internalState == AsyncState::Empty);
 
   _internalState = AsyncState::InProgress;
-  bool queued = _sharedState->asyncExecuteAndWakeup([this, stack](bool isAsync) {
-    std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
+  bool queued =
+      _sharedState->asyncExecuteAndWakeup([this, stack](bool isAsync) {
+        std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
 
-    try {
-      auto [state, skip, block] = _dependencies[0]->execute(stack);
-      if (isAsync) {
-        guard.lock();
-      }
-      _returnState = state;
-      _returnSkip = std::move(skip);
-      _returnBlock = std::move(block);
+        try {
+          auto [state, skip, block] = _dependencies[0]->execute(stack);
+          if (isAsync) {
+            guard.lock();
+          }
+          _returnState = state;
+          _returnSkip = std::move(skip);
+          _returnBlock = std::move(block);
 
-      _internalState = AsyncState::GotResult;
-    } catch (...) {
-      if (isAsync) {
-        guard.lock();
-      }
-      _returnException = std::current_exception();
-      _internalState = AsyncState::GotException;
-    }
-  });
+          _internalState = AsyncState::GotResult;
+        } catch (...) {
+          if (isAsync) {
+            guard.lock();
+          }
+          _returnException = std::current_exception();
+          _internalState = AsyncState::GotException;
+        }
+      });
 
   if (!queued) {
     _internalState = AsyncState::Empty;
@@ -116,8 +118,8 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(AqlCallStack const& stack
   return {ExecutionState::WAITING, SkipResult{}, SharedAqlItemBlockPtr()};
 }
 
-std::pair<ExecutionState, Result> ExecutionBlockImpl<AsyncExecutor>::initializeCursor(
-    InputAqlItemRow const& input) {
+std::pair<ExecutionState, Result> ExecutionBlockImpl<
+    AsyncExecutor>::initializeCursor(InputAqlItemRow const& input) {
   //
   //  if (getQuery().killed()) {
   //    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);

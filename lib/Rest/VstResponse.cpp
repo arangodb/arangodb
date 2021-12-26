@@ -54,7 +54,8 @@ void VstResponse::reset(ResponseCode code) {
 }
 
 void VstResponse::addPayload(VPackSlice const& slice,
-                             VPackOptions const* options, bool resolveExternals) {
+                             VPackOptions const* options,
+                             bool resolveExternals) {
   if (_contentType == rest::ContentType::VPACK &&
       _contentTypeRequested == rest::ContentType::JSON) {
     // content type was set by a handler to VPACK but the client requested JSON
@@ -72,8 +73,8 @@ void VstResponse::addPayload(VPackSlice const& slice,
       VPackBuffer<uint8_t> tmpBuffer;
       tmpBuffer.reserve(slice.byteSize());  // reserve space already
       VPackBuilder builder(tmpBuffer, options);
-      VelocyPackHelper::sanitizeNonClientTypes(slice, VPackSlice::noneSlice(),
-                                               builder, options, true, true, true);
+      VelocyPackHelper::sanitizeNonClientTypes(
+          slice, VPackSlice::noneSlice(), builder, options, true, true, true);
       if (_contentType == rest::ContentType::VPACK) {
         if (_payload.empty()) {
           _payload = std::move(tmpBuffer);
@@ -110,7 +111,8 @@ void VstResponse::addPayload(VPackSlice const& slice,
 }
 
 void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
-                             velocypack::Options const* options, bool resolveExternals) {
+                             velocypack::Options const* options,
+                             bool resolveExternals) {
   if (_contentType == rest::ContentType::VPACK &&
       _contentTypeRequested == rest::ContentType::JSON) {
     // content type was set by a handler to VPACK but the client wants JSON
@@ -145,8 +147,8 @@ void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
       VPackBuffer<uint8_t> tmpBuffer;
       tmpBuffer.reserve(buffer.length());  // reserve space already
       VPackBuilder builder(tmpBuffer, options);
-      VelocyPackHelper::sanitizeNonClientTypes(input, VPackSlice::noneSlice(),
-                                               builder, options, true, true, true);
+      VelocyPackHelper::sanitizeNonClientTypes(
+          input, VPackSlice::noneSlice(), builder, options, true, true, true);
       handleBuffer(std::move(tmpBuffer));
       return;
     }
@@ -164,7 +166,8 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
   VPackArrayBuilder array(&builder, /*unindexed*/ true);
   builder.add(VPackValue(int(1)));  // 1 == version
   builder.add(VPackValue(int(2)));  // 2 == response
-  builder.add(VPackValue(static_cast<int>(meta::underlyingValue(_responseCode))));  // 3 == request - return code
+  builder.add(VPackValue(static_cast<int>(
+      meta::underlyingValue(_responseCode))));  // 3 == request - return code
 
   auto fixCase = [](std::string& tmp) {
     int capState = 1;
@@ -201,9 +204,11 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
     std::string len = std::to_string(_payload.size());
     builder.add(StaticStrings::ContentLength, VPackValue(len));
   }
-  if (_contentType != ContentType::VPACK && _contentType != ContentType::CUSTOM) {  // fuerte uses VPack as default
+  if (_contentType != ContentType::VPACK &&
+      _contentType != ContentType::CUSTOM) {  // fuerte uses VPack as default
     currentHeader = StaticStrings::ContentTypeHeader;
     fixCase(currentHeader);
-    builder.add(currentHeader, VPackValue(rest::contentTypeToString(_contentType)));
+    builder.add(currentHeader,
+                VPackValue(rest::contentTypeToString(_contentType)));
   }
 }

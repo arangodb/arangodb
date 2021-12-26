@@ -44,7 +44,7 @@ struct Collection;
 class ExecutionNode;
 class ExecutionBlock;
 class ExecutionEngine;
-template <typename T>
+template<typename T>
 struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
 struct VarInfo;
@@ -86,7 +86,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     /// @brief try not to materialize documents
     bool noMaterialization{true};
 
-    /// @brief condition optimization Auto - condition will be transformed to DNF.
+    /// @brief condition optimization Auto - condition will be transformed to
+    /// DNF.
     arangodb::aql::ConditionOptimization conditionOptimization{
         arangodb::aql::ConditionOptimization::Auto};
 
@@ -97,10 +98,12 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     FilterOptimization filterOptimization{FilterOptimization::MAX};
   };  // Options
 
-  IResearchViewNode(aql::ExecutionPlan& plan, aql::ExecutionNodeId id, TRI_vocbase_t& vocbase,
+  IResearchViewNode(aql::ExecutionPlan& plan, aql::ExecutionNodeId id,
+                    TRI_vocbase_t& vocbase,
                     std::shared_ptr<const arangodb::LogicalView> const& view,
-                    aql::Variable const& outVariable, aql::AstNode* filterCondition,
-                    aql::AstNode* options, std::vector<Scorer>&& scorers);
+                    aql::Variable const& outVariable,
+                    aql::AstNode* filterCondition, aql::AstNode* options,
+                    std::vector<Scorer>&& scorers);
 
   IResearchViewNode(aql::ExecutionPlan&, velocypack::Slice const& base);
 
@@ -112,7 +115,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
                             bool withProperties) const override final;
 
   /// @returns the list of the linked collections
-  std::vector<std::reference_wrapper<aql::Collection const>> collections() const;
+  std::vector<std::reference_wrapper<aql::Collection const>> collections()
+      const;
 
   /// @returns true if underlying view has no links
   bool empty() const noexcept;
@@ -121,10 +125,13 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   aql::CostEstimate estimateCost() const override final;
 
   void replaceVariables(
-      std::unordered_map<arangodb::aql::VariableId, arangodb::aql::Variable const*> const& replacements) override;
+      std::unordered_map<arangodb::aql::VariableId,
+                         arangodb::aql::Variable const*> const& replacements)
+      override;
 
   /// @brief getVariablesSetHere
-  std::vector<arangodb::aql::Variable const*> getVariablesSetHere() const override final;
+  std::vector<arangodb::aql::Variable const*> getVariablesSetHere()
+      const override final;
 
   /// @brief return out variable
   arangodb::aql::Variable const& outVariable() const noexcept {
@@ -199,12 +206,14 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<aql::ExecutionBlock> createBlock(
       aql::ExecutionEngine& engine,
-      std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&) const override;
+      std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&)
+      const override;
 
   aql::RegIdSet calcInputRegs() const;
 
   bool isLateMaterialized() const noexcept {
-    return _outNonMaterializedDocId != nullptr && _outNonMaterializedColPtr != nullptr;
+    return _outNonMaterializedDocId != nullptr &&
+           _outNonMaterializedColPtr != nullptr;
   }
 
   void setLateMaterialized(aql::Variable const& colPtrVariable,
@@ -230,12 +239,15 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     ptrdiff_t columnNum;
   };
 
-  using ViewValuesVars = std::unordered_map<ptrdiff_t, std::vector<ViewVariable>>;
+  using ViewValuesVars =
+      std::unordered_map<ptrdiff_t, std::vector<ViewVariable>>;
 
-  using ViewValuesRegisters = std::map<ptrdiff_t, std::map<size_t, aql::RegisterId>>;
+  using ViewValuesRegisters =
+      std::map<ptrdiff_t, std::map<size_t, aql::RegisterId>>;
 
   using ViewVarsInfo =
-      std::unordered_map<std::vector<arangodb::basics::AttributeName> const*, ViewVariableWithColumn>;
+      std::unordered_map<std::vector<arangodb::basics::AttributeName> const*,
+                         ViewVariableWithColumn>;
 
   void setViewVariables(ViewVarsInfo const& viewVariables) {
     _outNonMaterializedViewVars.clear();
@@ -249,24 +261,30 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   // It contains document references that could be replaced in late
   // materialization and no materialization rules.
   class OptimizationState {
-    using ViewVarsToBeReplaced = std::vector<aql::latematerialized::AstAndColumnFieldData>;
+    using ViewVarsToBeReplaced =
+        std::vector<aql::latematerialized::AstAndColumnFieldData>;
 
-    /// @brief calculation node with ast nodes that can be replaced by view values (e.g. primary sort)
-    std::unordered_map<aql::CalculationNode*, ViewVarsToBeReplaced> _nodesToChange;
+    /// @brief calculation node with ast nodes that can be replaced by view
+    /// values (e.g. primary sort)
+    std::unordered_map<aql::CalculationNode*, ViewVarsToBeReplaced>
+        _nodesToChange;
 
     /// @brief is no document materialization possible
     bool _noDocMaterStatus = true;
 
    public:
     void saveCalcNodesForViewVariables(
-        std::vector<aql::latematerialized::NodeWithAttrsColumn> const& nodesToChange);
+        std::vector<aql::latematerialized::NodeWithAttrsColumn> const&
+            nodesToChange);
 
     bool canVariablesBeReplaced(aql::CalculationNode* calclulationNode) const;
 
-    ViewVarsInfo replaceViewVariables(std::vector<aql::CalculationNode*> const& calcNodes,
-                                      arangodb::containers::HashSet<ExecutionNode*>& toUnlink);
+    ViewVarsInfo replaceViewVariables(
+        std::vector<aql::CalculationNode*> const& calcNodes,
+        arangodb::containers::HashSet<ExecutionNode*>& toUnlink);
 
-    ViewVarsInfo replaceAllViewVariables(arangodb::containers::HashSet<ExecutionNode*>& toUnlink);
+    ViewVarsInfo replaceAllViewVariables(
+        arangodb::containers::HashSet<ExecutionNode*>& toUnlink);
 
     void clearViewVariables() noexcept { _nodesToChange.clear(); }
 
@@ -283,7 +301,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
  protected:
   /// @brief export to VelocyPack
-  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned) const override final;
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned) const override final;
 
  private:
   /// @brief the database
@@ -302,7 +321,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   // CollectionPtr is needed for materialization step -
   // as view could return documents from different collections.
   // We store raw ptr to collection as materialization is expected to happen
-  // on same server (it is ensured by optimizer rule as network hop is expensive!)
+  // on same server (it is ensured by optimizer rule as network hop is
+  // expensive!)
   /// @brief output variable to write only non-materialized document ids
   aql::Variable const* _outNonMaterializedDocId;
   /// @brief output variable to write only non-materialized collection ids

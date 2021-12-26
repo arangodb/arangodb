@@ -97,7 +97,8 @@ class ConnectionTestF : public ::testing::TestWithParam<ConnectionTestParams> {
   }
 
   fu::StatusCode dropCollection(std::string const& name) {
-    auto request = fu::createRequest(fu::RestVerb::Delete, "/_api/collection/" + name);
+    auto request =
+        fu::createRequest(fu::RestVerb::Delete, "/_api/collection/" + name);
     auto response = _connection->sendRequest(std::move(request));
     return response->statusCode();
   }

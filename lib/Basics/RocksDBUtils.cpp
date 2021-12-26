@@ -57,7 +57,8 @@ static bool hasObjectIds(VPackSlice const& inputSlice) {
   return rv;
 }
 
-static VPackBuilder& stripObjectIdsImpl(VPackBuilder& builder, VPackSlice const& inputSlice) {
+static VPackBuilder& stripObjectIdsImpl(VPackBuilder& builder,
+                                        VPackSlice const& inputSlice) {
   if (inputSlice.isObject()) {
     builder.openObject();
     for (auto objectPair : arangodb::velocypack::ObjectIterator(inputSlice)) {
@@ -139,15 +140,18 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint) {
       if (status.subcode() == rocksdb::Status::SubCode::kLockLimit) {
         // should actually not occur with our RocksDB configuration
         return {TRI_ERROR_RESOURCE_LIMIT,
-                "failed to acquire lock due to lock number limit " + status.ToString()};
+                "failed to acquire lock due to lock number limit " +
+                    status.ToString()};
       }
       return {TRI_ERROR_ARANGO_CONFLICT, "write-write conflict"};
     case rocksdb::Status::Code::kExpired:
-      return {TRI_ERROR_INTERNAL, "key expired; TTL was set in error " + status.ToString()};
+      return {TRI_ERROR_INTERNAL,
+              "key expired; TTL was set in error " + status.ToString()};
     case rocksdb::Status::Code::kTryAgain:
       return {TRI_ERROR_ARANGO_TRY_AGAIN, status.ToString()};
     default:
-      return {TRI_ERROR_INTERNAL, "unknown RocksDB status code " + status.ToString()};
+      return {TRI_ERROR_INTERNAL,
+              "unknown RocksDB status code " + status.ToString()};
   }
 }
 

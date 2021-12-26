@@ -53,11 +53,13 @@ struct NonConstExpressionContainer {
 
   // Do not copy, we are using a unique_ptr as member will not work anyways
   NonConstExpressionContainer(NonConstExpressionContainer const&) = delete;
-  NonConstExpressionContainer& operator=(NonConstExpressionContainer const&) = delete;
+  NonConstExpressionContainer& operator=(NonConstExpressionContainer const&) =
+      delete;
 
   // Allow moving.
   NonConstExpressionContainer(NonConstExpressionContainer&&) = default;
-  NonConstExpressionContainer& operator=(NonConstExpressionContainer&&) = default;
+  NonConstExpressionContainer& operator=(NonConstExpressionContainer&&) =
+      default;
 
   std::vector<std::unique_ptr<NonConstExpression>> _expressions;
 
@@ -74,7 +76,8 @@ struct NonConstExpressionContainer {
 
   // Serializes this container into a velocypack builder.
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
-  static NonConstExpressionContainer fromVelocyPack(Ast* ast, arangodb::velocypack::Slice slice);
+  static NonConstExpressionContainer fromVelocyPack(
+      Ast* ast, arangodb::velocypack::Slice slice);
 
   NonConstExpressionContainer clone(Ast* ast) const;
 };

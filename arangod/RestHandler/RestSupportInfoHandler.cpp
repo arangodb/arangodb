@@ -72,9 +72,9 @@ network::Headers buildHeaders() {
 }
 }  // namespace
 
-RestSupportInfoHandler::RestSupportInfoHandler(application_features::ApplicationServer& server,
-                                               GeneralRequest* request,
-                                               GeneralResponse* response)
+RestSupportInfoHandler::RestSupportInfoHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestSupportInfoHandler::execute() {
@@ -91,7 +91,8 @@ RestStatus RestSupportInfoHandler::execute() {
   }
 
   if (apiPolicy == "hardened") {
-    ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+    ServerSecurityFeature& security =
+        server().getFeature<ServerSecurityFeature>();
     if (!security.canAccessHardenedApi()) {
       // superuser can still access API even if hardened
       if (!ExecContext::current().isSuperuser()) {
@@ -107,8 +108,9 @@ RestStatus RestSupportInfoHandler::execute() {
   }
 
   if (_request->databaseName() != StaticStrings::SystemDatabase) {
-    generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
-                  TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    generateError(
+        GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
+        TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
     return RestStatus::DONE;
   }
 
@@ -116,13 +118,15 @@ RestStatus RestSupportInfoHandler::execute() {
   VPackBuilder hostInfo;
   buildHostInfo(hostInfo);
   std::string timeString;
-  LogTimeFormats::writeTime(timeString, LogTimeFormats::TimeFormat::UTCDateString,
+  LogTimeFormats::writeTime(timeString,
+                            LogTimeFormats::TimeFormat::UTCDateString,
                             std::chrono::system_clock::now());
 
   bool const isActiveFailover =
       server().getFeature<ReplicationFeature>().isActiveFailoverEnabled();
-  bool const fanout = (ServerState::instance()->isCoordinator() || isActiveFailover) &&
-                      !_request->parsedValue("local", false);
+  bool const fanout =
+      (ServerState::instance()->isCoordinator() || isActiveFailover) &&
+      !_request->parsedValue("local", false);
 
   VPackBuilder result;
   result.openObject();
@@ -186,10 +190,10 @@ RestStatus RestSupportInfoHandler::execute() {
           continue;
         }
 
-        auto f = network::sendRequestRetry(pool, "server:" + server.first,
-                                           fuerte::RestVerb::Get, _request->requestPath(),
-                                           VPackBuffer<uint8_t>{}, options,
-                                           ::buildHeaders());
+        auto f = network::sendRequestRetry(
+            pool, "server:" + server.first, fuerte::RestVerb::Get,
+            _request->requestPath(), VPackBuffer<uint8_t>{}, options,
+            ::buildHeaders());
         futures.emplace_back(std::move(f));
       }
 
@@ -205,9 +209,9 @@ RestStatus RestSupportInfoHandler::execute() {
           auto slice = resp.slice();
           // copy results from other server
           if (slice.isObject()) {
-            result.add(basics::StringUtils::replace(resp.destination,
-                                                    "server:", ""),
-                       slice.get("host"));
+            result.add(
+                basics::StringUtils::replace(resp.destination, "server:", ""),
+                slice.get("host"));
           }
         }
       }
@@ -255,9 +259,10 @@ void RestSupportInfoHandler::buildHostInfo(VPackBuilder& result) {
     result.add("endpoint", VPackValue(ServerState::instance()->getEndpoint()));
   }
 
-  result.add("role",
-             VPackValue(ServerState::roleToString(ServerState::instance()->getRole())));
-  result.add("maintenance", VPackValue(ServerState::instance()->isMaintenance()));
+  result.add("role", VPackValue(ServerState::roleToString(
+                         ServerState::instance()->getRole())));
+  result.add("maintenance",
+             VPackValue(ServerState::instance()->isMaintenance()));
   result.add("readOnly", VPackValue(ServerState::instance()->readOnly()));
 
   result.add("version", VPackValue(ARANGODB_VERSION));
@@ -307,7 +312,8 @@ void RestSupportInfoHandler::buildHostInfo(VPackBuilder& result) {
   if (!ServerState::instance()->isCoordinator()) {
     result.add("engineStats", VPackValue(VPackValueType::Object));
     VPackBuilder stats;
-    StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+    StorageEngine& engine =
+        server().getFeature<EngineSelectorFeature>().engine();
     engine.getStatistics(stats, /*v2*/ true);
 
     auto names = {

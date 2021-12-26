@@ -38,11 +38,12 @@ using namespace arangodb;
 
 struct InvalidViewFactory : public arangodb::ViewFactory {
   virtual Result create(LogicalView::ptr&, TRI_vocbase_t& vocbase,
-                        VPackSlice definition, bool /*isUserRequest*/) const override {
+                        VPackSlice definition,
+                        bool /*isUserRequest*/) const override {
     std::string name;
     if (definition.isObject()) {
-      name = basics::VelocyPackHelper::getStringValue(definition, StaticStrings::DataSourceName,
-                                                      "");
+      name = basics::VelocyPackHelper::getStringValue(
+          definition, StaticStrings::DataSourceName, "");
     }
     events::CreateView(vocbase.name(), name, TRI_ERROR_INTERNAL);
     return Result(
@@ -68,8 +69,10 @@ InvalidViewFactory const INVALID;
 
 namespace arangodb {
 
-ViewTypesFeature::ViewTypesFeature(application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, ViewTypesFeature::name()) {
+ViewTypesFeature::ViewTypesFeature(
+    application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature(server,
+                                               ViewTypesFeature::name()) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }
@@ -93,19 +96,22 @@ Result ViewTypesFeature::emplace(LogicalDataSource::Type const& type,
   }
 
   if (!_factories.try_emplace(&type, &factory).second) {
-    return arangodb::Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, std::string("view factory previously registered during view factory "
-                                                                               "registration for view type '") +
-                                                                       type.name() +
-                                                                       "'");
+    return arangodb::Result(
+        TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
+        std::string("view factory previously registered during view factory "
+                    "registration for view type '") +
+            type.name() + "'");
   }
 
   return arangodb::Result();
 }
 
-ViewFactory const& ViewTypesFeature::factory(LogicalDataSource::Type const& type) const noexcept {
+ViewFactory const& ViewTypesFeature::factory(
+    LogicalDataSource::Type const& type) const noexcept {
   auto itr = _factories.find(&type);
-  TRI_ASSERT(itr == _factories.end() || false == !(itr->second));  // ViewTypesFeature::emplace(...)
-                                                                   // inserts non-nullptr
+  TRI_ASSERT(itr == _factories.end() ||
+             false == !(itr->second));  // ViewTypesFeature::emplace(...)
+                                        // inserts non-nullptr
 
   return itr == _factories.end() ? INVALID : *(itr->second);
 }

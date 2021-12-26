@@ -27,7 +27,8 @@
 
 using namespace arangodb::aql;
 
-auto setStackToFlatSetStack(RegIdSetStack const& setStack) -> RegIdFlatSetStack {
+auto setStackToFlatSetStack(RegIdSetStack const& setStack)
+    -> RegIdFlatSetStack {
   auto flatSetStack = RegIdFlatSetStack{};
   flatSetStack.reserve(setStack.size());
 
@@ -48,14 +49,19 @@ RegisterInfos::RegisterInfos(
     RegIdSet const& registersToClear,
     // cppcheck-suppress passedByValue
     RegIdSetStack const& registersToKeep)
-    : RegisterInfos(std::move(readableInputRegisters),
-                    std::move(writeableOutputRegisters), nrInputRegisters, nrOutputRegisters,
-                    RegIdFlatSet{registersToClear.begin(), registersToClear.end()},
-                    setStackToFlatSetStack(registersToKeep)) {}
+    : RegisterInfos(
+          std::move(readableInputRegisters),
+          std::move(writeableOutputRegisters), nrInputRegisters,
+          nrOutputRegisters,
+          RegIdFlatSet{registersToClear.begin(), registersToClear.end()},
+          setStackToFlatSetStack(registersToKeep)) {}
 
-RegisterInfos::RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeableOutputRegisters,
-                             RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
-                             RegIdFlatSet registersToClear, RegIdFlatSetStack registersToKeep)
+RegisterInfos::RegisterInfos(RegIdSet readableInputRegisters,
+                             RegIdSet writeableOutputRegisters,
+                             RegisterCount nrInputRegisters,
+                             RegisterCount nrOutputRegisters,
+                             RegIdFlatSet registersToClear,
+                             RegIdFlatSetStack registersToKeep)
     : _inRegs(std::move(readableInputRegisters)),
       _outRegs(std::move(writeableOutputRegisters)),
       _numInRegs(nrInputRegisters),

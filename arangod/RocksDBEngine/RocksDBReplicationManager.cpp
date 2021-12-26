@@ -107,8 +107,8 @@ RocksDBReplicationContext* RocksDBReplicationManager::createContext(
   TRI_ASSERT(patchCount.empty() || (ServerState::instance()->isSingleServer() ||
                                     ServerState::instance()->isDBServer()));
 
-  auto context =
-      std::make_unique<RocksDBReplicationContext>(engine, ttl, syncerId, clientId);
+  auto context = std::make_unique<RocksDBReplicationContext>(
+      engine, ttl, syncerId, clientId);
 
   TRI_ASSERT(context->isUsed());
 
@@ -135,10 +135,11 @@ RocksDBReplicationContext* RocksDBReplicationManager::createContext(
       // addition, _contexts is only modified under this same mutex,
       bool foundOther =
           _contexts.end() !=
-          std::find_if(_contexts.begin(), _contexts.end(),
-                       [&patchCount](decltype(_contexts)::value_type const& entry) {
-                         return entry.second->patchCount() == patchCount;
-                       });
+          std::find_if(
+              _contexts.begin(), _contexts.end(),
+              [&patchCount](decltype(_contexts)::value_type const& entry) {
+                return entry.second->patchCount() == patchCount;
+              });
       if (!foundOther) {
         // no other context exists that has "leadership" for patching counts to
         // the same collection/shard
@@ -211,7 +212,8 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
 /// it must be returned later using release()
 ////////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationContext* RocksDBReplicationManager::find(RocksDBReplicationId id, double ttl) {
+RocksDBReplicationContext* RocksDBReplicationManager::find(
+    RocksDBReplicationId id, double ttl) {
   RocksDBReplicationContext* context = nullptr;
 
   {
@@ -248,8 +250,8 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(RocksDBReplicationId 
 /// populates clientId
 //////////////////////////////////////////////////////////////////////////////
 
-ResultT<std::tuple<SyncerId, ServerId, std::string>> RocksDBReplicationManager::extendLifetime(
-    RocksDBReplicationId id, double ttl) {
+ResultT<std::tuple<SyncerId, ServerId, std::string>>
+RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id, double ttl) {
   MUTEX_LOCKER(mutexLocker, _lock);
 
   auto it = _contexts.find(id);
@@ -359,7 +361,8 @@ void RocksDBReplicationManager::drop(LogicalCollection* collection) {
   TRI_ASSERT(collection != nullptr);
 
   LOG_TOPIC("fe4bb", TRACE, Logger::REPLICATION)
-      << "dropping all replication contexts for collection " << collection->name();
+      << "dropping all replication contexts for collection "
+      << collection->name();
 
   bool found = false;
   {

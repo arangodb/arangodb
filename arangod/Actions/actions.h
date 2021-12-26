@@ -50,7 +50,10 @@ class TRI_action_result_t {
 class TRI_action_t {
  public:
   TRI_action_t()
-      : _urlParts(0), _isPrefix(false), _allowUseDatabase(false), _isSystem(false) {}
+      : _urlParts(0),
+        _isPrefix(false),
+        _allowUseDatabase(false),
+        _isSystem(false) {}
 
   virtual ~TRI_action_t() = default;
 
@@ -58,7 +61,8 @@ class TRI_action_t {
 
   virtual TRI_action_result_t execute(TRI_vocbase_t*, arangodb::GeneralRequest*,
                                       arangodb::GeneralResponse*,
-                                      arangodb::Mutex* dataLock, void** data) = 0;
+                                      arangodb::Mutex* dataLock,
+                                      void** data) = 0;
 
   virtual void cancel(arangodb::Mutex* dataLock, void** data) = 0;
 
@@ -87,7 +91,8 @@ class TRI_fake_action_t final : public TRI_action_t {
 
   /// @brief actions of this type are executed directly. nothing to do here
   TRI_action_result_t execute(TRI_vocbase_t*, arangodb::GeneralRequest*,
-                              arangodb::GeneralResponse*, arangodb::Mutex*, void**) override;
+                              arangodb::GeneralResponse*, arangodb::Mutex*,
+                              void**) override;
 
   /// @brief actions of this type are not registered anywhere, and thus
   /// cannot be canceled
@@ -95,11 +100,12 @@ class TRI_fake_action_t final : public TRI_action_t {
 };
 
 /// @brief defines an action
-std::shared_ptr<TRI_action_t> TRI_DefineActionVocBase(std::string const& name,
-                                                      std::shared_ptr<TRI_action_t> action);
+std::shared_ptr<TRI_action_t> TRI_DefineActionVocBase(
+    std::string const& name, std::shared_ptr<TRI_action_t> action);
 
 /// @brief looks up an action
-std::shared_ptr<TRI_action_t> TRI_LookupActionVocBase(arangodb::GeneralRequest* request);
+std::shared_ptr<TRI_action_t> TRI_LookupActionVocBase(
+    arangodb::GeneralRequest* request);
 
 /// @brief deletes all defined actions
 void TRI_CleanupActions();

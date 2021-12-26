@@ -44,19 +44,20 @@ class ClusterQuery : public arangodb::aql::Query {
 
   /// @brief factory method for creating a cluster query. this must be used to
   /// ensure that ClusterQuery objects are always created using shared_ptrs.
-  static std::shared_ptr<ClusterQuery> create(QueryId id,
-                                              std::shared_ptr<transaction::Context> ctx,
-                                              QueryOptions options);
+  static std::shared_ptr<ClusterQuery> create(
+      QueryId id, std::shared_ptr<transaction::Context> ctx,
+      QueryOptions options);
 
   traverser::GraphEngineList const& traversers() const { return _traversers; }
 
-  void prepareClusterQuery(arangodb::velocypack::Slice querySlice,
-                           arangodb::velocypack::Slice collections,
-                           arangodb::velocypack::Slice variables,
-                           arangodb::velocypack::Slice snippets,
-                           arangodb::velocypack::Slice traversals,
-                           arangodb::velocypack::Builder& answer,
-                           arangodb::QueryAnalyzerRevisions const& analyzersRevision);
+  void prepareClusterQuery(
+      arangodb::velocypack::Slice querySlice,
+      arangodb::velocypack::Slice collections,
+      arangodb::velocypack::Slice variables,
+      arangodb::velocypack::Slice snippets,
+      arangodb::velocypack::Slice traversals,
+      arangodb::velocypack::Builder& answer,
+      arangodb::QueryAnalyzerRevisions const& analyzersRevision);
 
   arangodb::futures::Future<Result> finalizeClusterQuery(ErrorCode errorCode);
 

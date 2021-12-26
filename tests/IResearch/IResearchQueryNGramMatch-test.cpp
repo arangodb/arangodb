@@ -48,14 +48,16 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
 
-  auto& sysVocBaseFeature = server.getFeature<arangodb::SystemDatabaseFeature>();
+  auto& sysVocBaseFeature =
+      server.getFeature<arangodb::SystemDatabaseFeature>();
 
   auto sysVocBasePtr = sysVocBaseFeature.use();
   auto& vocbase = *sysVocBasePtr;
 
   // 2-gram analyzer
   {
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
     auto res = analyzers.emplace(
@@ -63,8 +65,10 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
         VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
                               "\"preserveOriginal\":false}")
             ->slice(),
-        arangodb::iresearch::Features(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS)  // required for PHRASE
-    );  // cache analyzer
+        arangodb::iresearch::Features(
+            irs::IndexFeatures::FREQ |
+            irs::IndexFeatures::POS)  // required for PHRASE
+    );                                // cache analyzer
     EXPECT_TRUE(res.ok());
   }
 
@@ -92,9 +96,9 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -127,9 +131,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
       }
     })";
 
-    auto viewDefinition =
-        irs::string_utils::to_string(viewDefinitionTemplate,
-                                     static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition = irs::string_utils::to_string(
+        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -163,8 +166,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -186,8 +189,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -209,8 +212,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -232,8 +235,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -346,7 +349,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
         "FOR d IN testView SEARCH NGRAM_MATCH(d.value) SORT BM25(d) ASC, "
         "TFIDF(d) "
         "DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
+    ASSERT_TRUE(
+        result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
   // test too much args
@@ -356,7 +360,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
         "FOR d IN testView SEARCH NGRAM_MATCH(d['value'], 'test', 0.5, "
         "'analyzer', 'too much') SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
+    ASSERT_TRUE(
+        result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
   // test invalid threshold type (array)
@@ -479,7 +484,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
 
   // test via ANALYZER function
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[0].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[0].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH ANALYZER(NGRAM_mATCH(d.value, 'Jack "
@@ -493,15 +499,16 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
 
   // test via analyzer parameter
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[0].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[0].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Daniels', 0.7, "
@@ -514,15 +521,16 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
 
   // test via analyzer parameter
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[1].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[1].slice()};
     // Searching for Jack Arrow and we have Jack Sparrow which will be matched
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -536,18 +544,17 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
 
   // test via analyzer parameter
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[0].slice(),
-                                                         insertedDocs[4].slice(),
-                                                         insertedDocs[5].slice(),
-                                                         insertedDocs[1].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[0].slice(), insertedDocs[4].slice(),
+        insertedDocs[5].slice(), insertedDocs[1].slice()};
     // Searching for Jack Arrow and set low threshold to match all Jack`s
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -561,8 +568,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
@@ -584,8 +591,8 @@ TEST_P(IResearchQueryNGramMatchTest, SysVocbase) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
@@ -599,7 +606,8 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
 
   // 2-gram analyzer
   {
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
     auto res = analyzers.emplace(
@@ -607,8 +615,10 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
         VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
                               "\"preserveOriginal\":false}")
             ->slice(),
-        arangodb::iresearch::Features(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS)  // required for PHRASE
-    );  // cache analyzer
+        arangodb::iresearch::Features(
+            irs::IndexFeatures::FREQ |
+            irs::IndexFeatures::POS)  // required for PHRASE
+    );                                // cache analyzer
     EXPECT_TRUE(res.ok());
   }
   {
@@ -620,13 +630,14 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
 
       TRI_vocbase_t* vocbase2;
       auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
-      dbFeature.createDatabase(testDBInfo(server.server(), "testVocbase2"), vocbase2);
+      dbFeature.createDatabase(testDBInfo(server.server(), "testVocbase2"),
+                               vocbase2);
       std::shared_ptr<arangodb::LogicalCollection> unused;
       ASSERT_NE(nullptr, vocbase2);
       arangodb::OperationOptions options(arangodb::ExecContext::current());
-      arangodb::methods::Collections::createSystem(*vocbase2, options,
-                                                   arangodb::tests::AnalyzerCollectionName,
-                                                   false, unused);
+      arangodb::methods::Collections::createSystem(
+          *vocbase2, options, arangodb::tests::AnalyzerCollectionName, false,
+          unused);
 
       auto res = analyzers.emplace(
           result, "testVocbase2::myngram", "ngram",
@@ -634,7 +645,9 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
               "{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
               "\"preserveOriginal\":false}")
               ->slice(),
-          arangodb::iresearch::Features(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS));  // cache analyzer
+          arangodb::iresearch::Features(
+              irs::IndexFeatures::FREQ |
+              irs::IndexFeatures::POS));  // cache analyzer
       EXPECT_TRUE(res.ok());
     }
   }
@@ -663,9 +676,9 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -698,9 +711,8 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
       }
     })";
 
-    auto viewDefinition =
-        irs::string_utils::to_string(viewDefinitionTemplate,
-                                     static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition = irs::string_utils::to_string(
+        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -734,8 +746,8 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -757,8 +769,8 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -780,8 +792,8 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -803,8 +815,8 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
 
     EXPECT_EQ(i, expected.size());
@@ -917,7 +929,8 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
         "FOR d IN testView SEARCH NGRAM_MATCH(d.value) SORT BM25(d) ASC, "
         "TFIDF(d) "
         "DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
+    ASSERT_TRUE(
+        result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
   // test missing value via []
@@ -926,7 +939,8 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
         vocbase,
         "FOR d IN testView SEARCH NGRAM_MATCH(d['value']) SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
+    ASSERT_TRUE(
+        result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
   // test too much args
@@ -936,7 +950,8 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
         "FOR d IN testView SEARCH NGRAM_MATCH(d.value, 'abs', 0.5, 'identity', "
         "'too much') SORT BM25(d) ASC, TFIDF(d) "
         "DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
+    ASSERT_TRUE(
+        result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
   // test invalid threshold type (array)
@@ -1059,7 +1074,8 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
 
   // test via ANALYZER function
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[0].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[0].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH ANALYZER(NGRAM_mATCH(d.value, 'Jack "
@@ -1073,15 +1089,16 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
 
   // test via analyzer parameter
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[0].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[0].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Daniels', 0.7, "
@@ -1094,15 +1111,16 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
 
   // test via analyzer parameter with default threshold
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[0].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[0].slice()};
     auto result = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Daniels', "
@@ -1115,15 +1133,16 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
 
   // test via analyzer parameter
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[1].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[1].slice()};
     // Searching for Jack Arrow and we have Jack Sparrow which will be matched
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -1137,18 +1156,17 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
 
   // test via analyzer parameter
   {
-    std::vector<arangodb::velocypack::Slice> expected = {insertedDocs[0].slice(),
-                                                         insertedDocs[4].slice(),
-                                                         insertedDocs[5].slice(),
-                                                         insertedDocs[1].slice()};
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[0].slice(), insertedDocs[4].slice(),
+        insertedDocs[5].slice(), insertedDocs[1].slice()};
     // Searching for Jack Arrow and set low threshold to match all Jack`s
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -1162,8 +1180,8 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }
@@ -1185,8 +1203,8 @@ TEST_P(IResearchQueryNGramMatchTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            expected[i++], resolved, true)));
     }
     EXPECT_EQ(i, expected.size());
   }

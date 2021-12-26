@@ -42,7 +42,7 @@
 #include "RestServer/ServerIdFeature.h"
 #include "VocBase/Identifiers/ServerId.h"
 
-template <class Function>
+template<class Function>
 class TestThread : public arangodb::Thread {
  public:
   TestThread(arangodb::application_features::ApplicationServer& server,
@@ -86,7 +86,8 @@ int main(int argc, char* argv[]) {
   int subargc = 0;
   char** subargv = (char**)malloc(sizeof(char*) * argc);
   bool logLineNumbers = false;
-  arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
+  arangodb::RandomGenerator::initialize(
+      arangodb::RandomGenerator::RandomType::MERSENNE);
   // global setup...
   for (int i = 0; i < argc; i++) {
     if (strcmp(argv[i], "--version") == 0) {

@@ -51,7 +51,8 @@ struct CostEstimate {
   /// @brief whether or not the estimate is valid
   [[nodiscard]] bool isValid() const;
 
-  /// @brief estimated cost produced by the node, including cost of upstream nodes.
+  /// @brief estimated cost produced by the node, including cost of upstream
+  /// nodes.
   double estimatedCost;
 
   /// @brief estimated number of items returned by the node
@@ -70,7 +71,8 @@ struct CostEstimate {
   void restoreEstimatedNrItems();
 
  private:
-  std::stack<std::size_t, std::vector<std::size_t>> _outerSubqueryEstimatedNrItems;
+  std::stack<std::size_t, std::vector<std::size_t>>
+      _outerSubqueryEstimatedNrItems;
 };
 
 }  // namespace arangodb::aql

@@ -97,7 +97,8 @@ struct CustomAccumulatorDefinition {
 
 // An accumulator declaration consists of a unique name
 // and a struct of options
-using AccumulatorsDeclaration = std::unordered_map<std::string, AccumulatorOptions>;
+using AccumulatorsDeclaration =
+    std::unordered_map<std::string, AccumulatorOptions>;
 using BindingDeclarations = std::unordered_map<std::string, VPackBuilder>;
 using CustomAccumulatorDefinitions =
     std::unordered_map<std::string, CustomAccumulatorDefinition>;
@@ -126,7 +127,8 @@ struct TraceMessagesOptions {
   std::optional<TraceMessagesFilterOptions> filter;
 };
 
-using TraceMessageVertexList = std::unordered_map<std::string, TraceMessagesOptions>;
+using TraceMessageVertexList =
+    std::unordered_map<std::string, TraceMessagesOptions>;
 
 struct DebugInformation {
   TraceMessageVertexList traceMessages;
@@ -150,9 +152,12 @@ std::ostream& operator<<(std::ostream&, AccumulatorOptions const&);
 std::ostream& operator<<(std::ostream&, DataAccessDefinition const&);
 std::ostream& operator<<(std::ostream&, AccumulatorValueType const&);
 
-deserializer_result<DataAccessDefinition> parseDataAccessOptions(VPackSlice slice);
-deserializer_result<AccumulatorOptions> parseAccumulatorOptions(VPackSlice slice);
-deserializer_result<VertexAccumulatorOptions> parseVertexAccumulatorOptions(VPackSlice slice);
+deserializer_result<DataAccessDefinition> parseDataAccessOptions(
+    VPackSlice slice);
+deserializer_result<AccumulatorOptions> parseAccumulatorOptions(
+    VPackSlice slice);
+deserializer_result<VertexAccumulatorOptions> parseVertexAccumulatorOptions(
+    VPackSlice slice);
 
 }  // namespace accumulators
 }  // namespace algos

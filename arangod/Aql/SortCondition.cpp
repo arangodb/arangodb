@@ -33,8 +33,9 @@ using namespace arangodb::aql;
 namespace {
 
 /// @brief whether or not an attribute is contained in a vector
-bool isContained(std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
-                 std::vector<arangodb::basics::AttributeName> const& attribute) {
+bool isContained(
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
+    std::vector<arangodb::basics::AttributeName> const& attribute) {
   for (auto const& it : attributes) {
     if (arangodb::basics::AttributeName::isIdentical(it, attribute, false)) {
       return true;
@@ -56,9 +57,12 @@ SortCondition::SortCondition()
 
 /// @brief create the sort condition
 SortCondition::SortCondition(
-    ExecutionPlan* plan, std::vector<std::pair<Variable const*, bool>> const& sorts,
-    std::vector<std::vector<arangodb::basics::AttributeName>> const& constAttributes,
-    ::arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>> const& nonNullAttributes,
+    ExecutionPlan* plan,
+    std::vector<std::pair<Variable const*, bool>> const& sorts,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const&
+        constAttributes,
+    ::arangodb::containers::HashSet<
+        std::vector<arangodb::basics::AttributeName>> const& nonNullAttributes,
     std::unordered_map<VariableId, AstNode const*> const& variableDefinitions)
     : _plan(plan),
       _constAttributes(constAttributes),
@@ -91,7 +95,8 @@ SortCondition::SortCondition(
         fieldNames.clear();
 
         while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-          fieldNames.emplace_back(arangodb::basics::AttributeName(node->getString(), false));
+          fieldNames.emplace_back(
+              arangodb::basics::AttributeName(node->getString(), false));
           node = node->getMember(0);
         }
 
@@ -102,8 +107,9 @@ SortCondition::SortCondition(
             std::reverse(fieldNames.begin(), fieldNames.end());
           }
 
-          _fields.emplace_back(SortField{static_cast<Variable const*>(node->getData()),
-                                         fieldNames, rootNode, sorts[i].second});
+          _fields.emplace_back(
+              SortField{static_cast<Variable const*>(node->getData()),
+                        fieldNames, rootNode, sorts[i].second});
 
           for (auto const& it2 : constAttributes) {
             if (it2 == fieldNames) {
@@ -137,8 +143,9 @@ SortCondition::SortCondition(
     }
 
     if (!handled) {
-      _fields.emplace_back(SortField{variable, std::vector<arangodb::basics::AttributeName>(),
-                                     rootNode, sorts[i].second});
+      _fields.emplace_back(
+          SortField{variable, std::vector<arangodb::basics::AttributeName>(),
+                    rootNode, sorts[i].second});
       _onlyAttributeAccess = false;
     }
   }
@@ -152,22 +159,26 @@ SortCondition::SortCondition(
 SortCondition::~SortCondition() = default;
 
 bool SortCondition::onlyUsesNonNullSortAttributes(
-    std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes) const {
-  return std::all_of(attributes.begin(), attributes.end(), [this](auto const& it) {
-    return _nonNullAttributes.find(it) != _nonNullAttributes.end();
-  });
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes)
+    const {
+  return std::all_of(
+      attributes.begin(), attributes.end(), [this](auto const& it) {
+        return _nonNullAttributes.find(it) != _nonNullAttributes.end();
+      });
 }
 
 /// @brief returns the number of attributes in the sort condition covered
 /// by the specified index fields
 size_t SortCondition::coveredAttributes(
     Variable const* reference,
-    std::vector<std::vector<arangodb::basics::AttributeName>> const& indexAttributes) const {
+    std::vector<std::vector<arangodb::basics::AttributeName>> const&
+        indexAttributes) const {
   size_t numCovered = 0;
   size_t indexPosition = 0;
   size_t fieldsPosition = 0;
   // iterate over all fields of the sort condition
-  while (fieldsPosition < _fields.size() && indexPosition < indexAttributes.size()) {
+  while (fieldsPosition < _fields.size() &&
+         indexPosition < indexAttributes.size()) {
     auto const& field = _fields[fieldsPosition];
 
     if (reference != field.variable) {
@@ -175,8 +186,8 @@ size_t SortCondition::coveredAttributes(
     }
 
     // check if the field is present in the index definition too
-    if (arangodb::basics::AttributeName::isIdentical(field.attributes,
-                                                     indexAttributes[indexPosition], false)) {
+    if (arangodb::basics::AttributeName::isIdentical(
+            field.attributes, indexAttributes[indexPosition], false)) {
       ++indexPosition;
       ++fieldsPosition;
       ++numCovered;
@@ -195,7 +206,8 @@ size_t SortCondition::coveredAttributes(
   return numCovered;
 }
 
-std::tuple<Variable const*, AstNode const*, bool> SortCondition::field(size_t position) const {
+std::tuple<Variable const*, AstNode const*, bool> SortCondition::field(
+    size_t position) const {
   if (isEmpty() || position > numAttributes()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "out of range access to SortCondition");

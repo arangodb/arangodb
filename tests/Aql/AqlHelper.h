@@ -34,8 +34,10 @@ namespace aql {
 std::ostream& operator<<(std::ostream&, arangodb::aql::ExecutionStats const&);
 std::ostream& operator<<(std::ostream&, arangodb::aql::AqlItemBlock const&);
 
-bool operator==(arangodb::aql::ExecutionStats const&, arangodb::aql::ExecutionStats const&);
-bool operator==(arangodb::aql::AqlItemBlock const&, arangodb::aql::AqlItemBlock const&);
+bool operator==(arangodb::aql::ExecutionStats const&,
+                arangodb::aql::ExecutionStats const&);
+bool operator==(arangodb::aql::AqlItemBlock const&,
+                arangodb::aql::AqlItemBlock const&);
 
 }  // namespace aql
 }  // namespace arangodb

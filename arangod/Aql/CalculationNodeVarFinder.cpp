@@ -27,7 +27,8 @@ namespace arangodb {
 namespace aql {
 
 CalculationNodeVarFinder::CalculationNodeVarFinder(
-    Variable const* lookingFor, ::arangodb::containers::SmallVector<ExecutionNode*>& out) noexcept
+    Variable const* lookingFor,
+    ::arangodb::containers::SmallVector<ExecutionNode*>& out) noexcept
     : _lookingFor(lookingFor), _out(out) {}
 
 bool CalculationNodeVarFinder::before(ExecutionNode* en) {
@@ -50,7 +51,8 @@ bool CalculationNodeVarFinder::before(ExecutionNode* en) {
   return false;
 }
 
-CalculationNodeVarExistenceFinder::CalculationNodeVarExistenceFinder(Variable const* lookingFor) noexcept
+CalculationNodeVarExistenceFinder::CalculationNodeVarExistenceFinder(
+    Variable const* lookingFor) noexcept
     : _lookingFor(lookingFor), _isCalculationNodesFound(false) {}
 
 bool CalculationNodeVarExistenceFinder::before(ExecutionNode* en) {

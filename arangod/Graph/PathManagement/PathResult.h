@@ -37,7 +37,7 @@ class Builder;
 
 namespace graph {
 
-template <class ProviderType, class Step>
+template<class ProviderType, class Step>
 class PathResult {
   using VertexRef = arangodb::velocypack::HashedStringRef;
 

@@ -46,8 +46,9 @@ struct RandomShapesTest : public Benchmark<RandomShapesTest> {
 
   void tearDown() override {}
 
-  void buildRequest(size_t threadNumber, size_t threadCounter, size_t globalCounter,
-                    BenchmarkOperation::RequestData& requestData) const override {
+  void buildRequest(
+      size_t threadNumber, size_t threadCounter, size_t globalCounter,
+      BenchmarkOperation::RequestData& requestData) const override {
     size_t keyId = static_cast<size_t>(globalCounter / 3);
     std::string const key = "testkey" + StringUtils::itoa(keyId);
     size_t const mod = globalCounter % 3;
@@ -59,7 +60,8 @@ struct RandomShapesTest : public Benchmark<RandomShapesTest> {
       using namespace arangodb::velocypack;
       requestData.payload.openObject();
       requestData.payload.add(StaticStrings::KeyString, Value(key));
-      uint32_t t = _randomValue % static_cast<uint32_t>(globalCounter + threadNumber + 1);
+      uint32_t t = _randomValue %
+                   static_cast<uint32_t>(globalCounter + threadNumber + 1);
       uint64_t n = _arangobench.complexity();
       for (uint64_t i = 1; i <= n; ++i) {
         std::string fieldName =
@@ -76,9 +78,10 @@ struct RandomShapesTest : public Benchmark<RandomShapesTest> {
       }
       requestData.payload.close();
     } else {
-      requestData.url =
-          std::string("/_api/document/") + _arangobench.collection() + "/" + key;
-      requestData.type = (mod == 1) ? rest::RequestType::GET : rest::RequestType::DELETE_REQ;
+      requestData.url = std::string("/_api/document/") +
+                        _arangobench.collection() + "/" + key;
+      requestData.type =
+          (mod == 1) ? rest::RequestType::GET : rest::RequestType::DELETE_REQ;
     }
   }
 

@@ -125,9 +125,10 @@ class LogAppenderRingBuffer final : public LogAppender {
       LogBuffer const& p = _buffer[i];
 
       if (p._id >= start) {
-        bool matches = (search.empty() ||
-                        arangodb::basics::StringUtils::tolower(p._message).find(search) !=
-                            std::string::npos);
+        bool matches =
+            (search.empty() ||
+             arangodb::basics::StringUtils::tolower(p._message).find(search) !=
+                 std::string::npos);
 
         if (matches) {
           if (upToLevel) {
@@ -228,7 +229,8 @@ class LogAppenderMetricsCounter final : public LogAppender {
   Counter& _errorsCounter;
 };
 
-LogBufferFeature::LogBufferFeature(application_features::ApplicationServer& server)
+LogBufferFeature::LogBufferFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, "LogBuffer"),
       _minInMemoryLogLevel("info"),
       _useInMemoryAppender(true) {
@@ -241,11 +243,13 @@ LogBufferFeature::LogBufferFeature(application_features::ApplicationServer& serv
   LogAppender::addGlobalAppender(Logger::defaultLogGroup(),
                                  std::make_shared<LogAppenderEventLog>());
 #endif
-  LogAppender::addGlobalAppender(Logger::defaultLogGroup(),
-                                 std::make_shared<LogAppenderMetricsCounter>(server));
+  LogAppender::addGlobalAppender(
+      Logger::defaultLogGroup(),
+      std::make_shared<LogAppenderMetricsCounter>(server));
 }
 
-void LogBufferFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
+void LogBufferFeature::collectOptions(
+    std::shared_ptr<options::ProgramOptions> options) {
   options
       ->addOption(
           "--log.in-memory",
@@ -254,14 +258,14 @@ void LogBufferFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
           arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setIntroducedIn(30800);
 
-  std::unordered_set<std::string> const logLevels = {"fatal",   "error", "err",
-                                                     "warning", "warn",  "info",
-                                                     "debug",   "trace"};
+  std::unordered_set<std::string> const logLevels = {
+      "fatal", "error", "err", "warning", "warn", "info", "debug", "trace"};
   options
       ->addOption(
           "--log.in-memory-level",
           "use in-memory log appender only for this log level and higher",
-          new DiscreteValuesParameter<StringParameter>(&_minInMemoryLogLevel, logLevels),
+          new DiscreteValuesParameter<StringParameter>(&_minInMemoryLogLevel,
+                                                       logLevels),
           arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setIntroducedIn(30709);
 }
@@ -270,9 +274,10 @@ void LogBufferFeature::prepare() {
   TRI_ASSERT(_inMemoryAppender == nullptr);
 
   if (_useInMemoryAppender) {
-    // only create the in-memory appender when we really need it. if we created it
-    // in the ctor, we would waste a lot of memory in case we don't need the in-memory
-    // appender. this is the case for simple command such as `--help` etc.
+    // only create the in-memory appender when we really need it. if we created
+    // it in the ctor, we would waste a lot of memory in case we don't need the
+    // in-memory appender. this is the case for simple command such as `--help`
+    // etc.
     LogLevel level;
     bool isValid = Logger::translateLogLevel(_minInMemoryLogLevel, true, level);
     if (!isValid) {
@@ -280,7 +285,8 @@ void LogBufferFeature::prepare() {
     }
 
     _inMemoryAppender = std::make_shared<LogAppenderRingBuffer>(level);
-    LogAppender::addGlobalAppender(Logger::defaultLogGroup(), _inMemoryAppender);
+    LogAppender::addGlobalAppender(Logger::defaultLogGroup(),
+                                   _inMemoryAppender);
   }
 }
 
@@ -290,8 +296,9 @@ void LogBufferFeature::clear() {
   }
 }
 
-std::vector<LogBuffer> LogBufferFeature::entries(LogLevel level, uint64_t start, bool upToLevel,
-                                                 std::string const& searchString) {
+std::vector<LogBuffer> LogBufferFeature::entries(
+    LogLevel level, uint64_t start, bool upToLevel,
+    std::string const& searchString) {
   if (_inMemoryAppender == nullptr) {
     return std::vector<LogBuffer>();
   }

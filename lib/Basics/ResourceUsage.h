@@ -104,7 +104,8 @@ class ResourceUsageScope {
   explicit ResourceUsageScope(ResourceMonitor& resourceMonitor) noexcept;
 
   /// @brief track <value> bytes of memory, may throw!
-  explicit ResourceUsageScope(ResourceMonitor& resourceMonitor, std::uint64_t value);
+  explicit ResourceUsageScope(ResourceMonitor& resourceMonitor,
+                              std::uint64_t value);
 
   ~ResourceUsageScope();
 

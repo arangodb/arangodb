@@ -41,9 +41,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(velocypack::Options const* options,
-                                                   arangodb::ResourceMonitor& resourceMonitor,
-                                                   RegisterId inReg, RegisterId outReg)
+SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
+    velocypack::Options const* options,
+    arangodb::ResourceMonitor& resourceMonitor, RegisterId inReg,
+    RegisterId outReg)
     : _vpackOptions(options),
       _resourceMonitor(resourceMonitor),
       _outReg(outReg),
@@ -55,7 +56,8 @@ bool SubqueryEndExecutorInfos::usesInputRegister() const noexcept {
   return _inReg.isValid();
 }
 
-velocypack::Options const* SubqueryEndExecutorInfos::vpackOptions() const noexcept {
+velocypack::Options const* SubqueryEndExecutorInfos::vpackOptions()
+    const noexcept {
   return _vpackOptions;
 }
 
@@ -67,11 +69,13 @@ RegisterId SubqueryEndExecutorInfos::getInputRegister() const noexcept {
   return _inReg;
 }
 
-arangodb::ResourceMonitor& SubqueryEndExecutorInfos::getResourceMonitor() const noexcept {
+arangodb::ResourceMonitor& SubqueryEndExecutorInfos::getResourceMonitor()
+    const noexcept {
   return _resourceMonitor;
 }
 
-SubqueryEndExecutor::SubqueryEndExecutor(Fetcher&, SubqueryEndExecutorInfos& infos)
+SubqueryEndExecutor::SubqueryEndExecutor(Fetcher&,
+                                         SubqueryEndExecutorInfos& infos)
     : _infos(infos),
       _accumulator(_infos.getResourceMonitor(), _infos.vpackOptions()) {}
 
@@ -79,7 +83,8 @@ SubqueryEndExecutor::~SubqueryEndExecutor() = default;
 
 void SubqueryEndExecutor::initializeCursor() { _accumulator.reset(); }
 
-auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input,
+                                      OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   // We can not account for skipped rows here.
   // If we get this we have invalid logic either in the upstream
@@ -90,7 +95,8 @@ auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlIt
   InputAqlItemRow inputRow{CreateInvalidInputRowHint()};
 
   while (input.hasDataRow()) {
-    std::tie(state, inputRow) = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    std::tie(state, inputRow) =
+        input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(inputRow.isInitialized());
 
     // We got a data row, put it into the accumulator,
@@ -103,7 +109,8 @@ auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlIt
   return {input.upstreamState(), NoStats{}, AqlCall{}};
 }
 
-auto SubqueryEndExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+auto SubqueryEndExecutor::skipRowsRange(AqlItemBlockInputRange& input,
+                                        AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   // We can not account for skipped rows here.
   // If we get this we have invalid logic either in the upstream
@@ -114,7 +121,8 @@ auto SubqueryEndExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& 
   InputAqlItemRow inputRow{CreateInvalidInputRowHint()};
 
   while (input.hasDataRow()) {
-    std::tie(state, inputRow) = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    std::tie(state, inputRow) =
+        input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(inputRow.isInitialized());
   }
   // This is correct since the SubqueryEndExecutor produces one output out
@@ -172,8 +180,8 @@ void SubqueryEndExecutor::Accumulator::addValue(AqlValue const& value) {
   _memoryUsage += diff;
 }
 
-SubqueryEndExecutor::Accumulator::Accumulator(arangodb::ResourceMonitor& resourceMonitor,
-                                              VPackOptions const* options)
+SubqueryEndExecutor::Accumulator::Accumulator(
+    arangodb::ResourceMonitor& resourceMonitor, VPackOptions const* options)
     : _resourceMonitor(resourceMonitor), _options(options), _builder(_buffer) {
   reset();
 }
@@ -208,7 +216,8 @@ size_t SubqueryEndExecutor::Accumulator::numValues() const noexcept {
 }
 
 // We do not write any output for inbound dataRows
-// We will only write output for shadowRows. This is accounted for in ExecutionBlockImpl
+// We will only write output for shadowRows. This is accounted for in
+// ExecutionBlockImpl
 [[nodiscard]] auto SubqueryEndExecutor::expectedNumberOfRowsNew(
     AqlItemBlockInputRange const&, AqlCall const&) const noexcept -> size_t {
   return 0;

@@ -35,7 +35,8 @@ namespace rest {
 /// Abstract class handling the socket acceptor
 class Acceptor {
  public:
-  Acceptor(rest::GeneralServer& server, rest::IoContext& context, Endpoint* endpoint);
+  Acceptor(rest::GeneralServer& server, rest::IoContext& context,
+           Endpoint* endpoint);
   virtual ~Acceptor() = default;
 
  public:

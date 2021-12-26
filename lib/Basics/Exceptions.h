@@ -41,13 +41,15 @@
 
 /// @brief throws an arango exception with an error code and arbitrary
 /// arguments (to be inserted in printf-style manner)
-#define THROW_ARANGO_EXCEPTION_PARAMS(code, ...) \
-  throw ::arangodb::basics::Exception::createWithParams(ADB_HERE, code, __VA_ARGS__)
+#define THROW_ARANGO_EXCEPTION_PARAMS(code, ...)                        \
+  throw ::arangodb::basics::Exception::createWithParams(ADB_HERE, code, \
+                                                        __VA_ARGS__)
 
 /// @brief throws an arango exception with an error code and arbitrary
 /// arguments (to be inserted in printf-style manner)
-#define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...) \
-  throw ::arangodb::basics::Exception::createWithFormat(ADB_HERE, code, format, __VA_ARGS__)
+#define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...)                \
+  throw ::arangodb::basics::Exception::createWithFormat(ADB_HERE, code, \
+                                                        format, __VA_ARGS__)
 
 /// @brief throws an arango exception with an error code and an already-built
 /// error message
@@ -64,13 +66,15 @@ class Exception final : public virtual std::exception {
 
  public:
   // primary constructor
-  Exception(ErrorCode code, std::string&& errorMessage, SourceLocation location) noexcept;
+  Exception(ErrorCode code, std::string&& errorMessage,
+            SourceLocation location) noexcept;
 
   // convenience constructors
   Exception(ErrorCode code, SourceLocation location);
   Exception(Result const&, SourceLocation location);
   Exception(Result&&, SourceLocation location) noexcept;
-  Exception(ErrorCode code, std::string_view errorMessage, SourceLocation location);
+  Exception(ErrorCode code, std::string_view errorMessage,
+            SourceLocation location);
   Exception(ErrorCode code, char const* errorMessage, SourceLocation location);
 
   // I think we should get rid of the following (char*,int) versions as opposed
@@ -78,20 +82,25 @@ class Exception final : public virtual std::exception {
   Exception(ErrorCode code, char const* file, int line);
   Exception(Result const&, char const* file, int line);
   Exception(Result&&, char const* file, int line) noexcept;
-  Exception(ErrorCode code, std::string_view errorMessage, char const* file, int line);
-  Exception(ErrorCode code, std::string&& errorMessage, char const* file, int line) noexcept;
-  Exception(ErrorCode code, char const* errorMessage, char const* file, int line);
+  Exception(ErrorCode code, std::string_view errorMessage, char const* file,
+            int line);
+  Exception(ErrorCode code, std::string&& errorMessage, char const* file,
+            int line) noexcept;
+  Exception(ErrorCode code, char const* errorMessage, char const* file,
+            int line);
 
   ~Exception() override = default;
   Exception(Exception const&) = default;
   Exception(Exception&&) = default;
 
-  template <typename... Args>
-  static Exception createWithParams(SourceLocation location, ErrorCode code, Args... args) {
-    return Exception(code, ::arangodb::basics::Exception::FillExceptionString(code, args...),
-                     location);
+  template<typename... Args>
+  static Exception createWithParams(SourceLocation location, ErrorCode code,
+                                    Args... args) {
+    return Exception(
+        code, ::arangodb::basics::Exception::FillExceptionString(code, args...),
+        location);
   }
-  template <typename... Args>
+  template<typename... Args>
   static Exception createWithFormat(SourceLocation location, ErrorCode code,
                                     const char* fmt, Args... args) {
     auto const errnoStr = TRI_errno_string(code);
@@ -122,12 +131,14 @@ class Exception final : public virtual std::exception {
 };
 
 namespace helper {
-// just so we don't have to include logger and application-exit into this central header.
+// just so we don't have to include logger and application-exit into this
+// central header.
 [[noreturn]] void dieWithLogMessage(char const*);
 }  // namespace helper
 
-template <typename F>
-Result catchToResult(F&& fn, ErrorCode defaultError = TRI_ERROR_INTERNAL) noexcept {
+template<typename F>
+Result catchToResult(F&& fn,
+                     ErrorCode defaultError = TRI_ERROR_INTERNAL) noexcept {
   Result result{TRI_ERROR_NO_ERROR};
   // The outer try/catch catches possible exceptions thrown by result.reset(),
   // due to allocation failure. If we don't have enough memory to allocate an
@@ -153,8 +164,9 @@ Result catchToResult(F&& fn, ErrorCode defaultError = TRI_ERROR_INTERNAL) noexce
   return result;
 }
 
-template <typename F>
-Result catchVoidToResult(F&& fn, ErrorCode defaultError = TRI_ERROR_INTERNAL) noexcept {
+template<typename F>
+Result catchVoidToResult(F&& fn,
+                         ErrorCode defaultError = TRI_ERROR_INTERNAL) noexcept {
   auto wrapped = [&fn]() -> Result {
     std::forward<F>(fn)();
     return Result{TRI_ERROR_NO_ERROR};
@@ -169,7 +181,7 @@ namespace helper {
 
 // @brief Throws the passed exception, but in maintainer mode, logs the error
 // and aborts instead.
-template <typename E>
+template<typename E>
 [[noreturn]] void abortOrThrowException(E&& e) {
 #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
   throw std::forward<E>(e);
@@ -180,7 +192,7 @@ template <typename E>
 
 // @brief Forwards arguments to an Exception constructor and calls
 // abortOrThrowException
-template <typename... Args>
+template<typename... Args>
 [[noreturn]] void abortOrThrow(Args... args) {
   abortOrThrowException(Exception(std::forward<Args>(args)...));
 }

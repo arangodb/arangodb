@@ -51,7 +51,7 @@ using namespace arangodb::options;
 
 namespace {
 
-template <typename T>
+template<typename T>
 static inline T readNumber(uint8_t const* source, uint32_t length) {
   T value = 0;
   uint64_t x = 0;
@@ -102,7 +102,8 @@ struct CustomTypeHandler : public VPackCustomTypeHandler {
   CustomTypeHandler() = default;
   ~CustomTypeHandler() = default;
 
-  void dump(VPackSlice const& value, VPackDumper* dumper, VPackSlice const& base) override final {
+  void dump(VPackSlice const& value, VPackDumper* dumper,
+            VPackSlice const& base) override final {
     dumper->appendString(toString(value, nullptr, base));
   }
 
@@ -115,7 +116,8 @@ struct CustomTypeHandler : public VPackCustomTypeHandler {
 
 }  // namespace
 
-VPackFeature::VPackFeature(application_features::ApplicationServer& server, int* result)
+VPackFeature::VPackFeature(application_features::ApplicationServer& server,
+                           int* result)
     : ApplicationFeature(server, "VPack"),
       _result(result),
       _inputType("vpack"),
@@ -125,7 +127,8 @@ VPackFeature::VPackFeature(application_features::ApplicationServer& server, int*
   setOptional(false);
 }
 
-void VPackFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
+void VPackFeature::collectOptions(
+    std::shared_ptr<options::ProgramOptions> options) {
   std::unordered_set<std::string> const inputTypes{
       {"json", "json-hex", "vpack", "vpack-hex"}};
   std::unordered_set<std::string> const outputTypes{
@@ -148,13 +151,15 @@ void VPackFeature::collectOptions(std::shared_ptr<options::ProgramOptions> optio
                      new StringParameter(&_outputFile));
 
   options
-      ->addOption("--input-type", "type of input",
-                  new DiscreteValuesParameter<StringParameter>(&_inputType, inputTypes))
+      ->addOption(
+          "--input-type", "type of input",
+          new DiscreteValuesParameter<StringParameter>(&_inputType, inputTypes))
       .setIntroducedIn(30800);
 
   options
       ->addOption("--output-type", "type of output",
-                  new DiscreteValuesParameter<StringParameter>(&_outputType, outputTypes))
+                  new DiscreteValuesParameter<StringParameter>(&_outputType,
+                                                               outputTypes))
       .setIntroducedIn(30800);
 
   options

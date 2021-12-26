@@ -45,7 +45,8 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
  protected:
   std::deque<arangodb::ManagedDocumentResult> insertedDocs;
 
-  void addLinkToCollection(std::shared_ptr<arangodb::iresearch::IResearchView>& view) {
+  void addLinkToCollection(
+      std::shared_ptr<arangodb::iresearch::IResearchView>& view) {
     auto updateJson = VPackParser::fromJson(
         std::string("{") +
         "\"links\": {"
@@ -63,7 +64,8 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+    view->properties(builder,
+                     arangodb::LogicalDataSource::Serialization::Properties);
     builder.close();
 
     auto slice = builder.slice();
@@ -97,8 +99,9 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
     // create view_1
     std::shared_ptr<arangodb::iresearch::IResearchView> view1;
     {
-      auto createJson = VPackParser::fromJson(std::string("{") + "\"name\": \"" + viewName1 +
-                                              "\", \
+      auto createJson =
+          VPackParser::fromJson(std::string("{") + "\"name\": \"" + viewName1 +
+                                "\", \
            \"type\": \"arangosearch\" \
         }");
       view1 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
@@ -112,8 +115,9 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
     // create view_2
     std::shared_ptr<arangodb::iresearch::IResearchView> view2;
     {
-      auto createJson = VPackParser::fromJson(std::string("{") + "\"name\": \"" + viewName2 +
-                                              "\", \
+      auto createJson =
+          VPackParser::fromJson(std::string("{") + "\"name\": \"" + viewName2 +
+                                "\", \
             \"type\": \"arangosearch\", \
             \"primarySort\": [{\"field\": \"value\", \"direction\": \"asc\"}, {\"field\": \"foo\", \"direction\": \"desc\"}] \
          }");
@@ -186,33 +190,40 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
 
       EXPECT_TRUE(trx.commit().ok());
 
-      EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection1, *view1)
+      EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(
+                      *logicalCollection1, *view1)
                       ->commit()
                       .ok());
 
-      EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *view1)
+      EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(
+                      *logicalCollection2, *view1)
                       ->commit()
                       .ok());
 
-      EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection1, *view2)
+      EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(
+                      *logicalCollection1, *view2)
                       ->commit()
                       .ok());
 
-      EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *view2)
+      EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(
+                      *logicalCollection2, *view2)
                       ->commit()
                       .ok());
     }
   }
 
-  void executeAndCheck(std::string const& query,
-                       std::vector<arangodb::velocypack::Slice> const& expectedDocs,
-                       bool checkRuleOnly) {
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+  void executeAndCheck(
+      std::string const& query,
+      std::vector<arangodb::velocypack::Slice> const& expectedDocs,
+      bool checkRuleOnly) {
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase(), query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     EXPECT_TRUE(arangodb::tests::assertRules(
         vocbase(), query,
-        {arangodb::aql::OptimizerRule::lateDocumentMaterializationArangoSearchRule}));
+        {arangodb::aql::OptimizerRule::
+             lateDocumentMaterializationArangoSearchRule}));
 
     auto queryResult = arangodb::tests::executeQuery(vocbase(), query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -233,8 +244,9 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(*expectedDoc), resolved, true));
+      EXPECT_TRUE(
+          0 == arangodb::basics::VelocyPackHelper::compare(
+                   arangodb::velocypack::Slice(*expectedDoc), resolved, true));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -389,4 +401,5 @@ TEST_P(IResearchQueryLateMaterializationTest, test_12) {
 }
 
 INSTANTIATE_TEST_CASE_P(IResearchQueryLateMaterializationTest,
-                        IResearchQueryLateMaterializationTest, GetLinkVersions());
+                        IResearchQueryLateMaterializationTest,
+                        GetLinkVersions());

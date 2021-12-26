@@ -182,25 +182,29 @@ void TRI_ClosePipe(ExternalProcess* process, bool read);
 /// @brief Reads from the pipe of processes
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process, char* buffer, size_t bufferSize);
+TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process, char* buffer,
+                               size_t bufferSize);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Reads from the pipe of processes
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_WritePipe(ExternalProcess const* process, char const* buffer, size_t bufferSize);
+bool TRI_WritePipe(ExternalProcess const* process, char const* buffer,
+                   size_t bufferSize);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32_t timeout);
+ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
+                                               uint32_t timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool isTerminal);
+ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal,
+                                              bool isTerminal);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief suspends an external process, only on Unix

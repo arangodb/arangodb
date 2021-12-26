@@ -60,7 +60,8 @@ namespace {
 
 inline IResearchViewSort const& primarySort(arangodb::LogicalView const& view) {
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    auto& viewImpl = arangodb::LogicalView::cast<IResearchViewCoordinator>(view);
+    auto& viewImpl =
+        arangodb::LogicalView::cast<IResearchViewCoordinator>(view);
     return viewImpl.primarySort();
   }
 
@@ -68,9 +69,11 @@ inline IResearchViewSort const& primarySort(arangodb::LogicalView const& view) {
   return viewImpl.primarySort();
 }
 
-inline IResearchViewStoredValues const& storedValues(arangodb::LogicalView const& view) {
+inline IResearchViewStoredValues const& storedValues(
+    arangodb::LogicalView const& view) {
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    auto& viewImpl = arangodb::LogicalView::cast<IResearchViewCoordinator>(view);
+    auto& viewImpl =
+        arangodb::LogicalView::cast<IResearchViewCoordinator>(view);
     return viewImpl.storedValues();
   }
 
@@ -88,20 +91,23 @@ void pushFuncToBack(arangodb::aql::AstNode& condition,
     auto current = condition.getMemberUnchecked(memberIdx);
     TRI_ASSERT(current);
     auto const numAndMembers = current->numMembers();
-    if (current->type == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND &&
+    if (current->type ==
+            arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND &&
         numAndMembers > 1) {
       size_t movePoint = numAndMembers - 1;
       do {
         auto candidate = current->getMemberUnchecked(movePoint);
         if (candidate->type != arangodb::aql::AstNodeType::NODE_TYPE_FCALL ||
-            static_cast<arangodb::aql::Function const*>(candidate->getData()) != starts_with) {
+            static_cast<arangodb::aql::Function const*>(candidate->getData()) !=
+                starts_with) {
           break;
         }
       } while ((--movePoint) != 0);
       for (size_t andMemberIdx = 0; andMemberIdx < movePoint; ++andMemberIdx) {
         auto andMember = current->getMemberUnchecked(andMemberIdx);
         if (andMember->type == arangodb::aql::AstNodeType::NODE_TYPE_FCALL &&
-            static_cast<arangodb::aql::Function const*>(andMember->getData()) == starts_with) {
+            static_cast<arangodb::aql::Function const*>(andMember->getData()) ==
+                starts_with) {
           TEMPORARILY_UNLOCK_NODE(current);
           auto tmp = current->getMemberUnchecked(movePoint);
           current->changeMember(movePoint--, andMember);
@@ -110,7 +116,8 @@ void pushFuncToBack(arangodb::aql::AstNode& condition,
                  current->getMemberUnchecked(movePoint)->type ==
                      arangodb::aql::AstNodeType::NODE_TYPE_FCALL &&
                  static_cast<arangodb::aql::Function const*>(
-                     current->getMemberUnchecked(movePoint)->getData()) == starts_with) {
+                     current->getMemberUnchecked(movePoint)->getData()) ==
+                     starts_with) {
             --movePoint;
           }
         } else {
@@ -123,7 +130,8 @@ void pushFuncToBack(arangodb::aql::AstNode& condition,
   }
 }
 
-bool addView(arangodb::LogicalView const& view, arangodb::aql::QueryContext& query) {
+bool addView(arangodb::LogicalView const& view,
+             arangodb::aql::QueryContext& query) {
   auto& collections = query.collections();
 
   // linked collections
@@ -138,7 +146,8 @@ bool addView(arangodb::LogicalView const& view, arangodb::aql::QueryContext& que
 }
 
 bool optimizeSearchCondition(IResearchViewNode& viewNode,
-                             arangodb::aql::QueryContext& query, ExecutionPlan& plan) {
+                             arangodb::aql::QueryContext& query,
+                             ExecutionPlan& plan) {
   auto view = viewNode.view();
 
   // add view and linked collections to the query
@@ -155,13 +164,15 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
   auto nodeFilter = viewNode.filterCondition();
   if (!filterConditionIsEmpty(&nodeFilter)) {
     searchCondition.andCombine(&nodeFilter);
-    searchCondition.normalize(&plan, true, viewNode.options().conditionOptimization);
+    searchCondition.normalize(&plan, true,
+                              viewNode.options().conditionOptimization);
 
     if (searchCondition.isEmpty()) {
       // condition is always false
       for (auto const& x : viewNode.getParents()) {
-        plan.insertDependency(x, plan.registerNode(
-                                     std::make_unique<NoResultsNode>(&plan, plan.nextId())));
+        plan.insertDependency(
+            x, plan.registerNode(
+                   std::make_unique<NoResultsNode>(&plan, plan.nextId())));
       }
       return false;
     }
@@ -178,7 +189,8 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
 
   // check filter condition if present
   if (searchCondition.root()) {
-    if (viewNode.filterOptimization() != arangodb::iresearch::FilterOptimization::NONE) {
+    if (viewNode.filterOptimization() !=
+        arangodb::iresearch::FilterOptimization::NONE) {
       // we could benefit from merging STARTS_WITH and LEVENSHTEIN_MATCH
       auto& server = plan.getAst()->query().vocbase().server();
       auto starts_with =
@@ -243,8 +255,12 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     if (current->getType() == ExecutionNode::CALCULATION) {
       // pick up the meanings of variables as we walk the plan
       variableDefinitions.try_emplace(
-          ExecutionNode::castTo<CalculationNode const*>(current)->outVariable()->id,
-          ExecutionNode::castTo<CalculationNode const*>(current)->expression()->node());
+          ExecutionNode::castTo<CalculationNode const*>(current)
+              ->outVariable()
+              ->id,
+          ExecutionNode::castTo<CalculationNode const*>(current)
+              ->expression()
+              ->node());
     }
 
     if (current->getType() != ExecutionNode::SORT) {
@@ -266,8 +282,10 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     }
 
     SortCondition sortCondition(
-        plan, sorts, std::vector<std::vector<arangodb::basics::AttributeName>>(),
-        ::arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>>(),
+        plan, sorts,
+        std::vector<std::vector<arangodb::basics::AttributeName>>(),
+        ::arangodb::containers::HashSet<
+            std::vector<arangodb::basics::AttributeName>>(),
         variableDefinitions);
 
     if (sortCondition.isEmpty() || !sortCondition.isOnlyAttributeAccess()) {
@@ -339,17 +357,22 @@ struct ColumnVariant {
   std::vector<arangodb::basics::AttributeName> const* field;
   std::vector<std::string> postfix;
 
-  ColumnVariant(latematerialized::AstAndColumnFieldData* afData, size_t fieldNum,
+  ColumnVariant(latematerialized::AstAndColumnFieldData* afData,
+                size_t fieldNum,
                 std::vector<arangodb::basics::AttributeName> const* field,
                 std::vector<std::string>&& postfix)
-      : afData(afData), fieldNum(fieldNum), field(field), postfix(std::move(postfix)) {}
+      : afData(afData),
+        fieldNum(fieldNum),
+        field(field),
+        postfix(std::move(postfix)) {}
 };
 
-bool attributesMatch(IResearchViewSort const& primarySort,
-                     IResearchViewStoredValues const& storedValues,
-                     latematerialized::NodeWithAttrsColumn& node,
-                     std::vector<std::vector<ColumnVariant>>& usedColumnsCounter,
-                     size_t columnsCount) {
+bool attributesMatch(
+    IResearchViewSort const& primarySort,
+    IResearchViewStoredValues const& storedValues,
+    latematerialized::NodeWithAttrsColumn& node,
+    std::vector<std::vector<ColumnVariant>>& usedColumnsCounter,
+    size_t columnsCount) {
   TRI_ASSERT(columnsCount <= usedColumnsCounter.size());
   // check all node attributes to be in sort
   std::vector<std::vector<ColumnVariant>> tmpUsedColumnsCounter(columnsCount);
@@ -363,7 +386,8 @@ bool attributesMatch(IResearchViewSort const& primarySort,
     auto& tmpSlot = tmpUsedColumnsCounter.front();
     for (auto const& field : primarySort.fields()) {
       if (latematerialized::isPrefix(field, nodeAttr.attr, false, postfix)) {
-        tmpSlot.emplace_back(&nodeAttr.afData, fieldNum, &field, std::move(postfix));
+        tmpSlot.emplace_back(&nodeAttr.afData, fieldNum, &field,
+                             std::move(postfix));
         found = true;
         break;
       }
@@ -373,10 +397,12 @@ bool attributesMatch(IResearchViewSort const& primarySort,
     ptrdiff_t columnNum = 1;
     for (auto const& column : storedValues.columns()) {
       fieldNum = 0;
-      TRI_ASSERT(static_cast<ptrdiff_t>(tmpUsedColumnsCounter.size()) >= columnNum);
+      TRI_ASSERT(static_cast<ptrdiff_t>(tmpUsedColumnsCounter.size()) >=
+                 columnNum);
       auto& tmpSlot = tmpUsedColumnsCounter[columnNum];
       for (auto const& field : column.fields) {
-        if (latematerialized::isPrefix(field.second, nodeAttr.attr, false, postfix)) {
+        if (latematerialized::isPrefix(field.second, nodeAttr.attr, false,
+                                       postfix)) {
           tmpSlot.emplace_back(&nodeAttr.afData, fieldNum, &field.second,
                                std::move(postfix));
           found = true;
@@ -394,34 +420,39 @@ bool attributesMatch(IResearchViewSort const& primarySort,
   static_assert(std::is_move_constructible_v<ColumnVariant>,
                 "To efficiently move from temp variable we need working move "
                 "for ColumnVariant");
-  // store only on successful exit, otherwise pointers to afData will be invalidated as Node will be not stored!
+  // store only on successful exit, otherwise pointers to afData will be
+  // invalidated as Node will be not stored!
   size_t current = 0;
-  for (auto it = tmpUsedColumnsCounter.begin(); it != tmpUsedColumnsCounter.end(); ++it) {
+  for (auto it = tmpUsedColumnsCounter.begin();
+       it != tmpUsedColumnsCounter.end(); ++it) {
     std::move(it->begin(), it->end(),
               irs::irstd::back_emplacer(usedColumnsCounter[current++]));
   }
   return true;
 }
 
-void setAttributesMaxMatchedColumns(std::vector<std::vector<ColumnVariant>>& usedColumnsCounter,
-                                    size_t columnsCount) {
+void setAttributesMaxMatchedColumns(
+    std::vector<std::vector<ColumnVariant>>& usedColumnsCounter,
+    size_t columnsCount) {
   TRI_ASSERT(columnsCount <= usedColumnsCounter.size());
   std::vector<ptrdiff_t> idx(columnsCount);
   std::iota(idx.begin(), idx.end(), 0);
   // first is max size one
-  std::sort(idx.begin(), idx.end(), [&usedColumnsCounter](auto const lhs, auto const rhs) {
-    auto const& lhs_val = usedColumnsCounter[lhs];
-    auto const& rhs_val = usedColumnsCounter[rhs];
-    auto const lSize = lhs_val.size();
-    auto const rSize = rhs_val.size();
-    // column contains more fields or
-    // columns sizes == 1 and postfix is less (less column size) or
-    // less column number (sort column priority)
-    return lSize > rSize ||
-           (lSize == rSize &&
-            ((lSize == 1 && lhs_val[0].postfix.size() < rhs_val[0].postfix.size()) ||
-             lhs < rhs));
-  });
+  std::sort(idx.begin(), idx.end(),
+            [&usedColumnsCounter](auto const lhs, auto const rhs) {
+              auto const& lhs_val = usedColumnsCounter[lhs];
+              auto const& rhs_val = usedColumnsCounter[rhs];
+              auto const lSize = lhs_val.size();
+              auto const rSize = rhs_val.size();
+              // column contains more fields or
+              // columns sizes == 1 and postfix is less (less column size) or
+              // less column number (sort column priority)
+              return lSize > rSize ||
+                     (lSize == rSize &&
+                      ((lSize == 1 && lhs_val[0].postfix.size() <
+                                          rhs_val[0].postfix.size()) ||
+                       lhs < rhs));
+            });
   // get values from columns which contain max number of appropriate values
   for (auto i : idx) {
     auto& it = usedColumnsCounter[i];
@@ -441,12 +472,14 @@ void setAttributesMaxMatchedColumns(std::vector<std::vector<ColumnVariant>>& use
   }
 }
 
-void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNode*> const& calcNodes,
-                                  arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes) {
+void keepReplacementViewVariables(
+    arangodb::containers::SmallVector<ExecutionNode*> const& calcNodes,
+    arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes) {
   std::vector<latematerialized::NodeWithAttrsColumn> nodesToChange;
   std::vector<std::vector<ColumnVariant>> usedColumnsCounter;
   for (auto* vNode : viewNodes) {
-    TRI_ASSERT(vNode && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == vNode->getType());
+    TRI_ASSERT(vNode &&
+               ExecutionNode::ENUMERATE_IRESEARCH_VIEW == vNode->getType());
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(vNode);
     auto const& primarySort = ::primarySort(*viewNode.view());
     auto const& storedValues = ::storedValues(*viewNode.view());
@@ -460,7 +493,8 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
     if (columnsCount > usedColumnsCounter.size()) {
       usedColumnsCounter.resize(columnsCount);
     }
-    // restoring initial state for column accumulator (only potentially usable part)
+    // restoring initial state for column accumulator (only potentially usable
+    // part)
     auto const beginColumns = usedColumnsCounter.begin();
     auto const endColumns = usedColumnsCounter.begin() + columnsCount;
     for (auto it = beginColumns; it != endColumns; ++it) {
@@ -476,7 +510,8 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
       // find attributes referenced to view node out variable
       if (latematerialized::getReferencedAttributes(astNode, &var, node)) {
         if (!node.attrs.empty()) {
-          if (attributesMatch(primarySort, storedValues, node, usedColumnsCounter, columnsCount)) {
+          if (attributesMatch(primarySort, storedValues, node,
+                              usedColumnsCounter, columnsCount)) {
             nodesToChange.emplace_back(std::move(node));
           } else {
             viewNodeState.disableNoDocumentMaterialization();
@@ -490,7 +525,8 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
       setAttributesMaxMatchedColumns(usedColumnsCounter, columnsCount);
       viewNodeState.saveCalcNodesForViewVariables(nodesToChange);
       nodesToChange.clear();
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE  // force nullptr`s to trigger assertion on non-used-nodes access
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE  // force nullptr`s to trigger assertion
+                                        // on non-used-nodes access
       for (auto& a : usedColumnsCounter) {
         for (auto& b : a) {
           b.afData = nullptr;
@@ -501,12 +537,14 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
   }
 }
 
-bool noDocumentMaterialization(arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes,
-                               arangodb::containers::HashSet<ExecutionNode*>& toUnlink) {
+bool noDocumentMaterialization(
+    arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes,
+    arangodb::containers::HashSet<ExecutionNode*>& toUnlink) {
   auto modified = false;
   VarSet currentUsedVars;
   for (auto* node : viewNodes) {
-    TRI_ASSERT(node && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
+    TRI_ASSERT(node &&
+               ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(node);
     auto& viewNodeState = viewNode.state();
     if (!(viewNode.options().noMaterialization &&
@@ -519,7 +557,8 @@ bool noDocumentMaterialization(arangodb::containers::SmallVector<ExecutionNode*>
     auto const& var = viewNode.outVariable();
     auto isCalcNodesFound = false;
     auto valid = true;
-    // check if there are any not calculation nodes in the plan referencing to the view variable
+    // check if there are any not calculation nodes in the plan referencing to
+    // the view variable
     do {
       currentUsedVars.clear();
       current->getVariablesUsedHere(currentUsedVars);
@@ -572,29 +611,34 @@ namespace arangodb {
 
 namespace iresearch {
 
-void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
-                                                 std::unique_ptr<ExecutionPlan> plan,
-                                                 OptimizerRule const& rule) {
+void lateDocumentMaterializationArangoSearchRule(
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+    OptimizerRule const& rule) {
   auto modified = false;
-  auto const addPlan = arangodb::scopeGuard([opt, &plan, &rule, &modified]() noexcept {
-    opt->addPlan(std::move(plan), rule, modified);
-  });
+  auto const addPlan =
+      arangodb::scopeGuard([opt, &plan, &rule, &modified]() noexcept {
+        opt->addPlan(std::move(plan), rule, modified);
+      });
   // arangosearch view node supports late materialization
   // cppcheck-suppress accessMoved
   if (!plan->contains(ExecutionNode::ENUMERATE_IRESEARCH_VIEW) ||
-      // we need sort node  to be present  (without sort it will be just skip, nothing to optimize)
+      // we need sort node  to be present  (without sort it will be just skip,
+      // nothing to optimize)
       !plan->contains(ExecutionNode::SORT) ||
-      // limit node is needed as without limit all documents will be returned anyway, nothing to optimize
+      // limit node is needed as without limit all documents will be returned
+      // anyway, nothing to optimize
       !plan->contains(ExecutionNode::LIMIT)) {
     return;
   }
 
-  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<
+      ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, ExecutionNode::LIMIT, true);
   for (auto* limitNode : nodes) {
     auto* loop = const_cast<ExecutionNode*>(limitNode->getLoop());
-    if (loop != nullptr && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
+    if (loop != nullptr &&
+        ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
       auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(loop);
       if (viewNode.noMaterialization() || viewNode.isLateMaterialized()) {
         continue;  // loop is already optimized
@@ -608,19 +652,22 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
       auto stopSearch = false;
       auto stickToSortNode = false;
       auto const& var = viewNode.outVariable();
-      std::vector<aql::CalculationNode*> calcNodes;  // nodes variables can be replaced
+      std::vector<aql::CalculationNode*>
+          calcNodes;  // nodes variables can be replaced
       auto& viewNodeState = viewNode.state();
       while (current != loop) {
         auto const type = current->getType();
         switch (type) {
           case ExecutionNode::SORT:
-            if (sortNode == nullptr) {  // we need nearest to limit sort node, so keep selected if any
+            if (sortNode == nullptr) {  // we need nearest to limit sort node,
+                                        // so keep selected if any
               sortNode = current;
             }
             break;
           case ExecutionNode::REMOTE:
-            // REMOTE node is a blocker - we do not want to make materialization calls across cluster!
-            // Moreover we pass raw collection pointer - this must not cross process border!
+            // REMOTE node is a blocker - we do not want to make materialization
+            // calls across cluster! Moreover we pass raw collection pointer -
+            // this must not cross process border!
             if (sortNode != nullptr) {
               stopSearch = true;
             } else {
@@ -634,12 +681,14 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
           VarSet currentUsedVars;
           current->getVariablesUsedHere(currentUsedVars);
           if (currentUsedVars.find(&var) != currentUsedVars.end()) {
-            // currently only calculation nodes expected to use a loop variable with attributes
-            // we successfully replace all references to the loop variable
+            // currently only calculation nodes expected to use a loop variable
+            // with attributes we successfully replace all references to the
+            // loop variable
             auto valid = false;
             switch (type) {
               case ExecutionNode::CALCULATION: {
-                auto* calcNode = ExecutionNode::castTo<CalculationNode*>(current);
+                auto* calcNode =
+                    ExecutionNode::castTo<CalculationNode*>(current);
                 TRI_ASSERT(calcNode);
                 if (viewNodeState.canVariablesBeReplaced(calcNode)) {
                   calcNodes.emplace_back(calcNode);
@@ -648,21 +697,26 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
                 break;
               }
               case ExecutionNode::SUBQUERY: {
-                auto& subqueryNode = *ExecutionNode::castTo<SubqueryNode*>(current);
+                auto& subqueryNode =
+                    *ExecutionNode::castTo<SubqueryNode*>(current);
                 auto* subquery = subqueryNode.getSubquery();
                 TRI_ASSERT(subquery);
-                ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type sa;
-                ::arangodb::containers::SmallVector<ExecutionNode*> subqueryCalcNodes{sa};
+                ::arangodb::containers::SmallVector<
+                    ExecutionNode*>::allocator_type::arena_type sa;
+                ::arangodb::containers::SmallVector<ExecutionNode*>
+                    subqueryCalcNodes{sa};
                 // find calculation nodes in the plan of a subquery
                 CalculationNodeVarFinder finder(&var, subqueryCalcNodes);
                 valid = !subquery->walk(finder);
                 if (valid) {  // if the finder did not stop
                   for (auto* scn : subqueryCalcNodes) {
-                    TRI_ASSERT(scn && scn->getType() == ExecutionNode::CALCULATION);
+                    TRI_ASSERT(scn &&
+                               scn->getType() == ExecutionNode::CALCULATION);
                     currentUsedVars.clear();
                     scn->getVariablesUsedHere(currentUsedVars);
                     if (currentUsedVars.find(&var) != currentUsedVars.end()) {
-                      auto* calcNode = ExecutionNode::castTo<CalculationNode*>(scn);
+                      auto* calcNode =
+                          ExecutionNode::castTo<CalculationNode*>(scn);
                       TRI_ASSERT(calcNode);
                       if (viewNodeState.canVariablesBeReplaced(calcNode)) {
                         calcNodes.emplace_back(calcNode);
@@ -685,7 +739,8 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
                 stopSearch = true;
               } else {
                 // we are between limit and sort nodes
-                // late materialization could still be applied but we must insert MATERIALIZE node after sort not after limit
+                // late materialization could still be applied but we must
+                // insert MATERIALIZE node after sort not after limit
                 stickToSortNode = true;
               }
             }
@@ -704,13 +759,15 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
         // 1. Replace view variables in calculation node if need
         if (!calcNodes.empty()) {
           ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
-          auto viewVariables = viewNodeState.replaceViewVariables(calcNodes, toUnlink);
+          auto viewVariables =
+              viewNodeState.replaceViewVariables(calcNodes, toUnlink);
           viewNode.setViewVariables(viewVariables);
           if (!toUnlink.empty()) {
             plan->unlinkNodes(toUnlink);
           }
         }
-        // 2. We need to notify view - it should not materialize documents, but produce only localDocIds
+        // 2. We need to notify view - it should not materialize documents, but
+        // produce only localDocIds
         // 3. We need to add materializer after limit node to do materialization
         auto* ast = plan->getAst();
         TRI_ASSERT(ast);
@@ -720,16 +777,18 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
         TRI_ASSERT(localColPtrTmp);
         viewNode.setLateMaterialized(*localColPtrTmp, *localDocIdTmp);
         // insert a materialize node
-        auto* materializeNode =
-            plan->registerNode(std::make_unique<materialize::MaterializeMultiNode>(
-                plan.get(), plan->nextId(), *localColPtrTmp, *localDocIdTmp, var));
+        auto* materializeNode = plan->registerNode(
+            std::make_unique<materialize::MaterializeMultiNode>(
+                plan.get(), plan->nextId(), *localColPtrTmp, *localDocIdTmp,
+                var));
         TRI_ASSERT(materializeNode);
 
         auto* materializeDependency = stickToSortNode ? sortNode : limitNode;
         TRI_ASSERT(materializeDependency);
         auto* dependencyParent = materializeDependency->getFirstParent();
         TRI_ASSERT(dependencyParent);
-        dependencyParent->replaceDependency(materializeDependency, materializeNode);
+        dependencyParent->replaceDependency(materializeDependency,
+                                            materializeNode);
         materializeDependency->addParent(materializeNode);
         modified = true;
       }
@@ -755,7 +814,8 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     return;
   }
 
-  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type ca;
+  ::arangodb::containers::SmallVector<
+      ExecutionNode*>::allocator_type::arena_type ca;
   ::arangodb::containers::SmallVector<ExecutionNode*> calcNodes{ca};
 
   // replace scorers in all calculation nodes with references
@@ -770,21 +830,25 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
   }
 
   // register replaced scorers to be evaluated by corresponding view nodes
-  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type va;
+  ::arangodb::containers::SmallVector<
+      ExecutionNode*>::allocator_type::arena_type va;
   ::arangodb::containers::SmallVector<ExecutionNode*> viewNodes{va};
-  plan->findNodesOfType(viewNodes, ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+  plan->findNodesOfType(viewNodes, ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
+                        true);
 
   aql::QueryContext& query = plan->getAst()->query();
 
   std::vector<Scorer> scorers;
 
   for (auto* node : viewNodes) {
-    TRI_ASSERT(node && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
+    TRI_ASSERT(node &&
+               ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(node);
 
     if (!viewNode.isInInnerLoop()) {
-      // check if we can optimize away a sort that follows the EnumerateView node
-      // this is only possible if the view node itself is not contained in another loop
+      // check if we can optimize away a sort that follows the EnumerateView
+      // node this is only possible if the view node itself is not contained in
+      // another loop
       modified |= optimizeSort(viewNode, plan.get());
     }
 
@@ -817,11 +881,13 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
   });
 }
 
-void scatterViewInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+void scatterViewInClusterRule(Optimizer* opt,
+                              std::unique_ptr<ExecutionPlan> plan,
                               OptimizerRule const& rule) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   bool wasModified = false;
-  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<
+      ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
 
   // find subqueries
@@ -829,7 +895,8 @@ void scatterViewInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> pla
   plan->findNodesOfType(nodes, ExecutionNode::SUBQUERY, true);
 
   for (auto& it : nodes) {
-    subqueries.try_emplace(ExecutionNode::castTo<SubqueryNode const*>(it)->getSubquery(), it);
+    subqueries.try_emplace(
+        ExecutionNode::castTo<SubqueryNode const*>(it)->getSubquery(), it);
   }
 
   // we are a coordinator. now look in the plan for nodes of type
@@ -842,7 +909,8 @@ void scatterViewInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> pla
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(node);
     auto& options = viewNode.options();
 
-    if (viewNode.empty() || (options.restrictSources && options.sources.empty())) {
+    if (viewNode.empty() ||
+        (options.restrictSources && options.sources.empty())) {
       // FIXME we have to invalidate plan cache (if exists)
       // in case if corresponding view has been modified
 
@@ -875,24 +943,21 @@ void scatterViewInClusterRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> pla
     plan->unlinkNode(node, true);
 
     // insert a scatter node
-    auto scatterNode = plan->registerNode(
-        std::make_unique<ScatterNode>(plan.get(), plan->nextId(),
-                                      ScatterNode::ScatterType::SHARD));
+    auto scatterNode = plan->registerNode(std::make_unique<ScatterNode>(
+        plan.get(), plan->nextId(), ScatterNode::ScatterType::SHARD));
     TRI_ASSERT(!deps.empty());
     scatterNode->addDependency(deps[0]);
 
     // insert a remote node
-    auto* remoteNode =
-        plan->registerNode(std::make_unique<RemoteNode>(plan.get(), plan->nextId(),
-                                                        &vocbase, "", "", ""));
+    auto* remoteNode = plan->registerNode(std::make_unique<RemoteNode>(
+        plan.get(), plan->nextId(), &vocbase, "", "", ""));
     TRI_ASSERT(scatterNode);
     remoteNode->addDependency(scatterNode);
     node->addDependency(remoteNode);  // re-link with the remote node
 
     // insert another remote node
-    remoteNode =
-        plan->registerNode(std::make_unique<RemoteNode>(plan.get(), plan->nextId(),
-                                                        &vocbase, "", "", ""));
+    remoteNode = plan->registerNode(std::make_unique<RemoteNode>(
+        plan.get(), plan->nextId(), &vocbase, "", "", ""));
     TRI_ASSERT(node);
     remoteNode->addDependency(node);
 

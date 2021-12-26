@@ -40,7 +40,7 @@ using namespace arangodb::replication2::test;
 struct LogMultiplexerConcurrencyTest : LogMultiplexerTestBase {
   using Spec = test::MyTestSpecification;
 
-  template <streams::StreamId StreamId>
+  template<streams::StreamId StreamId>
   struct StateMachine : std::enable_shared_from_this<StateMachine<StreamId>> {
     using ValueType = streams::stream_type_by_id_t<StreamId, Spec>;
 
@@ -50,35 +50,38 @@ struct LogMultiplexerConcurrencyTest : LogMultiplexerTestBase {
     void start() { waitForStream(LogIndex{1}); }
 
     void waitForStream(LogIndex next) {
-      _stream->waitForIterator(next).thenValue([weak = this->weak_from_this()](auto&& iter) {
-        if (auto self = weak.lock(); self) {
-          auto [start, stop] = iter->range();
-          TRI_ASSERT(start != stop);
-          while (auto memtry = iter->next()) {
-            self->_observedLog.emplace(*memtry);
-          }
-          self->waitForStream(stop);
-        } else {
-          TRI_ASSERT(false);
-        }
-      });
+      _stream->waitForIterator(next).thenValue(
+          [weak = this->weak_from_this()](auto&& iter) {
+            if (auto self = weak.lock(); self) {
+              auto [start, stop] = iter->range();
+              TRI_ASSERT(start != stop);
+              while (auto memtry = iter->next()) {
+                self->_observedLog.emplace(*memtry);
+              }
+              self->waitForStream(stop);
+            } else {
+              TRI_ASSERT(false);
+            }
+          });
     }
 
     std::map<LogIndex, ValueType> _observedLog;
     std::shared_ptr<streams::Stream<ValueType>> _stream;
   };
 
-  template <typename>
+  template<typename>
   struct StateCombiner;
-  template <typename... Descriptors>
+  template<typename... Descriptors>
   struct StateCombiner<streams::stream_descriptor_set<Descriptors...>> {
     std::tuple<std::shared_ptr<StateMachine<Descriptors::id>>...> _states;
 
-    template <typename Mux>
+    template<typename Mux>
     explicit StateCombiner(std::shared_ptr<Mux> const& demux)
         : _states(std::make_shared<StateMachine<Descriptors::id>>(
               demux->template getStreamById<Descriptors::id>())...) {
-      ((std::get<std::shared_ptr<StateMachine<Descriptors::id>>>(_states)->start()), ...);
+      ((std::get<std::shared_ptr<StateMachine<Descriptors::id>>>(_states)
+            ->start()),
+       ...);
     }
   };
 
@@ -91,7 +94,8 @@ struct LogMultiplexerConcurrencyTest : LogMultiplexerTestBase {
     }
 
     std::shared_ptr<LogFollower> _follower;
-    std::shared_ptr<streams::LogDemultiplexer<test::MyTestSpecification>> _demux;
+    std::shared_ptr<streams::LogDemultiplexer<test::MyTestSpecification>>
+        _demux;
     StateCombiner<Spec> combiner;
   };
 
@@ -150,15 +154,18 @@ TEST_F(LogMultiplexerConcurrencyTest, test) {
     auto B = iterB->next();
     ASSERT_TRUE(B.has_value());
     EXPECT_EQ(A->logIndex(), B->logIndex());
-    bool equal = basics::VelocyPackHelper::equal(A->logPayload(), B->logPayload(), true);
-    EXPECT_TRUE(equal) << A->logPayload().toJson() << " " << B->logPayload().toJson();
+    bool equal =
+        basics::VelocyPackHelper::equal(A->logPayload(), B->logPayload(), true);
+    EXPECT_TRUE(equal) << A->logPayload().toJson() << " "
+                       << B->logPayload().toJson();
   }
   EXPECT_FALSE(iterB->next().has_value());
 
   MyTestSpecification::for_each_descriptor([&](auto p) {
     using Descriptor = decltype(p);
     auto streamA = leaderInstance->_mux->getStreamByDescriptor<Descriptor>();
-    auto streamB = followerInstance->_demux->getStreamByDescriptor<Descriptor>();
+    auto streamB =
+        followerInstance->_demux->getStreamByDescriptor<Descriptor>();
 
     auto iterA = streamA->waitForIterator(LogIndex{1}).get();
     auto iterB = streamB->waitForIterator(LogIndex{1}).get();

@@ -62,8 +62,10 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 #ifdef _WIN32
-static const int FOREGROUND_WHITE = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
-static const int BACKGROUND_WHITE = BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE;
+static const int FOREGROUND_WHITE =
+    FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
+static const int BACKGROUND_WHITE =
+    BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE;
 static const int INTENSITY = FOREGROUND_INTENSITY | BACKGROUND_INTENSITY;
 #endif
 
@@ -110,13 +112,15 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
 }
 
 void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--quiet", "silent startup", new BooleanParameter(&_quiet));
+  options->addOption("--quiet", "silent startup",
+                     new BooleanParameter(&_quiet));
 
   options->addSection("console", "console");
 
-  options->addOption("--console.colors", "enable color support",
-                     new BooleanParameter(&_colors),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
+  options->addOption(
+      "--console.colors", "enable color support",
+      new BooleanParameter(&_colors),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--console.auto-complete", "enable auto completion",
                      new BooleanParameter(&_autoComplete));
@@ -134,11 +138,13 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   new BooleanParameter(&_useHistory))
       .setIntroducedIn(30405);
 
-  options->addOption("--console.pager", "enable paging", new BooleanParameter(&_pager));
+  options->addOption("--console.pager", "enable paging",
+                     new BooleanParameter(&_pager));
 
-  options->addOption("--console.pager-command", "pager command",
-                     new StringParameter(&_pagerCommand),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption(
+      "--console.pager-command", "pager command",
+      new StringParameter(&_pagerCommand),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--console.prompt",
@@ -224,7 +230,8 @@ void ConsoleFeature::_print(std::string const& s) {
 
                 case 1:  // BOLD
                 case 5:  // BLINK
-                  _consoleAttribute = (_defaultAttribute ^ FOREGROUND_INTENSITY) & INTENSITY;
+                  _consoleAttribute =
+                      (_defaultAttribute ^ FOREGROUND_INTENSITY) & INTENSITY;
                   break;
 
                 case 30:
@@ -240,7 +247,8 @@ void ConsoleFeature::_print(std::string const& s) {
                   break;
 
                 case 33:
-                  _consoleColor = FOREGROUND_RED | FOREGROUND_GREEN | _defaultBackground;
+                  _consoleColor =
+                      FOREGROUND_RED | FOREGROUND_GREEN | _defaultBackground;
                   break;
 
                 case 34:
@@ -248,11 +256,13 @@ void ConsoleFeature::_print(std::string const& s) {
                   break;
 
                 case 35:
-                  _consoleColor = FOREGROUND_BLUE | FOREGROUND_RED | _defaultBackground;
+                  _consoleColor =
+                      FOREGROUND_BLUE | FOREGROUND_RED | _defaultBackground;
                   break;
 
                 case 36:
-                  _consoleColor = FOREGROUND_BLUE | FOREGROUND_GREEN | _defaultBackground;
+                  _consoleColor =
+                      FOREGROUND_BLUE | FOREGROUND_GREEN | _defaultBackground;
                   break;
 
                 case 37:
@@ -317,7 +327,8 @@ std::string ConsoleFeature::readPassword(std::string const& message) {
 std::string ConsoleFeature::readPassword() {
   TRI_SetStdinVisibility(false);
 
-  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_SetStdinVisibility(true); });
+  auto sg =
+      arangodb::scopeGuard([&]() noexcept { TRI_SetStdinVisibility(true); });
 
   std::string password;
 
@@ -325,7 +336,8 @@ std::string ConsoleFeature::readPassword() {
   std::wstring wpassword;
   _setmode(_fileno(stdin), _O_U16TEXT);
   std::getline(std::wcin, wpassword);
-  icu::UnicodeString pw(wpassword.c_str(), static_cast<int32_t>(wpassword.length()));
+  icu::UnicodeString pw(wpassword.c_str(),
+                        static_cast<int32_t>(wpassword.length()));
   pw.toUTF8String<std::string>(password);
 #else
   std::getline(std::cin, password);
@@ -452,7 +464,8 @@ ConsoleFeature::Prompt ConsoleFeature::buildPrompt(ClientFeature* client) {
         result.append(tmp.str());
       } else if (c == 'a') {
         std::ostringstream tmp;
-        tmp << std::setprecision(6) << std::fixed << (TRI_microtime() - _startTime);
+        tmp << std::setprecision(6) << std::fixed
+            << (TRI_microtime() - _startTime);
         result.append(tmp.str());
       } else if (c == 'p') {
         std::ostringstream tmp;

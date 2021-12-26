@@ -45,7 +45,8 @@ class ExpressionContext;
 typedef ::arangodb::containers::SmallVector<AqlValue> VPackFunctionParameters;
 
 typedef AqlValue (*FunctionImplementation)(arangodb::aql::ExpressionContext*,
-                                           AstNode const&, VPackFunctionParameters const&);
+                                           AstNode const&,
+                                           VPackFunctionParameters const&);
 
 void registerError(ExpressionContext* expressionContext,
                    char const* functionName, ErrorCode code);
@@ -104,7 +105,8 @@ struct Functions {
   static AqlValue Concat(arangodb::aql::ExpressionContext*, AstNode const&,
                          VPackFunctionParameters const&);
   static AqlValue ConcatSeparator(arangodb::aql::ExpressionContext*,
-                                  AstNode const&, VPackFunctionParameters const&);
+                                  AstNode const&,
+                                  VPackFunctionParameters const&);
   static AqlValue CharLength(arangodb::aql::ExpressionContext*, AstNode const&,
                              VPackFunctionParameters const&);
   static AqlValue Lower(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -142,22 +144,27 @@ struct Functions {
   static AqlValue ToHex(arangodb::aql::ExpressionContext*, AstNode const&,
                         VPackFunctionParameters const&);
   static AqlValue EncodeURIComponent(arangodb::aql::ExpressionContext*,
-                                     AstNode const&, VPackFunctionParameters const&);
+                                     AstNode const&,
+                                     VPackFunctionParameters const&);
   static AqlValue Uuid(arangodb::aql::ExpressionContext*, AstNode const&,
                        VPackFunctionParameters const&);
   static AqlValue Soundex(arangodb::aql::ExpressionContext*, AstNode const&,
                           VPackFunctionParameters const&);
   static AqlValue LevenshteinDistance(arangodb::aql::ExpressionContext*,
-                                      AstNode const&, VPackFunctionParameters const&);
+                                      AstNode const&,
+                                      VPackFunctionParameters const&);
   static AqlValue LevenshteinMatch(arangodb::aql::ExpressionContext*,
-                                   AstNode const&, VPackFunctionParameters const&);
+                                   AstNode const&,
+                                   VPackFunctionParameters const&);
   static AqlValue NgramSimilarity(ExpressionContext*, AstNode const&,
                                   VPackFunctionParameters const&);
-  static AqlValue NgramPositionalSimilarity(ExpressionContext* ctx, AstNode const&,
+  static AqlValue NgramPositionalSimilarity(ExpressionContext* ctx,
+                                            AstNode const&,
                                             VPackFunctionParameters const&);
   static AqlValue NgramMatch(ExpressionContext*, AstNode const&,
                              VPackFunctionParameters const&);
-  static AqlValue InRange(ExpressionContext*, AstNode const&, VPackFunctionParameters const&);
+  static AqlValue InRange(ExpressionContext*, AstNode const&,
+                          VPackFunctionParameters const&);
   // Date
   static AqlValue DateNow(arangodb::aql::ExpressionContext*, AstNode const&,
                           VPackFunctionParameters const&);
@@ -178,7 +185,8 @@ struct Functions {
    *         like 2018-02-31)
    */
   static AqlValue IsDatestring(arangodb::aql::ExpressionContext* query,
-                               AstNode const&, VPackFunctionParameters const& params);
+                               AstNode const&,
+                               VPackFunctionParameters const& params);
   static AqlValue DateDayOfWeek(arangodb::aql::ExpressionContext*,
                                 AstNode const&, VPackFunctionParameters const&);
   static AqlValue DateYear(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -194,7 +202,8 @@ struct Functions {
   static AqlValue DateSecond(arangodb::aql::ExpressionContext*, AstNode const&,
                              VPackFunctionParameters const&);
   static AqlValue DateMillisecond(arangodb::aql::ExpressionContext*,
-                                  AstNode const&, VPackFunctionParameters const&);
+                                  AstNode const&,
+                                  VPackFunctionParameters const&);
   static AqlValue DateDayOfYear(arangodb::aql::ExpressionContext*,
                                 AstNode const&, VPackFunctionParameters const&);
   static AqlValue DateIsoWeek(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -204,13 +213,16 @@ struct Functions {
   static AqlValue DateQuarter(arangodb::aql::ExpressionContext*, AstNode const&,
                               VPackFunctionParameters const&);
   static AqlValue DateDaysInMonth(arangodb::aql::ExpressionContext*,
-                                  AstNode const&, VPackFunctionParameters const&);
+                                  AstNode const&,
+                                  VPackFunctionParameters const&);
   static AqlValue DateTrunc(arangodb::aql::ExpressionContext*, AstNode const&,
                             VPackFunctionParameters const&);
   static AqlValue DateUtcToLocal(arangodb::aql::ExpressionContext*,
-                                 AstNode const&, VPackFunctionParameters const&);
+                                 AstNode const&,
+                                 VPackFunctionParameters const&);
   static AqlValue DateLocalToUtc(arangodb::aql::ExpressionContext*,
-                                 AstNode const&, VPackFunctionParameters const&);
+                                 AstNode const&,
+                                 VPackFunctionParameters const&);
   static AqlValue DateTimeZone(arangodb::aql::ExpressionContext*,
                                AstNode const&, VPackFunctionParameters const&);
   static AqlValue DateTimeZones(arangodb::aql::ExpressionContext*,
@@ -248,16 +260,19 @@ struct Functions {
    * if they differ. May return AQLValue(NULL) on invalid input
    */
   static AqlValue DateCompare(arangodb::aql::ExpressionContext* query,
-                              AstNode const&, VPackFunctionParameters const& params);
+                              AstNode const&,
+                              VPackFunctionParameters const& params);
 
   static AqlValue DateFormat(arangodb::aql::ExpressionContext* query,
-                             AstNode const&, VPackFunctionParameters const& params);
+                             AstNode const&,
+                             VPackFunctionParameters const& params);
   static AqlValue Passthru(arangodb::aql::ExpressionContext*, AstNode const&,
                            VPackFunctionParameters const&);
   static AqlValue Unset(arangodb::aql::ExpressionContext*, AstNode const&,
                         VPackFunctionParameters const&);
   static AqlValue UnsetRecursive(arangodb::aql::ExpressionContext*,
-                                 AstNode const&, VPackFunctionParameters const&);
+                                 AstNode const&,
+                                 VPackFunctionParameters const&);
   static AqlValue Keep(arangodb::aql::ExpressionContext*, AstNode const&,
                        VPackFunctionParameters const&);
   static AqlValue Translate(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -265,7 +280,8 @@ struct Functions {
   static AqlValue Merge(arangodb::aql::ExpressionContext*, AstNode const&,
                         VPackFunctionParameters const&);
   static AqlValue MergeRecursive(arangodb::aql::ExpressionContext*,
-                                 AstNode const&, VPackFunctionParameters const&);
+                                 AstNode const&,
+                                 VPackFunctionParameters const&);
   static AqlValue Has(arangodb::aql::ExpressionContext*, AstNode const&,
                       VPackFunctionParameters const&);
   static AqlValue Attributes(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -289,7 +305,8 @@ struct Functions {
   static AqlValue RandomToken(arangodb::aql::ExpressionContext*, AstNode const&,
                               VPackFunctionParameters const&);
   static AqlValue IpV4FromNumber(arangodb::aql::ExpressionContext*,
-                                 AstNode const&, VPackFunctionParameters const&);
+                                 AstNode const&,
+                                 VPackFunctionParameters const&);
   static AqlValue IpV4ToNumber(arangodb::aql::ExpressionContext*,
                                AstNode const&, VPackFunctionParameters const&);
   static AqlValue IsIpV4(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -351,11 +368,13 @@ struct Functions {
   static AqlValue GeoPolygon(arangodb::aql::ExpressionContext*, AstNode const&,
                              VPackFunctionParameters const&);
   static AqlValue GeoMultiPolygon(arangodb::aql::ExpressionContext*,
-                                  AstNode const&, VPackFunctionParameters const&);
+                                  AstNode const&,
+                                  VPackFunctionParameters const&);
   static AqlValue GeoLinestring(arangodb::aql::ExpressionContext*,
                                 AstNode const&, VPackFunctionParameters const&);
   static AqlValue GeoMultiLinestring(arangodb::aql::ExpressionContext*,
-                                     AstNode const&, VPackFunctionParameters const&);
+                                     AstNode const&,
+                                     VPackFunctionParameters const&);
   static AqlValue Flatten(arangodb::aql::ExpressionContext*, AstNode const&,
                           VPackFunctionParameters const&);
   static AqlValue Zip(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -365,7 +384,8 @@ struct Functions {
   static AqlValue JsonParse(arangodb::aql::ExpressionContext*, AstNode const&,
                             VPackFunctionParameters const&);
   static AqlValue ParseIdentifier(arangodb::aql::ExpressionContext*,
-                                  AstNode const&, VPackFunctionParameters const&);
+                                  AstNode const&,
+                                  VPackFunctionParameters const&);
   static AqlValue Slice(arangodb::aql::ExpressionContext*, AstNode const&,
                         VPackFunctionParameters const&);
   static AqlValue Minus(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -435,7 +455,8 @@ struct Functions {
   static AqlValue BitConstruct(arangodb::aql::ExpressionContext*,
                                AstNode const&, VPackFunctionParameters const&);
   static AqlValue BitDeconstruct(arangodb::aql::ExpressionContext*,
-                                 AstNode const&, VPackFunctionParameters const&);
+                                 AstNode const&,
+                                 VPackFunctionParameters const&);
   static AqlValue BitFromString(arangodb::aql::ExpressionContext*,
                                 AstNode const&, VPackFunctionParameters const&);
   static AqlValue BitToString(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -469,19 +490,24 @@ struct Functions {
   static AqlValue NotNull(arangodb::aql::ExpressionContext*, AstNode const&,
                           VPackFunctionParameters const&);
   static AqlValue CurrentDatabase(arangodb::aql::ExpressionContext*,
-                                  AstNode const&, VPackFunctionParameters const&);
+                                  AstNode const&,
+                                  VPackFunctionParameters const&);
   static AqlValue CollectionCount(arangodb::aql::ExpressionContext*,
-                                  AstNode const&, VPackFunctionParameters const&);
+                                  AstNode const&,
+                                  VPackFunctionParameters const&);
   static AqlValue VarianceSample(arangodb::aql::ExpressionContext*,
-                                 AstNode const&, VPackFunctionParameters const&);
+                                 AstNode const&,
+                                 VPackFunctionParameters const&);
   static AqlValue PregelResult(arangodb::aql::ExpressionContext*,
                                AstNode const&, VPackFunctionParameters const&);
   static AqlValue VariancePopulation(arangodb::aql::ExpressionContext*,
-                                     AstNode const&, VPackFunctionParameters const&);
+                                     AstNode const&,
+                                     VPackFunctionParameters const&);
   static AqlValue StdDevSample(arangodb::aql::ExpressionContext*,
                                AstNode const&, VPackFunctionParameters const&);
   static AqlValue StdDevPopulation(arangodb::aql::ExpressionContext*,
-                                   AstNode const&, VPackFunctionParameters const&);
+                                   AstNode const&,
+                                   VPackFunctionParameters const&);
   static AqlValue Median(arangodb::aql::ExpressionContext*, AstNode const&,
                          VPackFunctionParameters const&);
   static AqlValue Percentile(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -497,7 +523,8 @@ struct Functions {
   static AqlValue Version(arangodb::aql::ExpressionContext*, AstNode const&,
                           VPackFunctionParameters const&);
   static AqlValue IsSameCollection(arangodb::aql::ExpressionContext*,
-                                   AstNode const&, VPackFunctionParameters const&);
+                                   AstNode const&,
+                                   VPackFunctionParameters const&);
   static AqlValue Assert(arangodb::aql::ExpressionContext*, AstNode const&,
                          VPackFunctionParameters const&);
   static AqlValue Warn(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -512,18 +539,21 @@ struct Functions {
   static AqlValue SchemaGet(arangodb::aql::ExpressionContext*, AstNode const&,
                             VPackFunctionParameters const&);
   static AqlValue SchemaValidate(arangodb::aql::ExpressionContext*,
-                                 AstNode const&, VPackFunctionParameters const&);
+                                 AstNode const&,
+                                 VPackFunctionParameters const&);
 
   static AqlValue CallGreenspun(arangodb::aql::ExpressionContext*,
                                 AstNode const&, VPackFunctionParameters const&);
 
   static AqlValue MakeDistributeInput(arangodb::aql::ExpressionContext*,
-                                      AstNode const&, VPackFunctionParameters const&);
-  static AqlValue MakeDistributeInputWithKeyCreation(arangodb::aql::ExpressionContext*,
-                                                     AstNode const&,
-                                                     VPackFunctionParameters const&);
+                                      AstNode const&,
+                                      VPackFunctionParameters const&);
+  static AqlValue MakeDistributeInputWithKeyCreation(
+      arangodb::aql::ExpressionContext*, AstNode const&,
+      VPackFunctionParameters const&);
   static AqlValue MakeDistributeGraphInput(arangodb::aql::ExpressionContext*,
-                                           AstNode const&, VPackFunctionParameters const&);
+                                           AstNode const&,
+                                           VPackFunctionParameters const&);
 
   static AqlValue DecayGauss(arangodb::aql::ExpressionContext*, AstNode const&,
                              VPackFunctionParameters const&);
@@ -535,7 +565,8 @@ struct Functions {
                               VPackFunctionParameters const&);
 
   static AqlValue CosineSimilarity(arangodb::aql::ExpressionContext*,
-                                   AstNode const&, VPackFunctionParameters const&);
+                                   AstNode const&,
+                                   VPackFunctionParameters const&);
 
   static AqlValue L1Distance(arangodb::aql::ExpressionContext*, AstNode const&,
                              VPackFunctionParameters const&);
@@ -545,7 +576,8 @@ struct Functions {
 
   /// @brief dummy function that will only throw an error when called
   static AqlValue NotImplemented(arangodb::aql::ExpressionContext*,
-                                 AstNode const&, VPackFunctionParameters const&);
+                                 AstNode const&,
+                                 VPackFunctionParameters const&);
 
   /// @brief maximum precision for bit operations
   static constexpr uint64_t bitFunctionsMaxSupportedBits = 32;

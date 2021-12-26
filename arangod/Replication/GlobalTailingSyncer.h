@@ -40,9 +40,9 @@ class GlobalTailingSyncer : public TailingSyncer {
                       TRI_voc_tick_t initialTick, bool useTick);
 
  public:
-  static std::shared_ptr<GlobalTailingSyncer> create(ReplicationApplierConfiguration const&,
-                                                     TRI_voc_tick_t initialTick,
-                                                     bool useTick);
+  static std::shared_ptr<GlobalTailingSyncer> create(
+      ReplicationApplierConfiguration const&, TRI_voc_tick_t initialTick,
+      bool useTick);
 
   /// @brief return the syncer's replication applier
   GlobalReplicationApplier* applier() const {

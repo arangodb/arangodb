@@ -37,12 +37,12 @@ struct AqlValue;
 /// Defined in AqlValue.cpp!
 namespace std {
 
-template <>
+template<>
 struct hash<arangodb::aql::AqlValue> {
   size_t operator()(arangodb::aql::AqlValue const& x) const noexcept;
 };
 
-template <>
+template<>
 struct equal_to<arangodb::aql::AqlValue> {
   bool operator()(arangodb::aql::AqlValue const& a,
                   arangodb::aql::AqlValue const& b) const noexcept;

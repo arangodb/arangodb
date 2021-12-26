@@ -59,7 +59,8 @@ replicated_log::QuorumData::QuorumData(VPackSlice slice) {
   }
 }
 
-void replicated_log::QuorumData::toVelocyPack(velocypack::Builder& builder) const {
+void replicated_log::QuorumData::toVelocyPack(
+    velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::Index, VPackValue(index.value));
   builder.add(StaticStrings::Term, VPackValue(term.value));
@@ -71,7 +72,8 @@ void replicated_log::QuorumData::toVelocyPack(velocypack::Builder& builder) cons
   }
 }
 
-void replicated_log::LogStatistics::toVelocyPack(velocypack::Builder& builder) const {
+void replicated_log::LogStatistics::toVelocyPack(
+    velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::CommitIndex, VPackValue(commitIndex.value));
   builder.add("firstIndex", VPackValue(firstIndex.value));
@@ -79,16 +81,18 @@ void replicated_log::LogStatistics::toVelocyPack(velocypack::Builder& builder) c
   spearHead.toVelocyPack(builder);
 }
 
-auto replicated_log::LogStatistics::fromVelocyPack(velocypack::Slice slice) -> LogStatistics {
+auto replicated_log::LogStatistics::fromVelocyPack(velocypack::Slice slice)
+    -> LogStatistics {
   LogStatistics stats;
   stats.commitIndex = slice.get(StaticStrings::CommitIndex).extract<LogIndex>();
   stats.firstIndex = slice.get("firstIndex").extract<LogIndex>();
-  stats.spearHead = TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
+  stats.spearHead =
+      TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
   return stats;
 }
 
-auto arangodb::replication2::replicated_log::to_string(AppendEntriesErrorReason reason) noexcept
-    -> std::string_view {
+auto arangodb::replication2::replicated_log::to_string(
+    AppendEntriesErrorReason reason) noexcept -> std::string_view {
   switch (reason) {
     case AppendEntriesErrorReason::NONE:
       return {};
@@ -117,12 +121,14 @@ auto FollowerState::withUpToDate() noexcept -> FollowerState {
   return FollowerState(std::in_place, UpToDate{});
 }
 
-auto FollowerState::withErrorBackoff(std::chrono::duration<double, std::milli> duration,
-                                     std::size_t retryCount) noexcept -> FollowerState {
+auto FollowerState::withErrorBackoff(
+    std::chrono::duration<double, std::milli> duration,
+    std::size_t retryCount) noexcept -> FollowerState {
   return FollowerState(std::in_place, ErrorBackoff{duration, retryCount});
 }
 
-auto FollowerState::withRequestInFlight(std::chrono::duration<double, std::milli> duration) noexcept
+auto FollowerState::withRequestInFlight(
+    std::chrono::duration<double, std::milli> duration) noexcept
     -> FollowerState {
   return FollowerState(std::in_place, RequestInFlight{duration});
 }
@@ -135,11 +141,13 @@ auto FollowerState::fromVelocyPack(velocypack::Slice slice) -> FollowerState {
   auto state = slice.get("state").extract<std::string_view>();
   if (state == errorBackoffString) {
     return FollowerState::withErrorBackoff(
-        std::chrono::duration<double, std::milli>{slice.get("durationMS").extract<double>()},
+        std::chrono::duration<double, std::milli>{
+            slice.get("durationMS").extract<double>()},
         slice.get("retryCount").extract<std::size_t>());
   } else if (state == requestInFlightString) {
-    return FollowerState::withRequestInFlight(std::chrono::duration<double, std::milli>{
-        slice.get("durationMS").extract<double>()});
+    return FollowerState::withRequestInFlight(
+        std::chrono::duration<double, std::milli>{
+            slice.get("durationMS").extract<double>()});
   } else {
     return FollowerState::withUpToDate();
   }

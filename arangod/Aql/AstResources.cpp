@@ -50,12 +50,14 @@ AstResources::~AstResources() {
   }
 
   size_t memoryUsage = (_nodes.numUsed() * sizeof(AstNode)) +
-                       (_strings.capacity() * memoryUsageForStringBlock()) + _stringsLength;
+                       (_strings.capacity() * memoryUsageForStringBlock()) +
+                       _stringsLength;
   _resourceMonitor.decreaseMemoryUsage(memoryUsage);
 }
 
-template <typename T>
-size_t AstResources::newCapacity(T const& container, size_t initialCapacity) const noexcept {
+template<typename T>
+size_t AstResources::newCapacity(T const& container,
+                                 size_t initialCapacity) const noexcept {
   if (container.empty()) {
     // reserve some initial space for vector
     return initialCapacity;
@@ -81,7 +83,8 @@ AstNode* AstResources::registerNode(AstNodeType type) {
 }
 
 /// @brief create and register an AstNode
-AstNode* AstResources::registerNode(Ast* ast, arangodb::velocypack::Slice slice) {
+AstNode* AstResources::registerNode(Ast* ast,
+                                    arangodb::velocypack::Slice slice) {
   // may throw
   ResourceUsageScope scope(_resourceMonitor, sizeof(AstNode));
 
@@ -114,7 +117,8 @@ char* AstResources::registerString(char const* p, size_t length) {
 
 /// @brief register a potentially UTF-8-escaped string
 /// the string is freed when the query is destroyed
-char* AstResources::registerEscapedString(char const* p, size_t length, size_t& outLength) {
+char* AstResources::registerEscapedString(char const* p, size_t length,
+                                          size_t& outLength) {
   if (p == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -150,9 +154,10 @@ char* AstResources::registerLongString(char* copy, size_t length) {
   // reserve space
   if (capacity > _strings.capacity()) {
     // not enough capacity...
-    ResourceUsageScope scope(_resourceMonitor, (capacity - _strings.capacity()) *
-                                                       memoryUsageForStringBlock() +
-                                                   length);
+    ResourceUsageScope scope(
+        _resourceMonitor,
+        (capacity - _strings.capacity()) * memoryUsageForStringBlock() +
+            length);
 
     _strings.reserve(capacity);
 

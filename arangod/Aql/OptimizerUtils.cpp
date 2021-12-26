@@ -61,8 +61,10 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
     return false;
   }
 
-  typedef std::pair<arangodb::aql::AstNode*, std::shared_ptr<arangodb::Index>> ConditionData;
-  ::arangodb::containers::SmallVector<ConditionData*>::allocator_type::arena_type a;
+  typedef std::pair<arangodb::aql::AstNode*, std::shared_ptr<arangodb::Index>>
+      ConditionData;
+  ::arangodb::containers::SmallVector<
+      ConditionData*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ConditionData*> conditionData{a};
 
   auto sg = arangodb::scopeGuard([&conditionData]() noexcept -> void {
@@ -74,13 +76,17 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
   std::vector<arangodb::aql::ConditionPart> parts;
   parts.reserve(n);
 
-  std::pair<arangodb::aql::Variable const*, std::vector<arangodb::basics::AttributeName>> result;
+  std::pair<arangodb::aql::Variable const*,
+            std::vector<arangodb::basics::AttributeName>>
+      result;
 
   for (size_t i = 0; i < n; ++i) {
     // sort the conditions of each AND
     AstNode* sub = root->getMemberUnchecked(i);
 
-    TRI_ASSERT(sub != nullptr && sub->type == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
+    TRI_ASSERT(sub != nullptr &&
+               sub->type ==
+                   arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
     // cppcheck-suppress nullPointerRedundantCheck
     size_t const nAnd = sub->numMembers();
 
@@ -95,8 +101,10 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
       return false;
     }
 
-    if (operand->type == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_NE ||
-        operand->type == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_NIN) {
+    if (operand->type ==
+            arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_NE ||
+        operand->type ==
+            arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_NIN) {
       return false;
     }
 
@@ -109,7 +117,8 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
 
       if (rhs->isConstant() && lhs->isAttributeAccessForVariable(result) &&
           result.first == variable &&
-          (operand->type != arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN ||
+          (operand->type !=
+               arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN ||
            rhs->isArray())) {
         // create the condition data struct on the heap
         auto data = std::make_unique<ConditionData>(sub, usedIndexes[i]);
@@ -138,7 +147,8 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
         auto p = data.release();
         // also add the pointer to the (non-owning) parts vector
         parts.emplace_back(result.first, result.second, operand,
-                           arangodb::aql::AttributeSideType::ATTRIBUTE_RIGHT, p);
+                           arangodb::aql::AttributeSideType::ATTRIBUTE_RIGHT,
+                           p);
       }
     }
   }
@@ -152,7 +162,8 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
     auto const& lhs = parts[i - 1];
     auto const& rhs = parts[i];
 
-    if (lhs.variable != rhs.variable || lhs.attributeName != rhs.attributeName) {
+    if (lhs.variable != rhs.variable ||
+        lhs.attributeName != rhs.attributeName) {
       // oops, the different OR parts are on different variables or attributes
       return false;
     }
@@ -163,7 +174,8 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
   for (size_t i = 0; i < n; ++i) {
     auto& p = parts[i];
 
-    if (p.operatorType == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN &&
+    if (p.operatorType ==
+            arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN &&
         p.valueNode->isArray()) {
       TRI_ASSERT(p.valueNode->isConstant());
 
@@ -171,8 +183,8 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
         // merge IN with IN
         TRI_ASSERT(previousIn < i);
         auto emptyArray = ast->createNodeArray();
-        auto mergedIn =
-            ast->createNodeUnionizedArray(parts[previousIn].valueNode, p.valueNode);
+        auto mergedIn = ast->createNodeUnionizedArray(
+            parts[previousIn].valueNode, p.valueNode);
 
         arangodb::aql::AstNode* clone = ast->clone(root->getMember(previousIn));
         root->changeMember(previousIn, clone);
@@ -186,7 +198,8 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
         parts[previousIn].valueNode = mergedIn;
         {
           auto n1 = root->getMember(previousIn)->getMember(0);
-          TRI_ASSERT(n1->type == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN);
+          TRI_ASSERT(n1->type ==
+                     arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN);
           TEMPORARILY_UNLOCK_NODE(n1);
           n1->changeMember(1, mergedIn);
         }
@@ -194,7 +207,8 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
         p.valueNode = emptyArray;
         {
           auto n2 = root->getMember(i)->getMember(0);
-          TRI_ASSERT(n2->type == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN);
+          TRI_ASSERT(n2->type ==
+                     arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN);
           TEMPORARILY_UNLOCK_NODE(n2);
           n2->changeMember(1, emptyArray);
         }
@@ -266,8 +280,10 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
 
   // and rebuild
   for (size_t i = 0; i < n; ++i) {
-    if (parts[i].operatorType == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN &&
-        parts[i].valueNode->isArray() && parts[i].valueNode->numMembers() == 0) {
+    if (parts[i].operatorType ==
+            arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_IN &&
+        parts[i].valueNode->isArray() &&
+        parts[i].valueNode->numMembers() == 0) {
       // can optimize away empty IN array
       continue;
     }
@@ -279,9 +295,11 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
       // try to find duplicate condition parts, and only return each
       // unique condition part once
       try {
-        std::string conditionString = conditionData->first->toString() + " - " +
-                                      std::to_string(conditionData->second->id().id());
-        isUnique = seenIndexConditions.emplace(std::move(conditionString)).second;
+        std::string conditionString =
+            conditionData->first->toString() + " - " +
+            std::to_string(conditionData->second->id().id());
+        isUnique =
+            seenIndexConditions.emplace(std::move(conditionString)).second;
         // we already saw the same combination of index & condition
         // don't add it again
       } catch (...) {
@@ -303,16 +321,19 @@ std::pair<bool, bool> findIndexHandleForAndNode(
     std::vector<std::shared_ptr<Index>> const& indexes,
     arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const& sortCondition, size_t itemsInCollection,
-    aql::IndexHint const& hint, std::vector<transaction::Methods::IndexHandle>& usedIndexes,
-    arangodb::aql::AstNode*& specializedCondition, bool& isSparse, bool failOnForcedHint) {
+    aql::IndexHint const& hint,
+    std::vector<transaction::Methods::IndexHandle>& usedIndexes,
+    arangodb::aql::AstNode*& specializedCondition, bool& isSparse,
+    bool failOnForcedHint) {
   std::shared_ptr<Index> bestIndex;
   double bestCost = 0.0;
   bool bestSupportsFilter = false;
   bool bestSupportsSort = false;
 
-  auto considerIndex = [&bestIndex, &bestCost, &bestSupportsFilter, &bestSupportsSort,
-                        &indexes, node, reference, itemsInCollection,
-                        &sortCondition](std::shared_ptr<Index> const& idx) -> void {
+  auto considerIndex =
+      [&bestIndex, &bestCost, &bestSupportsFilter, &bestSupportsSort, &indexes,
+       node, reference, itemsInCollection,
+       &sortCondition](std::shared_ptr<Index> const& idx) -> void {
     TRI_ASSERT(!idx->inProgress());
 
     double filterCost = 0.0;
@@ -361,7 +382,8 @@ std::pair<bool, bool> findIndexHandleForAndNode(
       // now check if the index fields are the same as the sort condition fields
       // e.g. FILTER c.value1 == 1 && c.value2 == 42 SORT c.value1, c.value2
       if (coveredAttributes == sortCondition.numAttributes() &&
-          (idx->isSorted() || idx->fields().size() == sortCondition.numAttributes())) {
+          (idx->isSorted() ||
+           idx->fields().size() == sortCondition.numAttributes())) {
         // no sorting needed
         sortCost = 0.0;
       }
@@ -383,7 +405,8 @@ std::pair<bool, bool> findIndexHandleForAndNode(
 
     double totalCost = filterCost + sortCost;
 
-    // the more attributes an index contains, the more useful it will be for projections.
+    // the more attributes an index contains, the more useful it will be for
+    // projections.
     double projectionsFactor = 1.0 - ((idx->fields().size() - 1) * 0.02);
     totalCost *= projectionsFactor;
 
@@ -391,15 +414,20 @@ std::pair<bool, bool> findIndexHandleForAndNode(
         << "looked at candidate index: " << idx.get()
         << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse()
         << ", fields: " << idx->fields().size()
-        << ", hasSelectivityEstimate: " << idx->hasSelectivityEstimate() << ", selectivityEstimate: "
-        << (idx->hasSelectivityEstimate() ? std::to_string(idx->selectivityEstimate()) : "n/a")
-        << ", supportsFilter: " << supportsFilter << ", supportsSort: " << supportsSort
+        << ", hasSelectivityEstimate: " << idx->hasSelectivityEstimate()
+        << ", selectivityEstimate: "
+        << (idx->hasSelectivityEstimate()
+                ? std::to_string(idx->selectivityEstimate())
+                : "n/a")
+        << ", supportsFilter: " << supportsFilter
+        << ", supportsSort: " << supportsSort
         << ", projectionsFactor: " << projectionsFactor
         << ", isOnlyAttributeAccess: " << isOnlyAttributeAccess
         << ", isUnidirectional: " << sortCondition.isUnidirectional()
         << ", isOnlyEqualityMatch: " << node->isOnlyEqualityMatch()
-        << ", itemsInIndex/estimatedItems: " << itemsInIndex << ", filterCost: " << filterCost
-        << ", sortCost: " << sortCost << ", totalCost: " << totalCost;
+        << ", itemsInIndex/estimatedItems: " << itemsInIndex
+        << ", filterCost: " << filterCost << ", sortCost: " << sortCost
+        << ", totalCost: " << totalCost;
 
     if (bestIndex == nullptr || totalCost < bestCost) {
       bestIndex = idx;
@@ -454,7 +482,8 @@ std::pair<bool, bool> findIndexHandleForAndNode(
       << ", fields: " << bestIndex->fields().size();
 
   // intentionally commented out here. can be enabled during development
-  // LOG_TOPIC("4b655", TRACE, Logger::FIXME) << "- picked: " << bestIndex.get();
+  // LOG_TOPIC("4b655", TRACE, Logger::FIXME) << "- picked: " <<
+  // bestIndex.get();
 
   specializedCondition = bestIndex->specializeCondition(node, reference);
 
@@ -486,12 +515,14 @@ bool accessesVariable(AstNode const* node, Variable const* var) {
 }
 
 /**
- * @brief Captures the given expression into the NonConstExpressionContainer for later execution.
- * Extracts all required variables and retains their registers, s.t. all necessary pieces are stored in the container.
+ * @brief Captures the given expression into the NonConstExpressionContainer for
+ * later execution. Extracts all required variables and retains their registers,
+ * s.t. all necessary pieces are stored in the container.
  */
-void captureNonConstExpression(Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-                               AstNode* expression, std::vector<size_t> selectedMembersFromRoot,
-                               NonConstExpressionContainer& result) {
+void captureNonConstExpression(
+    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
+    AstNode* expression, std::vector<size_t> selectedMembersFromRoot,
+    NonConstExpressionContainer& result) {
   // all new AstNodes are registered with the Ast in the Query
   auto e = std::make_unique<aql::Expression>(ast, expression);
 
@@ -504,8 +535,8 @@ void captureNonConstExpression(Ast* ast, std::unordered_map<VariableId, VarInfo>
   VarSet innerVars;
   e->variables(innerVars);
 
-  result._expressions.emplace_back(
-      std::make_unique<NonConstExpression>(std::move(e), std::move(selectedMembersFromRoot)));
+  result._expressions.emplace_back(std::make_unique<NonConstExpression>(
+      std::move(e), std::move(selectedMembersFromRoot)));
 
   for (auto const& v : innerVars) {
     auto it = varInfo.find(v->id);
@@ -519,12 +550,10 @@ void captureNonConstExpression(Ast* ast, std::unordered_map<VariableId, VarInfo>
   }
 }
 
-void captureFCallArgumentExpressions(Ast* ast,
-                                     std::unordered_map<VariableId, VarInfo> const& varInfo,
-                                     AstNode const* fCallExpression,
-                                     std::vector<size_t> selectedMembersFromRoot,
-                                     Variable const* indexVariable,
-                                     NonConstExpressionContainer& result) {
+void captureFCallArgumentExpressions(
+    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
+    AstNode const* fCallExpression, std::vector<size_t> selectedMembersFromRoot,
+    Variable const* indexVariable, NonConstExpressionContainer& result) {
   TRI_ASSERT(fCallExpression->type == NODE_TYPE_FCALL);
   TRI_ASSERT(1 == fCallExpression->numMembers());
 
@@ -552,22 +581,23 @@ AstNode* wrapInUniqueCall(Ast* ast, AstNode* node, bool sorted) {
     // check, we need them all sorted here.
 
     if (sorted) {
-      return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), array, true);
+      return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"),
+                                         array, true);
     }
     // a regular UNIQUE will do
-    return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("UNIQUE"), array, true);
+    return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("UNIQUE"), array,
+                                       true);
   }
 
   // presumably an array with no or a single member
   return node;
 }
 
-void extractNonConstPartsOfAndPart(Ast* ast,
-                                   std::unordered_map<VariableId, VarInfo> const& varInfo,
-                                   bool evaluateFCalls, bool sorted,
-                                   AstNode const* andNode, Variable const* indexVariable,
-                                   std::vector<size_t> selectedMembersFromRoot,
-                                   NonConstExpressionContainer& result) {
+void extractNonConstPartsOfAndPart(
+    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
+    bool evaluateFCalls, bool sorted, AstNode const* andNode,
+    Variable const* indexVariable, std::vector<size_t> selectedMembersFromRoot,
+    NonConstExpressionContainer& result) {
   // in case of a geo spatial index a might take the form
   // of a GEO_* function. We might need to evaluate fcall arguments
   TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
@@ -624,15 +654,14 @@ void extractNonConstPartsOfAndPart(Ast* ast,
 ///        and the Condition stays unmodified. Also does not care for sorting
 ///        Returns false if no index could be found.
 
-bool getBestIndexHandleForFilterCondition(aql::Collection const& collection,
-                                          arangodb::aql::AstNode*& node,
-                                          arangodb::aql::Variable const* reference,
-                                          size_t itemsInCollection,
-                                          aql::IndexHint const& hint,
-                                          std::shared_ptr<Index>& usedIndex,
-                                          bool onlyEdgeIndexes) {
+bool getBestIndexHandleForFilterCondition(
+    aql::Collection const& collection, arangodb::aql::AstNode*& node,
+    arangodb::aql::Variable const* reference, size_t itemsInCollection,
+    aql::IndexHint const& hint, std::shared_ptr<Index>& usedIndex,
+    bool onlyEdgeIndexes) {
   // We can only start after DNF transformation and only a single AND
-  TRI_ASSERT(node->type == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
+  TRI_ASSERT(node->type ==
+             arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
   if (node->numMembers() == 0) {
     // Well no index can serve no condition.
     return false;
@@ -640,11 +669,13 @@ bool getBestIndexHandleForFilterCondition(aql::Collection const& collection,
 
   auto indexes = collection.indexes();
   if (onlyEdgeIndexes) {
-    indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
-                                 [](auto&& idx) {
-                                   return idx->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX;
-                                 }),
-                  indexes.end());
+    indexes.erase(
+        std::remove_if(indexes.begin(), indexes.end(),
+                       [](auto&& idx) {
+                         return idx->type() !=
+                                Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX;
+                       }),
+        indexes.end());
   }
 
   arangodb::aql::SortCondition sortCondition;    // always empty here
@@ -653,7 +684,8 @@ bool getBestIndexHandleForFilterCondition(aql::Collection const& collection,
   std::vector<std::shared_ptr<Index>> usedIndexes;
   if (findIndexHandleForAndNode(indexes, node, reference, sortCondition,
                                 itemsInCollection, hint, usedIndexes,
-                                specializedCondition, isSparse, true /*failOnForcedHint*/)
+                                specializedCondition, isSparse,
+                                true /*failOnForcedHint*/)
           .first) {
     TRI_ASSERT(!usedIndexes.empty());
     usedIndex = usedIndexes[0];
@@ -672,7 +704,8 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
     aql::IndexHint const& hint,
     std::vector<std::shared_ptr<Index>>& usedIndexes, bool& isSorted) {
   // We can only start after DNF transformation
-  TRI_ASSERT(root->type == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR);
+  TRI_ASSERT(root->type ==
+             arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR);
   auto indexes = coll.indexes();
 
   // must edit root in place; TODO change so we can replace with copy
@@ -691,11 +724,11 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
     auto node = root->getMemberUnchecked(i);
     arangodb::aql::AstNode* specializedCondition = nullptr;
 
-    bool failOnForcedHint = (hint.isForced() && i + 1 == n && usedIndexes.empty());
-    auto canUseIndex =
-        findIndexHandleForAndNode(indexes, node, reference, *sortCondition,
-                                  itemsInCollection, hint, usedIndexes,
-                                  specializedCondition, isSparse, failOnForcedHint);
+    bool failOnForcedHint =
+        (hint.isForced() && i + 1 == n && usedIndexes.empty());
+    auto canUseIndex = findIndexHandleForAndNode(
+        indexes, node, reference, *sortCondition, itemsInCollection, hint,
+        usedIndexes, specializedCondition, isSparse, failOnForcedHint);
 
     if (canUseIndex.second && !canUseIndex.first) {
       // index can be used for sorting only
@@ -747,8 +780,9 @@ bool getIndexForSortCondition(aql::Collection const& coll,
     double bestCost = 0.0;
     std::shared_ptr<Index> bestIndex;
 
-    auto considerIndex = [reference, sortCondition, itemsInIndex, &bestCost, &bestIndex,
-                          &coveredAttributes](std::shared_ptr<Index> const& idx) -> void {
+    auto considerIndex =
+        [reference, sortCondition, itemsInIndex, &bestCost, &bestIndex,
+         &coveredAttributes](std::shared_ptr<Index> const& idx) -> void {
       TRI_ASSERT(!idx->inProgress());
 
       Index::SortCosts costs =
@@ -809,8 +843,9 @@ bool getIndexForSortCondition(aql::Collection const& coll,
 }
 
 NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
-    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo, bool evaluateFCalls,
-    bool sorted, AstNode const* condition, Variable const* indexVariable) {
+    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
+    bool evaluateFCalls, bool sorted, AstNode const* condition,
+    Variable const* indexVariable) {
   // conditions can be of the form (a [<|<=|>|=>] b) && ...
   TRI_ASSERT(condition != nullptr);
   TRI_ASSERT(condition->type == NODE_TYPE_OPERATOR_NARY_AND ||

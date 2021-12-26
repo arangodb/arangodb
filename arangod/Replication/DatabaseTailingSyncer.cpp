@@ -59,10 +59,12 @@ namespace {
 arangodb::velocypack::StringRef const cuidRef("cuid");
 }
 
-DatabaseTailingSyncer::DatabaseTailingSyncer(TRI_vocbase_t& vocbase,
-                                             ReplicationApplierConfiguration const& configuration,
-                                             TRI_voc_tick_t initialTick, bool useTick)
-    : TailingSyncer(vocbase.replicationApplier(), configuration, initialTick, useTick),
+DatabaseTailingSyncer::DatabaseTailingSyncer(
+    TRI_vocbase_t& vocbase,
+    ReplicationApplierConfiguration const& configuration,
+    TRI_voc_tick_t initialTick, bool useTick)
+    : TailingSyncer(vocbase.replicationApplier(), configuration, initialTick,
+                    useTick),
       _vocbase(&vocbase),
       _toTick(0),
       _queriedTranslations(false),
@@ -75,16 +77,19 @@ DatabaseTailingSyncer::DatabaseTailingSyncer(TRI_vocbase_t& vocbase,
 }
 
 std::shared_ptr<DatabaseTailingSyncer> DatabaseTailingSyncer::create(
-    TRI_vocbase_t& vocbase, ReplicationApplierConfiguration const& configuration,
+    TRI_vocbase_t& vocbase,
+    ReplicationApplierConfiguration const& configuration,
     TRI_voc_tick_t initialTick, bool useTick) {
   // enable make_shared on a class with a private constructor
   struct Enabler final : public DatabaseTailingSyncer {
-    Enabler(TRI_vocbase_t& vocbase, ReplicationApplierConfiguration const& configuration,
+    Enabler(TRI_vocbase_t& vocbase,
+            ReplicationApplierConfiguration const& configuration,
             TRI_voc_tick_t initialTick, bool useTick)
         : DatabaseTailingSyncer(vocbase, configuration, initialTick, useTick) {}
   };
 
-  return std::make_shared<Enabler>(vocbase, configuration, initialTick, useTick);
+  return std::make_shared<Enabler>(vocbase, configuration, initialTick,
+                                   useTick);
 }
 
 /// @brief save the current applier state
@@ -96,10 +101,9 @@ Result DatabaseTailingSyncer::saveApplierState() {
   return rv;
 }
 
-Result DatabaseTailingSyncer::syncCollectionCatchup(std::string const& collectionName,
-                                                    TRI_voc_tick_t fromTick, double timeout,
-                                                    TRI_voc_tick_t& until, bool& didTimeout,
-                                                    std::string const& context) {
+Result DatabaseTailingSyncer::syncCollectionCatchup(
+    std::string const& collectionName, TRI_voc_tick_t fromTick, double timeout,
+    TRI_voc_tick_t& until, bool& didTimeout, std::string const& context) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
   TRI_ASSERT(!_unregisteredFromLeader);
 
@@ -124,10 +128,9 @@ Result DatabaseTailingSyncer::syncCollectionCatchup(std::string const& collectio
 
 /// @brief finalize the synchronization of a collection by tailing the WAL
 /// and filtering on the collection name until no more data is available
-Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collectionName,
-                                                     TRI_voc_tick_t fromTick,
-                                                     TRI_voc_tick_t toTick,
-                                                     std::string const& context) {
+Result DatabaseTailingSyncer::syncCollectionFinalize(
+    std::string const& collectionName, TRI_voc_tick_t fromTick,
+    TRI_voc_tick_t toTick, std::string const& context) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
   TRI_ASSERT(!_unregisteredFromLeader);
 
@@ -144,12 +147,14 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collecti
     TRI_voc_tick_t dummy = 0;
     bool dummyDidTimeout = false;
     double dummyTimeout = 300.0;
-    Result res = syncCollectionCatchupInternal(collectionName, dummyTimeout, /*hard*/ true,
-                                               dummy, dummyDidTimeout, context);
+    Result res = syncCollectionCatchupInternal(collectionName, dummyTimeout,
+                                               /*hard*/ true, dummy,
+                                               dummyDidTimeout, context);
 
     if (res.ok()) {
       // now do a final sync-to-disk call. note that this can fail
-      auto& engine = vocbase()->server().getFeature<EngineSelectorFeature>().engine();
+      auto& engine =
+          vocbase()->server().getFeature<EngineSelectorFeature>().engine();
       res = engine.flushWal(/*waitForSync*/ true, /*waitForCollector*/ false);
     }
 
@@ -172,7 +177,8 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collecti
   }
 }
 
-Result DatabaseTailingSyncer::inheritFromInitialSyncer(DatabaseInitialSyncer const& syncer) {
+Result DatabaseTailingSyncer::inheritFromInitialSyncer(
+    DatabaseInitialSyncer const& syncer) {
   replutils::LeaderInfo const& leaderInfo = syncer.leaderInfo();
 
   TRI_ASSERT(!leaderInfo.endpoint.empty());
@@ -195,7 +201,8 @@ Result DatabaseTailingSyncer::inheritFromInitialSyncer(DatabaseInitialSyncer con
 Result DatabaseTailingSyncer::registerOnLeader() {
   std::string const url = tailingBaseUrl("tail") + "chunkSize=1024" +
                           "&from=" + StringUtils::itoa(_initialTick) +
-                          "&trackOnly=true" + "&serverId=" + _state.localServerIdString +
+                          "&trackOnly=true" +
+                          "&serverId=" + _state.localServerIdString +
                           "&syncerId=" + syncerId().toString();
   LOG_TOPIC("41510", DEBUG, Logger::REPLICATION)
       << "registering tailing syncer on leader, url: " << url;
@@ -227,7 +234,8 @@ void DatabaseTailingSyncer::unregisterFromLeader() {
 
         // simply send the request, but don't care about the response. if it
         // fails, there is not much we can do from here.
-        response.reset(client->request(rest::RequestType::DELETE_REQ, url, nullptr, 0));
+        response.reset(
+            client->request(rest::RequestType::DELETE_REQ, url, nullptr, 0));
         _unregisteredFromLeader = true;
       });
     } catch (...) {
@@ -252,7 +260,8 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
   Result r;
 
   if (_state.leader.engine.empty()) {
-    // fetch leader state only if we need to. this should not be needed, normally
+    // fetch leader state only if we need to. this should not be needed,
+    // normally
     TRI_ASSERT(false);
 
     r = _state.leader.getState(_state.connection,
@@ -281,8 +290,9 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
 
   if (hard) {
     LOG_TOPIC("0e15c", DEBUG, Logger::REPLICATION)
-        << "starting syncCollectionFinalize: " << collectionName << ", fromTick "
-        << fromTick << ", toTick: " << (_toTick > 0 ? std::to_string(_toTick) : "");
+        << "starting syncCollectionFinalize: " << collectionName
+        << ", fromTick " << fromTick
+        << ", toTick: " << (_toTick > 0 ? std::to_string(_toTick) : "");
   } else {
     LOG_TOPIC("70711", DEBUG, Logger::REPLICATION)
         << "starting syncCollectionCatchup: " << collectionName << ", fromTick "
@@ -299,12 +309,13 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
       return Result(TRI_ERROR_SHUTTING_DOWN);
     }
 
-    std::string url = tailingBaseUrl("tail") +
-                      "collection=" + StringUtils::urlEncode(collectionName) +
-                      "&lastScanned=" + StringUtils::itoa(lastScannedTick) +
-                      "&chunkSize=" + StringUtils::itoa(_state.applier._chunkSize) +
-                      "&from=" + StringUtils::itoa(fromTick) +
-                      "&serverId=" + _state.localServerIdString;
+    std::string url =
+        tailingBaseUrl("tail") +
+        "collection=" + StringUtils::urlEncode(collectionName) +
+        "&lastScanned=" + StringUtils::itoa(lastScannedTick) +
+        "&chunkSize=" + StringUtils::itoa(_state.applier._chunkSize) +
+        "&from=" + StringUtils::itoa(fromTick) +
+        "&serverId=" + _state.localServerIdString;
 
     if (syncerId().value > 0) {
       // we must only send the syncerId along if it is != 0, otherwise we will
@@ -312,14 +323,16 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
       url += "&syncerId=" + syncerId().toString();
     }
 
-    // optional upper bound for tailing (used to stop tailing if we have the exclusive
-    // lock on the leader and can be sure that no writes can happen on the leader)
+    // optional upper bound for tailing (used to stop tailing if we have the
+    // exclusive lock on the leader and can be sure that no writes can happen on
+    // the leader)
     if (_toTick > 0) {
       url += "&to=" + StringUtils::itoa(_toTick);
     }
 
     LOG_TOPIC("066a8", DEBUG, Logger::REPLICATION)
-        << "tailing WAL for collection '" << collectionName << "', url: " << url;
+        << "tailing WAL for collection '" << collectionName
+        << "', url: " << url;
 
     // send request
     double start = TRI_microtime();
@@ -348,19 +361,21 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
     }
 
     bool found;
-    std::string header =
-        response->getHeaderField(StaticStrings::ReplicationHeaderCheckMore, found);
+    std::string header = response->getHeaderField(
+        StaticStrings::ReplicationHeaderCheckMore, found);
     bool checkMore = false;
     if (found) {
       checkMore = StringUtils::boolean(header);
     }
 
-    header = response->getHeaderField(StaticStrings::ReplicationHeaderLastScanned, found);
+    header = response->getHeaderField(
+        StaticStrings::ReplicationHeaderLastScanned, found);
     if (found) {
       lastScannedTick = StringUtils::uint64(header);
     }
 
-    header = response->getHeaderField(StaticStrings::ReplicationHeaderLastIncluded, found);
+    header = response->getHeaderField(
+        StaticStrings::ReplicationHeaderLastIncluded, found);
     if (!found) {
       until = fromTick;
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -373,7 +388,8 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
 
     // was the specified from value included the result?
     bool fromIncluded = false;
-    header = response->getHeaderField(StaticStrings::ReplicationHeaderFromPresent, found);
+    header = response->getHeaderField(
+        StaticStrings::ReplicationHeaderFromPresent, found);
     if (found) {
       fromIncluded = StringUtils::boolean(header);
     }
@@ -383,9 +399,11 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
       ++_stats.numFollowTickNotPresent;
       return Result(
           TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT,
-          std::string("required follow tick value '") + StringUtils::itoa(lastIncludedTick) +
-              "' is not present (anymore?) on leader at " + _state.leader.endpoint +
-              ". Last tick available on leader is '" + StringUtils::itoa(lastIncludedTick) +
+          std::string("required follow tick value '") +
+              StringUtils::itoa(lastIncludedTick) +
+              "' is not present (anymore?) on leader at " +
+              _state.leader.endpoint + ". Last tick available on leader is '" +
+              StringUtils::itoa(lastIncludedTick) +
               "'. It may be required to do a full resync and increase the "
               "number of historic logfiles on the leader.");
     }
@@ -403,7 +421,8 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
     // update the tick from which we will fetch in the next round
     if (lastIncludedTick > fromTick) {
       fromTick = lastIncludedTick;
-    } else if (lastIncludedTick == 0 && lastScannedTick > 0 && lastScannedTick > fromTick) {
+    } else if (lastIncludedTick == 0 && lastScannedTick > 0 &&
+               lastScannedTick > fromTick) {
       fromTick = lastScannedTick - 1;
     } else if (checkMore) {
       // we got the same tick again, this indicates we're at the end
@@ -421,10 +440,12 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
         didTimeout = true;
       } else {
         TRI_voc_tick_t lastTick = 0;
-        header = response->getHeaderField(StaticStrings::ReplicationHeaderLastTick, found);
+        header = response->getHeaderField(
+            StaticStrings::ReplicationHeaderLastTick, found);
         if (found) {
           lastTick = StringUtils::uint64(header);
-          if (_ongoingTransactions.empty() && lastTick > lastIncludedTick &&  // just to make sure!
+          if (_ongoingTransactions.empty() &&
+              lastTick > lastIncludedTick &&  // just to make sure!
               lastTick - lastIncludedTick < 1000) {
             checkMore = false;
           }

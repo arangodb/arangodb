@@ -64,7 +64,8 @@ inline bool sameCharIgnoringCase(char a, char b) noexcept {
 }  // namespace
 
 namespace {
-bool sameIgnoringCase(arangodb::velocypack::StringRef const& s1, std::string const& s2) {
+bool sameIgnoringCase(arangodb::velocypack::StringRef const& s1,
+                      std::string const& s2) {
   return s1.size() == s2.size() &&
          std::equal(s1.begin(), s1.end(), s2.begin(), ::sameCharIgnoringCase);
 }
@@ -121,7 +122,8 @@ arangodb::Result parsePoints(VPackSlice const& vpack, bool geoJson,
       return {TRI_ERROR_BAD_PARAMETER, "Bad coordinate " + pt.toJson()};
     }
     vertices.emplace_back(
-        S2LatLng::FromDegrees(lat.getNumber<double>(), lon.getNumber<double>()).ToPoint());
+        S2LatLng::FromDegrees(lat.getNumber<double>(), lon.getNumber<double>())
+            .ToPoint());
   }
   return {TRI_ERROR_NO_ERROR};
 }
@@ -248,7 +250,8 @@ Result parseMultiPoint(VPackSlice const& vpack, ShapeContainer& region) {
       return Result(TRI_ERROR_BAD_PARAMETER,
                     "Invalid MultiPoint, must contain at least one point.");
     }
-    region.reset(new S2MultiPointRegion(&vertices), ShapeContainer::Type::S2_MULTIPOINT);
+    region.reset(new S2MultiPointRegion(&vertices),
+                 ShapeContainer::Type::S2_MULTIPOINT);
   }
   return res;
 }
@@ -320,20 +323,24 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
     if (n == 1) {             // cheap rectangle detection
       if (vtx.size() == 1) {  // empty rectangle
         S2LatLng v0(vtx[0]);
-        region.reset(std::make_unique<S2LatLngRect>(v0, v0), ShapeContainer::Type::S2_LATLNGRECT);
+        region.reset(std::make_unique<S2LatLngRect>(v0, v0),
+                     ShapeContainer::Type::S2_LATLNGRECT);
         return TRI_ERROR_NO_ERROR;
       } else if (vtx.size() == 4) {
         S2LatLng v0(vtx[0]), v1(vtx[1]), v2(vtx[2]), v3(vtx[3]);
         S1Angle eps = S1Angle::Radians(1e-6);
-        if ((v0.lat() - v1.lat()).abs() < eps && (v1.lng() - v2.lng()).abs() < eps &&
-            (v2.lat() - v3.lat()).abs() < eps && (v3.lng() - v0.lng()).abs() < eps) {
+        if ((v0.lat() - v1.lat()).abs() < eps &&
+            (v1.lng() - v2.lng()).abs() < eps &&
+            (v2.lat() - v3.lat()).abs() < eps &&
+            (v3.lng() - v0.lng()).abs() < eps) {
           R1Interval r1 =
               R1Interval::FromPointPair(v0.lat().radians(), v2.lat().radians());
           S1Interval s1 =
               S1Interval::FromPointPair(v0.lng().radians(), v2.lng().radians());
-          region.reset(std::make_unique<S2LatLngRect>(r1.Expanded(geo::kRadEps),
-                                                      s1.Expanded(geo::kRadEps)),
-                       ShapeContainer::Type::S2_LATLNGRECT);
+          region.reset(
+              std::make_unique<S2LatLngRect>(r1.Expanded(geo::kRadEps),
+                                             s1.Expanded(geo::kRadEps)),
+              ShapeContainer::Type::S2_LATLNGRECT);
           return TRI_ERROR_NO_ERROR;
         }
       }
@@ -342,8 +349,9 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
 
     S2Error error;
     if (loops.back()->FindValidationError(&error)) {
-      return Result(TRI_ERROR_BAD_PARAMETER,
-                    std::string("Invalid loop in polygon: ").append(error.text()));
+      return Result(
+          TRI_ERROR_BAD_PARAMETER,
+          std::string("Invalid loop in polygon: ").append(error.text()));
     }
 
     S2Loop* loop = loops.back().get();
@@ -378,7 +386,8 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
 /// @brief parse GeoJson polygon or array of loops. Each loop consists of
 /// an array of coordinates: Example [[[lon, lat], [lon, lat], ...],...].
 /// The multipolygon contains an array of looops
-Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region) {
+Result parseMultiPolygon(velocypack::Slice const& vpack,
+                         ShapeContainer& region) {
   if (Type::MULTI_POLYGON != type(vpack)) {
     return {TRI_ERROR_BAD_PARAMETER, "requires type: 'MultiPolygon'"};
   }
@@ -440,8 +449,9 @@ Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region)
       loops.push_back(std::make_unique<S2Loop>(vtx, S2Debug::DISABLE));
       S2Error error;
       if (loops.back()->FindValidationError(&error)) {
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      std::string("Invalid loop in polygon: ").append(error.text()));
+        return Result(
+            TRI_ERROR_BAD_PARAMETER,
+            std::string("Invalid loop in polygon: ").append(error.text()));
       }
       S2Loop* loop = loops.back().get();
       // normalization ensures that CCW orientation does not matter for Polygon
@@ -510,7 +520,8 @@ Result parseLinestring(VPackSlice const& vpack, S2Polyline& linestring) {
 ///  {"type": "MultiLineString",
 ///   "coordinates": [[[170.0, 45.0], [180.0, 45.0]],
 ///                   [[-180.0, 45.0], [-170.0, 45.0]]] }
-Result parseMultiLinestring(VPackSlice const& vpack, std::vector<S2Polyline>& ll) {
+Result parseMultiLinestring(VPackSlice const& vpack,
+                            std::vector<S2Polyline>& ll) {
   if (Type::MULTI_LINESTRING != type(vpack)) {
     return {TRI_ERROR_BAD_PARAMETER, "require type: 'MultiLinestring'"};
   }

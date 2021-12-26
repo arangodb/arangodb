@@ -38,7 +38,8 @@ class ManagedDocumentResult {
   ManagedDocumentResult() : _revisionId(0) {}
 
   ManagedDocumentResult(ManagedDocumentResult const& other) = default;
-  ManagedDocumentResult& operator=(ManagedDocumentResult const& other) = default;
+  ManagedDocumentResult& operator=(ManagedDocumentResult const& other) =
+      default;
 
   ManagedDocumentResult& operator=(ManagedDocumentResult&& other) noexcept {
     _string = std::move(other._string);

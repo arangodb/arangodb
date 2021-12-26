@@ -36,11 +36,11 @@
 namespace arangodb {
 namespace pregel {
 
-template <typename V, typename E, typename M>
+template<typename V, typename E, typename M>
 class Worker;
 class IAggregator;
 
-template <typename V, typename E, typename M>
+template<typename V, typename E, typename M>
 class VertexContext {
   friend class Worker<V, E, M>;
 
@@ -55,13 +55,13 @@ class VertexContext {
  public:
   virtual ~VertexContext() = default;
 
-  template <typename T>
+  template<typename T>
   inline void aggregate(std::string const& name, T const& value) {
     T const* ptr = &value;
     _writeAggregators->aggregate(name, ptr);
   }
 
-  template <typename T>
+  template<typename T>
   inline const T& getAggregatedValueRef(std::string const& name) {
     auto ptr = _readAggregators->getAggregatedValue(name);
     TRI_ASSERT(ptr != nullptr);
@@ -106,7 +106,8 @@ class VertexContext {
   bool isActive() { return _vertexEntry->active(); }
 
   inline uint64_t phaseGlobalSuperstep() {
-    return globalSuperstep() - getAggregatedValueRef<uint64_t>(Utils::phaseFirstStepKey);
+    return globalSuperstep() -
+           getAggregatedValueRef<uint64_t>(Utils::phaseFirstStepKey);
   }
   inline uint64_t globalSuperstep() const { return _gss; }
   inline uint64_t localSuperstep() const { return _lss; }
@@ -116,7 +117,7 @@ class VertexContext {
   PregelID pregelId() const { return _vertexEntry->pregelId(); }
 };
 
-template <typename V, typename E, typename M>
+template<typename V, typename E, typename M>
 class VertexComputation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
   OutCache<M>* _cache = nullptr;
@@ -160,7 +161,7 @@ class VertexComputation : public VertexContext<V, E, M> {
   ReportManager& getReportManager() { return _reports; }
 };
 
-template <typename V, typename E, typename M>
+template<typename V, typename E, typename M>
 class VertexCompensation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
 

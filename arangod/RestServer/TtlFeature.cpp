@@ -79,7 +79,8 @@ TtlStatistics& TtlStatistics::operator+=(VPackSlice const& other) {
     runs += other.get("runs").getNumericValue<uint64_t>();
   }
   if (other.hasKey("documentsRemoved")) {
-    documentsRemoved += other.get("documentsRemoved").getNumericValue<uint64_t>();
+    documentsRemoved +=
+        other.get("documentsRemoved").getNumericValue<uint64_t>();
   }
   if (other.hasKey("limitReached")) {
     limitReached += other.get("limitReached").getNumericValue<uint64_t>();
@@ -131,7 +132,8 @@ Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "expecting numeric value for maxTotalRemoves");
       }
-      maxTotalRemoves = slice.get("maxTotalRemoves").getNumericValue<uint64_t>();
+      maxTotalRemoves =
+          slice.get("maxTotalRemoves").getNumericValue<uint64_t>();
     }
     if (slice.hasKey("maxCollectionRemoves")) {
       if (!slice.get("maxCollectionRemoves").isNumber()) {
@@ -156,7 +158,8 @@ Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
 
 class TtlThread final : public Thread {
  public:
-  explicit TtlThread(application_features::ApplicationServer& server, TtlFeature& ttlFeature)
+  explicit TtlThread(application_features::ApplicationServer& server,
+                     TtlFeature& ttlFeature)
       : Thread(server, "TTL"), _ttlFeature(ttlFeature), _working(false) {}
 
   ~TtlThread() { shutdown(); }
@@ -179,7 +182,8 @@ class TtlThread final : public Thread {
   /// @brief frequency is specified in milliseconds
   void setNextStart(uint64_t frequency) {
     CONDITION_LOCKER(guard, _condition);
-    _nextStart = std::chrono::steady_clock::now() + std::chrono::milliseconds(frequency);
+    _nextStart =
+        std::chrono::steady_clock::now() + std::chrono::milliseconds(frequency);
   }
 
  protected:
@@ -188,9 +192,11 @@ class TtlThread final : public Thread {
     setNextStart(properties.frequency);
 
     LOG_TOPIC("c2be7", TRACE, Logger::TTL)
-        << "starting TTL background thread with interval " << properties.frequency
+        << "starting TTL background thread with interval "
+        << properties.frequency
         << " milliseconds, max removals per run: " << properties.maxTotalRemoves
-        << ", max removals per collection per run " << properties.maxCollectionRemoves;
+        << ", max removals per collection per run "
+        << properties.maxCollectionRemoves;
 
     while (true) {
       auto now = std::chrono::steady_clock::now();
@@ -205,7 +211,8 @@ class TtlThread final : public Thread {
         CONDITION_LOCKER(guard, _condition);
 
         guard.wait(std::chrono::microseconds(
-            std::chrono::duration_cast<std::chrono::microseconds>(_nextStart - now)));
+            std::chrono::duration_cast<std::chrono::microseconds>(_nextStart -
+                                                                  now)));
         now = std::chrono::steady_clock::now();
       }
 
@@ -303,7 +310,8 @@ class TtlThread final : public Thread {
             continue;
           }
 
-          // serialize the index description so we can read the "expireAfter" attribute
+          // serialize the index description so we can read the "expireAfter"
+          // attribute
           _builder.clear();
           index->toVelocyPack(_builder, Index::makeFlags());
           VPackSlice ea = _builder.slice().get(StaticStrings::IndexExpireAfter);
@@ -314,10 +322,11 @@ class TtlThread final : public Thread {
 
           double expireAfter = ea.getNumericValue<double>();
           LOG_TOPIC("5cca5", DEBUG, Logger::TTL)
-              << "TTL thread going to work for collection '" << collection->name()
+              << "TTL thread going to work for collection '"
+              << collection->name()
               << "', expireAfter: " << Logger::FIXED(expireAfter, 0)
-              << ", stamp: " << (stamp - expireAfter)
-              << ", limit: " << std::min(properties.maxCollectionRemoves, limitLeft);
+              << ", stamp: " << (stamp - expireAfter) << ", limit: "
+              << std::min(properties.maxCollectionRemoves, limitLeft);
 
           auto bindVars = std::make_shared<VPackBuilder>();
           bindVars->openObject();
@@ -330,26 +339,31 @@ class TtlThread final : public Thread {
           }
           bindVars->close();
           bindVars->add("stamp", VPackValue(stamp - expireAfter));
-          bindVars->add("limit", VPackValue(std::min(properties.maxCollectionRemoves, limitLeft)));
+          bindVars->add(
+              "limit",
+              VPackValue(std::min(properties.maxCollectionRemoves, limitLeft)));
           bindVars->close();
 
-          auto query =
-              aql::Query::create(transaction::StandaloneContext::Create(*vocbase),
-                                 aql::QueryString(::removeQuery), std::move(bindVars));
+          auto query = aql::Query::create(
+              transaction::StandaloneContext::Create(*vocbase),
+              aql::QueryString(::removeQuery), std::move(bindVars));
           query->collections().add(collection->name(), AccessMode::Type::WRITE,
                                    aql::Collection::Hint::Shard);
           aql::QueryResult queryResult = query->executeSync();
 
           if (queryResult.result.fail()) {
             // we can probably live with an error here...
-            // the thread will try to remove the documents again on next iteration
+            // the thread will try to remove the documents again on next
+            // iteration
             if (!queryResult.result.is(TRI_ERROR_ARANGO_READ_ONLY) &&
                 !queryResult.result.is(TRI_ERROR_ARANGO_CONFLICT) &&
                 !queryResult.result.is(TRI_ERROR_LOCKED) &&
-                !queryResult.result.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+                !queryResult.result.is(
+                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
               LOG_TOPIC("08300", WARN, Logger::TTL)
                   << "error during TTL document removal for collection '"
-                  << collection->name() << "': " << queryResult.result.errorMessage();
+                  << collection->name()
+                  << "': " << queryResult.result.errorMessage();
             }
           } else {
             auto extra = queryResult.extra;
@@ -363,7 +377,8 @@ class TtlThread final : public Thread {
                   if (removed > 0) {
                     LOG_TOPIC("2455e", DEBUG, Logger::TTL)
                         << "TTL thread removed " << removed
-                        << " documents for collection '" << collection->name() << "'";
+                        << " documents for collection '" << collection->name()
+                        << "'";
                     if (limitLeft >= removed) {
                       limitLeft -= removed;
                     } else {
@@ -375,12 +390,14 @@ class TtlThread final : public Thread {
             }
           }
 
-          // there can only be one TTL index per collection, so we can abort the loop here
+          // there can only be one TTL index per collection, so we can abort the
+          // loop here
           break;
         }
 
         if (limitLeft == 0) {
-          // removed as much as we are allowed to. now stop and remove more in next iteration
+          // removed as much as we are allowed to. now stop and remove more in
+          // next iteration
           ++stats.limitReached;
           return;
         }
@@ -466,7 +483,8 @@ void TtlFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 void TtlFeature::start() {
   // the thread will not run on a coordinator or an agency node,
   // just locally on DB servers or single servers
-  if (ServerState::instance()->isCoordinator() || ServerState::instance()->isAgent()) {
+  if (ServerState::instance()->isCoordinator() ||
+      ServerState::instance()->isAgent()) {
     LOG_TOPIC("e94bb", DEBUG, Logger::TTL)
         << "turning off TTL feature because of coordinator / agency";
     return;
@@ -606,7 +624,8 @@ TtlProperties TtlFeature::properties() const {
   return _properties;
 }
 
-Result TtlFeature::propertiesFromVelocyPack(VPackSlice const& slice, VPackBuilder& out) {
+Result TtlFeature::propertiesFromVelocyPack(VPackSlice const& slice,
+                                            VPackBuilder& out) {
   Result res;
   uint64_t frequency;
   bool active;

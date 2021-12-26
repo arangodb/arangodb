@@ -36,45 +36,51 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-template <BlockPassthrough passBlocksThrough>
-SingleRowFetcher<passBlocksThrough>::SingleRowFetcher(DependencyProxy<passBlocksThrough>& executionBlock)
+template<BlockPassthrough passBlocksThrough>
+SingleRowFetcher<passBlocksThrough>::SingleRowFetcher(
+    DependencyProxy<passBlocksThrough>& executionBlock)
     : _dependencyProxy(&executionBlock) {}
 
-template <BlockPassthrough passBlocksThrough>
+template<BlockPassthrough passBlocksThrough>
 SingleRowFetcher<passBlocksThrough>::SingleRowFetcher()
     : _dependencyProxy(nullptr) {}
 
-template <BlockPassthrough passBlocksThrough>
+template<BlockPassthrough passBlocksThrough>
 std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange>
 SingleRowFetcher<passBlocksThrough>::execute(AqlCallStack& stack) {
   auto [state, skipped, block] = _dependencyProxy->execute(stack);
   if (state == ExecutionState::WAITING) {
     // On waiting we have nothing to return
-    return {state, SkipResult{}, AqlItemBlockInputRange{ExecutorState::HASMORE}};
+    return {state, SkipResult{},
+            AqlItemBlockInputRange{ExecutorState::HASMORE}};
   }
   if (block == nullptr) {
     if (state == ExecutionState::HASMORE) {
       return {state, skipped,
-              AqlItemBlockInputRange{ExecutorState::HASMORE, skipped.getSkipCount()}};
+              AqlItemBlockInputRange{ExecutorState::HASMORE,
+                                     skipped.getSkipCount()}};
     }
-    return {state, skipped,
-            AqlItemBlockInputRange{ExecutorState::DONE, skipped.getSkipCount()}};
+    return {
+        state, skipped,
+        AqlItemBlockInputRange{ExecutorState::DONE, skipped.getSkipCount()}};
   }
 
   auto [start, end] = block->getRelevantRange();
   if (state == ExecutionState::HASMORE) {
     TRI_ASSERT(block != nullptr);
-    return {state, skipped,
-            AqlItemBlockInputRange{ExecutorState::HASMORE, skipped.getSkipCount(),
-                                   std::move(block), start}};
+    return {
+        state, skipped,
+        AqlItemBlockInputRange{ExecutorState::HASMORE, skipped.getSkipCount(),
+                               std::move(block), start}};
   }
   return {state, skipped,
           AqlItemBlockInputRange{ExecutorState::DONE, skipped.getSkipCount(),
                                  std::move(block), start}};
 }
 
-template <BlockPassthrough blockPassthrough>
-void SingleRowFetcher<blockPassthrough>::setDistributeId(std::string const& id) {
+template<BlockPassthrough blockPassthrough>
+void SingleRowFetcher<blockPassthrough>::setDistributeId(
+    std::string const& id) {
   _dependencyProxy->setDistributeId(id);
 }
 

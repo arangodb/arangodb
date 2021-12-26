@@ -47,7 +47,8 @@ class DatabaseTailingSyncer : public TailingSyncer {
 
  public:
   static std::shared_ptr<DatabaseTailingSyncer> create(
-      TRI_vocbase_t& vocbase, ReplicationApplierConfiguration const& configuration,
+      TRI_vocbase_t& vocbase,
+      ReplicationApplierConfiguration const& configuration,
       TRI_voc_tick_t initialTick, bool useTick);
 
   TRI_vocbase_t* resolveVocbase(velocypack::Slice const&) override {
@@ -61,8 +62,9 @@ class DatabaseTailingSyncer : public TailingSyncer {
 
   /// @brief finalize the synchronization of a collection by tailing the WAL
   /// and filtering on the collection name until no more data is available
-  Result syncCollectionFinalize(std::string const& collectionName, TRI_voc_tick_t fromTick,
-                                TRI_voc_tick_t toTick, std::string const& context);
+  Result syncCollectionFinalize(std::string const& collectionName,
+                                TRI_voc_tick_t fromTick, TRI_voc_tick_t toTick,
+                                std::string const& context);
 
   /// @brief catch up with changes in a leader shard by doing the same
   /// as in syncCollectionFinalize, but potentially stopping earlier.
@@ -74,9 +76,10 @@ class DatabaseTailingSyncer : public TailingSyncer {
   /// by getting an exclusive lock on the leader and use
   /// `syncCollectionFinalize` to finish off the rest.
   /// Internally, both use `syncCollectionCatchupInternal`.
-  Result syncCollectionCatchup(std::string const& collectionName, TRI_voc_tick_t fromTick,
-                               double timeout, TRI_voc_tick_t& until,
-                               bool& didTimeout, std::string const& context);
+  Result syncCollectionCatchup(std::string const& collectionName,
+                               TRI_voc_tick_t fromTick, double timeout,
+                               TRI_voc_tick_t& until, bool& didTimeout,
+                               std::string const& context);
 
   Result inheritFromInitialSyncer(DatabaseInitialSyncer const& syncer);
   Result registerOnLeader();
@@ -84,8 +87,9 @@ class DatabaseTailingSyncer : public TailingSyncer {
 
  protected:
   Result syncCollectionCatchupInternal(std::string const& collectionName,
-                                       double timeout, bool hard, TRI_voc_tick_t& until,
-                                       bool& didTimeout, std::string const& context);
+                                       double timeout, bool hard,
+                                       TRI_voc_tick_t& until, bool& didTimeout,
+                                       std::string const& context);
 
   /// @brief save the current applier state
   Result saveApplierState() override;

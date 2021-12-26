@@ -30,7 +30,8 @@
 
 using namespace arangodb::greenspun;
 
-EvalResult Prim_ListCat(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_ListCat(Machine& ctx, VPackSlice const params,
+                        VPackBuilder& result) {
   VPackArrayBuilder array(&result);
   for (auto iter = VPackArrayIterator(params); iter.valid(); iter++) {
     VPackSlice p = *iter;
@@ -44,7 +45,8 @@ EvalResult Prim_ListCat(Machine& ctx, VPackSlice const params, VPackBuilder& res
   return {};
 }
 
-EvalResult Prim_List(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_List(Machine& ctx, VPackSlice const params,
+                     VPackBuilder& result) {
   VPackArrayBuilder ab(&result);
   result.add(VPackArrayIterator(params));
   return {};
@@ -70,7 +72,8 @@ EvalResult checkArrayParams(VPackSlice const& arr, VPackSlice const& index) {
   return {};
 }
 
-EvalResult Prim_ListEmptyHuh(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_ListEmptyHuh(Machine& ctx, VPackSlice const paramsList,
+                             VPackBuilder& result) {
   auto res = extract<VPackSlice>(paramsList);
   if (!res) {
     return std::move(res).asResult();
@@ -81,7 +84,8 @@ EvalResult Prim_ListEmptyHuh(Machine& ctx, VPackSlice const paramsList, VPackBui
   return {};
 }
 
-EvalResult Prim_ListLength(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_ListLength(Machine& ctx, VPackSlice const paramsList,
+                           VPackBuilder& result) {
   auto res = extract<VPackSlice>(paramsList);
   if (!res) {
     return std::move(res).asResult();
@@ -96,7 +100,8 @@ EvalResult Prim_ListLength(Machine& ctx, VPackSlice const paramsList, VPackBuild
   return {};
 }
 
-EvalResult Prim_ListAppend(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_ListAppend(Machine& ctx, VPackSlice const paramsList,
+                           VPackBuilder& result) {
   VPackArrayBuilder ab(&result);
 
   VPackArrayIterator iter(paramsList);
@@ -104,7 +109,8 @@ EvalResult Prim_ListAppend(Machine& ctx, VPackSlice const paramsList, VPackBuild
     VPackSlice list = *iter;
     iter.next();
     if (!list.isArray()) {
-      return EvalError("expected array as first parameter, found: " + list.toJson());
+      return EvalError("expected array as first parameter, found: " +
+                       list.toJson());
     }
 
     result.add(VPackArrayIterator(list));
@@ -116,7 +122,8 @@ EvalResult Prim_ListAppend(Machine& ctx, VPackSlice const paramsList, VPackBuild
   return {};
 }
 
-EvalResult Prim_ListJoin(Machine& ctx, VPackSlice const slice, VPackBuilder& result) {
+EvalResult Prim_ListJoin(Machine& ctx, VPackSlice const slice,
+                         VPackBuilder& result) {
   auto res = extract<VPackArrayIterator>(slice);
   if (res.fail()) {
     return res.error();
@@ -133,7 +140,8 @@ EvalResult Prim_ListJoin(Machine& ctx, VPackSlice const slice, VPackBuilder& res
   return {};
 }
 
-EvalResult Prim_ListRef(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_ListRef(Machine& ctx, VPackSlice const params,
+                        VPackBuilder& result) {
   if (!params.isArray() || params.length() != 2) {
     return EvalError("expected exactly two parameters");
   }
@@ -151,7 +159,8 @@ EvalResult Prim_ListRef(Machine& ctx, VPackSlice const params, VPackBuilder& res
   return {};
 }
 
-EvalResult Prim_ListRepeat(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_ListRepeat(Machine& ctx, VPackSlice const params,
+                           VPackBuilder& result) {
   if (!params.isArray() || params.length() != 2) {
     return EvalError("expected exactly two parameters");
   }
@@ -171,7 +180,8 @@ EvalResult Prim_ListRepeat(Machine& ctx, VPackSlice const params, VPackBuilder& 
   return {};
 }
 
-EvalResult Prim_ListSet(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_ListSet(Machine& ctx, VPackSlice const params,
+                        VPackBuilder& result) {
   if (!params.isArray() || params.length() != 3) {
     return EvalError("expected exactly two parameters");
   }
@@ -201,7 +211,8 @@ EvalResult Prim_ListSet(Machine& ctx, VPackSlice const params, VPackBuilder& res
   return {};
 }
 
-EvalResult Prim_Sort(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_Sort(Machine& ctx, VPackSlice const paramsList,
+                     VPackBuilder& result) {
   auto res = extract<VPackSlice, VPackSlice>(paramsList);
   if (!res) {
     return std::move(res).asResult();
@@ -209,7 +220,8 @@ EvalResult Prim_Sort(Machine& ctx, VPackSlice const paramsList, VPackBuilder& re
 
   auto&& [func, list] = res.value();
   if (!list.isArray()) {
-    return EvalError("expected list as second parameter, found: " + list.toJson());
+    return EvalError("expected list as second parameter, found: " +
+                     list.toJson());
   }
 
   VPackArrayIterator iter(list);
@@ -235,7 +247,8 @@ EvalResult Prim_Sort(Machine& ctx, VPackSlice const paramsList, VPackBuilder& re
       auto res = EvaluateApply(ctx, func, VPackArrayIterator(parameter.slice()),
                                tempBuffer, false);
       if (res.fail()) {
-        throw res.error().wrapMessage("when mapping pair " + parameter.toJson());
+        throw res.error().wrapMessage("when mapping pair " +
+                                      parameter.toJson());
       }
 
       return ValueConsideredTrue(tempBuffer.slice());
@@ -255,7 +268,8 @@ EvalResult Prim_Sort(Machine& ctx, VPackSlice const paramsList, VPackBuilder& re
   return {};
 }
 
-EvalResult Prim_ListHuh(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult Prim_ListHuh(Machine& ctx, VPackSlice const paramsList,
+                        VPackBuilder& result) {
   auto res = extract<VPackSlice>(paramsList);
   if (!res) {
     return std::move(res).asResult();

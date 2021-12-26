@@ -44,7 +44,7 @@ class WorkerConfig;
 /* In the longer run, maybe write optimized implementations for certain use
 cases. For example threaded
 processing */
-template <typename M>
+template<typename M>
 class InCache {
  protected:
   mutable std::map<PregelShard, std::mutex> _bucketLocker;
@@ -70,9 +70,11 @@ class InCache {
   void storeMessageNoLock(PregelShard shard,
                           velocypack::StringRef const& vertexId, M const& data);
   /// @brief  Store a single message
-  void storeMessage(PregelShard shard, velocypack::StringRef const& vertexId, M const& data);
+  void storeMessage(PregelShard shard, velocypack::StringRef const& vertexId,
+                    M const& data);
 
-  virtual void mergeCache(WorkerConfig const& config, InCache<M> const* otherCache) = 0;
+  virtual void mergeCache(WorkerConfig const& config,
+                          InCache<M> const* otherCache) = 0;
   /// @brief get messages for vertex id. (Don't use keys from _from or _to
   /// directly, they contain the collection name)
   virtual MessageIterator<M> getMessages(PregelShard shard,
@@ -84,31 +86,39 @@ class InCache {
   virtual void erase(PregelShard shard, velocypack::StringRef const& key) = 0;
 
   /// Calls function for each entry. DOES NOT LOCK
-  virtual void forEach(std::function<void(PregelShard, velocypack::StringRef const&, M const&)> func) = 0;
+  virtual void forEach(
+      std::function<void(PregelShard, velocypack::StringRef const&, M const&)>
+          func) = 0;
 };
 
 /// Cache version which stores a std::vector<M> for each pregel id
 /// containing all messages for this vertex
-template <typename M>
+template<typename M>
 class ArrayInCache : public InCache<M> {
   typedef std::unordered_map<std::string, std::vector<M>> HMap;
   std::map<PregelShard, HMap> _shardMap;
 
  protected:
-  void _set(PregelShard shard, velocypack::StringRef const& vertexId, M const& data) override;
+  void _set(PregelShard shard, velocypack::StringRef const& vertexId,
+            M const& data) override;
 
  public:
   ArrayInCache(WorkerConfig const* config, MessageFormat<M> const* format);
 
-  void mergeCache(WorkerConfig const& config, InCache<M> const* otherCache) override;
-  MessageIterator<M> getMessages(PregelShard shard, velocypack::StringRef const& key) override;
+  void mergeCache(WorkerConfig const& config,
+                  InCache<M> const* otherCache) override;
+  MessageIterator<M> getMessages(PregelShard shard,
+                                 velocypack::StringRef const& key) override;
   void clear() override;
   void erase(PregelShard shard, velocypack::StringRef const& key) override;
-  void forEach(std::function<void(PregelShard shard, velocypack::StringRef const& key, M const& val)> func) override;
+  void forEach(
+      std::function<void(PregelShard shard, velocypack::StringRef const& key,
+                         M const& val)>
+          func) override;
 };
 
 /// Cache which stores one value per vertex id
-template <typename M>
+template<typename M>
 class CombiningInCache : public InCache<M> {
   typedef std::unordered_map<std::string, M> HMap;
 
@@ -116,7 +126,8 @@ class CombiningInCache : public InCache<M> {
   std::map<PregelShard, HMap> _shardMap;
 
  protected:
-  void _set(PregelShard shard, velocypack::StringRef const& vertexId, M const& data) override;
+  void _set(PregelShard shard, velocypack::StringRef const& vertexId,
+            M const& data) override;
 
  public:
   CombiningInCache(WorkerConfig const* config, MessageFormat<M> const* format,
@@ -124,11 +135,15 @@ class CombiningInCache : public InCache<M> {
 
   MessageCombiner<M> const* combiner() const { return _combiner; }
 
-  void mergeCache(WorkerConfig const& config, InCache<M> const* otherCache) override;
-  MessageIterator<M> getMessages(PregelShard shard, velocypack::StringRef const& key) override;
+  void mergeCache(WorkerConfig const& config,
+                  InCache<M> const* otherCache) override;
+  MessageIterator<M> getMessages(PregelShard shard,
+                                 velocypack::StringRef const& key) override;
   void clear() override;
   void erase(PregelShard shard, velocypack::StringRef const& key) override;
-  void forEach(std::function<void(PregelShard, velocypack::StringRef const&, M const&)> func) override;
+  void forEach(
+      std::function<void(PregelShard, velocypack::StringRef const&, M const&)>
+          func) override;
 };
 }  // namespace pregel
 }  // namespace arangodb

@@ -46,9 +46,11 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
  private:
   struct PathSnippet {
     PathSnippet() noexcept;
-    PathSnippet(arangodb::velocypack::StringRef pred, graph::EdgeDocumentToken&& path) noexcept;
+    PathSnippet(arangodb::velocypack::StringRef pred,
+                graph::EdgeDocumentToken&& path) noexcept;
     PathSnippet(PathSnippet&& other) noexcept = default;
-    PathSnippet& operator=(PathSnippet&& other) ARANGODB_NOEXCEPT_ASSIGN_OP = default;
+    PathSnippet& operator=(PathSnippet&& other)
+        ARANGODB_NOEXCEPT_ASSIGN_OP = default;
 
     bool empty() const noexcept { return _pred.empty(); }
 
@@ -57,7 +59,8 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
   };
 
   typedef std::vector<arangodb::velocypack::StringRef> Closure;
-  typedef std::unordered_map<arangodb::velocypack::StringRef, PathSnippet> Snippets;
+  typedef std::unordered_map<arangodb::velocypack::StringRef, PathSnippet>
+      Snippets;
 
  public:
   explicit ConstantWeightShortestPathFinder(ShortestPathOptions& options);
@@ -104,7 +107,8 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
     arangodb::velocypack::StringRef vertex;
     graph::EdgeDocumentToken edge;
 
-    Neighbor(arangodb::velocypack::StringRef v, graph::EdgeDocumentToken e) noexcept
+    Neighbor(arangodb::velocypack::StringRef v,
+             graph::EdgeDocumentToken e) noexcept
         : vertex(v), edge(e){};
 
     static constexpr size_t itemMemoryUsage() {

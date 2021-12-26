@@ -38,11 +38,14 @@
 
 namespace {
 
-template <typename T>
+template<typename T>
 inline irs::filter::prepared::ptr compileQuery(
     arangodb::iresearch::ExpressionCompilationContext const& ctx,
-    irs::index_reader const& index, irs::order::prepared const& order, irs::boost_t boost) {
-  typedef typename std::enable_if<std::is_base_of<irs::filter::prepared, T>::value, T>::type type_t;
+    irs::index_reader const& index, irs::order::prepared const& order,
+    irs::boost_t boost) {
+  typedef
+      typename std::enable_if<std::is_base_of<irs::filter::prepared, T>::value,
+                              T>::type type_t;
 
   irs::bstring stats(order.stats_size(), 0);
   auto* stats_buf = const_cast<irs::byte_type*>(stats.data());
@@ -63,7 +66,8 @@ class NondeterministicExpressionIterator final
       irs::sub_reader const& reader, irs::byte_type const* stats,
       irs::order::prepared const& order, uint64_t docs_count,
       arangodb::iresearch::ExpressionCompilationContext const& cctx,
-      arangodb::iresearch::ExpressionExecutionContext const& ectx, irs::boost_t boost)
+      arangodb::iresearch::ExpressionExecutionContext const& ectx,
+      irs::boost_t boost)
       : attributes{{
             {irs::type<irs::document>::id(), &doc_},
             {irs::type<irs::cost>::id(), &cost_},
@@ -133,13 +137,14 @@ class NondeterministicExpressionIterator final
 ///////////////////////////////////////////////////////////////////////////////
 class NondeterministicExpressionQuery final : public irs::filter::prepared {
  public:
-  explicit NondeterministicExpressionQuery(arangodb::iresearch::ExpressionCompilationContext const& ctx,
-                                           irs::bstring&& stats, irs::boost_t boost) noexcept
+  explicit NondeterministicExpressionQuery(
+      arangodb::iresearch::ExpressionCompilationContext const& ctx,
+      irs::bstring&& stats, irs::boost_t boost) noexcept
       : irs::filter::prepared(boost), _ctx(ctx), stats_(std::move(stats)) {}
 
-  virtual irs::doc_iterator::ptr execute(const irs::sub_reader& rdr,
-                                         const irs::order::prepared& order,
-                                         const irs::attribute_provider* ctx) const override {
+  virtual irs::doc_iterator::ptr execute(
+      const irs::sub_reader& rdr, const irs::order::prepared& order,
+      const irs::attribute_provider* ctx) const override {
     if (ADB_UNLIKELY(!ctx)) {
       // no context provided
       return irs::doc_iterator::empty();
@@ -170,13 +175,14 @@ class NondeterministicExpressionQuery final : public irs::filter::prepared {
 ///////////////////////////////////////////////////////////////////////////////
 class DeterministicExpressionQuery final : public irs::filter::prepared {
  public:
-  explicit DeterministicExpressionQuery(arangodb::iresearch::ExpressionCompilationContext const& ctx,
-                                        irs::bstring&& stats, irs::boost_t boost) noexcept
+  explicit DeterministicExpressionQuery(
+      arangodb::iresearch::ExpressionCompilationContext const& ctx,
+      irs::bstring&& stats, irs::boost_t boost) noexcept
       : irs::filter::prepared(boost), _ctx(ctx), stats_(std::move(stats)) {}
 
-  virtual irs::doc_iterator::ptr execute(const irs::sub_reader& segment,
-                                         const irs::order::prepared& order,
-                                         const irs::attribute_provider* ctx) const override {
+  virtual irs::doc_iterator::ptr execute(
+      const irs::sub_reader& segment, const irs::order::prepared& order,
+      const irs::attribute_provider* ctx) const override {
     if (ADB_UNLIKELY(!ctx)) {
       // no context provided
       return irs::doc_iterator::empty();
@@ -199,8 +205,8 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
     arangodb::aql::AqlValueGuard guard(value, mustDestroy);
 
     if (value.toBoolean()) {
-      return irs::memory::make_managed<irs::all_iterator>(segment, stats_.c_str(), order,
-                                                          segment.docs_count(), boost());
+      return irs::memory::make_managed<irs::all_iterator>(
+          segment, stats_.c_str(), order, segment.docs_count(), boost());
     }
 
     return irs::doc_iterator::empty();
@@ -222,9 +228,10 @@ namespace iresearch {
 
 size_t ExpressionCompilationContext::hash() const noexcept {
   return irs::hash_combine(
-      irs::hash_combine(irs::hash_combine(1610612741,
-                                          arangodb::aql::AstNodeValueHash()(node.get())),
-                        plan),
+      irs::hash_combine(
+          irs::hash_combine(1610612741,
+                            arangodb::aql::AstNodeValueHash()(node.get())),
+          plan),
       ast);
 }
 
@@ -244,10 +251,9 @@ bool ByExpression::equals(irs::filter const& rhs) const noexcept {
 
 size_t ByExpression::hash() const noexcept { return _ctx.hash(); }
 
-irs::filter::prepared::ptr ByExpression::prepare(irs::index_reader const& index,
-                                                 irs::order::prepared const& order,
-                                                 irs::boost_t filter_boost,
-                                                 irs::attribute_provider const* ctx) const {
+irs::filter::prepared::ptr ByExpression::prepare(
+    irs::index_reader const& index, irs::order::prepared const& order,
+    irs::boost_t filter_boost, irs::attribute_provider const* ctx) const {
   if (!bool(*this)) {
     // uninitialized filter
     return irs::filter::prepared::empty();
@@ -257,15 +263,18 @@ irs::filter::prepared::ptr ByExpression::prepare(irs::index_reader const& index,
 
   if (!_ctx.node->isDeterministic()) {
     // non-deterministic expression, make non-deterministic query
-    return compileQuery<NondeterministicExpressionQuery>(_ctx, index, order, filter_boost);
+    return compileQuery<NondeterministicExpressionQuery>(_ctx, index, order,
+                                                         filter_boost);
   }
 
   auto* execCtx =
-      ctx ? irs::get<arangodb::iresearch::ExpressionExecutionContext>(*ctx) : nullptr;
+      ctx ? irs::get<arangodb::iresearch::ExpressionExecutionContext>(*ctx)
+          : nullptr;
 
   if (!execCtx || !static_cast<bool>(*execCtx)) {
     // no execution context provided, make deterministic query
-    return compileQuery<DeterministicExpressionQuery>(_ctx, index, order, filter_boost);
+    return compileQuery<DeterministicExpressionQuery>(_ctx, index, order,
+                                                      filter_boost);
   }
 
   // set expression for troubleshooting purposes

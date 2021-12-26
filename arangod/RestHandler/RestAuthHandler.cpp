@@ -39,14 +39,16 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAuthHandler::RestAuthHandler(application_features::ApplicationServer& server,
-                                 GeneralRequest* request, GeneralResponse* response)
+RestAuthHandler::RestAuthHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAuthHandler::execute() {
   auto const type = _request->requestType();
   if (type != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 
@@ -54,7 +56,8 @@ RestStatus RestAuthHandler::execute() {
   if (um == nullptr) {
     std::string msg = "This server does not support users";
     LOG_TOPIC("2e7d4", WARN, Logger::AUTHENTICATION) << msg;
-    generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_HTTP_UNAUTHORIZED, msg);
+    generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_HTTP_UNAUTHORIZED,
+                  msg);
     return RestStatus::DONE;
   }
 
@@ -63,7 +66,8 @@ RestStatus RestAuthHandler::execute() {
   if (suffixes.size() == 1 && suffixes[0] == "renew") {
     // JWT token renew request
     if (!_request->authenticated() || _request->user().empty() ||
-        _request->authenticationMethod() != arangodb::rest::AuthenticationMethod::JWT) {
+        _request->authenticationMethod() !=
+            arangodb::rest::AuthenticationMethod::JWT) {
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_USER_NOT_FOUND);
     } else {
       VPackBuilder resultBuilder;
@@ -137,8 +141,9 @@ RestStatus RestAuthHandler::execute() {
 std::string RestAuthHandler::generateJwt(std::string const& username) const {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
-  return fuerte::jwt::generateUserToken(af->tokenCache().jwtSecret(), username,
-                                        std::chrono::seconds(uint64_t(af->sessionTimeout())));
+  return fuerte::jwt::generateUserToken(
+      af->tokenCache().jwtSecret(), username,
+      std::chrono::seconds(uint64_t(af->sessionTimeout())));
 }
 
 RestStatus RestAuthHandler::badRequest() {

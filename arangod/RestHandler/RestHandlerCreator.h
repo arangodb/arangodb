@@ -35,10 +35,10 @@ namespace rest {
 class RestHandler;
 }
 
-template <typename H>
+template<typename H>
 class RestHandlerCreator : public H {
  public:
-  template <typename D>
+  template<typename D>
   static std::shared_ptr<rest::RestHandler> createData(
       application_features::ApplicationServer& server, GeneralRequest* request,
       GeneralResponse* response, void* data) {

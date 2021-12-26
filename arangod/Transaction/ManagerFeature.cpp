@@ -93,9 +93,10 @@ void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   "idle timeout for streaming "
                   "transactions in seconds",
                   new DoubleParameter(&_streamingIdleTimeout),
-                  arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
-                                               arangodb::options::Flags::OnCoordinator,
-                                               arangodb::options::Flags::OnSingle))
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30800);
 }
 
@@ -111,7 +112,10 @@ void ManagerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 void ManagerFeature::prepare() {
   TRI_ASSERT(MANAGER.get() == nullptr);
   TRI_ASSERT(server().getFeature<EngineSelectorFeature>().selected());
-  MANAGER = server().getFeature<EngineSelectorFeature>().engine().createTransactionManager(*this);
+  MANAGER = server()
+                .getFeature<EngineSelectorFeature>()
+                .engine()
+                .createTransactionManager(*this);
 }
 
 void ManagerFeature::start() {
@@ -172,7 +176,8 @@ void ManagerFeature::queueGarbageCollection() {
   // all threads executing this might be blocking, waiting for a lock to be
   // released.
   auto workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(
-      arangodb::RequestLane::CLUSTER_INTERNAL, std::chrono::seconds(2), _gcfunc);
+      arangodb::RequestLane::CLUSTER_INTERNAL, std::chrono::seconds(2),
+      _gcfunc);
   std::lock_guard<std::mutex> guard(_workItemMutex);
   _workItem = std::move(workItem);
 }

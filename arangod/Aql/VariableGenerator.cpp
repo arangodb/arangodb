@@ -43,7 +43,8 @@ void VariableGenerator::visit(std::function<void(Variable*)> const& visitor) {
 }
 
 /// @brief return a map of all variable ids with their names
-std::unordered_map<VariableId, std::string const> VariableGenerator::variables(bool includeTemporaries) const {
+std::unordered_map<VariableId, std::string const> VariableGenerator::variables(
+    bool includeTemporaries) const {
   std::unordered_map<VariableId, std::string const> result;
 
   for (auto const& it : _variables) {
@@ -59,11 +60,13 @@ std::unordered_map<VariableId, std::string const> VariableGenerator::variables(b
 }
 
 /// @brief generate a variable
-Variable* VariableGenerator::createVariable(std::string name, bool isUserDefined) {
+Variable* VariableGenerator::createVariable(std::string name,
+                                            bool isUserDefined) {
   if (isUserDefined && !isValidName(name.data(), name.data() + name.size())) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                   arangodb::basics::Exception::FillExceptionString(
-                                       TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name.c_str()));
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_PARSE,
+        arangodb::basics::Exception::FillExceptionString(
+            TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name.c_str()));
   }
 
   auto variable = std::make_unique<Variable>(std::move(name), nextId(), false);
@@ -116,7 +119,8 @@ Variable* VariableGenerator::renameVariable(VariableId id) {
 }
 
 /// @brief renames a variable (assigns the specified name
-Variable* VariableGenerator::renameVariable(VariableId id, std::string const& name) {
+Variable* VariableGenerator::renameVariable(VariableId id,
+                                            std::string const& name) {
   Variable* v = getVariable(id);
 
   if (v != nullptr) {

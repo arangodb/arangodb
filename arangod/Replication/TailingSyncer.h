@@ -54,7 +54,8 @@ struct ApplyStats {
 
 class TailingSyncer : public Syncer {
  public:
-  TailingSyncer(ReplicationApplier* applier, ReplicationApplierConfiguration const&,
+  TailingSyncer(ReplicationApplier* applier,
+                ReplicationApplierConfiguration const&,
                 TRI_voc_tick_t initialTick, bool useTick);
 
   virtual ~TailingSyncer();
@@ -91,8 +92,10 @@ class TailingSyncer : public Syncer {
 #endif
 
   /// @brief whether or not a collection should be excluded
-  bool skipMarker(TRI_voc_tick_t firstRegulaTick, arangodb::velocypack::Slice slice,
-                  TRI_voc_tick_t actualMarkerTick, TRI_replication_operation_e type);
+  bool skipMarker(TRI_voc_tick_t firstRegulaTick,
+                  arangodb::velocypack::Slice slice,
+                  TRI_voc_tick_t actualMarkerTick,
+                  TRI_replication_operation_e type);
 
   /// @brief whether or not a collection should be excluded
   bool isExcludedCollection(std::string const&) const;
@@ -110,7 +113,8 @@ class TailingSyncer : public Syncer {
   Result processDBMarker(TRI_replication_operation_e, velocypack::Slice const&);
 
   /// @brief process a document operation, based on the VelocyPack provided
-  Result processDocument(TRI_replication_operation_e, arangodb::velocypack::Slice const&);
+  Result processDocument(TRI_replication_operation_e,
+                         arangodb::velocypack::Slice const&);
 
   /// @brief renames a collection, based on the VelocyPack provided
   Result renameCollection(arangodb::velocypack::Slice const&);
@@ -129,12 +133,14 @@ class TailingSyncer : public Syncer {
   /// @brief apply a single marker from the continuous log
   Result applyLogMarker(arangodb::velocypack::Slice const& slice,
                         ApplyStats& applyStats, TRI_voc_tick_t firstRegularTick,
-                        TRI_voc_tick_t markerTick, TRI_replication_operation_e type);
+                        TRI_voc_tick_t markerTick,
+                        TRI_replication_operation_e type);
 
   /// @brief apply the data from the continuous log
   Result applyLog(httpclient::SimpleHttpResult*,
                   TRI_voc_tick_t firstRegularTick, ApplyStats& applyStats,
-                  arangodb::velocypack::Builder& builder, uint64_t& ignoreCount);
+                  arangodb::velocypack::Builder& builder,
+                  uint64_t& ignoreCount);
 
   /// @brief perform a continuous sync with the leader
   Result runContinuousSync();
@@ -161,11 +167,11 @@ class TailingSyncer : public Syncer {
                       TRI_voc_tick_t firstRegularTick);
 
   /// @brief apply continuous synchronization data from a batch
-  arangodb::Result processLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
-                                    arangodb::velocypack::Builder& builder,
-                                    TRI_voc_tick_t& fetchTick, TRI_voc_tick_t& lastScannedTick,
-                                    TRI_voc_tick_t firstRegularTick, uint64_t& ignoreCount,
-                                    bool& worked, bool& mustFetchBatch);
+  arangodb::Result processLeaderLog(
+      std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
+      arangodb::velocypack::Builder& builder, TRI_voc_tick_t& fetchTick,
+      TRI_voc_tick_t& lastScannedTick, TRI_voc_tick_t firstRegularTick,
+      uint64_t& ignoreCount, bool& worked, bool& mustFetchBatch);
 
   arangodb::Result removeSingleDocument(arangodb::LogicalCollection* coll,
                                         std::string const& key);
@@ -216,7 +222,8 @@ class TailingSyncer : public Syncer {
   ReplicationMetricsFeature::TailingSyncStats _stats;
 
   /// @brief which transactions were open and need to be treated specially
-  std::unordered_map<TransactionId, std::unique_ptr<ReplicationTransaction>> _ongoingTransactions;
+  std::unordered_map<TransactionId, std::unique_ptr<ReplicationTransaction>>
+      _ongoingTransactions;
 
   /// @brief recycled builder for repeated document creation
   arangodb::velocypack::Builder _documentBuilder;

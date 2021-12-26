@@ -39,10 +39,12 @@ struct ParticipantRecord {
 
 using ParticipantInfo = std::unordered_map<ParticipantId, ParticipantRecord>;
 
-auto checkReplicatedLog(DatabaseID const& database, agency::LogPlanSpecification const& spec,
-                        agency::LogCurrent const& current,
-                        std::unordered_map<ParticipantId, ParticipantRecord> const& info)
-    -> std::variant<std::monostate, agency::LogPlanTermSpecification, agency::LogCurrentSupervisionElection>;
+auto checkReplicatedLog(
+    DatabaseID const& database, agency::LogPlanSpecification const& spec,
+    agency::LogCurrent const& current,
+    std::unordered_map<ParticipantId, ParticipantRecord> const& info)
+    -> std::variant<std::monostate, agency::LogPlanTermSpecification,
+                    agency::LogCurrentSupervisionElection>;
 
 enum class ConflictReason {
   LOG_ENTRY_AFTER_END,
@@ -53,7 +55,8 @@ enum class ConflictReason {
 
 auto to_string(ConflictReason r) noexcept -> std::string_view;
 
-auto detectConflict(replicated_log::InMemoryLog const& log, TermIndexPair prevLog) noexcept
+auto detectConflict(replicated_log::InMemoryLog const& log,
+                    TermIndexPair prevLog) noexcept
     -> std::optional<std::pair<ConflictReason, TermIndexPair>>;
 
 struct LogActionContext {
@@ -65,8 +68,9 @@ struct LogActionContext {
       -> std::shared_ptr<replication2::replicated_log::AbstractFollower> = 0;
 };
 
-auto updateReplicatedLog(LogActionContext& ctx, ServerID const& serverId, RebootId rebootId,
-                         LogId logId, agency::LogPlanSpecification const* spec) noexcept
+auto updateReplicatedLog(LogActionContext& ctx, ServerID const& serverId,
+                         RebootId rebootId, LogId logId,
+                         agency::LogPlanSpecification const* spec) noexcept
     -> arangodb::Result;
 
 }  // namespace arangodb::replication2::algorithms

@@ -35,7 +35,8 @@ ExpressionContextMock::~ExpressionContextMock() {
 }
 
 arangodb::aql::AqlValue ExpressionContextMock::getVariableValue(
-    arangodb::aql::Variable const* variable, bool doCopy, bool& mustDestroy) const {
+    arangodb::aql::Variable const* variable, bool doCopy,
+    bool& mustDestroy) const {
   auto it = vars.find(variable->name);
   if (vars.end() == it) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

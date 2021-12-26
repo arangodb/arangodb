@@ -50,7 +50,8 @@ DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(
       _vpackOptions(opts),
       _resourceMonitor(resourceMonitor) {}
 
-std::pair<RegisterId, RegisterId> const& DistinctCollectExecutorInfos::getGroupRegister() const {
+std::pair<RegisterId, RegisterId> const&
+DistinctCollectExecutorInfos::getGroupRegister() const {
   return _groupRegister;
 }
 
@@ -58,20 +59,23 @@ velocypack::Options const* DistinctCollectExecutorInfos::vpackOptions() const {
   return _vpackOptions;
 }
 
-arangodb::ResourceMonitor& DistinctCollectExecutorInfos::getResourceMonitor() const {
+arangodb::ResourceMonitor& DistinctCollectExecutorInfos::getResourceMonitor()
+    const {
   return _resourceMonitor;
 }
 
 DistinctCollectExecutor::DistinctCollectExecutor(Fetcher&, Infos& infos)
     : _infos(infos),
-      _seen(1024, AqlValueGroupHash(1), AqlValueGroupEqual(_infos.vpackOptions())) {}
+      _seen(1024, AqlValueGroupHash(1),
+            AqlValueGroupEqual(_infos.vpackOptions())) {}
 
 DistinctCollectExecutor::~DistinctCollectExecutor() { destroyValues(); }
 
 void DistinctCollectExecutor::initializeCursor() { destroyValues(); }
 
 [[nodiscard]] auto DistinctCollectExecutor::expectedNumberOfRowsNew(
-    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+    -> size_t {
   if (input.finalState() == ExecutorState::DONE) {
     // Worst case assumption:
     // For every input row we have a new group.
@@ -93,7 +97,8 @@ void DistinctCollectExecutor::destroyValues() {
   _infos.getResourceMonitor().decreaseMemoryUsage(memoryUsage);
 }
 
-const DistinctCollectExecutor::Infos& DistinctCollectExecutor::infos() const noexcept {
+const DistinctCollectExecutor::Infos& DistinctCollectExecutor::infos()
+    const noexcept {
   return _infos;
 }
 
@@ -110,7 +115,8 @@ auto DistinctCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   INTERNAL_LOG_DC << output.getClientCall();
 
   while (inputRange.hasDataRow()) {
-    INTERNAL_LOG_DC << "output.isFull() = " << std::boolalpha << output.isFull();
+    INTERNAL_LOG_DC << "output.isFull() = " << std::boolalpha
+                    << output.isFull();
 
     if (output.isFull()) {
       INTERNAL_LOG_DC << "output is full";
@@ -129,7 +135,8 @@ auto DistinctCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     // now check if we already know this group
     if (!_seen.contains(groupValue)) {
       size_t memoryUsage = memoryUsageForGroup(groupValue);
-      arangodb::ResourceUsageScope guard(_infos.getResourceMonitor(), memoryUsage);
+      arangodb::ResourceUsageScope guard(_infos.getResourceMonitor(),
+                                         memoryUsage);
 
       output.cloneValueInto(_infos.getGroupRegister().first, input, groupValue);
       output.advanceRow();
@@ -145,7 +152,8 @@ auto DistinctCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   return {inputRange.upstreamState(), {}, {}};
 }
 
-auto DistinctCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+auto DistinctCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                            AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   TRI_IF_FAILURE("DistinctCollectExecutor::skipRowsRange") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -159,7 +167,8 @@ auto DistinctCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
   INTERNAL_LOG_DC << call;
 
   while (inputRange.hasDataRow()) {
-    INTERNAL_LOG_DC << "call.needSkipMore() = " << std::boolalpha << call.needSkipMore();
+    INTERNAL_LOG_DC << "call.needSkipMore() = " << std::boolalpha
+                    << call.needSkipMore();
 
     if (!call.needSkipMore()) {
       return {ExecutorState::HASMORE, {}, skipped, {}};
@@ -180,7 +189,8 @@ auto DistinctCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
       call.didSkip(1);
 
       size_t memoryUsage = memoryUsageForGroup(groupValue);
-      arangodb::ResourceUsageScope guard(_infos.getResourceMonitor(), memoryUsage);
+      arangodb::ResourceUsageScope guard(_infos.getResourceMonitor(),
+                                         memoryUsage);
 
       _seen.emplace(groupValue.clone());
 
@@ -192,7 +202,8 @@ auto DistinctCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
   return {inputRange.upstreamState(), {}, skipped, {}};
 }
 
-size_t DistinctCollectExecutor::memoryUsageForGroup(AqlValue const& value) const {
+size_t DistinctCollectExecutor::memoryUsageForGroup(
+    AqlValue const& value) const {
   size_t memoryUsage = 3 * sizeof(void*) + sizeof(AqlValue);
   if (value.requiresDestruction()) {
     memoryUsage += value.memoryUsage();

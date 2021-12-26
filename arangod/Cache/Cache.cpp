@@ -55,7 +55,8 @@ const std::uint64_t Cache::minLogSize = 14;
 std::uint64_t Cache::_findStatsCapacity = 16384;
 
 Cache::Cache(ConstructionGuard guard, Manager* manager, std::uint64_t id,
-             Metadata&& metadata, std::shared_ptr<Table> table, bool enableWindowedStats,
+             Metadata&& metadata, std::shared_ptr<Table> table,
+             bool enableWindowedStats,
              std::function<Table::BucketClearer(Metadata*)> bucketClearer,
              std::size_t slotsPerBucket)
     : _taskLock(),
@@ -72,14 +73,17 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, std::uint64_t id,
       _slotsPerBucket(slotsPerBucket),
       _insertsTotal(),
       _insertEvictions(),
-      _migrateRequestTime(std::chrono::steady_clock::now().time_since_epoch().count()),
-      _resizeRequestTime(std::chrono::steady_clock::now().time_since_epoch().count()) {
+      _migrateRequestTime(
+          std::chrono::steady_clock::now().time_since_epoch().count()),
+      _resizeRequestTime(
+          std::chrono::steady_clock::now().time_since_epoch().count()) {
   TRI_ASSERT(_table != nullptr);
   _table->setTypeSpecifics(_bucketClearer, _slotsPerBucket);
   _table->enable();
   if (_enableWindowedStats) {
     try {
-      _findStats.reset(new StatBuffer(manager->sharedPRNG(), _findStatsCapacity));
+      _findStats.reset(
+          new StatBuffer(manager->sharedPRNG(), _findStatsCapacity));
     } catch (std::bad_alloc const&) {
       _findStats.reset(nullptr);
       _enableWindowedStats = false;
@@ -123,7 +127,8 @@ void Cache::sizeHint(uint64_t numElements) {
       static_cast<double>(numElements) /
       (static_cast<double>(_slotsPerBucket) * Table::idealUpperRatio));
   std::uint32_t requestedLogSize = 0;
-  for (; (static_cast<std::uint64_t>(1) << requestedLogSize) < numBuckets; requestedLogSize++) {
+  for (; (static_cast<std::uint64_t>(1) << requestedLogSize) < numBuckets;
+       requestedLogSize++) {
   }
   requestMigrate(requestedLogSize);
 }
@@ -195,7 +200,8 @@ bool Cache::isBusy() {
 Cache::Inserter::Inserter(Cache& cache, void const* key, std::size_t keySize,
                           void const* value, std::size_t valueSize,
                           std::function<bool(Result const&)> retry) {
-  std::unique_ptr<CachedValue> cv{CachedValue::construct(key, keySize, value, valueSize)};
+  std::unique_ptr<CachedValue> cv{
+      CachedValue::construct(key, keySize, value, valueSize)};
   if (!cv) {
     status.reset(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -219,8 +225,9 @@ void Cache::destroy(std::shared_ptr<Cache> const& cache) {
 
 void Cache::requestGrow() {
   // fail fast if inside banned window
-  if (isShutdown() || std::chrono::steady_clock::now().time_since_epoch().count() <=
-                          _resizeRequestTime.load()) {
+  if (isShutdown() ||
+      std::chrono::steady_clock::now().time_since_epoch().count() <=
+          _resizeRequestTime.load()) {
     return;
   }
 
@@ -244,8 +251,9 @@ void Cache::requestGrow() {
 
 void Cache::requestMigrate(std::uint32_t requestedLogSize) {
   // fail fast if inside banned window
-  if (isShutdown() || std::chrono::steady_clock::now().time_since_epoch().count() <=
-                          _migrateRequestTime.load()) {
+  if (isShutdown() ||
+      std::chrono::steady_clock::now().time_since_epoch().count() <=
+          _migrateRequestTime.load()) {
     return;
   }
 
@@ -281,8 +289,10 @@ bool Cache::reclaimMemory(std::uint64_t size) {
   return (_metadata.softUsageLimit >= _metadata.usage);
 }
 
-std::uint32_t Cache::hashKey(void const* key, std::size_t keySize) const noexcept {
-  return (std::max)(static_cast<std::uint32_t>(1), fasthash32(key, keySize, 0xdeadbeefUL));
+std::uint32_t Cache::hashKey(void const* key,
+                             std::size_t keySize) const noexcept {
+  return (std::max)(static_cast<std::uint32_t>(1),
+                    fasthash32(key, keySize, 0xdeadbeefUL));
 }
 
 void Cache::recordStat(Stat stat) {
@@ -323,7 +333,8 @@ bool Cache::reportInsert(bool hadEviction) {
     std::uint64_t total = _insertsTotal.value(std::memory_order_relaxed);
     std::uint64_t evictions = _insertEvictions.value(std::memory_order_relaxed);
     if (total > 0 && total > evictions &&
-        ((static_cast<double>(evictions) / static_cast<double>(total)) > _evictionRateThreshold)) {
+        ((static_cast<double>(evictions) / static_cast<double>(total)) >
+         _evictionRateThreshold)) {
       shouldMigrate = true;
       std::shared_ptr<cache::Table> table = this->table();
       TRI_ASSERT(table != nullptr);
@@ -362,7 +373,8 @@ void Cache::shutdown() {
 
     std::shared_ptr<cache::Table> table = this->table();
     if (table != nullptr) {
-      std::shared_ptr<Table> extra = table->setAuxiliary(std::shared_ptr<Table>());
+      std::shared_ptr<Table> extra =
+          table->setAuxiliary(std::shared_ptr<Table>());
       if (extra) {
         extra->clear();
         _manager->reclaimTable(extra, false);
@@ -455,7 +467,8 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   table->setAuxiliary(newTable);
 
   // do the actual migration
-  for (std::uint64_t i = 0; i < table->size(); i++) {  // need uint64 for end condition
+  for (std::uint64_t i = 0; i < table->size();
+       i++) {  // need uint64 for end condition
     migrateBucket(table->primaryBucket(static_cast<uint32_t>(i)),
                   table->auxiliaryBuckets(static_cast<uint32_t>(i)), newTable);
   }

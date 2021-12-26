@@ -45,7 +45,8 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace {
-network::Headers buildHeaders(std::unordered_map<std::string, std::string> const& originalHeaders) {
+network::Headers buildHeaders(
+    std::unordered_map<std::string, std::string> const& originalHeaders) {
   auto auth = AuthenticationFeature::instance();
 
   network::Headers headers;
@@ -64,12 +65,14 @@ network::Headers buildHeaders(std::unordered_map<std::string, std::string> const
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestMetricsHandler::RestMetricsHandler(application_features::ApplicationServer& server,
-                                       GeneralRequest* request, GeneralResponse* response)
+RestMetricsHandler::RestMetricsHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestMetricsHandler::execute() {
-  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security =
+      server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here
@@ -83,7 +86,8 @@ RestStatus RestMetricsHandler::execute() {
   }
 
   bool foundServerIdParameter;
-  std::string const& serverId = _request->value("serverId", foundServerIdParameter);
+  std::string const& serverId =
+      _request->value("serverId", foundServerIdParameter);
 
   if (ServerState::instance()->isCoordinator() && foundServerIdParameter) {
     if (serverId != ServerState::instance()->getId()) {
@@ -100,7 +104,8 @@ RestStatus RestMetricsHandler::execute() {
       }
 
       if (!found) {
-        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
+        generateError(rest::ResponseCode::NOT_FOUND,
+                      TRI_ERROR_HTTP_BAD_PARAMETER,
                       std::string("unknown serverId supplied."));
         return RestStatus::DONE;
       }
@@ -116,12 +121,13 @@ RestStatus RestMetricsHandler::execute() {
       options.database = _request->databaseName();
       options.parameters = _request->parameters();
 
-      auto f = network::sendRequest(pool, "server:" + serverId, fuerte::RestVerb::Get,
-                                    _request->requestPath(), VPackBuffer<uint8_t>{},
-                                    options, buildHeaders(_request->headers()));
+      auto f = network::sendRequest(
+          pool, "server:" + serverId, fuerte::RestVerb::Get,
+          _request->requestPath(), VPackBuffer<uint8_t>{}, options,
+          buildHeaders(_request->headers()));
       return waitForFuture(std::move(f).thenValue(
-          [self = std::dynamic_pointer_cast<RestMetricsHandler>(shared_from_this())](
-              network::Response const& r) {
+          [self = std::dynamic_pointer_cast<RestMetricsHandler>(
+               shared_from_this())](network::Response const& r) {
             if (r.fail()) {
               self->generateError(r.combinedResult());
             } else {

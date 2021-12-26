@@ -64,12 +64,12 @@ void ShortestPathFinder::destroyEngines() {
   for (auto const& it : *ch->engines()) {
     incHttpRequests(1);
 
-    auto res =
-        network::sendRequestRetry(pool, "server:" + it.first, fuerte::RestVerb::Delete,
-                                  "/_internal/traverser/" +
-                                      arangodb::basics::StringUtils::itoa(it.second),
-                                  VPackBuffer<uint8_t>(), options)
-            .get();
+    auto res = network::sendRequestRetry(
+                   pool, "server:" + it.first, fuerte::RestVerb::Delete,
+                   "/_internal/traverser/" +
+                       arangodb::basics::StringUtils::itoa(it.second),
+                   VPackBuffer<uint8_t>(), options)
+                   .get();
 
     if (res.error != fuerte::Error::NoError) {
       // Note If there was an error on server side we do not have

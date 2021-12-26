@@ -53,7 +53,13 @@ TEST(TransactionBuilderTest, read_transaction) {
 
 TEST(TransactionBuilderTest, read_transaction_multiple) {
   VPackBuilder builder;
-  envelope::into_builder(builder).read().key("a").key("b").key("c").end().done();
+  envelope::into_builder(builder)
+      .read()
+      .key("a")
+      .key("b")
+      .key("c")
+      .end()
+      .done();
 
   auto expected = R"=([["a", "b", "c"]])="_vpack;
   ASSERT_EQ(builder.toJson(), expected->toJson());
@@ -63,7 +69,8 @@ TEST(TransactionBuilderTest, write_transaction) {
   VPackBuilder builder;
   envelope::into_builder(builder).write().set("a", 12).end("client-id").done();
 
-  auto expected = R"=([[{"a":{"op":"set", "new": 12}}, {}, "client-id"]])="_vpack;
+  auto expected =
+      R"=([[{"a":{"op":"set", "new": 12}}, {}, "client-id"]])="_vpack;
   ASSERT_EQ(builder.toJson(), expected->toJson());
 }
 
@@ -71,10 +78,9 @@ TEST(TransactionBuilderTest, write_transaction_emplace) {
   VPackBuilder builder;
   envelope::into_builder(builder)
       .write()
-      .emplace("a",
-               [](VPackBuilder& builder) {
-                 builder.add("foo", VPackValue("bar"));
-               })
+      .emplace(
+          "a",
+          [](VPackBuilder& builder) { builder.add("foo", VPackValue("bar")); })
       .end("client-id")
       .done();
 
@@ -84,9 +90,15 @@ TEST(TransactionBuilderTest, write_transaction_emplace) {
 
 TEST(TransactionBuilderTest, write_transaction_multi) {
   VPackBuilder builder;
-  envelope::into_builder(builder).write().set("a", 12).inc("b").end("client-id").done();
+  envelope::into_builder(builder)
+      .write()
+      .set("a", 12)
+      .inc("b")
+      .end("client-id")
+      .done();
 
-  auto expected = R"=([[{"a":{"op":"set", "new": 12}, "b":{"op":"increment", "delta":1}}, {}, "client-id"]])="_vpack;
+  auto expected =
+      R"=([[{"a":{"op":"set", "new": 12}, "b":{"op":"increment", "delta":1}}, {}, "client-id"]])="_vpack;
   ASSERT_EQ(builder.toJson(), expected->toJson());
 }
 
@@ -94,7 +106,8 @@ TEST(TransactionBuilderTest, write_transaction_inc) {
   VPackBuilder builder;
   envelope::into_builder(builder).write().inc("b", 5).end("client-id").done();
 
-  auto expected = R"=([[{"b":{"op":"increment", "delta":5}}, {}, "client-id"]])="_vpack;
+  auto expected =
+      R"=([[{"b":{"op":"increment", "delta":5}}, {}, "client-id"]])="_vpack;
   ASSERT_EQ(builder.toJson(), expected->toJson());
 }
 
@@ -116,7 +129,8 @@ TEST(TransactionBuilderTest, write_transaction_precs) {
       .end("client-id")
       .done();
 
-  auto expected = R"=([[{"a":{"op":"set", "new": 12}}, {"b":{"oldEmpty":true}}, "client-id"]])="_vpack;
+  auto expected =
+      R"=([[{"a":{"op":"set", "new": 12}}, {"b":{"oldEmpty":true}}, "client-id"]])="_vpack;
   ASSERT_EQ(builder.toJson(), expected->toJson());
 }
 
@@ -131,7 +145,8 @@ TEST(TransactionBuilderTest, write_transaction_precs_multi) {
       .end("client-id")
       .done();
 
-  auto expected = R"=([[{"a":{"op":"set", "new": 12}}, {"b":{"oldEmpty":true}, "c":{"old": 12}}, "client-id"]])="_vpack;
+  auto expected =
+      R"=([[{"a":{"op":"set", "new": 12}}, {"b":{"oldEmpty":true}, "c":{"old": 12}}, "client-id"]])="_vpack;
   ASSERT_EQ(builder.toJson(), expected->toJson());
 }
 
@@ -149,6 +164,7 @@ TEST(TransactionBuilderTest, multi_envelope) {
       .end()
       .done();
 
-  auto expected = R"=([[{"a":{"op":"set", "new": 12}}, {"b":{"oldEmpty":true}, "c":{"old": 12}}, "client-id"], ["a"]])="_vpack;
+  auto expected =
+      R"=([[{"a":{"op":"set", "new": 12}}, {"b":{"oldEmpty":true}, "c":{"old": 12}}, "client-id"], ["a"]])="_vpack;
   ASSERT_EQ(builder.toJson(), expected->toJson());
 }

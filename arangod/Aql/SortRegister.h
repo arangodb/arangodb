@@ -42,7 +42,8 @@ struct SortRegister {
 
   SortRegister(RegisterId reg, SortElement const& element) noexcept;
 
-  static void fill(ExecutionPlan const& /*execPlan*/, RegisterPlan const& regPlan,
+  static void fill(ExecutionPlan const& /*execPlan*/,
+                   RegisterPlan const& regPlan,
                    std::vector<SortElement> const& elements,
                    std::vector<SortRegister>& sortRegisters);
 };  // SortRegister

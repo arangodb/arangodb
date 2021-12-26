@@ -125,9 +125,10 @@ struct AnalyzersRevision {
 
 /// @brief Analyzers revisions used in query.
 /// Stores current database revision
-/// and _system database revision (analyzers from _system are accessible from other databases)
-/// If at some point we will decide to allow cross-database anayzer usage this could
-/// became more complicated. But for now  we keep it simple - store just two members
+/// and _system database revision (analyzers from _system are accessible from
+/// other databases) If at some point we will decide to allow cross-database
+/// anayzer usage this could became more complicated. But for now  we keep it
+/// simple - store just two members
 struct QueryAnalyzerRevisions {
   constexpr QueryAnalyzerRevisions(AnalyzersRevision::Revision current,
                                    AnalyzersRevision::Revision system)
@@ -159,7 +160,8 @@ struct QueryAnalyzerRevisions {
   /// @brief Gets analyzers revision to be used with specified database
   /// @param vocbase database name
   /// @return analyzers revision
-  AnalyzersRevision::Revision getVocbaseRevision(std::string_view vocbase) const noexcept;
+  AnalyzersRevision::Revision getVocbaseRevision(
+      std::string_view vocbase) const noexcept;
 
   static QueryAnalyzerRevisions QUERY_LATEST;
 
@@ -169,9 +171,10 @@ struct QueryAnalyzerRevisions {
 };
 
 std::ostream& operator<<(std::ostream& o, arangodb::RebootId const& r);
-std::ostream& operator<<(std::ostream& o, arangodb::QueryAnalyzerRevisions const& r);
+std::ostream& operator<<(std::ostream& o,
+                         arangodb::QueryAnalyzerRevisions const& r);
 
-template <>
+template<>
 struct velocypack::Extractor<arangodb::RebootId> {
   static auto extract(velocypack::Slice slice) -> RebootId {
     return RebootId{slice.getNumericValue<std::size_t>()};

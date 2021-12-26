@@ -247,7 +247,8 @@ TEST(CFpconvTest, tst_value_mchacki2) {
 
   StringBuffer buf(true);
   buf.appendDecimal(value);
-  EXPECT_EQ(std::string("56.94837631946843"), std::string(buf.c_str(), buf.length()));
+  EXPECT_EQ(std::string("56.94837631946843"),
+            std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -266,7 +267,8 @@ TEST(CFpconvTest, tst_one_third) {
 
   StringBuffer buf(true);
   buf.appendDecimal(value);
-  EXPECT_EQ(std::string("0.3333333333333333"), std::string(buf.c_str(), buf.length()));
+  EXPECT_EQ(std::string("0.3333333333333333"),
+            std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

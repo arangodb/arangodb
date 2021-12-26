@@ -39,7 +39,8 @@ struct TtlStatistics {
   uint64_t runs = 0;
   // number of documents removed
   uint64_t documentsRemoved = 0;
-  // number of times the background thread stopped prematurely because it hit the configured limit
+  // number of times the background thread stopped prematurely because it hit
+  // the configured limit
   uint64_t limitReached = 0;
 
   TtlStatistics& operator+=(TtlStatistics const& other) {
@@ -91,7 +92,8 @@ class TtlFeature final : public application_features::ApplicationFeature {
   /// the TTL thread has left the actual document removal routine
   void deactivate();
 
-  /// @brief whether or not expiring/removing outdated documents is currently turned on
+  /// @brief whether or not expiring/removing outdated documents is currently
+  /// turned on
   bool isActive() const;
 
   void statsToVelocyPack(arangodb::velocypack::Builder& out) const;

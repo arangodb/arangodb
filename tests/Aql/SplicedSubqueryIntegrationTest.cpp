@@ -76,11 +76,12 @@ class SplicedSubqueryIntegrationTest
     auto inputRegisterSet = RegIdSet{0};
     auto outputRegisterSet = RegIdSet{};
 
-    auto toKeepRegisterSet = RegIdSetStack{RegIdSet{0}, RegIdSet{0}, RegIdSet{0}};
+    auto toKeepRegisterSet =
+        RegIdSetStack{RegIdSet{0}, RegIdSet{0}, RegIdSet{0}};
 
     auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
-    auto nrOutputRegisters =
-        static_cast<RegisterCount>(inputRegisterSet.size() + outputRegisterSet.size());
+    auto nrOutputRegisters = static_cast<RegisterCount>(
+        inputRegisterSet.size() + outputRegisterSet.size());
     return RegisterInfos(inputRegisterSet, outputRegisterSet, nrInputRegisters,
                          nrOutputRegisters, {}, toKeepRegisterSet);
   }
@@ -88,13 +89,15 @@ class SplicedSubqueryIntegrationTest
     auto inputRegisterSet = RegIdSet{0};
     auto outputRegisterSet = RegIdSet{};
 
-    auto toKeepRegisterSet = RegIdSetStack{RegIdSet{0}, RegIdSet{0}, RegIdSet{0}};
+    auto toKeepRegisterSet =
+        RegIdSetStack{RegIdSet{0}, RegIdSet{0}, RegIdSet{0}};
 
     auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
-    auto nrOutputRegisters =
-        static_cast<RegisterCount>(inputRegisterSet.size() + outputRegisterSet.size());
-    return SubqueryStartExecutor::Infos(inputRegisterSet, outputRegisterSet, nrInputRegisters,
-                                        nrOutputRegisters, {}, toKeepRegisterSet);
+    auto nrOutputRegisters = static_cast<RegisterCount>(
+        inputRegisterSet.size() + outputRegisterSet.size());
+    return SubqueryStartExecutor::Infos(inputRegisterSet, outputRegisterSet,
+                                        nrInputRegisters, nrOutputRegisters, {},
+                                        toKeepRegisterSet);
   }
 
   auto makeSubqueryEndRegisterInfos(RegisterId inputRegister) -> RegisterInfos {
@@ -110,18 +113,20 @@ class SplicedSubqueryIntegrationTest
                       RegIdSet{inputRegisterSet}};
 
     auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
-    auto nrOutputRegisters =
-        static_cast<RegisterCount>(inputRegisterSet.size() + outputRegisterSet.size());
+    auto nrOutputRegisters = static_cast<RegisterCount>(
+        inputRegisterSet.size() + outputRegisterSet.size());
 
     return RegisterInfos(inputRegisterSet, outputRegisterSet, nrInputRegisters,
                          nrOutputRegisters, {}, toKeepRegisterSet);
   }
 
-  auto makeSubqueryEndExecutorInfos(RegisterId inputRegister) -> SubqueryEndExecutor::Infos {
+  auto makeSubqueryEndExecutorInfos(RegisterId inputRegister)
+      -> SubqueryEndExecutor::Infos {
     auto const outputRegister =
         RegisterId{static_cast<RegisterId::value_t>(inputRegister.value() + 1)};
 
-    return SubqueryEndExecutor::Infos(nullptr, monitor, inputRegister, outputRegister);
+    return SubqueryEndExecutor::Infos(nullptr, monitor, inputRegister,
+                                      outputRegister);
   }
 
   auto makeDoNothingRegisterInfos() -> RegisterInfos {
@@ -147,7 +152,8 @@ class SplicedSubqueryIntegrationTest
       prototype.emplace(r);
     }
 
-    return RegisterInfos(RegIdSet{0}, RegIdSet{1}, 1, 2, {}, {{prototype}, {prototype}});
+    return RegisterInfos(RegIdSet{0}, RegIdSet{1}, 1, 2, {},
+                         {{prototype}, {prototype}});
   }
 
   auto makeAssertExecutorInfos() -> LambdaExe::Infos {
@@ -159,8 +165,8 @@ class SplicedSubqueryIntegrationTest
   }
 
   auto createProduceCall() -> ProduceCall {
-    return [](AqlItemBlockInputRange& input,
-              OutputAqlItemRow& output) -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
+    return [](AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+               -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
       while (input.hasDataRow() && !output.isFull()) {
         auto const [state, row] = input.nextDataRow();
         output.cloneValueInto(1, row, AqlValue("foo"));
@@ -174,8 +180,8 @@ class SplicedSubqueryIntegrationTest
   };
 
   auto createSkipCall() -> SkipCall {
-    return [](AqlItemBlockInputRange& input,
-              AqlCall& call) -> std::tuple<ExecutorState, LambdaExe::Stats, size_t, AqlCall> {
+    return [](AqlItemBlockInputRange& input, AqlCall& call)
+               -> std::tuple<ExecutorState, LambdaExe::Stats, size_t, AqlCall> {
       while (call.shouldSkip() && input.skippedInFlight() > 0) {
         if (call.getOffset() > 0) {
           call.didSkip(input.skip(call.getOffset()));
@@ -193,7 +199,8 @@ class SplicedSubqueryIntegrationTest
         call.didSkip(1);
       }
       auto upstreamCall = AqlCall{call};
-      return {input.upstreamState(), NoStats{}, call.getSkipCount(), upstreamCall};
+      return {input.upstreamState(), NoStats{}, call.getSkipCount(),
+              upstreamCall};
     };
   };
 
@@ -201,8 +208,8 @@ class SplicedSubqueryIntegrationTest
   // skip over a subquery, the subquery's produce is not invoked
   // with data
   auto createAssertCall() -> ProduceCall {
-    return [](AqlItemBlockInputRange& input,
-              OutputAqlItemRow& output) -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
+    return [](AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+               -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
       EXPECT_FALSE(input.hasDataRow());
       NoStats stats{};
       AqlCall call{};
@@ -212,8 +219,8 @@ class SplicedSubqueryIntegrationTest
   }
 
   auto createAssertCallCall(AqlCall call) -> ProduceCall {
-    return [call](AqlItemBlockInputRange& input,
-                  OutputAqlItemRow& output) -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
+    return [call](AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+               -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
       auto clientCall = output.getClientCall();
 
       EXPECT_EQ(clientCall.offset, call.offset);
@@ -239,15 +246,17 @@ class SplicedSubqueryIntegrationTest
   }
 };
 
-template <size_t... vs>
+template<size_t... vs>
 const SubqueryExecutorSplitType splitIntoBlocks =
     SubqueryExecutorSplitType{std::vector<std::size_t>{vs...}};
-template <size_t step>
+template<size_t step>
 const SubqueryExecutorSplitType splitStep = SubqueryExecutorSplitType{step};
 
-INSTANTIATE_TEST_CASE_P(SplicedSubqueryIntegrationTest, SplicedSubqueryIntegrationTest,
-                        ::testing::Values(splitIntoBlocks<2, 3>, splitIntoBlocks<3, 4>,
-                                          splitStep<2>, splitStep<1>));
+INSTANTIATE_TEST_CASE_P(SplicedSubqueryIntegrationTest,
+                        SplicedSubqueryIntegrationTest,
+                        ::testing::Values(splitIntoBlocks<2, 3>,
+                                          splitIntoBlocks<3, 4>, splitStep<2>,
+                                          splitStep<1>));
 
 TEST_P(SplicedSubqueryIntegrationTest, single_subquery_empty_input) {
   auto helper = makeExecutorTestHelper<1, 1>();
@@ -357,7 +366,8 @@ TEST_P(SplicedSubqueryIntegrationTest, single_subquery_fullcount) {
 
 // NOTE: This test can be enabled if we can continue
 // working on the second subquery without returning to consumer
-TEST_P(SplicedSubqueryIntegrationTest, DISABLED_single_subquery_skip_produce_count) {
+TEST_P(SplicedSubqueryIntegrationTest,
+       DISABLED_single_subquery_skip_produce_count) {
   auto helper = makeExecutorTestHelper<1, 2>();
   auto call = AqlCall{2, true, 2, AqlCall::LimitType::HARD};
   helper
@@ -459,7 +469,8 @@ TEST_P(SplicedSubqueryIntegrationTest, do_nothing_in_subquery) {
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartRegisterInfos(),
                                           makeSubqueryStartExecutorInfos(),
                                           ExecutionNode::SUBQUERY_START)
-      .addConsumer<LambdaExe>(makeDoNothingRegisterInfos(), makeDoNothingExecutorInfos())
+      .addConsumer<LambdaExe>(makeDoNothingRegisterInfos(),
+                              makeDoNothingExecutorInfos())
       .addConsumer<SubqueryEndExecutor>(makeSubqueryEndRegisterInfos(0),
                                         makeSubqueryEndExecutorInfos(0),
                                         ExecutionNode::SUBQUERY_END)
@@ -477,7 +488,8 @@ TEST_P(SplicedSubqueryIntegrationTest, check_call_passes_subquery) {
   auto call = AqlCall{10};
 
   helper
-      .addConsumer<LambdaExe>(makeAssertRegisterInfos(), makeAssertExecutorInfos(call))
+      .addConsumer<LambdaExe>(makeAssertRegisterInfos(),
+                              makeAssertExecutorInfos(call))
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartRegisterInfos(),
                                           makeSubqueryStartExecutorInfos(),
                                           ExecutionNode::SUBQUERY_START)
@@ -501,7 +513,8 @@ TEST_P(SplicedSubqueryIntegrationTest, check_skipping_subquery) {
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartRegisterInfos(),
                                           makeSubqueryStartExecutorInfos(),
                                           ExecutionNode::SUBQUERY_START)
-      .addConsumer<LambdaExe>(makeAssertRegisterInfos(), makeAssertExecutorInfos())
+      .addConsumer<LambdaExe>(makeAssertRegisterInfos(),
+                              makeAssertExecutorInfos())
       .addConsumer<SubqueryEndExecutor>(makeSubqueryEndRegisterInfos(0),
                                         makeSubqueryEndExecutorInfos(0),
                                         ExecutionNode::SUBQUERY_END)
@@ -522,14 +535,16 @@ TEST_P(SplicedSubqueryIntegrationTest, check_soft_limit_subquery) {
       .addConsumer<SubqueryStartExecutor>(makeSubqueryStartRegisterInfos(),
                                           makeSubqueryStartExecutorInfos(),
                                           ExecutionNode::SUBQUERY_START)
-      .addConsumer<LambdaExe>(makeAssertRegisterInfos(), makeAssertExecutorInfos())
+      .addConsumer<LambdaExe>(makeAssertRegisterInfos(),
+                              makeAssertExecutorInfos())
       .addConsumer<SubqueryEndExecutor>(makeSubqueryEndRegisterInfos(0),
                                         makeSubqueryEndExecutorInfos(0),
                                         ExecutionNode::SUBQUERY_END)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
       .setCall(call)
-      .expectOutput({0, 1}, {{1, R"([])"}, {2, R"([])"}, {5, R"([])"}, {2, R"([])"}})
+      .expectOutput({0, 1},
+                    {{1, R"([])"}, {2, R"([])"}, {5, R"([])"}, {2, R"([])"}})
       .expectSkipped(0)
       .expectedState(ExecutionState::HASMORE)
       .run();

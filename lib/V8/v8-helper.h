@@ -34,7 +34,8 @@
 
 namespace arangodb {
 
-inline std::string stringify(v8::Isolate* isolate, v8::Handle<v8::Value> value) {
+inline std::string stringify(v8::Isolate* isolate,
+                             v8::Handle<v8::Value> value) {
   auto context = TRI_IGETC;
   // function converts js object to string using JSON.stringify
   if (value.IsEmpty()) {
@@ -52,8 +53,8 @@ inline std::string stringify(v8::Isolate* isolate, v8::Handle<v8::Value> value) 
           .FromMaybe(v8::Local<v8::Value>())
           .As<v8::Function>();
   v8::Local<v8::Value> args[1] = {value};
-  v8::Local<v8::Value> jsString =
-      stringify->Call(TRI_IGETC, json, 1, args).FromMaybe(v8::Local<v8::Value>());
+  v8::Local<v8::Value> jsString = stringify->Call(TRI_IGETC, json, 1, args)
+                                      .FromMaybe(v8::Local<v8::Value>());
   v8::String::Utf8Value const rv(isolate, jsString);
   return std::string(*rv, rv.length());
 }
@@ -124,9 +125,9 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
   v8::Handle<v8::Value> exception = tryCatch.Exception();
   if (exception->IsString()) {
     // the error is a plain string
-    std::string errorMessage =
-        *v8::String::Utf8Value(isolate, exception->ToString(TRI_IGETC).FromMaybe(
-                                            v8::Local<v8::String>()));
+    std::string errorMessage = *v8::String::Utf8Value(
+        isolate,
+        exception->ToString(TRI_IGETC).FromMaybe(v8::Local<v8::String>()));
     std::get<1>(rv) = true;
     std::get<2>(rv).reset(errorCode, errorMessage);
     tryCatch.Reset();

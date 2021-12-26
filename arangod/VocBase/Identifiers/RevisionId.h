@@ -94,13 +94,15 @@ class RevisionId : public arangodb::basics::Identifier {
   static RevisionId fromString(std::string const& ridStr);
 
   /// @brief Convert a string into a revision ID, returns none() if invalid
-  static RevisionId fromString(std::string const& ridStr, bool& isOld, bool warn);
+  static RevisionId fromString(std::string const& ridStr, bool& isOld,
+                               bool warn);
 
   /// @brief Convert a string into a revision ID, no check variant
   static RevisionId fromString(char const* p, size_t len, bool warn);
 
   /// @brief Convert a string into a revision ID, returns none() if invalid
-  static RevisionId fromString(char const* p, size_t len, bool& isOld, bool warn);
+  static RevisionId fromString(char const* p, size_t len, bool& isOld,
+                               bool warn);
 
   /// @brief extract revision from slice; expects either an integer or string,
   /// or an object with a string or integer _rev attribute

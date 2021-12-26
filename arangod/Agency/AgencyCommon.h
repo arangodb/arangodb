@@ -59,8 +59,12 @@ struct read_ret_t {
 
   read_ret_t(bool a, std::string const& id) : accepted(a), redirect(id) {}
 
-  read_ret_t(bool a, std::string const& id, std::vector<bool>&& suc, query_t&& res)
-      : accepted(a), redirect(id), success(std::move(suc)), result(std::move(res)) {}
+  read_ret_t(bool a, std::string const& id, std::vector<bool>&& suc,
+             query_t&& res)
+      : accepted(a),
+        redirect(id),
+        success(std::move(suc)),
+        result(std::move(res)) {}
 };
 
 struct write_ret_t {
@@ -70,7 +74,8 @@ struct write_ret_t {
   std::vector<index_t> indices;  // Indices of log entries (if any) to wait for
   write_ret_t() : accepted(false), redirect("") {}
   write_ret_t(bool a, std::string const& id) : accepted(a), redirect(id) {}
-  write_ret_t(bool a, std::string const& id, std::vector<apply_ret_t> const& app,
+  write_ret_t(bool a, std::string const& id,
+              std::vector<apply_ret_t> const& app,
               std::vector<index_t> const& idx)
       : accepted(a), redirect(id), applied(app), indices(idx) {}
   bool successful() const {
@@ -80,7 +85,8 @@ struct write_ret_t {
 };
 
 inline std::ostream& operator<<(std::ostream& o, write_ret_t const& w) {
-  o << "accepted: " << w.accepted << ", redirect: " << w.redirect << ", indices: [";
+  o << "accepted: " << w.accepted << ", redirect: " << w.redirect
+    << ", indices: [";
   for (const auto& i : w.indices) {
     o << i << ", ";
   }
@@ -97,7 +103,8 @@ struct trans_ret_t {
   trans_ret_t() : accepted(false), redirect(""), maxind(0), failed(0) {}
   trans_ret_t(bool a, std::string const& id)
       : accepted(a), redirect(id), maxind(0), failed(0) {}
-  trans_ret_t(bool a, std::string const& id, index_t mi, size_t f, query_t const& res)
+  trans_ret_t(bool a, std::string const& id, index_t mi, size_t f,
+              query_t const& res)
       : accepted(a), redirect(id), maxind(mi), failed(f), result(res) {}
 };
 
@@ -113,14 +120,19 @@ struct log_t {
         uint64_t const& m = 0)
       : index(idx),
         term(t),
-        entry(std::make_shared<arangodb::velocypack::Buffer<uint8_t>>(*e.get())),
+        entry(
+            std::make_shared<arangodb::velocypack::Buffer<uint8_t>>(*e.get())),
         clientId(clientId),
         timestamp(m) {}
 
   /// @brief creates a log entry, taking over the buffer
   log_t(index_t idx, term_t t, buffer_t&& e, std::string const& clientId,
         uint64_t const& m = 0)
-      : index(idx), term(t), entry(std::move(e)), clientId(clientId), timestamp(m) {}
+      : index(idx),
+        term(t),
+        entry(std::move(e)),
+        clientId(clientId),
+        timestamp(m) {}
 
   void toVelocyPack(velocypack::Builder& builder) const {
     builder.openObject();
@@ -135,7 +147,8 @@ struct log_t {
   }
 
   friend std::ostream& operator<<(std::ostream& o, log_t const& l) {
-    o << l.index << " " << l.term << " " << VPackSlice(l.entry->data()).toJson() << " "
+    o << l.index << " " << l.term << " " << VPackSlice(l.entry->data()).toJson()
+      << " "
       << " " << l.clientId << " " << l.timestamp.count();
     return o;
   }
@@ -150,8 +163,10 @@ struct priv_rpc_ret_t {
 }  // namespace consensus
 }  // namespace arangodb
 
-inline std::ostream& operator<<(std::ostream& o, arangodb::consensus::log_t const& l) {
-  o << l.index << " " << l.term << " " << VPackSlice(l.entry->data()).toJson() << " "
+inline std::ostream& operator<<(std::ostream& o,
+                                arangodb::consensus::log_t const& l) {
+  o << l.index << " " << l.term << " " << VPackSlice(l.entry->data()).toJson()
+    << " "
     << " " << l.clientId << " " << l.timestamp.count();
   return o;
 }

@@ -58,7 +58,7 @@ namespace arangodb {
 namespace pregel {
 
 /// continuous memory buffer with a fixed capacity
-template <typename T>
+template<typename T>
 struct TypedBuffer {
   static_assert(std::is_default_constructible<T>::value,
                 "Stored type T has to be default constructible");
@@ -98,8 +98,9 @@ struct TypedBuffer {
     return new (_end++) T();
   }
 
-  template <typename U = T>
-  typename std::enable_if<std::is_trivially_constructible<U>::value>::type advance(std::size_t value) noexcept {
+  template<typename U = T>
+  typename std::enable_if<std::is_trivially_constructible<U>::value>::type
+  advance(std::size_t value) noexcept {
     TRI_ASSERT((_end + value) <= _capacity);
     _end += value;
   }
@@ -116,7 +117,7 @@ struct TypedBuffer {
   T* _capacity;  // max capacity
 };
 
-template <typename T>
+template<typename T>
 class VectorTypedBuffer : public TypedBuffer<T> {
  public:
   explicit VectorTypedBuffer(size_t capacity) : TypedBuffer<T>() {
@@ -152,7 +153,7 @@ class VectorTypedBuffer : public TypedBuffer<T> {
 
 /// Portable read-only memory mapping (Windows and Linux)
 /** Filesize limited by size_t, usually 2^32 or 2^64 */
-template <typename T>
+template<typename T>
 class MappedFileBuffer : public TypedBuffer<T> {
   std::string _logPrefix;  // prefix used for logging
   std::string _filename;   // underlying filename
@@ -177,7 +178,8 @@ class MappedFileBuffer : public TypedBuffer<T> {
     size_t pageSize = PageSize::getValue();
     TRI_ASSERT(pageSize >= 256);
     // use multiples of page-size
-    _mappedSize = (size_t)(((_mappedSize + pageSize - 1) / pageSize) * pageSize);
+    _mappedSize =
+        (size_t)(((_mappedSize + pageSize - 1) / pageSize) * pageSize);
 
     _fd = createFile(_mappedSize);
 
@@ -244,7 +246,8 @@ class MappedFileBuffer : public TypedBuffer<T> {
       return;
     }
 
-    LOG_TOPIC("45530", DEBUG, Logger::PREGEL) << _logPrefix << "closing mmap " << label();
+    LOG_TOPIC("45530", DEBUG, Logger::PREGEL)
+        << _logPrefix << "closing mmap " << label();
 
     // destroy all elements in the buffer
     for (auto* p = this->_begin; p != this->_end; ++p) {
@@ -261,7 +264,8 @@ class MappedFileBuffer : public TypedBuffer<T> {
       TRI_ASSERT(_fd >= 0);
       if (auto res = TRI_CLOSE(_fd); res != 0) {
         LOG_TOPIC("00e1d", WARN, arangodb::Logger::PREGEL)
-            << _logPrefix << "unable to close pregel mapped " << label() << ": " << res;
+            << _logPrefix << "unable to close pregel mapped " << label() << ": "
+            << res;
       }
 
       removeFile();
@@ -292,7 +296,8 @@ class MappedFileBuffer : public TypedBuffer<T> {
     }
 
     double tt = TRI_microtime();
-    int64_t tt2 = arangodb::RandomGenerator::interval((int64_t)0LL, (int64_t)0x7fffffffffffffffLL);
+    int64_t tt2 = arangodb::RandomGenerator::interval(
+        (int64_t)0LL, (int64_t)0x7fffffffffffffffLL);
 
     std::string file =
         "pregel-" + std::to_string(uint64_t(Thread::currentProcessId())) + "-" +
@@ -325,16 +330,18 @@ class MappedFileBuffer : public TypedBuffer<T> {
       // try creating a temporary file with O_TMPFILE first.
       // this may be unsupported.
       // in that case, we will fall back to creating a regular (non-temp) file.
-      fd = TRI_CREATE(_filename.c_str(),
-                      O_EXCL | O_RDWR | TRI_O_CLOEXEC | TRI_NOATIME | TRI_O_TMPFILE,
-                      S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+      fd = TRI_CREATE(
+          _filename.c_str(),
+          O_EXCL | O_RDWR | TRI_O_CLOEXEC | TRI_NOATIME | TRI_O_TMPFILE,
+          S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
       // if fd is < 0, we will try without O_TMPFILE below.
     }
 
     if (fd < 0) {
       _temporary = false;
       _filename = buildFilename(_temporary);
-      fd = TRI_CREATE(_filename.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC | TRI_NOATIME,
+      fd = TRI_CREATE(_filename.c_str(),
+                      O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC | TRI_NOATIME,
                       S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
     }
 
@@ -353,13 +360,15 @@ class MappedFileBuffer : public TypedBuffer<T> {
       if (errno == ENOSPC) {
         TRI_set_errno(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
         LOG_TOPIC("f7530", ERR, arangodb::Logger::PREGEL)
-            << _logPrefix << "cannot create " << label() << ": " << TRI_last_error();
+            << _logPrefix << "cannot create " << label() << ": "
+            << TRI_last_error();
       } else {
         TRI_SYSTEM_ERROR();
 
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC("53a75", ERR, arangodb::Logger::PREGEL)
-            << _logPrefix << "cannot create " << label() << ": " << TRI_GET_ERRORBUF;
+            << _logPrefix << "cannot create " << label() << ": "
+            << TRI_GET_ERRORBUF;
       }
 
       _filename.clear();
@@ -412,7 +421,8 @@ class MappedFileBuffer : public TypedBuffer<T> {
             TRI_SYSTEM_ERROR();
             TRI_set_errno(TRI_ERROR_SYS_ERROR);
             LOG_TOPIC("2c4a6", ERR, arangodb::Logger::PREGEL)
-                << _logPrefix << "cannot create " << label() << ": " << TRI_GET_ERRORBUF;
+                << _logPrefix << "cannot create " << label() << ": "
+                << TRI_GET_ERRORBUF;
           }
 
           TRI_CLOSE(fd);
@@ -434,7 +444,8 @@ class MappedFileBuffer : public TypedBuffer<T> {
       TRI_CLOSE(fd);
 
       LOG_TOPIC("dfc52", ERR, arangodb::Logger::PREGEL)
-          << _logPrefix << "cannot seek in " << label() << ": " << TRI_GET_ERRORBUF;
+          << _logPrefix << "cannot seek in " << label() << ": "
+          << TRI_GET_ERRORBUF;
 
       removeFile();
       _filename.clear();

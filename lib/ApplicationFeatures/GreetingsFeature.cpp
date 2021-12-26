@@ -34,7 +34,8 @@
 
 namespace arangodb {
 
-GreetingsFeature::GreetingsFeature(application_features::ApplicationServer& server)
+GreetingsFeature::GreetingsFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Greetings") {
   setOptional(false);
   startsAfter<LoggerFeature>();

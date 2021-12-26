@@ -29,13 +29,15 @@
 
 namespace arangodb {
 
-class QueryRegistryFeature final : public application_features::ApplicationFeature {
+class QueryRegistryFeature final
+    : public application_features::ApplicationFeature {
  public:
   static aql::QueryRegistry* registry() {
     return QUERY_REGISTRY.load(std::memory_order_acquire);
   }
 
-  explicit QueryRegistryFeature(application_features::ApplicationServer& server);
+  explicit QueryRegistryFeature(
+      application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

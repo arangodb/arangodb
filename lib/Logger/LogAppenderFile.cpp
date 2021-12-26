@@ -63,22 +63,25 @@ LogAppenderStream::LogAppenderStream(std::string const& filename, int fd)
       _unicodeEscape(Logger::getUseUnicodeEscaped()) {
   if (_controlEscape) {
     if (_unicodeEscape) {
-      _escaper = std::make_unique<Escaper<ControlCharsEscaper, UnicodeCharsEscaper>>();
+      _escaper =
+          std::make_unique<Escaper<ControlCharsEscaper, UnicodeCharsEscaper>>();
     } else {
-      _escaper = std::make_unique<Escaper<ControlCharsEscaper, UnicodeCharsRetainer>>();
+      _escaper = std::make_unique<
+          Escaper<ControlCharsEscaper, UnicodeCharsRetainer>>();
     }
   } else {
     if (_unicodeEscape) {
-      _escaper =
-          std::make_unique<Escaper<ControlCharsSuppressor, UnicodeCharsEscaper>>();
+      _escaper = std::make_unique<
+          Escaper<ControlCharsSuppressor, UnicodeCharsEscaper>>();
     } else {
-      _escaper =
-          std::make_unique<Escaper<ControlCharsSuppressor, UnicodeCharsRetainer>>();
+      _escaper = std::make_unique<
+          Escaper<ControlCharsSuppressor, UnicodeCharsRetainer>>();
     }
   }
 }
 
-size_t LogAppenderStream::determineOutputBufferSize(std::string const& message) const {
+size_t LogAppenderStream::determineOutputBufferSize(
+    std::string const& message) const {
   return _escaper->determineOutputBufferSize(message) +
          2;  //+2 bytes because it needs to end with '\n' and '\0'
 }
@@ -118,7 +121,8 @@ void LogAppenderStream::logMessage(LogMessage const& message) {
   size_t length = writeIntoOutputBuffer(message._message);
   TRI_ASSERT(length <= neededBufferSize);
 
-  this->writeLogMessage(message._level, message._topicId, _buffer.get(), length);
+  this->writeLogMessage(message._level, message._topicId, _buffer.get(),
+                        length);
 
   if (_bufferSize > maxBufferSize) {
     // free the buffer so the Logger is not hogging so much memory
@@ -143,8 +147,9 @@ LogAppenderFile::LogAppenderFile(std::string const& filename)
 
     if (_fd == -1) {
       // no existing appender found yet
-      int fd = TRI_CREATE(_filename.c_str(),
-                          O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC, _fileMode);
+      int fd =
+          TRI_CREATE(_filename.c_str(),
+                     O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC, _fileMode);
 
       if (fd < 0) {
         TRI_ERRORBUF;
@@ -246,8 +251,9 @@ void LogAppenderFile::reopenAll() {
     TRI_RenameFile(filename.c_str(), backup.c_str());
 
     // open new log file
-    int fd = TRI_CREATE(filename.c_str(),
-                        O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC, _fileMode);
+    int fd =
+        TRI_CREATE(filename.c_str(),
+                   O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC, _fileMode);
 
     if (fd < 0) {
       TRI_RenameFile(backup.c_str(), filename.c_str());
@@ -296,7 +302,8 @@ void LogAppenderFile::closeAll() {
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-std::vector<std::tuple<int, std::string, LogAppenderFile*>> LogAppenderFile::getAppenders() {
+std::vector<std::tuple<int, std::string, LogAppenderFile*>>
+LogAppenderFile::getAppenders() {
   std::vector<std::tuple<int, std::string, LogAppenderFile*>> result;
 
   std::unique_lock<std::mutex> guard(_openAppendersMutex);
@@ -308,7 +315,8 @@ std::vector<std::tuple<int, std::string, LogAppenderFile*>> LogAppenderFile::get
 }
 
 void LogAppenderFile::setAppenders(
-    std::vector<std::tuple<int, std::string, LogAppenderFile*>> const& appenders) {
+    std::vector<std::tuple<int, std::string, LogAppenderFile*>> const&
+        appenders) {
   std::unique_lock<std::mutex> guard(_openAppendersMutex);
 
   _openAppenders.clear();
@@ -336,9 +344,10 @@ void LogAppenderStdStream::writeLogMessage(LogLevel level, size_t topicId,
   writeLogMessage(_fd, _useColors, level, topicId, buffer, len, false);
 }
 
-void LogAppenderStdStream::writeLogMessage(int fd, bool useColors, LogLevel level,
-                                           size_t /*topicId*/, char const* buffer,
-                                           size_t len, bool appendNewline) {
+void LogAppenderStdStream::writeLogMessage(int fd, bool useColors,
+                                           LogLevel level, size_t /*topicId*/,
+                                           char const* buffer, size_t len,
+                                           bool appendNewline) {
   if (!allowStdLogging()) {
     return;
   }

@@ -1,7 +1,8 @@
 #line 16 "Aql/tokens.ll"
 #include <stdint.h>
 #if (_MSC_VER >= 1)
-// fix ret_val = EOB_ACT_LAST_MATCH later on, its generated, we can't control this.
+// fix ret_val = EOB_ACT_LAST_MATCH later on, its generated, we can't control
+// this.
 #pragma warning(disable : 4267)
 #endif
 
@@ -395,7 +396,8 @@ typedef void* yyscan_t;
 #endif /* __ia64__ */
 #endif
 
-/* The state buf must be large enough to hold one state per character in the main buffer.
+/* The state buf must be large enough to hold one state per character in the
+ * main buffer.
  */
 #define YY_STATE_BUF_SIZE ((YY_BUF_SIZE + 2) * sizeof(yy_state_type))
 
@@ -413,12 +415,12 @@ typedef size_t yy_size_t;
 #define EOB_ACT_END_OF_FILE 1
 #define EOB_ACT_LAST_MATCH 2
 
-/* Note: We specifically omit the test for yy_rule_can_match_eol because it requires
- *       access to the local variable yy_act. Since yyless() is a macro, it would break
- *       existing scanners that call yyless() from OUTSIDE yylex.
- *       One obvious solution it to make yy_act a global. I tried that, and saw
- *       a 5% performance hit in a non-yylineno scanner, because yy_act is
- *       normally declared as a register variable-- so it is not worth it.
+/* Note: We specifically omit the test for yy_rule_can_match_eol because it
+ * requires access to the local variable yy_act. Since yyless() is a macro, it
+ * would break existing scanners that call yyless() from OUTSIDE yylex. One
+ * obvious solution it to make yy_act a global. I tried that, and saw a 5%
+ * performance hit in a non-yylineno scanner, because yy_act is normally
+ * declared as a register variable-- so it is not worth it.
  */
 #define YY_LESS_LINENO(n)                  \
   do {                                     \
@@ -544,21 +546,23 @@ void* yyrealloc(void*, yy_size_t, yyscan_t yyscanner);
 void yyfree(void*, yyscan_t yyscanner);
 
 #define yy_new_buffer yy_create_buffer
-#define yy_set_interactive(is_interactive)                                       \
-  {                                                                              \
-    if (!YY_CURRENT_BUFFER) {                                                    \
-      yyensure_buffer_stack(yyscanner);                                          \
-      YY_CURRENT_BUFFER_LVALUE = yy_create_buffer(yyin, YY_BUF_SIZE, yyscanner); \
-    }                                                                            \
-    YY_CURRENT_BUFFER_LVALUE->yy_is_interactive = is_interactive;                \
+#define yy_set_interactive(is_interactive)                        \
+  {                                                               \
+    if (!YY_CURRENT_BUFFER) {                                     \
+      yyensure_buffer_stack(yyscanner);                           \
+      YY_CURRENT_BUFFER_LVALUE =                                  \
+          yy_create_buffer(yyin, YY_BUF_SIZE, yyscanner);         \
+    }                                                             \
+    YY_CURRENT_BUFFER_LVALUE->yy_is_interactive = is_interactive; \
   }
-#define yy_set_bol(at_bol)                                                       \
-  {                                                                              \
-    if (!YY_CURRENT_BUFFER) {                                                    \
-      yyensure_buffer_stack(yyscanner);                                          \
-      YY_CURRENT_BUFFER_LVALUE = yy_create_buffer(yyin, YY_BUF_SIZE, yyscanner); \
-    }                                                                            \
-    YY_CURRENT_BUFFER_LVALUE->yy_at_bol = at_bol;                                \
+#define yy_set_bol(at_bol)                                \
+  {                                                       \
+    if (!YY_CURRENT_BUFFER) {                             \
+      yyensure_buffer_stack(yyscanner);                   \
+      YY_CURRENT_BUFFER_LVALUE =                          \
+          yy_create_buffer(yyin, YY_BUF_SIZE, yyscanner); \
+    }                                                     \
+    YY_CURRENT_BUFFER_LVALUE->yy_at_bol = at_bol;         \
   }
 #define YY_AT_BOL() (YY_CURRENT_BUFFER_LVALUE->yy_at_bol)
 
@@ -573,7 +577,8 @@ typedef int yy_state_type;
 #define yytext_ptr yytext_r
 
 static yy_state_type yy_get_previous_state(yyscan_t yyscanner);
-static yy_state_type yy_try_NUL_trans(yy_state_type current_state, yyscan_t yyscanner);
+static yy_state_type yy_try_NUL_trans(yy_state_type current_state,
+                                      yyscan_t yyscanner);
 static int yy_get_next_buffer(yyscan_t yyscanner);
 static void yynoreturn yy_fatal_error(const char* msg, yyscan_t yyscanner);
 
@@ -634,12 +639,11 @@ static const YY_CHAR yy_ec[256] = {
     1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
     1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1};
 
-static const YY_CHAR yy_meta[84] = {0, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1,
-                                    1, 1, 1, 1, 4, 4, 4, 1, 1, 1, 1, 1, 5, 6,
-                                    6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-                                    7, 7, 7, 7, 7, 7, 7, 7, 7, 1, 1, 1, 8, 1,
-                                    6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7,
-                                    7, 7, 7, 7, 7, 7, 7, 7, 1, 1, 1, 1, 1, 1};
+static const YY_CHAR yy_meta[84] = {
+    0, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 4, 4, 4,
+    1, 1, 1, 1, 1, 5, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 1, 1, 1, 8, 1, 6, 6, 6, 6, 6, 6, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 1, 1, 1, 1, 1, 1};
 
 static const flex_int16_t yy_base[312] = {
     0,    0,    0,    81,   82,   83,   86,   87,   88,   89,   90,   338,
@@ -1018,16 +1022,16 @@ class Parser;
 
 #define YY_NO_INPUT 1
 
-#define YY_INPUT(resultBuffer, resultState, maxBytesToRead)                        \
-  {                                                                                \
-    size_t length =                                                                \
-        std::min(yyextra->remainingLength(), static_cast<size_t>(maxBytesToRead)); \
-    if (length > 0) {                                                              \
-      yyextra->fillBuffer(resultBuffer, length);                                   \
-      resultState = length;                                                        \
-    } else {                                                                       \
-      resultState = YY_NULL;                                                       \
-    }                                                                              \
+#define YY_INPUT(resultBuffer, resultState, maxBytesToRead)        \
+  {                                                                \
+    size_t length = std::min(yyextra->remainingLength(),           \
+                             static_cast<size_t>(maxBytesToRead)); \
+    if (length > 0) {                                              \
+      yyextra->fillBuffer(resultBuffer, length);                   \
+      resultState = length;                                        \
+    } else {                                                       \
+      resultState = YY_NULL;                                       \
+    }                                                              \
   }
 
 #define INITIAL 0
@@ -1055,7 +1059,8 @@ struct yyguts_t {
   /* User-defined. Not touched by flex. */
   YY_EXTRA_TYPE yyextra_r;
 
-  /* The rest are the same as the globals declared in the non-reentrant scanner. */
+  /* The rest are the same as the globals declared in the non-reentrant scanner.
+   */
   FILE *yyin_r, *yyout_r;
   size_t yy_buffer_stack_top;       /**< index of top of stack. */
   size_t yy_buffer_stack_max;       /**< capacity of stack. */
@@ -1198,26 +1203,27 @@ static int input(yyscan_t yyscanner);
  * is returned in "result".
  */
 #ifndef YY_INPUT
-#define YY_INPUT(buf, result, max_size)                                                     \
-  if (YY_CURRENT_BUFFER_LVALUE->yy_is_interactive) {                                        \
-    int c = '*';                                                                            \
-    int n;                                                                                  \
-    for (n = 0; n < max_size && (c = getc(yyin)) != EOF && c != '\n'; ++n)                  \
-      buf[n] = (char)c;                                                                     \
-    if (c == '\n') buf[n++] = (char)c;                                                      \
-    if (c == EOF && ferror(yyin))                                                           \
-      YY_FATAL_ERROR("input in flex scanner failed");                                       \
-    result = n;                                                                             \
-  } else {                                                                                  \
-    errno = 0;                                                                              \
-    while ((result = (int)fread(buf, 1, (yy_size_t)max_size, yyin)) == 0 && ferror(yyin)) { \
-      if (errno != EINTR) {                                                                 \
-        YY_FATAL_ERROR("input in flex scanner failed");                                     \
-        break;                                                                              \
-      }                                                                                     \
-      errno = 0;                                                                            \
-      clearerr(yyin);                                                                       \
-    }                                                                                       \
+#define YY_INPUT(buf, result, max_size)                                     \
+  if (YY_CURRENT_BUFFER_LVALUE->yy_is_interactive) {                        \
+    int c = '*';                                                            \
+    int n;                                                                  \
+    for (n = 0; n < max_size && (c = getc(yyin)) != EOF && c != '\n'; ++n)  \
+      buf[n] = (char)c;                                                     \
+    if (c == '\n') buf[n++] = (char)c;                                      \
+    if (c == EOF && ferror(yyin))                                           \
+      YY_FATAL_ERROR("input in flex scanner failed");                       \
+    result = n;                                                             \
+  } else {                                                                  \
+    errno = 0;                                                              \
+    while ((result = (int)fread(buf, 1, (yy_size_t)max_size, yyin)) == 0 && \
+           ferror(yyin)) {                                                  \
+      if (errno != EINTR) {                                                 \
+        YY_FATAL_ERROR("input in flex scanner failed");                     \
+        break;                                                              \
+      }                                                                     \
+      errno = 0;                                                            \
+      clearerr(yyin);                                                       \
+    }                                                                       \
   }
 
 #endif
@@ -1248,7 +1254,8 @@ static int input(yyscan_t yyscanner);
 #ifndef YY_DECL
 #define YY_DECL_IS_OURS 1
 
-extern int yylex(YYSTYPE* yylval_param, YYLTYPE* yylloc_param, yyscan_t yyscanner);
+extern int yylex(YYSTYPE* yylval_param, YYLTYPE* yylloc_param,
+                 yyscan_t yyscanner);
 
 #define YY_DECL \
   int yylex(YYSTYPE* yylval_param, YYLTYPE* yylloc_param, yyscan_t yyscanner)
@@ -1304,7 +1311,8 @@ YY_DECL {
   {
     /* ---------------------------------------------------------------------------
      * language keywords
-     * --------------------------------------------------------------------------- */
+     * ---------------------------------------------------------------------------
+     */
 
     while (/*CONSTCOND*/ 1) /* loops until end-of-file is reached */
     {
@@ -1461,7 +1469,8 @@ YY_DECL {
           YY_BREAK
         /* ---------------------------------------------------------------------------
          * predefined type literals
-         * --------------------------------------------------------------------------- */
+         * ---------------------------------------------------------------------------
+         */
         case 34:
           YY_RULE_SETUP { return T_NULL; }
           YY_BREAK
@@ -1473,7 +1482,8 @@ YY_DECL {
           YY_BREAK
         /* ---------------------------------------------------------------------------
          * operators
-         * --------------------------------------------------------------------------- */
+         * ---------------------------------------------------------------------------
+         */
         case 37:
           YY_RULE_SETUP { return T_REGEX_MATCH; }
           YY_BREAK
@@ -1539,7 +1549,8 @@ YY_DECL {
           YY_BREAK
         /* ---------------------------------------------------------------------------
          * punctuation
-         * --------------------------------------------------------------------------- */
+         * ---------------------------------------------------------------------------
+         */
         case 58:
           YY_RULE_SETUP { return T_COMMA; }
           YY_BREAK
@@ -1563,7 +1574,8 @@ YY_DECL {
           YY_BREAK
         /* ---------------------------------------------------------------------------
          * identifiers
-         * --------------------------------------------------------------------------- */
+         * ---------------------------------------------------------------------------
+         */
         case 65:
           YY_RULE_SETUP {
             /* unquoted string */
@@ -1585,20 +1597,24 @@ YY_DECL {
             /* end of backtick-enclosed string */
             BEGIN(INITIAL);
             size_t outLength;
-            yylval->strval.value = yyextra->ast()->resources().registerEscapedString(
-                yyextra->marker(),
-                yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 1,
-                outLength);
+            yylval->strval.value =
+                yyextra->ast()->resources().registerEscapedString(
+                    yyextra->marker(),
+                    yyextra->offset() -
+                        (yyextra->marker() - yyextra->queryStringStart()) - 1,
+                    outLength);
             yylval->strval.length = outLength;
             return T_STRING;
           }
           YY_BREAK
         case 68:
-          YY_RULE_SETUP { /* character escaped by backslash */ }
+          YY_RULE_SETUP { /* character escaped by backslash */
+          }
           YY_BREAK
         case 69:
           /* rule 69 can match eol */
-          YY_RULE_SETUP { /* newline character inside backtick */ }
+          YY_RULE_SETUP { /* newline character inside backtick */
+          }
           YY_BREAK
         case YY_STATE_EOF(BACKTICK): {
           auto parser = yyextra;
@@ -1608,7 +1624,8 @@ YY_DECL {
         }
           YY_BREAK
         case 70:
-          YY_RULE_SETUP { /* any character (except newline) inside backtick */ }
+          YY_RULE_SETUP { /* any character (except newline) inside backtick */
+          }
           YY_BREAK
         case 71:
           YY_RULE_SETUP {
@@ -1622,20 +1639,24 @@ YY_DECL {
             /* end of forwardtick-enclosed string */
             BEGIN(INITIAL);
             size_t outLength;
-            yylval->strval.value = yyextra->ast()->resources().registerEscapedString(
-                yyextra->marker(),
-                yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 2,
-                outLength);
+            yylval->strval.value =
+                yyextra->ast()->resources().registerEscapedString(
+                    yyextra->marker(),
+                    yyextra->offset() -
+                        (yyextra->marker() - yyextra->queryStringStart()) - 2,
+                    outLength);
             yylval->strval.length = outLength;
             return T_STRING;
           }
           YY_BREAK
         case 73:
-          YY_RULE_SETUP { /* character escaped by backslash */ }
+          YY_RULE_SETUP { /* character escaped by backslash */
+          }
           YY_BREAK
         case 74:
           /* rule 74 can match eol */
-          YY_RULE_SETUP { /* newline character inside forwardtick */ }
+          YY_RULE_SETUP { /* newline character inside forwardtick */
+          }
           YY_BREAK
         case YY_STATE_EOF(FORWARDTICK): {
           auto parser = yyextra;
@@ -1651,7 +1672,8 @@ YY_DECL {
           YY_BREAK
         /* ---------------------------------------------------------------------------
          * strings
-         * --------------------------------------------------------------------------- */
+         * ---------------------------------------------------------------------------
+         */
         case 76:
           YY_RULE_SETUP {
             yyextra->marker(yyextra->queryStringStart() + yyextra->offset());
@@ -1663,20 +1685,24 @@ YY_DECL {
             /* end of quote-enclosed string */
             BEGIN(INITIAL);
             size_t outLength;
-            yylval->strval.value = yyextra->ast()->resources().registerEscapedString(
-                yyextra->marker(),
-                yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 1,
-                outLength);
+            yylval->strval.value =
+                yyextra->ast()->resources().registerEscapedString(
+                    yyextra->marker(),
+                    yyextra->offset() -
+                        (yyextra->marker() - yyextra->queryStringStart()) - 1,
+                    outLength);
             yylval->strval.length = outLength;
             return T_QUOTED_STRING;
           }
           YY_BREAK
         case 78:
-          YY_RULE_SETUP { /* character escaped by backslash */ }
+          YY_RULE_SETUP { /* character escaped by backslash */
+          }
           YY_BREAK
         case 79:
           /* rule 79 can match eol */
-          YY_RULE_SETUP { /* newline character inside quote */ }
+          YY_RULE_SETUP { /* newline character inside quote */
+          }
           YY_BREAK
         case YY_STATE_EOF(DOUBLE_QUOTE): {
           auto parser = yyextra;
@@ -1686,7 +1712,8 @@ YY_DECL {
         }
           YY_BREAK
         case 80:
-          YY_RULE_SETUP { /* any character (except newline) inside quote */ }
+          YY_RULE_SETUP { /* any character (except newline) inside quote */
+          }
           YY_BREAK
         case 81:
           YY_RULE_SETUP {
@@ -1699,20 +1726,24 @@ YY_DECL {
             /* end of quote-enclosed string */
             BEGIN(INITIAL);
             size_t outLength;
-            yylval->strval.value = yyextra->ast()->resources().registerEscapedString(
-                yyextra->marker(),
-                yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 1,
-                outLength);
+            yylval->strval.value =
+                yyextra->ast()->resources().registerEscapedString(
+                    yyextra->marker(),
+                    yyextra->offset() -
+                        (yyextra->marker() - yyextra->queryStringStart()) - 1,
+                    outLength);
             yylval->strval.length = outLength;
             return T_QUOTED_STRING;
           }
           YY_BREAK
         case 83:
-          YY_RULE_SETUP { /* character escaped by backslash */ }
+          YY_RULE_SETUP { /* character escaped by backslash */
+          }
           YY_BREAK
         case 84:
           /* rule 84 can match eol */
-          YY_RULE_SETUP { /* newline character inside quote */ }
+          YY_RULE_SETUP { /* newline character inside quote */
+          }
           YY_BREAK
         case YY_STATE_EOF(SINGLE_QUOTE): {
           auto parser = yyextra;
@@ -1722,11 +1753,13 @@ YY_DECL {
         }
           YY_BREAK
         case 85:
-          YY_RULE_SETUP { /* any character (except newline) inside quote */ }
+          YY_RULE_SETUP { /* any character (except newline) inside quote */
+          }
           YY_BREAK
         /* ---------------------------------------------------------------------------
          * number literals
-         * --------------------------------------------------------------------------- */
+         * ---------------------------------------------------------------------------
+         */
         case 86:
           YY_RULE_SETUP {
             /* a numeric integer value, base 10 (decimal) */
@@ -1734,8 +1767,8 @@ YY_DECL {
             auto parser = yyextra;
 
             bool valid;
-            int64_t value1 =
-                arangodb::NumberUtils::atoi<int64_t>(yytext, yytext + yyleng, valid);
+            int64_t value1 = arangodb::NumberUtils::atoi<int64_t>(
+                yytext, yytext + yyleng, valid);
 
             if (valid) {
               node = parser->ast()->createNodeValueInt(value1);
@@ -1744,9 +1777,10 @@ YY_DECL {
               double value2 = TRI_DoubleString(yytext);
 
               if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-                parser->registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE,
-                                        TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE),
-                                        yylloc->first_line, yylloc->first_column);
+                parser->registerWarning(
+                    TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE,
+                    TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE),
+                    yylloc->first_line, yylloc->first_column);
                 node = parser->ast()->createNodeValueNull();
               } else {
                 node = parser->ast()->createNodeValueDouble(value2);
@@ -1761,7 +1795,8 @@ YY_DECL {
         case 87:
           YY_RULE_SETUP {
             /* a numeric integer value, base 2 (binary) */
-            /* note that we support an arbitrary run of leading zeroes for the actual number */
+            /* note that we support an arbitrary run of leading zeroes for the
+             * actual number */
 
             /* cut off first 2 characters */
             char const* p = yytext + 2;
@@ -1800,7 +1835,8 @@ YY_DECL {
         case 88:
           YY_RULE_SETUP {
             /* a numeric integer value, base 16 (hexadecimal) */
-            /* note that we support an arbitrary run of leading zeroes for the actual number */
+            /* note that we support an arbitrary run of leading zeroes for the
+             * actual number */
 
             /* cut off first 2 characters */
             char const* p = yytext + 2;
@@ -1852,9 +1888,10 @@ YY_DECL {
             double value = TRI_DoubleString(yytext);
 
             if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-              parser->registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE,
-                                      TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE),
-                                      yylloc->first_line, yylloc->first_column);
+              parser->registerWarning(
+                  TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE,
+                  TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE),
+                  yylloc->first_line, yylloc->first_column);
               node = parser->ast()->createNodeValueNull();
             } else {
               node = parser->ast()->createNodeValueDouble(value);
@@ -1867,35 +1904,41 @@ YY_DECL {
           YY_BREAK
         /* ---------------------------------------------------------------------------
          * bind parameters
-         * --------------------------------------------------------------------------- */
+         * ---------------------------------------------------------------------------
+         */
         case 90:
           YY_RULE_SETUP {
             /* bind parameters must start with a @
-               if followed by another @, this is a collection name or a view name parameter */
-            yylval->strval.value =
-                yyextra->ast()->resources().registerString(yytext + 1, yyleng - 1);
+               if followed by another @, this is a collection name or a view
+               name parameter */
+            yylval->strval.value = yyextra->ast()->resources().registerString(
+                yytext + 1, yyleng - 1);
             yylval->strval.length = yyleng - 1;
             return T_PARAMETER;
           }
           YY_BREAK
         /* ---------------------------------------------------------------------------
          * bind data source parameters
-         * --------------------------------------------------------------------------- */
+         * ---------------------------------------------------------------------------
+         */
         case 91:
           YY_RULE_SETUP {
             /* bind parameters must start with a @
-               if followed by another @, this is a collection name or a view name parameter */
-            yylval->strval.value =
-                yyextra->ast()->resources().registerString(yytext + 1, yyleng - 1);
+               if followed by another @, this is a collection name or a view
+               name parameter */
+            yylval->strval.value = yyextra->ast()->resources().registerString(
+                yytext + 1, yyleng - 1);
             yylval->strval.length = yyleng - 1;
             return T_DATA_SOURCE_PARAMETER;
           }
           YY_BREAK
         /* ---------------------------------------------------------------------------
          * whitespace etc.
-         * --------------------------------------------------------------------------- */
+         * ---------------------------------------------------------------------------
+         */
         case 92:
-          YY_RULE_SETUP { /* whitespace is ignored */ }
+          YY_RULE_SETUP { /* whitespace is ignored */
+          }
           YY_BREAK
         case 93:
           /* rule 93 can match eol */
@@ -1903,7 +1946,8 @@ YY_DECL {
           YY_BREAK
         /* ---------------------------------------------------------------------------
          * comments
-         * --------------------------------------------------------------------------- */
+         * ---------------------------------------------------------------------------
+         */
         case 94:
           YY_RULE_SETUP { BEGIN(COMMENT_SINGLE); }
           YY_BREAK
@@ -1916,7 +1960,8 @@ YY_DECL {
           }
           YY_BREAK
         case 96:
-          YY_RULE_SETUP { /* everything else */ }
+          YY_RULE_SETUP { /* everything else */
+          }
           YY_BREAK
         case 97:
           YY_RULE_SETUP { BEGIN(COMMENT_MULTI); }
@@ -1993,7 +2038,9 @@ YY_DECL {
            * end-of-buffer state).  Contrast this with the test
            * in input().
            */
-          if (yyg->yy_c_buf_p <= &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[yyg->yy_n_chars]) { /* This was really a NUL. */
+          if (yyg->yy_c_buf_p <=
+              &YY_CURRENT_BUFFER_LVALUE
+                   ->yy_ch_buf[yyg->yy_n_chars]) { /* This was really a NUL. */
             yy_state_type yy_next_state;
 
             yyg->yy_c_buf_p = yyg->yytext_ptr + yy_amount_of_matched_text;
@@ -2064,7 +2111,8 @@ YY_DECL {
                 goto yy_match;
 
               case EOB_ACT_LAST_MATCH:
-                yyg->yy_c_buf_p = &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[yyg->yy_n_chars];
+                yyg->yy_c_buf_p =
+                    &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[yyg->yy_n_chars];
 
                 yy_current_state = yy_get_previous_state(yyscanner);
 
@@ -2096,10 +2144,12 @@ static int yy_get_next_buffer(yyscan_t yyscanner) {
   int number_to_move, i;
   int ret_val;
 
-  if (yyg->yy_c_buf_p > &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[yyg->yy_n_chars + 1])
+  if (yyg->yy_c_buf_p >
+      &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[yyg->yy_n_chars + 1])
     YY_FATAL_ERROR("fatal flex scanner internal error--end of buffer missed");
 
-  if (YY_CURRENT_BUFFER_LVALUE->yy_fill_buffer == 0) { /* Don't try to fill the buffer, so this is an EOF. */
+  if (YY_CURRENT_BUFFER_LVALUE->yy_fill_buffer ==
+      0) { /* Don't try to fill the buffer, so this is an EOF. */
     if (yyg->yy_c_buf_p - yyg->yytext_ptr - YY_MORE_ADJ == 1) {
       /* We matched a single character, the EOB, so
        * treat this as a final EOF.
@@ -2129,7 +2179,8 @@ static int yy_get_next_buffer(yyscan_t yyscanner) {
     YY_CURRENT_BUFFER_LVALUE->yy_n_chars = yyg->yy_n_chars = 0;
 
   else {
-    int num_to_read = YY_CURRENT_BUFFER_LVALUE->yy_buf_size - number_to_move - 1;
+    int num_to_read =
+        YY_CURRENT_BUFFER_LVALUE->yy_buf_size - number_to_move - 1;
 
     while (num_to_read <= 0) { /* Not enough room in the buffer - grow it. */
 
@@ -2148,7 +2199,8 @@ static int yy_get_next_buffer(yyscan_t yyscanner) {
 
         b->yy_ch_buf = (char*)
             /* Include room in for 2 EOB chars. */
-            yyrealloc((void*)b->yy_ch_buf, (yy_size_t)(b->yy_buf_size + 2), yyscanner);
+            yyrealloc((void*)b->yy_ch_buf, (yy_size_t)(b->yy_buf_size + 2),
+                      yyscanner);
       } else
         /* Can't grow it, we don't own it. */
         b->yy_ch_buf = NULL;
@@ -2185,7 +2237,8 @@ static int yy_get_next_buffer(yyscan_t yyscanner) {
   else
     ret_val = EOB_ACT_CONTINUE_SCAN;
 
-  if ((yyg->yy_n_chars + number_to_move) > YY_CURRENT_BUFFER_LVALUE->yy_buf_size) {
+  if ((yyg->yy_n_chars + number_to_move) >
+      YY_CURRENT_BUFFER_LVALUE->yy_buf_size) {
     /* Extend the array by 50%, plus the number we really need. */
     int new_size = yyg->yy_n_chars + number_to_move + (yyg->yy_n_chars >> 1);
     YY_CURRENT_BUFFER_LVALUE->yy_ch_buf =
@@ -2199,7 +2252,8 @@ static int yy_get_next_buffer(yyscan_t yyscanner) {
 
   yyg->yy_n_chars += number_to_move;
   YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[yyg->yy_n_chars] = YY_END_OF_BUFFER_CHAR;
-  YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[yyg->yy_n_chars + 1] = YY_END_OF_BUFFER_CHAR;
+  YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[yyg->yy_n_chars + 1] =
+      YY_END_OF_BUFFER_CHAR;
 
   yyg->yytext_ptr = &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[0];
 
@@ -2215,7 +2269,8 @@ static yy_state_type yy_get_previous_state(yyscan_t yyscanner) {
 
   yy_current_state = yyg->yy_start;
 
-  for (yy_cp = yyg->yytext_ptr + YY_MORE_ADJ; yy_cp < yyg->yy_c_buf_p; ++yy_cp) {
+  for (yy_cp = yyg->yytext_ptr + YY_MORE_ADJ; yy_cp < yyg->yy_c_buf_p;
+       ++yy_cp) {
     YY_CHAR yy_c = (*yy_cp ? yy_ec[YY_SC_TO_UI(*yy_cp)] : 1);
     if (yy_accept[yy_current_state]) {
       yyg->yy_last_accepting_state = yy_current_state;
@@ -2236,9 +2291,11 @@ static yy_state_type yy_get_previous_state(yyscan_t yyscanner) {
  * synopsis
  *	next_state = yy_try_NUL_trans( current_state );
  */
-static yy_state_type yy_try_NUL_trans(yy_state_type yy_current_state, yyscan_t yyscanner) {
+static yy_state_type yy_try_NUL_trans(yy_state_type yy_current_state,
+                                      yyscan_t yyscanner) {
   int yy_is_jam;
-  struct yyguts_t* yyg = (struct yyguts_t*)yyscanner; /* This var may be unused depending upon options. */
+  struct yyguts_t* yyg = (struct yyguts_t*)
+      yyscanner; /* This var may be unused depending upon options. */
   char* yy_cp = yyg->yy_c_buf_p;
 
   YY_CHAR yy_c = 1;
@@ -2395,7 +2452,8 @@ static void yy_load_buffer_state(yyscan_t yyscanner) {
 
 /** Allocate and initialize an input buffer state.
  * @param file A readable stream.
- * @param size The character buffer size in bytes. When in doubt, use @c YY_BUF_SIZE.
+ * @param size The character buffer size in bytes. When in doubt, use @c
+ * YY_BUF_SIZE.
  * @param yyscanner The scanner object.
  * @return the allocated buffer state.
  */
@@ -2552,13 +2610,13 @@ static void yyensure_buffer_stack(yyscan_t yyscanner) {
      * immediate realloc on the next call.
      */
     num_to_alloc = 1; /* After all that talk, this was set to 1 anyways... */
-    yyg->yy_buffer_stack =
-        (struct yy_buffer_state**)yyalloc(num_to_alloc * sizeof(struct yy_buffer_state*),
-                                          yyscanner);
+    yyg->yy_buffer_stack = (struct yy_buffer_state**)yyalloc(
+        num_to_alloc * sizeof(struct yy_buffer_state*), yyscanner);
     if (!yyg->yy_buffer_stack)
       YY_FATAL_ERROR("out of dynamic memory in yyensure_buffer_stack()");
 
-    memset(yyg->yy_buffer_stack, 0, num_to_alloc * sizeof(struct yy_buffer_state*));
+    memset(yyg->yy_buffer_stack, 0,
+           num_to_alloc * sizeof(struct yy_buffer_state*));
 
     yyg->yy_buffer_stack_max = num_to_alloc;
     yyg->yy_buffer_stack_top = 0;
@@ -2570,10 +2628,9 @@ static void yyensure_buffer_stack(yyscan_t yyscanner) {
     yy_size_t grow_size = 8 /* arbitrary grow size */;
 
     num_to_alloc = yyg->yy_buffer_stack_max + grow_size;
-    yyg->yy_buffer_stack =
-        (struct yy_buffer_state**)yyrealloc(yyg->yy_buffer_stack,
-                                            num_to_alloc * sizeof(struct yy_buffer_state*),
-                                            yyscanner);
+    yyg->yy_buffer_stack = (struct yy_buffer_state**)yyrealloc(
+        yyg->yy_buffer_stack, num_to_alloc * sizeof(struct yy_buffer_state*),
+        yyscanner);
     if (!yyg->yy_buffer_stack)
       YY_FATAL_ERROR("out of dynamic memory in yyensure_buffer_stack()");
 
@@ -2584,7 +2641,8 @@ static void yyensure_buffer_stack(yyscan_t yyscanner) {
   }
 }
 
-/** Setup the input buffer state to scan directly from a user-specified character buffer.
+/** Setup the input buffer state to scan directly from a user-specified
+ * character buffer.
  * @param base the character buffer
  * @param size the size in bytes of the character buffer
  * @param yyscanner The scanner object.
@@ -2593,7 +2651,8 @@ static void yyensure_buffer_stack(yyscan_t yyscanner) {
 YY_BUFFER_STATE yy_scan_buffer(char* base, yy_size_t size, yyscan_t yyscanner) {
   YY_BUFFER_STATE b;
 
-  if (size < 2 || base[size - 2] != YY_END_OF_BUFFER_CHAR || base[size - 1] != YY_END_OF_BUFFER_CHAR)
+  if (size < 2 || base[size - 2] != YY_END_OF_BUFFER_CHAR ||
+      base[size - 1] != YY_END_OF_BUFFER_CHAR)
     /* They forgot to leave room for the EOB's. */
     return NULL;
 
@@ -2634,7 +2693,8 @@ YY_BUFFER_STATE yy_scan_string(const char* yystr, yyscan_t yyscanner) {
  * @param yyscanner The scanner object.
  * @return the newly allocated buffer state object.
  */
-YY_BUFFER_STATE yy_scan_bytes(const char* yybytes, int _yybytes_len, yyscan_t yyscanner) {
+YY_BUFFER_STATE yy_scan_bytes(const char* yybytes, int _yybytes_len,
+                              yyscan_t yyscanner) {
   YY_BUFFER_STATE b;
   char* buf;
   yy_size_t n;
@@ -2837,8 +2897,9 @@ void yyset_lloc(YYLTYPE* yylloc_param, yyscan_t yyscanner) {
 /* User-visible API */
 
 /* yylex_init is special because it creates the scanner itself, so it is
- * the ONLY reentrant function that doesn't take the scanner as the last argument.
- * That's why we explicitly handle the declaration, instead of using our macros.
+ * the ONLY reentrant function that doesn't take the scanner as the last
+ * argument. That's why we explicitly handle the declaration, instead of using
+ * our macros.
  */
 int yylex_init(yyscan_t* ptr_yy_globals) {
   if (ptr_yy_globals == NULL) {
@@ -2853,7 +2914,8 @@ int yylex_init(yyscan_t* ptr_yy_globals) {
     return 1;
   }
 
-  /* By setting to 0xAA, we expose bugs in yy_init_globals. Leave at 0x00 for releases. */
+  /* By setting to 0xAA, we expose bugs in yy_init_globals. Leave at 0x00 for
+   * releases. */
   memset(*ptr_yy_globals, 0x00, sizeof(struct yyguts_t));
 
   return yy_init_globals(*ptr_yy_globals);
@@ -2958,7 +3020,8 @@ int yylex_destroy(yyscan_t yyscanner) {
  */
 
 #ifndef yytext_ptr
-static void yy_flex_strncpy(char* s1, const char* s2, int n, yyscan_t yyscanner) {
+static void yy_flex_strncpy(char* s1, const char* s2, int n,
+                            yyscan_t yyscanner) {
   struct yyguts_t* yyg = (struct yyguts_t*)yyscanner;
   (void)yyg;
 

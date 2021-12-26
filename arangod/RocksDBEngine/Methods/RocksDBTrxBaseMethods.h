@@ -30,7 +30,8 @@ namespace arangodb {
 /// transaction wrapper, uses the current rocksdb transaction
 class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
  public:
-  explicit RocksDBTrxBaseMethods(RocksDBTransactionState*, rocksdb::TransactionDB* db);
+  explicit RocksDBTrxBaseMethods(RocksDBTransactionState*,
+                                 rocksdb::TransactionDB* db);
 
   ~RocksDBTrxBaseMethods();
 
@@ -73,14 +74,19 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
                       rocksdb::PinnableSlice*, ReadOwnWrites) override;
-  rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
+  rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
+                               rocksdb::Slice const&,
                                rocksdb::PinnableSlice*) final override;
   rocksdb::Status Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
-                      rocksdb::Slice const& val, bool assume_tracked) final override;
-  rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+                      rocksdb::Slice const& val,
+                      bool assume_tracked) final override;
+  rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*,
+                               RocksDBKey const& key,
                                rocksdb::Slice const& val) final override;
-  rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) final override;
-  rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) final override;
+  rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*,
+                         RocksDBKey const& key) final override;
+  rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*,
+                               RocksDBKey const&) final override;
   void PutLogData(rocksdb::Slice const&) final override;
 
   void SetSavePoint() final override;

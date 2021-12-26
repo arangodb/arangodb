@@ -78,7 +78,8 @@ class GeneralResponse {
   }
 
   void setContentType(std::string&& contentType) {
-    _headers[arangodb::StaticStrings::ContentTypeHeader] = std::move(contentType);
+    _headers[arangodb::StaticStrings::ContentTypeHeader] =
+        std::move(contentType);
     _contentType = ContentType::CUSTOM;
   }
 
@@ -139,10 +140,11 @@ class GeneralResponse {
 
   // Payload needs to be of type: VPackSlice const&
   // or VPackBuffer<uint8_t>&&
-  template <typename Payload>
-  void setPayload(Payload&& payload,
-                  velocypack::Options const& options = velocypack::Options::Defaults,
-                  bool resolveExternals = true) {
+  template<typename Payload>
+  void setPayload(
+      Payload&& payload,
+      velocypack::Options const& options = velocypack::Options::Defaults,
+      bool resolveExternals = true) {
     TRI_ASSERT(isResponseEmpty());
     addPayload(std::forward<Payload>(payload), &options, resolveExternals);
   }
@@ -169,9 +171,10 @@ class GeneralResponse {
   virtual ErrorCode deflate(size_t size = 16384) = 0;
 
  protected:
-  std::unordered_map<std::string, std::string> _headers;  // headers/metadata map
-  uint64_t _messageId;                                    // message ID
-  ResponseCode _responseCode;                             // http response code
+  std::unordered_map<std::string, std::string>
+      _headers;                // headers/metadata map
+  uint64_t _messageId;         // message ID
+  ResponseCode _responseCode;  // http response code
   ContentType _contentType;
   ContentType _contentTypeRequested;
   bool _generateBody;

@@ -48,7 +48,8 @@ namespace arangodb::consensus {
 //            instance; we could solve this if we could have two
 //            ApplicationServers in the same instance, but too many things in
 //            the feature stack are static still to make the changes right now
-// FIXME TODO for some reason the implementation of this function is missing in the arangodb code
+// FIXME TODO for some reason the implementation of this function is missing in
+// the arangodb code
 void Store::notifyObservers() const {
   if (!_server.hasFeature<arangodb::ClusterFeature>()) {
     return;
@@ -75,7 +76,8 @@ void Store::notifyObservers() const {
 
       bool success;
       auto* idStr = &(key[pos + 1]);
-      auto id = arangodb::NumberUtils::atoi<uint32_t>(idStr, idStr + std::strlen(idStr), success);
+      auto id = arangodb::NumberUtils::atoi<uint32_t>(
+          idStr, idStr + std::strlen(idStr), success);
 
       if (success) {
         callbackIds.emplace_back(id);
@@ -85,7 +87,8 @@ void Store::notifyObservers() const {
 
   for (auto& id : callbackIds) {
     try {
-      callbackRegistry->getCallback(id)->refetchAndUpdate(true, true);  // force a check
+      callbackRegistry->getCallback(id)->refetchAndUpdate(
+          true, true);  // force a check
     } catch (...) {
       // ignore
     }
@@ -97,8 +100,8 @@ void Store::notifyObservers() const {
 using namespace arangodb;
 using namespace arangodb::network;
 
-AsyncAgencyStorePoolConnection::AsyncAgencyStorePoolConnection(AgencyCache& cache,
-                                                               std::string endpoint)
+AsyncAgencyStorePoolConnection::AsyncAgencyStorePoolConnection(
+    AgencyCache& cache, std::string endpoint)
     : fuerte::Connection(fuerte::detail::ConnectionConfiguration()),
       _cache(cache),
       _endpoint(std::move(endpoint)) {}
@@ -114,7 +117,8 @@ auto AsyncAgencyStorePoolConnection::handleRead(VPackSlice body)
   auto bodyBuilder = std::make_shared<VPackBuilder>(body);
   VPackBuffer<uint8_t> responseBuffer;
   {
-    auto result = std::make_shared<arangodb::velocypack::Builder>(responseBuffer);
+    auto result =
+        std::make_shared<arangodb::velocypack::Builder>(responseBuffer);
     auto const success = _cache.store().read(bodyBuilder, result);
     auto const code =
         std::find(success.begin(), success.end(), false) == success.end()
@@ -150,7 +154,8 @@ auto AsyncAgencyStorePoolConnection::handleWrite(VPackSlice body)
       VPackObjectBuilder o(&bodyObj);
       bodyObj.add("results", VPackValue(VPackValueType::Array));
       for (auto const& s : success) {
-        bodyObj.add(VPackValue((s == arangodb::consensus::APPLIED ? index : 0)));
+        bodyObj.add(
+            VPackValue((s == arangodb::consensus::APPLIED ? index : 0)));
       }
       bodyObj.close();
     }
@@ -170,8 +175,8 @@ auto AsyncAgencyStorePoolConnection::handleWrite(VPackSlice body)
 
 void AsyncAgencyStorePoolConnection::cancel(){};
 
-void AsyncAgencyStorePoolConnection::sendRequest(std::unique_ptr<fuerte::Request> req,
-                                                 fuerte::RequestCallback cb) {
+void AsyncAgencyStorePoolConnection::sendRequest(
+    std::unique_ptr<fuerte::Request> req, fuerte::RequestCallback cb) {
   std::unique_ptr<fuerte::Response> resp;
 
   if (req->header.restVerb == fuerte::RestVerb::Post) {
@@ -192,7 +197,8 @@ void AsyncAgencyStorePoolConnection::sendRequest(std::unique_ptr<fuerte::Request
 std::shared_ptr<fuerte::Connection> AsyncAgencyStorePoolMock::createConnection(
     fuerte::ConnectionBuilder& builder) {
   return std::make_shared<AsyncAgencyStorePoolConnection>(
-      _server.getFeature<ClusterFeature>().agencyCache(), builder.normalizedEndpoint());
+      _server.getFeature<ClusterFeature>().agencyCache(),
+      builder.normalizedEndpoint());
 }
 
 // -----------------------------------------------------------------------------

@@ -98,7 +98,8 @@ std::chrono::hours const RestReplicationHandler::_tombstoneTimeout =
     std::chrono::hours(24);
 
 basics::ReadWriteLock RestReplicationHandler::_tombLock;
-std::unordered_map<std::string, std::chrono::time_point<std::chrono::steady_clock>>
+std::unordered_map<std::string,
+                   std::chrono::time_point<std::chrono::steady_clock>>
     RestReplicationHandler::_tombstones = {};
 
 static TransactionId ExtractReadlockId(VPackSlice slice) {
@@ -106,11 +107,13 @@ static TransactionId ExtractReadlockId(VPackSlice slice) {
   return TransactionId{StringUtils::uint64(slice.copyString())};
 }
 
-static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force) {
+static bool ignoreHiddenEnterpriseCollection(std::string const& name,
+                                             bool force) {
 #ifdef USE_ENTERPRISE
   if (!force && name[0] == '_') {
     if (strncmp(name.c_str(), "_local_", 7) == 0 ||
-        strncmp(name.c_str(), "_from_", 6) == 0 || strncmp(name.c_str(), "_to_", 4) == 0) {
+        strncmp(name.c_str(), "_from_", 6) == 0 ||
+        strncmp(name.c_str(), "_to_", 4) == 0) {
       LOG_TOPIC("944c4", WARN, arangodb::Logger::REPLICATION)
           << "Restore ignoring collection " << name
           << ". Will be created via SmartGraphs of a full dump. If you want to "
@@ -124,8 +127,9 @@ static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force
   return false;
 }
 
-static Result checkPlanLeaderDirect(std::shared_ptr<LogicalCollection> const& col,
-                                    std::string const& claimLeaderId) {
+static Result checkPlanLeaderDirect(
+    std::shared_ptr<LogicalCollection> const& col,
+    std::string const& claimLeaderId) {
   std::vector<std::string> agencyPath = {"Plan",
                                          "Collections",
                                          col->vocbase().name(),
@@ -142,7 +146,8 @@ static Result checkPlanLeaderDirect(std::shared_ptr<LogicalCollection> const& co
     // This is bullshit. Why does the *fancy* AgencyComm Manager
     // prepend the agency url with `arango` but in the end returns an object
     // that is prepended by `arango`! WTF!?
-    VPackSlice plan = res.slice().at(0).get(AgencyCommHelper::path()).get(agencyPath);
+    VPackSlice plan =
+        res.slice().at(0).get(AgencyCommHelper::path()).get(agencyPath);
     TRI_ASSERT(plan.isArray() && plan.length() > 0);
 
     VPackSlice leaderSlice = plan.at(0);
@@ -168,8 +173,9 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   } catch (std::exception const& ex) {
     // Could not even build the string
     return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  "received invalid JSON data for collection '" + collectionName +
-                      "' on line " + std::to_string(line) + ": " + ex.what()};
+                  "received invalid JSON data for collection '" +
+                      collectionName + "' on line " + std::to_string(line) +
+                      ": " + ex.what()};
   } catch (...) {
     return Result{TRI_ERROR_INTERNAL};
   }
@@ -189,7 +195,8 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   if (value.isString()) {
     // compact format
     type = REPLICATION_MARKER_DOCUMENT;
-    // for a valid document marker without envelope, doc points to the actual docuemnt
+    // for a valid document marker without envelope, doc points to the actual
+    // docuemnt
     doc = slice;
   } else {
     // enveloped (old) format. each document is wrapped into a
@@ -233,8 +240,10 @@ static Result restoreDataParser(char const* ptr, char const* pos,
 
   TRI_ASSERT(type != REPLICATION_MARKER_DOCUMENT || doc.isObject());
 
-  if (type != REPLICATION_MARKER_DOCUMENT && type != REPLICATION_MARKER_REMOVE) {
-    // we can only handle REPLICATION_MARKER_DOCUMENT and REPLICATION_MARKER_REMOVE here
+  if (type != REPLICATION_MARKER_DOCUMENT &&
+      type != REPLICATION_MARKER_REMOVE) {
+    // we can only handle REPLICATION_MARKER_DOCUMENT and
+    // REPLICATION_MARKER_REMOVE here
     return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
                   "received invalid JSON data for collection '" +
                       collectionName + "' on line " + std::to_string(line) +
@@ -244,9 +253,9 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   return {};
 }
 
-RestReplicationHandler::RestReplicationHandler(application_features::ApplicationServer& server,
-                                               GeneralRequest* request,
-                                               GeneralResponse* response)
+RestReplicationHandler::RestReplicationHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestReplicationHandler::~RestReplicationHandler() = default;
@@ -257,7 +266,8 @@ RestReplicationHandler::~RestReplicationHandler() = default;
 
 bool RestReplicationHandler::isCoordinatorError() {
   if (_vocbase.type() == TRI_VOCBASE_TYPE_COORDINATOR) {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_CLUSTER_UNSUPPORTED,
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                  TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "replication API is not supported on a coordinator");
 
     return true;
@@ -401,7 +411,8 @@ RestStatus RestReplicationHandler::execute() {
       // preconditions for calling this route are unclear and undocumented --
       // FIXME
       if (type != rest::RequestType::GET && type != rest::RequestType::POST &&
-          type != rest::RequestType::PUT && type != rest::RequestType::DELETE_REQ) {
+          type != rest::RequestType::PUT &&
+          type != rest::RequestType::DELETE_REQ) {
         goto BAD_CALL;
       }
 
@@ -501,7 +512,8 @@ RestStatus RestReplicationHandler::execute() {
       }
 
       handleCommandSync();
-    } else if (command == MakeFollower || command == "make-slave" /*deprecated*/) {
+    } else if (command == MakeFollower ||
+               command == "make-slave" /*deprecated*/) {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
       }
@@ -564,7 +576,8 @@ RestStatus RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       if (!ServerState::instance()->isCoordinator()) {
-        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
+        generateError(rest::ResponseCode::FORBIDDEN,
+                      TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
       } else {
         handleCommandClusterInventory();
       }
@@ -573,7 +586,8 @@ RestStatus RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       if (!ServerState::instance()->isDBServer()) {
-        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
+        generateError(rest::ResponseCode::FORBIDDEN,
+                      TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
       } else {
         handleCommandAddFollower();
       }
@@ -582,7 +596,8 @@ RestStatus RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       if (!ServerState::instance()->isDBServer()) {
-        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
+        generateError(rest::ResponseCode::FORBIDDEN,
+                      TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
       } else {
         handleCommandRemoveFollower();
       }
@@ -591,13 +606,15 @@ RestStatus RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       if (!ServerState::instance()->isDBServer()) {
-        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
+        generateError(rest::ResponseCode::FORBIDDEN,
+                      TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
       } else {
         handleCommandSetTheLeader();
       }
     } else if (command == HoldReadLockCollection) {
       if (!ServerState::instance()->isDBServer()) {
-        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
+        generateError(rest::ResponseCode::FORBIDDEN,
+                      TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
       } else {
         if (type == rest::RequestType::POST) {
           handleCommandHoldReadLockCollection();
@@ -622,7 +639,8 @@ BAD_CALL:
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "expecting URL /_api/replication/<command>");
   } else {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
 
   return RestStatus::DONE;
@@ -639,7 +657,8 @@ Result RestReplicationHandler::testPermissions() {
   if (len >= 1) {
     auto const type = _request->requestType();
     std::string const& command = suffixes[0];
-    if ((command == Batch) || (command == Inventory && type == rest::RequestType::GET) ||
+    if ((command == Batch) ||
+        (command == Inventory && type == rest::RequestType::GET) ||
         (command == Dump && type == rest::RequestType::GET) ||
         (command == RestoreCollection && type == rest::RequestType::PUT)) {
       if (command == Dump) {
@@ -689,7 +708,8 @@ Result RestReplicationHandler::testPermissions() {
                   vocbase->lookupCollection(collectionName) == nullptr) {
                 // 1.) re-create collection, means: overwrite=true (rw database)
                 // OR 2.) not existing, new collection (rw database)
-                if (!exec.isAdminUser() && !exec.canUseDatabase(dbName, auth::Level::RW)) {
+                if (!exec.isAdminUser() &&
+                    !exec.canUseDatabase(dbName, auth::Level::RW)) {
                   return Result(TRI_ERROR_FORBIDDEN);
                 }
               } else {
@@ -719,7 +739,8 @@ Result RestReplicationHandler::testPermissions() {
 }
 
 /// @brief returns the short id of the server which should handle this request
-ResultT<std::pair<std::string, bool>> RestReplicationHandler::forwardingTarget() {
+ResultT<std::pair<std::string, bool>>
+RestReplicationHandler::forwardingTarget() {
   auto base = RestVocbaseBaseHandler::forwardingTarget();
   if (base.ok() && !std::get<0>(base.get()).empty()) {
     return base;
@@ -764,7 +785,8 @@ void RestReplicationHandler::handleCommandMakeFollower() {
   }
 
   ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(_vocbase.server(), body, databaseName);
+      ReplicationApplierConfiguration::fromVelocyPack(_vocbase.server(), body,
+                                                      databaseName);
   configuration._skipCreateDrop = false;
 
   // will throw if invalid
@@ -831,11 +853,13 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   bool includeSystem = _request->parsedValue("includeSystem", true);
 
   ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
-  std::vector<std::shared_ptr<LogicalCollection>> cols = ci.getCollections(dbName);
+  std::vector<std::shared_ptr<LogicalCollection>> cols =
+      ci.getCollections(dbName);
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
 
-  DatabaseFeature& databaseFeature = _vocbase.server().getFeature<DatabaseFeature>();
+  DatabaseFeature& databaseFeature =
+      _vocbase.server().getFeature<DatabaseFeature>();
   TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(dbName);
   if (vocbase) {
     resultBuilder.add(VPackValue(StaticStrings::Properties));
@@ -857,7 +881,8 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     std::shared_ptr<ShardMap> shardMap = c->shardIds();
     // shardMap is an unordered_map from ShardId (string) to a vector of
     // servers (strings), wrapped in a shared_ptr
-    auto cic = ci.getCollectionCurrent(dbName, basics::StringUtils::itoa(c->id().id()));
+    auto cic = ci.getCollectionCurrent(dbName,
+                                       basics::StringUtils::itoa(c->id().id()));
     // Check all shards:
     bool isReady = true;
     bool allInSync = true;
@@ -872,21 +897,24 @@ void RestReplicationHandler::handleCommandClusterInventory() {
         allInSync = false;
       }
     }
-    c->toVelocyPackForClusterInventory(resultBuilder, includeSystem, isReady, allInSync);
+    c->toVelocyPackForClusterInventory(resultBuilder, includeSystem, isReady,
+                                       allInSync);
   }
   resultBuilder.close();  // collections
   resultBuilder.add("views", VPackValue(VPackValueType::Array));
-  LogicalView::enumerate(_vocbase, [&resultBuilder](LogicalView::ptr const& view) -> bool {
-    if (view) {
-      resultBuilder.openObject();
-      view->properties(resultBuilder, LogicalDataSource::Serialization::Inventory);
-      // details, !forPersistence because on restore any datasource ids will
-      // differ, so need an end-user representation
-      resultBuilder.close();
-    }
+  LogicalView::enumerate(
+      _vocbase, [&resultBuilder](LogicalView::ptr const& view) -> bool {
+        if (view) {
+          resultBuilder.openObject();
+          view->properties(resultBuilder,
+                           LogicalDataSource::Serialization::Inventory);
+          // details, !forPersistence because on restore any datasource ids will
+          // differ, so need an end-user representation
+          resultBuilder.close();
+        }
 
-    return true;
-  });
+        return true;
+      });
   resultBuilder.close();  // views
 
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
@@ -914,13 +942,15 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
   bool ignoreDistributeShardsLikeErrors =
       _request->parsedValue<bool>("ignoreDistributeShardsLikeErrors", false);
 
-  Result res = processRestoreCollection(slice, overwrite, force, ignoreDistributeShardsLikeErrors);
+  Result res = processRestoreCollection(slice, overwrite, force,
+                                        ignoreDistributeShardsLikeErrors);
 
   if (res.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
     VPackSlice name = slice.get("parameters");
     if (name.isObject()) {
       name = name.get("name");
-      if (name.isString() && !name.copyString().empty() && name.copyString()[0] == '_') {
+      if (name.isString() && !name.copyString().empty() &&
+          name.copyString()[0] == '_') {
         // system collection, may have been created in the meantime by a
         // background action collection should be there now
         res.reset();
@@ -987,7 +1017,8 @@ void RestReplicationHandler::handleCommandRestoreData() {
 
   if (res.fail()) {
     if (res.errorMessage().empty()) {
-      generateError(GeneralResponse::responseCode(res.errorNumber()), res.errorNumber());
+      generateError(GeneralResponse::responseCode(res.errorNumber()),
+                    res.errorNumber());
     } else {
       generateError(res);
     }
@@ -1004,9 +1035,9 @@ void RestReplicationHandler::handleCommandRestoreData() {
 /// @brief restores the structure of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collection,
-                                                        bool dropExisting, bool force,
-                                                        bool ignoreDistributeShardsLikeErrors) {
+Result RestReplicationHandler::processRestoreCollection(
+    VPackSlice const& collection, bool dropExisting, bool force,
+    bool ignoreDistributeShardsLikeErrors) {
   if (!collection.isObject()) {
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
                   "collection declaration is invalid");
@@ -1028,8 +1059,8 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
   }
   // end only local
 
-  std::string const name =
-      arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
+  std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
+      parameters, "name", "");
 
   if (name.empty()) {
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "collection name is missing");
@@ -1039,14 +1070,15 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     return {TRI_ERROR_NO_ERROR};
   }
 
-  if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted", false)) {
+  if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
+                                                          false)) {
     // we don't care about deleted collections
     return Result();
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    Result res =
-        ShardingInfo::validateShardsAndReplicationFactor(parameters, server(), true);
+    Result res = ShardingInfo::validateShardsAndReplicationFactor(
+        parameters, server(), true);
     if (res.fail()) {
       return res;
     }
@@ -1065,23 +1097,29 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     TRI_ASSERT(col);
     if (dropExisting) {
       try {
-        if (ServerState::instance()->isCoordinator() && name == StaticStrings::AnalyzersCollection &&
+        if (ServerState::instance()->isCoordinator() &&
+            name == StaticStrings::AnalyzersCollection &&
             server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
           // We have ArangoSearch here. So process analyzers accordingly.
           // We can`t just recreate/truncate collection. Agency should be
           // properly notified analyzers are gone.
-          // The single server and DBServer case is handled after restore of data.
-          return server().getFeature<iresearch::IResearchAnalyzerFeature>().removeAllAnalyzers(_vocbase);
+          // The single server and DBServer case is handled after restore of
+          // data.
+          return server()
+              .getFeature<iresearch::IResearchAnalyzerFeature>()
+              .removeAllAnalyzers(_vocbase);
         }
 
         auto dropResult = methods::Collections::drop(*col, true, 300.0, true);
         if (dropResult.fail()) {
           if (dropResult.is(TRI_ERROR_FORBIDDEN) ||
-              dropResult.is(TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE)) {
+              dropResult.is(
+                  TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE)) {
             // If we are not allowed to drop the collection.
             // Try to truncate.
             auto ctx = transaction::StandaloneContext::Create(_vocbase);
-            SingleCollectionTransaction trx(ctx, *col, AccessMode::Type::EXCLUSIVE);
+            SingleCollectionTransaction trx(ctx, *col,
+                                            AccessMode::Type::EXCLUSIVE);
 
             trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
             trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
@@ -1103,7 +1141,8 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
                             "': ", dropResult.errorMessage()));
         }
 
-        // we just removed the collection, so we cannot rely on it being present now
+        // we just removed the collection, so we cannot rely on it being present
+        // now
         col.reset();
       } catch (basics::Exception const& ex) {
         LOG_TOPIC("41579", DEBUG, Logger::REPLICATION)
@@ -1134,8 +1173,9 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
         _vocbase.isOneShard()) {
       auto const isSatellite =
-          VelocyPackHelper::getStringRef(parameters, StaticStrings::ReplicationFactor,
-                                         velocypack::StringRef{""}) == StaticStrings::Satellite;
+          VelocyPackHelper::getStringRef(
+              parameters, StaticStrings::ReplicationFactor,
+              velocypack::StringRef{""}) == StaticStrings::Satellite;
 
       // force one shard, and force distributeShardsLike to be "_graphs"
       toMerge.add(StaticStrings::NumberOfShards, VPackValue(1));
@@ -1148,7 +1188,8 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
       }
     } else {
       // Number of shards. Will be overwritten if not existent
-      VPackSlice const numberOfShardsSlice = parameters.get(StaticStrings::NumberOfShards);
+      VPackSlice const numberOfShardsSlice =
+          parameters.get(StaticStrings::NumberOfShards);
       if (!numberOfShardsSlice.isInteger()) {
         // The information does not contain numberOfShards. Overwrite it.
         size_t numberOfShards = 1;
@@ -1162,14 +1203,17 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     }
 
     if (parameters.get(StaticStrings::DataSourceGuid).isString()) {
-      std::string const uuid = parameters.get(StaticStrings::DataSourceGuid).copyString();
+      std::string const uuid =
+          parameters.get(StaticStrings::DataSourceGuid).copyString();
       bool valid = false;
-      NumberUtils::atoi_positive<uint64_t>(uuid.data(), uuid.data() + uuid.size(), valid);
+      NumberUtils::atoi_positive<uint64_t>(uuid.data(),
+                                           uuid.data() + uuid.size(), valid);
       if (valid) {
         // globallyUniqueId is only numeric. This causes ambiguities later
         // and can only happen for collections created with v3.3.0 (the GUID
         // generation process was changed in v3.3.1 already to fix this issue).
-        // remove the globallyUniqueId so a new one will be generated server.side
+        // remove the globallyUniqueId so a new one will be generated
+        // server.side
         toMerge.add(StaticStrings::DataSourceGuid, VPackSlice::nullSlice());
       }
     }
@@ -1180,7 +1224,8 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     // not an error: for historical reasons the write concern is read from the
     // variable "minReplicationFactor"
     VPackSlice writeConcernSlice = parameters.get(StaticStrings::WriteConcern);
-    if (writeConcernSlice.isNone()) {  // minReplicationFactor is deprecated in 3.6
+    if (writeConcernSlice
+            .isNone()) {  // minReplicationFactor is deprecated in 3.6
       writeConcernSlice = parameters.get(StaticStrings::MinReplicationFactor);
     }
 
@@ -1195,13 +1240,15 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
         writeConcernSlice.getInt() > 0;
 
     if (!isValidReplicationFactorSlice) {
-      size_t replicationFactor =
-          _vocbase.server().getFeature<ClusterFeature>().defaultReplicationFactor();
+      size_t replicationFactor = _vocbase.server()
+                                     .getFeature<ClusterFeature>()
+                                     .defaultReplicationFactor();
       if (replicationFactor == 0) {
         replicationFactor = 1;
       }
       TRI_ASSERT(replicationFactor > 0);
-      toMerge.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
+      toMerge.add(StaticStrings::ReplicationFactor,
+                  VPackValue(replicationFactor));
     }
 
     if (!isValidWriteConcernSlice) {
@@ -1212,14 +1259,16 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
       }
       // not an error: for historical reasons the write concern is stored in the
       // variable "minReplicationFactor"
-      toMerge.add(StaticStrings::MinReplicationFactor, VPackValue(writeConcern));
+      toMerge.add(StaticStrings::MinReplicationFactor,
+                  VPackValue(writeConcern));
       toMerge.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
     }
 
     // always use current version number when restoring a collection,
     // because the collection is effectively NEW
     toMerge.add(StaticStrings::Version, VPackSlice::nullSlice());
-    if (!name.empty() && name[0] == '_' && !parameters.hasKey(StaticStrings::DataSourceSystem)) {
+    if (!name.empty() && name[0] == '_' &&
+        !parameters.hasKey(StaticStrings::DataSourceSystem)) {
       // system collection?
       toMerge.add(StaticStrings::DataSourceSystem, VPackValue(true));
     }
@@ -1230,7 +1279,8 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     // when in the Community Edition, we need to turn off specific attributes
     // because they are only supported in Enterprise Edition
 
-    // watch out for "isSmart" -> we need to set this to false in the Community Edition
+    // watch out for "isSmart" -> we need to set this to false in the Community
+    // Edition
     VPackSlice s = parameters.get(StaticStrings::GraphIsSmart);
     if (s.isBoolean() && s.getBoolean()) {
       // isSmart needs to be turned off in the Community Edition
@@ -1242,7 +1292,8 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     s = parameters.get(StaticStrings::GraphSmartGraphAttribute);
     if (s.isString() && !s.copyString().empty()) {
       // smartGraphAttribute needs to be removed
-      toMerge.add(StaticStrings::GraphSmartGraphAttribute, VPackSlice::nullSlice());
+      toMerge.add(StaticStrings::GraphSmartGraphAttribute,
+                  VPackSlice::nullSlice());
       changes.push_back("removed 'smartGraphAttribute' attribute value");
     }
 
@@ -1254,9 +1305,11 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
       changes.push_back("removed 'smartJoinAttribute' attribute value");
     }
 
-    // finally rewrite all Enterprise Edition sharding strategies to a simple hash-based strategy
+    // finally rewrite all Enterprise Edition sharding strategies to a simple
+    // hash-based strategy
     s = parameters.get(StaticStrings::ShardingStrategy);
-    if (s.isString() && s.copyString().find("enterprise") != std::string::npos) {
+    if (s.isString() &&
+        s.copyString().find("enterprise") != std::string::npos) {
       // downgrade sharding strategy to just hash
       toMerge.add(StaticStrings::ShardingStrategy, VPackValue("hash"));
       changes.push_back("changed 'shardingStrategy' attribute value to 'hash'");
@@ -1268,7 +1321,8 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
       ClusterFeature& cl = _vocbase.server().getFeature<ClusterFeature>();
 
       uint32_t replicationFactor = cl.systemReplicationFactor();
-      toMerge.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
+      toMerge.add(StaticStrings::ReplicationFactor,
+                  VPackValue(replicationFactor));
       changes.push_back(
           std::string("changed 'replicationFactor' attribute value to ") +
           std::to_string(replicationFactor));
@@ -1276,8 +1330,9 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
 
     if (!changes.empty()) {
       LOG_TOPIC("fc359", INFO, Logger::CLUSTER)
-          << "rewrote info for collection '"
-          << name << "' on restore for usage with the Community Edition. the following changes were applied: "
+          << "rewrote info for collection '" << name
+          << "' on restore for usage with the Community Edition. the following "
+             "changes were applied: "
           << basics::StringUtils::join(changes, ". ");
     }
 #endif
@@ -1294,8 +1349,8 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     }
 
     VPackSlice const sliceToMerge = toMerge.slice();
-    VPackBuilder mergedBuilder =
-        VPackCollection::merge(parameters, sliceToMerge, false, /*nullMeansRemove*/ true);
+    VPackBuilder mergedBuilder = VPackCollection::merge(
+        parameters, sliceToMerge, false, /*nullMeansRemove*/ true);
     VPackBuilder arrayWrapper;
     arrayWrapper.openArray();
     arrayWrapper.add(mergedBuilder.slice());
@@ -1303,24 +1358,26 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     VPackSlice const merged = arrayWrapper.slice();
 
     try {
-      bool createWaitsForSyncReplication =
-          _vocbase.server().getFeature<ClusterFeature>().createWaitsForSyncReplication();
+      bool createWaitsForSyncReplication = _vocbase.server()
+                                               .getFeature<ClusterFeature>()
+                                               .createWaitsForSyncReplication();
       // in the replication case enforcing the replication factor is absolutely
       // not desired, so it is hardcoded to false
-      auto cols =
-          ClusterMethods::createCollectionOnCoordinator(_vocbase, merged, ignoreDistributeShardsLikeErrors,
-                                                        createWaitsForSyncReplication,
-                                                        false, false, nullptr);
+      auto cols = ClusterMethods::createCollectionOnCoordinator(
+          _vocbase, merged, ignoreDistributeShardsLikeErrors,
+          createWaitsForSyncReplication, false, false, nullptr);
       ExecContext const& exec = ExecContext::current();
       TRI_ASSERT(cols.size() == 1);
       if (name[0] != '_' && !exec.isSuperuser()) {
-        auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+        auth::UserManager* um =
+            AuthenticationFeature::instance()->userManager();
         TRI_ASSERT(um != nullptr);  // should not get here
         if (um != nullptr) {
           um->updateUser(exec.user(), [&](auth::User& entry) {
             for (auto const& col : cols) {
               TRI_ASSERT(col != nullptr);
-              entry.grantCollection(_vocbase.name(), col->name(), auth::Level::RW);
+              entry.grantCollection(_vocbase.name(), col->name(),
+                                    auth::Level::RW);
             }
             return TRI_ERROR_NO_ERROR;
           });
@@ -1396,8 +1453,9 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   Result res = trx.begin();
 
   if (!res.ok()) {
-    res.reset(res.errorNumber(), arangodb::basics::StringUtils::concatT(
-                                     "unable to start transaction: ", res.errorMessage()));
+    res.reset(res.errorNumber(),
+              arangodb::basics::StringUtils::concatT(
+                  "unable to start transaction: ", res.errorMessage()));
     return res;
   }
 
@@ -1410,16 +1468,18 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
   if (res.ok() && colName == StaticStrings::AnalyzersCollection &&
       ServerState::instance()->isSingleServer() &&
       _vocbase.server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
-    _vocbase.server().getFeature<iresearch::IResearchAnalyzerFeature>().invalidate(_vocbase);
+    _vocbase.server()
+        .getFeature<iresearch::IResearchAnalyzerFeature>()
+        .invalidate(_vocbase);
   }
   return res;
 }
 
-Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
-                                          std::string const& collectionName,
-                                          VPackBuilder& documentsToInsert,
-                                          std::unordered_set<std::string>& documentsToRemove,
-                                          bool generateNewRevisionIds) {
+Result RestReplicationHandler::parseBatch(
+    transaction::Methods& trx, std::string const& collectionName,
+    VPackBuilder& documentsToInsert,
+    std::unordered_set<std::string>& documentsToRemove,
+    bool generateNewRevisionIds) {
   // simon: originally VST was not allowed here, but in 3.7 the content-type
   // is properly set, so we can use it
   if (_request->transportType() != Endpoint::TransportType::HTTP &&
@@ -1436,13 +1496,15 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
-  bool const isUsersCollection = collectionName == StaticStrings::UsersCollection;
+  bool const isUsersCollection =
+      collectionName == StaticStrings::UsersCollection;
 
   VPackStringRef bodyStr = _request->rawPayload();
   char const* ptr = bodyStr.data();
   char const* end = ptr + bodyStr.size();
 
-  VPackBuilder builder(&basics::VelocyPackHelper::strictRequestValidationOptions);
+  VPackBuilder builder(
+      &basics::VelocyPackHelper::strictRequestValidationOptions);
 
   // First parse and collect all markers, we assemble everything in one
   // large builder holding an array
@@ -1468,7 +1530,8 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
       VPackSlice doc;
       TRI_replication_operation_e type = REPLICATION_INVALID;
 
-      Result res = restoreDataParser(ptr, pos, collectionName, line, builder, doc, type);
+      Result res =
+          restoreDataParser(ptr, pos, collectionName, line, builder, doc, type);
       if (res.fail()) {
         if (res.is(TRI_ERROR_HTTP_CORRUPTED_JSON)) {
           using namespace std::literals::string_literals;
@@ -1491,9 +1554,11 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
         bool checkRev = generateNewRevisionIds;
         for (auto it : VPackObjectIterator(doc, true)) {
           // only check for "_key" attribute here if we still have to.
-          // once we have seen it, it will not show up again in the same document
-          bool const isKey = checkKey && (arangodb::velocypack::StringRef(it.key) ==
-                                          StaticStrings::KeyString);
+          // once we have seen it, it will not show up again in the same
+          // document
+          bool const isKey =
+              checkKey && (arangodb::velocypack::StringRef(it.key) ==
+                           StaticStrings::KeyString);
 
           if (isKey) {
             // _key attribute
@@ -1556,7 +1621,8 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
 
 Result RestReplicationHandler::parseBatchForSystemCollection(
     std::string const& collectionName, VPackBuilder& documentsToInsert,
-    std::unordered_set<std::string>& documentsToRemove, bool generateNewRevisionIds) {
+    std::unordered_set<std::string>& documentsToRemove,
+    bool generateNewRevisionIds) {
   TRI_ASSERT(documentsToInsert.isEmpty());
 
   // this "fake" transaction here is only needed to get access to the underlying
@@ -1573,12 +1639,13 @@ Result RestReplicationHandler::parseBatchForSystemCollection(
   return res;
 }
 
-Result RestReplicationHandler::processRestoreCoordinatorAnalyzersBatch(bool generateNewRevisionIds) {
+Result RestReplicationHandler::processRestoreCoordinatorAnalyzersBatch(
+    bool generateNewRevisionIds) {
   VPackBuilder documentsToInsert;
   std::unordered_set<std::string> documentsToRemove;
-  Result res = parseBatchForSystemCollection(StaticStrings::AnalyzersCollection,
-                                             documentsToInsert, documentsToRemove,
-                                             generateNewRevisionIds);
+  Result res = parseBatchForSystemCollection(
+      StaticStrings::AnalyzersCollection, documentsToInsert, documentsToRemove,
+      generateNewRevisionIds);
 
   if (res.ok() && !documentsToInsert.slice().isEmptyArray()) {
     auto& analyzersFeature =
@@ -1595,12 +1662,13 @@ Result RestReplicationHandler::processRestoreCoordinatorAnalyzersBatch(bool gene
 /// by key
 ////////////////////////////////////////////////////////////////////////////////
 
-Result RestReplicationHandler::processRestoreUsersBatch(bool generateNewRevisionIds) {
+Result RestReplicationHandler::processRestoreUsersBatch(
+    bool generateNewRevisionIds) {
   VPackBuilder documentsToInsert;
   std::unordered_set<std::string> documentsToRemove;
-  Result res = parseBatchForSystemCollection(StaticStrings::UsersCollection,
-                                             documentsToInsert, documentsToRemove,
-                                             generateNewRevisionIds);
+  Result res = parseBatchForSystemCollection(
+      StaticStrings::UsersCollection, documentsToInsert, documentsToRemove,
+      generateNewRevisionIds);
   if (res.fail()) {
     return res;
   }
@@ -1617,9 +1685,9 @@ Result RestReplicationHandler::processRestoreUsersBatch(bool generateNewRevision
   bindVars->add(documentsToInsert.slice());
   bindVars->close();  // bindVars
 
-  auto query =
-      arangodb::aql::Query::create(transaction::StandaloneContext::Create(_vocbase),
-                                   arangodb::aql::QueryString(aql), std::move(bindVars));
+  auto query = arangodb::aql::Query::create(
+      transaction::StandaloneContext::Create(_vocbase),
+      arangodb::aql::QueryString(aql), std::move(bindVars));
   aql::QueryResult queryResult = query->executeSync();
 
   // neither agency nor dbserver should get here
@@ -1636,9 +1704,9 @@ Result RestReplicationHandler::processRestoreUsersBatch(bool generateNewRevision
 /// @brief restores the data of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx,
-                                                       std::string const& collectionName,
-                                                       bool generateNewRevisionIds) {
+Result RestReplicationHandler::processRestoreDataBatch(
+    transaction::Methods& trx, std::string const& collectionName,
+    bool generateNewRevisionIds) {
   // we'll build all documents to insert in this builder
   VPackBuilder documentsToInsert;
   std::unordered_set<std::string> documentsToRemove;
@@ -1666,13 +1734,15 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
       toRemove.close();
     }
     toRemove.close();
-    // we let failing removes succeed here. in case a document is not found upon remove,
-    // the end result will be the same (document does not exist). in addition, the removal
-    // case  is an edge case for old dumps from MMFiles from <= 3.6
+    // we let failing removes succeed here. in case a document is not found upon
+    // remove, the end result will be the same (document does not exist). in
+    // addition, the removal case  is an edge case for old dumps from MMFiles
+    // from <= 3.6
     trx.remove(collectionName, toRemove.slice(), options);
 
-    // if we have pending removes we need to rewrite the entire documentsToInsert array.
-    // this is expensive, but an absolute edge case as mentioned before
+    // if we have pending removes we need to rewrite the entire
+    // documentsToInsert array. this is expensive, but an absolute edge case as
+    // mentioned before
     documentsToInsert = VPackCollection::filter(
         documentsToInsert.slice(),
         [&documentsToRemove](VPackSlice const& current, VPackValueLength) {
@@ -1749,7 +1819,8 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
 /// @brief restores the indexes of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection, bool force) {
+Result RestReplicationHandler::processRestoreIndexes(
+    VPackSlice const& collection, bool force) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (!collection.isObject()) {
     std::string errorMsg = "collection declaration is invalid";
@@ -1777,15 +1848,16 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
     return TRI_ERROR_NO_ERROR;
   }
 
-  std::string const name =
-      arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
+  std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
+      parameters, "name", "");
 
   if (name.empty()) {
     std::string errorMsg = "collection name is missing";
     return {TRI_ERROR_HTTP_BAD_PARAMETER, errorMsg};
   }
 
-  if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted", false)) {
+  if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
+                                                          false)) {
     // we don't care about deleted collections
     return {};
   }
@@ -1871,8 +1943,8 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
 /// @brief restores the indexes of a collection, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const& collection,
-                                                                bool force) {
+Result RestReplicationHandler::processRestoreIndexesCoordinator(
+    VPackSlice const& collection, bool force) {
   if (!collection.isObject()) {
     std::string errorMsg = "collection declaration is invalid";
     return {TRI_ERROR_HTTP_BAD_PARAMETER, errorMsg};
@@ -1898,8 +1970,8 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
     return {};
   }
 
-  std::string name =
-      arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
+  std::string name = arangodb::basics::VelocyPackHelper::getStringValue(
+      parameters, "name", "");
 
   if (name.empty()) {
     std::string errorMsg = "collection indexes declaration is invalid";
@@ -1910,7 +1982,8 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
     return {};
   }
 
-  if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted", false)) {
+  if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
+                                                          false)) {
     // we don't care about deleted collections
     return {};
   }
@@ -1985,11 +2058,13 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
 
     VPackBuilder tmp;
 
-    res = ci.ensureIndexCoordinator(*col, idxDef, true, tmp, cluster.indexCreationTimeout());
+    res = ci.ensureIndexCoordinator(*col, idxDef, true, tmp,
+                                    cluster.indexCreationTimeout());
 
     if (res.fail()) {
-      return res.reset(res.errorNumber(),
-                       StringUtils::concatT("could not create index: ", res.errorMessage()));
+      return res.reset(
+          res.errorNumber(),
+          StringUtils::concatT("could not create index: ", res.errorMessage()));
     }
   }
 
@@ -2032,11 +2107,12 @@ void RestReplicationHandler::handleCommandRestoreView() {
 
     if (view) {
       if (!overwrite) {
-        generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_DUPLICATE_NAME),
-                      TRI_ERROR_ARANGO_DUPLICATE_NAME,
-                      StringUtils::concatT("unable to restore view '",
-                                           nameSlice.copyString(), ": ",
-                                           TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME)));
+        generateError(
+            GeneralResponse::responseCode(TRI_ERROR_ARANGO_DUPLICATE_NAME),
+            TRI_ERROR_ARANGO_DUPLICATE_NAME,
+            StringUtils::concatT(
+                "unable to restore view '", nameSlice.copyString(), ": ",
+                TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME)));
         return;
       }
 
@@ -2064,7 +2140,8 @@ void RestReplicationHandler::handleCommandRestoreView() {
       return;
     }
   } catch (basics::Exception const& ex) {
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.message());
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
+                  ex.message());
 
     return;
   } catch (...) {
@@ -2122,8 +2199,8 @@ void RestReplicationHandler::handleCommandSync() {
   }
 
   std::string dbname = isGlobal ? "" : _vocbase.name();
-  auto config =
-      ReplicationApplierConfiguration::fromVelocyPack(_vocbase.server(), body, dbname);
+  auto config = ReplicationApplierConfiguration::fromVelocyPack(
+      _vocbase.server(), body, dbname);
 
   // will throw if invalid
   config.validate();
@@ -2210,9 +2287,8 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
     databaseName = _vocbase.name();
   }
 
-  auto config =
-      ReplicationApplierConfiguration::fromVelocyPack(applier->configuration(),
-                                                      body, databaseName);
+  auto config = ReplicationApplierConfiguration::fromVelocyPack(
+      applier->configuration(), body, databaseName);
   // will throw if invalid
   config.validate();
 
@@ -2291,7 +2367,8 @@ void RestReplicationHandler::handleCommandApplierGetStateAll() {
         "global inventory can only be fetched from within _system database");
     return;
   }
-  DatabaseFeature& databaseFeature = _vocbase.server().getFeature<DatabaseFeature>();
+  DatabaseFeature& databaseFeature =
+      _vocbase.server().getFeature<DatabaseFeature>();
 
   VPackBuilder builder;
   builder.openObject();
@@ -2356,7 +2433,8 @@ void RestReplicationHandler::handleCommandAddFollower() {
   VPackSlice const readLockIdSlice = body.get("readLockId");
   VPackSlice const shardSlice = body.get("shard");
   VPackSlice const checksumSlice = body.get("checksum");
-  if (!followerIdSlice.isString() || !shardSlice.isString() || !checksumSlice.isString()) {
+  if (!followerIdSlice.isString() || !shardSlice.isString() ||
+      !checksumSlice.isString()) {
     generateError(
         rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
         "'followerId', 'shard' and 'checksum' attributes must be strings");
@@ -2365,7 +2443,8 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
   auto col = _vocbase.lookupCollection(shardSlice.copyString());
   if (col == nullptr) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+    generateError(rest::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "did not find collection");
     return;
   }
@@ -2384,7 +2463,8 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
     if (res.ok()) {
       OperationOptions options(_context);
-      auto countRes = trx.count(col->name(), transaction::CountType::Normal, options);
+      auto countRes =
+          trx.count(col->name(), transaction::CountType::Normal, options);
 
       if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();
@@ -2438,7 +2518,8 @@ void RestReplicationHandler::handleCommandAddFollower() {
           basics::VelocyPackHelper::getStringValue(body, "syncerId", ""))};
       std::string const clientInfo =
           basics::VelocyPackHelper::getStringValue(body, "clientInfo", "");
-      _vocbase.replicationClients().untrack(SyncerId{syncerId}, serverId, clientInfo);
+      _vocbase.replicationClients().untrack(SyncerId{syncerId}, serverId,
+                                            clientInfo);
     } catch (std::exception const& ex) {
       // not much we can do here except logging
       LOG_TOPIC("312ff", WARN, Logger::REPLICATION)
@@ -2475,9 +2556,10 @@ void RestReplicationHandler::handleCommandAddFollower() {
         << _vocbase.name() << "/" << col->name() << ", mismatching checksums. "
         << "Expected (leader): " << referenceChecksum.get()
         << ", actual (follower): " << checksum;
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
-                  "'checksum' is wrong. Expected (leader): " + referenceChecksum.get() +
-                      ". actual (follower): " + checksum);
+    generateError(
+        rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
+        "'checksum' is wrong. Expected (leader): " + referenceChecksum.get() +
+            ". actual (follower): " + checksum);
     return;
   }
 
@@ -2530,7 +2612,8 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
   auto col = _vocbase.lookupCollection(shard.copyString());
 
   if (col == nullptr) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+    generateError(rest::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "did not find collection");
     return;
   }
@@ -2577,7 +2660,8 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
   // Note that we tolerate if followingTermId is not present or not a number
   // for upgrade scenarios. If the new leader does not send it, it will also
   // not send it in the option IsSynchronousReplication.
-  if (!leaderIdSlice.isString() || !shard.isString() || !oldLeaderIdSlice.isString()) {
+  if (!leaderIdSlice.isString() || !shard.isString() ||
+      !oldLeaderIdSlice.isString()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "'leaderId' and 'shard' attributes must be strings");
     return;
@@ -2587,13 +2671,15 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
   auto col = _vocbase.lookupCollection(shard.copyString());
 
   if (col == nullptr) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+    generateError(rest::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "did not find collection");
     return;
   }
 
   std::string currentLeader = col->followers()->getLeader();
-  if (currentLeader == arangodb::maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
+  if (currentLeader ==
+      arangodb::maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
     // We have resigned, check that we are the old leader
     currentLeader = ServerState::instance()->getId();
   }
@@ -2612,7 +2698,8 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
 
     if (followingTermId.isNumber()) {
       col->followers()->setTheLeader(
-          leaderId + "_" + StringUtils::itoa(followingTermId.getNumber<uint64_t>()));
+          leaderId + "_" +
+          StringUtils::itoa(followingTermId.getNumber<uint64_t>()));
     } else {
       col->followers()->setTheLeader(leaderId);
     }
@@ -2657,7 +2744,8 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   if (body.hasKey(StaticStrings::RebootId)) {
     if (body.get(StaticStrings::RebootId).isInteger()) {
       if (body.get("serverId").isString()) {
-        rebootId = RebootId(body.get(StaticStrings::RebootId).getNumber<uint64_t>());
+        rebootId =
+            RebootId(body.get(StaticStrings::RebootId).getNumber<uint64_t>());
         serverId = body.get("serverId").copyString();
       } else {
         generateError(
@@ -2683,7 +2771,8 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   auto col = _vocbase.lookupCollection(collection.copyString());
 
   if (col == nullptr) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+    generateError(rest::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "did not find collection");
     return;
   }
@@ -2692,7 +2781,8 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   double ttl = VelocyPackHelper::getNumericValue(ttlSlice, 0.0);
 
   if (col->getStatusLocked() != TRI_VOC_COL_STATUS_LOADED) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED,
+    generateError(rest::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED,
                   "collection not loaded");
     return;
   }
@@ -2702,8 +2792,8 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   // potentially faster soft-lock synchronization with a smaller hard-lock
   // phase.
 
-  bool doSoftLock =
-      VelocyPackHelper::getBooleanValue(body, StaticStrings::ReplicationSoftLockOnly, false);
+  bool doSoftLock = VelocyPackHelper::getBooleanValue(
+      body, StaticStrings::ReplicationSoftLockOnly, false);
   AccessMode::Type lockType = AccessMode::Type::READ;
   if (!doSoftLock) {
     // With not doSoftLock we trigger RocksDB to stop writes on this shard.
@@ -2717,7 +2807,8 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   LOG_TOPIC("4fac2", DEBUG, Logger::REPLICATION)
       << "Attempt to create a Lock: " << id << " for shard: " << _vocbase.name()
       << "/" << col->name() << " of type: " << (doSoftLock ? "soft" : "hard");
-  Result res = createBlockingTransaction(id, *col, ttl, lockType, rebootId, serverId);
+  Result res =
+      createBlockingTransaction(id, *col, ttl, lockType, rebootId, serverId);
   if (!res.ok()) {
     generateError(res);
     return;
@@ -2766,9 +2857,11 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
 
     // also return the _current_ last log sequence number. this may be higher
     // than the tick of the transaction created above, but it still can be
-    // used by a follower as an upper bound until which to tail the WAL _at most_.
+    // used by a follower as an upper bound until which to tail the WAL _at
+    // most_.
     TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
-    StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+    StorageEngine& engine =
+        server().getFeature<EngineSelectorFeature>().engine();
     b.add("lastLogTick", VPackValue(engine.currentTick()));
   }
 
@@ -2805,7 +2898,8 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
     return;
   }
   TransactionId id = ExtractReadlockId(idSlice);
-  LOG_TOPIC("9a5e3", DEBUG, Logger::REPLICATION) << "Attempt to cancel Lock: " << id;
+  LOG_TOPIC("9a5e3", DEBUG, Logger::REPLICATION)
+      << "Attempt to cancel Lock: " << id;
 
   auto res = cancelBlockingTransaction(id);
   if (!res.ok()) {
@@ -2835,7 +2929,8 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
 void RestReplicationHandler::handleCommandGetIdForReadLockCollection() {
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
-  std::string id = std::to_string(transaction::Context::makeTransactionId().id());
+  std::string id =
+      std::to_string(transaction::Context::makeTransactionId().id());
   VPackBuilder b;
   {
     VPackObjectBuilder bb(&b);
@@ -2859,7 +2954,8 @@ void RestReplicationHandler::handleCommandLoggerState() {
   if (res.fail()) {
     LOG_TOPIC("c7471", DEBUG, Logger::REPLICATION)
         << "failed to create logger-state" << res.errorMessage();
-    generateError(rest::ResponseCode::BAD, res.errorNumber(), res.errorMessage());
+    generateError(rest::ResponseCode::BAD, res.errorNumber(),
+                  res.errorMessage());
     return;
   }
 
@@ -2874,7 +2970,8 @@ void RestReplicationHandler::handleCommandLoggerState() {
 //////////////////////////////////////////////////////////////////////////////
 void RestReplicationHandler::handleCommandLoggerFirstTick() {
   TRI_voc_tick_t tick = UINT64_MAX;
-  Result res = server().getFeature<EngineSelectorFeature>().engine().firstTick(tick);
+  Result res =
+      server().getFeature<EngineSelectorFeature>().engine().firstTick(tick);
 
   VPackBuilder b;
   b.add(VPackValue(VPackValueType::Object));
@@ -2910,7 +3007,8 @@ void RestReplicationHandler::handleCommandLoggerTickRanges() {
   }
 }
 
-bool RestReplicationHandler::prepareRevisionOperation(RevisionOperationContext& ctx) {
+bool RestReplicationHandler::prepareRevisionOperation(
+    RevisionOperationContext& ctx) {
   auto& selector = server().getFeature<EngineSelectorFeature>();
   if (!selector.isRocksDB()) {
     generateError(
@@ -2955,25 +3053,27 @@ bool RestReplicationHandler::prepareRevisionOperation(RevisionOperationContext& 
 
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
-  if (!ExecContext::current().canUseCollection(_vocbase.name(), ctx.cname, auth::Level::RO)) {
+  if (!ExecContext::current().canUseCollection(_vocbase.name(), ctx.cname,
+                                               auth::Level::RO)) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return false;
   }
 
   ctx.collection = _vocbase.lookupCollection(ctx.cname);
   if (!ctx.collection) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return false;
   }
   if (!ctx.collection->syncByRevision()) {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                  TRI_ERROR_NOT_IMPLEMENTED,
                   "this collection doesn't support revision-based replication");
     return false;
   }
 
-  ctx.iter =
-      ctx.collection->getPhysical()->getReplicationIterator(ReplicationIterator::Ordering::Revision,
-                                                            ctx.batchId);
+  ctx.iter = ctx.collection->getPhysical()->getReplicationIterator(
+      ReplicationIterator::Ordering::Revision, ctx.batchId);
   if (!ctx.iter) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "could not get replication iterator for collection '" +
@@ -3079,7 +3179,8 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
     char ridBuffer[arangodb::basics::maxUInt64StringSize];
     {
       TRI_ASSERT(response.isOpenObject());
-      VPackArrayBuilder rangesGuard(&response, StaticStrings::RevisionTreeRanges);
+      VPackArrayBuilder rangesGuard(&response,
+                                    StaticStrings::RevisionTreeRanges);
       TRI_ASSERT(response.isOpenArray());
       bool subOpen = false;
       while (total < limit && current < body.length()) {
@@ -3131,7 +3232,8 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
     if (body.length() >= 1) {
       setRange(body.length() - 1);
       if (body.length() > 0 && resumeNext <= right) {
-        response.add(StaticStrings::RevisionTreeResume, resumeNext.toValuePair(ridBuffer));
+        response.add(StaticStrings::RevisionTreeResume,
+                     resumeNext.toValuePair(ridBuffer));
       }
     }
   }
@@ -3235,13 +3337,12 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  std::string const uuid =
-      arangodb::basics::VelocyPackHelper::getStringValue(slice, StaticStrings::DataSourceGuid,
-                                                         "");
+  std::string const uuid = arangodb::basics::VelocyPackHelper::getStringValue(
+      slice, StaticStrings::DataSourceGuid, "");
 
   TRI_col_type_e const type = static_cast<TRI_col_type_e>(
-      arangodb::basics::VelocyPackHelper::getNumericValue<int>(slice, "type",
-                                                               int(TRI_COL_TYPE_DOCUMENT)));
+      arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+          slice, "type", int(TRI_COL_TYPE_DOCUMENT)));
   std::shared_ptr<arangodb::LogicalCollection> col;
 
   if (!uuid.empty()) {
@@ -3267,7 +3368,8 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
             VPackValue(NameValidator::isSystemName(name)));
   if (!uuid.empty()) {
     bool valid = false;
-    NumberUtils::atoi_positive<uint64_t>(uuid.data(), uuid.data() + uuid.size(), valid);
+    NumberUtils::atoi_positive<uint64_t>(uuid.data(), uuid.data() + uuid.size(),
+                                         valid);
     if (valid) {
       // globallyUniqueId is only numeric. This causes ambiguities later
       // and can only happen for collections created with v3.3.0 (the GUID
@@ -3298,7 +3400,8 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
   DataSourceId planId = DataSourceId::none();
   VPackSlice const planIdSlice = slice.get("planId");
   if (planIdSlice.isNumber()) {
-    planId = DataSourceId{planIdSlice.getNumericValue<DataSourceId::BaseType>()};
+    planId =
+        DataSourceId{planIdSlice.getNumericValue<DataSourceId::BaseType>()};
   } else if (planIdSlice.isString()) {
     std::string tmp = planIdSlice.copyString();
     planId = DataSourceId{StringUtils::uint64(tmp)};
@@ -3348,7 +3451,8 @@ ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
   }
 
   if (global) {
-    auto& replicationFeature = _vocbase.server().getFeature<ReplicationFeature>();
+    auto& replicationFeature =
+        _vocbase.server().getFeature<ReplicationFeature>();
     return replicationFeature.globalReplicationApplier();
   } else {
     return _vocbase.replicationApplier();
@@ -3364,8 +3468,9 @@ struct RebootCookie : public arangodb::TransactionState::Cookie {
 }  // namespace
 
 Result RestReplicationHandler::createBlockingTransaction(
-    TransactionId id, LogicalCollection& col, double ttl, AccessMode::Type access,
-    RebootId const& rebootId, std::string const& serverId) {
+    TransactionId id, LogicalCollection& col, double ttl,
+    AccessMode::Type access, RebootId const& rebootId,
+    std::string const& serverId) {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
@@ -3410,10 +3515,12 @@ Result RestReplicationHandler::createBlockingTransaction(
         }
       };
 
-      auto rGuard = std::make_unique<RebootCookie>(
-          ci.rebootTracker().callMeOnChange(RebootTracker::PeerState(serverId, rebootId),
-                                            std::move(f), std::move(comment)));
-      auto ctx = mgr->leaseManagedTrx(id, AccessMode::Type::WRITE, /*isSideUser*/ false);
+      auto rGuard =
+          std::make_unique<RebootCookie>(ci.rebootTracker().callMeOnChange(
+              RebootTracker::PeerState(serverId, rebootId), std::move(f),
+              std::move(comment)));
+      auto ctx = mgr->leaseManagedTrx(id, AccessMode::Type::WRITE,
+                                      /*isSideUser*/ false);
 
       if (!ctx) {
         // Trx does not exist. So we assume it got cancelled.
@@ -3460,14 +3567,16 @@ Result RestReplicationHandler::isLockHeld(TransactionId id) const {
 
   transaction::Status stats = mgr->getManagedTrxStatus(id, _vocbase.name());
   if (stats == transaction::Status::UNDEFINED) {
-    return Result(TRI_ERROR_HTTP_NOT_FOUND,
-                  "no hold read lock job found for id " + std::to_string(id.id()));
+    return Result(
+        TRI_ERROR_HTTP_NOT_FOUND,
+        "no hold read lock job found for id " + std::to_string(id.id()));
   }
 
   return {};
 }
 
-ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(TransactionId id) const {
+ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(
+    TransactionId id) const {
   // This lookup is only required for API compatibility,
   // otherwise an unconditional destroy() would do.
   auto res = isLockHeld(id);
@@ -3494,7 +3603,8 @@ ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(
   }
 
   try {
-    auto ctx = mgr->leaseManagedTrx(id, AccessMode::Type::READ, /*isSideUser*/ false);
+    auto ctx =
+        mgr->leaseManagedTrx(id, AccessMode::Type::READ, /*isSideUser*/ false);
     if (!ctx) {
       // Trx does not exist. So we assume it got cancelled.
       return ResultT<std::string>::error(TRI_ERROR_TRANSACTION_INTERNAL,
@@ -3577,7 +3687,8 @@ void RestReplicationHandler::registerTombstone(TransactionId id) const {
   {
     WRITE_LOCKER(writeLocker, RestReplicationHandler::_tombLock);
     RestReplicationHandler::_tombstones.try_emplace(
-        key, std::chrono::steady_clock::now() + RestReplicationHandler::_tombstoneTimeout);
+        key, std::chrono::steady_clock::now() +
+                 RestReplicationHandler::_tombstoneTimeout);
   }
   timeoutTombstones();
 }

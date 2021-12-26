@@ -37,17 +37,20 @@ NoResultsExecutor::~NoResultsExecutor() = default;
 auto NoResultsExecutor::produceRows(AqlItemBlockInputRange& input,
                                     OutputAqlItemRow& output) const noexcept
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  return {input.upstreamState(), NoStats{}, AqlCall{0, false, 0, AqlCall::LimitType::HARD}};
+  return {input.upstreamState(), NoStats{},
+          AqlCall{0, false, 0, AqlCall::LimitType::HARD}};
 }
 
-auto NoResultsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call) const noexcept
+auto NoResultsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                      AqlCall& call) const noexcept
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   return {inputRange.upstreamState(), NoStats{}, 0,
           AqlCall{0, false, 0, AqlCall::LimitType::HARD}};
 };
 
 [[nodiscard]] auto NoResultsExecutor::expectedNumberOfRowsNew(
-    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+    -> size_t {
   // Well nevermind the input, but we will always return 0 rows here.
   return 0;
 }

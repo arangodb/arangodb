@@ -42,7 +42,8 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 IdExecutorInfos::IdExecutorInfos(bool doCount, RegisterId outputRegister,
-                                 std::string distributeId, bool isResponsibleForInitializeCursor)
+                                 std::string distributeId,
+                                 bool isResponsibleForInitializeCursor)
     : _doCount(doCount),
       _isResponsibleForInitializeCursor(isResponsibleForInitializeCursor),
       _outputRegister(outputRegister),
@@ -66,7 +67,7 @@ bool IdExecutorInfos::isResponsibleForInitializeCursor() const noexcept {
   return _isResponsibleForInitializeCursor;
 }
 
-template <class UsedFetcher>
+template<class UsedFetcher>
 IdExecutor<UsedFetcher>::IdExecutor(Fetcher& fetcher, IdExecutorInfos& infos)
     : _fetcher(fetcher), _infos(infos) {
   if (!infos.distributeId().empty()) {
@@ -74,10 +75,10 @@ IdExecutor<UsedFetcher>::IdExecutor(Fetcher& fetcher, IdExecutorInfos& infos)
   }
 }
 
-template <class UsedFetcher>
+template<class UsedFetcher>
 IdExecutor<UsedFetcher>::~IdExecutor() = default;
 
-template <class UsedFetcher>
+template<class UsedFetcher>
 auto IdExecutor<UsedFetcher>::produceRows(AqlItemBlockInputRange& inputRange,
                                           OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, CountStats, AqlCall> {
@@ -105,8 +106,9 @@ auto IdExecutor<UsedFetcher>::produceRows(AqlItemBlockInputRange& inputRange,
   return {inputRange.upstreamState(), stats, output.getClientCall()};
 }
 
-template <class UsedFetcher>
-auto IdExecutor<UsedFetcher>::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+template<class UsedFetcher>
+auto IdExecutor<UsedFetcher>::skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                            AqlCall& call)
     -> std::tuple<ExecutorState, CountStats, size_t, AqlCall> {
   CountStats stats;
   size_t skipped = 0;
@@ -123,4 +125,5 @@ auto IdExecutor<UsedFetcher>::skipRowsRange(AqlItemBlockInputRange& inputRange, 
 
 template class ::arangodb::aql::IdExecutor<ConstFetcher>;
 // ID can always pass through
-template class ::arangodb::aql::IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>;
+template class ::arangodb::aql::IdExecutor<
+    SingleRowFetcher<BlockPassthrough::Enable>>;

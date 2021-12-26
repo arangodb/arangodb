@@ -56,7 +56,8 @@ arangodb::velocypack::StringRef extractKeyPart(VPackSlice);
 /// @brief extract the _key attribute from a StringRef
 arangodb::velocypack::StringRef extractKeyPart(velocypack::StringRef);
 
-std::string extractIdString(CollectionNameResolver const*, VPackSlice, VPackSlice const&);
+std::string extractIdString(CollectionNameResolver const*, VPackSlice,
+                            VPackSlice const&);
 
 /// @brief quick access to the _key attribute in a database document
 /// the document must have at least two attributes, and _key is supposed to
@@ -94,13 +95,15 @@ velocypack::StringRef extractCollectionFromId(velocypack::StringRef id);
 RevisionId extractRevFromDocument(VPackSlice slice);
 VPackSlice extractRevSliceFromDocument(VPackSlice slice);
 
-OperationResult buildCountResult(OperationOptions const& options,
-                                 std::vector<std::pair<std::string, uint64_t>> const& count,
-                                 transaction::CountType type, uint64_t& total);
+OperationResult buildCountResult(
+    OperationOptions const& options,
+    std::vector<std::pair<std::string, uint64_t>> const& count,
+    transaction::CountType type, uint64_t& total);
 
 /// @brief creates an id string from a custom _id value and the _key string
 std::string makeIdFromCustom(CollectionNameResolver const* resolver,
-                             VPackSlice const& idPart, VPackSlice const& keyPart);
+                             VPackSlice const& idPart,
+                             VPackSlice const& keyPart);
 
 std::string makeIdFromParts(CollectionNameResolver const* resolver,
                             DataSourceId const& cid, VPackSlice const& keyPart);

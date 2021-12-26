@@ -48,17 +48,20 @@ class AqlItemBlockManager {
 
  public:
   /// @brief create the manager
-  explicit AqlItemBlockManager(arangodb::ResourceMonitor&, SerializationFormat format);
+  explicit AqlItemBlockManager(arangodb::ResourceMonitor&,
+                               SerializationFormat format);
 
   /// @brief destroy the manager
   TEST_VIRTUAL ~AqlItemBlockManager();
 
  public:
   /// @brief request a block with the specified size
-  TEST_VIRTUAL SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterCount nrRegs);
+  TEST_VIRTUAL SharedAqlItemBlockPtr requestBlock(size_t nrItems,
+                                                  RegisterCount nrRegs);
 
   /// @brief request a block and initialize it from the slice
-  TEST_VIRTUAL SharedAqlItemBlockPtr requestAndInitBlock(velocypack::Slice slice);
+  TEST_VIRTUAL SharedAqlItemBlockPtr
+  requestAndInitBlock(velocypack::Slice slice);
 
   TEST_VIRTUAL arangodb::ResourceMonitor& resourceMonitor() const noexcept;
 
@@ -115,7 +118,8 @@ class AqlItemBlockManager {
   Bucket _buckets[numBuckets];
 
   /// @brief the AqlItemBlock used to store the values of const variables
-  // Note: we are using a raw pointer here, because the AqlItemBlock destructor is protected.
+  // Note: we are using a raw pointer here, because the AqlItemBlock destructor
+  // is protected.
   AqlItemBlock* _constValueBlock = nullptr;
 };
 

@@ -45,8 +45,8 @@ class ApplicationServer;
 
 class RocksDBShaCalculatorThread : public arangodb::Thread {
  public:
-  explicit RocksDBShaCalculatorThread(application_features::ApplicationServer& server,
-                                      std::string const& name);
+  explicit RocksDBShaCalculatorThread(
+      application_features::ApplicationServer& server, std::string const& name);
 
   ~RocksDBShaCalculatorThread();
 
@@ -68,7 +68,7 @@ class RocksDBShaCalculatorThread : public arangodb::Thread {
 
   void deleteObsoleteFiles();
 
-  template <typename T>
+  template<typename T>
   bool isSstFilename(T const& filename) const;
 
   /// @brief The following wrapper routine simplifies unit testing
@@ -94,14 +94,18 @@ class RocksDBShaCalculatorThread : public arangodb::Thread {
 
 class RocksDBShaCalculator : public rocksdb::EventListener {
  public:
-  explicit RocksDBShaCalculator(application_features::ApplicationServer&, bool startThread);
+  explicit RocksDBShaCalculator(application_features::ApplicationServer&,
+                                bool startThread);
   virtual ~RocksDBShaCalculator();
 
-  void OnFlushCompleted(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) override;
+  void OnFlushCompleted(rocksdb::DB* db,
+                        const rocksdb::FlushJobInfo& flush_job_info) override;
 
-  void OnTableFileDeleted(const rocksdb::TableFileDeletionInfo& /*info*/) override;
+  void OnTableFileDeleted(
+      const rocksdb::TableFileDeletionInfo& /*info*/) override;
 
-  void OnCompactionCompleted(rocksdb::DB* db, const rocksdb::CompactionJobInfo& ci) override;
+  void OnCompactionCompleted(rocksdb::DB* db,
+                             const rocksdb::CompactionJobInfo& ci) override;
 
   void checkMissingShaFiles(std::string const& pathname, int64_t requireAge);
 

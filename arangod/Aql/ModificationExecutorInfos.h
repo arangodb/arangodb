@@ -65,15 +65,16 @@ struct IgnoreDocumentNotFound : BoolWrapper {
 };
 
 struct ModificationExecutorInfos {
-  ModificationExecutorInfos(ExecutionEngine* engine, RegisterId input1RegisterId,
-                            RegisterId input2RegisterId, RegisterId input3RegisterId,
-                            RegisterId outputNewRegisterId,
-                            RegisterId outputOldRegisterId, RegisterId outputRegisterId,
-                            arangodb::aql::QueryContext& query, OperationOptions options,
-                            aql::Collection const* aqlCollection, ProducesResults producesResults,
-                            ConsultAqlWriteFilter consultAqlWriteFilter,
-                            IgnoreErrors ignoreErrors, DoCount doCount, IsReplace isReplace,
-                            IgnoreDocumentNotFound ignoreDocumentNotFound);
+  ModificationExecutorInfos(
+      ExecutionEngine* engine, RegisterId input1RegisterId,
+      RegisterId input2RegisterId, RegisterId input3RegisterId,
+      RegisterId outputNewRegisterId, RegisterId outputOldRegisterId,
+      RegisterId outputRegisterId, arangodb::aql::QueryContext& query,
+      OperationOptions options, aql::Collection const* aqlCollection,
+      ProducesResults producesResults,
+      ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
+      DoCount doCount, IsReplace isReplace,
+      IgnoreDocumentNotFound ignoreDocumentNotFound);
 
   ModificationExecutorInfos() = delete;
   ModificationExecutorInfos(ModificationExecutorInfos&&) = default;

@@ -38,19 +38,23 @@ class RocksDBRecoveryHelper {
   virtual void prepare() {}
 
   virtual void PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
-                     const rocksdb::Slice& value, rocksdb::SequenceNumber tick) {}
+                     const rocksdb::Slice& value,
+                     rocksdb::SequenceNumber tick) {}
 
   virtual void DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key,
                         rocksdb::SequenceNumber tick) {}
 
-  virtual void SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key,
+  virtual void SingleDeleteCF(uint32_t column_family_id,
+                              const rocksdb::Slice& key,
                               rocksdb::SequenceNumber tick) {}
 
-  virtual void DeleteRangeCF(uint32_t column_family_id, const rocksdb::Slice& begin_key,
+  virtual void DeleteRangeCF(uint32_t column_family_id,
+                             const rocksdb::Slice& begin_key,
                              const rocksdb::Slice& end_key,
                              rocksdb::SequenceNumber tick) {}
 
-  virtual void LogData(const rocksdb::Slice& blob, rocksdb::SequenceNumber tick) {}
+  virtual void LogData(const rocksdb::Slice& blob,
+                       rocksdb::SequenceNumber tick) {}
 };
 
 }  // end namespace arangodb

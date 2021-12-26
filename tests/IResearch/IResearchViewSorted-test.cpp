@@ -84,7 +84,8 @@ namespace {
 
 class IResearchViewSortedTest
     : public ::testing::TestWithParam<arangodb::iresearch::LinkVersion>,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+                                            arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
 
@@ -95,7 +96,8 @@ class IResearchViewSortedTest
     server.startFeatures();
 
     auto& functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();
-    // register fake non-deterministic function in order to suppress optimizations
+    // register fake non-deterministic function in order to suppress
+    // optimizations
     functions.add(arangodb::aql::Function{
         "_NONDETERM_", ".",
         arangodb::aql::Function::makeFlags(
@@ -108,12 +110,14 @@ class IResearchViewSortedTest
           return params[0];
         }});
 
-    // register fake non-deterministic function in order to suppress optimizations
+    // register fake non-deterministic function in order to suppress
+    // optimizations
     functions.add(arangodb::aql::Function{
         "_FORWARD_", ".",
         arangodb::aql::Function::makeFlags(
             // fake deterministic
-            arangodb::aql::Function::Flags::Deterministic, arangodb::aql::Function::Flags::Cacheable,
+            arangodb::aql::Function::Flags::Deterministic,
+            arangodb::aql::Function::Flags::Cacheable,
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
@@ -123,7 +127,8 @@ class IResearchViewSortedTest
         }});
 
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-    arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
+    arangodb::tests::setDatabasePath(
+        dbPathFeature);  // ensure test data is stored in a unique directory
   }
 };  // IResearchViewSortedSetup
 
@@ -136,7 +141,8 @@ class IResearchViewSortedTest
 TEST_P(IResearchViewSortedTest, SingleField) {
   // ArangoDB specific string comparer
   struct StringComparer {
-    bool operator()(irs::string_ref const& lhs, irs::string_ref const& rhs) const {
+    bool operator()(irs::string_ref const& lhs,
+                    irs::string_ref const& rhs) const {
       return arangodb::basics::VelocyPackHelper::compareStringValues(
                  lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size(), true) < 0;
     }
@@ -198,8 +204,10 @@ TEST_P(IResearchViewSortedTest, SingleField) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    EXPECT_TRUE(view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties)
-                    .ok());
+    EXPECT_TRUE(
+        view->properties(builder,
+                         arangodb::LogicalDataSource::Serialization::Properties)
+            .ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -218,9 +226,9 @@ TEST_P(IResearchViewSortedTest, SingleField) {
   {
     arangodb::OperationOptions opt;
 
-    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
-                                       arangodb::transaction::Options());
+    arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
+        EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
@@ -229,19 +237,20 @@ TEST_P(IResearchViewSortedTest, SingleField) {
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential.json");
 
-      auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
+          resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
       size_t i = 0;
 
-      std::shared_ptr<arangodb::LogicalCollection> collections[]{logicalCollection1,
-                                                                 logicalCollection2};
+      std::shared_ptr<arangodb::LogicalCollection> collections[]{
+          logicalCollection1, logicalCollection2};
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
-        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
+        auto const res =
+            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
         ++i;
       }
@@ -253,10 +262,11 @@ TEST_P(IResearchViewSortedTest, SingleField) {
             vocbase, "FOR d IN testView OPTIONS { waitForSync: true } RETURN d")
             .result.ok()));  // commit
 
-    auto snapshot =
-        view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    auto snapshot = view->snapshot(
+        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     ASSERT_TRUE(snapshot);
-    EXPECT_TRUE(snapshot->size() > 1);  // ensure more than 1 segment in index snapshot
+    EXPECT_TRUE(snapshot->size() >
+                1);  // ensure more than 1 segment in index snapshot
   }
 
   // return all
@@ -264,9 +274,11 @@ TEST_P(IResearchViewSortedTest, SingleField) {
     std::string const query = "FOR d IN testView SORT d.seq DESC RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+        vocbase, query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<
+        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
@@ -278,11 +290,11 @@ TEST_P(IResearchViewSortedTest, SingleField) {
     EXPECT_TRUE(nodes.empty());
 
     // check sort is set
-    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    plan->findNodesOfType(
+        nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
     EXPECT_EQ(1, nodes.size());
-    auto* viewNode =
-        arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
-            nodes.front());
+    auto* viewNode = arangodb::aql::ExecutionNode::castTo<
+        arangodb::iresearch::IResearchViewNode*>(nodes.front());
     ASSERT_TRUE(viewNode);
     EXPECT_TRUE(viewNode->sort().first);
     EXPECT_EQ(1, viewNode->sort().second);
@@ -302,7 +314,8 @@ TEST_P(IResearchViewSortedTest, SingleField) {
       auto const resolved = actualDoc.resolveExternals();
 
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
+                           arangodb::velocypack::Slice(expectedDoc->vpack()),
+                           resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, insertedDocs.rend());
@@ -315,9 +328,11 @@ TEST_P(IResearchViewSortedTest, SingleField) {
         "d.seq DESC RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+        vocbase, query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<
+        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
@@ -329,11 +344,11 @@ TEST_P(IResearchViewSortedTest, SingleField) {
     EXPECT_TRUE(nodes.empty());
 
     // check sort is set
-    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    plan->findNodesOfType(
+        nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
     EXPECT_EQ(1, nodes.size());
-    auto* viewNode =
-        arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
-            nodes.front());
+    auto* viewNode = arangodb::aql::ExecutionNode::castTo<
+        arangodb::iresearch::IResearchViewNode*>(nodes.front());
     ASSERT_TRUE(viewNode);
     EXPECT_TRUE(viewNode->sort().first);
     EXPECT_EQ(1, viewNode->sort().second);
@@ -375,9 +390,11 @@ TEST_P(IResearchViewSortedTest, SingleField) {
         "d.seq DESC LIMIT 2, 10 RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+        vocbase, query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<
+        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
@@ -389,11 +406,11 @@ TEST_P(IResearchViewSortedTest, SingleField) {
     EXPECT_TRUE(nodes.empty());
 
     // check sort is set
-    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    plan->findNodesOfType(
+        nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
     EXPECT_EQ(1, nodes.size());
-    auto* viewNode =
-        arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
-            nodes.front());
+    auto* viewNode = arangodb::aql::ExecutionNode::castTo<
+        arangodb::iresearch::IResearchViewNode*>(nodes.front());
     ASSERT_TRUE(viewNode);
     EXPECT_TRUE(viewNode->sort().first);
     EXPECT_EQ(1, viewNode->sort().second);
@@ -430,7 +447,8 @@ TEST_P(IResearchViewSortedTest, SingleField) {
 TEST_P(IResearchViewSortedTest, MultipleFields) {
   // ArangoDB specific string comparer
   struct StringComparer {
-    bool operator()(irs::string_ref const& lhs, irs::string_ref const& rhs) const {
+    bool operator()(irs::string_ref const& lhs,
+                    irs::string_ref const& rhs) const {
       return arangodb::basics::VelocyPackHelper::compareStringValues(
                  lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size(), true) < 0;
     }
@@ -492,8 +510,10 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    EXPECT_TRUE(view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties)
-                    .ok());
+    EXPECT_TRUE(
+        view->properties(builder,
+                         arangodb::LogicalDataSource::Serialization::Properties)
+            .ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -512,9 +532,9 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
   {
     arangodb::OperationOptions opt;
 
-    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
-                                       arangodb::transaction::Options());
+    arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
+        EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
@@ -523,19 +543,20 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential.json");
 
-      auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
+          resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
       size_t i = 0;
 
-      std::shared_ptr<arangodb::LogicalCollection> collections[]{logicalCollection1,
-                                                                 logicalCollection2};
+      std::shared_ptr<arangodb::LogicalCollection> collections[]{
+          logicalCollection1, logicalCollection2};
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
-        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
+        auto const res =
+            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
         ++i;
       }
@@ -547,10 +568,11 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
             vocbase, "FOR d IN testView OPTIONS { waitForSync: true } RETURN d")
             .result.ok()));  // commit
 
-    auto snapshot =
-        view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    auto snapshot = view->snapshot(
+        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     ASSERT_TRUE(snapshot);
-    EXPECT_TRUE(snapshot->size() > 1);  // ensure more than 1 segment in index snapshot
+    EXPECT_TRUE(snapshot->size() >
+                1);  // ensure more than 1 segment in index snapshot
   }
 
   // return all
@@ -560,9 +582,11 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
         "RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+        vocbase, query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<
+        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
@@ -574,11 +598,11 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     EXPECT_TRUE(nodes.empty());
 
     // check sort is set
-    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    plan->findNodesOfType(
+        nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
     EXPECT_EQ(1, nodes.size());
-    auto* viewNode =
-        arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
-            nodes.front());
+    auto* viewNode = arangodb::aql::ExecutionNode::castTo<
+        arangodb::iresearch::IResearchViewNode*>(nodes.front());
     ASSERT_TRUE(viewNode);
     EXPECT_TRUE(viewNode->sort().first);
     EXPECT_EQ(4, viewNode->sort().second);
@@ -598,7 +622,8 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
       auto const resolved = actualDoc.resolveExternals();
 
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
+                           arangodb::velocypack::Slice(expectedDoc->vpack()),
+                           resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, insertedDocs.rend());
@@ -610,9 +635,11 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
         "FOR d IN testView SORT d.same, d.same DESC, d.seq DESC RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+        vocbase, query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<
+        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
@@ -624,11 +651,11 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     EXPECT_TRUE(nodes.empty());
 
     // check sort is set
-    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    plan->findNodesOfType(
+        nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
     EXPECT_EQ(1, nodes.size());
-    auto* viewNode =
-        arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
-            nodes.front());
+    auto* viewNode = arangodb::aql::ExecutionNode::castTo<
+        arangodb::iresearch::IResearchViewNode*>(nodes.front());
     ASSERT_TRUE(viewNode);
     EXPECT_TRUE(viewNode->sort().first);
     EXPECT_EQ(3, viewNode->sort().second);
@@ -648,7 +675,8 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
       auto const resolved = actualDoc.resolveExternals();
 
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
+                           arangodb::velocypack::Slice(expectedDoc->vpack()),
+                           resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, insertedDocs.rend());
@@ -661,9 +689,11 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
         "d.same ASC, d.same DESC, d.seq DESC RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+        vocbase, query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<
+        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
@@ -675,11 +705,11 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     EXPECT_TRUE(nodes.empty());
 
     // check sort is set
-    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    plan->findNodesOfType(
+        nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
     EXPECT_EQ(1, nodes.size());
-    auto* viewNode =
-        arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
-            nodes.front());
+    auto* viewNode = arangodb::aql::ExecutionNode::castTo<
+        arangodb::iresearch::IResearchViewNode*>(nodes.front());
     ASSERT_TRUE(viewNode);
     EXPECT_TRUE(viewNode->sort().first);
     EXPECT_EQ(3, viewNode->sort().second);
@@ -721,9 +751,11 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
         "d.same, d.same DESC, d.seq DESC, d.name ASC LIMIT 2, 10 RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+        vocbase, query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<
+        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
@@ -735,11 +767,11 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     EXPECT_TRUE(nodes.empty());
 
     // check sort is set
-    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    plan->findNodesOfType(
+        nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
     EXPECT_EQ(1, nodes.size());
-    auto* viewNode =
-        arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
-            nodes.front());
+    auto* viewNode = arangodb::aql::ExecutionNode::castTo<
+        arangodb::iresearch::IResearchViewNode*>(nodes.front());
     ASSERT_TRUE(viewNode);
     EXPECT_TRUE(viewNode->sort().first);
     EXPECT_EQ(4, viewNode->sort().second);
@@ -779,9 +811,11 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
         "d.same, d.same DESC LIMIT 10, 10 RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+        vocbase, query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::containers::SmallVector<
+        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
@@ -793,11 +827,11 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     EXPECT_TRUE(nodes.empty());
 
     // check sort is set
-    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    plan->findNodesOfType(
+        nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
     EXPECT_EQ(1, nodes.size());
-    auto* viewNode =
-        arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(
-            nodes.front());
+    auto* viewNode = arangodb::aql::ExecutionNode::castTo<
+        arangodb::iresearch::IResearchViewNode*>(nodes.front());
     ASSERT_TRUE(viewNode);
     EXPECT_TRUE(viewNode->sort().first);
     EXPECT_EQ(2, viewNode->sort().second);
@@ -827,4 +861,5 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(IResearchViewSortedTest, IResearchViewSortedTest, GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(IResearchViewSortedTest, IResearchViewSortedTest,
+                        GetLinkVersions());

@@ -47,7 +47,8 @@ constexpr double kMaxRadiansBetweenPoints = kPi + kRadEps;
 // constexpr double kEarthRadiusInMeters = (6378.137 * 1000);
 // Volumetric mean radius
 constexpr double kEarthRadiusInMeters = (6371.000 * 1000);
-constexpr double kMaxDistanceBetweenPoints = kMaxRadiansBetweenPoints * kEarthRadiusInMeters;
+constexpr double kMaxDistanceBetweenPoints =
+    kMaxRadiansBetweenPoints * kEarthRadiusInMeters;
 
 constexpr double metersToRadians(double distanceInMeters) noexcept {
   return std::max(0.0, std::min(distanceInMeters / kEarthRadiusInMeters, M_PI));

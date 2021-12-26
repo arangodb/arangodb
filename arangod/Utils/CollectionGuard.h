@@ -59,9 +59,8 @@ class CollectionGuard {
   CollectionGuard(TRI_vocbase_t* vocbase, std::string const& name)
       : _vocbase(vocbase), _collection(nullptr) {
     if (!name.empty() && name[0] >= '0' && name[0] <= '9') {
-      DataSourceId id{
-          NumberUtils::atoi_zero<DataSourceId::BaseType>(name.data(),
-                                                         name.data() + name.size())};
+      DataSourceId id{NumberUtils::atoi_zero<DataSourceId::BaseType>(
+          name.data(), name.data() + name.size())};
       _collection = _vocbase->useCollection(id, /*checkPermissions*/ true);
     } else {
       _collection = _vocbase->useCollection(name, /*checkPermissions*/ true);

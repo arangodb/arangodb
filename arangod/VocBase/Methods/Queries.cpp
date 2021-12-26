@@ -72,8 +72,10 @@ arangodb::Result checkAuthorization(TRI_vocbase_t& vocbase, bool allDatabases) {
     if (!vocbase.isSystem()) {
       // request must be made in the system database
       res.reset(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
-    } else if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
-      // request must be made only by superusers (except authentication is turned off)
+    } else if (ExecContext::isAuthEnabled() &&
+               !ExecContext::current().isSuperuser()) {
+      // request must be made only by superusers (except authentication is
+      // turned off)
       res.reset(
           TRI_ERROR_FORBIDDEN,
           "only superusers are allowed to perform actions on all queries");
@@ -106,7 +108,8 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
       databaseFeature.enumerate([&queries](TRI_vocbase_t* vocbase) {
         auto forDatabase = vocbase->queryList()->listSlow();
         queries.reserve(queries.size() + forDatabase.size());
-        std::move(forDatabase.begin(), forDatabase.end(), std::back_inserter(queries));
+        std::move(forDatabase.begin(), forDatabase.end(),
+                  std::back_inserter(queries));
       });
     } else {
       queries = vocbase.queryList()->listSlow();
@@ -119,7 +122,8 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
       databaseFeature.enumerate([&queries](TRI_vocbase_t* vocbase) {
         auto forDatabase = vocbase->queryList()->listCurrent();
         queries.reserve(queries.size() + forDatabase.size());
-        std::move(forDatabase.begin(), forDatabase.end(), std::back_inserter(queries));
+        std::move(forDatabase.begin(), forDatabase.end(),
+                  std::back_inserter(queries));
       });
     } else {
       queries = vocbase.queryList()->listCurrent();
@@ -159,9 +163,9 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
         continue;
       }
 
-      auto f = network::sendRequestRetry(pool, "server:" + coordinator,
-                                         fuerte::RestVerb::Get, url,
-                                         VPackBuffer<uint8_t>{}, options, buildHeaders());
+      auto f = network::sendRequestRetry(
+          pool, "server:" + coordinator, fuerte::RestVerb::Get, url,
+          VPackBuffer<uint8_t>{}, options, buildHeaders());
       futures.emplace_back(std::move(f));
     }
 
@@ -209,7 +213,8 @@ Result Queries::listCurrent(TRI_vocbase_t& vocbase, velocypack::Builder& out,
 }
 
 /// @brief clears the list of slow queries
-Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases, bool fanout) {
+Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
+                          bool fanout) {
   Result res;
 
   if (allDatabases) {
@@ -219,7 +224,8 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases, bool fanout
       return res.reset(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
     }
     if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
-      // request must be made only by superusers (except authentication is turned off)
+      // request must be made only by superusers (except authentication is
+      // turned off)
       return res.reset(
           TRI_ERROR_FORBIDDEN,
           "only superusers may retrieve the list of queries for all databases");
@@ -258,10 +264,9 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases, bool fanout
         continue;
       }
 
-      auto f =
-          network::sendRequestRetry(pool, "server:" + coordinator,
-                                    fuerte::RestVerb::Delete, "/_api/query/slow",
-                                    body, options, buildHeaders());
+      auto f = network::sendRequestRetry(
+          pool, "server:" + coordinator, fuerte::RestVerb::Delete,
+          "/_api/query/slow", body, options, buildHeaders());
       futures.emplace_back(std::move(f));
     }
 
@@ -286,7 +291,8 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases, bool fanout
 }
 
 /// @brief kills the given query
-Result Queries::kill(TRI_vocbase_t& vocbase, TRI_voc_tick_t id, bool allDatabases) {
+Result Queries::kill(TRI_vocbase_t& vocbase, TRI_voc_tick_t id,
+                     bool allDatabases) {
   Result res = checkAuthorization(vocbase, allDatabases);
 
   if (res.ok()) {
@@ -297,7 +303,8 @@ Result Queries::kill(TRI_vocbase_t& vocbase, TRI_voc_tick_t id, bool allDatabase
       databaseFeature.enumerate([id, &res, &found](TRI_vocbase_t* vocbase) {
         res = vocbase->queryList()->kill(id);
         if (res.ok()) {
-          // unfortunately there is no way to stop the iteration once we found the query.
+          // unfortunately there is no way to stop the iteration once we found
+          // the query.
           found = true;
         }
       });

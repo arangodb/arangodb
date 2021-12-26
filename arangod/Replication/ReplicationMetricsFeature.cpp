@@ -96,7 +96,8 @@ DECLARE_COUNTER(arangodb_replication_synchronous_requests_total_number_total,
                 "Total number of synchronous replication requests");
 namespace arangodb {
 
-ReplicationMetricsFeature::ReplicationMetricsFeature(arangodb::application_features::ApplicationServer& server)
+ReplicationMetricsFeature::ReplicationMetricsFeature(
+    arangodb::application_features::ApplicationServer& server)
     : ApplicationFeature(server, "ReplicationMetrics"),
       _numDumpRequests(server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_replication_dump_requests_total{})),
@@ -126,8 +127,9 @@ ReplicationMetricsFeature::ReplicationMetricsFeature(arangodb::application_featu
           arangodb_replication_initial_keys_requests_time_total{})),
       _waitedForSyncDocs(server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_replication_initial_docs_requests_time_total{})),
-      _waitedForSyncInsertions(server.getFeature<arangodb::MetricsFeature>().add(
-          arangodb_replication_initial_insert_apply_time_total{})),
+      _waitedForSyncInsertions(
+          server.getFeature<arangodb::MetricsFeature>().add(
+              arangodb_replication_initial_insert_apply_time_total{})),
       _waitedForSyncRemovals(server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_replication_initial_remove_apply_time_total{})),
       _numTailingRequests(server.getFeature<arangodb::MetricsFeature>().add(
@@ -135,15 +137,18 @@ ReplicationMetricsFeature::ReplicationMetricsFeature(arangodb::application_featu
       _numTailingFollowTickNotPresent(
           server.getFeature<arangodb::MetricsFeature>().add(
               arangodb_replication_tailing_follow_tick_failures_total{})),
-      _numTailingProcessedMarkers(server.getFeature<arangodb::MetricsFeature>().add(
-          arangodb_replication_tailing_markers_total{})),
+      _numTailingProcessedMarkers(
+          server.getFeature<arangodb::MetricsFeature>().add(
+              arangodb_replication_tailing_markers_total{})),
       _numTailingProcessedDocuments(
           server.getFeature<arangodb::MetricsFeature>().add(
               arangodb_replication_tailing_documents_total{})),
-      _numTailingProcessedRemovals(server.getFeature<arangodb::MetricsFeature>().add(
-          arangodb_replication_tailing_removals_total{})),
-      _numTailingBytesReceived(server.getFeature<arangodb::MetricsFeature>().add(
-          arangodb_replication_tailing_bytes_received_total{})),
+      _numTailingProcessedRemovals(
+          server.getFeature<arangodb::MetricsFeature>().add(
+              arangodb_replication_tailing_removals_total{})),
+      _numTailingBytesReceived(
+          server.getFeature<arangodb::MetricsFeature>().add(
+              arangodb_replication_tailing_bytes_received_total{})),
       _numFailedConnects(server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_replication_failed_connects_total{})),
       _waitedForTailing(server.getFeature<arangodb::MetricsFeature>().add(
@@ -170,7 +175,8 @@ void ReplicationMetricsFeature::InitialSyncStats::publish() {
   feature._numDumpBytesReceived += numDumpBytesReceived;
   feature._numDumpDocuments += numDumpDocuments;
   feature._waitedForDump += static_cast<uint64_t>(waitedForDump * 1000);
-  feature._waitedForDumpApply += static_cast<uint64_t>(waitedForDumpApply * 1000);
+  feature._waitedForDumpApply +=
+      static_cast<uint64_t>(waitedForDumpApply * 1000);
 
   feature._numSyncKeysRequests += numKeysRequests;
   feature._numSyncDocsRequests += numDocsRequests;
@@ -179,11 +185,14 @@ void ReplicationMetricsFeature::InitialSyncStats::publish() {
   feature._numSyncDocsRemoved += numDocsRemoved;
   feature._numSyncBytesReceived += numSyncBytesReceived;
   feature._numFailedConnects += numFailedConnects;
-  feature._waitedForSyncInitial += static_cast<uint64_t>(waitedForInitial * 1000);
+  feature._waitedForSyncInitial +=
+      static_cast<uint64_t>(waitedForInitial * 1000);
   feature._waitedForSyncKeys += static_cast<uint64_t>(waitedForKeys * 1000);
   feature._waitedForSyncDocs += static_cast<uint64_t>(waitedForDocs * 1000);
-  feature._waitedForSyncInsertions += static_cast<uint64_t>(waitedForInsertions * 1000);
-  feature._waitedForSyncRemovals += static_cast<uint64_t>(waitedForRemovals * 1000);
+  feature._waitedForSyncInsertions +=
+      static_cast<uint64_t>(waitedForInsertions * 1000);
+  feature._waitedForSyncRemovals +=
+      static_cast<uint64_t>(waitedForRemovals * 1000);
 
   reset();
 }
@@ -209,7 +218,8 @@ void ReplicationMetricsFeature::InitialSyncStats::reset() noexcept {
   waitedForRemovals = 0.0;
 }
 
-ReplicationMetricsFeature::InitialSyncStats& ReplicationMetricsFeature::InitialSyncStats::operator+=(
+ReplicationMetricsFeature::InitialSyncStats&
+ReplicationMetricsFeature::InitialSyncStats::operator+=(
     ReplicationMetricsFeature::InitialSyncStats const& other) noexcept {
   numDumpRequests += other.numDumpRequests;
   numDumpBytesReceived += other.numDumpBytesReceived;
@@ -249,7 +259,8 @@ void ReplicationMetricsFeature::TailingSyncStats::publish() {
   feature._numTailingBytesReceived += numTailingBytesReceived;
   feature._numFailedConnects += numFailedConnects;
   feature._waitedForTailing += static_cast<uint64_t>(waitedForTailing * 1000);
-  feature._waitedForTailingApply += static_cast<uint64_t>(waitedForTailingApply * 1000);
+  feature._waitedForTailingApply +=
+      static_cast<uint64_t>(waitedForTailingApply * 1000);
 
   reset();
 }
@@ -266,7 +277,8 @@ void ReplicationMetricsFeature::TailingSyncStats::reset() noexcept {
   waitedForTailingApply = 0;
 }
 
-ReplicationMetricsFeature::TailingSyncStats& ReplicationMetricsFeature::TailingSyncStats::operator+=(
+ReplicationMetricsFeature::TailingSyncStats&
+ReplicationMetricsFeature::TailingSyncStats::operator+=(
     ReplicationMetricsFeature::TailingSyncStats const& other) noexcept {
   numTailingRequests += other.numTailingRequests;
   numFollowTickNotPresent += other.numFollowTickNotPresent;

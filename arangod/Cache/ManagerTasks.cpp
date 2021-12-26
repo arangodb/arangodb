@@ -78,7 +78,8 @@ void FreeMemoryTask::run() {
 }
 
 MigrateTask::MigrateTask(Manager::TaskEnvironment environment, Manager& manager,
-                         std::shared_ptr<Cache> cache, std::shared_ptr<Table> table)
+                         std::shared_ptr<Cache> cache,
+                         std::shared_ptr<Table> table)
     : _environment(environment),
       _manager(manager),
       _cache(std::move(cache)),

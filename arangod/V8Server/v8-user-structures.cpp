@@ -41,7 +41,8 @@ namespace arangodb {
 
 DatabaseJavaScriptCache::~DatabaseJavaScriptCache() = default;
 
-v8::Handle<v8::Value> CacheKeySpace::keyGet(v8::Isolate* isolate, std::string const& key) {
+v8::Handle<v8::Value> CacheKeySpace::keyGet(v8::Isolate* isolate,
+                                            std::string const& key) {
   READ_LOCKER(readLocker, _lock);
 
   auto it = _hash.find(key);
@@ -76,7 +77,8 @@ using namespace arangodb;
 
 /// @brief finds a keyspace by name
 /// note that at least the read-lock must be held to use this function
-static CacheKeySpace* GetKeySpace(TRI_vocbase_t& vocbase, std::string const& name) {
+static CacheKeySpace* GetKeySpace(TRI_vocbase_t& vocbase,
+                                  std::string const& name) {
   DatabaseJavaScriptCache* cache = vocbase._cacheData.get();
   auto it = cache->keyspaces.find(name);
 
@@ -250,7 +252,8 @@ static void JS_KeySet(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 /// @brief creates the user structures functions
-void TRI_InitV8UserStructures(v8::Isolate* isolate, v8::Handle<v8::Context> /*context*/) {
+void TRI_InitV8UserStructures(v8::Isolate* isolate,
+                              v8::Handle<v8::Context> /*context*/) {
   v8::HandleScope scope(isolate);
 
   // NOTE: the following functions are all experimental and might

@@ -80,8 +80,8 @@ struct BenchmarkOperation {
   static void registerBenchmark(std::string name, BenchmarkFactory factory);
 
   /// @brief return the benchmark for a name
-  static std::unique_ptr<BenchmarkOperation> createBenchmark(std::string const& name,
-                                                             BenchFeature& arangobench);
+  static std::unique_ptr<BenchmarkOperation> createBenchmark(
+      std::string const& name, BenchFeature& arangobench);
 
   /// @brief returns the description of the testcase
   virtual char const* getDescription() const noexcept = 0;

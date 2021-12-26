@@ -59,7 +59,8 @@ class PregelFeature final : public application_features::ApplicationFeature {
       TRI_vocbase_t& vocbase, std::string algorithm,
       std::vector<std::string> const& vertexCollections,
       std::vector<std::string> const& edgeCollections,
-      std::unordered_map<std::string, std::vector<std::string>> const& edgeCollectionRestrictions,
+      std::unordered_map<std::string, std::vector<std::string>> const&
+          edgeCollectionRestrictions,
       VPackSlice const& params);
 
   void start() override final;
@@ -85,7 +86,8 @@ class PregelFeature final : public application_features::ApplicationFeature {
   }
 
   void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
-                              VPackSlice const& body, VPackBuilder& outResponse);
+                              VPackSlice const& body,
+                              VPackBuilder& outResponse);
   void handleWorkerRequest(TRI_vocbase_t& vocbase, std::string const& path,
                            VPackSlice const& body, VPackBuilder& outBuilder);
 
@@ -95,8 +97,9 @@ class PregelFeature final : public application_features::ApplicationFeature {
     _softShutdownOngoing.store(true, std::memory_order_relaxed);
   }
 
-  Result toVelocyPack(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result,
-                      bool allDatabases, bool fanout) const;
+  Result toVelocyPack(TRI_vocbase_t& vocbase,
+                      arangodb::velocypack::Builder& result, bool allDatabases,
+                      bool fanout) const;
 
  private:
   void scheduleGarbageCollection();
@@ -104,11 +107,12 @@ class PregelFeature final : public application_features::ApplicationFeature {
   mutable Mutex _mutex;
 
   std::unique_ptr<RecoveryManager> _recoveryManager;
-  /// @brief _recoveryManagerPtr always points to the same object as _recoveryManager, but allows
-  /// the pointer to be read atomically. This is necessary because _recoveryManager is initialized
-  /// lazily at a time when other threads are already running and potentially trying to read the
-  /// pointer. This only works because _recoveryManager is only initialzed once and lives until the
-  /// owning PregelFeature instance is also destroyed.
+  /// @brief _recoveryManagerPtr always points to the same object as
+  /// _recoveryManager, but allows the pointer to be read atomically. This is
+  /// necessary because _recoveryManager is initialized lazily at a time when
+  /// other threads are already running and potentially trying to read the
+  /// pointer. This only works because _recoveryManager is only initialzed once
+  /// and lives until the owning PregelFeature instance is also destroyed.
   std::atomic<RecoveryManager*> _recoveryManagerPtr{nullptr};
 
   Scheduler::WorkHandle _gcHandle;
@@ -120,7 +124,8 @@ class PregelFeature final : public application_features::ApplicationFeature {
   };
 
   std::unordered_map<uint64_t, ConductorEntry> _conductors;
-  std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<IWorker>>> _workers;
+  std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<IWorker>>>
+      _workers;
 
   std::atomic<bool> _softShutdownOngoing;
 };

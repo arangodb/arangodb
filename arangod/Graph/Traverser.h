@@ -126,10 +126,12 @@ class Traverser {
     virtual bool getVertex(arangodb::velocypack::Slice,
                            arangodb::traverser::EnumeratedPath& path);
 
-    virtual bool getSingleVertex(arangodb::velocypack::Slice, arangodb::velocypack::StringRef,
-                                 uint64_t, arangodb::velocypack::StringRef&);
+    virtual bool getSingleVertex(arangodb::velocypack::Slice,
+                                 arangodb::velocypack::StringRef, uint64_t,
+                                 arangodb::velocypack::StringRef&);
 
-    virtual bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth);
+    virtual bool getVertex(arangodb::velocypack::StringRef vertex,
+                           size_t depth);
 
     virtual void reset(arangodb::velocypack::StringRef const&);
 
@@ -157,10 +159,12 @@ class Traverser {
     bool getVertex(arangodb::velocypack::Slice,
                    arangodb::traverser::EnumeratedPath& path) override;
 
-    bool getSingleVertex(arangodb::velocypack::Slice, arangodb::velocypack::StringRef,
-                         uint64_t, arangodb::velocypack::StringRef&) override;
+    bool getSingleVertex(arangodb::velocypack::Slice,
+                         arangodb::velocypack::StringRef, uint64_t,
+                         arangodb::velocypack::StringRef&) override;
 
-    bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth) override;
+    bool getVertex(arangodb::velocypack::StringRef vertex,
+                   size_t depth) override;
 
     void reset(arangodb::velocypack::StringRef const&) override;
 
@@ -228,11 +232,13 @@ class Traverser {
 
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
-  virtual bool getSingleVertex(arangodb::velocypack::Slice edge,
-                               arangodb::velocypack::StringRef sourceVertexId, uint64_t depth,
-                               arangodb::velocypack::StringRef& targetVertexId) = 0;
+  virtual bool getSingleVertex(
+      arangodb::velocypack::Slice edge,
+      arangodb::velocypack::StringRef sourceVertexId, uint64_t depth,
+      arangodb::velocypack::StringRef& targetVertexId) = 0;
 
-  virtual bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth) = 0;
+  virtual bool getVertex(arangodb::velocypack::StringRef vertex,
+                         size_t depth) = 0;
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -297,7 +303,8 @@ class Traverser {
                              arangodb::velocypack::StringRef vid,
                              uint64_t depth, size_t cursorId);
 
-  bool vertexMatchesConditions(arangodb::velocypack::StringRef vid, uint64_t depth);
+  bool vertexMatchesConditions(arangodb::velocypack::StringRef vid,
+                               uint64_t depth);
 
   transaction::Methods* trx() const { return _trx; }
 
@@ -324,7 +331,8 @@ class Traverser {
   TraverserOptions* _opts;
 
   /// @brief Function to fetch the real data of a vertex into an AQLValue
-  virtual aql::AqlValue fetchVertexData(arangodb::velocypack::StringRef vid) = 0;
+  virtual aql::AqlValue fetchVertexData(
+      arangodb::velocypack::StringRef vid) = 0;
 
   /// @brief Function to add the real data of a vertex into a velocypack builder
   virtual void addVertexToVelocyPack(arangodb::velocypack::StringRef vid,

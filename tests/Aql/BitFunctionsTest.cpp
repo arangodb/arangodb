@@ -63,7 +63,8 @@ AqlValue callFn(AstNode const& node, char const* input1,
 
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
-  fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([](ErrorCode, char const*) {});
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .AlwaysDo([](ErrorCode, char const*) {});
 
   VPackOptions options;
   fakeit::Mock<transaction::Context> trxCtxMock;
@@ -71,9 +72,8 @@ AqlValue callFn(AstNode const& node, char const* input1,
   fakeit::When(Method(trxCtxMock, leaseBuilder)).AlwaysDo([]() {
     return new arangodb::velocypack::Builder();
   });
-  fakeit::When(Method(trxCtxMock, returnBuilder)).AlwaysDo([](arangodb::velocypack::Builder* b) {
-    delete b;
-  });
+  fakeit::When(Method(trxCtxMock, returnBuilder))
+      .AlwaysDo([](arangodb::velocypack::Builder* b) { delete b; });
   fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysReturn(&options);
   transaction::Context& trxCtx = trxCtxMock.get();
 
@@ -83,9 +83,8 @@ AqlValue callFn(AstNode const& node, char const* input1,
 
   transaction::Methods& trx = trxMock.get();
 
-  fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&trx]() -> transaction::Methods& {
-    return trx;
-  });
+  fakeit::When(Method(expressionContextMock, trx))
+      .AlwaysDo([&trx]() -> transaction::Methods& { return trx; });
 
   auto f = static_cast<arangodb::aql::Function const*>(node.getData());
   AqlValue a = f->implementation(&expressionContext, node, params);
@@ -96,7 +95,7 @@ AqlValue callFn(AstNode const& node, char const* input1,
   return a;
 }
 
-template <typename T>
+template<typename T>
 T evaluate(AstNode const& node, char const* input1,
            char const* input2 = nullptr, char const* input3 = nullptr) {
   AqlValue actual = callFn(node, input1, input2, input3);
@@ -332,9 +331,9 @@ TEST(BitFunctionsTest, BitOr) {
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "[1, 1, 1]"));
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "[0, 1, 0, 1, 0, 1]"));
   ASSERT_EQ(int64_t(7), evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5, 6, 7]"));
-  ASSERT_EQ(int64_t(7),
-            evaluate<int64_t>(node,
-                              "[0, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7]"));
+  ASSERT_EQ(
+      int64_t(7),
+      evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7]"));
   ASSERT_EQ(int64_t(63), evaluate<int64_t>(node, "[1, 2, 4, 8, 16, 32]"));
   ASSERT_EQ(int64_t(65535),
             evaluate<int64_t>(node,
@@ -483,12 +482,12 @@ TEST(BitFunctionsTest, BitXOr) {
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5, 6, 7]"));
   ASSERT_EQ(int64_t(0),
             evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3]"));
-  ASSERT_EQ(int64_t(7),
-            evaluate<int64_t>(node,
-                              "[0, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6]"));
-  ASSERT_EQ(int64_t(0),
-            evaluate<int64_t>(node,
-                              "[0, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7]"));
+  ASSERT_EQ(
+      int64_t(7),
+      evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6]"));
+  ASSERT_EQ(
+      int64_t(0),
+      evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7]"));
   ASSERT_EQ(int64_t(63), evaluate<int64_t>(node, "[1, 2, 4, 8, 16, 32]"));
   ASSERT_EQ(int64_t(65535),
             evaluate<int64_t>(node,
@@ -952,12 +951,16 @@ TEST(BitFunctionsTest, BitShiftLeft) {
   ASSERT_EQ(int64_t(197565184), evaluate<int64_t>(node, "98782592", "1", "32"));
   ASSERT_EQ(int64_t(395130368), evaluate<int64_t>(node, "98782592", "2", "32"));
   ASSERT_EQ(int64_t(790260736), evaluate<int64_t>(node, "98782592", "3", "32"));
-  ASSERT_EQ(int64_t(1580521472), evaluate<int64_t>(node, "98782592", "4", "32"));
+  ASSERT_EQ(int64_t(1580521472),
+            evaluate<int64_t>(node, "98782592", "4", "32"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "98782592", "20", "10"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "98782592", "20", "27"));
-  ASSERT_EQ(int64_t(134217728), evaluate<int64_t>(node, "98782592", "20", "28"));
-  ASSERT_EQ(int64_t(402653184), evaluate<int64_t>(node, "98782592", "20", "29"));
-  ASSERT_EQ(int64_t(402653184), evaluate<int64_t>(node, "98782592", "20", "30"));
+  ASSERT_EQ(int64_t(134217728),
+            evaluate<int64_t>(node, "98782592", "20", "28"));
+  ASSERT_EQ(int64_t(402653184),
+            evaluate<int64_t>(node, "98782592", "20", "29"));
+  ASSERT_EQ(int64_t(402653184),
+            evaluate<int64_t>(node, "98782592", "20", "30"));
   ASSERT_EQ(int64_t(1476395008),
             evaluate<int64_t>(node, "98782592", "20", "31"));
   ASSERT_EQ(int64_t(3623878656),
@@ -1138,7 +1141,8 @@ TEST(BitFunctionsTest, BitShiftRight) {
             evaluate<int64_t>(node, "4294967295", "1", "32"));
   ASSERT_EQ(int64_t(134217727),
             evaluate<int64_t>(node, "4294967295", "5", "32"));
-  ASSERT_EQ(int64_t(2097151), evaluate<int64_t>(node, "4294967295", "11", "32"));
+  ASSERT_EQ(int64_t(2097151),
+            evaluate<int64_t>(node, "4294967295", "11", "32"));
   ASSERT_EQ(int64_t(8191), evaluate<int64_t>(node, "4294967295", "19", "32"));
   ASSERT_EQ(int64_t(7), evaluate<int64_t>(node, "4294967295", "29", "32"));
   ASSERT_EQ(int64_t(3), evaluate<int64_t>(node, "4294967295", "30", "32"));
@@ -1264,7 +1268,8 @@ TEST(BitFunctionsTest, BitDeconstruct) {
   expectFailed(node, "\"foo\"");
   expectFailed(node, "{}");
 
-  ASSERT_EQ(std::vector<int64_t>({}), evaluate<std::vector<int64_t>>(node, "0"));
+  ASSERT_EQ(std::vector<int64_t>({}),
+            evaluate<std::vector<int64_t>>(node, "0"));
   ASSERT_EQ(std::vector<int64_t>({0}),
             evaluate<std::vector<int64_t>>(node, "1"));
   ASSERT_EQ(std::vector<int64_t>({1}),
@@ -1347,7 +1352,8 @@ TEST(BitFunctionsTest, BitToString) {
   ASSERT_EQ("0000000000000000000000", evaluate<std::string>(node, "0", "22"));
   ASSERT_EQ("00000000000000000000000", evaluate<std::string>(node, "0", "23"));
   ASSERT_EQ("000000000000000000000000", evaluate<std::string>(node, "0", "24"));
-  ASSERT_EQ("0000000000000000000000000", evaluate<std::string>(node, "0", "25"));
+  ASSERT_EQ("0000000000000000000000000",
+            evaluate<std::string>(node, "0", "25"));
   ASSERT_EQ("00000000000000000000000000",
             evaluate<std::string>(node, "0", "26"));
   ASSERT_EQ("000000000000000000000000000",

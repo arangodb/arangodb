@@ -52,7 +52,8 @@ class CFilesTest : public ::testing::Test {
 
     if (!Initialized) {
       Initialized = true;
-      arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
+      arangodb::RandomGenerator::initialize(
+          arangodb::RandomGenerator::RandomType::MERSENNE);
     }
 
     _directory.appendText(TRI_GetTempPath());
@@ -159,7 +160,8 @@ TEST_F(CFilesTest, tst_copyfile) {
 
 TEST_F(CFilesTest, tst_createdirectory) {
   std::ostringstream out;
-  out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
+  out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter
+      << "-dir";
 
   std::string filename = out.str();
   long unused1;
@@ -176,7 +178,8 @@ TEST_F(CFilesTest, tst_createdirectory) {
 
 TEST_F(CFilesTest, tst_createdirectoryrecursive) {
   std::ostringstream out;
-  out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
+  out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter
+      << "-dir";
 
   std::string filename1 = out.str();
   out << TRI_DIR_SEPARATOR_CHAR << "abc";
@@ -200,7 +203,8 @@ TEST_F(CFilesTest, tst_createdirectoryrecursive) {
 
 TEST_F(CFilesTest, tst_removedirectorydeterministic) {
   std::ostringstream out;
-  out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
+  out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter
+      << "-dir";
 
   std::string filename1 = out.str();
   out << TRI_DIR_SEPARATOR_CHAR << "abc";
@@ -255,7 +259,8 @@ TEST_F(CFilesTest, tst_filesize_exists) {
   const char* buffer = "the quick brown fox";
 
   StringBuffer* filename = writeFile(buffer);
-  EXPECT_TRUE(static_cast<int>(strlen(buffer)) == TRI_SizeFile(filename->c_str()));
+  EXPECT_TRUE(static_cast<int>(strlen(buffer)) ==
+              TRI_SizeFile(filename->c_str()));
 
   TRI_UnlinkFile(filename->c_str());
   delete filename;
@@ -464,7 +469,8 @@ TEST_F(CFilesTest, tst_processFile) {
   EXPECT_TRUE(good);
   EXPECT_TRUE(
       sha.finalize().compare(
-          "9ecb36561341d18eb65484e833efea61edc74b84cf5e6ae1b81c63533e25fc8f") == 0);
+          "9ecb36561341d18eb65484e833efea61edc74b84cf5e6ae1b81c63533e25fc8f") ==
+      0);
 
   TRI_UnlinkFile(filename->c_str());
   delete filename;

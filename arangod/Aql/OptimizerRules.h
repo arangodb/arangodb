@@ -50,7 +50,8 @@ void enableAsyncPrefetching(ExecutionPlan& plan);
 void activateCallstackSplit(ExecutionPlan& plan);
 
 /// @brief adds a SORT operation for IN right-hand side operands
-void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                      OptimizerRule const&);
 
 /// @brief remove redundant sorts
 /// this rule modifies the plan in place:
@@ -77,7 +78,8 @@ void propagateConstantAttributesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 /// this rule modifies the plan in place
 /// it aims to move up calculations as far up in the plan as possible, to
 /// avoid redundant calculations in inner loops
-void moveCalculationsUpRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+void moveCalculationsUpRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                            OptimizerRule const&);
 
 /// @brief move calculations down in the plan
 /// this rule modifies the plan in place
@@ -89,71 +91,82 @@ void moveCalculationsDownRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 /// @brief determine the "right" type of CollectNode and
 /// add a sort node for each COLLECT (may be removed later)
 /// this rule cannot be turned off (otherwise, the query result might be wrong!)
-void specializeCollectRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+void specializeCollectRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                           OptimizerRule const&);
 
 /// @brief split and-combined filters and break them into smaller parts
-void splitFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+void splitFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                      OptimizerRule const&);
 
 /// @brief move filters up in the plan
 /// this rule modifies the plan in place
 /// filters are moved as far up in the plan as possible to make result sets
 /// as small as possible as early as possible
 /// filters are not pushed beyond limits
-void moveFiltersUpRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+void moveFiltersUpRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                       OptimizerRule const&);
 
 /// @brief simplify some conditions in CalculationNodes
-void simplifyConditionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+void simplifyConditionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                            OptimizerRule const&);
 
 /// @brief fuse filter conditions that follow each other
-void fuseFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+void fuseFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                     OptimizerRule const&);
 
 /// @brief remove redundant CalculationNodes
 void removeRedundantCalculationsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const&);
 
 /// @brief remove CalculationNodes and SubqueryNodes that are never needed
-void removeUnnecessaryCalculationsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+void removeUnnecessaryCalculationsRule(Optimizer*,
+                                       std::unique_ptr<ExecutionPlan>,
                                        OptimizerRule const&);
 
 /// @brief useIndex, try to use an index for filtering
-void useIndexesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+void useIndexesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                    OptimizerRule const&);
 
 /// @brief try to use the index for sorting
-void useIndexForSortRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+void useIndexForSortRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                         OptimizerRule const&);
 
 /// @brief try to remove filters which are covered by indexes
 void removeFiltersCoveredByIndexRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const&);
 
 /// @brief interchange adjacent EnumerateCollectionNodes in all possible ways
-void interchangeAdjacentEnumerationsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+void interchangeAdjacentEnumerationsRule(Optimizer*,
+                                         std::unique_ptr<ExecutionPlan>,
                                          OptimizerRule const&);
 
 /// @brief replace single document operations in cluster by special handling
-void substituteClusterSingleDocumentOperationsRule(Optimizer* opt,
-                                                   std::unique_ptr<ExecutionPlan> plan,
-                                                   OptimizerRule const&);
+void substituteClusterSingleDocumentOperationsRule(
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const&);
 
 #ifdef USE_ENTERPRISE
 /// @brief optimize queries in the cluster so that the entire query gets pushed
 /// to a single server
-void clusterOneShardRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+void clusterOneShardRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                         OptimizerRule const&);
 #endif
 
 #ifdef USE_ENTERPRISE
-void clusterLiftConstantsForDisjointGraphNodes(Optimizer* opt,
-                                               std::unique_ptr<ExecutionPlan> plan,
-                                               OptimizerRule const& rule);
+void clusterLiftConstantsForDisjointGraphNodes(
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+    OptimizerRule const& rule);
 #endif
 
 #ifdef USE_ENTERPRISE
-void clusterPushSubqueryToDBServer(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+void clusterPushSubqueryToDBServer(Optimizer* opt,
+                                   std::unique_ptr<ExecutionPlan> plan,
                                    OptimizerRule const& rule);
 #endif
 
 /// @brief scatter operations in cluster - send all incoming rows to all remote
 /// clients
-void scatterInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+void scatterInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                          OptimizerRule const&);
 
 /// @brief distribute operations in cluster - send each incoming row to every
 /// remote client precisely once. This happens in queries like:
@@ -167,7 +180,8 @@ void distributeInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 
 #ifdef USE_ENTERPRISE
 ExecutionNode* distributeInClusterRuleSmart(ExecutionPlan*, SubqueryNode* snode,
-                                            ExecutionNode* node, bool& wasModified);
+                                            ExecutionNode* node,
+                                            bool& wasModified);
 
 /// @brief remove scatter/gather and remote nodes for SatelliteCollections
 void scatterSatelliteGraphRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
@@ -181,7 +195,8 @@ void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void removeDistributeNodesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                OptimizerRule const&);
 
-void smartJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+void smartJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                    OptimizerRule const&);
 #endif
 
 /// @brief try to restrict fragments to a single shard if possible
@@ -189,9 +204,11 @@ void restrictToSingleShardRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                OptimizerRule const&);
 
 /// @brief move collect to the DB servers in cluster
-void collectInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+void collectInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                          OptimizerRule const&);
 
-void distributeFilterCalcToClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+void distributeFilterCalcToClusterRule(Optimizer*,
+                                       std::unique_ptr<ExecutionPlan>,
                                        OptimizerRule const&);
 
 void distributeSortToClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
@@ -199,7 +216,8 @@ void distributeSortToClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 
 /// @brief try to get rid of a RemoteNode->ScatterNode combination which has
 /// only a SingletonNode and possibly some CalculationNodes as dependencies
-void removeUnnecessaryRemoteScatterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+void removeUnnecessaryRemoteScatterRule(Optimizer*,
+                                        std::unique_ptr<ExecutionPlan>,
                                         OptimizerRule const&);
 
 /// @brief this rule removes Remote-Gather-Scatter/Distribute-Remote nodes from
@@ -227,7 +245,8 @@ void removeUnnecessaryRemoteScatterRule(Optimizer*, std::unique_ptr<ExecutionPla
 ///
 ///  where f is some function.
 ///
-void undistributeRemoveAfterEnumCollRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+void undistributeRemoveAfterEnumCollRule(Optimizer*,
+                                         std::unique_ptr<ExecutionPlan>,
                                          OptimizerRule const&);
 
 /// @brief this rule replaces expressions of the type:
@@ -236,13 +255,16 @@ void undistributeRemoveAfterEnumCollRule(Optimizer*, std::unique_ptr<ExecutionPl
 //    x.val IN [1,2,3]
 //  when the OR conditions are present in the same FILTER node, and refer to the
 //  same (single) attribute.
-void replaceOrWithInRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+void replaceOrWithInRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                         OptimizerRule const&);
 
-void removeRedundantOrRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+void removeRedundantOrRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                           OptimizerRule const&);
 
 /// @brief remove $OLD and $NEW variables from data-modification statements
 /// if not required
-void removeDataModificationOutVariablesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+void removeDataModificationOutVariablesRule(Optimizer*,
+                                            std::unique_ptr<ExecutionPlan>,
                                             OptimizerRule const&);
 
 // replace inaccessible EnumerateCollectionNode with NoResult nodes
@@ -258,25 +280,31 @@ void optimizeTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
 /// @brief removes filter nodes already covered by the traversal and removes
 /// unused variables
-void removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+void removeFiltersCoveredByTraversal(Optimizer* opt,
+                                     std::unique_ptr<ExecutionPlan> plan,
                                      OptimizerRule const&);
 
 /// @brief removes redundant path variables, after applying
 /// `removeFiltersCoveredByTraversal`. Should significantly reduce overhead
-void removeTraversalPathVariable(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+void removeTraversalPathVariable(Optimizer* opt,
+                                 std::unique_ptr<ExecutionPlan> plan,
                                  OptimizerRule const&);
 
 /// @brief moves simple subqueries one level higher
-void inlineSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+void inlineSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                          OptimizerRule const&);
 
 /// @brief replace FILTER and SORT containing DISTANCE function
-void geoIndexRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>, OptimizerRule const&);
+void geoIndexRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>,
+                  OptimizerRule const&);
 
 /// @brief make sort node aware of limit to enable internal optimizations
-void sortLimitRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>, OptimizerRule const&);
+void sortLimitRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>,
+                   OptimizerRule const&);
 
 /// @brief push LIMIT into subqueries, and simplify them
-void optimizeSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+void optimizeSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                            OptimizerRule const&);
 
 /// @brief replace legacy JS functions in the plan.
 void replaceNearWithinFulltextRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
@@ -286,45 +314,56 @@ void replaceNearWithinFulltextRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void moveFiltersIntoEnumerateRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                   OptimizerRule const&);
 
-/// @brief turns LENGTH(FOR doc IN collection) subqueries into an optimized count operation
-void optimizeCountRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+/// @brief turns LENGTH(FOR doc IN collection) subqueries into an optimized
+/// count operation
+void optimizeCountRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                       OptimizerRule const&);
 
 /// @brief parallelize Gather nodes (cluster-only)
-void parallelizeGatherRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+void parallelizeGatherRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                           OptimizerRule const&);
 
 /// @brief allows execution nodes to asynchronously prefetch the next batch from
 /// their upstream node.
-void asyncPrefetchRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+void asyncPrefetchRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                       OptimizerRule const&);
 
 //// @brief splice in subqueries
-void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                          OptimizerRule const&);
 
-//// @brief reduces a sorted gather to an unsorted gather if only one shard is involved
+//// @brief reduces a sorted gather to an unsorted gather if only one shard is
+///involved
 void decayUnnecessarySortedGather(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                   OptimizerRule const&);
 
-void createScatterGatherSnippet(ExecutionPlan& plan, TRI_vocbase_t* vocbase,
-                                ExecutionNode* node, bool isRootNode,
-                                std::vector<ExecutionNode*> const& nodeDependencies,
-                                std::vector<ExecutionNode*> const& nodeParents,
-                                SortElementVector const& elements, size_t numberOfShards,
-                                std::unordered_map<ExecutionNode*, ExecutionNode*> const& subqueries,
-                                Collection const* collection);
+void createScatterGatherSnippet(
+    ExecutionPlan& plan, TRI_vocbase_t* vocbase, ExecutionNode* node,
+    bool isRootNode, std::vector<ExecutionNode*> const& nodeDependencies,
+    std::vector<ExecutionNode*> const& nodeParents,
+    SortElementVector const& elements, size_t numberOfShards,
+    std::unordered_map<ExecutionNode*, ExecutionNode*> const& subqueries,
+    Collection const* collection);
 
 //// @brief enclose a node in SCATTER/GATHER
 void insertScatterGatherSnippet(
     ExecutionPlan& plan, ExecutionNode* at,
-    containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const& subqueries);
+    containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const&
+        subqueries);
 
-//// @brief find all subqueries in a plan and store a map from subqueries to nodes
-void findSubqueriesInPlan(ExecutionPlan& plan,
-                          containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*>& subqueries);
+//// @brief find all subqueries in a plan and store a map from subqueries to
+///nodes
+void findSubqueriesInPlan(
+    ExecutionPlan& plan,
+    containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*>& subqueries);
 
 //// @brief create a DistributeNode for the given ExecutionNode
-auto createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* node) -> DistributeNode*;
+auto createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* node)
+    -> DistributeNode*;
 
 //// @brief create a gather node matching the given DistributeNode
-auto createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node) -> GatherNode*;
+auto createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node)
+    -> GatherNode*;
 
 //// @brief enclose a node in DISTRIBUTE/GATHER
 auto insertDistributeGatherSnippet(ExecutionPlan& plan, ExecutionNode* at,

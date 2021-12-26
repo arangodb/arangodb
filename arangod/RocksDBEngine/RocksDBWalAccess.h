@@ -36,7 +36,8 @@ class RocksDBWalAccess final : public WalAccess {
   virtual ~RocksDBWalAccess() = default;
 
   /// {"tickMin":"123", "tickMax":"456", "version":"3.2", "serverId":"abc"}
-  Result tickRange(std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const override;
+  Result tickRange(
+      std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const override;
 
   /// {"lastTick":"123",
   ///  "version":"3.2",
@@ -55,7 +56,8 @@ class RocksDBWalAccess final : public WalAccess {
   /// @brief helper function to print WAL contents. this is only used for
   /// debugging
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  void printWal(WalAccess::Filter const& filter, size_t chunkSize, MarkerCallback const&) const;
+  void printWal(WalAccess::Filter const& filter, size_t chunkSize,
+                MarkerCallback const&) const;
 #endif
 
   RocksDBEngine& _engine;

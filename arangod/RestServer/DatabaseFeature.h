@@ -125,13 +125,15 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   ErrorCode dropDatabase(TRI_voc_tick_t id, bool removeAppsDirectory);
 
   void inventory(arangodb::velocypack::Builder& result, TRI_voc_tick_t,
-                 std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
+                 std::function<bool(arangodb::LogicalCollection const*)> const&
+                     nameFilter);
 
   TRI_vocbase_t* useDatabase(std::string const& name) const;
   TRI_vocbase_t* useDatabase(TRI_voc_tick_t id) const;
 
   TRI_vocbase_t* lookupDatabase(std::string const& name) const;
-  void enumerateDatabases(std::function<void(TRI_vocbase_t& vocbase)> const& func);
+  void enumerateDatabases(
+      std::function<void(TRI_vocbase_t& vocbase)> const& func);
   std::string translateCollectionName(std::string const& dbName,
                                       std::string const& collectionName);
 
@@ -145,7 +147,8 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
   /// @brief whether or not extended names for databases can be used
   bool extendedNamesForDatabases() const { return _extendedNamesForDatabases; }
-  /// @brief will be called only during startup when reading stored value from storage engine
+  /// @brief will be called only during startup when reading stored value from
+  /// storage engine
   void extendedNamesForDatabases(bool value) {
     _extendedNamesForDatabases = value;
   }
@@ -170,7 +173,8 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   static TRI_vocbase_t& getCalculationVocbase();
 
  private:
-  static void initCalculationVocbase(application_features::ApplicationServer& server);
+  static void initCalculationVocbase(
+      application_features::ApplicationServer& server);
 
   void stopAppliers();
 
@@ -180,7 +184,8 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
   /// @brief create app subdirectory for a database
   ErrorCode createApplicationDirectory(std::string const& name,
-                                       std::string const& basePath, bool removeExisting);
+                                       std::string const& basePath,
+                                       bool removeExisting);
 
   /// @brief iterate over all databases in the databases directory and open them
   ErrorCode iterateDatabases(arangodb::velocypack::Slice const& databases);

@@ -63,7 +63,8 @@ void mangleNumeric(std::string& name) {
   name.append(NUMERIC_SUFFIX.c_str(), NUMERIC_SUFFIX.size());
 }
 
-void mangleField(std::string& name, iresearch::FieldMeta::Analyzer const& analyzer) {
+void mangleField(std::string& name,
+                 iresearch::FieldMeta::Analyzer const& analyzer) {
   name += ANALYZER_DELIMITER;
   name += analyzer._shortName;
 }
@@ -93,9 +94,11 @@ void read_write_mutex::lock_read() {
   auto lock = irs::make_unique_lock(mutex_);
 
   // yield if there is already a writer waiting
-  // wait for notification (possibly with writers waiting) or no more writers waiting
-  while (exclusive_count_ && std::cv_status::timeout ==
-                                 reader_cond_.wait_for(lock, RW_MUTEX_WAIT_TIMEOUT)) {
+  // wait for notification (possibly with writers waiting) or no more writers
+  // waiting
+  while (exclusive_count_ &&
+         std::cv_status::timeout ==
+             reader_cond_.wait_for(lock, RW_MUTEX_WAIT_TIMEOUT)) {
   }
 
   ++concurrent_count_;
@@ -174,7 +177,8 @@ void read_write_mutex::unlock(bool exclusive_only /*= false*/) {
   // if have write lock
   if (owns_write()) {
     if (exclusive_owner_recursion_count_) {
-      if (!exclusive_only) {  // a recursively locked mutex is always top-level write locked
+      if (!exclusive_only) {  // a recursively locked mutex is always top-level
+                              // write locked
         --exclusive_owner_recursion_count_;  // write recursion unlock one level
       }
 
@@ -204,7 +208,9 @@ void read_write_mutex::unlock(bool exclusive_only /*= false*/) {
 
 #ifdef IRESEARCH_DEBUG
   auto count = --concurrent_count_;
-  assert(count != size_t(-1));  // ensure decrement was for a positive number (i.e. not --0)
+  assert(
+      count !=
+      size_t(-1));  // ensure decrement was for a positive number (i.e. not --0)
   UNUSED(count);
 #else
   --concurrent_count_;

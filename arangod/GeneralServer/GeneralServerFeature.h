@@ -32,9 +32,11 @@
 namespace arangodb {
 class RestServerThread;
 
-class GeneralServerFeature final : public application_features::ApplicationFeature {
+class GeneralServerFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit GeneralServerFeature(application_features::ApplicationServer& server);
+  explicit GeneralServerFeature(
+      application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

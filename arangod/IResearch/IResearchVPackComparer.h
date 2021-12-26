@@ -49,7 +49,8 @@ class VPackComparer final : public irs::comparer {
   bool empty() const noexcept { return 0 == _size; }
 
  protected:
-  virtual bool less(irs::bytes_ref const& lhs, irs::bytes_ref const& rhs) const override;
+  virtual bool less(irs::bytes_ref const& lhs,
+                    irs::bytes_ref const& rhs) const override;
 
  private:
   IResearchViewSort const* _sort;

@@ -33,14 +33,14 @@
 namespace arangodb {
 namespace pregel {
 
-template <typename M>
+template<typename M>
 struct MessageFormat {
   virtual ~MessageFormat() = default;
   virtual void unwrapValue(VPackSlice body, M& value) const = 0;
   virtual void addValue(VPackBuilder& arrayBuilder, M const& val) const = 0;
 };
 
-template <typename T>
+template<typename T>
 struct IntegerMessageFormat : public MessageFormat<T> {
   static_assert(std::is_integral<T>::value, "");
   IntegerMessageFormat() {}
@@ -77,7 +77,7 @@ struct FloatMessageFormat : public MessageFormat<float> {
   }
 };*/
 
-template <typename M>
+template<typename M>
 struct NumberMessageFormat : public MessageFormat<M> {
   static_assert(std::is_arithmetic<M>::value, "Message type must be numeric");
   NumberMessageFormat() {}

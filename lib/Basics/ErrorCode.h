@@ -45,15 +45,18 @@ class ErrorCode {
     return _value;
   }
 
-  // This could also be constexpr, but we'd have to include <velocypack/Value.h>,
-  // and I'm unsure whether that's worth it, and rather rely on IPO here.
+  // This could also be constexpr, but we'd have to include
+  // <velocypack/Value.h>, and I'm unsure whether that's worth it, and rather
+  // rely on IPO here.
   [[nodiscard]] explicit operator arangodb::velocypack::Value() const noexcept;
 
-  [[nodiscard]] constexpr auto operator==(ErrorCode other) const noexcept -> bool {
+  [[nodiscard]] constexpr auto operator==(ErrorCode other) const noexcept
+      -> bool {
     return _value == other._value;
   }
 
-  [[nodiscard]] constexpr auto operator!=(ErrorCode other) const noexcept -> bool {
+  [[nodiscard]] constexpr auto operator!=(ErrorCode other) const noexcept
+      -> bool {
     return _value != other._value;
   }
 
@@ -64,7 +67,7 @@ class ErrorCode {
 };
 
 namespace std {
-template <>
+template<>
 struct hash<ErrorCode> {
   auto operator()(ErrorCode const& errorCode) const noexcept -> std::size_t {
     return std::hash<int>{}(static_cast<int>(errorCode));

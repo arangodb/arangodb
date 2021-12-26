@@ -54,22 +54,23 @@ struct UniqueBool {
   bool _value = false;
 };
 
-template <bool isDeleted>
+template<bool isDeleted>
 struct ConditionalDeletedMoveConstructor {
   ConditionalDeletedMoveConstructor() = default;
 };
-template <>
+template<>
 struct ConditionalDeletedMoveConstructor<true> {
   ConditionalDeletedMoveConstructor() = default;
-  ConditionalDeletedMoveConstructor(ConditionalDeletedMoveConstructor&&) noexcept = delete;
+  ConditionalDeletedMoveConstructor(
+      ConditionalDeletedMoveConstructor&&) noexcept = delete;
 };
 }  // namespace detail
 
-template <typename F, typename Func = std::decay_t<F>>
-struct ScopeGuard
-    : private Func,
-      private detail::UniqueBool,
-      private detail::ConditionalDeletedMoveConstructor<!std::is_nothrow_move_constructible_v<Func>> {
+template<typename F, typename Func = std::decay_t<F>>
+struct ScopeGuard : private Func,
+                    private detail::UniqueBool,
+                    private detail::ConditionalDeletedMoveConstructor<
+                        !std::is_nothrow_move_constructible_v<Func>> {
   static_assert(std::is_nothrow_invocable_r_v<void, F>);
 
   [[nodiscard]] explicit ScopeGuard(F&& fn)
@@ -92,12 +93,12 @@ struct ScopeGuard
   }
 };
 
-template <typename G>
+template<typename G>
 ScopeGuard(G&&) -> ScopeGuard<G>;
 
 // TODO can be deleted, because the deduction guide above allows to use
 //      the constructor directly.
-template <class T>
+template<class T>
 [[nodiscard]] ScopeGuard<T> scopeGuard(T&& f) {
   return ScopeGuard<T>(std::forward<T>(f));
 }

@@ -100,14 +100,15 @@ void runChecksForUInt64(uint64_t value, uint8_t const* expected) {
 
   if (value <= static_cast<uint64_t>(INT64_MAX)) {
     EXPECT_EQ(static_cast<int64_t>(value), aqlValue.toInt64());
-    EXPECT_EQ(static_cast<int64_t>(value), aqlValue.slice().getNumber<int64_t>());
+    EXPECT_EQ(static_cast<int64_t>(value),
+              aqlValue.slice().getNumber<int64_t>());
   }
 }
 
-// note: in all following tests, the value UNINITIALIZED (0xa5) has a special meaning.
-// if it used, it means that we don't compare the byte, because it is not initialized
-// in certain AqlValue configurations.
-// if you add tests, make sure that none of the test data includes 0xa5!
+// note: in all following tests, the value UNINITIALIZED (0xa5) has a special
+// meaning. if it used, it means that we don't compare the byte, because it is
+// not initialized in certain AqlValue configurations. if you add tests, make
+// sure that none of the test data includes 0xa5!
 TEST(AqlValueMemoryLayoutTest, UnsignedSmallValues48Bit_0) {
   uint8_t const expected[] = {AqlValue::AqlValueType::VPACK_INLINE_INT48,
                               0x30,
@@ -208,10 +209,10 @@ TEST(AqlValueMemoryLayoutTest, UnsignedSmallValues48Bit_9) {
   runChecksForUInt64(uint64_t(9ULL), expected);
 }
 
-// note: in all following tests, the value UNINITIALIZED (0xa5) has a special meaning.
-// if it used, it means that we don't compare the byte, because it is not initialized
-// in certain AqlValue configurations.
-// if you add tests, make sure that none of the test data includes 0xa5!
+// note: in all following tests, the value UNINITIALIZED (0xa5) has a special
+// meaning. if it used, it means that we don't compare the byte, because it is
+// not initialized in certain AqlValue configurations. if you add tests, make
+// sure that none of the test data includes 0xa5!
 TEST(AqlValueMemoryLayoutTest, UnsignedLargerValues48Bit_10) {
   // 0a
   uint8_t const expected[] = {AqlValue::AqlValueType::VPACK_INLINE_INT48,
@@ -674,10 +675,10 @@ TEST(AqlValueMemoryLayoutTest, UnsignedLargerValues48Bit_140737488355327) {
   runChecksForUInt64(uint64_t(140737488355327ULL), expected);
 }
 
-// note: in all following tests, the value UNINITIALIZED (0xa5) has a special meaning.
-// if it used, it means that we don't compare the byte, because it is not initialized
-// in certain AqlValue configurations.
-// if you add tests, make sure that none of the test data includes 0xa5!
+// note: in all following tests, the value UNINITIALIZED (0xa5) has a special
+// meaning. if it used, it means that we don't compare the byte, because it is
+// not initialized in certain AqlValue configurations. if you add tests, make
+// sure that none of the test data includes 0xa5!
 TEST(AqlValueMemoryLayoutTest, UnsignedLargerValues64Bit_281474976710654) {
   // ff ff ff ff ff fe
   uint8_t const expected[] = {AqlValue::AqlValueType::VPACK_INLINE_UINT64,

@@ -36,11 +36,13 @@ namespace maintenance {
 
 class MaintenanceWorker : public Thread {
  public:
-  explicit MaintenanceWorker(MaintenanceFeature& feature, int minimalPriorityAllowed,
+  explicit MaintenanceWorker(MaintenanceFeature& feature,
+                             int minimalPriorityAllowed,
                              std::unordered_set<std::string> const& labels =
                                  std::unordered_set<std::string>());
 
-  MaintenanceWorker(MaintenanceFeature& feature, std::shared_ptr<Action>& directAction);
+  MaintenanceWorker(MaintenanceFeature& feature,
+                    std::shared_ptr<Action>& directAction);
 
   virtual ~MaintenanceWorker() { shutdown(); }
 

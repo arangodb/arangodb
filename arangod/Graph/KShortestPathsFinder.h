@@ -56,8 +56,12 @@ class KShortestPathsFinder : public ShortestPathFinder {
   typedef arangodb::velocypack::StringRef VertexRef;
   typedef arangodb::graph::EdgeDocumentToken Edge;
 
-  typedef arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> VertexSet;
-  typedef arangodb::containers::HashSet<Edge, std::hash<Edge>, std::equal_to<Edge>> EdgeSet;
+  typedef arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
+                                        std::equal_to<VertexRef>>
+      VertexSet;
+  typedef arangodb::containers::HashSet<Edge, std::hash<Edge>,
+                                        std::equal_to<Edge>>
+      EdgeSet;
   enum Direction { FORWARD, BACKWARD };
 
   // TODO: This could be merged with ShortestPathResult
@@ -93,7 +97,8 @@ class KShortestPathsFinder : public ShortestPathFinder {
 
     size_t memoryUsage() const noexcept {
       return sizeof(Path) +
-             _vertices.size() * sizeof(typename decltype(_vertices)::value_type) +
+             _vertices.size() *
+                 sizeof(typename decltype(_vertices)::value_type) +
              _edges.size() * sizeof(typename decltype(_edges)::value_type) +
              _weights.size() * sizeof(typename decltype(_weights)::value_type);
     }
@@ -160,8 +165,13 @@ class KShortestPathsFinder : public ShortestPathFinder {
     VertexRef getKey() const { return _vertex; }
     void setWeight(double weight) { _weight = weight; }
 
-    DijkstraInfo(VertexRef const& vertex, Edge const&& edge, VertexRef const& pred, double weight)
-        : _vertex(vertex), _edge(std::move(edge)), _pred(pred), _weight(weight), _done(false) {}
+    DijkstraInfo(VertexRef const& vertex, Edge const&& edge,
+                 VertexRef const& pred, double weight)
+        : _vertex(vertex),
+          _edge(std::move(edge)),
+          _pred(pred),
+          _weight(weight),
+          _done(false) {}
     explicit DijkstraInfo(VertexRef const& vertex)
         : _vertex(vertex), _weight(0), _done(true) {}
   };
@@ -223,7 +233,9 @@ class KShortestPathsFinder : public ShortestPathFinder {
     std::vector<Step> _inNeighbours;
 
     explicit FoundVertex(VertexRef const& vertex)
-        : _vertex(vertex), _hasCachedOutNeighbours(false), _hasCachedInNeighbours(false) {}
+        : _vertex(vertex),
+          _hasCachedOutNeighbours(false),
+          _hasCachedInNeighbours(false) {}
   };
   // Contains the vertices that were found while searching
   // for a shortest path between start and end together with
@@ -240,7 +252,8 @@ class KShortestPathsFinder : public ShortestPathFinder {
   // a cursor is initialized.
   void clear() override;
 
-  // This is here because we inherit from ShortestPathFinder (to get the destroyEngines function)
+  // This is here because we inherit from ShortestPathFinder (to get the
+  // destroyEngines function)
   // TODO: Remove
   bool shortestPath(arangodb::velocypack::Slice const& start,
                     arangodb::velocypack::Slice const& target,
@@ -250,13 +263,15 @@ class KShortestPathsFinder : public ShortestPathFinder {
   }
 
   // initialize k Shortest Paths
-  TEST_VIRTUAL bool startKShortestPathsTraversal(arangodb::velocypack::Slice const& start,
-                                                 arangodb::velocypack::Slice const& end);
+  TEST_VIRTUAL bool startKShortestPathsTraversal(
+      arangodb::velocypack::Slice const& start,
+      arangodb::velocypack::Slice const& end);
 
   // get the next available path as AQL value.
   TEST_VIRTUAL bool getNextPathAql(arangodb::velocypack::Builder& builder);
   // get the next available path as a ShortestPathResult
-  // TODO: this is only here to not break catch-tests and needs a cleaner solution.
+  // TODO: this is only here to not break catch-tests and needs a cleaner
+  // solution.
   //       probably by making ShortestPathResult versatile enough and using that
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   bool getNextPathShortestPathResult(ShortestPathResult& path);
@@ -285,8 +300,9 @@ class KShortestPathsFinder : public ShortestPathFinder {
                                     std::vector<Step>& steps);
 
   void advanceFrontier(Ball& source, Ball const& target,
-                       VertexSet const& forbiddenVertices, EdgeSet const& forbiddenEdges,
-                       VertexRef& join, std::optional<double>& currentBest);
+                       VertexSet const& forbiddenVertices,
+                       EdgeSet const& forbiddenEdges, VertexRef& join,
+                       std::optional<double>& currentBest);
 
   // return the size of a map entry plus some assumed overhead
   size_t vertexCacheEntryMemoryUsage() const noexcept;

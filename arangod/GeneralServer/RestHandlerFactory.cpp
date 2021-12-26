@@ -43,7 +43,8 @@ static std::string const ROOT_PATH = "/";
 
 std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
     application_features::ApplicationServer& server,
-    std::unique_ptr<GeneralRequest> req, std::unique_ptr<GeneralResponse> res) const {
+    std::unique_ptr<GeneralRequest> req,
+    std::unique_ptr<GeneralResponse> res) const {
   std::string const& path = req->requestPath();
 
   auto it = _constructors.find(path);
@@ -52,7 +53,8 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
     // direct match!
     LOG_TOPIC("f397b", TRACE, arangodb::Logger::FIXME)
         << "found direct handler for path '" << path << "'";
-    return it->second.first(server, req.release(), res.release(), it->second.second);
+    return it->second.first(server, req.release(), res.release(),
+                            it->second.second);
   }
 
   // no direct match, check prefix matches
@@ -118,14 +120,16 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
 
   LOG_TOPIC("e3fca", TRACE, arangodb::Logger::FIXME)
       << "found handler for path '" << it->first << "'";
-  return it->second.first(server, req.release(), res.release(), it->second.second);
+  return it->second.first(server, req.release(), res.release(),
+                          it->second.second);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestHandlerFactory::addHandler(std::string const& path, create_fptr func, void* data) {
+void RestHandlerFactory::addHandler(std::string const& path, create_fptr func,
+                                    void* data) {
   if (!_constructors.try_emplace(path, func, data).second) {
     // there should only be one handler for each path
     THROW_ARANGO_EXCEPTION_MESSAGE(

@@ -42,12 +42,14 @@ using namespace arangodb::aql;
 // --SECTION--                                             Coordinator Container
 // -----------------------------------------------------------------------------
 
-EngineInfoContainerCoordinator::EngineInfo::EngineInfo(EngineId id, ExecutionNodeId idOfRemoteNode)
+EngineInfoContainerCoordinator::EngineInfo::EngineInfo(
+    EngineId id, ExecutionNodeId idOfRemoteNode)
     : _id(id), _idOfRemoteNode(idOfRemoteNode) {
   TRI_ASSERT(_nodes.empty());
 }
 
-EngineInfoContainerCoordinator::EngineInfo::EngineInfo(EngineInfo&& other) noexcept
+EngineInfoContainerCoordinator::EngineInfo::EngineInfo(
+    EngineInfo&& other) noexcept
     : _id(other._id),
       _nodes(std::move(other._nodes)),
       _idOfRemoteNode(other._idOfRemoteNode) {}
@@ -66,8 +68,9 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     sqs = query.sharedState();
   }
 
-  engine = std::make_unique<ExecutionEngine>(_id, query, query.itemBlockManager(),
-                                             SerializationFormat::SHADOWROWS, sqs);
+  engine =
+      std::make_unique<ExecutionEngine>(_id, query, query.itemBlockManager(),
+                                        SerializationFormat::SHADOWROWS, sqs);
 
   auto res = engine->createBlocks(_nodes, dbServerQueryIds);
   if (!res.ok()) {
@@ -102,7 +105,8 @@ void EngineInfoContainerCoordinator::addNode(ExecutionNode* node) {
   _engines[idx].addNode(node);
 }
 
-void EngineInfoContainerCoordinator::openSnippet(ExecutionNodeId idOfRemoteNode) {
+void EngineInfoContainerCoordinator::openSnippet(
+    ExecutionNodeId idOfRemoteNode) {
   _engineStack.emplace(_engines.size());  // Insert next id
   QueryId id = TRI_NewTickServer();
   _engines.emplace_back(id, idOfRemoteNode);
@@ -118,9 +122,10 @@ QueryId EngineInfoContainerCoordinator::closeSnippet() {
   return id;
 }
 
-Result EngineInfoContainerCoordinator::buildEngines(Query& query, AqlItemBlockManager& mgr,
-                                                    MapRemoteToSnippet const& dbServerQueryIds,
-                                                    aql::SnippetList& coordSnippets) const {
+Result EngineInfoContainerCoordinator::buildEngines(
+    Query& query, AqlItemBlockManager& mgr,
+    MapRemoteToSnippet const& dbServerQueryIds,
+    aql::SnippetList& coordSnippets) const {
   TRI_ASSERT(_engineStack.size() == 1);
   TRI_ASSERT(_engineStack.top() == 0);
 

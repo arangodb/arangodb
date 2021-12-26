@@ -62,7 +62,8 @@ class SortNode : public ExecutionNode {
   SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
            SortElementVector const& elements, bool stable);
 
-  /// @brief if non-zero, limits the number of elements that the node will return
+  /// @brief if non-zero, limits the number of elements that the node will
+  /// return
   void setLimit(size_t limit) { _limit = limit; }
 
   size_t limit() const noexcept { return _limit; }
@@ -76,19 +77,22 @@ class SortNode : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    return cloneHelper(std::make_unique<SortNode>(plan, _id, _elements, _stable),
-                       withDependencies, withProperties);
+    return cloneHelper(
+        std::make_unique<SortNode>(plan, _id, _elements, _stable),
+        withDependencies, withProperties);
   }
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
-  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
+                            replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final {
@@ -101,7 +105,8 @@ class SortNode : public ExecutionNode {
   SortElementVector const& elements() const { return _elements; }
 
   /// @brief returns all sort information
-  SortInformation getSortInformation(ExecutionPlan*, arangodb::basics::StringBuffer*) const;
+  SortInformation getSortInformation(ExecutionPlan*,
+                                     arangodb::basics::StringBuffer*) const;
 
   std::vector<std::pair<ExecutionNode*, bool>> getCalcNodePairs();
 
@@ -127,7 +132,8 @@ class SortNode : public ExecutionNode {
 
  protected:
   /// @brief export to VelocyPack
-  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override final;
 
  private:
   /// @brief pairs, consisting of variable and sort direction

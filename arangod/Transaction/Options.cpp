@@ -60,9 +60,9 @@ Options::Options()
   // picked up inside fromVelocyPack()
   if (ServerState::instance()->isCoordinator()) {
     // cluster transactions always originate on a coordinator
-    origin =
-        arangodb::cluster::RebootTracker::PeerState(ServerState::instance()->getId(),
-                                                    ServerState::instance()->getRebootId());
+    origin = arangodb::cluster::RebootTracker::PeerState(
+        ServerState::instance()->getId(),
+        ServerState::instance()->getRebootId());
   }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -80,7 +80,8 @@ Options Options::replicationDefaults() {
   return options;
 }
 
-void Options::setLimits(uint64_t maxTransactionSize, uint64_t intermediateCommitSize,
+void Options::setLimits(uint64_t maxTransactionSize,
+                        uint64_t intermediateCommitSize,
                         uint64_t intermediateCommitCount) {
   defaultMaxTransactionSize = maxTransactionSize;
   defaultIntermediateCommitSize = intermediateCommitSize;
@@ -88,7 +89,8 @@ void Options::setLimits(uint64_t maxTransactionSize, uint64_t intermediateCommit
 }
 
 bool Options::isIntermediateCommitEnabled() const noexcept {
-  return intermediateCommitSize != UINT64_MAX || intermediateCommitCount != UINT64_MAX;
+  return intermediateCommitSize != UINT64_MAX ||
+         intermediateCommitCount != UINT64_MAX;
 }
 
 void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
@@ -162,7 +164,8 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("intermediateCommitCount", VPackValue(intermediateCommitCount));
   builder.add("allowImplicit", VPackValue(allowImplicitCollectionsForRead));
 #ifdef USE_ENTERPRISE
-  builder.add("skipInaccessibleCollections", VPackValue(skipInaccessibleCollections));
+  builder.add("skipInaccessibleCollections",
+              VPackValue(skipInaccessibleCollections));
 #endif
   builder.add("waitForSync", VPackValue(waitForSync));
   builder.add("fillBlockCache", VPackValue(fillBlockCache));

@@ -46,16 +46,19 @@ using namespace arangodb::tests::mocks;
 
 namespace {
 
-void FixCustomTypesResponse(GeneralResponse* res, aql::QueryContext const& query) {
+void FixCustomTypesResponse(GeneralResponse* res,
+                            aql::QueryContext const& query) {
   auto genRes = static_cast<GeneralResponseMock*>(res);
-  auto translatedString = genRes->_payload.slice().toJson(&query.vpackOptions());
+  auto translatedString =
+      genRes->_payload.slice().toJson(&query.vpackOptions());
   genRes->_payload.clear();
   VPackParser parser(genRes->_payload);
   parser.parse(translatedString);
 }
 }  // namespace
 
-void MockGraph::EdgeDef::addToBuilder(arangodb::velocypack::Builder& builder) const {
+void MockGraph::EdgeDef::addToBuilder(
+    arangodb::velocypack::Builder& builder) const {
   std::string fromId = _from;
   std::string toId = _to;
   std::string keyId = _from.substr(2) + "-" + _to.substr(2);
@@ -69,14 +72,16 @@ void MockGraph::EdgeDef::addToBuilder(arangodb::velocypack::Builder& builder) co
   builder.close();
 }
 
-void MockGraph::VertexDef::addToBuilder(arangodb::velocypack::Builder& builder) const {
+void MockGraph::VertexDef::addToBuilder(
+    arangodb::velocypack::Builder& builder) const {
   builder.openObject();
   builder.add(StaticStrings::KeyString, VPackValue(_id.substr(2)));
   builder.add(StaticStrings::IdString, VPackValue(_id));
   builder.close();
 }
 
-MockGraph::EdgeDef MockGraph::addEdge(std::string from, std::string to, double weight) {
+MockGraph::EdgeDef MockGraph::addEdge(std::string from, std::string to,
+                                      double weight) {
   EdgeDef newEdge{from, to, weight, _edgeCollectionName};
   _edges.emplace_back(newEdge);
   _vertices.emplace(std::move(from));
@@ -86,20 +91,22 @@ MockGraph::EdgeDef MockGraph::addEdge(std::string from, std::string to, double w
 }
 
 MockGraph::EdgeDef MockGraph::addEdge(size_t from, size_t to, double weight) {
-  return addEdge(getVertexCollectionName() + "/" + basics::StringUtils::itoa(from),
-                 getVertexCollectionName() + "/" + basics::StringUtils::itoa(to), weight);
+  return addEdge(
+      getVertexCollectionName() + "/" + basics::StringUtils::itoa(from),
+      getVertexCollectionName() + "/" + basics::StringUtils::itoa(to), weight);
 }
 
-void MockGraph::storeData(TRI_vocbase_t& vocbase, std::string const& vertexCollectionName,
+void MockGraph::storeData(TRI_vocbase_t& vocbase,
+                          std::string const& vertexCollectionName,
                           std::string const& edgeCollectionName,
                           std::string const& edgeCollectionSecondName,
                           std::vector<EdgeDef> const& secondEdges) const {
   {
     // Insert vertices
     arangodb::OperationOptions options;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              vertexCollectionName,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        vertexCollectionName, arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE((trx.begin().ok()));
 
     size_t added = 0;
@@ -149,41 +156,47 @@ void MockGraph::storeData(TRI_vocbase_t& vocbase, std::string const& vertexColle
   }
 }
 
-template <>
+template<>
 void MockGraph::prepareServer(MockDBServer& server) const {
   std::string db = "_system";
   auto vCol = server.createCollection(db, getVertexCollectionName(),
-                                      getVertexShardNameServerPairs(), TRI_COL_TYPE_DOCUMENT);
+                                      getVertexShardNameServerPairs(),
+                                      TRI_COL_TYPE_DOCUMENT);
   for (auto const& [shard, servName] : _vertexShards) {
     server.createShard(db, shard, *vCol);
   }
-  auto eCol = server.createCollection(db, getEdgeCollectionName(),
-                                      getEdgeShardNameServerPairs(), TRI_COL_TYPE_EDGE);
+  auto eCol =
+      server.createCollection(db, getEdgeCollectionName(),
+                              getEdgeShardNameServerPairs(), TRI_COL_TYPE_EDGE);
 
   for (auto const& [shard, servName] : _edgeShards) {
     server.createShard(db, shard, *eCol);
   }
 
   // NOTE: This only works on a single shard yet.
-  storeData(server.getSystemDatabase(), _vertexShards[0].first, _edgeShards[0].first);
+  storeData(server.getSystemDatabase(), _vertexShards[0].first,
+            _edgeShards[0].first);
 }
 
-template <>
+template<>
 void MockGraph::prepareServer(MockCoordinator& server) const {
   std::string db = "_system";
   std::ignore = server.createCollection(db, getVertexCollectionName(),
                                         getVertexShardNameServerPairs(),
                                         TRI_COL_TYPE_DOCUMENT);
 
-  std::ignore = server.createCollection(db, getEdgeCollectionName(),
-                                        getEdgeShardNameServerPairs(), TRI_COL_TYPE_EDGE);
+  std::ignore =
+      server.createCollection(db, getEdgeCollectionName(),
+                              getEdgeShardNameServerPairs(), TRI_COL_TYPE_EDGE);
 }
 
-template <>
+template<>
 // Future: Also engineID's need to be returned here.
-std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockGraph::simulateApi(
+std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t>
+MockGraph::simulateApi(
     MockDBServer& server,
-    std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const& expectedVerticesEdgesBundleToFetch,
+    std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const&
+        expectedVerticesEdgesBundleToFetch,
     arangodb::graph::BaseOptions& opts) const {
   // NOTE: We need the server input only for template magic.
   // Can be solved differently, but for a test i think this is sufficient.
@@ -266,12 +279,14 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
     prep.setRequestType(arangodb::rest::RequestType::POST);
     auto fakeRequest = prep.generateRequest();
     auto fakeResponse = std::make_unique<GeneralResponseMock>();
-    arangodb::aql::RestAqlHandler aqlHandler{server.server(), fakeRequest.release(),
-                                             fakeResponse.release(), &queryRegistry};
+    arangodb::aql::RestAqlHandler aqlHandler{
+        server.server(), fakeRequest.release(), fakeResponse.release(),
+        &queryRegistry};
 
     aqlHandler.execute();
     auto response = aqlHandler.stealResponse();  // Read: (EngineId eid)
-    auto resBody = static_cast<GeneralResponseMock*>(response.get())->_payload.slice();
+    auto resBody =
+        static_cast<GeneralResponseMock*>(response.get())->_payload.slice();
     TRI_ASSERT(resBody.hasKey("result"));
     resBody = resBody.get("result");
     TRI_ASSERT(resBody.hasKey("traverserEngines"));
@@ -293,7 +308,8 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
       auto fakeResponse = std::make_unique<GeneralResponseMock>();
 
       /*
-       *  Export to external method later (Create network request including options)
+       *  Export to external method later (Create network request including
+       * options)
        */
       VPackBuilder leased;
       leased.openObject();
@@ -309,8 +325,9 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
       prep.addBody(leased.slice());
 
       auto fakeRequest = prep.generateRequest();
-      InternalRestTraverserHandler testee{server.server(), fakeRequest.release(),
-                                          fakeResponse.release(), &queryRegistry};
+      InternalRestTraverserHandler testee{
+          server.server(), fakeRequest.release(), fakeResponse.release(),
+          &queryRegistry};
 
       std::ignore = testee.execute();
 
@@ -326,7 +343,8 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
       auto fakeResponse = std::make_unique<GeneralResponseMock>();
 
       /*
-       *  Export to external method later (Create network request including options)
+       *  Export to external method later (Create network request including
+       * options)
        */
       VPackBuilder leased;
       leased.openObject();
@@ -341,8 +359,9 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
       prep.addBody(leased.slice());
 
       auto fakeRequest = prep.generateRequest();
-      InternalRestTraverserHandler testee{server.server(), fakeRequest.release(),
-                                          fakeResponse.release(), &queryRegistry};
+      InternalRestTraverserHandler testee{
+          server.server(), fakeRequest.release(), fakeResponse.release(),
+          &queryRegistry};
 
       std::ignore = testee.execute();
 

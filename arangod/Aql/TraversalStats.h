@@ -67,8 +67,9 @@ class TraversalStats {
   std::size_t _httpRequests;
 };
 
-inline ExecutionStats& operator+=(ExecutionStats& executionStats,
-                                  TraversalStats const& traversalStats) noexcept {
+inline ExecutionStats& operator+=(
+    ExecutionStats& executionStats,
+    TraversalStats const& traversalStats) noexcept {
   executionStats.filtered += traversalStats.getFiltered();
   executionStats.scannedIndex += traversalStats.getScannedIndex();
   executionStats.requests += traversalStats.getHttpRequests();

@@ -49,7 +49,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ImportFeature::ImportFeature(application_features::ApplicationServer& server, int* result)
+ImportFeature::ImportFeature(application_features::ApplicationServer& server,
+                             int* result)
     : ApplicationFeature(server, "Import"),
       _filename(""),
       _useBackslash(false),
@@ -81,7 +82,8 @@ ImportFeature::ImportFeature(application_features::ApplicationServer& server, in
                           static_cast<uint32_t>(NumberOfCores::getValue()));
 }
 
-void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
+void ImportFeature::collectOptions(
+    std::shared_ptr<options::ProgramOptions> options) {
   options->addOption("--file", "file name (\"-\" for STDIN)",
                      new StringParameter(&_filename));
 
@@ -101,11 +103,13 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "size for individual data batches (in bytes)",
                      new UInt64Parameter(&_chunkSize));
 
-  options->addOption("--threads", "Number of parallel import threads",
-                     new UInt32Parameter(&_threadCount),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
+  options->addOption(
+      "--threads", "Number of parallel import threads",
+      new UInt32Parameter(&_threadCount),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
-  options->addOption("--collection", "collection name", new StringParameter(&_collectionName));
+  options->addOption("--collection", "collection name",
+                     new StringParameter(&_collectionName));
 
   options->addOption("--from-collection-prefix",
                      "_from collection name prefix (will be prepended to all "
@@ -164,16 +168,18 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   std::vector<std::string> typesVector(types.begin(), types.end());
   std::string typesJoined = StringUtils::join(typesVector, " or ");
 
-  options->addOption("--create-collection-type",
-                     "type of collection if collection is created (" +
-                         typesJoined + ")",
-                     new DiscreteValuesParameter<StringParameter>(&_createCollectionType, types));
+  options->addOption(
+      "--create-collection-type",
+      "type of collection if collection is created (" + typesJoined + ")",
+      new DiscreteValuesParameter<StringParameter>(&_createCollectionType,
+                                                   types));
 
   std::unordered_set<std::string> imports = {"csv", "tsv", "json", "jsonl",
                                              "auto"};
 
-  options->addOption("--type", "type of import file",
-                     new DiscreteValuesParameter<StringParameter>(&_typeImport, imports));
+  options->addOption(
+      "--type", "type of import file",
+      new DiscreteValuesParameter<StringParameter>(&_typeImport, imports));
 
   options->addOption(
       "--overwrite",
@@ -191,7 +197,8 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
       new StringParameter(&_separator),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
-  options->addOption("--progress", "show progress", new BooleanParameter(&_progress));
+  options->addOption("--progress", "show progress",
+                     new BooleanParameter(&_progress));
 
   options->addOption("--ignore-missing", "ignore missing columns in csv input",
                      new BooleanParameter(&_ignoreMissing));
@@ -205,7 +212,8 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "action to perform when a unique key constraint "
                      "violation occurs. Possible values: " +
                          actionsJoined,
-                     new DiscreteValuesParameter<StringParameter>(&_onDuplicateAction, actions));
+                     new DiscreteValuesParameter<StringParameter>(
+                         &_onDuplicateAction, actions));
 
   options
       ->addOption("--merge-attributes",
@@ -220,12 +228,14 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
       new BooleanParameter(&_latencyStats));
 
   options
-      ->addOption("--skip-validation", "skips document validation during import",
+      ->addOption("--skip-validation",
+                  "skips document validation during import",
                   new BooleanParameter(&_skipValidation))
       .setIntroducedIn(30700);
 }
 
-void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
+void ImportFeature::validateOptions(
+    std::shared_ptr<options::ProgramOptions> options) {
   auto const& positionals = options->processingResult()._positionals;
   size_t n = positionals.size();
 
@@ -310,7 +320,8 @@ void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 }
 
 void ImportFeature::start() {
-  ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
+  ClientFeature& client =
+      server().getFeature<HttpEndpointProvider, ClientFeature>();
 
   int ret = EXIT_SUCCESS;
   *_result = ret;
@@ -339,7 +350,8 @@ void ImportFeature::start() {
   }
 
   if (_typeImport == "auto") {
-    std::regex re = std::regex(".*?\\.([a-zA-Z]+)(.gz|)", std::regex::ECMAScript);
+    std::regex re =
+        std::regex(".*?\\.([a-zA-Z]+)(.gz|)", std::regex::ECMAScript);
     std::smatch match;
     if (std::regex_match(_filename, match, re)) {
       std::string extension = StringUtils::tolower(match[1].str());
@@ -367,8 +379,10 @@ void ImportFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  _httpClient->params().setLocationRewriter(static_cast<void*>(&client), &rewriteLocation);
-  _httpClient->params().setUserNamePassword("/", client.username(), client.password());
+  _httpClient->params().setLocationRewriter(static_cast<void*>(&client),
+                                            &rewriteLocation);
+  _httpClient->params().setUserNamePassword("/", client.username(),
+                                            client.password());
 
   // must stay here in order to establish the connection
 
@@ -377,23 +391,26 @@ void ImportFeature::start() {
   auto const dbName = client.databaseName();
 
   auto successfulConnection = [&]() {
-    std::cout << ClientFeature::buildConnectedMessage(_httpClient->getEndpointSpecification(),
-                                                      versionString, /*role*/ "",
-                                                      /*mode*/ "", client.databaseName(),
-                                                      client.username())
+    std::cout << ClientFeature::buildConnectedMessage(
+                     _httpClient->getEndpointSpecification(), versionString,
+                     /*role*/ "",
+                     /*mode*/ "", client.databaseName(), client.username())
               << std::endl;
 
     std::cout << "----------------------------------------" << std::endl;
-    std::cout << "database:               " << client.databaseName() << std::endl;
+    std::cout << "database:               " << client.databaseName()
+              << std::endl;
     std::cout << "collection:             " << _collectionName << std::endl;
     if (!_fromCollectionPrefix.empty()) {
-      std::cout << "from collection prefix: " << _fromCollectionPrefix << std::endl;
+      std::cout << "from collection prefix: " << _fromCollectionPrefix
+                << std::endl;
     }
     if (!_toCollectionPrefix.empty()) {
-      std::cout << "to collection prefix:   " << _toCollectionPrefix << std::endl;
+      std::cout << "to collection prefix:   " << _toCollectionPrefix
+                << std::endl;
     }
-    std::cout << "create:                 " << (_createCollection ? "yes" : "no")
-              << std::endl;
+    std::cout << "create:                 "
+              << (_createCollection ? "yes" : "no") << std::endl;
     std::cout << "create database:        " << (_createDatabase ? "yes" : "no")
               << std::endl;
     std::cout << "source filename:        " << _filename << std::endl;
@@ -409,8 +426,10 @@ void ImportFeature::start() {
     std::cout << "threads:                " << _threadCount << std::endl;
     std::cout << "on duplicate:           " << _onDuplicateAction << std::endl;
 
-    std::cout << "connect timeout:        " << client.connectionTimeout() << std::endl;
-    std::cout << "request timeout:        " << client.requestTimeout() << std::endl;
+    std::cout << "connect timeout:        " << client.connectionTimeout()
+              << std::endl;
+    std::cout << "request timeout:        " << client.requestTimeout()
+              << std::endl;
     std::cout << "----------------------------------------" << std::endl;
   };
 
@@ -443,8 +462,9 @@ void ImportFeature::start() {
 
   if (!_httpClient->isConnected()) {
     LOG_TOPIC("541c6", ERR, arangodb::Logger::FIXME)
-        << "Could not connect to endpoint '" << client.endpoint() << "', database: '"
-        << client.databaseName() << "', username: '" << client.username() << "'";
+        << "Could not connect to endpoint '" << client.endpoint()
+        << "', database: '" << client.databaseName() << "', username: '"
+        << client.username() << "'";
     LOG_TOPIC("034c9", FATAL, arangodb::Logger::FIXME)
         << _httpClient->getErrorMessage() << "'";
     FATAL_ERROR_EXIT();
@@ -618,7 +638,8 @@ void ImportFeature::start() {
   *_result = ret;
 }
 
-ErrorCode ImportFeature::tryCreateDatabase(ClientFeature& client, std::string const& name) {
+ErrorCode ImportFeature::tryCreateDatabase(ClientFeature& client,
+                                           std::string const& name) {
   VPackBuilder builder;
   builder.openObject();
   builder.add("name", VPackValue(normalizeUtf8ToNFC(name)));
@@ -632,9 +653,8 @@ ErrorCode ImportFeature::tryCreateDatabase(ClientFeature& client, std::string co
 
   std::string const body = builder.slice().toJson();
 
-  std::unique_ptr<SimpleHttpResult> response(
-      _httpClient->request(rest::RequestType::POST, "/_api/database",
-                           body.c_str(), body.size()));
+  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
+      rest::RequestType::POST, "/_api/database", body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     return TRI_ERROR_INTERNAL;
@@ -650,12 +670,14 @@ ErrorCode ImportFeature::tryCreateDatabase(ClientFeature& client, std::string co
   if (returnCode == static_cast<int>(rest::ResponseCode::UNAUTHORIZED) ||
       returnCode == static_cast<int>(rest::ResponseCode::FORBIDDEN)) {
     // invalid authorization
-    _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr), false);
+    _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
+                                 false);
     return TRI_ERROR_FORBIDDEN;
   }
 
   // any other error
-  _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr), false);
+  _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
+                               false);
   return TRI_ERROR_INTERNAL;
 }
 

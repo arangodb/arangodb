@@ -73,7 +73,8 @@ class RestTransactionHandlerTest : public ::testing::Test {
         request(*requestPtr),
         responcePtr(std::make_unique<GeneralResponseMock>()),
         responce(*responcePtr),
-        handler(setup.server.server(), requestPtr.release(), responcePtr.release()),
+        handler(setup.server.server(), requestPtr.release(),
+                responcePtr.release()),
         parser(request._payload) {
     EXPECT_TRUE(vocbase.collections(false).empty());
   }
@@ -91,17 +92,20 @@ TEST_F(RestTransactionHandlerTest, parsing_errors) {
   EXPECT_EQ(arangodb::rest::ResponseCode::BAD, responce.responseCode());
   VPackSlice slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::BAD) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::BAD) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_BAD_PARAMETER ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_BAD_PARAMETER ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestTransactionHandlerTest, collection_not_found_ro) {
@@ -114,17 +118,20 @@ TEST_F(RestTransactionHandlerTest, collection_not_found_ro) {
   EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND, responce.responseCode());
   VPackSlice slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestTransactionHandlerTest, collection_not_found_write) {
@@ -137,17 +144,20 @@ TEST_F(RestTransactionHandlerTest, collection_not_found_write) {
   EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND, responce.responseCode());
   VPackSlice slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestTransactionHandlerTest, collection_not_found_exclusive) {
@@ -160,17 +170,20 @@ TEST_F(RestTransactionHandlerTest, collection_not_found_exclusive) {
   EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND, responce.responseCode());
   VPackSlice slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestTransactionHandlerTest, simple_transaction_abort) {
@@ -191,13 +204,15 @@ TEST_F(RestTransactionHandlerTest, simple_transaction_abort) {
   EXPECT_EQ(arangodb::rest::ResponseCode::CREATED, responce.responseCode());
   VPackSlice slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::CREATED) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
-               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
-               false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::CREATED) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Error) &&
+       slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+       false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
 
   EXPECT_TRUE(slice.hasKey("result"));
   std::string tid = slice.get("result").get("id").copyString();
@@ -214,13 +229,15 @@ TEST_F(RestTransactionHandlerTest, simple_transaction_abort) {
   EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
   slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::OK) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
-               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
-               false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::OK) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Error) &&
+       slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+       false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
 
   EXPECT_TRUE(slice.hasKey("result"));
   EXPECT_EQ(slice.get("result").get("id").copyString(), tid);
@@ -235,13 +252,15 @@ TEST_F(RestTransactionHandlerTest, simple_transaction_abort) {
   EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
   slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::OK) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
-               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
-               false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::OK) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Error) &&
+       slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+       false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
 
   EXPECT_TRUE(slice.hasKey("result"));
   EXPECT_EQ(slice.get("result").get("id").copyString(), tid);
@@ -266,13 +285,15 @@ TEST_F(RestTransactionHandlerTest, simple_transaction_and_commit) {
   EXPECT_EQ(arangodb::rest::ResponseCode::CREATED, responce.responseCode());
   VPackSlice slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::CREATED) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
-               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
-               false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::CREATED) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Error) &&
+       slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+       false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
 
   EXPECT_TRUE(slice.hasKey("result"));
   std::string tid = slice.get("result").get("id").copyString();
@@ -289,13 +310,15 @@ TEST_F(RestTransactionHandlerTest, simple_transaction_and_commit) {
   EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
   slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::OK) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
-               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
-               false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::OK) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Error) &&
+       slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+       false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
 
   EXPECT_TRUE(slice.hasKey("result"));
   EXPECT_EQ(slice.get("result").get("id").copyString(), tid);
@@ -328,17 +351,20 @@ TEST_F(RestTransactionHandlerTest, permission_denied_read_only) {
   EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN, responce.responseCode());
   VPackSlice slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_ARANGO_READ_ONLY ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_ARANGO_READ_ONLY ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestTransactionHandlerTest, permission_denied_forbidden) {
@@ -367,15 +393,18 @@ TEST_F(RestTransactionHandlerTest, permission_denied_forbidden) {
   EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN, responce.responseCode());
   VPackSlice slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_FORBIDDEN ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_FORBIDDEN ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }

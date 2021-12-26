@@ -48,13 +48,18 @@ class AgencyCache final : public arangodb::Thread {
     change_set_t(consensus::index_t const& i, uint64_t const& v,
                  databases_t const& d, consensus::query_t const& r)
         : ind(i), version(v), dbs(d), rest(r) {}
-    change_set_t(consensus::index_t&& i, uint64_t&& v, databases_t&& d, consensus::query_t&& r)
-        : ind(std::move(i)), version(std::move(v)), dbs(std::move(d)), rest(std::move(r)) {}
+    change_set_t(consensus::index_t&& i, uint64_t&& v, databases_t&& d,
+                 consensus::query_t&& r)
+        : ind(std::move(i)),
+          version(std::move(v)),
+          dbs(std::move(d)),
+          rest(std::move(r)) {}
   };
 
   /// @brief start off with our server
   explicit AgencyCache(application_features::ApplicationServer& server,
-                       AgencyCallbackRegistry& callbackRegistry, ErrorCode shutdownCode);
+                       AgencyCallbackRegistry& callbackRegistry,
+                       ErrorCode shutdownCode);
 
   ~AgencyCache();
 
@@ -72,19 +77,23 @@ class AgencyCache final : public arangodb::Thread {
   // cppcheck-suppress virtualCallInConstructor
   void beginShutdown() override;
 
-  /// @brief Get velocypack from node downward. AgencyCommHelper::path is prepended
+  /// @brief Get velocypack from node downward. AgencyCommHelper::path is
+  /// prepended
   consensus::query_t dump() const;
 
-  /// @brief Get velocypack from node downward. AgencyCommHelper::path is prepended
+  /// @brief Get velocypack from node downward. AgencyCommHelper::path is
+  /// prepended
   consensus::index_t get(arangodb::velocypack::Builder& result,
                          std::string const& path = "/") const;
 
-  /// @brief Get velocypack from node downward. AgencyCommHelper::path is prepended
+  /// @brief Get velocypack from node downward. AgencyCommHelper::path is
+  /// prepended
   std::tuple<consensus::query_t, consensus::index_t> get(
       std::string const& path = "/") const;
 
   /// @brief Get velocypack from node downward
-  std::tuple<consensus::query_t, consensus::index_t> read(std::vector<std::string> const& paths) const;
+  std::tuple<consensus::query_t, consensus::index_t> read(
+      std::vector<std::string> const& paths) const;
 
   /// @brief Get current commit index
   consensus::index_t index() const;
@@ -107,8 +116,8 @@ class AgencyCache final : public arangodb::Thread {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   /// @brief Used exclusively in unit tests!
   ///        Do not use for production code under any circumstances
-  std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> applyTestTransaction(
-      consensus::query_t const& trx);
+  std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t>
+  applyTestTransaction(consensus::query_t const& trx);
 #endif
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -126,7 +135,8 @@ class AgencyCache final : public arangodb::Thread {
    * @return        The currently last noted RAFT index and  a velocypack
    *                representation of planned and other desired databases
    */
-  change_set_t changedSince(std::string const& section, consensus::index_t const& last) const;
+  change_set_t changedSince(std::string const& section,
+                            consensus::index_t const& last) const;
 
   /**
    * @brief         Clean up planned/current changes up to including index
@@ -134,7 +144,8 @@ class AgencyCache final : public arangodb::Thread {
    * @param section   "Plan" or "Current"
    * @param doneIndex   Done index
    */
-  void clearChanged(std::string const& section, consensus::index_t const& doneIndex);
+  void clearChanged(std::string const& section,
+                    consensus::index_t const& doneIndex);
 
  private:
   /// @brief invoke all callbacks
@@ -186,7 +197,8 @@ class AgencyCache final : public arangodb::Thread {
 
   /// @brief Waiting room for indexes during office hours
   mutable std::mutex _waitLock;
-  std::multimap<consensus::index_t, futures::Promise<arangodb::Result>> _waiting;
+  std::multimap<consensus::index_t, futures::Promise<arangodb::Result>>
+      _waiting;
 
   /// @ brief changes of index to plan and current
   std::multimap<consensus::index_t, std::string> _planChanges;

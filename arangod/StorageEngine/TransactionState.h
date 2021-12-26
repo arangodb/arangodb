@@ -140,10 +140,12 @@ class TransactionState {
   }
 
   /// @brief return the collection from a transaction
-  TransactionCollection* collection(DataSourceId cid, AccessMode::Type accessType) const;
+  TransactionCollection* collection(DataSourceId cid,
+                                    AccessMode::Type accessType) const;
 
   /// @brief return the collection from a transaction
-  TransactionCollection* collection(std::string const& name, AccessMode::Type accessType) const;
+  TransactionCollection* collection(std::string const& name,
+                                    AccessMode::Type accessType) const;
 
   /// @brief add a collection to a transaction
   Result addCollection(DataSourceId cid, std::string const& cname,
@@ -153,7 +155,7 @@ class TransactionState {
   Result useCollections();
 
   /// @brief run a callback on all collections of the transaction
-  template <typename F>
+  template<typename F>
   void allCollections(F&& cb) {
     for (auto& trxCollection : _collections) {
       TRI_ASSERT(trxCollection);  // ensured by addCollection(...)
@@ -237,7 +239,8 @@ class TransactionState {
   ///       transaction is committed
   virtual TRI_voc_tick_t lastOperationTick() const noexcept { return 0; }
 
-  void acceptAnalyzersRevision(QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
+  void acceptAnalyzersRevision(
+      QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
 
   const QueryAnalyzerRevisions& analyzersRevision() const noexcept {
     return _analyzersRevision;
@@ -257,7 +260,8 @@ class TransactionState {
 
  protected:
   /// @brief find a collection in the transaction's list of collections
-  TransactionCollection* findCollection(DataSourceId cid, size_t& position) const;
+  TransactionCollection* findCollection(DataSourceId cid,
+                                        size_t& position) const;
 
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction

@@ -47,12 +47,14 @@ static std::string const upgradeVersionKey = "ClusterUpgradeVersion";
 static std::string const upgradeExecutedByKey = "ClusterUpgradeExecutedBy";
 }  // namespace
 
-ClusterUpgradeFeature::ClusterUpgradeFeature(application_features::ApplicationServer& server)
+ClusterUpgradeFeature::ClusterUpgradeFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, "ClusterUpgrade"), _upgradeMode("auto") {
   startsAfter<application_features::FinalFeaturePhase>();
 }
 
-void ClusterUpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void ClusterUpgradeFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--cluster.upgrade",
       "perform a cluster upgrade if necessary (auto = perform upgrade and shut "
@@ -64,7 +66,8 @@ void ClusterUpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
                                                          "force", "online"}));
 }
 
-void ClusterUpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void ClusterUpgradeFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> options) {
   auto& databaseFeature = server().getFeature<arangodb::DatabaseFeature>();
   if (_upgradeMode == "force") {
     // always perform an upgrade, regardless of the value of
@@ -76,7 +79,8 @@ void ClusterUpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> opti
     databaseFeature.disableUpgrade();
   } else if (_upgradeMode == "online") {
     // perform an upgrade, but stay online and don't shut down the server.
-    // disabling the upgrade functionality in the database feature is required for this.
+    // disabling the upgrade functionality in the database feature is required
+    // for this.
     databaseFeature.disableUpgrade();
   }
 }
@@ -90,7 +94,8 @@ void ClusterUpgradeFeature::start() {
   // if the server was started with the option `--database.auto-upgrade true`.
   auto& databaseFeature = server().getFeature<arangodb::DatabaseFeature>();
   if (_upgradeMode == "disable" ||
-      (!databaseFeature.upgrade() && (_upgradeMode != "online" && _upgradeMode != "force"))) {
+      (!databaseFeature.upgrade() &&
+       (_upgradeMode != "online" && _upgradeMode != "force"))) {
     return;
   }
 
@@ -118,23 +123,25 @@ void ClusterUpgradeFeature::tryClusterUpgrade() {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   auto& cache = server().getFeature<ClusterFeature>().agencyCache();
-  auto [acb, idx] =
-      cache.read(std::vector<std::string>{AgencyCommHelper::path(::upgradeVersionKey)});
+  auto [acb, idx] = cache.read(
+      std::vector<std::string>{AgencyCommHelper::path(::upgradeVersionKey)});
   auto res = acb->slice();
 
   if (!res.isArray()) {
     LOG_TOPIC("26104", ERR, arangodb::Logger::CLUSTER)
-        << "unable to fetch cluster upgrade version from agency: " << res.toJson();
+        << "unable to fetch cluster upgrade version from agency: "
+        << res.toJson();
     return;
   }
 
   uint64_t latestUpgradeVersion = 0;
-  VPackSlice value = res[0].get(
-      std::vector<std::string>({AgencyCommHelper::path(), ::upgradeVersionKey}));
+  VPackSlice value = res[0].get(std::vector<std::string>(
+      {AgencyCommHelper::path(), ::upgradeVersionKey}));
   if (value.isNumber()) {
     latestUpgradeVersion = value.getNumber<uint64_t>();
     LOG_TOPIC("54f69", DEBUG, arangodb::Logger::CLUSTER)
-        << "found previous cluster upgrade version in agency: " << latestUpgradeVersion;
+        << "found previous cluster upgrade version in agency: "
+        << latestUpgradeVersion;
   } else {
     // key not there yet.
     LOG_TOPIC("5b00d", DEBUG, arangodb::Logger::CLUSTER)
@@ -148,15 +155,20 @@ void ClusterUpgradeFeature::tryClusterUpgrade() {
 
   std::vector<AgencyPrecondition> precs;
   if (latestUpgradeVersion == 0) {
-    precs.emplace_back(::upgradeVersionKey, AgencyPrecondition::Type::EMPTY, true);
+    precs.emplace_back(::upgradeVersionKey, AgencyPrecondition::Type::EMPTY,
+                       true);
   } else {
-    precs.emplace_back(::upgradeVersionKey, AgencyPrecondition::Type::VALUE, latestUpgradeVersion);
+    precs.emplace_back(::upgradeVersionKey, AgencyPrecondition::Type::VALUE,
+                       latestUpgradeVersion);
   }
-  // there must be no other coordinator that performs an upgrade at the same time
-  precs.emplace_back(::upgradeExecutedByKey, AgencyPrecondition::Type::EMPTY, true);
+  // there must be no other coordinator that performs an upgrade at the same
+  // time
+  precs.emplace_back(::upgradeExecutedByKey, AgencyPrecondition::Type::EMPTY,
+                     true);
 
   // try to register ourselves as responsible for the upgrade
-  AgencyOperation operation(::upgradeExecutedByKey, AgencyValueOperationType::SET,
+  AgencyOperation operation(::upgradeExecutedByKey,
+                            AgencyValueOperationType::SET,
                             ServerState::instance()->getId());
   // make the key expire automatically in case we crash
   // operation._ttl = TRI_microtime() + 1800.0;
@@ -173,7 +185,8 @@ void ClusterUpgradeFeature::tryClusterUpgrade() {
         << "running cluster upgrade from "
         << (latestUpgradeVersion == 0
                 ? std::string("an unknown version")
-                : std::string("version ") + std::to_string(latestUpgradeVersion))
+                : std::string("version ") +
+                      std::to_string(latestUpgradeVersion))
         << " to version " << arangodb::methods::Version::current() << "...";
 
     bool success = false;
@@ -193,11 +206,13 @@ void ClusterUpgradeFeature::tryClusterUpgrade() {
     std::vector<AgencyOperation> operations;
     if (success) {
       // upgrade successful - store our current version number
-      operations.emplace_back(::upgradeVersionKey, AgencyValueOperationType::SET,
+      operations.emplace_back(::upgradeVersionKey,
+                              AgencyValueOperationType::SET,
                               arangodb::methods::Version::current());
     }
     // remove the key that locks out other coordinators from upgrading
-    operations.emplace_back(::upgradeExecutedByKey, AgencySimpleOperationType::DELETE_OP);
+    operations.emplace_back(::upgradeExecutedByKey,
+                            AgencySimpleOperationType::DELETE_OP);
     AgencyWriteTransaction transaction(operations, precs);
 
     result = agency.sendTransactionWithFailover(transaction);

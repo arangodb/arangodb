@@ -46,7 +46,8 @@ class Endpoint {
   enum class DomainType { UNKNOWN = 0, UNIX, IPV4, IPV6, SRV };
 
  protected:
-  Endpoint(DomainType, EndpointType, TransportType, EncryptionType, std::string const&, int);
+  Endpoint(DomainType, EndpointType, TransportType, EncryptionType,
+           std::string const&, int);
 
  public:
   virtual ~Endpoint() = default;

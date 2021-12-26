@@ -77,11 +77,15 @@ class ClientFeature final : public HttpEndpointProvider {
   bool forceJson() const { return _forceJson; }
   void setForceJson(bool value) { _forceJson = value; }
 
-  std::unique_ptr<httpclient::GeneralClientConnection> createConnection(std::string const& definition);
-  std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(size_t threadNumber = 0) const;
-  std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(std::string const& definition) const;
+  std::unique_ptr<httpclient::GeneralClientConnection> createConnection(
+      std::string const& definition);
   std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(
-      std::string const& definition, httpclient::SimpleHttpClientParams const&) const;
+      size_t threadNumber = 0) const;
+  std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(
+      std::string const& definition) const;
+  std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(
+      std::string const& definition,
+      httpclient::SimpleHttpClientParams const&) const;
   std::vector<std::string> httpEndpoints() override;
 
   void setDatabaseName(std::string const& databaseName);
@@ -96,14 +100,14 @@ class ClientFeature final : public HttpEndpointProvider {
 
   bool getWarnConnect() { return _warnConnect; }
 
-  static std::string buildConnectedMessage(std::string const& endpointSpecification,
-                                           std::string const& version,
-                                           std::string const& role, std::string const& mode,
-                                           std::string const& databaseName,
-                                           std::string const& user);
+  static std::string buildConnectedMessage(
+      std::string const& endpointSpecification, std::string const& version,
+      std::string const& role, std::string const& mode,
+      std::string const& databaseName, std::string const& user);
 
-  static int runMain(int argc, char* argv[],
-                     std::function<int(int argc, char* argv[])> const& mainFunc);
+  static int runMain(
+      int argc, char* argv[],
+      std::function<int(int argc, char* argv[])> const& mainFunc);
 
  private:
   void readPassword();

@@ -42,7 +42,8 @@ struct AstNode;
 struct Variable {
   /// @brief indicates the type of the variable
   enum class Type {
-    /// @brief a regular variable with a value determined while executing the query
+    /// @brief a regular variable with a value determined while executing the
+    /// query
     Regular,
     /// @brief a variable with a constant value
     Const
@@ -59,7 +60,8 @@ struct Variable {
   Variable* clone() const;
 
   /// @brief registers a constant value for the variable
-  /// this constant value is used for constant propagation while creating the AST
+  /// this constant value is used for constant propagation while creating the
+  /// AST
   void setConstAstNode(AstNode* node) { _constAstNode = node; }
 
   /// @brief returns a constant value registered for this variable
@@ -75,12 +77,14 @@ struct Variable {
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 
   /// @brief replace a variable by another
-  static Variable const* replace(Variable const*,
-                                 std::unordered_map<VariableId, Variable const*> const&);
+  static Variable const* replace(
+      Variable const*, std::unordered_map<VariableId, Variable const*> const&);
 
   /// @brief factory for (optional) variables from VPack
-  static Variable* varFromVPack(Ast* ast, arangodb::velocypack::Slice const& base,
-                                char const* variableName, bool optional = false);
+  static Variable* varFromVPack(Ast* ast,
+                                arangodb::velocypack::Slice const& base,
+                                char const* variableName,
+                                bool optional = false);
 
   bool isEqualTo(Variable const& other) const;
 
@@ -122,9 +126,9 @@ struct Variable {
   AstNode* _constAstNode{nullptr};
 
   // TODO - we have two kinds of const values here; this should be cleaned up!
-  /// @brief for const variables, this stores the constant value determined while
-  /// initializing the plan.
-  /// Note: the variable takes ownership of this value and destroys it
+  /// @brief for const variables, this stores the constant value determined
+  /// while initializing the plan. Note: the variable takes ownership of this
+  /// value and destroys it
   AqlValue _constantValue;
 };
 }  // namespace aql

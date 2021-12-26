@@ -46,8 +46,9 @@ class ExecContext : public RequestContext {
  protected:
   enum class Type { Default, Internal };
 
-  ExecContext(ExecContext::Type type, std::string const& user, std::string const& database,
-              auth::Level systemLevel, auth::Level dbLevel, bool isAdminUser);
+  ExecContext(ExecContext::Type type, std::string const& user,
+              std::string const& database, auth::Level systemLevel,
+              auth::Level dbLevel, bool isAdminUser);
   ExecContext(ExecContext const&) = delete;
   ExecContext(ExecContext&&) = delete;
 
@@ -65,7 +66,8 @@ class ExecContext : public RequestContext {
   static ExecContext const& superuser();
 
   /// @brief create user context, caller is responsible for deleting
-  static std::unique_ptr<ExecContext> create(std::string const& user, std::string const& db);
+  static std::unique_ptr<ExecContext> create(std::string const& user,
+                                             std::string const& db);
 
   /// @brief an internal user is none / ro / rw for all collections / dbs
   /// mainly used to override further permission resolution
@@ -109,10 +111,12 @@ class ExecContext : public RequestContext {
   bool canUseDatabase(std::string const& db, auth::Level requested) const;
 
   /// @brief returns auth level for user
-  auth::Level collectionAuthLevel(std::string const& dbname, std::string const& collection) const;
+  auth::Level collectionAuthLevel(std::string const& dbname,
+                                  std::string const& collection) const;
 
   /// @brief returns true if auth levels is above or equal `requested`
-  bool canUseCollection(std::string const& collection, auth::Level requested) const {
+  bool canUseCollection(std::string const& collection,
+                        auth::Level requested) const {
     return canUseCollection(_database, collection, requested);
   }
   /// @brief returns true if auth level is above or equal `requested`

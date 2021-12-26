@@ -43,7 +43,8 @@ struct DeferredAction {
     std::swap(invoke_func, other.invoke_func);
     if (invoke_func != nullptr) {
       // this will run the move constructor and then destroy other.storage
-      invoke_func(&other.storage, action::move_construct_into_and_destroy, &storage);
+      invoke_func(&other.storage, action::move_construct_into_and_destroy,
+                  &storage);
     }
 
     return *this;
@@ -52,8 +53,8 @@ struct DeferredAction {
   DeferredAction(DeferredAction const&) = delete;
   DeferredAction& operator=(DeferredAction const&) = delete;
 
-  template <typename F, typename Func = std::decay_t<F>,
-            std::enable_if_t<std::is_nothrow_invocable_r_v<void, F>, int> = 0>
+  template<typename F, typename Func = std::decay_t<F>,
+           std::enable_if_t<std::is_nothrow_invocable_r_v<void, F>, int> = 0>
   explicit DeferredAction(F&& f) noexcept : invoke_func(call_action<F>) {
     static_assert(sizeof(F) <= alloc_size);
     static_assert(std::is_nothrow_move_constructible_v<Func>);
@@ -77,7 +78,7 @@ struct DeferredAction {
     move_construct_into_and_destroy,
   };
 
-  template <typename F, typename Func = std::decay_t<F>>
+  template<typename F, typename Func = std::decay_t<F>>
   static void call_action(void* storage, action what, void* ptr) noexcept {
     auto& func = *reinterpret_cast<Func*>(storage);
     switch (what) {

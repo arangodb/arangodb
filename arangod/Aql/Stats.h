@@ -113,8 +113,9 @@ class EnumerateCollectionStats {
   std::size_t _filtered;
 };
 
-inline ExecutionStats& operator+=(ExecutionStats& executionStats,
-                                  EnumerateCollectionStats const& enumerateCollectionStats) noexcept {
+inline ExecutionStats& operator+=(
+    ExecutionStats& executionStats,
+    EnumerateCollectionStats const& enumerateCollectionStats) noexcept {
   executionStats.scannedFull += enumerateCollectionStats.getScanned();
   executionStats.filtered += enumerateCollectionStats.getFiltered();
   return executionStats;
@@ -182,8 +183,9 @@ class ModificationStats {
   std::size_t _writesIgnored;
 };
 
-inline ExecutionStats& operator+=(ExecutionStats& executionStats,
-                                  ModificationStats const& filterStats) noexcept {
+inline ExecutionStats& operator+=(
+    ExecutionStats& executionStats,
+    ModificationStats const& filterStats) noexcept {
   executionStats.writesExecuted += filterStats.getWritesExecuted();
   executionStats.writesIgnored += filterStats.getWritesIgnored();
   return executionStats;
@@ -233,8 +235,9 @@ class SingleRemoteModificationStats {
   std::size_t _scannedIndex;
 };
 
-inline ExecutionStats& operator+=(ExecutionStats& executionStats,
-                                  SingleRemoteModificationStats const& filterStats) noexcept {
+inline ExecutionStats& operator+=(
+    ExecutionStats& executionStats,
+    SingleRemoteModificationStats const& filterStats) noexcept {
   executionStats.writesExecuted += filterStats.getWritesExecuted();
   executionStats.writesIgnored += filterStats.getWritesIgnored();
   executionStats.scannedIndex += filterStats.getScannedIndex();

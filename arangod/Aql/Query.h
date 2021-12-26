@@ -73,10 +73,13 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   Query& operator=(Query const&) = delete;
 
  protected:
-  /// @brief internal constructor, Used to construct a full query or a ClusterQuery
-  Query(QueryId id, std::shared_ptr<transaction::Context> ctx, QueryString queryString,
+  /// @brief internal constructor, Used to construct a full query or a
+  /// ClusterQuery
+  Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
+        QueryString queryString,
         std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
-        aql::QueryOptions options, std::shared_ptr<SharedQueryState> sharedState);
+        aql::QueryOptions options,
+        std::shared_ptr<SharedQueryState> sharedState);
 
   /// Used to construct a full query. the constructor is protected to ensure
   /// that call sites only create Query objects using the `create` factory
@@ -90,10 +93,10 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief factory method for creating a query. this must be used to
   /// ensure that Query objects are always created using shared_ptrs.
-  static std::shared_ptr<Query> create(std::shared_ptr<transaction::Context> ctx,
-                                       QueryString queryString,
-                                       std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
-                                       aql::QueryOptions options = aql::QueryOptions{});
+  static std::shared_ptr<Query> create(
+      std::shared_ptr<transaction::Context> ctx, QueryString queryString,
+      std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
+      aql::QueryOptions options = aql::QueryOptions{});
 
   /// @brief note that the query uses the DataSource
   void addDataSource(std::shared_ptr<arangodb::LogicalDataSource> const& ds);

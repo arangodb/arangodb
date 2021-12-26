@@ -55,16 +55,17 @@ void RecoveryManager::stopMonitoring(Conductor* listener) {
   }
 }
 
-void RecoveryManager::monitorCollections(DatabaseID const& database,
-                                         std::vector<CollectionID> const& collections,
-                                         Conductor* listener) {
+void RecoveryManager::monitorCollections(
+    DatabaseID const& database, std::vector<CollectionID> const& collections,
+    Conductor* listener) {
   MUTEX_LOCKER(guard, _lock);
   if (ServerState::instance()->isCoordinator() == false) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
   }
 
   for (CollectionID const& collname : collections) {
-    std::shared_ptr<LogicalCollection> coll = _ci.getCollection(database, collname);
+    std::shared_ptr<LogicalCollection> coll =
+        _ci.getCollection(database, collname);
     CollectionID cid = std::to_string(coll->id().id());
     std::shared_ptr<std::vector<ShardID>> shards = _ci.getShardList(cid);
 
@@ -90,13 +91,14 @@ void RecoveryManager::monitorCollections(DatabaseID const& database,
   }
 }
 
-ErrorCode RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers,
-                                             std::vector<ServerID>& goodServers) {
+ErrorCode RecoveryManager::filterGoodServers(
+    std::vector<ServerID> const& servers, std::vector<ServerID>& goodServers) {
   // TODO I could also use ClusterInfo::failedServers
   AgencyCommResult result = _agency.getValues("Supervision/Health");
   if (result.successful()) {
-    VPackSlice serversRegistered = result.slice()[0].get(std::vector<std::string>(
-        {AgencyCommHelper::path(), "Supervision", "Health"}));
+    VPackSlice serversRegistered =
+        result.slice()[0].get(std::vector<std::string>(
+            {AgencyCommHelper::path(), "Supervision", "Health"}));
 
     LOG_TOPIC("68f55", INFO, Logger::PREGEL)
         << "Server Status: " << serversRegistered.toJson();
@@ -107,9 +109,11 @@ ErrorCode RecoveryManager::filterGoodServers(std::vector<ServerID> const& server
         VPackSlice slice = res.value;
         if (slice.isObject() && slice.hasKey("Status")) {
           VPackSlice status = slice.get("Status");
-          if (status.compareString(consensus::Supervision::HEALTH_STATUS_GOOD) == 0) {
+          if (status.compareString(
+                  consensus::Supervision::HEALTH_STATUS_GOOD) == 0) {
             ServerID name = serverId.copyString();
-            if (std::find(servers.begin(), servers.end(), name) != servers.end()) {
+            if (std::find(servers.begin(), servers.end(), name) !=
+                servers.end()) {
               goodServers.push_back(name);
             }
           }
@@ -122,7 +126,8 @@ ErrorCode RecoveryManager::filterGoodServers(std::vector<ServerID> const& server
   return TRI_ERROR_NO_ERROR;
 }
 
-void RecoveryManager::updatedFailedServers(std::vector<ServerID> const& failed) {
+void RecoveryManager::updatedFailedServers(
+    std::vector<ServerID> const& failed) {
   MUTEX_LOCKER(guard, _lock);  // we are accessing _primaryServers
 
   for (auto const& pair : _primaryServers) {
@@ -148,7 +153,8 @@ void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
 
   auto const& conductors = _listeners.find(shard);
   auto const& currentPrimary = _primaryServers.find(shard);
-  if (conductors == _listeners.end() || currentPrimary == _primaryServers.end()) {
+  if (conductors == _listeners.end() ||
+      currentPrimary == _primaryServers.end()) {
     LOG_TOPIC("30077", ERR, Logger::PREGEL)
         << "Shard is not properly registered";
     return;
@@ -156,7 +162,8 @@ void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
 
   int tries = 0;
   do {
-    std::shared_ptr<std::vector<ServerID> const> servers = _ci.getResponsibleServer(shard);
+    std::shared_ptr<std::vector<ServerID> const> servers =
+        _ci.getResponsibleServer(shard);
     if (servers && !servers->empty()) {
       ServerID const& nextPrimary = servers->front();
       if (currentPrimary->second != nextPrimary) {

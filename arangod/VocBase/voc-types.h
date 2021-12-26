@@ -62,7 +62,7 @@ enum class ShardingPrototype : uint32_t {
 /// @brief Hash function for a vector of VPackSlice
 namespace std {
 
-template <>
+template<>
 struct hash<std::vector<arangodb::velocypack::Slice>> {
   size_t operator()(std::vector<arangodb::velocypack::Slice> const& x) const {
     std::hash<arangodb::velocypack::Slice> sliceHash;

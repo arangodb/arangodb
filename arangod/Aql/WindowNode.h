@@ -111,16 +111,19 @@ class WindowNode : public ExecutionNode {
   NodeType getType() const override final;
 
   /// @brief calculate the aggregate registers
-  void calcAggregateRegisters(std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
-                              RegIdSet& readableInputRegisters,
-                              RegIdSet& writeableOutputRegisters) const;
+  void calcAggregateRegisters(
+      std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
+      RegIdSet& readableInputRegisters,
+      RegIdSet& writeableOutputRegisters) const;
 
-  void calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const;
+  void calcAggregateTypes(
+      std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -129,9 +132,11 @@ class WindowNode : public ExecutionNode {
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
-  void setAggregateVariables(std::vector<AggregateVarInfo> const& aggregateVariables);
+  void setAggregateVariables(
+      std::vector<AggregateVarInfo> const& aggregateVariables);
 
-  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
+                            replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -144,7 +149,8 @@ class WindowNode : public ExecutionNode {
 
  protected:
   /// @brief export to VelocyPack
-  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override final;
 
  private:
   WindowBounds _bounds;

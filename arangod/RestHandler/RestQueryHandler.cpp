@@ -41,8 +41,9 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestQueryHandler::RestQueryHandler(application_features::ApplicationServer& server,
-                                   GeneralRequest* request, GeneralResponse* response)
+RestQueryHandler::RestQueryHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestQueryHandler::execute() {
@@ -86,7 +87,8 @@ void RestQueryHandler::readQueryProperties() {
   result.add("slowQueryThreshold", VPackValue(queryList->slowQueryThreshold()));
   result.add("slowStreamingQueryThreshold",
              VPackValue(queryList->slowStreamingQueryThreshold()));
-  result.add("maxQueryStringLength", VPackValue(queryList->maxQueryStringLength()));
+  result.add("maxQueryStringLength",
+             VPackValue(queryList->maxQueryStringLength()));
   result.close();
 
   generateResult(rest::ResponseCode::OK, result.slice());
@@ -153,7 +155,8 @@ void RestQueryHandler::deleteQuerySlow() {
 
 void RestQueryHandler::killQuery(std::string const& id) {
   bool const allDatabases = _request->parsedValue("all", false);
-  Result res = methods::Queries::kill(_vocbase, StringUtils::uint64(id), allDatabases);
+  Result res =
+      methods::Queries::kill(_vocbase, StringUtils::uint64(id), allDatabases);
 
   if (res.ok()) {
     generateOk(rest::ResponseCode::OK, velocypack::Slice::noneSlice());
@@ -341,7 +344,8 @@ ResultT<std::pair<std::string, bool>> RestQueryHandler::forwardingTarget() {
       uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
       if (sourceServer != ServerState::instance()->getShortId()) {
         auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-        return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
+        return {
+            std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
       }
     }
   }

@@ -62,8 +62,11 @@ class Query;
 using namespace arangodb;
 using namespace arangodb::options;
 
-BootstrapFeature::BootstrapFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, ::FEATURE_NAME), _isReady(false), _bark(false) {
+BootstrapFeature::BootstrapFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature(server, ::FEATURE_NAME),
+      _isReady(false),
+      _bark(false) {
   startsAfter<application_features::ServerFeaturePhase>();
 
   startsAfter<SystemDatabaseFeature>();
@@ -91,8 +94,9 @@ bool BootstrapFeature::isReady() const {
 }
 
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("hund", "make ArangoDB bark on startup", new BooleanParameter(&_bark),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption(
+      "hund", "make ArangoDB bark on startup", new BooleanParameter(&_bark),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
 // Local Helper functions
@@ -163,10 +167,13 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
 
     arangodb::SystemDatabaseFeature::ptr vocbase =
         feature.server().hasFeature<arangodb::SystemDatabaseFeature>()
-            ? feature.server().getFeature<arangodb::SystemDatabaseFeature>().use()
+            ? feature.server()
+                  .getFeature<arangodb::SystemDatabaseFeature>()
+                  .use()
             : nullptr;
-    auto upgradeRes = vocbase ? methods::Upgrade::clusterBootstrap(*vocbase).result()
-                              : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    auto upgradeRes =
+        vocbase ? methods::Upgrade::clusterBootstrap(*vocbase).result()
+                : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
 
     if (upgradeRes.fail()) {
       LOG_TOPIC("8903f", ERR, Logger::STARTUP)
@@ -220,8 +227,10 @@ void runCoordinatorJS(TRI_vocbase_t* vocbase) {
         << "Running server/bootstrap/coordinator.js";
 
     VPackBuilder builder;
-    vocbase->server().getFeature<V8DealerFeature>().loadJavaScriptFileInAllContexts(
-        vocbase, "server/bootstrap/coordinator.js", &builder);
+    vocbase->server()
+        .getFeature<V8DealerFeature>()
+        .loadJavaScriptFileInAllContexts(
+            vocbase, "server/bootstrap/coordinator.js", &builder);
 
     auto slice = builder.slice();
     if (slice.isArray()) {
@@ -253,7 +262,8 @@ void runCoordinatorJS(TRI_vocbase_t* vocbase) {
 }
 
 // Try to become leader in active-failover setup
-void runActiveFailoverStart(BootstrapFeature& feature, std::string const& myId) {
+void runActiveFailoverStart(BootstrapFeature& feature,
+                            std::string const& myId) {
   std::string const leaderPath = "Plan/AsyncReplication/Leader";
   try {
     VPackBuilder myIdBuilder;
@@ -261,8 +271,10 @@ void runActiveFailoverStart(BootstrapFeature& feature, std::string const& myId) 
     AgencyComm agency(feature.server());
     AgencyCommResult res = agency.getValues(leaderPath);
     if (res.successful()) {
-      VPackSlice leader = res.slice()[0].get(AgencyCommHelper::slicePath(leaderPath));
-      if (!leader.isString() || leader.getStringLength() == 0) {  // no leader in agency
+      VPackSlice leader =
+          res.slice()[0].get(AgencyCommHelper::slicePath(leaderPath));
+      if (!leader.isString() ||
+          leader.getStringLength() == 0) {  // no leader in agency
         if (leader.isNone()) {
           res = agency.casValue(leaderPath, myIdBuilder.slice(),
                                 /*prevExist*/ false,
@@ -279,7 +291,8 @@ void runActiveFailoverStart(BootstrapFeature& feature, std::string const& myId) 
 
       if (leader.isString() && leader.getStringLength() > 0) {
         ServerState::instance()->setFoxxmaster(leader.copyString());
-        if (basics::VelocyPackHelper::equal(leader, myIdBuilder.slice(), false)) {
+        if (basics::VelocyPackHelper::equal(leader, myIdBuilder.slice(),
+                                            false)) {
           LOG_TOPIC("95023", INFO, Logger::STARTUP)
               << "Became leader in active-failover setup";
         } else {
@@ -340,14 +353,17 @@ void BootstrapFeature::start() {
       TRI_ASSERT(false);
     }
   } else {
-    std::string const myId = ServerState::instance()->getId();  // local cluster UUID
+    std::string const myId =
+        ServerState::instance()->getId();  // local cluster UUID
 
     // become leader before running server.js to ensure the leader
     // is the foxxmaster. Everything else is handled in heartbeat
-    if (ServerState::isSingleServer(role) && AsyncAgencyCommManager::isEnabled()) {
+    if (ServerState::isSingleServer(role) &&
+        AsyncAgencyCommManager::isEnabled()) {
       ::runActiveFailoverStart(*this, myId);
     } else {
-      ServerState::instance()->setFoxxmaster(myId);  // could be empty, but set anyway
+      ServerState::instance()->setFoxxmaster(
+          myId);  // could be empty, but set anyway
     }
 
     if (v8Enabled) {  // runs the single server bootstrap JS
@@ -369,7 +385,8 @@ void BootstrapFeature::start() {
     waitForHealthEntry();
   }
 
-  if (ServerState::isSingleServer(role) && AsyncAgencyCommManager::isEnabled()) {
+  if (ServerState::isSingleServer(role) &&
+      AsyncAgencyCommManager::isEnabled()) {
     // simon: this is set to correct value in the heartbeat thread
     ServerState::setServerMode(ServerState::Mode::TRYAGAIN);
   } else {

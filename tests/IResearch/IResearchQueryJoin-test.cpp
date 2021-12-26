@@ -99,12 +99,12 @@ TEST_P(IResearchQueryJoinTest, Subquery) {
       "writebufferIdle": 64
     })";
 
-    auto viewDefinition =
-        irs::string_utils::to_string(viewDefinitionTemplate,
-                                     static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition = irs::string_utils::to_string(
+        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()));
 
     auto json = VPackParser::fromJson(viewDefinition);
-    ASSERT_TRUE(arangodb::LogicalView::create(entities_view, vocbase, json->slice(), true)
+    ASSERT_TRUE(arangodb::LogicalView::create(entities_view, vocbase,
+                                              json->slice(), true)
                     .ok());
     ASSERT_NE(nullptr, entities_view);
   }
@@ -134,13 +134,13 @@ TEST_P(IResearchQueryJoinTest, Subquery) {
       "type": "arangosearch",
       "writebufferIdle": 64 })";
 
-    auto viewDefinition =
-        irs::string_utils::to_string(viewDefinitionTemplate,
-                                     static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition = irs::string_utils::to_string(
+        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()));
     auto json = VPackParser::fromJson(viewDefinition);
 
     ASSERT_TRUE(
-        arangodb::LogicalView::create(links_view, vocbase, json->slice(), true).ok());
+        arangodb::LogicalView::create(links_view, vocbase, json->slice(), true)
+            .ok());
     ASSERT_NE(nullptr, links_view);
   }
 
@@ -150,9 +150,9 @@ TEST_P(IResearchQueryJoinTest, Subquery) {
   {
     arangodb::OperationOptions opt;
 
-    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       collections, collections, collections,
-                                       arangodb::transaction::Options());
+    arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), collections,
+        collections, collections, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into entities collection
@@ -206,12 +206,14 @@ TEST_P(IResearchQueryJoinTest, Subquery) {
     }
 
     EXPECT_TRUE(trx.commit().ok());
-    EXPECT_TRUE((arangodb::iresearch::IResearchLinkHelper::find(*entities, *entities_view)
+    EXPECT_TRUE((arangodb::iresearch::IResearchLinkHelper::find(*entities,
+                                                                *entities_view)
                      ->commit()
                      .ok()));
-    EXPECT_TRUE((arangodb::iresearch::IResearchLinkHelper::find(*links, *links_view)
-                     ->commit()
-                     .ok()));
+    EXPECT_TRUE(
+        (arangodb::iresearch::IResearchLinkHelper::find(*links, *links_view)
+             ->commit()
+             .ok()));
   }
 
   // check query
@@ -310,7 +312,8 @@ TEST_P(IResearchQueryJoinTest, DuplicateDataSource) {
   // add logical collection with the same name as view
   {
     auto collectionJson = VPackParser::fromJson("{ \"name\": \"testView\" }");
-    // TRI_vocbase_t::createCollection(...) throws exception instead of returning a nullptr
+    // TRI_vocbase_t::createCollection(...) throws exception instead of
+    // returning a nullptr
     EXPECT_ANY_THROW(vocbase.createCollection(collectionJson->slice()));
   }
 
@@ -329,10 +332,9 @@ TEST_P(IResearchQueryJoinTest, DuplicateDataSource) {
           "includeAllFields": true }
     }})";
 
-    auto viewDefinition =
-        irs::string_utils::to_string(viewDefinitionTemplate,
-                                     static_cast<uint32_t>(linkVersion()),
-                                     static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition = irs::string_utils::to_string(
+        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()),
+        static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -341,7 +343,8 @@ TEST_P(IResearchQueryJoinTest, DuplicateDataSource) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+    view->properties(builder,
+                     arangodb::LogicalDataSource::Serialization::Properties);
     builder.close();
 
     auto slice = builder.slice();
@@ -360,9 +363,9 @@ TEST_P(IResearchQueryJoinTest, DuplicateDataSource) {
   {
     arangodb::OperationOptions opt;
 
-    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
-                                       arangodb::transaction::Options());
+    arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
+        EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
@@ -371,15 +374,15 @@ TEST_P(IResearchQueryJoinTest, DuplicateDataSource) {
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential.json");
 
-      auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
+          resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
       size_t i = 0;
 
-      std::shared_ptr<arangodb::LogicalCollection> collections[]{logicalCollection1,
-                                                                 logicalCollection2};
+      std::shared_ptr<arangodb::LogicalCollection> collections[]{
+          logicalCollection1, logicalCollection2};
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocsView.emplace_back();
@@ -398,15 +401,15 @@ TEST_P(IResearchQueryJoinTest, DuplicateDataSource) {
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential_order.json");
 
-      auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
+          resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocsCollection.emplace_back();
-        auto const res =
-            logicalCollection3->insert(&trx, doc, insertedDocsCollection.back(), opt);
+        auto const res = logicalCollection3->insert(
+            &trx, doc, insertedDocsCollection.back(), opt);
         EXPECT_TRUE(res.ok());
       }
     }
@@ -425,8 +428,10 @@ TEST_P(IResearchQueryJoinTest, DuplicateDataSource) {
         "LET c=5 FOR x IN collection_1 SEARCH x.seq == c RETURN x";
     auto const boundParameters = VPackParser::fromJson("{ }");
 
-    // arangodb::aql::ExecutionPlan::fromNodeFor(...) throws TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
-    auto queryResult = arangodb::tests::executeQuery(vocbase, query, boundParameters);
+    // arangodb::aql::ExecutionPlan::fromNodeFor(...) throws
+    // TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
+    auto queryResult =
+        arangodb::tests::executeQuery(vocbase, query, boundParameters);
     EXPECT_TRUE(queryResult.result.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
 
@@ -436,7 +441,8 @@ TEST_P(IResearchQueryJoinTest, DuplicateDataSource) {
         "LET c=5 FOR x IN @@dataSource SEARCH x.seq == c  RETURN x";
     auto const boundParameters =
         VPackParser::fromJson("{ \"@dataSource\" : \"collection_1\" }");
-    auto queryResult = arangodb::tests::executeQuery(vocbase, query, boundParameters);
+    auto queryResult =
+        arangodb::tests::executeQuery(vocbase, query, boundParameters);
     EXPECT_TRUE(queryResult.result.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
 }
@@ -500,10 +506,9 @@ TEST_P(IResearchQueryJoinTest, test) {
           "includeAllFields": true }
     }})";
 
-    auto viewDefinition =
-        irs::string_utils::to_string(viewDefinitionTemplate,
-                                     static_cast<uint32_t>(linkVersion()),
-                                     static_cast<uint32_t>(linkVersion()));
+    auto viewDefinition = irs::string_utils::to_string(
+        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()),
+        static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -512,7 +517,8 @@ TEST_P(IResearchQueryJoinTest, test) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+    view->properties(builder,
+                     arangodb::LogicalDataSource::Serialization::Properties);
     builder.close();
 
     auto slice = builder.slice();
@@ -532,9 +538,9 @@ TEST_P(IResearchQueryJoinTest, test) {
   {
     arangodb::OperationOptions opt;
 
-    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                       EMPTY, EMPTY, EMPTY,
-                                       arangodb::transaction::Options());
+    arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
+        EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
@@ -543,15 +549,15 @@ TEST_P(IResearchQueryJoinTest, test) {
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential.json");
 
-      auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
+          resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
       size_t i = 0;
 
-      std::shared_ptr<arangodb::LogicalCollection> collections[]{logicalCollection1,
-                                                                 logicalCollection2};
+      std::shared_ptr<arangodb::LogicalCollection> collections[]{
+          logicalCollection1, logicalCollection2};
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocsView.emplace_back();
@@ -568,15 +574,15 @@ TEST_P(IResearchQueryJoinTest, test) {
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential_order.json");
 
-      auto builder =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
+          resource.u8string());
       auto root = builder.slice();
       ASSERT_TRUE(root.isArray());
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocsCollection.emplace_back();
-        auto const res =
-            logicalCollection3->insert(&trx, doc, insertedDocsCollection.back(), opt);
+        auto const res = logicalCollection3->insert(
+            &trx, doc, insertedDocsCollection.back(), opt);
         EXPECT_TRUE(res.ok());
       }
     }
@@ -601,10 +607,11 @@ TEST_P(IResearchQueryJoinTest, test) {
     std::string const query =
         "LET c=5 FOR x IN 1..7 FOR d IN testView SEARCH c == d.seq RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
@@ -641,10 +648,11 @@ TEST_P(IResearchQueryJoinTest, test) {
     std::string const query =
         "FOR x IN 1..10000 FOR d IN testView SEARCH 1 == d.seq RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -677,10 +685,11 @@ TEST_P(IResearchQueryJoinTest, test) {
     std::string const query =
         "FOR x IN 1..7 FOR d IN testView SEARCH _FORWARD_(5) == d.seq RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
@@ -724,10 +733,11 @@ TEST_P(IResearchQueryJoinTest, test) {
         "FOR x IN 1..7 FOR d IN testView SEARCH _NONDETERM_(5) == d.seq RETURN "
         "d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
@@ -740,7 +750,9 @@ TEST_P(IResearchQueryJoinTest, test) {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_NOT_IMPLEMENTED));  // can't handle self-referenced variable now
+    ASSERT_TRUE(queryResult.result.is(
+        TRI_ERROR_NOT_IMPLEMENTED));  // can't handle self-referenced variable
+                                      // now
 
     //    auto result = queryResult.data->slice();
     //    EXPECT_TRUE(result.isArray());
@@ -754,7 +766,9 @@ TEST_P(IResearchQueryJoinTest, test) {
     //      auto const actualDoc = resultIt.value();
     //      auto const resolved = actualDoc.resolveExternals();
     //
-    //      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true));
+    //      EXPECT_EQ(0,
+    //      arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc),
+    //      resolved, true));
     //    }
     //    EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
@@ -772,10 +786,11 @@ TEST_P(IResearchQueryJoinTest, test) {
         "LET c=_NONDETERM_(4) FOR x IN 1..7 FOR d IN testView SEARCH c == "
         "d.seq RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
@@ -820,10 +835,11 @@ TEST_P(IResearchQueryJoinTest, test) {
         " FOR x IN _NONDETERM_(0).._NONDETERM_(7) FOR d IN testView SEARCH x "
         "== d.seq RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[0].vpack()),
@@ -864,10 +880,11 @@ TEST_P(IResearchQueryJoinTest, test) {
         "FOR x IN collection_3 SORT x._key FOR d IN testView SEARCH x.seq == "
         "d.seq RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[0].vpack()),
@@ -893,7 +910,8 @@ TEST_P(IResearchQueryJoinTest, test) {
     for (; resultIt.valid(); resultIt.next(), ++expectedDoc) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(arangodb::basics::VelocyPackHelper::equal(arangodb::velocypack::Slice(*expectedDoc), resolved, true))
+      EXPECT_TRUE(arangodb::basics::VelocyPackHelper::equal(
+          arangodb::velocypack::Slice(*expectedDoc), resolved, true))
           << arangodb::velocypack::Slice(*expectedDoc).toJson() << " vs. "
           << resolved.toJson();
     }
@@ -910,10 +928,11 @@ TEST_P(IResearchQueryJoinTest, test) {
         "FOR x IN collection_3 FOR d IN testView SEARCH x.seq == d.seq SORT "
         "d.seq DESC RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[7].vpack()),
@@ -944,7 +963,8 @@ TEST_P(IResearchQueryJoinTest, test) {
 
       ASSERT_TRUE(viewNode.isObject());
       ASSERT_EQ(insertedDocsView.size() * insertedDocsCollection.size() +
-                    insertedDocsCollection.size() + 1.  // cost of collection node
+                    insertedDocsCollection.size() +
+                    1.     // cost of collection node
                     + 1.,  // cost of singleton node
                 viewNode.get("estimatedCost").getDouble());
       ASSERT_EQ(insertedDocsView.size() * insertedDocsCollection.size(),
@@ -982,10 +1002,11 @@ TEST_P(IResearchQueryJoinTest, test) {
         "FOR x IN collection_3 FOR d IN testView SEARCH x.seq == d.seq SORT "
         "d.seq DESC LIMIT 3 RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[7].vpack()),
@@ -1021,10 +1042,11 @@ TEST_P(IResearchQueryJoinTest, test) {
         "FOR x IN collection_3 FOR d IN testView SEARCH x.seq == d.seq && "
         "(d.value > 5 && d.value <= 100) SORT d.seq DESC RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[6].vpack()),
@@ -1178,10 +1200,11 @@ TEST_P(IResearchQueryJoinTest, test) {
         "FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 RETURN "
         "c) FOR x IN collection_3 FILTER d.seq == x.seq SORT d.seq RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
@@ -1210,7 +1233,8 @@ TEST_P(IResearchQueryJoinTest, test) {
   }
 
   // Note: unable to push condition to the `View` now
-  // FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC RETURN c)
+  // FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT
+  // TFIDF(c) ASC, c.seq DESC RETURN c)
   //   FOR x IN collection_3
   //   SEARCH d.seq == x.seq
   // RETURN d;
@@ -1220,10 +1244,11 @@ TEST_P(IResearchQueryJoinTest, test) {
         "TFIDF(c) ASC, c.seq DESC RETURN c) FOR x IN collection_3 FILTER d.seq "
         "== x.seq RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[7].vpack()),
@@ -1252,7 +1277,8 @@ TEST_P(IResearchQueryJoinTest, test) {
   }
 
   // Note: unable to push condition to the `View` now
-  // FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC RETURN c)
+  // FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT
+  // TFIDF(c) ASC, c.seq DESC RETURN c)
   //   FOR x IN collection_3
   //   SEARCH d.seq == x.seq
   // LIMIT 2
@@ -1263,10 +1289,11 @@ TEST_P(IResearchQueryJoinTest, test) {
         "TFIDF(c) ASC, c.seq DESC RETURN c) FOR x IN collection_3 FILTER d.seq "
         "== x.seq LIMIT 2 RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[7].vpack()),
@@ -1294,7 +1321,8 @@ TEST_P(IResearchQueryJoinTest, test) {
   }
 
   // Note: unable to push condition to the `View` now
-  // FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC LIMIT 3 RETURN c)
+  // FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT
+  // TFIDF(c) ASC, c.seq DESC LIMIT 3 RETURN c)
   //   FOR x IN collection_3
   //   SEARCH d.seq == x.seq
   // RETURN d;
@@ -1305,7 +1333,8 @@ TEST_P(IResearchQueryJoinTest, test) {
         "FILTER d.seq == x.seq RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(
-        vocbase, query, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
+        vocbase, query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[7].vpack()),
@@ -1358,10 +1387,11 @@ TEST_P(IResearchQueryJoinTest, test) {
         "FOR x IN 0..5 FOR d IN testView SEARCH d.seq == x SORT "
         "customscorer(d, x) DESC RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
@@ -1400,7 +1430,8 @@ TEST_P(IResearchQueryJoinTest, test) {
     EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query, {}));
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH));
+    ASSERT_TRUE(
+        queryResult.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH));
   }
 
   // FOR i IN 1..5
@@ -1412,10 +1443,11 @@ TEST_P(IResearchQueryJoinTest, test) {
         "FOR i IN 1..5 FOR x IN collection_1 FOR d IN testView SEARCH d.seq == "
         "i AND d.name == x.name SORT customscorer(d, x.seq) DESC RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
@@ -1451,10 +1483,11 @@ TEST_P(IResearchQueryJoinTest, test) {
         "testView SEARCH d.seq == x.seq AND d.name == x.name SORT "
         "customscorer(d, x.seq) DESC RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
@@ -1490,10 +1523,11 @@ TEST_P(IResearchQueryJoinTest, test) {
         "      SORT customscorer(d, x[attr]) DESC "
         "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
@@ -1530,10 +1564,11 @@ TEST_P(IResearchQueryJoinTest, test) {
         "testView SEARCH d.seq == x.seq AND d.name == x.name SORT "
         "customscorer(d, x['seq']) DESC RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
@@ -1571,10 +1606,11 @@ TEST_P(IResearchQueryJoinTest, test) {
         "collection_1 FILTER x.seq == d.seq && x.name == d.name SORT "
         "customscorer(d, d.seq) DESC RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
@@ -1591,10 +1627,11 @@ TEST_P(IResearchQueryJoinTest, test) {
         "collection_1 FILTER x.seq == d.seq && x.name == d.name SORT "
         "customscorer(d, x.seq) DESC RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
@@ -1611,10 +1648,11 @@ TEST_P(IResearchQueryJoinTest, test) {
         "    FOR x IN collection_1 FILTER x.seq == d.seq && x.name == d.name "
         "SORT customscorer(d, i) DESC RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
@@ -1648,9 +1686,10 @@ TEST_P(IResearchQueryJoinTest, test) {
         "LET fullAccounts = (FOR acc1 IN [1] RETURN { 'key': 'A' }) for a IN "
         "fullAccounts for d IN testView SEARCH d.name == a.key return d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                              arangodb::aql::OptimizerRule::inlineSubqueriesRule}));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+         arangodb::aql::OptimizerRule::inlineSubqueriesRule}));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[0].vpack()),
@@ -1687,10 +1726,11 @@ TEST_P(IResearchQueryJoinTest, test) {
         "customscorer(d, i)"
         "RETURN x";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
@@ -1725,10 +1765,11 @@ TEST_P(IResearchQueryJoinTest, test) {
         "SORT 1 + customscorer(d, i) DESC "
         "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
@@ -1763,10 +1804,11 @@ TEST_P(IResearchQueryJoinTest, test) {
         "    FOR x IN collection_1 FILTER x.seq == d.seq && x.name == d.name "
         "SORT customscorer(d, i) DESC RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{
         arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
@@ -1803,10 +1845,11 @@ TEST_P(IResearchQueryJoinTest, test) {
         "    SORT customscorer(d, x.seq) "
         "RETURN x";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
@@ -1821,14 +1864,16 @@ TEST_P(IResearchQueryJoinTest, test) {
         "    SORT customscorer(d, x.seq) "
         "RETURN x";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
-                                             {
-                                                 arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-                                             }));
+    EXPECT_TRUE(arangodb::tests::assertRules(
+        vocbase, query,
+        {
+            arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        }));
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 }
 
-INSTANTIATE_TEST_CASE_P(IResearchQueryJoinTest, IResearchQueryJoinTest, GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(IResearchQueryJoinTest, IResearchQueryJoinTest,
+                        GetLinkVersions());

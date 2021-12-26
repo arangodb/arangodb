@@ -41,21 +41,21 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
   auto leaderId = ParticipantId{"leader"};
   auto followerId = ParticipantId{"follower"};
 
-  auto follower =
-      std::make_shared<DelayedFollowerLog>(defaultLogger(), _logMetricsMock, followerId,
-                                           std::move(coreB), LogTerm{1}, leaderId);
-  auto leader =
-      LogLeader::construct(LoggerContext(Logger::REPLICATION2), _logMetricsMock,
-                           leaderId, std::move(coreA), LogTerm{1},
-                           std::vector<std::shared_ptr<AbstractFollower>>{follower}, 2);
+  auto follower = std::make_shared<DelayedFollowerLog>(
+      defaultLogger(), _logMetricsMock, followerId, std::move(coreB),
+      LogTerm{1}, leaderId);
+  auto leader = LogLeader::construct(
+      LoggerContext(Logger::REPLICATION2), _logMetricsMock, leaderId,
+      std::move(coreA), LogTerm{1},
+      std::vector<std::shared_ptr<AbstractFollower>>{follower}, 2);
 
   auto countHistogramEntries = [](auto const& histogram) {
     auto [begin, end] =
         makeIndexIterPair([&](std::size_t i) { return histogram->load(i); }, 0,
                           histogram->size());
 
-    return std::accumulate(begin, end,
-                           typename std::decay_t<decltype(*histogram)>::value_type(0));
+    return std::accumulate(
+        begin, end, typename std::decay_t<decltype(*histogram)>::value_type(0));
   };
 
   {
@@ -75,8 +75,8 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
     auto numAppendEntries =
         countHistogramEntries(_logMetricsMock->replicatedLogAppendEntriesRttUs);
     EXPECT_EQ(numAppendEntries, 0);
-    auto numFollowerAppendEntries =
-        countHistogramEntries(_logMetricsMock->replicatedLogFollowerAppendEntriesRtUs);
+    auto numFollowerAppendEntries = countHistogramEntries(
+        _logMetricsMock->replicatedLogFollowerAppendEntriesRtUs);
     EXPECT_EQ(numFollowerAppendEntries, 0);
   }
 
@@ -90,7 +90,8 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
       EXPECT_EQ(status.local.spearHead.index, LogIndex{2});
     }
     {
-      auto status = std::get<FollowerStatus>(follower->getStatus().getVariant());
+      auto status =
+          std::get<FollowerStatus>(follower->getStatus().getVariant());
       EXPECT_EQ(status.local.commitIndex, LogIndex{0});
       EXPECT_EQ(status.local.spearHead.index, LogIndex{0});
     }
@@ -140,7 +141,8 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
     }
     {
       // Follower has spearhead 1 and commitIndex still 0
-      auto status = std::get<FollowerStatus>(follower->getStatus().getVariant());
+      auto status =
+          std::get<FollowerStatus>(follower->getStatus().getVariant());
       EXPECT_EQ(status.local.commitIndex, LogIndex{0});
       EXPECT_EQ(status.local.spearHead.index, LogIndex{2});
     }
@@ -175,7 +177,8 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
       EXPECT_EQ(result.currentCommitIndex, LogIndex{2});
       EXPECT_EQ(result.quorum->index, LogIndex{2});
       EXPECT_EQ(result.quorum->term, LogTerm{1});
-      EXPECT_EQ(result.quorum->quorum, (std::vector<ParticipantId>{leaderId, followerId}));
+      EXPECT_EQ(result.quorum->quorum,
+                (std::vector<ParticipantId>{leaderId, followerId}));
     }
 
     // Follower should have pending append entries
@@ -185,7 +188,8 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
 
     {
       // Follower has commitIndex 1
-      auto status = std::get<FollowerStatus>(follower->getStatus().getVariant());
+      auto status =
+          std::get<FollowerStatus>(follower->getStatus().getVariant());
       EXPECT_EQ(status.local.commitIndex, LogIndex{2});
       EXPECT_EQ(status.local.spearHead.index, LogIndex{2});
     }
@@ -204,19 +208,22 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
     auto numAppendEntries =
         countHistogramEntries(_logMetricsMock->replicatedLogAppendEntriesRttUs);
     EXPECT_EQ(numAppendEntries, 6);
-    auto numFollowerAppendEntries =
-        countHistogramEntries(_logMetricsMock->replicatedLogFollowerAppendEntriesRtUs);
+    auto numFollowerAppendEntries = countHistogramEntries(
+        _logMetricsMock->replicatedLogFollowerAppendEntriesRtUs);
     EXPECT_EQ(numFollowerAppendEntries, 6);
   }
 }
 
 TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
-  auto const entries = {replication2::PersistingLogEntry(LogTerm{1}, LogIndex{1},
-                                                         LogPayload::createFromString("first entry")),
-                        replication2::PersistingLogEntry(LogTerm{1}, LogIndex{2},
-                                                         LogPayload::createFromString("second entry")),
-                        replication2::PersistingLogEntry(LogTerm{2}, LogIndex{3},
-                                                         LogPayload::createFromString("third entry"))};
+  auto const entries = {
+      replication2::PersistingLogEntry(
+          LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
+      replication2::PersistingLogEntry(
+          LogTerm{1}, LogIndex{2},
+          LogPayload::createFromString("second entry")),
+      replication2::PersistingLogEntry(
+          LogTerm{2}, LogIndex{3},
+          LogPayload::createFromString("third entry"))};
 
   auto coreA = std::unique_ptr<LogCore>(nullptr);
   {
@@ -231,19 +238,19 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
   auto followerId = ParticipantId{"follower"};
 
   auto coreB = makeLogCore(LogId{2});
-  auto follower =
-      std::make_shared<DelayedFollowerLog>(defaultLogger(), _logMetricsMock, followerId,
-                                           std::move(coreB), LogTerm{3}, leaderId);
-  auto leader =
-      LogLeader::construct(defaultLogger(), _logMetricsMock, leaderId,
-                           std::move(coreA), LogTerm{3},
-                           std::vector<std::shared_ptr<AbstractFollower>>{follower}, 2);
+  auto follower = std::make_shared<DelayedFollowerLog>(
+      defaultLogger(), _logMetricsMock, followerId, std::move(coreB),
+      LogTerm{3}, leaderId);
+  auto leader = LogLeader::construct(
+      defaultLogger(), _logMetricsMock, leaderId, std::move(coreA), LogTerm{3},
+      std::vector<std::shared_ptr<AbstractFollower>>{follower}, 2);
 
   {
     // Leader should know it spearhead, but commitIndex is 0
     auto status = std::get<LeaderStatus>(leader->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{0});
-    EXPECT_EQ(status.local.spearHead.index, LogIndex{4});  // 3 + 1 from construct
+    EXPECT_EQ(status.local.spearHead.index,
+              LogIndex{4});  // 3 + 1 from construct
   }
   {
     // Nothing written on the follower
@@ -311,20 +318,22 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   auto followerId_1 = ParticipantId{"follower1"};
   auto followerId_2 = ParticipantId{"follower1"};
 
-  auto follower_1 =
-      std::make_shared<DelayedFollowerLog>(defaultLogger(), _logMetricsMock, followerId_1,
-                                           std::move(coreB), LogTerm{1}, leaderId);
-  auto follower_2 =
-      std::make_shared<DelayedFollowerLog>(defaultLogger(), _logMetricsMock, followerId_2,
-                                           std::move(coreC), LogTerm{1}, leaderId);
+  auto follower_1 = std::make_shared<DelayedFollowerLog>(
+      defaultLogger(), _logMetricsMock, followerId_1, std::move(coreB),
+      LogTerm{1}, leaderId);
+  auto follower_2 = std::make_shared<DelayedFollowerLog>(
+      defaultLogger(), _logMetricsMock, followerId_2, std::move(coreC),
+      LogTerm{1}, leaderId);
   // create leader with write concern 2
   auto leader = LogLeader::construct(
       defaultLogger(), _logMetricsMock, leaderId, std::move(coreA), LogTerm{1},
-      std::vector<std::shared_ptr<AbstractFollower>>{follower_1, follower_2}, 3);
+      std::vector<std::shared_ptr<AbstractFollower>>{follower_1, follower_2},
+      3);
 
   auto index = leader->insert(LogPayload::createFromString("first entry"),
                               false, LogLeader::doNotTriggerAsyncReplication);
-  EXPECT_EQ(index, LogIndex{2});  // first entry is for term, second is used entry
+  EXPECT_EQ(index,
+            LogIndex{2});  // first entry is for term, second is used entry
   auto future = leader->waitFor(index);
   EXPECT_FALSE(future.isReady());
 
@@ -336,13 +345,15 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   }
   {
     // Follower has nothing
-    auto status = std::get<FollowerStatus>(follower_1->getStatus().getVariant());
+    auto status =
+        std::get<FollowerStatus>(follower_1->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{0});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{0});
   }
   {
     // Follower has nothing
-    auto status = std::get<FollowerStatus>(follower_2->getStatus().getVariant());
+    auto status =
+        std::get<FollowerStatus>(follower_2->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{0});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{0});
   }
@@ -365,13 +376,15 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   }
   {
     // Follower has written 1 entry but not committed
-    auto status = std::get<FollowerStatus>(follower_1->getStatus().getVariant());
+    auto status =
+        std::get<FollowerStatus>(follower_1->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{0});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{2});
   }
   {
     // Follower has nothing
-    auto status = std::get<FollowerStatus>(follower_2->getStatus().getVariant());
+    auto status =
+        std::get<FollowerStatus>(follower_2->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{0});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{0});
   }
@@ -386,7 +399,8 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
     EXPECT_EQ(result.currentCommitIndex, LogIndex{2});
     EXPECT_EQ(result.quorum->term, LogTerm{1});
     EXPECT_EQ(result.quorum->index, LogIndex{2});
-    EXPECT_EQ(result.quorum->quorum, (std::vector{leaderId, followerId_1, followerId_2}));
+    EXPECT_EQ(result.quorum->quorum,
+              (std::vector{leaderId, followerId_1, followerId_2}));
   }
 
   EXPECT_TRUE(follower_1->hasPendingAppendEntries());
@@ -399,13 +413,15 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   }
   {
     // Follower has written 1 entry but not committed
-    auto status = std::get<FollowerStatus>(follower_1->getStatus().getVariant());
+    auto status =
+        std::get<FollowerStatus>(follower_1->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{0});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{2});
   }
   {
     // Follower has written 1 entry but not committed
-    auto status = std::get<FollowerStatus>(follower_2->getStatus().getVariant());
+    auto status =
+        std::get<FollowerStatus>(follower_2->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{0});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{2});
   }
@@ -429,25 +445,31 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   }
   {
     // Follower has committed 1
-    auto status = std::get<FollowerStatus>(follower_1->getStatus().getVariant());
+    auto status =
+        std::get<FollowerStatus>(follower_1->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{2});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{2});
   }
   {
     // Follower has committed 1
-    auto status = std::get<FollowerStatus>(follower_2->getStatus().getVariant());
+    auto status =
+        std::get<FollowerStatus>(follower_2->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{2});
     EXPECT_EQ(status.local.spearHead.index, LogIndex{2});
   }
 }
 
-TEST_F(ReplicatedLogTest, write_concern_one_immediate_leader_commit_on_startup) {
-  auto const entries = {replication2::PersistingLogEntry(LogTerm{1}, LogIndex{1},
-                                                         LogPayload::createFromString("first entry")),
-                        replication2::PersistingLogEntry(LogTerm{1}, LogIndex{2},
-                                                         LogPayload::createFromString("second entry")),
-                        replication2::PersistingLogEntry(LogTerm{2}, LogIndex{3},
-                                                         LogPayload::createFromString("third entry"))};
+TEST_F(ReplicatedLogTest,
+       write_concern_one_immediate_leader_commit_on_startup) {
+  auto const entries = {
+      replication2::PersistingLogEntry(
+          LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
+      replication2::PersistingLogEntry(
+          LogTerm{1}, LogIndex{2},
+          LogPayload::createFromString("second entry")),
+      replication2::PersistingLogEntry(
+          LogTerm{2}, LogIndex{3},
+          LogPayload::createFromString("third entry"))};
 
   auto coreA = std::unique_ptr<LogCore>(nullptr);
   {
@@ -462,21 +484,21 @@ TEST_F(ReplicatedLogTest, write_concern_one_immediate_leader_commit_on_startup) 
   auto followerId = ParticipantId{"follower"};
 
   auto coreB = makeLogCore(LogId{2});
-  auto follower =
-      std::make_shared<DelayedFollowerLog>(defaultLogger(), _logMetricsMock, followerId,
-                                           std::move(coreB), LogTerm{3}, leaderId);
-  auto leader =
-      LogLeader::construct(defaultLogger(), _logMetricsMock, leaderId,
-                           std::move(coreA), LogTerm{3},
-                           std::vector<std::shared_ptr<AbstractFollower>>{follower},
-                           1);  // set write concern to one
+  auto follower = std::make_shared<DelayedFollowerLog>(
+      defaultLogger(), _logMetricsMock, followerId, std::move(coreB),
+      LogTerm{3}, leaderId);
+  auto leader = LogLeader::construct(
+      defaultLogger(), _logMetricsMock, leaderId, std::move(coreA), LogTerm{3},
+      std::vector<std::shared_ptr<AbstractFollower>>{follower},
+      1);  // set write concern to one
   leader->triggerAsyncReplication();
 
   {
     // Leader should know it spearhead and its commit index is 4
     auto status = std::get<LeaderStatus>(leader->getStatus().getVariant());
     EXPECT_EQ(status.local.commitIndex, LogIndex{4});
-    EXPECT_EQ(status.local.spearHead.index, LogIndex{4});  // 3 + 1 from construct
+    EXPECT_EQ(status.local.spearHead.index,
+              LogIndex{4});  // 3 + 1 from construct
   }
   {
     // Nothing written on the follower

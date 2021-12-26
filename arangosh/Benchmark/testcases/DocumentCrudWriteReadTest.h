@@ -43,28 +43,30 @@ struct DocumentCrudWriteReadTest : public Benchmark<DocumentCrudWriteReadTest> {
 
   void tearDown() override {}
 
-  void buildRequest(size_t threadNumber, size_t threadCounter, size_t globalCounter,
-                    BenchmarkOperation::RequestData& requestData) const override {
+  void buildRequest(
+      size_t threadNumber, size_t threadCounter, size_t globalCounter,
+      BenchmarkOperation::RequestData& requestData) const override {
     size_t keyId = static_cast<size_t>(globalCounter / 2);
     std::string const key = "testkey" + StringUtils::itoa(keyId);
     size_t const mod = globalCounter % 2;
     if (mod == 0) {
       requestData.type = rest::RequestType::POST;
-      requestData.url =
-          std::string("/_api/document?collection=" + _arangobench.collection()) +
-          "&silent=true";
+      requestData.url = std::string("/_api/document?collection=" +
+                                    _arangobench.collection()) +
+                        "&silent=true";
       using namespace arangodb::velocypack;
       requestData.payload.openObject();
       requestData.payload.add(StaticStrings::KeyString, Value(key));
       uint64_t n = _arangobench.complexity();
       for (uint64_t i = 1; i <= n; ++i) {
-        requestData.payload.add(std::string("value") + std::to_string(i), Value(true));
+        requestData.payload.add(std::string("value") + std::to_string(i),
+                                Value(true));
       }
       requestData.payload.close();
     } else {
       requestData.type = rest::RequestType::GET;
-      requestData.url =
-          std::string("/_api/document/" + _arangobench.collection() + "/" + key);
+      requestData.url = std::string("/_api/document/" +
+                                    _arangobench.collection() + "/" + key);
     }
   }
 

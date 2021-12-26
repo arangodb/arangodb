@@ -52,7 +52,8 @@ class CollectionNameResolver {
   CollectionNameResolver(CollectionNameResolver const& other);
 
   // every other copy/move operation is disallowed
-  CollectionNameResolver& operator=(CollectionNameResolver const& other) = delete;
+  CollectionNameResolver& operator=(CollectionNameResolver const& other) =
+      delete;
   CollectionNameResolver(CollectionNameResolver&& other) = delete;
   CollectionNameResolver& operator=(CollectionNameResolver&& other) = delete;
 
@@ -74,7 +75,8 @@ class CollectionNameResolver {
   /// @return the local collection on dbserver / standalone
   ///         the cluster collection on coordinator
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<LogicalCollection> getCollection(std::string const& nameOrId) const;
+  std::shared_ptr<LogicalCollection> getCollection(
+      std::string const& nameOrId) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection id for a collection name (local case),
@@ -91,7 +93,8 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
   DataSourceId getCollectionIdCluster(std::string const& name) const;
 
-  std::shared_ptr<LogicalCollection> getCollectionStructCluster(std::string const& name) const;
+  std::shared_ptr<LogicalCollection> getCollectionStructCluster(
+      std::string const& name) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection id for a collection name, this is the
@@ -134,7 +137,8 @@ class CollectionNameResolver {
   /// @return the local data-source on dbserver / standalone
   ///         the cluster data-source on coordinator
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<LogicalDataSource> getDataSource(std::string const& nameOrId) const;
+  std::shared_ptr<LogicalDataSource> getDataSource(
+      std::string const& nameOrId) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a view struct for a view id
@@ -178,8 +182,10 @@ class CollectionNameResolver {
   /// @brief collection id => collection name map
   mutable std::unordered_map<DataSourceId, std::string> _resolvedIds;
 
-  mutable std::unordered_map<DataSourceId, std::shared_ptr<LogicalDataSource>> _dataSourceById;  // cached data-source by id
-  mutable std::unordered_map<std::string, std::shared_ptr<LogicalDataSource>> _dataSourceByName;  // cached data-source by name
+  mutable std::unordered_map<DataSourceId, std::shared_ptr<LogicalDataSource>>
+      _dataSourceById;  // cached data-source by id
+  mutable std::unordered_map<std::string, std::shared_ptr<LogicalDataSource>>
+      _dataSourceByName;  // cached data-source by name
 };
 
 }  // namespace arangodb

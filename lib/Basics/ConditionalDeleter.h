@@ -30,7 +30,7 @@ namespace arangodb {
 /// @brief a custom deleter that deletes an object only if the condition is true
 /// to be used in conjunction with unique or shared ptrs when ownership needs to
 /// be transferred
-template <typename T>
+template<typename T>
 struct ConditionalDeleter {
   explicit ConditionalDeleter(bool& condition) : condition(condition) {}
   void operator()(T* object) {

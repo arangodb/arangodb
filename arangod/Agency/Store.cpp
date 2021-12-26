@@ -128,8 +128,8 @@ index_t Store::applyTransactions(std::vector<log_t> const& queries) {
 
 /// Apply array of transactions multiple queries to store
 /// Return vector of according success
-std::vector<apply_ret_t> Store::applyTransactions(query_t const& query,
-                                                  Agent::WriteMode const& wmode) {
+std::vector<apply_ret_t> Store::applyTransactions(
+    query_t const& query, Agent::WriteMode const& wmode) {
   std::vector<apply_ret_t> success;
 
   if (query->slice().isArray()) {
@@ -233,8 +233,9 @@ check_ret_t Store::applyTransaction(Slice const& query) {
 }
 
 /// template<class T, class U> std::multimap<std::string, std::string>
-std::ostream& operator<<(std::ostream& os,
-                         std::unordered_multimap<std::string, std::string> const& m) {
+std::ostream& operator<<(
+    std::ostream& os,
+    std::unordered_multimap<std::string, std::string> const& m) {
   for (auto const& i : m) {
     os << i.first << ": " << i.second << std::endl;
   }
@@ -252,8 +253,9 @@ struct notify_t {
 };
 
 /// Apply (from logs)
-std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& queries,
-                                         index_t index, term_t term, bool inform) {
+std::vector<bool> Store::applyLogEntries(
+    arangodb::velocypack::Builder const& queries, index_t index, term_t term,
+    bool inform) {
   std::vector<bool> applied;
 
   // Apply log entries
@@ -291,7 +293,8 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
                 auto ret = _observedTable.equal_range(uri);
                 for (auto it = ret.first; it != ret.second; ++it) {
                   in.emplace(it->second,
-                             std::make_shared<notify_t>(it->first, j.key.copyString(), oper));
+                             std::make_shared<notify_t>(
+                                 it->first, j.key.copyString(), oper));
                 }
               }
               size_t pos = uri.find_last_of('/');
@@ -311,7 +314,8 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
 
     // Sort by URLS to avoid multiple callbacks
     std::vector<std::string> urls;
-    for (auto it = in.begin(), end = in.end(); it != end; it = in.upper_bound(it->first)) {
+    for (auto it = in.begin(), end = in.end(); it != end;
+         it = in.upper_bound(it->first)) {
       urls.push_back(it->first);
     }
 
@@ -358,10 +362,12 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
 
       std::string endpoint, path;
       if (endpointPathFromUrl(url, endpoint, path)) {
-        LOG_TOPIC("9dbfc", TRACE, Logger::AGENCY) << "Sending callback to " << url;
+        LOG_TOPIC("9dbfc", TRACE, Logger::AGENCY)
+            << "Sending callback to " << url;
         Agent* agent = _agent;
         try {
-          network::sendRequest(cp, endpoint, fuerte::RestVerb::Post, path, *buffer, reqOpts)
+          network::sendRequest(cp, endpoint, fuerte::RestVerb::Post, path,
+                               *buffer, reqOpts)
               .thenValue([=](network::Response r) {
                 if (r.fail()) {
                   LOG_TOPIC("9dbf1", TRACE, Logger::AGENCY)
@@ -371,12 +377,14 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
                   if (r.statusCode() >= 400) {
                     LOG_TOPIC("9dbf0", TRACE, Logger::AGENCY)
                         << url << "(" << r.statusCode() << ", "
-                        << fuerte::to_string(r.error) << "): " << r.slice().toJson();
+                        << fuerte::to_string(r.error)
+                        << "): " << r.slice().toJson();
 
                     if (r.statusCode() == 404 && _agent != nullptr) {
                       LOG_TOPIC("9dbfa", DEBUG, Logger::AGENCY)
                           << "dropping dead callback at " << url;
-                      agent->trashStoreCallback(url, VPackSlice(buffer->data()));
+                      agent->trashStoreCallback(url,
+                                                VPackSlice(buffer->data()));
                     }
                   } else {
                     LOG_TOPIC("9dbfb", TRACE, Logger::AGENCY)
@@ -553,7 +561,8 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           if (!found) {
             continue;
           }
-          if (!op.value.isString() || !node->isReadLockable(op.value.stringRef())) {
+          if (!op.value.isString() ||
+              !node->isReadLockable(op.value.stringRef())) {
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
               break;
@@ -565,7 +574,8 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           if (!found) {
             continue;
           }
-          if (!op.value.isString() || !node->isWriteLockable(op.value.stringRef())) {
+          if (!op.value.isString() ||
+              !node->isWriteLockable(op.value.stringRef())) {
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
               break;
@@ -584,7 +594,10 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
             }
             if (nslice.isArray()) {
               bool found_ = false;
-              std::unordered_set<VPackSlice, arangodb::velocypack::NormalizedCompare::Hash, arangodb::velocypack::NormalizedCompare::Equal> elems;
+              std::unordered_set<VPackSlice,
+                                 arangodb::velocypack::NormalizedCompare::Hash,
+                                 arangodb::velocypack::NormalizedCompare::Equal>
+                  elems;
               Slice shorter, longer;
 
               if (nslice.length() <= op.value.length()) {
@@ -720,8 +733,10 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
         for (size_t i = 0; i < pv.size() - e + 1; ++i) {
           pv.pop_back();
         }
-        if (copy.getOrCreate(pv).type() == LEAF && copy.getOrCreate(pv).slice().isNone()) {
-          copy.getOrCreate(pv) = arangodb::velocypack::Slice::emptyObjectSlice();
+        if (copy.getOrCreate(pv).type() == LEAF &&
+            copy.getOrCreate(pv).slice().isNone()) {
+          copy.getOrCreate(pv) =
+              arangodb::velocypack::Slice::emptyObjectSlice();
         }
       }
     }
@@ -767,7 +782,8 @@ void Store::dumpToBuilder(Builder& builder) const {
 
   std::map<std::string, int64_t> clean;
   for (auto const& i : _timeTable) {
-    auto ts = std::chrono::duration_cast<std::chrono::seconds>(i.first.time_since_epoch())
+    auto ts = std::chrono::duration_cast<std::chrono::seconds>(
+                  i.first.time_since_epoch())
                   .count();
     auto it = clean.find(i.second);
     if (it == clean.end()) {
@@ -883,8 +899,10 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
             }
           }
           if (!found) {
-            _observerTable.emplace(std::pair<std::string, std::string>(url, uri));
-            _observedTable.emplace(std::pair<std::string, std::string>(uri, url));
+            _observerTable.emplace(
+                std::pair<std::string, std::string>(url, uri));
+            _observedTable.emplace(
+                std::pair<std::string, std::string>(uri, url));
           }
         }
       } else if (op.isEqualString("unobserve")) {
@@ -943,7 +961,8 @@ Store& Store::operator=(VPackSlice const& s) {
         if (entry.value.isNumber()) {
           auto const& key = entry.key.copyString();
           if (_node.has(key)) {
-            auto tp = TimePoint(std::chrono::seconds(entry.value.getNumber<int>()));
+            auto tp =
+                TimePoint(std::chrono::seconds(entry.value.getNumber<int>()));
             _node.getOrCreate(key).timeToLive(tp);
             _timeTable.emplace(std::pair<TimePoint, std::string>(tp, key));
           }
@@ -954,17 +973,15 @@ Store& Store::operator=(VPackSlice const& s) {
     TRI_ASSERT(slice[2].isArray());
     for (VPackSlice entry : VPackArrayIterator(slice[2])) {
       TRI_ASSERT(entry.isObject());
-      _observerTable.emplace(
-          std::pair<std::string, std::string>(entry.keyAt(0).copyString(),
-                                              entry.valueAt(0).copyString()));
+      _observerTable.emplace(std::pair<std::string, std::string>(
+          entry.keyAt(0).copyString(), entry.valueAt(0).copyString()));
     }
 
     TRI_ASSERT(slice[3].isArray());
     for (VPackSlice entry : VPackArrayIterator(slice[3])) {
       TRI_ASSERT(entry.isObject());
-      _observedTable.emplace(
-          std::pair<std::string, std::string>(entry.keyAt(0).copyString(),
-                                              entry.valueAt(0).copyString()));
+      _observedTable.emplace(std::pair<std::string, std::string>(
+          entry.keyAt(0).copyString(), entry.valueAt(0).copyString()));
     }
   } else if (slice.isObject()) {
     _node.applies(slice);
@@ -997,7 +1014,8 @@ std::unordered_multimap<std::string, std::string>& Store::observedTable() {
 }
 
 /// Observed table
-std::unordered_multimap<std::string, std::string> const& Store::observedTable() const {
+std::unordered_multimap<std::string, std::string> const& Store::observedTable()
+    const {
   _storeLock.assertLockedByCurrentThread();
   return _observedTable;
 }

@@ -36,7 +36,8 @@ namespace options {
 class ProgramOptions;
 }
 
-class SupervisorFeature final : public application_features::ApplicationFeature {
+class SupervisorFeature final
+    : public application_features::ApplicationFeature {
  public:
   explicit SupervisorFeature(application_features::ApplicationServer& server);
 

@@ -87,9 +87,12 @@ using namespace std::chrono_literals;
 
 class IResearchFeatureTest
     : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AGENCY, arangodb::LogLevel::FATAL>,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AGENCY,
+                                            arangodb::LogLevel::FATAL>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+                                            arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER,
+                                            arangodb::LogLevel::FATAL> {
  protected:
   arangodb::tests::mocks::MockV8Server server;
 
@@ -117,7 +120,8 @@ class IResearchFeatureTest
   };
 
   // version 1 data-source path
-  irs::utf8_path getPersistedPath1(arangodb::iresearch::IResearchLink const& link) {
+  irs::utf8_path getPersistedPath1(
+      arangodb::iresearch::IResearchLink const& link) {
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
     irs::utf8_path dataPath(dbPathFeature.directory());
     dataPath /= "databases";
@@ -141,8 +145,10 @@ TEST_F(IResearchFeatureTest, test_options_default) {
   using namespace arangodb::iresearch;
 
   IResearchFeature feature(server.server());
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
 
   auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
                           arangodb::iresearch::ThreadGroup group,
@@ -191,8 +197,10 @@ TEST_F(IResearchFeatureTest, test_options_default) {
   ASSERT_EQ(expectedNumThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
 
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -205,8 +213,10 @@ TEST_F(IResearchFeatureTest, test_options_default) {
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -219,8 +229,10 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_default_set) {
   using namespace arangodb::iresearch;
 
   IResearchFeature feature(server.server());
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
 
   auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
                           arangodb::iresearch::ThreadGroup group,
@@ -274,8 +286,10 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_default_set) {
   ASSERT_EQ(expectedCommitThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
@@ -288,8 +302,10 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_default_set) {
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -302,8 +318,10 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_min) {
   using namespace arangodb::iresearch;
 
   IResearchFeature feature(server.server());
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
 
   auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
                           arangodb::iresearch::ThreadGroup group,
@@ -357,8 +375,10 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_min) {
   ASSERT_EQ(expectedCommitThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
@@ -371,8 +391,10 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_min) {
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -385,8 +407,10 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads) {
   using namespace arangodb::iresearch;
 
   IResearchFeature feature(server.server());
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
 
   auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
                           arangodb::iresearch::ThreadGroup group,
@@ -440,8 +464,10 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads) {
   ASSERT_EQ(expectedCommitThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
@@ -454,8 +480,10 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads) {
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -468,8 +496,10 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads) {
   using namespace arangodb::iresearch;
 
   IResearchFeature feature(server.server());
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
 
   auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
                           arangodb::iresearch::ThreadGroup group,
@@ -523,8 +553,10 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads) {
   ASSERT_EQ(expectedCommitThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
@@ -537,8 +569,10 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads) {
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -551,8 +585,10 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_auto) {
   using namespace arangodb::iresearch;
 
   IResearchFeature feature(server.server());
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
 
   auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
                           arangodb::iresearch::ThreadGroup group,
@@ -608,8 +644,10 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_auto) {
   ASSERT_EQ(expectedCommitThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
@@ -622,8 +660,10 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_auto) {
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -636,8 +676,10 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set) {
   using namespace arangodb::iresearch;
 
   IResearchFeature feature(server.server());
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
 
   auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
                           arangodb::iresearch::ThreadGroup group,
@@ -694,8 +736,10 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set) {
   ASSERT_EQ(expectedCommitThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
@@ -708,8 +752,10 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set) {
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -717,13 +763,16 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set) {
             feature.stats(ThreadGroup::_1));
 }
 
-TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set_to_zero) {
+TEST_F(IResearchFeatureTest,
+       test_options_consolidation_threads_idle_set_to_zero) {
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
   IResearchFeature feature(server.server());
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
 
   auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
                           arangodb::iresearch::ThreadGroup group,
@@ -764,7 +813,8 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set_to_zero
   uint32_t const expectedCommitThreads =
       std::max(1U, uint32_t(arangodb::NumberOfCores::getValue()) / 6);
   uint32_t const expectedConsolidationThreads = 6;
-  uint32_t const expectedConsolidationThreadsIdle = expectedConsolidationThreads / 2;
+  uint32_t const expectedConsolidationThreadsIdle =
+      expectedConsolidationThreads / 2;
 
   opts->processingResult().touch("arangosearch.consolidation-threads");
   *consolidationThreads->ptr = 6;
@@ -780,8 +830,10 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set_to_zero
   ASSERT_EQ(expectedCommitThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
@@ -794,8 +846,10 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set_to_zero
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -803,14 +857,17 @@ TEST_F(IResearchFeatureTest, test_options_consolidation_threads_idle_set_to_zero
             feature.stats(ThreadGroup::_1));
 }
 
-TEST_F(IResearchFeatureTest,
-       test_options_consolidation_threads_idle_greater_than_consolidation_threads) {
+TEST_F(
+    IResearchFeatureTest,
+    test_options_consolidation_threads_idle_greater_than_consolidation_threads) {
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
   IResearchFeature feature(server.server());
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
 
   auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
                           arangodb::iresearch::ThreadGroup group,
@@ -867,8 +924,10 @@ TEST_F(IResearchFeatureTest,
   ASSERT_EQ(expectedCommitThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
@@ -881,8 +940,10 @@ TEST_F(IResearchFeatureTest,
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -895,8 +956,10 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_auto) {
   using namespace arangodb::iresearch;
 
   IResearchFeature feature(server.server());
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
 
   auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
                           arangodb::iresearch::ThreadGroup group,
@@ -952,8 +1015,10 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_auto) {
   ASSERT_EQ(expectedCommitThreads / 2, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
@@ -966,8 +1031,10 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_auto) {
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -980,8 +1047,10 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_set) {
   using namespace arangodb::iresearch;
 
   IResearchFeature feature(server.server());
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
 
   auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
                           arangodb::iresearch::ThreadGroup group,
@@ -1038,8 +1107,10 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_set) {
   ASSERT_EQ(expectedCommitThreadsIdle, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
@@ -1052,8 +1123,10 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_set) {
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1061,13 +1134,16 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_set) {
             feature.stats(ThreadGroup::_1));
 }
 
-TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_greater_than_commit_threads) {
+TEST_F(IResearchFeatureTest,
+       test_options_commit_threads_idle_greater_than_commit_threads) {
   using namespace arangodb::options;
   using namespace arangodb::iresearch;
 
   IResearchFeature feature(server.server());
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
 
   auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
                           arangodb::iresearch::ThreadGroup group,
@@ -1124,8 +1200,10 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_greater_than_commi
   ASSERT_EQ(expectedCommitThreadsIdle, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
@@ -1138,8 +1216,10 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_idle_greater_than_commi
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1152,8 +1232,10 @@ TEST_F(IResearchFeatureTest, test_options_custom_thread_count) {
   using namespace arangodb::iresearch;
 
   IResearchFeature feature(server.server());
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
 
   auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
                           arangodb::iresearch::ThreadGroup group,
@@ -1214,8 +1296,10 @@ TEST_F(IResearchFeatureTest, test_options_custom_thread_count) {
   ASSERT_EQ(expectedCommitThreadsIdle, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
@@ -1228,8 +1312,10 @@ TEST_F(IResearchFeatureTest, test_options_custom_thread_count) {
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1242,8 +1328,10 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_max) {
   using namespace arangodb::iresearch;
 
   IResearchFeature feature(server.server());
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
 
   auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
                           arangodb::iresearch::ThreadGroup group,
@@ -1298,8 +1386,10 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_max) {
   ASSERT_EQ(expectedCommitThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
@@ -1312,8 +1402,10 @@ TEST_F(IResearchFeatureTest, test_options_commit_threads_max) {
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1326,8 +1418,10 @@ TEST_F(IResearchFeatureTest, test_options_threads_set_zero) {
   using namespace arangodb::iresearch;
 
   IResearchFeature feature(server.server());
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
 
   auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
                           arangodb::iresearch::ThreadGroup group,
@@ -1378,8 +1472,10 @@ TEST_F(IResearchFeatureTest, test_options_threads_set_zero) {
   ASSERT_EQ(expectedNumThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
@@ -1392,8 +1488,10 @@ TEST_F(IResearchFeatureTest, test_options_threads_set_zero) {
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1406,8 +1504,10 @@ TEST_F(IResearchFeatureTest, test_options_threads) {
   using namespace arangodb::iresearch;
 
   IResearchFeature feature(server.server());
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
 
   auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
                           arangodb::iresearch::ThreadGroup group,
@@ -1458,8 +1558,10 @@ TEST_F(IResearchFeatureTest, test_options_threads) {
   ASSERT_EQ(expectedNumThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
@@ -1472,8 +1574,10 @@ TEST_F(IResearchFeatureTest, test_options_threads) {
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1486,8 +1590,10 @@ TEST_F(IResearchFeatureTest, test_options_threads_max) {
   using namespace arangodb::iresearch;
 
   IResearchFeature feature(server.server());
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
 
   auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
                           arangodb::iresearch::ThreadGroup group,
@@ -1538,8 +1644,10 @@ TEST_F(IResearchFeatureTest, test_options_threads_max) {
   ASSERT_EQ(expectedNumThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
@@ -1552,8 +1660,10 @@ TEST_F(IResearchFeatureTest, test_options_threads_max) {
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1566,8 +1676,10 @@ TEST_F(IResearchFeatureTest, test_options_threads_limit_max) {
   using namespace arangodb::iresearch;
 
   IResearchFeature feature(server.server());
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
 
   auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
                           arangodb::iresearch::ThreadGroup group,
@@ -1618,8 +1730,10 @@ TEST_F(IResearchFeatureTest, test_options_threads_limit_max) {
   ASSERT_EQ(expectedNumThreads, *commitThreadsIdle->ptr);
 
   feature.prepare();
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_0));
-  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)), feature.limits(ThreadGroup::_1));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_0));
+  ASSERT_EQ(std::make_pair(size_t(0), size_t(0)),
+            feature.limits(ThreadGroup::_1));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(1), size_t(0)),
@@ -1632,8 +1746,10 @@ TEST_F(IResearchFeatureTest, test_options_threads_limit_max) {
   ASSERT_EQ(std::make_pair(size_t(*consolidationThreads->ptr),
                            size_t(*consolidationThreadsIdle->ptr)),
             feature.limits(ThreadGroup::_1));
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
   feature.stop();
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)),
             feature.stats(ThreadGroup::_0));
@@ -1662,28 +1778,29 @@ TEST_F(IResearchFeatureTest, test_start) {
 
   enum class FunctionType { FILTER = 0, SCORER };
 
-  std::map<irs::string_ref, std::pair<irs::string_ref, FunctionType>> expected = {
-      // filter functions
-      {"EXISTS", {".|.,.", FunctionType::FILTER}},
-      {"PHRASE", {".,.|.+", FunctionType::FILTER}},
-      {"STARTS_WITH", {".,.|.,.", FunctionType::FILTER}},
-      {"MIN_MATCH", {".,.|.+", FunctionType::FILTER}},
-      {"LIKE", {".,.|.", FunctionType::FILTER}},
-      {"NGRAM_MATCH", {".,.|.,.", FunctionType::FILTER}},
-      {"LEVENSHTEIN_MATCH", {".,.,.|.,.,.", FunctionType::FILTER}},
-      {"IN_RANGE", {".,.,.,.,.", FunctionType::FILTER}},
-      {"GEO_IN_RANGE", {".,.,.,.|.,.,.", FunctionType::FILTER}},
-      {"GEO_CONTAINS", {".,.", FunctionType::FILTER}},
-      {"GEO_INTERSECTS", {".,.", FunctionType::FILTER}},
+  std::map<irs::string_ref, std::pair<irs::string_ref, FunctionType>> expected =
+      {
+          // filter functions
+          {"EXISTS", {".|.,.", FunctionType::FILTER}},
+          {"PHRASE", {".,.|.+", FunctionType::FILTER}},
+          {"STARTS_WITH", {".,.|.,.", FunctionType::FILTER}},
+          {"MIN_MATCH", {".,.|.+", FunctionType::FILTER}},
+          {"LIKE", {".,.|.", FunctionType::FILTER}},
+          {"NGRAM_MATCH", {".,.|.,.", FunctionType::FILTER}},
+          {"LEVENSHTEIN_MATCH", {".,.,.|.,.,.", FunctionType::FILTER}},
+          {"IN_RANGE", {".,.,.,.,.", FunctionType::FILTER}},
+          {"GEO_IN_RANGE", {".,.,.,.|.,.,.", FunctionType::FILTER}},
+          {"GEO_CONTAINS", {".,.", FunctionType::FILTER}},
+          {"GEO_INTERSECTS", {".,.", FunctionType::FILTER}},
 
-      // context functions
-      {"ANALYZER", {".,.", FunctionType::FILTER}},
-      {"BOOST", {".,.", FunctionType::FILTER}},
+          // context functions
+          {"ANALYZER", {".,.", FunctionType::FILTER}},
+          {"BOOST", {".,.", FunctionType::FILTER}},
 
-      // scorer functions
-      {"BM25", {".|+", FunctionType::SCORER}},
-      {"TFIDF", {".|+", FunctionType::SCORER}},
-  };
+          // scorer functions
+          {"BM25", {".|+", FunctionType::SCORER}},
+          {"TFIDF", {".|+", FunctionType::SCORER}},
+      };
 
   auto opts = std::make_shared<ProgramOptions>("", "", "", "");
   iresearch.collectOptions(opts);
@@ -1708,8 +1825,10 @@ TEST_F(IResearchFeatureTest, test_start) {
             iresearch.stats(ThreadGroup::_1));
 
   iresearch.start();
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_0);
-  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)), ThreadGroup::_1);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_0);
+  waitForStats(std::make_tuple(size_t(0), size_t(0), size_t(1)),
+               ThreadGroup::_1);
 
   for (auto& entry : expected) {
     auto* function = arangodb::iresearch::getFunction(functions, entry.first);
@@ -1745,25 +1864,30 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
       "{ \"version\": 0, \"tasks\": {} }");
 
   // add the UpgradeFeature, but make sure it is not prepared
-  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
+  server.addFeatureUntracked<arangodb::UpgradeFeature>(
+      nullptr, std::vector<std::type_index>{});
 
-  auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
+  auto& feature =
+      server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
   feature.collectOptions(server.server().options());
   feature.validateOptions(server.server().options());
   feature.prepare();  // register iresearch view type
   feature.start();    // register upgrade tasks
 
-  server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
+  server.getFeature<arangodb::DatabaseFeature>()
+      .enableUpgrade();  // skip IResearchView validation
 
   auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-  arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
+  arangodb::tests::setDatabasePath(
+      dbPathFeature);  // ensure test data is stored in a unique directory
   auto versionFilename = StorageEngineMock::versionFilenameResult;
   auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
       (irs::utf8_path(dbPathFeature.directory()) /= "version").u8string();
-  ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
+  ASSERT_TRUE(irs::file_utils::mkdir(
+      irs::utf8_path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
@@ -1777,42 +1901,60 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   auto index = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE(created);
   ASSERT_NE(index, nullptr);
-  auto link0 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+  auto link0 =
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
   ASSERT_NE(link0, nullptr);
 
   index->unload();  // release file handles
   bool result;
   auto linkDataPath = getPersistedPath1(*link0);
-  EXPECT_TRUE(irs::file_utils::remove(linkDataPath.c_str()));  // remove link directory
+  EXPECT_TRUE(
+      irs::file_utils::remove(linkDataPath.c_str()));  // remove link directory
   auto viewDataPath = getPersistedPath0(*logicalView0);
-  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure no view directory
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) &&
+              !result);  // ensure no view directory
   arangodb::velocypack::Builder builder;
   builder.openObject();
-  EXPECT_TRUE(logicalView0
-                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
-                  .ok());
+  EXPECT_TRUE(
+      logicalView0
+          ->properties(builder,
+                       arangodb::LogicalDataSource::Serialization::Persistence)
+          .ok());
   builder.close();
-  EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
+  EXPECT_EQ(0,
+            builder.slice()
+                .get("version")
+                .getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
 
-  EXPECT_TRUE(arangodb::methods::Upgrade::startup(vocbase, true, false).ok());  // run upgrade
+  EXPECT_TRUE(arangodb::methods::Upgrade::startup(vocbase, true, false)
+                  .ok());  // run upgrade
   auto logicalView1 = vocbase.lookupView(logicalView0->name());
   EXPECT_FALSE(!logicalView1);  // ensure view present after upgrade
   EXPECT_EQ(logicalView0->id(), logicalView1->id());  // ensure same id for view
-  auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *logicalView1);
+  auto link1 = arangodb::iresearch::IResearchLinkHelper::find(
+      *logicalCollection, *logicalView1);
   ASSERT_NE(nullptr, link1);            // ensure link present after upgrade
   EXPECT_NE(link0->id(), link1->id());  // ensure new link
   linkDataPath = getPersistedPath1(*link1);
-  EXPECT_TRUE(irs::file_utils::exists(result, linkDataPath.c_str()) && result);  // ensure link directory created after upgrade
-  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure view directory not present
+  EXPECT_TRUE(irs::file_utils::exists(result, linkDataPath.c_str()) &&
+              result);  // ensure link directory created after upgrade
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) &&
+              !result);  // ensure view directory not present
   viewDataPath = getPersistedPath0(*logicalView1);
-  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure view directory not created
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) &&
+              !result);  // ensure view directory not created
   builder.clear();
   builder.openObject();
-  EXPECT_TRUE(logicalView1
-                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
-                  .ok());
+  EXPECT_TRUE(
+      logicalView1
+          ->properties(builder,
+                       arangodb::LogicalDataSource::Serialization::Persistence)
+          .ok());
   builder.close();
-  EXPECT_EQ(1, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 1 after upgrade
+  EXPECT_EQ(1,
+            builder.slice()
+                .get("version")
+                .getNumber<uint32_t>());  // ensure 'version == 1 after upgrade
 }
 
 TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
@@ -1829,25 +1971,30 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
       "{ \"version\": 0, \"tasks\": {} }");
 
   // add the UpgradeFeature, but make sure it is not prepared
-  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr, std::vector<std::type_index>{});
+  server.addFeatureUntracked<arangodb::UpgradeFeature>(
+      nullptr, std::vector<std::type_index>{});
 
-  auto& feature = server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
+  auto& feature =
+      server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
   feature.collectOptions(server.server().options());
   feature.validateOptions(server.server().options());
   feature.prepare();  // register iresearch view type
   feature.start();    // register upgrade tasks
 
-  server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
+  server.getFeature<arangodb::DatabaseFeature>()
+      .enableUpgrade();  // skip IResearchView validation
 
   auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-  arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
+  arangodb::tests::setDatabasePath(
+      dbPathFeature);  // ensure test data is stored in a unique directory
   auto versionFilename = StorageEngineMock::versionFilenameResult;
   auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
       (irs::utf8_path(dbPathFeature.directory()) /= "version").u8string();
-  ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
+  ASSERT_TRUE(irs::file_utils::mkdir(
+      irs::utf8_path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
@@ -1861,44 +2008,62 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
   auto index = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE(created);
   ASSERT_FALSE(!index);
-  auto link0 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+  auto link0 =
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
   ASSERT_FALSE(!link0);
 
   index->unload();  // release file handles
   bool result;
   auto linkDataPath = getPersistedPath1(*link0);
-  EXPECT_TRUE(irs::file_utils::remove(linkDataPath.c_str()));  // remove link directory
+  EXPECT_TRUE(
+      irs::file_utils::remove(linkDataPath.c_str()));  // remove link directory
   auto viewDataPath = getPersistedPath0(*logicalView0);
   EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);
-  EXPECT_TRUE(irs::file_utils::mkdir(viewDataPath.c_str(), true));  // create view directory
+  EXPECT_TRUE(irs::file_utils::mkdir(viewDataPath.c_str(),
+                                     true));  // create view directory
   EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && result);
   arangodb::velocypack::Builder builder;
   builder.openObject();
-  EXPECT_TRUE(logicalView0
-                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
-                  .ok());
+  EXPECT_TRUE(
+      logicalView0
+          ->properties(builder,
+                       arangodb::LogicalDataSource::Serialization::Persistence)
+          .ok());
   builder.close();
-  EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
+  EXPECT_EQ(0,
+            builder.slice()
+                .get("version")
+                .getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
 
-  EXPECT_TRUE(arangodb::methods::Upgrade::startup(vocbase, true, false).ok());  // run upgrade
+  EXPECT_TRUE(arangodb::methods::Upgrade::startup(vocbase, true, false)
+                  .ok());  // run upgrade
   auto logicalView1 = vocbase.lookupView(logicalView0->name());
   EXPECT_FALSE(!logicalView1);  // ensure view present after upgrade
   EXPECT_EQ(logicalView0->id(), logicalView1->id());  // ensure same id for view
-  auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *logicalView1);
+  auto link1 = arangodb::iresearch::IResearchLinkHelper::find(
+      *logicalCollection, *logicalView1);
   EXPECT_FALSE(!link1);                 // ensure link present after upgrade
   EXPECT_NE(link0->id(), link1->id());  // ensure new link
   linkDataPath = getPersistedPath1(*link1);
-  EXPECT_TRUE(irs::file_utils::exists(result, linkDataPath.c_str()) && result);  // ensure link directory created after upgrade
-  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure view directory removed after upgrade
+  EXPECT_TRUE(irs::file_utils::exists(result, linkDataPath.c_str()) &&
+              result);  // ensure link directory created after upgrade
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) &&
+              !result);  // ensure view directory removed after upgrade
   viewDataPath = getPersistedPath0(*logicalView1);
-  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure view directory not created
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) &&
+              !result);  // ensure view directory not created
   builder.clear();
   builder.openObject();
-  EXPECT_TRUE(logicalView1
-                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
-                  .ok());
+  EXPECT_TRUE(
+      logicalView1
+          ->properties(builder,
+                       arangodb::LogicalDataSource::Serialization::Persistence)
+          .ok());
   builder.close();
-  EXPECT_EQ(1, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 1 after upgrade
+  EXPECT_EQ(1,
+            builder.slice()
+                .get("version")
+                .getNumber<uint32_t>());  // ensure 'version == 1 after upgrade
 }
 
 TEST_F(IResearchFeatureTest, IResearch_version_test) {
@@ -1909,7 +2074,8 @@ TEST_F(IResearchFeatureTest, IResearch_version_test) {
 
 // Temporarily surpress for MSVC
 TEST_F(IResearchFeatureTest, test_async_schedule) {
-  bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+  bool deallocated =
+      false;  // declare above 'feature' to ensure proper destruction order
   arangodb::iresearch::IResearchFeature feature(server.server());
   feature.collectOptions(server.server().options());
   feature.validateOptions(server.server().options());
@@ -1922,10 +2088,11 @@ TEST_F(IResearchFeatureTest, test_async_schedule) {
   {
     std::shared_ptr<bool> flag(&deallocated,
                                [](bool* ptr) -> void { *ptr = true; });
-    feature.queue(arangodb::iresearch::ThreadGroup::_0, 0ms, [&cond, &mutex, flag]() {
-      auto scopedLock = irs::make_lock_guard(mutex);
-      cond.notify_all();
-    });
+    feature.queue(arangodb::iresearch::ThreadGroup::_0, 0ms,
+                  [&cond, &mutex, flag]() {
+                    auto scopedLock = irs::make_lock_guard(mutex);
+                    cond.notify_all();
+                  });
   }
   EXPECT_NE(std::cv_status::timeout, cond.wait_for(lock, 100ms));
   std::this_thread::sleep_for(100ms);
@@ -1935,7 +2102,8 @@ TEST_F(IResearchFeatureTest, test_async_schedule) {
 TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
   struct Task {
     Task(bool& deallocated, std::mutex& mutex, std::condition_variable& cond,
-         std::atomic<size_t>& count, arangodb::iresearch::IResearchFeature& feature)
+         std::atomic<size_t>& count,
+         arangodb::iresearch::IResearchFeature& feature)
         : flag(&deallocated, [](bool* ptr) -> void { *ptr = true; }),
           mutex(&mutex),
           cond(&cond),
@@ -1960,7 +2128,8 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
     arangodb::iresearch::IResearchFeature* feature;
   };
 
-  bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+  bool deallocated =
+      false;  // declare above 'feature' to ensure proper destruction order
   arangodb::iresearch::IResearchFeature feature(server.server());
   feature.collectOptions(server.server().options());
   server.server()
@@ -1988,7 +2157,8 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
   }
 
   EXPECT_EQ(1, count);
-  EXPECT_NE(std::cv_status::timeout, cond.wait_for(lock, 1000ms));  // first run invoked immediately
+  EXPECT_NE(std::cv_status::timeout,
+            cond.wait_for(lock, 1000ms));  // first run invoked immediately
   EXPECT_FALSE(deallocated);
 
   {
@@ -2012,7 +2182,8 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
 }
 
 TEST_F(IResearchFeatureTest, test_async_single_run_task) {
-  bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+  bool deallocated =
+      false;  // declare above 'feature' to ensure proper destruction order
   arangodb::iresearch::IResearchFeature feature(server.server());
   feature.collectOptions(server.server().options());
   feature.validateOptions(server.server().options());
@@ -2025,10 +2196,11 @@ TEST_F(IResearchFeatureTest, test_async_single_run_task) {
   {
     std::shared_ptr<bool> flag(&deallocated,
                                [](bool* ptr) -> void { *ptr = true; });
-    feature.queue(arangodb::iresearch::ThreadGroup::_0, 0ms, [&cond, &mutex, flag]() {
-      auto scopedLock = irs::make_lock_guard(mutex);
-      cond.notify_all();
-    });
+    feature.queue(arangodb::iresearch::ThreadGroup::_0, 0ms,
+                  [&cond, &mutex, flag]() {
+                    auto scopedLock = irs::make_lock_guard(mutex);
+                    cond.notify_all();
+                  });
   }
   EXPECT_NE(std::cv_status::timeout, cond.wait_for(lock, 100ms));
   std::this_thread::sleep_for(100ms);
@@ -2036,7 +2208,8 @@ TEST_F(IResearchFeatureTest, test_async_single_run_task) {
 }
 
 TEST_F(IResearchFeatureTest, test_async_multi_run_task) {
-  bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+  bool deallocated =
+      false;  // declare above 'feature' to ensure proper destruction order
   arangodb::iresearch::IResearchFeature feature(server.server());
   feature.collectOptions(server.server().options());
   feature.validateOptions(server.server().options());
@@ -2059,7 +2232,8 @@ TEST_F(IResearchFeatureTest, test_async_multi_run_task) {
       std::mutex* mutex;
       std::condition_variable* cond;
       arangodb::iresearch::IResearchFeature* feature;
-      std::chrono::steady_clock::time_point last = std::chrono::steady_clock::now();
+      std::chrono::steady_clock::time_point last =
+          std::chrono::steady_clock::now();
 
       void operator()() {
         *diff = std::chrono::steady_clock::now() - last;
@@ -2135,7 +2309,8 @@ TEST_F(IResearchFeatureTest, test_async_deallocate_with_running_tasks) {
 }
 
 TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
-  bool deallocated = false;  // declare above 'feature' to ensure proper destruction order
+  bool deallocated =
+      false;  // declare above 'feature' to ensure proper destruction order
   arangodb::iresearch::IResearchFeature feature(server.server());
   feature.collectOptions(server.server().options());
   server.server()
@@ -2160,7 +2335,8 @@ TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
       std::mutex* mutex;
       std::condition_variable* cond;
       arangodb::iresearch::IResearchFeature* feature;
-      std::chrono::steady_clock::time_point last = std::chrono::steady_clock::now();
+      std::chrono::steady_clock::time_point last =
+          std::chrono::steady_clock::now();
 
       void operator()() {
         *diff = std::chrono::steady_clock::now() - last;
@@ -2184,7 +2360,8 @@ TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
 
     feature.queue(arangodb::iresearch::ThreadGroup::_0, 0ms, task);
   }
-  feature.start();  // start thread pool after a task has been scheduled, to trigger resize with a task
+  feature.start();  // start thread pool after a task has been scheduled, to
+                    // trigger resize with a task
   EXPECT_NE(std::cv_status::timeout, cond.wait_for(lock, 1000ms));
   std::this_thread::sleep_for(100ms);
   EXPECT_TRUE(deallocated);
@@ -2245,9 +2422,12 @@ TEST_F(IResearchFeatureTest, test_fail_to_start) {
 
 class IResearchFeatureTestCoordinator
     : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AGENCY, arangodb::LogLevel::FATAL>,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AGENCY,
+                                            arangodb::LogLevel::FATAL>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+                                            arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER,
+                                            arangodb::LogLevel::FATAL> {
  protected:
   arangodb::tests::mocks::MockCoordinator server;
 
@@ -2256,13 +2436,15 @@ class IResearchFeatureTestCoordinator
   IResearchFeatureTestCoordinator() : server(false) {
     arangodb::tests::init();
 
-    arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});  // Hack.
+    arangodb::ServerState::instance()->setRebootId(
+        arangodb::RebootId{1});  // Hack.
     // we will start Upgrade feature under our control
     server.untrackFeature<arangodb::UpgradeFeature>();
     server.startFeatures();
   }
 
-  arangodb::consensus::index_t agencyTrx(std::string const& key, std::string const& value) {
+  arangodb::consensus::index_t agencyTrx(std::string const& key,
+                                         std::string const& value) {
     // Build an agency transaction:
     auto b2 = VPackParser::fromJson(value);
     auto b = std::make_shared<VPackBuilder>();
@@ -2276,8 +2458,9 @@ class IResearchFeatureTestCoordinator
         }
       }
     }
-    return std::get<1>(
-        server.getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(b));
+    return std::get<1>(server.getFeature<arangodb::ClusterFeature>()
+                           .agencyCache()
+                           .applyTestTransaction(b));
   }
 
   void agencyCreateDatabase(std::string const& name) {
@@ -2292,11 +2475,13 @@ class IResearchFeatureTestCoordinator
     agencyTrx("/arango/Current/Collections/" + name, st);
     server.getFeature<arangodb::ClusterFeature>()
         .clusterInfo()
-        .waitForPlan(agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="))
+        .waitForPlan(
+            agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="))
         .wait();
     server.getFeature<arangodb::ClusterFeature>()
         .clusterInfo()
-        .waitForCurrent(agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
+        .waitForCurrent(
+            agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
         .wait();
   }
 
@@ -2308,22 +2493,26 @@ class IResearchFeatureTestCoordinator
     agencyTrx("/arango/Current/Collections/" + name, st);
     server.getFeature<arangodb::ClusterFeature>()
         .clusterInfo()
-        .waitForPlan(agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="))
+        .waitForPlan(
+            agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="))
         .wait();
     server.getFeature<arangodb::ClusterFeature>()
         .clusterInfo()
-        .waitForCurrent(agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
+        .waitForCurrent(
+            agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
         .wait();
   }
 
   VPackBuilder agencyCreateIndex(std::string const& db, std::string const& cid,
-                                 std::set<std::string> const& fields, bool deduplicate,
-                                 uint64_t id, std::string const& name, bool sparse,
+                                 std::set<std::string> const& fields,
+                                 bool deduplicate, uint64_t id,
+                                 std::string const& name, bool sparse,
                                  std::string const& type, bool unique) {
     VPackBuilder b;
     {
       VPackObjectBuilder o(&b);
-      b.add(VPackValue(std::string("/arango/Plan/Collections/") + db + "/" + cid + "/indexes"));
+      b.add(VPackValue(std::string("/arango/Plan/Collections/") + db + "/" +
+                       cid + "/indexes"));
       {
         VPackObjectBuilder oo(&b);
         b.add("op", VPackValue("push"));
@@ -2366,11 +2555,12 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   auto collectionId = std::to_string(41);
   auto viewId = std::to_string(42);
 
-  server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
+  server.getFeature<arangodb::DatabaseFeature>()
+      .enableUpgrade();  // skip IResearchView validation
 
   auto& engine = server.getFeature<arangodb::EngineSelectorFeature>().engine();
-  auto& factory =
-      server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::ClusterEngine>();
+  auto& factory = server.getFeature<arangodb::iresearch::IResearchFeature>()
+                      .factory<arangodb::ClusterEngine>();
   const_cast<arangodb::IndexFactory&>(engine.indexFactory())
       .emplace(  // required for Indexes::ensureIndex(...)
           arangodb::iresearch::DATA_SOURCE_TYPE.name(), factory);
@@ -2378,25 +2568,28 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
   auto& database = server.getFeature<arangodb::DatabaseFeature>();
-  ASSERT_TRUE(database.createDatabase(testDBInfo(server.server()), vocbase).ok());
+  ASSERT_TRUE(
+      database.createDatabase(testDBInfo(server.server()), vocbase).ok());
 
   agencyCreateDatabase(vocbase->name());
 
-  ASSERT_TRUE(ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
-                                             collectionJson->slice(), 0.0, false, nullptr)
+  ASSERT_TRUE(ci.createCollectionCoordinator(
+                    vocbase->name(), collectionId, 0, 1, 1, false,
+                    collectionJson->slice(), 0.0, false, nullptr)
                   .ok());
   auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
   ASSERT_FALSE(!logicalCollection);
   EXPECT_TRUE(
-      (ci.createViewCoordinator(vocbase->name(), viewId, viewJson->slice()).ok()));
+      (ci.createViewCoordinator(vocbase->name(), viewId, viewJson->slice())
+           .ok()));
   auto logicalView0 = ci.getView(vocbase->name(), viewId);
   ASSERT_FALSE(!logicalView0);
 
   arangodb::velocypack::Builder tmp;
 
-  auto const currentCollectionPath = "/Current/Collections/" + vocbase->name() +
-                                     "/" +
-                                     std::to_string(logicalCollection->id().id());
+  auto const currentCollectionPath =
+      "/Current/Collections/" + vocbase->name() + "/" +
+      std::to_string(logicalCollection->id().id());
   {
     ASSERT_TRUE(logicalView0);
     auto const viewId = std::to_string(logicalView0->planId().id());
@@ -2412,24 +2605,31 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
     }
   }
 
-  auto [t, i] = server.getFeature<arangodb::ClusterFeature>().agencyCache().read(
-      std::vector<std::string>{"/arango"});
+  auto [t, i] =
+      server.getFeature<arangodb::ClusterFeature>().agencyCache().read(
+          std::vector<std::string>{"/arango"});
 
-  ASSERT_TRUE((arangodb::methods::Indexes::ensureIndex(logicalCollection.get(),
-                                                       linkJson->slice(), true, tmp)
+  ASSERT_TRUE((arangodb::methods::Indexes::ensureIndex(
+                   logicalCollection.get(), linkJson->slice(), true, tmp)
                    .ok()));
   logicalCollection = ci.getCollection(vocbase->name(), collectionId);
   ASSERT_FALSE(!logicalCollection);
-  auto link0 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *logicalView0);
+  auto link0 = arangodb::iresearch::IResearchLinkHelper::find(
+      *logicalCollection, *logicalView0);
   ASSERT_FALSE(!link0);
 
   arangodb::velocypack::Builder builder;
   builder.openObject();
-  EXPECT_TRUE(logicalView0
-                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
-                  .ok());
+  EXPECT_TRUE(
+      logicalView0
+          ->properties(builder,
+                       arangodb::LogicalDataSource::Serialization::Persistence)
+          .ok());
   builder.close();
-  EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
+  EXPECT_EQ(0,
+            builder.slice()
+                .get("version")
+                .getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
 
   // ensure no upgrade on coordinator
   // simulate heartbeat thread (create index in current)
@@ -2454,31 +2654,43 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
         }
       }
     }
-    server.getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(b);
+    server.getFeature<arangodb::ClusterFeature>()
+        .agencyCache()
+        .applyTestTransaction(b);
   }
-  EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok());  // run upgrade
+  EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(*vocbase)
+                  .ok());  // run upgrade
   auto logicalCollection2 = ci.getCollection(vocbase->name(), collectionId);
   ASSERT_FALSE(!logicalCollection2);
   auto logicalView1 = ci.getView(vocbase->name(), viewId);
   EXPECT_FALSE(!logicalView1);  // ensure view present after upgrade
   EXPECT_EQ(logicalView0->id(), logicalView1->id());  // ensure same id for view
-  auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *logicalView1);
+  auto link1 = arangodb::iresearch::IResearchLinkHelper::find(
+      *logicalCollection2, *logicalView1);
   EXPECT_FALSE(!link1);                 // ensure link present after upgrade
   EXPECT_EQ(link0->id(), link1->id());  // ensure new link
   builder.clear();
   builder.openObject();
-  EXPECT_TRUE(logicalView1
-                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
-                  .ok());
+  EXPECT_TRUE(
+      logicalView1
+          ->properties(builder,
+                       arangodb::LogicalDataSource::Serialization::Persistence)
+          .ok());
   builder.close();
-  EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 after upgrade
+  EXPECT_EQ(0,
+            builder.slice()
+                .get("version")
+                .getNumber<uint32_t>());  // ensure 'version == 0 after upgrade
 }
 
 class IResearchFeatureTestDBServer
     : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AGENCY, arangodb::LogLevel::FATAL>,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AGENCY,
+                                            arangodb::LogLevel::FATAL>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+                                            arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER,
+                                            arangodb::LogLevel::FATAL> {
  protected:
   arangodb::tests::mocks::MockDBServer server;
 
@@ -2487,7 +2699,8 @@ class IResearchFeatureTestDBServer
   IResearchFeatureTestDBServer() : server(false) {
     arangodb::tests::init();
 
-    arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});  // Hack.
+    arangodb::ServerState::instance()->setRebootId(
+        arangodb::RebootId{1});  // Hack.
 
     // server.addFeature<arangodb::SchedulerFeature>(true);
     // we will control UgradeFeature start!
@@ -2509,7 +2722,8 @@ class IResearchFeatureTestDBServer
   };
 
   // version 1 data-source path
-  irs::utf8_path getPersistedPath1(arangodb::iresearch::IResearchLink const& link) {
+  irs::utf8_path getPersistedPath1(
+      arangodb::iresearch::IResearchLink const& link) {
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
     irs::utf8_path dataPath(dbPathFeature.directory());
     dataPath /= "databases";
@@ -2545,17 +2759,20 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
   auto versionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"version\": 0, \"tasks\": {} }");
 
-  server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
+  server.getFeature<arangodb::DatabaseFeature>()
+      .enableUpgrade();  // skip IResearchView validation
 
   auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-  arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
+  arangodb::tests::setDatabasePath(
+      dbPathFeature);  // ensure test data is stored in a unique directory
   auto versionFilename = StorageEngineMock::versionFilenameResult;
   auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
       (irs::utf8_path(dbPathFeature.directory()) /= "version").u8string();
-  ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
+  ASSERT_TRUE(irs::file_utils::mkdir(
+      irs::utf8_path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
@@ -2570,7 +2787,10 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
       }
     }
   }
-  server.server().getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(bogus);
+  server.server()
+      .getFeature<arangodb::ClusterFeature>()
+      .agencyCache()
+      .applyTestTransaction(bogus);
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
@@ -2578,34 +2798,47 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
   ASSERT_FALSE(!logicalCollection);
   auto logicalView = vocbase.createView(viewJson->slice());
   ASSERT_FALSE(!logicalView);
-  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+  auto* view =
+      dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
   ASSERT_FALSE(!view);
   bool created = false;
   auto index = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE(created);
   ASSERT_FALSE(!index);
-  auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+  auto link =
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
   ASSERT_FALSE(!link);
-  ASSERT_TRUE(view->link(link->self()).ok());  // link will not notify view in 'vocbase', hence notify manually
+  ASSERT_TRUE(
+      view->link(link->self()).ok());  // link will not notify view in
+                                       // 'vocbase', hence notify manually
 
   index->unload();  // release file handles
   bool result;
   auto linkDataPath = getPersistedPath1(*link);
-  EXPECT_TRUE(irs::file_utils::remove(linkDataPath.c_str()));  // remove link directory
+  EXPECT_TRUE(
+      irs::file_utils::remove(linkDataPath.c_str()));  // remove link directory
   auto viewDataPath = getPersistedPath0(*logicalView);
-  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure no view directory
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) &&
+              !result);  // ensure no view directory
   arangodb::velocypack::Builder builder;
   builder.openObject();
-  EXPECT_TRUE(logicalView
-                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
-                  .ok());
+  EXPECT_TRUE(
+      logicalView
+          ->properties(builder,
+                       arangodb::LogicalDataSource::Serialization::Persistence)
+          .ok());
   builder.close();
-  EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
+  EXPECT_EQ(0,
+            builder.slice()
+                .get("version")
+                .getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
 
-  EXPECT_TRUE(arangodb::methods::Upgrade::startup(vocbase, true, false).ok());  // run upgrade
+  EXPECT_TRUE(arangodb::methods::Upgrade::startup(vocbase, true, false)
+                  .ok());  // run upgrade
   logicalView = vocbase.lookupView(logicalView->name());
   EXPECT_FALSE(logicalView);  // ensure view removed after upgrade
-  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure view directory not present
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) &&
+              !result);  // ensure view directory not present
 }
 
 TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
@@ -2621,17 +2854,20 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   auto versionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"version\": 0, \"tasks\": {} }");
 
-  server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
+  server.getFeature<arangodb::DatabaseFeature>()
+      .enableUpgrade();  // skip IResearchView validation
 
   auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-  arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
+  arangodb::tests::setDatabasePath(
+      dbPathFeature);  // ensure test data is stored in a unique directory
   auto versionFilename = StorageEngineMock::versionFilenameResult;
   auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
       (irs::utf8_path(dbPathFeature.directory()) /= "version").u8string();
-  ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
+  ASSERT_TRUE(irs::file_utils::mkdir(
+      irs::utf8_path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
@@ -2650,7 +2886,10 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
       }
     }
   }
-  server.server().getFeature<arangodb::ClusterFeature>().agencyCache().applyTestTransaction(bogus);
+  server.server()
+      .getFeature<arangodb::ClusterFeature>()
+      .agencyCache()
+      .applyTestTransaction(bogus);
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
@@ -2658,37 +2897,51 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   ASSERT_FALSE(!logicalCollection);
   auto logicalView = vocbase.createView(viewJson->slice());
   ASSERT_FALSE(!logicalView);
-  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+  auto* view =
+      dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
   ASSERT_FALSE(!view);
   bool created;
   auto index = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE(created);
   ASSERT_FALSE(!index);
-  auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+  auto link =
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
   ASSERT_FALSE(!link);
-  ASSERT_TRUE(view->link(link->self()).ok());  // link will not notify view in 'vocbase', hence notify manually
+  ASSERT_TRUE(
+      view->link(link->self()).ok());  // link will not notify view in
+                                       // 'vocbase', hence notify manually
 
   index->unload();  // release file handles
   bool result;
   auto linkDataPath = getPersistedPath1(*link);
-  EXPECT_TRUE(irs::file_utils::remove(linkDataPath.c_str()));  // remove link directory
+  EXPECT_TRUE(
+      irs::file_utils::remove(linkDataPath.c_str()));  // remove link directory
   auto viewDataPath = getPersistedPath0(*logicalView);
   EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);
-  EXPECT_TRUE(irs::file_utils::mkdir(viewDataPath.c_str(), true));  // create view directory
+  EXPECT_TRUE(irs::file_utils::mkdir(viewDataPath.c_str(),
+                                     true));  // create view directory
   EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && result);
   arangodb::velocypack::Builder builder;
   builder.openObject();
-  EXPECT_TRUE(logicalView
-                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
-                  .ok());
+  EXPECT_TRUE(
+      logicalView
+          ->properties(builder,
+                       arangodb::LogicalDataSource::Serialization::Persistence)
+          .ok());
   builder.close();
-  EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
+  EXPECT_EQ(0,
+            builder.slice()
+                .get("version")
+                .getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
 
-  EXPECT_TRUE(arangodb::methods::Upgrade::startup(vocbase, true, false).ok());  // run upgrade
-  //    EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(vocbase).ok()); // run upgrade
+  EXPECT_TRUE(arangodb::methods::Upgrade::startup(vocbase, true, false)
+                  .ok());  // run upgrade
+  //    EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(vocbase).ok());
+  //    // run upgrade
   logicalView = vocbase.lookupView(logicalView->name());
   EXPECT_FALSE(logicalView);  // ensure view removed after upgrade
-  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) && !result);  // ensure view directory removed after upgrade
+  EXPECT_TRUE(irs::file_utils::exists(result, viewDataPath.c_str()) &&
+              !result);  // ensure view directory removed after upgrade
 }
 
 TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
@@ -2708,17 +2961,20 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
       std::to_string(arangodb::methods::Version::current()) +
       ", \"tasks\": {\"upgradeArangoSearch0_1\":true} }");
 
-  server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
+  server.getFeature<arangodb::DatabaseFeature>()
+      .enableUpgrade();  // skip IResearchView validation
 
   auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-  arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
+  arangodb::tests::setDatabasePath(
+      dbPathFeature);  // ensure test data is stored in a unique directory
   auto versionFilename = StorageEngineMock::versionFilenameResult;
   auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
     StorageEngineMock::versionFilenameResult = versionFilename;
   });
   StorageEngineMock::versionFilenameResult =
       (irs::utf8_path(dbPathFeature.directory()) /= "version").u8string();
-  ASSERT_TRUE(irs::file_utils::mkdir(irs::utf8_path(dbPathFeature.directory()).c_str(), true));
+  ASSERT_TRUE(irs::file_utils::mkdir(
+      irs::utf8_path(dbPathFeature.directory()).c_str(), true));
 
   auto& engine = *static_cast<StorageEngineMock*>(
       &server.getFeature<arangodb::EngineSelectorFeature>().engine());
@@ -2735,8 +2991,9 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
       vocbase->server().getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   // server.createCollection("testDatabase", "999", "testCollection");
-  auto logicalCollectionCluster =
-      clusterInfo.getCollection("testDatabase", "_analyzers");  // createCollection(collectionJson->slice());
+  auto logicalCollectionCluster = clusterInfo.getCollection(
+      "testDatabase",
+      "_analyzers");  // createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollectionCluster);
 
   // now we have standart collections in ClusterInfo
@@ -2752,36 +3009,45 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
 
   auto logicalView = vocbase->createView(viewJson->slice());
   ASSERT_FALSE(!logicalView);
-  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+  auto* view =
+      dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
   bool created;
   auto index = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE(created);
   ASSERT_FALSE(!index);
-  auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+  auto link =
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
   ASSERT_FALSE(!link);
-  ASSERT_TRUE(view->link(link->self()).ok());  // link will not notify view in 'vocbase', hence notify manually
+  ASSERT_TRUE(
+      view->link(link->self()).ok());  // link will not notify view in
+                                       // 'vocbase', hence notify manually
 
   {
     auto indexes = logicalCollection->getIndexes();
     for (auto& index : indexes) {
-      if (index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+      if (index->type() ==
+          arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
         VPackBuilder builder;
-        index->toVelocyPack(builder, arangodb::Index::makeFlags(
-                                         arangodb::Index::Serialize::Internals));
+        index->toVelocyPack(
+            builder,
+            arangodb::Index::makeFlags(arangodb::Index::Serialize::Internals));
         ASSERT_FALSE(builder.slice().hasKey("collectionName"));
       }
     }
   }
 
-  EXPECT_TRUE(arangodb::methods::Upgrade::startup(*vocbase, false, false).ok());  // run upgrade
+  EXPECT_TRUE(arangodb::methods::Upgrade::startup(*vocbase, false, false)
+                  .ok());  // run upgrade
 
   {
     auto indexes = logicalCollection->getIndexes();
     for (auto& index : indexes) {
-      if (index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+      if (index->type() ==
+          arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
         VPackBuilder builder;
-        index->toVelocyPack(builder, arangodb::Index::makeFlags(
-                                         arangodb::Index::Serialize::Internals));
+        index->toVelocyPack(
+            builder,
+            arangodb::Index::makeFlags(arangodb::Index::Serialize::Internals));
         auto slice = builder.slice();
         ASSERT_TRUE(slice.hasKey("collectionName"));
         ASSERT_EQ("_analyzers", slice.get("collectionName").copyString());

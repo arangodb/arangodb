@@ -184,15 +184,17 @@ class GeneralRequest {
   // returns the query parameters as fuerte needs them (as a map)
   std::map<std::string, std::string> parameters() const;
 
-  std::unordered_map<std::string, std::vector<std::string>> const& arrayValues() const {
+  std::unordered_map<std::string, std::vector<std::string>> const& arrayValues()
+      const {
     return _arrayValues;
   }
 
-  std::shared_ptr<velocypack::Builder> toVelocyPackBuilderPtr(bool strictValidation = true);
+  std::shared_ptr<velocypack::Builder> toVelocyPackBuilderPtr(
+      bool strictValidation = true);
 
   /// @brief returns parsed value, returns valueNotFound if parameter was not
   /// found
-  template <typename T>
+  template<typename T>
   T parsedValue(std::string const& key, T valueNotFound);
 
   /// @brief the content length

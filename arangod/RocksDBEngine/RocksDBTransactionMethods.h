@@ -67,7 +67,8 @@ class RocksDBTransactionMethods : public RocksDBMethods {
 
   virtual uint64_t numCommits() const noexcept = 0;
 
-  virtual rocksdb::ReadOptions iteratorReadOptions() const = 0;  // TODO - remove later
+  virtual rocksdb::ReadOptions iteratorReadOptions()
+      const = 0;  // TODO - remove later
 
   /// @brief acquire a database snapshot if we do not yet have one.
   /// Returns true if a snapshot was acquire
@@ -83,7 +84,8 @@ class RocksDBTransactionMethods : public RocksDBMethods {
                                 TRI_voc_document_operation_e operationType) = 0;
 
   /// @brief undo the effects of the previous prepareOperation call
-  virtual void rollbackOperation(TRI_voc_document_operation_e operationType) = 0;
+  virtual void rollbackOperation(
+      TRI_voc_document_operation_e operationType) = 0;
 
   /// @brief add an operation for a transaction collection
   /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
@@ -93,8 +95,8 @@ class RocksDBTransactionMethods : public RocksDBMethods {
 
   using ReadOptionsCallback = std::function<void(ReadOptions&)>;
 
-  virtual std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ColumnFamilyHandle*,
-                                                         ReadOptionsCallback) = 0;
+  virtual std::unique_ptr<rocksdb::Iterator> NewIterator(
+      rocksdb::ColumnFamilyHandle*, ReadOptionsCallback) = 0;
 
   virtual bool iteratorMustCheckBounds(ReadOwnWrites) const = 0;
 
@@ -104,7 +106,8 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   virtual void PopSavePoint() = 0;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  std::size_t countInBounds(RocksDBKeyBounds const& bounds, bool isElementInRange = false);
+  std::size_t countInBounds(RocksDBKeyBounds const& bounds,
+                            bool isElementInRange = false);
 #endif
 
  protected:

@@ -56,7 +56,8 @@ class SslClientConnection final : public GeneralClientConnection {
                       Endpoint* endpoint, double, double, size_t, uint64_t);
 
   SslClientConnection(application_features::ApplicationServer& server,
-                      std::unique_ptr<Endpoint>& endpoint, double, double, size_t, uint64_t);
+                      std::unique_ptr<Endpoint>& endpoint, double, double,
+                      size_t, uint64_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys a client connection
@@ -95,7 +96,8 @@ class SslClientConnection final : public GeneralClientConnection {
   /// @brief read data from the connection
   //////////////////////////////////////////////////////////////////////////////
 
-  bool readClientConnection(arangodb::basics::StringBuffer&, bool& connectionClosed) override;
+  bool readClientConnection(arangodb::basics::StringBuffer&,
+                            bool& connectionClosed) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return whether the connection is readable

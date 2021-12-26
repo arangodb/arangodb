@@ -91,7 +91,9 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   std::tuple<size_t, size_t, size_t> stats(ThreadGroup id) const;
   std::pair<size_t, size_t> limits(ThreadGroup id) const;
 
-  template <typename Engine, typename std::enable_if_t<std::is_base_of_v<StorageEngine, Engine>, int> = 0>
+  template<typename Engine,
+           typename std::enable_if_t<std::is_base_of_v<StorageEngine, Engine>,
+                                     int> = 0>
   IndexTypeFactory& factory();
 
  private:

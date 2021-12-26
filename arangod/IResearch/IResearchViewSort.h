@@ -72,12 +72,13 @@ class IResearchViewSort {
     return _fields.empty();
   }
 
-  void emplace_back(std::vector<basics::AttributeName>&& field, bool direction) {
+  void emplace_back(std::vector<basics::AttributeName>&& field,
+                    bool direction) {
     _fields.emplace_back(std::move(field));
     _directions.emplace_back(direction);
   }
 
-  template <typename Visitor>
+  template<typename Visitor>
   bool visit(Visitor visitor) const {
     for (size_t i = 0, size = this->size(); i < size; ++i) {
       if (!visitor(_fields[i], _directions[i])) {
@@ -88,7 +89,8 @@ class IResearchViewSort {
     return true;
   }
 
-  std::vector<std::vector<basics::AttributeName>> const& fields() const noexcept {
+  std::vector<std::vector<basics::AttributeName>> const& fields()
+      const noexcept {
     return _fields;
   }
 

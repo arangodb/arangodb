@@ -62,11 +62,13 @@ struct Comparer {
                          std::string const& rhs) const noexcept {
     return lhs < arangodb::velocypack::StringRef(rhs);
   }
-  inline bool operator()(std::string const& lhs,
-                         arangodb::velocypack::StringRef const& rhs) const noexcept {
+  inline bool operator()(
+      std::string const& lhs,
+      arangodb::velocypack::StringRef const& rhs) const noexcept {
     return arangodb::velocypack::StringRef(lhs) < rhs;
   }
-  inline bool operator()(std::string const& lhs, std::string const& rhs) const noexcept {
+  inline bool operator()(std::string const& lhs,
+                         std::string const& rhs) const noexcept {
     return lhs < rhs;
   }
 };
@@ -194,11 +196,11 @@ void TRI_GetFailurePointsDebugging(arangodb::velocypack::Builder& builder) {
 }
 #endif
 
-template <>
+template<>
 char const conpar<true>::open = '{';
-template <>
+template<>
 char const conpar<true>::close = '}';
-template <>
+template<>
 char const conpar<false>::open = '[';
-template <>
+template<>
 char const conpar<false>::close = ']';

@@ -31,13 +31,14 @@ class GeneralServerFeature;
 
 namespace rest {
 
-template <SocketType T>
+template<SocketType T>
 class GeneralCommTask : public CommTask {
   GeneralCommTask(GeneralCommTask const&) = delete;
   GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
 
  public:
-  GeneralCommTask(GeneralServer& server, ConnectionInfo, std::unique_ptr<AsioSocket<T>>);
+  GeneralCommTask(GeneralServer& server, ConnectionInfo,
+                  std::unique_ptr<AsioSocket<T>>);
 
   virtual ~GeneralCommTask() = default;
 

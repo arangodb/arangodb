@@ -27,17 +27,18 @@
 using namespace arangodb;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-std::size_t RocksDBTransactionMethods::countInBounds(RocksDBKeyBounds const& bounds,
-                                                     bool isElementInRange) {
+std::size_t RocksDBTransactionMethods::countInBounds(
+    RocksDBKeyBounds const& bounds, bool isElementInRange) {
   std::size_t count = 0;
 
   // iterator is from read only / trx / writebatch
   std::unique_ptr<rocksdb::Iterator> iter =
       NewIterator(bounds.columnFamily(), [](ReadOptions& opts) {
         opts.readOwnWrites = true;
-        // disable a check that we do not create read-own-write iterators with intermediate commits enabled.
-        // we can safely do this here, because our iterator has a limited lifetime and can therefore not
-        // be invalidated by intermediate commits.
+        // disable a check that we do not create read-own-write iterators with
+        // intermediate commits enabled. we can safely do this here, because our
+        // iterator has a limited lifetime and can therefore not be invalidated
+        // by intermediate commits.
         opts.checkIntermediateCommits = false;
       });
   iter->Seek(bounds.start());

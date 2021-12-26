@@ -74,7 +74,8 @@ class HttpRequest final : public GeneralRequest {
   //  the found key / value with respective lengths.
   //  the function sets member variables like _contentType. All
   //  key that do not get special treatment end um in the _headers map.
-  void setHeader(char const* key, size_t keyLength, char const* value, size_t valueLength);
+  void setHeader(char const* key, size_t keyLength, char const* value,
+                 size_t valueLength);
   /// @brief sets a key-only header
   void setHeader(char const* key, size_t keyLength);
 

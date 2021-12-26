@@ -38,7 +38,8 @@
 namespace arangodb {
 namespace iresearch {
 
-IResearchLinkMock::IResearchLinkMock(IndexId iid, arangodb::LogicalCollection& collection)
+IResearchLinkMock::IResearchLinkMock(IndexId iid,
+                                     arangodb::LogicalCollection& collection)
     : Index(iid, collection, IResearchLinkHelper::emptyIndexSlice(0).slice()),
       IResearchLink(iid, collection) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -46,8 +47,9 @@ IResearchLinkMock::IResearchLinkMock(IndexId iid, arangodb::LogicalCollection& c
   _sparse = true;   // always sparse
 }
 
-void IResearchLinkMock::toVelocyPack(arangodb::velocypack::Builder& builder,
-                                     std::underlying_type<arangodb::Index::Serialize>::type flags) const {
+void IResearchLinkMock::toVelocyPack(
+    arangodb::velocypack::Builder& builder,
+    std::underlying_type<arangodb::Index::Serialize>::type flags) const {
   if (builder.isOpenObject()) {
     THROW_ARANGO_EXCEPTION(arangodb::Result(  // result
         TRI_ERROR_BAD_PARAMETER,              // code

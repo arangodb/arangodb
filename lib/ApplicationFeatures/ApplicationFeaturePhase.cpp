@@ -34,7 +34,8 @@ ApplicationFeaturePhase::ApplicationFeaturePhase(ApplicationServer& server,
                                                  std::string const& name)
     : ApplicationFeature(server, name) {}
 
-void ApplicationFeaturePhase::validateOptions(std::shared_ptr<options::ProgramOptions>) {
+void ApplicationFeaturePhase::validateOptions(
+    std::shared_ptr<options::ProgramOptions>) {
   LOG_TOPIC("1463e", DEBUG, arangodb::Logger::STARTUP)
       << "ValidateOptions for phase " << name() << " completed";
 }

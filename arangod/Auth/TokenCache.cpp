@@ -91,8 +91,8 @@ std::string auth::TokenCache::jwtSecret() const {
 // public called from {H2,Http,Vst}CommTask.cpp
 // should only lock if required, otherwise we will serialize all
 // requests whether we need to or not
-auth::TokenCache::Entry auth::TokenCache::checkAuthentication(AuthenticationMethod authType,
-                                                              std::string const& secret) {
+auth::TokenCache::Entry auth::TokenCache::checkAuthentication(
+    AuthenticationMethod authType, std::string const& secret) {
   switch (authType) {
     case AuthenticationMethod::BASIC:
       return checkAuthenticationBasic(secret);
@@ -111,7 +111,8 @@ void auth::TokenCache::invalidateBasicCache() {
 }
 
 // private
-auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(std::string const& secret) {
+auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
+    std::string const& secret) {
   if (_userManager == nullptr) {  // server does not support users
     LOG_TOPIC("9900c", DEBUG, Logger::AUTHENTICATION)
         << "Basic auth not supported";
@@ -174,7 +175,8 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(std::string c
   return entry;
 }
 
-auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(std::string const& jwt) {
+auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
+    std::string const& jwt) {
   // note that we need the write lock here because it is an LRU
   // cache. reading from it will move the read entry to the start of
   // the cache's linked list. so acquiring just a read-lock is
@@ -236,8 +238,8 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(std::string con
   return newEntry;
 }
 
-std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(std::string const& str,
-                                                          char const* hint) {
+std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(
+    std::string const& str, char const* hint) {
   std::shared_ptr<VPackBuilder> result;
   VPackParser parser;
   try {
@@ -287,7 +289,8 @@ bool auth::TokenCache::validateJwtHeader(std::string const& header) {
   return true;
 }
 
-auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& body) {
+auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
+    std::string const& body) {
   std::shared_ptr<VPackBuilder> bodyBuilder =
       parseJson(StringUtils::decodeBase64U(body), "jwt body");
   if (bodyBuilder == nullptr) {
@@ -321,7 +324,8 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
       return auth::TokenCache::Entry::Unauthenticated();
     }
     authResult._username = usernameSlice.copyString();
-    if (_userManager == nullptr || !_userManager->userExists(authResult._username)) {
+    if (_userManager == nullptr ||
+        !_userManager->userExists(authResult._username)) {
       return auth::TokenCache::Entry::Unauthenticated();
     }
   } else if (bodySlice.hasKey("server_id")) {
@@ -379,14 +383,15 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
 }
 
 #ifndef USE_ENTERPRISE
-bool auth::TokenCache::validateJwtHMAC256Signature(std::string const& message,
-                                                   std::string const& signature) {
+bool auth::TokenCache::validateJwtHMAC256Signature(
+    std::string const& message, std::string const& signature) {
   std::string decodedSignature = StringUtils::decodeBase64U(signature);
 
   READ_LOCKER(guard, _jwtSecretLock);
   return verifyHMAC(_jwtActiveSecret.c_str(), _jwtActiveSecret.length(),
                     message.c_str(), message.length(), decodedSignature.c_str(),
-                    decodedSignature.length(), SslInterface::Algorithm::ALGORITHM_SHA256);
+                    decodedSignature.length(),
+                    SslInterface::Algorithm::ALGORITHM_SHA256);
 }
 #endif
 

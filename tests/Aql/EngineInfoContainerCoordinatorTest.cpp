@@ -86,7 +86,8 @@ TEST(EngineInfoContainerTest, it_should_be_able_to_add_more_snippets) {
 //     1. queryRegistry->insert(_id, query, 600.0);
 // 3. query->engine();
 
-TEST(EngineInfoContainerTest, it_should_create_an_executionengine_for_the_first_snippet) {
+TEST(EngineInfoContainerTest,
+     it_should_create_an_executionengine_for_the_first_snippet) {
   MapRemoteToSnippet queryIds;
   std::string const dbname = "TestDB";
 
@@ -97,7 +98,8 @@ TEST(EngineInfoContainerTest, it_should_create_an_executionengine_for_the_first_
   // ------------------------------
   //  fakeit::Mock<ExecutionNode> singletonMock;
   //  ExecutionNode& sNode = singletonMock.get();
-  //  fakeit::When(Method(singletonMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
+  //  fakeit::When(Method(singletonMock,
+  //  getType)).AlwaysReturn(ExecutionNode::SINGLETON);
   //
   //  fakeit::Mock<ExecutionEngine> mockEngine;
   //  // ExecutionEngine& myEngine = mockEngine.get();
@@ -126,9 +128,12 @@ TEST(EngineInfoContainerTest, it_should_create_an_executionengine_for_the_first_
       }
     );
     //fakeit::When(Method(mockQuery, trx)).Return(&trx);
-    /// fakeit::When(Method(mockQuery, engine)).Return(&myEngine).Return(&myEngine);
-    fakeit::When(Method(mockEngine, createBlocks)).Return(Result{TRI_ERROR_NO_ERROR});
-    fakeit::When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock * ())).AlwaysReturn(&rootBlock);
+    /// fakeit::When(Method(mockQuery,
+    engine)).Return(&myEngine).Return(&myEngine);
+    fakeit::When(Method(mockEngine,
+    createBlocks)).Return(Result{TRI_ERROR_NO_ERROR});
+    fakeit::When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock *
+    ())).AlwaysReturn(&rootBlock);
    */
 
   // ------------------------------

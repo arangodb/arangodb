@@ -42,11 +42,13 @@ void abortTransactions(LogicalCollection& coll) {
     return;
   }
 
-  bool didWork = mgr->abortManagedTrx([&coll](TransactionState const& state,
-                                              std::string const& /*user*/) -> bool {
-    TransactionCollection* tcoll = state.collection(coll.id(), AccessMode::Type::NONE);
-    return tcoll != nullptr;
-  });
+  bool didWork =
+      mgr->abortManagedTrx([&coll](TransactionState const& state,
+                                   std::string const& /*user*/) -> bool {
+        TransactionCollection* tcoll =
+            state.collection(coll.id(), AccessMode::Type::NONE);
+        return tcoll != nullptr;
+      });
 
   LOG_TOPIC_IF("7eda2", INFO, Logger::TRANSACTIONS, didWork)
       << "aborted leader transactions on shard " << coll.id() << "'";
@@ -57,14 +59,16 @@ void abortLeaderTransactionsOnShard(DataSourceId cid) {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
-  bool didWork = mgr->abortManagedTrx([cid](TransactionState const& state,
-                                            std::string const& /*user*/) -> bool {
-    if (state.id().isLeaderTransactionId()) {
-      TransactionCollection* tcoll = state.collection(cid, AccessMode::Type::NONE);
-      return tcoll != nullptr;
-    }
-    return false;
-  });
+  bool didWork =
+      mgr->abortManagedTrx([cid](TransactionState const& state,
+                                 std::string const& /*user*/) -> bool {
+        if (state.id().isLeaderTransactionId()) {
+          TransactionCollection* tcoll =
+              state.collection(cid, AccessMode::Type::NONE);
+          return tcoll != nullptr;
+        }
+        return false;
+      });
 
   LOG_TOPIC_IF("7edb3", INFO, Logger::TRANSACTIONS, didWork)
       << "aborted leader transactions on shard '" << cid << "'";
@@ -75,14 +79,16 @@ void abortFollowerTransactionsOnShard(DataSourceId cid) {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
-  bool didWork = mgr->abortManagedTrx([cid](TransactionState const& state,
-                                            std::string const& /*user*/) -> bool {
-    if (state.id().isFollowerTransactionId()) {
-      TransactionCollection* tcoll = state.collection(cid, AccessMode::Type::NONE);
-      return tcoll != nullptr;
-    }
-    return false;
-  });
+  bool didWork =
+      mgr->abortManagedTrx([cid](TransactionState const& state,
+                                 std::string const& /*user*/) -> bool {
+        if (state.id().isFollowerTransactionId()) {
+          TransactionCollection* tcoll =
+              state.collection(cid, AccessMode::Type::NONE);
+          return tcoll != nullptr;
+        }
+        return false;
+      });
 
   LOG_TOPIC_IF("7dcff", INFO, Logger::TRANSACTIONS, didWork)
       << "aborted follower transactions on shard '" << cid << "'";
@@ -98,15 +104,15 @@ void abortTransactionsWithFailedServers(ClusterInfo& ci) {
   bool didWork = false;
   if (ServerState::instance()->isCoordinator()) {
     // abort all transactions using a lead server
-    didWork = mgr->abortManagedTrx(
-        [&](TransactionState const& state, std::string const& /*user*/) -> bool {
-          for (ServerID const& sid : failed) {
-            if (state.knowsServer(sid)) {
-              return true;
-            }
-          }
-          return false;
-        });
+    didWork = mgr->abortManagedTrx([&](TransactionState const& state,
+                                       std::string const& /*user*/) -> bool {
+      for (ServerID const& sid : failed) {
+        if (state.knowsServer(sid)) {
+          return true;
+        }
+      }
+      return false;
+    });
 
   } else if (ServerState::instance()->isDBServer()) {
     // only care about failed coordinators

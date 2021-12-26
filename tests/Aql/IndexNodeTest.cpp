@@ -40,19 +40,22 @@ namespace {
 
 class IndexNodeTest
     : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+                                            arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
 
   IndexNodeTest() : server(false) {
     // otherwise asserts fail
-    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_SINGLE);
+    arangodb::ServerState::instance()->setRole(
+        arangodb::ServerState::ROLE_SINGLE);
     server.startFeatures();
   }
 
 };  // IndexNodeTest
 
-arangodb::CreateDatabaseInfo createInfo(arangodb::application_features::ApplicationServer& server) {
+arangodb::CreateDatabaseInfo createInfo(
+    arangodb::application_features::ApplicationServer& server) {
   arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
   auto rv = info.load("testVocbase", 2);
   if (rv.fail()) {
@@ -62,7 +65,8 @@ arangodb::CreateDatabaseInfo createInfo(arangodb::application_features::Applicat
 }
 
 arangodb::aql::QueryResult executeQuery(
-    const std::shared_ptr<arangodb::transaction::Context>& ctx, std::string const& queryString,
+    const std::shared_ptr<arangodb::transaction::Context>& ctx,
+    std::string const& queryString,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& optionsString = "{}") {
   auto query = arangodb::aql::Query::create(
@@ -98,9 +102,9 @@ TEST_F(IndexNodeTest, objectQuery) {
   ASSERT_FALSE(!index);
 
   std::vector<std::string> const EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
+      EMPTY, arangodb::transaction::Options());
   EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
@@ -116,7 +120,8 @@ TEST_F(IndexNodeTest, objectQuery) {
     auto queryString =
         "FOR d IN testCollection FILTER d.obj.a == 'a_val' SORT d.obj.c LIMIT "
         "10 RETURN d";
-    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+    auto ctx =
+        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
     auto queryResult = ::executeQuery(ctx, queryString);
     EXPECT_TRUE(queryResult.result.ok());  // commit
     auto result = queryResult.data->slice();
@@ -132,7 +137,8 @@ TEST_F(IndexNodeTest, objectQuery) {
     auto queryString =
         "FOR d IN testCollection FILTER d.obj.a == {sub_a: \"a_val\"}.sub_a "
         "SORT d.obj.c LIMIT 10 RETURN d";
-    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+    auto ctx =
+        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
     auto queryResult = ::executeQuery(ctx, queryString);
     EXPECT_TRUE(queryResult.result.ok());  // commit
     auto result = queryResult.data->slice();
@@ -148,7 +154,8 @@ TEST_F(IndexNodeTest, objectQuery) {
     auto queryString =
         "FOR d IN testCollection FILTER d.obj.a == 'a_val' SORT d.obj.c LIMIT "
         "2 SORT d.obj.b DESC LIMIT 1 RETURN d";
-    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+    auto ctx =
+        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
     auto queryResult = ::executeQuery(ctx, queryString);
     EXPECT_TRUE(queryResult.result.ok());  // commit
     auto result = queryResult.data->slice();
@@ -177,9 +184,9 @@ TEST_F(IndexNodeTest, expansionQuery) {
   ASSERT_FALSE(!index);
 
   std::vector<std::string> const EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
+      EMPTY, arangodb::transaction::Options());
   EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
@@ -192,15 +199,18 @@ TEST_F(IndexNodeTest, expansionQuery) {
       "{\"_key\": \"doc_1\", \"tags\": {\"hop\": [{\"foo\": {\"fo\": "
       "\"foo_val\"}}, {\"bar\": {\"br\": \"bar_val\"}}, {\"baz\": {\"bz\": "
       "\"baz_val_1\"}}]}}");
-  auto const res0 = collection->insert(&trx, jsonDocument0->slice(), mmdoc, opt);
+  auto const res0 =
+      collection->insert(&trx, jsonDocument0->slice(), mmdoc, opt);
   EXPECT_TRUE(res0.ok());
-  auto const res1 = collection->insert(&trx, jsonDocument1->slice(), mmdoc, opt);
+  auto const res1 =
+      collection->insert(&trx, jsonDocument1->slice(), mmdoc, opt);
   EXPECT_TRUE(res1.ok());
   EXPECT_TRUE(trx.commit().ok());
   auto queryString =
       "FOR d IN testCollection FILTER 'foo_val' IN d.tags.hop[*].foo.fo SORT "
       "d.tags.hop[*].baz.bz LIMIT 2 RETURN d";
-  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  auto ctx =
+      std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   auto queryResult = ::executeQuery(ctx, queryString);
   EXPECT_TRUE(queryResult.result.ok());  // commit
   auto result = queryResult.data->slice();
@@ -230,9 +240,9 @@ TEST_F(IndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
   ASSERT_FALSE(!index);
 
   std::vector<std::string> const EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
+      EMPTY, arangodb::transaction::Options());
 
   EXPECT_TRUE(trx.begin().ok());
 
@@ -247,7 +257,8 @@ TEST_F(IndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
   auto queryString =
       "FOR d IN testCollection FILTER 'foo_val' IN d.tags.hop[*].foo.fo SORT "
       "d.tags.hop[*].baz.bz LIMIT 10 RETURN d";
-  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  auto ctx =
+      std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   auto queryResult = ::executeQuery(ctx, queryString);
   EXPECT_TRUE(queryResult.result.ok());  // commit
   auto result = queryResult.data->slice();
@@ -272,9 +283,9 @@ TEST_F(IndexNodeTest, lastExpansionQuery) {
   ASSERT_FALSE(!index);
 
   std::vector<std::string> const EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
+      EMPTY, arangodb::transaction::Options());
   EXPECT_TRUE(trx.begin().ok());
 
   arangodb::OperationOptions opt;
@@ -289,7 +300,8 @@ TEST_F(IndexNodeTest, lastExpansionQuery) {
     auto queryString =
         "FOR d IN testCollection FILTER 'foo_val' IN d.tags[*] SORT d.tags "
         "LIMIT 10 RETURN d";
-    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+    auto ctx =
+        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
     auto queryResult = ::executeQuery(ctx, queryString);
     EXPECT_TRUE(queryResult.result.ok());  // commit
     auto result = queryResult.data->slice();
@@ -303,7 +315,8 @@ TEST_F(IndexNodeTest, lastExpansionQuery) {
     auto queryString =
         "FOR d IN testCollection FILTER 'foo_val' IN d.tags SORT d.tags LIMIT "
         "10 RETURN d";
-    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+    auto ctx =
+        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
     auto queryResult = ::executeQuery(ctx, queryString);
     EXPECT_TRUE(queryResult.result.ok());  // commit
     auto result = queryResult.data->slice();
@@ -331,7 +344,8 @@ TEST_F(IndexNodeTest, constructIndexNode) {
   auto index = collection->createIndex(indexJson->slice(), createdIndex);
   ASSERT_TRUE(createdIndex);
   ASSERT_FALSE(!index);
-  // auto jsonDocument = arangodb::velocypack::Parser::fromJson("{\"obj\": {\"a\": \"a_val\", \"b\": \"b_val\", \"c\": \"c_val\"}}");
+  // auto jsonDocument = arangodb::velocypack::Parser::fromJson("{\"obj\":
+  // {\"a\": \"a_val\", \"b\": \"b_val\", \"c\": \"c_val\"}}");
 
   // correct json
   auto createJson = arangodb::velocypack::Parser::fromJson(
@@ -501,9 +515,13 @@ TEST_F(IndexNodeTest, constructIndexNode) {
       "  \"regsToKeepStack\" : [[ ]]"
       "}");
 
-  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-  auto query = arangodb::aql::Query::create(ctx, arangodb::aql::QueryString("FOR d IN testCollection FILTER d.obj.a == 'a_val' SORT d.obj.c LIMIT 10 RETURN d"),
-                                            nullptr);
+  auto ctx =
+      std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  auto query = arangodb::aql::Query::create(
+      ctx,
+      arangodb::aql::QueryString("FOR d IN testCollection FILTER d.obj.a == "
+                                 "'a_val' SORT d.obj.c LIMIT 10 RETURN d"),
+      nullptr);
   query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
   {
@@ -522,9 +540,9 @@ TEST_F(IndexNodeTest, constructIndexNode) {
     }
 
     // deserialization
-    arangodb::aql::IndexNode indNode(const_cast<arangodb::aql::ExecutionPlan*>(
-                                         query->plan()),
-                                     createJson->slice());
+    arangodb::aql::IndexNode indNode(
+        const_cast<arangodb::aql::ExecutionPlan*>(query->plan()),
+        createJson->slice());
     ASSERT_TRUE(indNode.isLateMaterialized());
 
     // serialization and deserialization
@@ -534,7 +552,8 @@ TEST_F(IndexNodeTest, constructIndexNode) {
           builder, arangodb::aql::ExecutionNode::SERIALIZE_DETAILS);
 
       arangodb::aql::IndexNode indNodeDeserialized(
-          const_cast<arangodb::aql::ExecutionPlan*>(query->plan()), builder.slice());
+          const_cast<arangodb::aql::ExecutionPlan*>(query->plan()),
+          builder.slice());
       ASSERT_TRUE(indNodeDeserialized.isLateMaterialized());
     }
 
@@ -542,35 +561,41 @@ TEST_F(IndexNodeTest, constructIndexNode) {
     {
       // without properties
       {
-        auto indNodeClone = dynamic_cast<arangodb::aql::IndexNode*>(
-            indNode.clone(const_cast<arangodb::aql::ExecutionPlan*>(query->plan()),
-                          true, false));
+        auto indNodeClone =
+            dynamic_cast<arangodb::aql::IndexNode*>(indNode.clone(
+                const_cast<arangodb::aql::ExecutionPlan*>(query->plan()), true,
+                false));
 
         EXPECT_EQ(indNode.getType(), indNodeClone->getType());
         EXPECT_EQ(indNode.outVariable(), indNodeClone->outVariable());
         EXPECT_EQ(indNode.plan(), indNodeClone->plan());
         EXPECT_EQ(indNode.vocbase(), indNodeClone->vocbase());
-        EXPECT_EQ(indNode.isLateMaterialized(), indNodeClone->isLateMaterialized());
+        EXPECT_EQ(indNode.isLateMaterialized(),
+                  indNodeClone->isLateMaterialized());
 
         ASSERT_TRUE(indNodeClone->isLateMaterialized());
       }
 
       // with properties
       {
-        auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-        auto queryClone =
-            arangodb::aql::Query::create(ctx, arangodb::aql::QueryString("RETURN 1"), nullptr);
-        queryClone->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+        auto ctx =
+            std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+        auto queryClone = arangodb::aql::Query::create(
+            ctx, arangodb::aql::QueryString("RETURN 1"), nullptr);
+        queryClone->prepareQuery(
+            arangodb::aql::SerializationFormat::SHADOWROWS);
         indNode.invalidateVarUsage();
-        auto indNodeClone = dynamic_cast<arangodb::aql::IndexNode*>(
-            indNode.clone(const_cast<arangodb::aql::ExecutionPlan*>(queryClone->plan()),
-                          true, true));
+        auto indNodeClone =
+            dynamic_cast<arangodb::aql::IndexNode*>(indNode.clone(
+                const_cast<arangodb::aql::ExecutionPlan*>(queryClone->plan()),
+                true, true));
 
         EXPECT_EQ(indNode.getType(), indNodeClone->getType());
         EXPECT_NE(indNode.outVariable(), indNodeClone->outVariable());
         EXPECT_NE(indNode.plan(), indNodeClone->plan());
         EXPECT_EQ(indNode.vocbase(), indNodeClone->vocbase());
-        EXPECT_EQ(indNode.isLateMaterialized(), indNodeClone->isLateMaterialized());
+        EXPECT_EQ(indNode.isLateMaterialized(),
+                  indNodeClone->isLateMaterialized());
 
         ASSERT_TRUE(indNodeClone->isLateMaterialized());
       }
@@ -594,9 +619,13 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
   auto collection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!collection);
 
-  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-  auto query = arangodb::aql::Query::create(ctx, arangodb::aql::QueryString("FOR d IN testCollection FILTER d.obj.a == 'a_val' SORT d.obj.c LIMIT 10 RETURN d"),
-                                            nullptr);
+  auto ctx =
+      std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  auto query = arangodb::aql::Query::create(
+      ctx,
+      arangodb::aql::QueryString("FOR d IN testCollection FILTER d.obj.a == "
+                                 "'a_val' SORT d.obj.c LIMIT 10 RETURN d"),
+      nullptr);
   query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
   auto vars = query->plan()->getAst()->variables();
@@ -647,9 +676,9 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
         "  ] ]"
         "}");
     // deserialization
-    arangodb::aql::IndexNode indNode(const_cast<arangodb::aql::ExecutionPlan*>(
-                                         query->plan()),
-                                     createJson->slice());
+    arangodb::aql::IndexNode indNode(
+        const_cast<arangodb::aql::ExecutionPlan*>(query->plan()),
+        createJson->slice());
     ASSERT_TRUE(indNode.isLateMaterialized());
   }
 
@@ -694,9 +723,9 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
         "}");
     // deserialization
     try {
-      arangodb::aql::IndexNode indNode(const_cast<arangodb::aql::ExecutionPlan*>(
-                                           query->plan()),
-                                       createJson->slice());
+      arangodb::aql::IndexNode indNode(
+          const_cast<arangodb::aql::ExecutionPlan*>(query->plan()),
+          createJson->slice());
       EXPECT_TRUE(false);
     } catch (arangodb::basics::Exception const& e) {
       EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, e.code());
@@ -748,9 +777,9 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
         "}");
     // deserialization
     try {
-      arangodb::aql::IndexNode indNode(const_cast<arangodb::aql::ExecutionPlan*>(
-                                           query->plan()),
-                                       createJson->slice());
+      arangodb::aql::IndexNode indNode(
+          const_cast<arangodb::aql::ExecutionPlan*>(query->plan()),
+          createJson->slice());
       EXPECT_TRUE(false);
     } catch (arangodb::basics::Exception const& e) {
       EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, e.code());
@@ -802,9 +831,9 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
         "}");
     // deserialization
     try {
-      arangodb::aql::IndexNode indNode(const_cast<arangodb::aql::ExecutionPlan*>(
-                                           query->plan()),
-                                       createJson->slice());
+      arangodb::aql::IndexNode indNode(
+          const_cast<arangodb::aql::ExecutionPlan*>(query->plan()),
+          createJson->slice());
       EXPECT_TRUE(false);
     } catch (arangodb::basics::Exception const& e) {
       EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, e.code());
@@ -854,9 +883,9 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
         "  \"varsValidStack\" : [ ["
         "  ] ]"
         "}");
-    arangodb::aql::IndexNode indNode(const_cast<arangodb::aql::ExecutionPlan*>(
-                                         query->plan()),
-                                     createJson->slice());
+    arangodb::aql::IndexNode indNode(
+        const_cast<arangodb::aql::ExecutionPlan*>(query->plan()),
+        createJson->slice());
     ASSERT_TRUE(indNode.isLateMaterialized());  // do not read the name
   }
 
@@ -903,9 +932,9 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
         "}");
     // deserialization
     try {
-      arangodb::aql::IndexNode indNode(const_cast<arangodb::aql::ExecutionPlan*>(
-                                           query->plan()),
-                                       createJson->slice());
+      arangodb::aql::IndexNode indNode(
+          const_cast<arangodb::aql::ExecutionPlan*>(query->plan()),
+          createJson->slice());
       EXPECT_TRUE(false);
     } catch (arangodb::basics::Exception const& e) {
       EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, e.code());
@@ -952,9 +981,9 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
         "  ] ]"
         "}");
     // deserialization
-    arangodb::aql::IndexNode indNode(const_cast<arangodb::aql::ExecutionPlan*>(
-                                         query->plan()),
-                                     createJson->slice());
+    arangodb::aql::IndexNode indNode(
+        const_cast<arangodb::aql::ExecutionPlan*>(query->plan()),
+        createJson->slice());
     ASSERT_FALSE(indNode.isLateMaterialized());
   }
 }

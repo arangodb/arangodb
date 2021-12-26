@@ -27,7 +27,7 @@
 
 namespace {
 
-template <typename T>
+template<typename T>
 TRI_vocbase_t& vocbase(arangodb::DatabaseFeature& feature, T& id) {
   auto* vocbase = feature.useDatabase(id);
 

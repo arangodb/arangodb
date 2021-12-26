@@ -41,7 +41,8 @@ struct HLLCounterFormat : public MessageFormat<HLLCounter> {
       ++array;
     }
   }
-  void addValue(VPackBuilder& arrayBuilder, HLLCounter const& senderVal) const override {
+  void addValue(VPackBuilder& arrayBuilder,
+                HLLCounter const& senderVal) const override {
     // TODO fucking pack 8-bytes into one 64 bit entry
     arrayBuilder.openArray();
     for (size_t i = 0; i < HLLCounter::NUM_BUCKETS; i++) {
@@ -52,7 +53,8 @@ struct HLLCounterFormat : public MessageFormat<HLLCounter> {
 };
 
 struct HLLCounterCombiner : MessageCombiner<HLLCounter> {
-  void combine(HLLCounter& firstValue, HLLCounter const& secondValue) const override {
+  void combine(HLLCounter& firstValue,
+               HLLCounter const& secondValue) const override {
     firstValue.merge(secondValue);
   };
 };

@@ -99,15 +99,16 @@ RocksDBMetadata::RocksDBMetadata()
  * @param  trxId The identifier for the active transaction
  * @param  seq   The sequence number immediately prior to call
  */
-rocksdb::SequenceNumber RocksDBMetadata::placeBlocker(TransactionId trxId,
-                                                      rocksdb::SequenceNumber seq) {
+rocksdb::SequenceNumber RocksDBMetadata::placeBlocker(
+    TransactionId trxId, rocksdb::SequenceNumber seq) {
   {
     WRITE_LOCKER(locker, _blockerLock);
 
     seq = std::max(seq, _maxBlockersSequenceNumber);
 
     TRI_ASSERT(_blockers.end() == _blockers.find(trxId));
-    TRI_ASSERT(_blockersBySeq.end() == _blockersBySeq.find(std::make_pair(seq, trxId)));
+    TRI_ASSERT(_blockersBySeq.end() ==
+               _blockersBySeq.find(std::make_pair(seq, trxId)));
 
     auto insert = _blockers.try_emplace(trxId, seq);
     if (!insert.second) {
@@ -129,7 +130,8 @@ rocksdb::SequenceNumber RocksDBMetadata::placeBlocker(TransactionId trxId,
   }
 
   LOG_TOPIC("1587a", TRACE, Logger::ENGINES)
-      << "[" << this << "] placed blocker (" << trxId.id() << ", " << seq << ")";
+      << "[" << this << "] placed blocker (" << trxId.id() << ", " << seq
+      << ")";
   return seq;
 }
 
@@ -143,7 +145,8 @@ rocksdb::SequenceNumber RocksDBMetadata::placeBlocker(TransactionId trxId,
  * @param  seq   The sequence number from the internal snapshot
  * @return       May return error if we fail to allocate and place blocker
  */
-Result RocksDBMetadata::updateBlocker(TransactionId trxId, rocksdb::SequenceNumber seq) {
+Result RocksDBMetadata::updateBlocker(TransactionId trxId,
+                                      rocksdb::SequenceNumber seq) {
   return basics::catchToResult([&]() -> Result {
     Result res;
     WRITE_LOCKER(locker, _blockerLock);
@@ -155,7 +158,8 @@ Result RocksDBMetadata::updateBlocker(TransactionId trxId, rocksdb::SequenceNumb
       res.reset(TRI_ERROR_INTERNAL);
     }
 
-    auto removed = _blockersBySeq.erase(std::make_pair(previous->second, trxId));
+    auto removed =
+        _blockersBySeq.erase(std::make_pair(previous->second, trxId));
     if (!removed) {
       return res.reset(TRI_ERROR_INTERNAL);
     }
@@ -170,7 +174,8 @@ Result RocksDBMetadata::updateBlocker(TransactionId trxId, rocksdb::SequenceNumb
     _maxBlockersSequenceNumber = std::max(seq, _maxBlockersSequenceNumber);
 
     LOG_TOPIC("1587c", TRACE, Logger::ENGINES)
-        << "[" << this << "] updated blocker (" << trxId.id() << ", " << seq << ")";
+        << "[" << this << "] updated blocker (" << trxId.id() << ", " << seq
+        << ")";
     return res;
   });
 }
@@ -204,7 +209,8 @@ void RocksDBMetadata::removeBlocker(TransactionId trxId) noexcept try {
 
 /// @brief check if there is blocker with a seq number lower or equal to
 /// the specified number
-bool RocksDBMetadata::hasBlockerUpTo(rocksdb::SequenceNumber seq) const noexcept {
+bool RocksDBMetadata::hasBlockerUpTo(
+    rocksdb::SequenceNumber seq) const noexcept {
   READ_LOCKER(locker, _blockerLock);
 
   if (_blockersBySeq.empty()) {
@@ -219,7 +225,8 @@ bool RocksDBMetadata::hasBlockerUpTo(rocksdb::SequenceNumber seq) const noexcept
 }
 
 /// @brief returns the largest safe seq to squash updates against
-rocksdb::SequenceNumber RocksDBMetadata::committableSeq(rocksdb::SequenceNumber maxCommitSeq) const {
+rocksdb::SequenceNumber RocksDBMetadata::committableSeq(
+    rocksdb::SequenceNumber maxCommitSeq) const {
   rocksdb::SequenceNumber committable = maxCommitSeq;
 
   {
@@ -296,9 +303,10 @@ void RocksDBMetadata::adjustNumberDocuments(rocksdb::SequenceNumber seq,
   }
 }
 
-/// @brief buffer a counter adjustment ONLY in recovery, optimized to use less memory
-void RocksDBMetadata::adjustNumberDocumentsInRecovery(rocksdb::SequenceNumber seq,
-                                                      RevisionId revId, int64_t adj) {
+/// @brief buffer a counter adjustment ONLY in recovery, optimized to use less
+/// memory
+void RocksDBMetadata::adjustNumberDocumentsInRecovery(
+    rocksdb::SequenceNumber seq, RevisionId revId, int64_t adj) {
   TRI_ASSERT(seq != 0 && (adj || revId.isSet()));
   if (seq <= _count._committedSeq) {
     // already incorporated into counter
@@ -318,7 +326,8 @@ void RocksDBMetadata::adjustNumberDocumentsInRecovery(rocksdb::SequenceNumber se
       // just adjust counter, not rev
       updateRev = false;
     } else {
-      _bufferedAdjs.try_emplace(seq, Adjustment{revId, adj + old->second.adjustment});
+      _bufferedAdjs.try_emplace(
+          seq, Adjustment{revId, adj + old->second.adjustment});
       _bufferedAdjs.erase(old);
     }
   }
@@ -342,7 +351,8 @@ void RocksDBMetadata::adjustNumberDocumentsInRecovery(rocksdb::SequenceNumber se
 /// @brief serialize the collection metadata
 Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
                                       LogicalCollection& coll, bool force,
-                                      VPackBuilder& tmp, rocksdb::SequenceNumber& appliedSeq,
+                                      VPackBuilder& tmp,
+                                      rocksdb::SequenceNumber& appliedSeq,
                                       std::string& output) {
   TRI_ASSERT(!coll.isAStub());
   TRI_ASSERT(appliedSeq != UINT64_MAX);
@@ -355,8 +365,10 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
     return res;
   }
 
-  auto& engine =
-      coll.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  auto& engine = coll.vocbase()
+                     .server()
+                     .getFeature<EngineSelectorFeature>()
+                     .engine<RocksDBEngine>();
   std::string const context = coll.vocbase().name() + "/" + coll.name();
 
   rocksdb::SequenceNumber const maxCommitSeq = committableSeq(appliedSeq);
@@ -383,10 +395,11 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   appliedSeq = maxCommitSeq;
 
   RocksDBKey key;
-  rocksdb::ColumnFamilyHandle* const cf =
-      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
+  rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Definitions);
 
-  RocksDBCollection* const rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
+  RocksDBCollection* const rcoll =
+      static_cast<RocksDBCollection*>(coll.getPhysical());
 
   // Step 1. store the document count
   tmp.clear();
@@ -440,7 +453,8 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
     RocksDBCuckooIndexEstimatorType* est = idx->estimator();
     if (est == nullptr) {  // does not have an estimator
       LOG_TOPIC("ab329", TRACE, Logger::ENGINES)
-          << context << ": index '" << idx->objectId() << "' does not have an estimator";
+          << context << ": index '" << idx->objectId()
+          << "' does not have an estimator";
       continue;
     }
 
@@ -450,13 +464,15 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
           << idx->objectId() << "'";
       output.clear();
 
-      auto format = RocksDBCuckooIndexEstimatorType::SerializeFormat::COMPRESSED;
+      auto format =
+          RocksDBCuckooIndexEstimatorType::SerializeFormat::COMPRESSED;
       est->serialize(output, maxCommitSeq, format);
       TRI_ASSERT(output.size() > sizeof(uint64_t));
 
       LOG_TOPIC("6b761", TRACE, Logger::ENGINES)
-          << context << ": serialized estimate for index '" << idx->objectId() << "' with estimate "
-          << est->computeEstimate() << " valid through seq " << appliedSeq;
+          << context << ": serialized estimate for index '" << idx->objectId()
+          << "' with estimate " << est->computeEstimate()
+          << " valid through seq " << appliedSeq;
 
       key.constructIndexEstimateValue(idx->objectId());
       rocksdb::Slice value(output);
@@ -485,23 +501,30 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   // (via `appliedSeq`), such that recovery only has to look at the WAL
   // from this sequence number on to be able to recover the tree from
   // its last persisted state.
-  return rcoll->takeCareOfRevisionTreePersistence(coll, engine, batch, cf, maxCommitSeq,
-                                                  force, context, output, appliedSeq);
+  return rcoll->takeCareOfRevisionTreePersistence(coll, engine, batch, cf,
+                                                  maxCommitSeq, force, context,
+                                                  output, appliedSeq);
 }
 
 /// @brief deserialize collection metadata, only called on startup
-Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll) {
+Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db,
+                                        LogicalCollection& coll) {
   TRI_ASSERT(!coll.isAStub());
   std::string const context = coll.vocbase().name() + "/" + coll.name();
 
-  RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
+  RocksDBCollection* rcoll =
+      static_cast<RocksDBCollection*>(coll.getPhysical());
 
-  auto& engine =
-      coll.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-  rocksdb::SequenceNumber globalSeq = engine.settingsManager()->earliestSeqNeeded();
+  auto& engine = coll.vocbase()
+                     .server()
+                     .getFeature<EngineSelectorFeature>()
+                     .engine<RocksDBEngine>();
+  rocksdb::SequenceNumber globalSeq =
+      engine.settingsManager()->earliestSeqNeeded();
 
   // Step 1. load the counter
-  auto cf = RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
+  auto cf = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Definitions);
   rocksdb::ReadOptions ro;
   ro.fill_cache = false;
 
@@ -518,8 +541,10 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
         << "' for collection with objectId '" << rcoll->objectId() << "'";
   } else if (!s.IsNotFound()) {
     LOG_TOPIC("1397c", TRACE, Logger::ENGINES)
-        << context << ": error while recovering counter for collection with objectId '"
-        << rcoll->objectId() << "': " << rocksutils::convertStatus(s).errorMessage();
+        << context
+        << ": error while recovering counter for collection with objectId '"
+        << rcoll->objectId()
+        << "': " << rocksutils::convertStatus(s).errorMessage();
     return rocksutils::convertStatus(s);
   } else {
     LOG_TOPIC("1387c", TRACE, Logger::ENGINES)
@@ -582,7 +607,8 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
       TRI_ASSERT(rocksutils::uint64FromPersistent(value.data()) <=
                  db->GetLatestSequenceNumber());
 
-      auto est = std::make_unique<RocksDBCuckooIndexEstimatorType>(estimateInput);
+      auto est =
+          std::make_unique<RocksDBCuckooIndexEstimatorType>(estimateInput);
       LOG_TOPIC("63f3b", DEBUG, Logger::ENGINES)
           << context << ": found index estimator for objectId '"
           << idx->objectId() << "' committed seqNr '" << est->appliedSeq()
@@ -657,7 +683,8 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
       // error during tree processing.
       // the tree is either invalid or some other exception happened
       LOG_TOPIC("84247", ERR, Logger::ENGINES)
-          << context << ": caught exception while loading revision tree in collection "
+          << context
+          << ": caught exception while loading revision tree in collection "
           << coll.name() << ": " << ex.what();
     }
   }
@@ -666,7 +693,8 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
 
   // no tree, check if collection is non-empty
   auto bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
-  auto cmp = RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+  auto cmp = RocksDBColumnFamilyManager::get(
+                 RocksDBColumnFamilyManager::Family::Documents)
                  ->GetComparator();
   std::unique_ptr<rocksdb::Iterator> it{
       db->NewIterator(ro, RocksDBColumnFamilyManager::get(
@@ -699,9 +727,9 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
   uint64_t stored = _numberDocuments.load();
   if (stored != countInTree && treeSeq != 0) {
     // patch the document count to the correct value
-    adjustNumberDocumentsInRecovery(treeSeq, RevisionId{0},
-                                    static_cast<int64_t>(countInTree) -
-                                        static_cast<int64_t>(stored));
+    adjustNumberDocumentsInRecovery(
+        treeSeq, RevisionId{0},
+        static_cast<int64_t>(countInTree) - static_cast<int64_t>(stored));
     // also patch the counter's sequence number, so that
     // any changes encountered by the recovery do not modify
     // the counter once more
@@ -711,7 +739,8 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
 
     LOG_TOPIC("f3f38", INFO, Logger::ENGINES)
         << context << ": rebuilt revision tree for collection with objectId '"
-        << rcoll->objectId() << "', seqNr " << treeSeq << ", count: " << countInTree;
+        << rcoll->objectId() << "', seqNr " << treeSeq
+        << ", count: " << countInTree;
   }
 
   return {};
@@ -726,9 +755,10 @@ void RocksDBMetadata::loadInitialNumberDocuments() {
 // static helper methods to modify collection meta entries in rocksdb
 
 /// @brief load collection
-/*static*/ RocksDBMetadata::DocCount RocksDBMetadata::loadCollectionCount(rocksdb::DB* db,
-                                                                          uint64_t objectId) {
-  auto cf = RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
+/*static*/ RocksDBMetadata::DocCount RocksDBMetadata::loadCollectionCount(
+    rocksdb::DB* db, uint64_t objectId) {
+  auto cf = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Definitions);
   rocksdb::ReadOptions ro;
   ro.fill_cache = false;
 
@@ -745,14 +775,16 @@ void RocksDBMetadata::loadInitialNumberDocuments() {
     return RocksDBMetadata::DocCount(countSlice);
   }
   LOG_TOPIC("1387f", TRACE, Logger::ENGINES)
-      << "loaded default zero counter for collection with objectId '" << objectId << "'";
+      << "loaded default zero counter for collection with objectId '"
+      << objectId << "'";
   return DocCount(0, 0, 0, RevisionId::none());
 }
 
 /// @brief remove collection metadata
-/*static*/ Result RocksDBMetadata::deleteCollectionMeta(rocksdb::DB* db, uint64_t objectId) {
-  rocksdb::ColumnFamilyHandle* const cf =
-      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
+/*static*/ Result RocksDBMetadata::deleteCollectionMeta(rocksdb::DB* db,
+                                                        uint64_t objectId) {
+  rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Definitions);
   rocksdb::WriteOptions wo;
 
   // Step 1. delete the document count
@@ -789,9 +821,10 @@ void RocksDBMetadata::loadInitialNumberDocuments() {
 }
 
 /// @brief remove collection index estimate
-/*static*/ Result RocksDBMetadata::deleteIndexEstimate(rocksdb::DB* db, uint64_t objectId) {
-  rocksdb::ColumnFamilyHandle* const cf =
-      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
+/*static*/ Result RocksDBMetadata::deleteIndexEstimate(rocksdb::DB* db,
+                                                       uint64_t objectId) {
+  rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Definitions);
   rocksdb::WriteOptions wo;
 
   RocksDBKey key;
@@ -815,7 +848,8 @@ RocksDBBlockerGuard::RocksDBBlockerGuard(RocksDBBlockerGuard&& other) noexcept
   other._trxId = TransactionId::none();
 }
 
-RocksDBBlockerGuard& RocksDBBlockerGuard::operator=(RocksDBBlockerGuard&& other) noexcept {
+RocksDBBlockerGuard& RocksDBBlockerGuard::operator=(
+    RocksDBBlockerGuard&& other) noexcept {
   releaseBlocker();
 
   _collection = other._collection;
@@ -825,14 +859,16 @@ RocksDBBlockerGuard& RocksDBBlockerGuard::operator=(RocksDBBlockerGuard&& other)
 }
 
 rocksdb::SequenceNumber RocksDBBlockerGuard::placeBlocker() {
-  TransactionId trxId = TransactionId(transaction::Context::makeTransactionId());
+  TransactionId trxId =
+      TransactionId(transaction::Context::makeTransactionId());
   // generated trxId must be > 0
   TRI_ASSERT(trxId.isSet());
   return placeBlocker(trxId);
 }
 
 rocksdb::SequenceNumber RocksDBBlockerGuard::placeBlocker(TransactionId trxId) {
-  // note: input trxId can be 0 during unit tests, so we cannot assert trxId.isSet() here!
+  // note: input trxId can be 0 during unit tests, so we cannot assert
+  // trxId.isSet() here!
 
   TRI_ASSERT(!_trxId.isSet());
 
@@ -846,7 +882,8 @@ rocksdb::SequenceNumber RocksDBBlockerGuard::placeBlocker(TransactionId trxId) {
 
 void RocksDBBlockerGuard::releaseBlocker() noexcept {
   if (_trxId.isSet()) {
-    auto* rcoll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
+    auto* rcoll =
+        static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
     rcoll->meta().removeBlocker(_trxId);
     _trxId = TransactionId::none();
   }

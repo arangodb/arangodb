@@ -42,16 +42,18 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-template <typename M>
+template<typename M>
 OutCache<M>::OutCache(WorkerConfig* state, MessageFormat<M> const* format)
-    : _config(state), _format(format), _baseUrl(Utils::baseUrl(Utils::workerPrefix)) {}
+    : _config(state),
+      _format(format),
+      _baseUrl(Utils::baseUrl(Utils::workerPrefix)) {}
 
 // ================= ArrayOutCache ==================
 
-template <typename M>
+template<typename M>
 ArrayOutCache<M>::~ArrayOutCache() = default;
 
-template <typename M>
+template<typename M>
 void ArrayOutCache<M>::_removeContainedMessages() {
   for (auto& pair : _shardMap) {
     pair.second.clear();
@@ -59,7 +61,7 @@ void ArrayOutCache<M>::_removeContainedMessages() {
   this->_containedMessages = 0;
 }
 
-template <typename M>
+template<typename M>
 void ArrayOutCache<M>::appendMessage(PregelShard shard,
                                      VPackStringRef const& key, M const& data) {
   if (this->_config->isLocalVertexShard(shard)) {
@@ -78,7 +80,7 @@ void ArrayOutCache<M>::appendMessage(PregelShard shard,
   }
 }
 
-template <typename M>
+template<typename M>
 void ArrayOutCache<M>::flushMessages() {
   if (this->_containedMessages == 0) {
     return;
@@ -94,7 +96,8 @@ void ArrayOutCache<M>::flushMessages() {
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
 
-  application_features::ApplicationServer& server = this->_config->vocbase()->server();
+  application_features::ApplicationServer& server =
+      this->_config->vocbase()->server();
   auto const& nf = server.getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
 
@@ -105,7 +108,8 @@ void ArrayOutCache<M>::flushMessages() {
   std::vector<futures::Future<network::Response>> responses;
   for (auto const& it : _shardMap) {
     PregelShard shard = it.first;
-    std::unordered_map<std::string, std::vector<M>> const& vertexMessageMap = it.second;
+    std::unordered_map<std::string, std::vector<M>> const& vertexMessageMap =
+        it.second;
     if (vertexMessageMap.size() == 0) {
       continue;
     }
@@ -114,7 +118,8 @@ void ArrayOutCache<M>::flushMessages() {
     VPackBuilder data(buffer, &options);
     data.openObject();
     data.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    data.add(Utils::executionNumberKey, VPackValue(this->_config->executionNumber()));
+    data.add(Utils::executionNumberKey,
+             VPackValue(this->_config->executionNumber()));
     data.add(Utils::globalSuperstepKey, VPackValue(gss));
     data.add(Utils::shardIdKey, VPackValue(shard));
     data.add(Utils::messagesKey, VPackValue(VPackValueType::Array, true));
@@ -136,9 +141,9 @@ void ArrayOutCache<M>::flushMessages() {
     // add a request
     ShardID const& shardId = this->_config->globalShardIDs()[shard];
 
-    responses.emplace_back(network::sendRequest(pool, "shard:" + shardId, fuerte::RestVerb::Post,
-                                                this->_baseUrl + Utils::messagesPath,
-                                                std::move(buffer), reqOpts));
+    responses.emplace_back(network::sendRequest(
+        pool, "shard:" + shardId, fuerte::RestVerb::Post,
+        this->_baseUrl + Utils::messagesPath, std::move(buffer), reqOpts));
   }
 
   futures::collectAll(responses).wait();
@@ -148,15 +153,16 @@ void ArrayOutCache<M>::flushMessages() {
 
 // ================= CombiningOutCache ==================
 
-template <typename M>
-CombiningOutCache<M>::CombiningOutCache(WorkerConfig* state, MessageFormat<M> const* format,
+template<typename M>
+CombiningOutCache<M>::CombiningOutCache(WorkerConfig* state,
+                                        MessageFormat<M> const* format,
                                         MessageCombiner<M> const* combiner)
     : OutCache<M>(state, format), _combiner(combiner) {}
 
-template <typename M>
+template<typename M>
 CombiningOutCache<M>::~CombiningOutCache() = default;
 
-template <typename M>
+template<typename M>
 void CombiningOutCache<M>::_removeContainedMessages() {
   for (auto& pair : _shardMap) {
     pair.second.clear();
@@ -164,9 +170,10 @@ void CombiningOutCache<M>::_removeContainedMessages() {
   this->_containedMessages = 0;
 }
 
-template <typename M>
+template<typename M>
 void CombiningOutCache<M>::appendMessage(PregelShard shard,
-                                         VPackStringRef const& key, M const& data) {
+                                         VPackStringRef const& key,
+                                         M const& data) {
   if (this->_config->isLocalVertexShard(shard)) {
     if (this->_sendToNextGSS) {
       this->_localCacheNextGSS->storeMessage(shard, key, data);
@@ -192,7 +199,7 @@ void CombiningOutCache<M>::appendMessage(PregelShard shard,
   }
 }
 
-template <typename M>
+template<typename M>
 void CombiningOutCache<M>::flushMessages() {
   if (this->_containedMessages == 0) {
     return;
@@ -206,7 +213,8 @@ void CombiningOutCache<M>::flushMessages() {
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
 
-  application_features::ApplicationServer& server = this->_config->vocbase()->server();
+  application_features::ApplicationServer& server =
+      this->_config->vocbase()->server();
   auto const& nf = server.getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
 
@@ -222,7 +230,8 @@ void CombiningOutCache<M>::flushMessages() {
     VPackBuilder data(buffer, &options);
     data.openObject();
     data.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    data.add(Utils::executionNumberKey, VPackValue(this->_config->executionNumber()));
+    data.add(Utils::executionNumberKey,
+             VPackValue(this->_config->executionNumber()));
     data.add(Utils::globalSuperstepKey, VPackValue(gss));
     data.add(Utils::shardIdKey, VPackValue(shard));
     data.add(Utils::messagesKey, VPackValue(VPackValueType::Array, true));
@@ -248,9 +257,9 @@ void CombiningOutCache<M>::flushMessages() {
     reqOpts.timeout = network::Timeout(180);
     reqOpts.skipScheduler = true;
 
-    responses.emplace_back(network::sendRequest(pool, "shard:" + shardId, fuerte::RestVerb::Post,
-                                                this->_baseUrl + Utils::messagesPath,
-                                                std::move(buffer), reqOpts));
+    responses.emplace_back(network::sendRequest(
+        pool, "shard:" + shardId, fuerte::RestVerb::Post,
+        this->_baseUrl + Utils::messagesPath, std::move(buffer), reqOpts));
   }
 
   futures::collectAll(responses).wait();

@@ -38,7 +38,7 @@ namespace containers {
 /// the elements popped with pop_front() will also not be destructed when
 /// popped. this means this container can only be used for managing trivial
 /// types (e.g. integers or pointers) that do not require ad-hoc destruction
-template <typename T>
+template<typename T>
 class RollingVector {
  public:
   RollingVector() : _start(0) {}

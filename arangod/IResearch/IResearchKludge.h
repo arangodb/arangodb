@@ -44,7 +44,8 @@ void mangleNull(std::string& name);
 void mangleBool(std::string& name);
 void mangleNumeric(std::string& name);
 
-void mangleField(std::string& name, iresearch::FieldMeta::Analyzer const& analyzer);
+void mangleField(std::string& name,
+                 iresearch::FieldMeta::Analyzer const& analyzer);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief a read-write mutex implementation
@@ -94,7 +95,8 @@ class IRESEARCH_API read_write_mutex final {
   bool try_lock_read();
   bool try_lock_write();
 
-  // The mutex must be locked by the current thread of execution, otherwise, the behavior is undefined.
+  // The mutex must be locked by the current thread of execution, otherwise, the
+  // behavior is undefined.
   // @param exclusive_only if true then only downgrade a lock to a read-lock
   void unlock(bool exclusive_only = false);
 

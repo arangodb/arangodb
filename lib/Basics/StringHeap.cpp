@@ -45,19 +45,23 @@ StringHeap::StringHeap(ResourceMonitor& resourceMonitor, size_t blockSize)
 StringHeap::~StringHeap() { clear(); }
 
 /// @brief register a string
-template <>
-arangodb::velocypack::StringRef StringHeap::registerString<arangodb::velocypack::StringRef>(
+template<>
+arangodb::velocypack::StringRef
+StringHeap::registerString<arangodb::velocypack::StringRef>(
     arangodb::velocypack::StringRef const& value) {
   char const* p = registerString(value.data(), value.size());
   return arangodb::velocypack::StringRef(p, value.size());
 }
 
-template <>
-arangodb::velocypack::HashedStringRef StringHeap::registerString<arangodb::velocypack::HashedStringRef>(
+template<>
+arangodb::velocypack::HashedStringRef
+StringHeap::registerString<arangodb::velocypack::HashedStringRef>(
     arangodb::velocypack::HashedStringRef const& value) {
   char const* p = registerString(value.data(), value.size());
-  // We got a uint32_t size string in, we do not modify it, so static cast here is save.
-  return arangodb::velocypack::HashedStringRef(p, static_cast<uint32_t>(value.size()));
+  // We got a uint32_t size string in, we do not modify it, so static cast here
+  // is save.
+  return arangodb::velocypack::HashedStringRef(
+      p, static_cast<uint32_t>(value.size()));
 }
 
 void StringHeap::clear() noexcept {
@@ -68,7 +72,8 @@ void StringHeap::clear() noexcept {
     delete[] it;
   }
 
-  _resourceMonitor.decreaseMemoryUsage(_blocks.size() * (sizeof(char*) + _blockSize));
+  _resourceMonitor.decreaseMemoryUsage(_blocks.size() *
+                                       (sizeof(char*) + _blockSize));
   _blocks.clear();
 }
 

@@ -32,7 +32,8 @@ class TransactionDB;
 namespace arangodb {
 
 // only implements GET
-class RocksDBSingleOperationReadOnlyMethods final : public RocksDBReadOnlyBaseMethods {
+class RocksDBSingleOperationReadOnlyMethods final
+    : public RocksDBReadOnlyBaseMethods {
  public:
   using RocksDBReadOnlyBaseMethods::RocksDBReadOnlyBaseMethods;
 

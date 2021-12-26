@@ -42,7 +42,8 @@ namespace iresearch {
 VPackComparer::VPackComparer()
     : VPackComparer(IResearchViewMeta::DEFAULT()._primarySort) {}
 
-bool VPackComparer::less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const {
+bool VPackComparer::less(const irs::bytes_ref& lhs,
+                         const irs::bytes_ref& rhs) const {
   TRI_ASSERT(_sort);
   TRI_ASSERT(_sort->size() >= _size);
   TRI_ASSERT(!lhs.empty());
@@ -55,7 +56,8 @@ bool VPackComparer::less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) c
     TRI_ASSERT(!lhsSlice.isNone());
     TRI_ASSERT(!rhsSlice.isNone());
 
-    auto const res = arangodb::basics::VelocyPackHelper::compare(lhsSlice, rhsSlice, true);
+    auto const res =
+        arangodb::basics::VelocyPackHelper::compare(lhsSlice, rhsSlice, true);
 
     if (res) {
       return (MULTIPLIER[size_t(_sort->direction(i))] * res) < 0;

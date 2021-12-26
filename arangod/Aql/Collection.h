@@ -53,7 +53,8 @@ struct Collection {
   Collection(Collection const&) = delete;
   Collection& operator=(Collection const&) = delete;
 
-  Collection(std::string const&, TRI_vocbase_t*, AccessMode::Type accessType, Hint hint);
+  Collection(std::string const&, TRI_vocbase_t*, AccessMode::Type accessType,
+             Hint hint);
 
   TRI_vocbase_t* vocbase() const;
 
@@ -94,7 +95,8 @@ struct Collection {
   std::shared_ptr<std::vector<std::string>> shardIds() const;
 
   /// @brief returns the filtered list of shard ids of a collection
-  std::shared_ptr<std::vector<std::string>> shardIds(std::unordered_set<std::string> const& includedShards) const;
+  std::shared_ptr<std::vector<std::string>> shardIds(
+      std::unordered_set<std::string> const& includedShards) const;
 
   /// @brief returns the shard keys of a collection
   /// if "normalize" is true, then the shard keys for a smart vertex collection
@@ -137,7 +139,8 @@ struct Collection {
 
   /// @brief get the index by it's identifier. Will either throw or
   ///        return a valid index. nullptr is impossible.
-  std::shared_ptr<arangodb::Index> indexByIdentifier(std::string const& idxId) const;
+  std::shared_ptr<arangodb::Index> indexByIdentifier(
+      std::string const& idxId) const;
 
   std::vector<std::shared_ptr<arangodb::Index>> indexes() const;
 
@@ -158,9 +161,10 @@ struct Collection {
 
  private:
   // _collection will only be populated here in the constructor, and not later.
-  // note that it will only be populated for "real" collections and shards though.
-  // aql::Collection objects can also be created for views and for non-existing
-  // collections. In these cases it is not possible to populate _collection, at all.
+  // note that it will only be populated for "real" collections and shards
+  // though. aql::Collection objects can also be created for views and for
+  // non-existing collections. In these cases it is not possible to populate
+  // _collection, at all.
   std::shared_ptr<arangodb::LogicalCollection> _collection;
 
   TRI_vocbase_t* _vocbase;

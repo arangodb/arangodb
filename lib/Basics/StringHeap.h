@@ -47,7 +47,7 @@ class StringHeap {
   ~StringHeap();
 
   /// @brief register a string - implemented for StringRef and HashedStringRef
-  template <typename T>
+  template<typename T>
   T registerString(T const& str);
 
   /// @brief clear all data from the StringHeap, not releasing any occupied

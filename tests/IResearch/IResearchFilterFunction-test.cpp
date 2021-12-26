@@ -88,7 +88,8 @@ static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 class IResearchFilterFunctionTest
     : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+                                            arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
 
@@ -101,7 +102,8 @@ class IResearchFilterFunctionTest
 
     auto& functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();
 
-    // register fake non-deterministic function in order to suppress optimizations
+    // register fake non-deterministic function in order to suppress
+    // optimizations
     functions.add(arangodb::aql::Function{
         "_NONDETERM_", ".",
         arangodb::aql::Function::makeFlags(
@@ -114,12 +116,14 @@ class IResearchFilterFunctionTest
           return params[0];
         }});
 
-    // register fake non-deterministic function in order to suppress optimizations
+    // register fake non-deterministic function in order to suppress
+    // optimizations
     functions.add(arangodb::aql::Function{
         "_FORWARD_", ".",
         arangodb::aql::Function::makeFlags(
             // fake deterministic
-            arangodb::aql::Function::Flags::Deterministic, arangodb::aql::Function::Flags::Cacheable,
+            arangodb::aql::Function::Flags::Deterministic,
+            arangodb::aql::Function::Flags::Cacheable,
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
@@ -128,20 +132,23 @@ class IResearchFilterFunctionTest
           return params[0];
         }});
 
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
-    dbFeature.createDatabase(testDBInfo(server.server()),
-                             _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    dbFeature.createDatabase(
+        testDBInfo(server.server()),
+        _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     std::shared_ptr<arangodb::LogicalCollection> unused;
     arangodb::OperationOptions options(arangodb::ExecContext::current());
-    arangodb::methods::Collections::createSystem(*_vocbase, options,
-                                                 arangodb::tests::AnalyzerCollectionName,
-                                                 false, unused);
+    arangodb::methods::Collections::createSystem(
+        *_vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
+        unused);
     analyzers.emplace(
         result, "testVocbase::test_analyzer", "TestAnalyzer",
-        arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")->slice());  // cache analyzer
+        arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")
+            ->slice());  // cache analyzer
   }
 
   TRI_vocbase_t& vocbase() { return *_vocbase; }
@@ -179,7 +186,8 @@ TEST_F(IResearchFilterFunctionTest, AttributeAccess) {
 
     assertFilterSuccess(
         vocbase(),
-        "LET x={} FOR d IN collection FILTER BOOST(x.a.b, 1.5) RETURN d", expected, &ctx);
+        "LET x={} FOR d IN collection FILTER BOOST(x.a.b, 1.5) RETURN d",
+        expected, &ctx);
   }
 
   // attribute access, empty object
@@ -209,21 +217,26 @@ TEST_F(IResearchFilterFunctionTest, AttributeAccess) {
 
     assertFilterSuccess(
         vocbase(),
-        "LET x={} FOR d IN collection FILTER BOOST(x.a.b, 2.5) RETURN d", expected, &ctx);
+        "LET x={} FOR d IN collection FILTER BOOST(x.a.b, 2.5) RETURN d",
+        expected, &ctx);
   }
 
-  assertExpressionFilter(vocbase(), "FOR d IN collection FILTER d RETURN d");  // no reference to `d`
+  assertExpressionFilter(
+      vocbase(),
+      "FOR d IN collection FILTER d RETURN d");  // no reference to `d`
   assertExpressionFilter(
       vocbase(),
       "FOR d IN collection FILTER ANALYZER(d, 'test_analyzer') RETURN d", 1,
       wrappedExpressionExtractor);  // no reference to `d`
-  assertExpressionFilter(vocbase(),
-                         "FOR d IN collection FILTER BOOST(d, 1.5) RETURN d", 1.5,
-                         wrappedExpressionExtractor);  // no reference to `d`
-  assertExpressionFilter(vocbase(),
-                         "FOR d IN collection FILTER d.a.b.c RETURN d");  // no reference to `d`
-  assertExpressionFilter(vocbase(),
-                         "FOR d IN collection FILTER d.a.b.c RETURN d");  // no reference to `d`
+  assertExpressionFilter(
+      vocbase(), "FOR d IN collection FILTER BOOST(d, 1.5) RETURN d", 1.5,
+      wrappedExpressionExtractor);  // no reference to `d`
+  assertExpressionFilter(
+      vocbase(),
+      "FOR d IN collection FILTER d.a.b.c RETURN d");  // no reference to `d`
+  assertExpressionFilter(
+      vocbase(),
+      "FOR d IN collection FILTER d.a.b.c RETURN d");  // no reference to `d`
   assertExpressionFilter(
       vocbase(), "FOR d IN collection FILTER BOOST(d.a.b.c, 2.5) RETURN d", 2.5,
       wrappedExpressionExtractor);  // no reference to `d`
@@ -257,7 +270,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER '1' RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER '1' RETURN d",
+                        expected);
   }
 
   // string reference
@@ -279,7 +293,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER '' RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER '' RETURN d",
+                        expected);
   }
 
   // empty string reference false
@@ -300,7 +315,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER true RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER true RETURN d",
+                        expected);
   }
 
   // boolean reference
@@ -322,7 +338,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER false RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER false RETURN d",
+                        expected);
   }
 
   // boolean reference
@@ -344,7 +361,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER null RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER null RETURN d",
+                        expected);
   }
 
   // non zero numeric value
@@ -352,7 +370,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER 1 RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER 1 RETURN d",
+                        expected);
   }
 
   // non zero numeric reference
@@ -374,7 +393,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER 0 RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER 0 RETURN d",
+                        expected);
   }
 
   // zero numeric reference
@@ -396,7 +416,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER 0.0 RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER 0.0 RETURN d",
+                        expected);
   }
 
   // zero floating reference
@@ -418,7 +439,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER 0.1 RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER 0.1 RETURN d",
+                        expected);
   }
 
   // non zero floating reference
@@ -440,7 +462,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER [] RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER [] RETURN d",
+                        expected);
   }
 
   // Array reference
@@ -448,7 +471,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     auto obj = VPackParser::fromJson("[]");
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(obj->slice())));
+    ctx.vars.emplace(
+        "x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(obj->slice())));
 
     irs::Or expected;
     expected.add<irs::all>();
@@ -463,13 +487,15 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER 1..2 RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER 1..2 RETURN d",
+                        expected);
   }
 
   // Range reference
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(1, 1)));
+    ctx.vars.emplace("x",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(1, 1)));
 
     irs::Or expected;
     expected.add<irs::all>();
@@ -484,7 +510,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     expected.add<irs::all>();
 
-    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER {} RETURN d", expected);
+    assertFilterSuccess(vocbase(), "FOR d IN collection FILTER {} RETURN d",
+                        expected);
   }
 
   // Object reference
@@ -492,7 +519,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     auto obj = VPackParser::fromJson("{}");
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(obj->slice())));
+    ctx.vars.emplace(
+        "x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(obj->slice())));
 
     irs::Or expected;
     expected.add<irs::all>();
@@ -505,7 +533,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
   // numeric expression
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace(
+        "numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
 
     irs::Or expected;
     expected.add<irs::empty>();
@@ -518,7 +547,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
   // boolean expression
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace(
+        "numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
 
     irs::Or expected;
     expected.add<irs::empty>();
@@ -532,7 +562,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
   // null expression
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
+    ctx.vars.emplace(
+        "nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
@@ -552,7 +583,8 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     expected.add<irs::all>().boost(2.5);
 
     assertFilterSuccess(vocbase(),
-                        "FOR d IN collection FILTER BOOST('1', 2.5) RETURN d", expected);
+                        "FOR d IN collection FILTER BOOST('1', 2.5) RETURN d",
+                        expected);
   }
 
   // string value == true, analyzer
@@ -562,13 +594,15 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN collection FILTER ANALYZER('1', 'test_analyzer') RETURN d", expected);
+        "FOR d IN collection FILTER ANALYZER('1', 'test_analyzer') RETURN d",
+        expected);
   }
 
   // null expression, boost
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
+    ctx.vars.emplace(
+        "nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
@@ -675,9 +709,12 @@ TEST_F(IResearchFilterFunctionTest, SystemFunctions) {
 
 TEST_F(IResearchFilterFunctionTest, UnsupportedUserFunctions) {
   //  FIXME need V8 context up and running to execute user functions
-  //  assertFilterFail(vocbase(),"FOR d IN myView FILTER ir::unknownFunction() RETURN d", &ExpressionContextMock::EMPTY);
-  //  assertFilterFail(vocbase(),"FOR d IN myView FILTER ir::unknownFunction1(d) RETURN d", &ExpressionContextMock::EMPTY);
-  //  assertFilterFail(vocbase(),"FOR d IN myView FILTER ir::unknownFunction2(d, 'quick') RETURN d", &ExpressionContextMock::EMPTY);
+  //  assertFilterFail(vocbase(),"FOR d IN myView FILTER ir::unknownFunction()
+  //  RETURN d", &ExpressionContextMock::EMPTY); assertFilterFail(vocbase(),"FOR
+  //  d IN myView FILTER ir::unknownFunction1(d) RETURN d",
+  //  &ExpressionContextMock::EMPTY); assertFilterFail(vocbase(),"FOR d IN
+  //  myView FILTER ir::unknownFunction2(d, 'quick') RETURN d",
+  //  &ExpressionContextMock::EMPTY);
 }
 
 TEST_F(IResearchFilterFunctionTest, Boost) {
@@ -1082,14 +1119,16 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     *exists.mutable_field() = "name";
     exists.mutable_options()->prefix_match = true;
 
+    assertFilterSuccess(
+        vocbase(), "FOR d IN myView FILTER exists(d.name) RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER exists(d.name) RETURN d", expected);
+                        "FOR d IN myView FILTER exists(d['name']) RETURN d",
+                        expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN myView FILTER eXists(d.name) RETURN d", expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER exists(d['name']) RETURN d", expected);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER eXists(d.name) RETURN d", expected);
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER eXists(d['name']) RETURN d", expected);
+                        "FOR d IN myView FILTER eXists(d['name']) RETURN d",
+                        expected);
   }
 
   // field with simple offset
@@ -1099,8 +1138,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     *exists.mutable_field() = "[42]";
     exists.mutable_options()->prefix_match = true;
 
-    assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER exists(d[42]) RETURN d", expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN myView FILTER exists(d[42]) RETURN d", expected);
   }
 
   // complex field
@@ -1111,14 +1150,18 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     exists.mutable_options()->prefix_match = true;
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.obj.prop.name) RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.obj.prop.name) RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER exists(d['obj']['prop']['name']) RETURN d", expected);
+        "FOR d IN myView FILTER exists(d['obj']['prop']['name']) RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.obj.prop.name) RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.obj.prop.name) RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d['obj'].prop.name) RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d['obj'].prop.name) RETURN d",
+        expected);
   }
 
   // complex field with offset
@@ -1129,15 +1172,19 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     exists.mutable_options()->prefix_match = true;
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.obj.prop[3].name) RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.obj.prop[3].name) RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER exists(d['obj']['prop'][3]['name']) RETURN d", expected);
+        "FOR d IN myView FILTER exists(d['obj']['prop'][3]['name']) RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.obj.prop[3].name) RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.obj.prop[3].name) RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER eXists(d['obj'].prop[3].name) RETURN d", expected);
+        "FOR d IN myView FILTER eXists(d['obj'].prop[3].name) RETURN d",
+        expected);
   }
 
   // complex field with offset
@@ -1173,7 +1220,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   // complex field with offset
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("index", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace(
+        "index", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
 
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
@@ -1187,23 +1235,30 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
         expected, &ctx);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER exists(d['obj']['prop'][3]['name']) RETURN d", expected);
+        "FOR d IN myView FILTER exists(d['obj']['prop'][3]['name']) RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.obj.prop[3].name) RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.obj.prop[3].name) RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER eXists(d['obj'].prop[3].name) RETURN d", expected);
+        "FOR d IN myView FILTER eXists(d['obj'].prop[3].name) RETURN d",
+        expected);
   }
 
   // dynamic complex attribute field
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
@@ -1222,10 +1277,13 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -1239,12 +1297,17 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace(
+        "a", arangodb::aql::AqlValue(
+                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -1258,12 +1321,17 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
+                         false}));  // invalid value type
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -1295,13 +1363,17 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     exists.mutable_options()->prefix_match = true;
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'type') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'type') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'type') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'type') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'Type') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'Type') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'TYPE') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'TYPE') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER ANALYZER(exists(d.name, 'TYPE'), "
@@ -1340,13 +1412,17 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     exists.mutable_options()->prefix_match = true;
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'string') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'string') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'string') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'string') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'String') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'String') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'STRING') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'STRING') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER analyzer(exists(d.name, 'STRING'), "
@@ -1407,14 +1483,17 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   // field + analyzer as invalid expression
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("anl", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
+    ctx.vars.emplace(
+        "anl", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
 
     assertFilterExecutionFail(
         vocbase(),
-        "LET anl='analyz' FOR d IN myView FILTER exists(d.name, anl) RETURN d", &ctx);
+        "LET anl='analyz' FOR d IN myView FILTER exists(d.name, anl) RETURN d",
+        &ctx);
     assertFilterExecutionFail(
         vocbase(),
-        "LET anl='analyz' FOR d IN myView FILTER eXists(d.name, anl) RETURN d", &ctx);
+        "LET anl='analyz' FOR d IN myView FILTER eXists(d.name, anl) RETURN d",
+        &ctx);
   }
 
   // field + analyzer
@@ -1425,9 +1504,11 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'analyzer') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'analyzer') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'analyzer') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'analyzer') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER analyzer(eXists(d.name, 'analyzer'), "
@@ -1439,9 +1520,11 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
         "d",
         expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'Analyzer') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'Analyzer') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'ANALYZER') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'ANALYZER') RETURN d",
+        expected);
 
     // invalid 2nd argument
     assertFilterFail(
@@ -1495,16 +1578,20 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER exists(d.obj.name, 'numeric') RETURN d", expected);
+        "FOR d IN myView FILTER exists(d.obj.name, 'numeric') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER eXists(d.obj.name, 'numeric') RETURN d", expected);
+        "FOR d IN myView FILTER eXists(d.obj.name, 'numeric') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER eXists(d.obj.name, 'Numeric') RETURN d", expected);
+        "FOR d IN myView FILTER eXists(d.obj.name, 'Numeric') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER eXists(d.obj.name, 'NUMERIC') RETURN d", expected);
+        "FOR d IN myView FILTER eXists(d.obj.name, 'NUMERIC') RETURN d",
+        expected);
 
     // invalid argument
     assertFilterFail(
@@ -1557,13 +1644,17 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'bool') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'bool') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'bool') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'bool') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'Bool') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'Bool') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'BOOL') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'BOOL') RETURN d",
+        expected);
 
     // invalid 2nd argument
     assertFilterFail(
@@ -1585,18 +1676,22 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'boolean') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'boolean') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'boolean') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'boolean') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER analyzer(eXists(d.name, 'boolean'), "
         "'test_analyzer') RETURN d",
         expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'Boolean') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'Boolean') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'BOOLEAN') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'BOOLEAN') RETURN d",
+        expected);
 
     // invalid 2nd argument
     assertFilterFail(
@@ -1650,13 +1745,17 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER exists(d.name, 'null') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'null') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'null') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'null') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'Null') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'Null') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'NULL') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'NULL') RETURN d",
+        expected);
 
     // invalid 2nd argument
     assertFilterFail(
@@ -1705,14 +1804,17 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   // field + type + invalid expression
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("type", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
+    ctx.vars.emplace(
+        "type", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
 
     assertFilterExecutionFail(
         vocbase(),
-        "LET type=null FOR d IN myView FILTER exists(d.name, type) RETURN d", &ctx);
+        "LET type=null FOR d IN myView FILTER exists(d.name, type) RETURN d",
+        &ctx);
     assertFilterExecutionFail(
         vocbase(),
-        "LET type=null FOR d IN myView FILTER eXists(d.name, type) RETURN d", &ctx);
+        "LET type=null FOR d IN myView FILTER eXists(d.name, type) RETURN d",
+        &ctx);
   }
 
   // invalid 2nd argument
@@ -1743,7 +1845,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
         "'identity') RETURN d",
         expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'analyzer') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'analyzer') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER eXists(d.name, 'analyzer', 'identity') RETURN "
@@ -1993,7 +2096,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
         "'identity') RETURN d",
         expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'analyzer') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'analyzer') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER eXists(d.name, 'analyzer', 'identity') RETURN "
@@ -2040,13 +2144,17 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
 
     // implicit (by default)
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER phrase(d.name, 'quick') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER phrase(d.name, 'quick') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER phrase(d['name'], 'quick') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER phrase(d['name'], 'quick') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER phRase(d.name, 'quick') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER phRase(d.name, 'quick') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER phRase(d['name'], 'quick') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER phRase(d['name'], 'quick') RETURN d",
+        expected);
 
     // explicit
     assertFilterSuccess(
@@ -2073,7 +2181,8 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     // overridden
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER phrase(d.name, 'quick', 'identity') RETURN d", expected);
+        "FOR d IN myView FILTER phrase(d.name, 'quick', 'identity') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER phrase(d['name'], 'quick', 'identity') RETURN "
@@ -2081,7 +2190,8 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
         expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER phRase(d.name, 'quick', 'identity') RETURN d", expected);
+        "FOR d IN myView FILTER phRase(d.name, 'quick', 'identity') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER phRase(d['name'], 'quick', 'identity') RETURN "
@@ -2284,12 +2394,16 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   // dynamic complex attribute field
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
@@ -2326,10 +2440,13 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -2350,12 +2467,17 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace(
+        "a", arangodb::aql::AqlValue(
+                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -2376,12 +2498,17 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
+                         false}));  // invalid value type
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -2565,8 +2692,8 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("value", arangodb::aql::AqlValue("qui"));
-    ctx.vars.emplace("analyzer",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));
+    ctx.vars.emplace("analyzer", arangodb::aql::AqlValue(
+                                     arangodb::aql::AqlValueHintBool{false}));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -3732,7 +3859,8 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
         irs::ref_cast<irs::byte_type>(irs::string_ref("s"));
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace("offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace(
+        "offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
     ctx.vars.emplace("input", arangodb::aql::AqlValue("bro"));
 
     assertFilterSuccess(
@@ -3927,7 +4055,8 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
         irs::ref_cast<irs::byte_type>(irs::string_ref("s"));
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace("offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace(
+        "offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
     ctx.vars.emplace("input", arangodb::aql::AqlValue("bro"));
 
     // implicit zero offsets
@@ -3982,14 +4111,16 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     {
       auto& part = opts->push_back<irs::by_prefix_options>();
       part.term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
-      part.scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      part.scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
     opts->push_back<irs::by_term_options>().term =
         irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
     {
       auto& part = opts->push_back<irs::by_wildcard_options>(3);
       part.term = irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
-      part.scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      part.scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
     opts->push_back<irs::by_term_options>().term =
         irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
@@ -3999,7 +4130,8 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
       part.range.min_type = irs::BoundType::EXCLUSIVE;
       part.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("p"));
       part.range.max_type = irs::BoundType::EXCLUSIVE;
-      part.scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+      part.scored_terms_limit =
+          arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
     }
     opts->push_back<irs::by_term_options>().term =
         irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
@@ -4034,7 +4166,8 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
         irs::ref_cast<irs::byte_type>(irs::string_ref("s"));
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace("offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace(
+        "offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
     ctx.vars.emplace("input_st", arangodb::aql::AqlValue("q"));
     ctx.vars.emplace("input_pt", arangodb::aql::AqlValue("c"));
     ctx.vars.emplace("input_wt", arangodb::aql::AqlValue("b"));
@@ -4055,7 +4188,8 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
         "RETURN d",
         expected, &ctx);
 
-    // TERM, STARTS_WITH, WILDCARD, LEVENSHTEIN_MATCH, TERMS, IN_RANGE with variables
+    // TERM, STARTS_WITH, WILDCARD, LEVENSHTEIN_MATCH, TERMS, IN_RANGE with
+    // variables
     assertFilterSuccess(
         vocbase(),
         "LET offset=2 LET input_st='q' LET input_pt='c' LET input_wt='b' LET "
@@ -4690,7 +4824,8 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   // quick <...> <...> <...> brown <...> <...> fox jumps
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace(
+        "offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
     ctx.vars.emplace("input", arangodb::aql::AqlValue("bro"));
 
     assertFilterExecutionFail(
@@ -5281,31 +5416,37 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     *prefix.mutable_field() = mangleStringIdentity("name");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d['name'], 'abc') RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d['name'], 'abc') RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER starts_with(d.name, 'abc') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER starts_with(d.name, 'abc') RETURN d",
+        expected);
   }
 
   // without scoring limit via []
   {
     irs::Or expected;
     auto& orFilter = expected.add<irs::Or>();
-    orFilter.min_match_count(arangodb::iresearch::FilterConstants::DefaultStartsWithMinMatchCount);
+    orFilter.min_match_count(
+        arangodb::iresearch::FilterConstants::DefaultStartsWithMinMatchCount);
     auto& prefix0 = orFilter.add<irs::by_prefix>();
     *prefix0.mutable_field() = mangleStringIdentity("name");
     auto* opt0 = prefix0.mutable_options();
     opt0->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt0->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt0->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     auto& prefix1 = orFilter.add<irs::by_prefix>();
     *prefix1.mutable_field() = mangleStringIdentity("name");
     auto* opt1 = prefix1.mutable_options();
     opt1->term = irs::ref_cast<irs::byte_type>(irs::string_ref("def"));
-    opt1->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt1->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN myView FILTER starts_with(d['name'], ['abc', "
@@ -5313,25 +5454,31 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
                         expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d.name, ['abc', 'def']) RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d.name, ['abc', 'def']) RETURN d",
+        expected);
   }
 
   // dynamic complex attribute field
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
     *prefix.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -5345,10 +5492,13 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
   // invalid dynamic attribute name
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -5362,12 +5512,17 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace(
+        "a", arangodb::aql::AqlValue(
+                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -5381,12 +5536,17 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
   // invalid dynamic attribute name (bool value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{
+                         false}));  // invalid value type
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -5404,14 +5564,17 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     *prefix.mutable_field() = mangleStringIdentity("name[1]");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d['name'][1], 'abc') RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d['name'][1], 'abc') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d.name[1], 'abc') RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d.name[1], 'abc') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER analyzer(starts_with(d.name[1], 'abc'), "
@@ -5426,7 +5589,8 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     *prefix.mutable_field() = mangleStringIdentity("obj.properties.name");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -5463,7 +5627,8 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
         mangleStringIdentity("obj[400].properties[3].name");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -5495,7 +5660,8 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
         mangleString("obj[400].properties[3].name", "test_analyzer");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -5534,7 +5700,8 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
         mangleStringIdentity("obj[400].properties[3].name");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -5562,27 +5729,31 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
         expected, &ctx);
   }
 
-  // without scoring limit, complex name with offset, prefix as an expression via []
+  // without scoring limit, complex name with offset, prefix as an expression
+  // via []
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("prefix", arangodb::aql::AqlValue("ab"));
 
     irs::Or expected;
     auto& orFilter = expected.add<irs::Or>();
-    orFilter.min_match_count(arangodb::iresearch::FilterConstants::DefaultStartsWithMinMatchCount);
+    orFilter.min_match_count(
+        arangodb::iresearch::FilterConstants::DefaultStartsWithMinMatchCount);
     auto& prefix0 = orFilter.add<irs::by_prefix>();
     *prefix0.mutable_field() =
         mangleStringIdentity("obj[400].properties[3].name");
     auto* opt0 = prefix0.mutable_options();
     opt0->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt0->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt0->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     auto& prefix1 = orFilter.add<irs::by_prefix>();
     *prefix1.mutable_field() =
         mangleStringIdentity("obj[400].properties[3].name");
     auto* opt1 = prefix1.mutable_options();
     opt1->term = irs::ref_cast<irs::byte_type>(irs::string_ref("def"));
-    opt1->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt1->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -5610,11 +5781,12 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
                         expected, &ctx);
   }
 
-  // without scoring limit, complex name with offset, prefix as an expression of invalid type
+  // without scoring limit, complex name with offset, prefix as an expression of
+  // invalid type
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("prefix",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(false)));
+    ctx.vars.emplace("prefix", arangodb::aql::AqlValue(
+                                   arangodb::aql::AqlValueHintBool(false)));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -5638,11 +5810,12 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
         &ctx);
   }
 
-  // without scoring limit, complex name with offset, prefix as an expression of invalid type via []
+  // without scoring limit, complex name with offset, prefix as an expression of
+  // invalid type via []
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("prefix",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(false)));
+    ctx.vars.emplace("prefix", arangodb::aql::AqlValue(
+                                   arangodb::aql::AqlValueHintBool(false)));
 
     assertFilterExecutionFail(vocbase(),
                               "LET prefix=false FOR d IN myView FILTER "
@@ -5670,12 +5843,15 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
   {
     irs::Or expected;
     auto& orFilter = expected.add<irs::Or>();
-    orFilter.min_match_count(arangodb::iresearch::FilterConstants::DefaultStartsWithMinMatchCount);
+    orFilter.min_match_count(
+        arangodb::iresearch::FilterConstants::DefaultStartsWithMinMatchCount);
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER starts_with(d['name'], []) RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER starts_with(d['name'], []) RETURN d",
+        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER starts_with(d.name, []) RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER starts_with(d.name, []) RETURN d",
+        expected);
   }
 
   // with scoring limit (int)
@@ -5689,10 +5865,12 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d['name'], 'abc', 1024) RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d['name'], 'abc', 1024) RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d.name, 'abc', 1024) RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d.name, 'abc', 1024) RETURN d",
+        expected);
   }
 
   // with min match count (int) via[]
@@ -5704,14 +5882,17 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     *prefix.mutable_field() = mangleStringIdentity("name");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d['name'], ['abc'], 2) RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d['name'], ['abc'], 2) RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d.name, ['abc'], 2) RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d.name, ['abc'], 2) RETURN d",
+        expected);
   }
 
   // with scoring limit with min match count (int) via[]
@@ -5731,7 +5912,8 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
                         expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d.name, ['abc'], 2, 1024) RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d.name, ['abc'], 2, 1024) RETURN d",
+        expected);
   }
 
   // with scoring limit (double)
@@ -5745,10 +5927,12 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d['name'], 'abc', 100.5) RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d['name'], 'abc', 100.5) RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d.name, 'abc', 100.5) RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d.name, 'abc', 100.5) RETURN d",
+        expected);
   }
 
   // with min match count (double) via[]
@@ -5760,14 +5944,17 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     *prefix.mutable_field() = mangleStringIdentity("name");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d['name'], ['abc'], 2.5) RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d['name'], ['abc'], 2.5) RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d.name, ['abc'], 2.5) RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d.name, ['abc'], 2.5) RETURN d",
+        expected);
   }
 
   // with scoring limit with min match count (double) via[]
@@ -5837,12 +6024,13 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
                         expected);
   }
 
-  // without scoring limit, complex name with offset, scoringLimit as an expression
+  // without scoring limit, complex name with offset, scoringLimit as an
+  // expression
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("prefix", arangodb::aql::AqlValue("ab"));
-    ctx.vars.emplace("scoringLimit",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(5)));
+    ctx.vars.emplace("scoringLimit", arangodb::aql::AqlValue(
+                                         arangodb::aql::AqlValueHintInt(5)));
 
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
@@ -5878,12 +6066,13 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
         expected, &ctx);
   }
 
-  // without scoring limit, complex name with offset, scoringLimit as an expression
+  // without scoring limit, complex name with offset, scoringLimit as an
+  // expression
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("prefix", arangodb::aql::AqlValue("ab"));
-    ctx.vars.emplace("scoringLimit",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(5)));
+    ctx.vars.emplace("scoringLimit", arangodb::aql::AqlValue(
+                                         arangodb::aql::AqlValueHintInt(5)));
 
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
@@ -5919,13 +6108,14 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
         expected, &ctx);
   }
 
-  // without scoring limit, complex name with offset, scoringLimit as an expression, analyzer
+  // without scoring limit, complex name with offset, scoringLimit as an
+  // expression, analyzer
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("prefix", arangodb::aql::AqlValue("ab"));
     ctx.vars.emplace("analyzer", arangodb::aql::AqlValue("analyzer"));
-    ctx.vars.emplace("scoringLimit",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(5)));
+    ctx.vars.emplace("scoringLimit", arangodb::aql::AqlValue(
+                                         arangodb::aql::AqlValueHintInt(5)));
 
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
@@ -5967,7 +6157,8 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
         expected, &ctx);
   }
 
-  // without scoring limit, complex name with offset, scoringLimit as an expression of invalid type
+  // without scoring limit, complex name with offset, scoringLimit as an
+  // expression of invalid type
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("prefix", arangodb::aql::AqlValue("ab"));
@@ -6015,14 +6206,15 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
                         expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER starts_with(d.name, ['abc'], 1, 1024) RETURN d", expected);
+        "FOR d IN myView FILTER starts_with(d.name, ['abc'], 1, 1024) RETURN d",
+        expected);
   }
 
   // with min match count as an expression via[]
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("minMatchCount",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(5)));
+    ctx.vars.emplace("minMatchCount", arangodb::aql::AqlValue(
+                                          arangodb::aql::AqlValueHintInt(5)));
 
     irs::Or expected;
     auto& orFilter = expected.add<irs::Or>();
@@ -6031,7 +6223,8 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     *prefix.mutable_field() = mangleStringIdentity("name");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -6106,7 +6299,8 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
       vocbase(),
       "FOR d IN myView FILTER starts_with(d.name, 'abc', null) RETURN d");
   assertFilterExecutionFail(
-      vocbase(), "FOR d IN myView FILTER starts_with(d.name, 'abc', d) RETURN d",
+      vocbase(),
+      "FOR d IN myView FILTER starts_with(d.name, 'abc', d) RETURN d",
       &ExpressionContextMock::EMPTY);
 
   // invalid min match count
@@ -6176,16 +6370,21 @@ TEST_F(IResearchFilterFunctionTest, wildcard) {
     *wildcard.mutable_field() = mangleStringIdentity("name");
     auto* opt = wildcard.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER d.name LIKE 'foo' RETURN d", expected);
+                        "FOR d IN myView FILTER d.name LIKE 'foo' RETURN d",
+                        expected);
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER LIKE(d['name'], 'foo') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER LIKE(d['name'], 'foo') RETURN d",
+        expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER LIKE(d.name, 'foo') RETURN d", expected);
+                        "FOR d IN myView FILTER LIKE(d.name, 'foo') RETURN d",
+                        expected);
     assertFilterSuccess(vocbase(),
-                        "FOR d IN myView FILTER LIKE(d.name, 'foo') RETURN d", expected);
+                        "FOR d IN myView FILTER LIKE(d.name, 'foo') RETURN d",
+                        expected);
   }
 
   // ANALYZER(d.name.foo LIKE 'foo%', 'test_analyzer')
@@ -6195,7 +6394,8 @@ TEST_F(IResearchFilterFunctionTest, wildcard) {
     *wildcard.mutable_field() = mangleString("name.foo", "test_analyzer");
     auto* opt = wildcard.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo%"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x",
@@ -6231,10 +6431,12 @@ TEST_F(IResearchFilterFunctionTest, wildcard) {
     wildcard.boost(0.5f);
     auto* opt = wildcard.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("_foo%"));
-    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    opt->scored_terms_limit =
+        arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4}));
+    ctx.vars.emplace(
+        "x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4}));
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN myView FILTER BOOST(ANALYZER(d.name[4] LIKE "
@@ -6257,7 +6459,8 @@ TEST_F(IResearchFilterFunctionTest, wildcard) {
   }
 
   // invalid attribute access
-  assertFilterFail(vocbase(), "FOR d IN myView FILTER [d] LIKE '_foo%' RETURN d",
+  assertFilterFail(vocbase(),
+                   "FOR d IN myView FILTER [d] LIKE '_foo%' RETURN d",
                    &ExpressionContextMock::EMPTY);
   assertFilterFail(vocbase(),
                    "FOR d IN myView FILTER d[*] LIKE '_foo%' RETURN d",
@@ -6322,11 +6525,13 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
     opts->max_distance = 1;
     opts->with_transpositions = true;
     opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
-    opts->max_terms = arangodb::iresearch::FilterConstants::DefaultLevenshteinTermsLimit;
+    opts->max_terms =
+        arangodb::iresearch::FilterConstants::DefaultLevenshteinTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.name, 'foo', 1) RETURN d", expected);
+        "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.name, 'foo', 1) RETURN d",
+        expected);
     assertFilterSuccess(vocbase(),
                         "FOR d IN myView FILTER LEVENSHTEIN_match(d['name'], "
                         "'foo', 1) RETURN d",
@@ -6429,15 +6634,18 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
     opts->max_distance = 0;
     opts->with_transpositions = true;
     opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("fooo"));
-    opts->max_terms = arangodb::iresearch::FilterConstants::DefaultLevenshteinTermsLimit;
+    opts->max_terms =
+        arangodb::iresearch::FilterConstants::DefaultLevenshteinTermsLimit;
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x",
                      arangodb::aql::AqlValue(arangodb::aql::AqlValue{"foo"}));
-    ctx.vars.emplace("y", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"o"}));
-    ctx.vars.emplace("dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{1}));
-    ctx.vars.emplace("transp",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{true}));
+    ctx.vars.emplace("y",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"o"}));
+    ctx.vars.emplace(
+        "dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{1}));
+    ctx.vars.emplace("transp", arangodb::aql::AqlValue(
+                                   arangodb::aql::AqlValueHintBool{true}));
 
     assertFilterSuccess(
         vocbase(),
@@ -6468,7 +6676,8 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
         expected, &ctx);
   }
 
-  // BOOST(ANALYZER(LEVENSHTEIN_DISTANCE(d.name[4], 'fooo', 2, false), 'test_analyzer'), 0.5)
+  // BOOST(ANALYZER(LEVENSHTEIN_DISTANCE(d.name[4], 'fooo', 2, false),
+  // 'test_analyzer'), 0.5)
   {
     irs::Or expected;
     auto& filter = expected.add<irs::by_edit_distance>();
@@ -6478,14 +6687,18 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
     opts->max_distance = 2;
     opts->with_transpositions = false;
     opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("fooo"));
-    opts->max_terms = arangodb::iresearch::FilterConstants::DefaultLevenshteinTermsLimit;
+    opts->max_terms =
+        arangodb::iresearch::FilterConstants::DefaultLevenshteinTermsLimit;
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4}));
-    ctx.vars.emplace("y", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"o"}));
-    ctx.vars.emplace("dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{1}));
-    ctx.vars.emplace("transp",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));
+    ctx.vars.emplace(
+        "x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4}));
+    ctx.vars.emplace("y",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"o"}));
+    ctx.vars.emplace(
+        "dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{1}));
+    ctx.vars.emplace("transp", arangodb::aql::AqlValue(
+                                   arangodb::aql::AqlValueHintBool{false}));
 
     assertFilterSuccess(
         vocbase(),
@@ -6510,7 +6723,8 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
         expected, &ctx);
   }
 
-  // BOOST(ANALYZER(LEVENSHTEIN_DISTANCE(d.name[4], 'fooo', 2, false, 0), 'test_analyzer'), 0.5)
+  // BOOST(ANALYZER(LEVENSHTEIN_DISTANCE(d.name[4], 'fooo', 2, false, 0),
+  // 'test_analyzer'), 0.5)
   {
     irs::Or expected;
     auto& filter = expected.add<irs::by_edit_distance>();
@@ -6523,11 +6737,14 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
     opts->max_terms = 0;
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4}));
-    ctx.vars.emplace("y", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"o"}));
-    ctx.vars.emplace("dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{1}));
-    ctx.vars.emplace("transp",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));
+    ctx.vars.emplace(
+        "x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4}));
+    ctx.vars.emplace("y",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"o"}));
+    ctx.vars.emplace(
+        "dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{1}));
+    ctx.vars.emplace("transp", arangodb::aql::AqlValue(
+                                   arangodb::aql::AqlValueHintBool{false}));
 
     assertFilterSuccess(
         vocbase(),
@@ -6643,7 +6860,8 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
                    &ExpressionContextMock::EMPTY);
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{-1}));
+    ctx.vars.emplace(
+        "x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{-1}));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -6781,7 +6999,8 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
         expected);
   }
 
-  // ANALYZER(BOOST(d.name > 'a' && d.name <= 'z', 1.5), "testVocbase::test_analyzer")
+  // ANALYZER(BOOST(d.name > 'a' && d.name <= 'z', 1.5),
+  // "testVocbase::test_analyzer")
   {
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
@@ -6808,12 +7027,16 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
   // dynamic complex attribute field
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace("a",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
@@ -6845,12 +7068,17 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
   // invalid dynamic attribute name (null value)
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));  // invalid value type
-    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
-    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintInt{4})));
-    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(
-                                      arangodb::aql::AqlValueHintDouble{5.6})));
+    ctx.vars.emplace(
+        "a", arangodb::aql::AqlValue(
+                 arangodb::aql::AqlValueHintNull{}));  // invalid value type
+    ctx.vars.emplace("c",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue(
+                         arangodb::aql::AqlValueHintDouble{5.6})));
 
     assertFilterExecutionFail(
         vocbase(),
@@ -6864,7 +7092,8 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
   // boolean expression in range, boost
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace(
+        "numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
 
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
@@ -6898,7 +7127,8 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
   // null expression in range, boost
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
+    ctx.vars.emplace(
+        "nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
 
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
@@ -6939,7 +7169,8 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
     maxTerm.reset(40.);
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace(
+        "numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
 
     irs::Or expected;
     auto& range = expected.add<irs::by_granular_range>();
@@ -7106,10 +7337,12 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     opts->ngrams.push_back(std::move(ngram));
 
     assertFilterSuccess(
-        vocbase(), "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'foo') RETURN d", expected);
+        vocbase(), "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'foo') RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER NGRAM_match(d['name'], 'foo') RETURN d", expected);
+        "FOR d IN myView FILTER NGRAM_match(d['name'], 'foo') RETURN d",
+        expected);
   }
 
   // NGRAM_MATCH with default analyzer default threshold value by var
@@ -7171,17 +7404,19 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
 
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'foo', 0.8) RETURN d", expected);
+        "FOR d IN myView FILTER NGRAM_MATCH(d.name, 'foo', 0.8) RETURN d",
+        expected);
     assertFilterSuccess(
         vocbase(),
-        "FOR d IN myView FILTER NGRAM_match(d['name'], 'foo', 0.8) RETURN d", expected);
+        "FOR d IN myView FILTER NGRAM_match(d['name'], 'foo', 0.8) RETURN d",
+        expected);
   }
 
   // NGRAM_MATCH with default analyzer explicit threshold via variable
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("numVal",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(0.8)));
+    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(
+                                   arangodb::aql::AqlValueHintDouble(0.8)));
 
     irs::Or expected;
     auto& filter = expected.add<irs::by_ngram_similarity>();
@@ -7214,8 +7449,10 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
 
     ExpressionContextMock ctx;
-    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.5}));
-    ctx.vars.emplace("y", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"o"}));
+    ctx.vars.emplace(
+        "x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.5}));
+    ctx.vars.emplace("y",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValue{"o"}));
     ctx.vars.emplace("idx", arangodb::aql::AqlValue("foo"));
 
     assertFilterSuccess(

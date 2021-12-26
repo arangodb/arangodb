@@ -87,9 +87,11 @@ struct Function {
   };
 
   /// @brief helper for building flags
-  template <typename... Args>
-  static inline std::underlying_type<Flags>::type makeFlags(Flags flag, Args... args) noexcept {
-    return static_cast<std::underlying_type<Flags>::type>(flag) | makeFlags(args...);
+  template<typename... Args>
+  static inline std::underlying_type<Flags>::type makeFlags(
+      Flags flag, Args... args) noexcept {
+    return static_cast<std::underlying_type<Flags>::type>(flag) |
+           makeFlags(args...);
   }
 
   static std::underlying_type<Flags>::type makeFlags() noexcept;
@@ -98,7 +100,8 @@ struct Function {
 
   /// @brief create the function
   Function(std::string const& name, char const* arguments,
-           std::underlying_type<Flags>::type flags, FunctionImplementation implementation);
+           std::underlying_type<Flags>::type flags,
+           FunctionImplementation implementation);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   Function(std::string const& name, FunctionImplementation implementation);

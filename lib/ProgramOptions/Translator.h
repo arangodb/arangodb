@@ -29,6 +29,7 @@
 namespace arangodb {
 namespace options {
 void DefineEnvironment(std::string const& keyValue);
-std::string EnvironmentTranslator(std::string const& value, char const* binaryPath);
+std::string EnvironmentTranslator(std::string const& value,
+                                  char const* binaryPath);
 }  // namespace options
 }  // namespace arangodb

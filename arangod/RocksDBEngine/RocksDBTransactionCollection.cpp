@@ -42,9 +42,8 @@
 
 using namespace arangodb;
 
-RocksDBTransactionCollection::RocksDBTransactionCollection(TransactionState* trx,
-                                                           DataSourceId cid,
-                                                           AccessMode::Type accessType)
+RocksDBTransactionCollection::RocksDBTransactionCollection(
+    TransactionState* trx, DataSourceId cid, AccessMode::Type accessType)
     : TransactionCollection(trx, cid, accessType),
       _initialNumberDocuments(0),
       _revision(0),
@@ -52,9 +51,10 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(TransactionState* trx
       _numUpdates(0),
       _numRemoves(0),
       _usageLocked(false),
-      _exclusiveWrites(
-          trx->vocbase().server().getFeature<arangodb::RocksDBOptionFeature>()._exclusiveWrites) {
-}
+      _exclusiveWrites(trx->vocbase()
+                           .server()
+                           .getFeature<arangodb::RocksDBOptionFeature>()
+                           ._exclusiveWrites) {}
 
 RocksDBTransactionCollection::~RocksDBTransactionCollection() = default;
 
@@ -63,7 +63,8 @@ bool RocksDBTransactionCollection::hasOperations() const {
   return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
 }
 
-bool RocksDBTransactionCollection::canAccess(AccessMode::Type accessType) const {
+bool RocksDBTransactionCollection::canAccess(
+    AccessMode::Type accessType) const {
   if (!_collection) {
     return false;  // not opened. probably a mistake made by the caller
   }
@@ -146,8 +147,8 @@ void RocksDBTransactionCollection::releaseUsage() {
 }
 
 /// @brief add an operation for a transaction collection
-void RocksDBTransactionCollection::addOperation(TRI_voc_document_operation_e operationType,
-                                                RevisionId revisionId) {
+void RocksDBTransactionCollection::addOperation(
+    TRI_voc_document_operation_e operationType, RevisionId revisionId) {
   switch (operationType) {
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
       break;
@@ -167,14 +168,17 @@ void RocksDBTransactionCollection::addOperation(TRI_voc_document_operation_e ope
   }
 }
 
-rocksdb::SequenceNumber RocksDBTransactionCollection::prepareTransaction(TransactionId trxId) {
+rocksdb::SequenceNumber RocksDBTransactionCollection::prepareTransaction(
+    TransactionId trxId) {
   TRI_ASSERT(_collection != nullptr);
-  if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
+  if (hasOperations() || !_trackedOperations.empty() ||
+      !_trackedIndexOperations.empty()) {
     TRI_IF_FAILURE("TransactionChaos::randomSleep") {
       std::this_thread::sleep_for(
           std::chrono::milliseconds(RandomGenerator::interval(uint32_t(5))));
     }
-    auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
+    auto* coll =
+        static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
     rocksdb::SequenceNumber seq = coll->placeRevisionTreeBlocker(trxId);
     return seq;
   }
@@ -184,13 +188,16 @@ rocksdb::SequenceNumber RocksDBTransactionCollection::prepareTransaction(Transac
 
 void RocksDBTransactionCollection::abortCommit(TransactionId trxId) {
   TRI_ASSERT(_collection != nullptr);
-  if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
-    auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
+  if (hasOperations() || !_trackedOperations.empty() ||
+      !_trackedIndexOperations.empty()) {
+    auto* coll =
+        static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
     coll->meta().removeBlocker(trxId);
   }
 }
 
-void RocksDBTransactionCollection::commitCounts(TransactionId trxId, uint64_t commitSeq) {
+void RocksDBTransactionCollection::commitCounts(TransactionId trxId,
+                                                uint64_t commitSeq) {
   TRI_IF_FAILURE("DisableCommitCounts") { return; }
   TRI_ASSERT(_collection != nullptr);
   auto* rcoll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
@@ -233,7 +240,8 @@ void RocksDBTransactionCollection::commitCounts(TransactionId trxId, uint64_t co
     }
   }
 
-  if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
+  if (hasOperations() || !_trackedOperations.empty() ||
+      !_trackedIndexOperations.empty()) {
     rcoll->removeRevisionTreeBlocker(trxId);
   }
 
@@ -251,7 +259,8 @@ void RocksDBTransactionCollection::trackInsert(RevisionId rid) {
         !_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
       _trackedOperations.inserts.reserve(8);
     }
-    _trackedOperations.inserts.emplace_back(static_cast<std::uint64_t>(rid.id()));
+    _trackedOperations.inserts.emplace_back(
+        static_cast<std::uint64_t>(rid.id()));
   }
 }
 
@@ -261,15 +270,18 @@ void RocksDBTransactionCollection::trackRemove(RevisionId rid) {
         !_transaction->hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
       _trackedOperations.removals.reserve(8);
     }
-    _trackedOperations.removals.emplace_back(static_cast<std::uint64_t>(rid.id()));
+    _trackedOperations.removals.emplace_back(
+        static_cast<std::uint64_t>(rid.id()));
   }
 }
 
-void RocksDBTransactionCollection::trackIndexInsert(IndexId iid, uint64_t hash) {
+void RocksDBTransactionCollection::trackIndexInsert(IndexId iid,
+                                                    uint64_t hash) {
   _trackedIndexOperations[iid].inserts.emplace_back(hash);
 }
 
-void RocksDBTransactionCollection::trackIndexRemove(IndexId iid, uint64_t hash) {
+void RocksDBTransactionCollection::trackIndexRemove(IndexId iid,
+                                                    uint64_t hash) {
   _trackedIndexOperations[iid].removals.emplace_back(hash);
 }
 
@@ -296,13 +308,15 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(!isLocked());
 
-  auto* physical = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
+  auto* physical =
+      static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
   double const timeout = _transaction->lockTimeout();
 
   Result res;
-  LOG_TRX("f1246", TRACE, _transaction) << "write-locking collection " << _cid.id();
+  LOG_TRX("f1246", TRACE, _transaction)
+      << "write-locking collection " << _cid.id();
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be acquiring the collection's RW lock in
     // write mode
@@ -323,8 +337,9 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
     TRI_ASSERT(actor != nullptr);
     std::string message = "timed out after " + std::to_string(timeout) +
                           " s waiting for " + AccessMode::typeString(type) +
-                          "-lock on collection " + _transaction->vocbase().name() +
-                          "/" + _collection->name() + " on " + actor;
+                          "-lock on collection " +
+                          _transaction->vocbase().name() + "/" +
+                          _collection->name() + " on " + actor;
     LOG_TOPIC("4512c", WARN, Logger::QUERIES) << message;
     res.reset(TRI_ERROR_LOCK_TIMEOUT, std::move(message));
 
@@ -346,7 +361,8 @@ Result RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
     type = AccessMode::Type::EXCLUSIVE;
   }
 
-  if (!AccessMode::isWriteOrExclusive(type) || !AccessMode::isWriteOrExclusive(_lockType)) {
+  if (!AccessMode::isWriteOrExclusive(type) ||
+      !AccessMode::isWriteOrExclusive(_lockType)) {
     _lockType = AccessMode::Type::NONE;
     return {};
   }
@@ -359,11 +375,13 @@ Result RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(isLocked());
 
-  if (!AccessMode::isWriteOrExclusive(type) && AccessMode::isWriteOrExclusive(_lockType)) {
+  if (!AccessMode::isWriteOrExclusive(type) &&
+      AccessMode::isWriteOrExclusive(_lockType)) {
     // do not remove a write-lock if a read-unlock was requested!
     return {};
   }
-  if (AccessMode::isWriteOrExclusive(type) && !AccessMode::isWriteOrExclusive(_lockType)) {
+  if (AccessMode::isWriteOrExclusive(type) &&
+      !AccessMode::isWriteOrExclusive(_lockType)) {
     // we should never try to write-unlock a collection that we have only
     // read-locked
     LOG_TOPIC("2b651", ERR, arangodb::Logger::ENGINES)
@@ -374,10 +392,12 @@ Result RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
 
   TRI_ASSERT(_collection);
 
-  auto* physical = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
+  auto* physical =
+      static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
-  LOG_TRX("372c0", TRACE, _transaction) << "write-unlocking collection " << _cid.id();
+  LOG_TRX("372c0", TRACE, _transaction)
+      << "write-unlocking collection " << _cid.id();
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be releasing the collection's RW lock in
     // write mode
@@ -404,14 +424,16 @@ Result RocksDBTransactionCollection::ensureCollection() {
 #ifdef USE_ENTERPRISE
       // we don't need to check the permissions of collections that we only
       // read from if skipInaccessible is set
-      bool checkPermissions = AccessMode::isWriteOrExclusive(_accessType) ||
-                              !_transaction->options().skipInaccessibleCollections;
+      bool checkPermissions =
+          AccessMode::isWriteOrExclusive(_accessType) ||
+          !_transaction->options().skipInaccessibleCollections;
 #else
       bool checkPermissions = true;
 #endif
       // will throw if collection does not exist
       try {
-        _collection = _transaction->vocbase().useCollection(_cid, checkPermissions);
+        _collection =
+            _transaction->vocbase().useCollection(_cid, checkPermissions);
       } catch (basics::Exception const& ex) {
         return {ex.code(), ex.what()};
       }

@@ -33,7 +33,8 @@ namespace algos {
 namespace accumulators {
 
 struct GraphFormat final : public graph_format {
-  explicit GraphFormat(application_features::ApplicationServer& server, std::string resultField,
+  explicit GraphFormat(application_features::ApplicationServer& server,
+                       std::string resultField,
                        AccumulatorsDeclaration globalAccumulatorDeclarations,
                        AccumulatorsDeclaration vertexAccumulatorDeclarations,
                        CustomAccumulatorDefinitions customDefinitions,
@@ -52,7 +53,8 @@ struct GraphFormat final : public graph_format {
   size_t estimatedEdgeSize() const override;
 
   void copyVertexData(arangodb::velocypack::Options const& vpackOptions,
-                      std::string const& documentId, arangodb::velocypack::Slice rawDocument,
+                      std::string const& documentId,
+                      arangodb::velocypack::Slice rawDocument,
                       ProgrammablePregelAlgorithm::vertex_type& targetPtr,
                       uint64_t& vertexIdRange) override;
 

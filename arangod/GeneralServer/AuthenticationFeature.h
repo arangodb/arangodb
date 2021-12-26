@@ -29,12 +29,14 @@
 
 namespace arangodb {
 
-class AuthenticationFeature final : public application_features::ApplicationFeature {
+class AuthenticationFeature final
+    : public application_features::ApplicationFeature {
  private:
   const size_t _maxSecretLength = 64;
 
  public:
-  explicit AuthenticationFeature(application_features::ApplicationServer& server);
+  explicit AuthenticationFeature(
+      application_features::ApplicationServer& server);
 
   static inline AuthenticationFeature* instance() { return INSTANCE; }
 

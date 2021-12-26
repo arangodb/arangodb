@@ -95,7 +95,8 @@ Projections::Projections(std::vector<arangodb::aql::AttributeNamePath> paths)
   init();
 }
 
-Projections::Projections(std::unordered_set<arangodb::aql::AttributeNamePath> const& paths)
+Projections::Projections(
+    std::unordered_set<arangodb::aql::AttributeNamePath> const& paths)
     : _supportsCoveringIndex(false) {
   _projections.reserve(paths.size());
   for (auto& path : paths) {
@@ -118,8 +119,9 @@ Projections::Projections(std::unordered_set<arangodb::aql::AttributeNamePath> co
 }
 
 /// @brief determine if there is covering support by indexes passed
-void Projections::determineIndexSupport(DataSourceId const& id,
-                                        std::vector<transaction::Methods::IndexHandle> const& indexes) {
+void Projections::determineIndexSupport(
+    DataSourceId const& id,
+    std::vector<transaction::Methods::IndexHandle> const& indexes) {
   _datasourceId = id;
 
   auto index = getIndex(indexes);
@@ -135,20 +137,21 @@ bool Projections::isSingle(std::string const& attribute) const noexcept {
   return _projections.size() == 1 && _projections[0].path[0] == attribute;
 }
 
-void Projections::toVelocyPackFromDocument(arangodb::velocypack::Builder& b,
-                                           arangodb::velocypack::Slice slice,
-                                           transaction::Methods const* trxPtr) const {
+void Projections::toVelocyPackFromDocument(
+    arangodb::velocypack::Builder& b, arangodb::velocypack::Slice slice,
+    transaction::Methods const* trxPtr) const {
   TRI_ASSERT(b.isOpenObject());
   TRI_ASSERT(slice.isObject());
 
-  // the single-attribute projections are easy. we dispatch here based on the attribute type
-  // there are a few optimized functions for retrieving _key, _id, _from and _to.
+  // the single-attribute projections are easy. we dispatch here based on the
+  // attribute type there are a few optimized functions for retrieving _key,
+  // _id, _from and _to.
   for (auto const& it : _projections) {
     if (it.type == AttributeNamePath::Type::IdAttribute) {
       // projection for "_id"
       TRI_ASSERT(it.path.size() == 1);
-      b.add(it.path[0],
-            VPackValue(transaction::helpers::extractIdString(trxPtr->resolver(), slice, slice)));
+      b.add(it.path[0], VPackValue(transaction::helpers::extractIdString(
+                            trxPtr->resolver(), slice, slice)));
     } else if (it.type == AttributeNamePath::Type::KeyAttribute) {
       // projection for "_key"
       TRI_ASSERT(it.path.size() == 1);
@@ -174,8 +177,9 @@ void Projections::toVelocyPackFromDocument(arangodb::velocypack::Builder& b,
       }
     } else {
       // projection for a sub-attribute, e.g. a.b.c
-      // this is a lot more complex, because we may need to open and close multiple
-      // sub-objects, e.g. a projection on the sub-attribute a.b.c needs to build
+      // this is a lot more complex, because we may need to open and close
+      // multiple sub-objects, e.g. a projection on the sub-attribute a.b.c
+      // needs to build
       //   { a: { b: { c: valueOfC } } }
       // when we get here it is guaranteed that there will be no projections for
       // sub-attributes with the same prefix, e.g. a.b.c and a.x.y. This would
@@ -220,9 +224,9 @@ void Projections::toVelocyPackFromDocument(arangodb::velocypack::Builder& b,
 }
 
 /// @brief projections from a covering index
-void Projections::toVelocyPackFromIndex(arangodb::velocypack::Builder& b,
-                                        arangodb::velocypack::Slice slice,
-                                        transaction::Methods const* trxPtr) const {
+void Projections::toVelocyPackFromIndex(
+    arangodb::velocypack::Builder& b, arangodb::velocypack::Slice slice,
+    transaction::Methods const* trxPtr) const {
   TRI_ASSERT(_supportsCoveringIndex);
   TRI_ASSERT(b.isOpenObject());
 
@@ -256,9 +260,8 @@ void Projections::toVelocyPackFromIndex(arangodb::velocypack::Builder& b,
       // contain simple string values, such as the primary index or the
       // edge index
       if (it.type == AttributeNamePath::Type::IdAttribute) {
-        b.add(it.path[0],
-              VPackValue(transaction::helpers::makeIdFromParts(trxPtr->resolver(),
-                                                               _datasourceId, slice)));
+        b.add(it.path[0], VPackValue(transaction::helpers::makeIdFromParts(
+                              trxPtr->resolver(), _datasourceId, slice)));
       } else {
         if (slice.isNone()) {
           slice = VPackSlice::nullSlice();
@@ -289,14 +292,16 @@ void Projections::toVelocyPack(arangodb::velocypack::Builder& b) const {
   b.close();
 }
 
-/*static*/ Projections Projections::fromVelocyPack(arangodb::velocypack::Slice slice) {
+/*static*/ Projections Projections::fromVelocyPack(
+    arangodb::velocypack::Slice slice) {
   std::vector<arangodb::aql::AttributeNamePath> projections;
 
   VPackSlice p = slice.get(::projectionsKey);
   if (p.isArray()) {
     for (auto const& it : arangodb::velocypack::ArrayIterator(p)) {
       if (it.isString()) {
-        projections.emplace_back(arangodb::aql::AttributeNamePath(it.copyString()));
+        projections.emplace_back(
+            arangodb::aql::AttributeNamePath(it.copyString()));
       } else if (it.isArray()) {
         arangodb::aql::AttributeNamePath path;
         for (auto const& it2 : arangodb::velocypack::ArrayIterator(it)) {
@@ -322,7 +327,8 @@ void Projections::init() {
     return;
   }
 
-  // sort projections by attribute path, so we have similar prefixes next to each other, e.g.
+  // sort projections by attribute path, so we have similar prefixes next to
+  // each other, e.g.
   //   a
   //   a.b
   //   a.b.c
@@ -330,8 +336,9 @@ void Projections::init() {
   //   b
   //   b.a
   //   ...
-  std::sort(_projections.begin(), _projections.end(),
-            [](auto const& lhs, auto const& rhs) { return lhs.path < rhs.path; });
+  std::sort(
+      _projections.begin(), _projections.end(),
+      [](auto const& lhs, auto const& rhs) { return lhs.path < rhs.path; });
 
   removeSharedPrefixes();
 

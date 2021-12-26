@@ -49,7 +49,8 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace {
-network::Headers buildHeaders(std::unordered_map<std::string, std::string> const& originalHeaders) {
+network::Headers buildHeaders(
+    std::unordered_map<std::string, std::string> const& originalHeaders) {
   auto auth = AuthenticationFeature::instance();
 
   network::Headers headers;
@@ -64,8 +65,9 @@ network::Headers buildHeaders(std::unordered_map<std::string, std::string> const
 }
 }  // namespace
 
-RestAdminLogHandler::RestAdminLogHandler(arangodb::application_features::ApplicationServer& server,
-                                         GeneralRequest* request, GeneralResponse* response)
+RestAdminLogHandler::RestAdminLogHandler(
+    arangodb::application_features::ApplicationServer& server,
+    GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 arangodb::Result RestAdminLogHandler::verifyPermitted() {
@@ -112,7 +114,8 @@ RestStatus RestAdminLogHandler::execute() {
     } else if (suffixes.size() == 1 && suffixes[0] == "level") {
       handleLogLevel();
     } else {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+      generateError(rest::ResponseCode::BAD,
+                    TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                     "superfluous suffix, expecting /_admin/log/entries");
     }
   } else {
@@ -129,7 +132,8 @@ void RestAdminLogHandler::clearLogs() {
 
 RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
   bool foundServerIdParameter;
-  std::string const& serverId = _request->value("serverId", foundServerIdParameter);
+  std::string const& serverId =
+      _request->value("serverId", foundServerIdParameter);
 
   if (ServerState::instance()->isCoordinator() && foundServerIdParameter) {
     if (serverId != ServerState::instance()->getId()) {
@@ -146,7 +150,8 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
       }
 
       if (!found) {
-        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
+        generateError(rest::ResponseCode::NOT_FOUND,
+                      TRI_ERROR_HTTP_BAD_PARAMETER,
                       std::string("unknown serverId supplied."));
         return RestStatus::DONE;
       }
@@ -162,10 +167,10 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
       options.database = _request->databaseName();
       options.parameters = _request->parameters();
 
-      auto f =
-          network::sendRequestRetry(pool, "server:" + serverId, fuerte::RestVerb::Get,
-                                    _request->requestPath(), VPackBuffer<uint8_t>{},
-                                    options, buildHeaders(_request->headers()));
+      auto f = network::sendRequestRetry(
+          pool, "server:" + serverId, fuerte::RestVerb::Get,
+          _request->requestPath(), VPackBuffer<uint8_t>{}, options,
+          buildHeaders(_request->headers()));
       return waitForFuture(std::move(f).thenValue(
           [self = std::dynamic_pointer_cast<RestAdminLogHandler>(
                shared_from_this())](network::Response const& r) {
@@ -181,10 +186,12 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
 
   // check the maximal log level to report
   bool found1;
-  std::string const& upto = StringUtils::tolower(_request->value("upto", found1));
+  std::string const& upto =
+      StringUtils::tolower(_request->value("upto", found1));
 
   bool found2;
-  std::string const& lvl = StringUtils::tolower(_request->value("level", found2));
+  std::string const& lvl =
+      StringUtils::tolower(_request->value("level", found2));
 
   LogLevel ul = LogLevel::INFO;
   bool useUpto = true;
@@ -250,7 +257,8 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
   std::string const& searchString = _request->value("search");
   // generate result
   std::vector<LogBuffer> entries =
-      server().getFeature<LogBufferFeature>().entries(ul, start, useUpto, searchString);
+      server().getFeature<LogBufferFeature>().entries(ul, start, useUpto,
+                                                      searchString);
 
   // check the sort direction
   std::string const& sortdir = StringUtils::tolower(_request->value("sort"));
@@ -286,10 +294,11 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
       result.openObject();
       result.add("id", VPackValue(buf._id));
       result.add("topic", VPackValue(LogTopic::lookup(buf._topicId)));
-      LogLevel lvl = (buf._level == LogLevel::DEFAULT ? LogLevel::INFO : buf._level);
+      LogLevel lvl =
+          (buf._level == LogLevel::DEFAULT ? LogLevel::INFO : buf._level);
       result.add("level", VPackValue(Logger::translateLogLevel(lvl)));
-      result.add("date", VPackValue(TRI_StringTimeStamp(buf._timestamp,
-                                                        Logger::getUseLocalTime())));
+      result.add("date", VPackValue(TRI_StringTimeStamp(
+                             buf._timestamp, Logger::getUseLocalTime())));
       result.add("message", VPackValue(buf._message));
       result.close();
     }
@@ -413,7 +422,8 @@ void RestAdminLogHandler::handleLogLevel() {
     builder.openObject();
     auto const& levels = Logger::logLevelTopics();
     for (auto const& level : levels) {
-      builder.add(level.first, VPackValue(Logger::translateLogLevel(level.second)));
+      builder.add(level.first,
+                  VPackValue(Logger::translateLogLevel(level.second)));
     }
     builder.close();
 
@@ -438,7 +448,8 @@ void RestAdminLogHandler::handleLogLevel() {
       // now process all log topics except "all"
       for (auto it : VPackObjectIterator(slice)) {
         if (it.value.isString() && !it.key.isEqualString(LogTopic::ALL)) {
-          std::string const l = it.key.copyString() + "=" + it.value.copyString();
+          std::string const l =
+              it.key.copyString() + "=" + it.value.copyString();
           Logger::setLogLevel(l);
         }
       }
@@ -449,13 +460,15 @@ void RestAdminLogHandler::handleLogLevel() {
     builder.openObject();
     auto const& levels = Logger::logLevelTopics();
     for (auto const& level : levels) {
-      builder.add(level.first, VPackValue(Logger::translateLogLevel(level.second)));
+      builder.add(level.first,
+                  VPackValue(Logger::translateLogLevel(level.second)));
     }
     builder.close();
 
     generateResult(rest::ResponseCode::OK, builder.slice());
   } else {
     // invalid method
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
 }

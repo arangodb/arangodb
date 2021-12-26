@@ -50,18 +50,21 @@ DECLARE_COUNTER(arangodb_agency_callback_registered_total,
 DECLARE_GAUGE(arangodb_agency_callback_number, uint64_t,
               "Current number of agency callbacks registered");
 
-AgencyCallbackRegistry::AgencyCallbackRegistry(application_features::ApplicationServer& server,
-                                               std::string const& callbackBasePath)
+AgencyCallbackRegistry::AgencyCallbackRegistry(
+    application_features::ApplicationServer& server,
+    std::string const& callbackBasePath)
     : _agency(server),
       _callbackBasePath(callbackBasePath),
-      _totalCallbacksRegistered(server.getFeature<arangodb::MetricsFeature>().add(
-          arangodb_agency_callback_registered_total{})),
+      _totalCallbacksRegistered(
+          server.getFeature<arangodb::MetricsFeature>().add(
+              arangodb_agency_callback_registered_total{})),
       _callbacksCount(server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_agency_callback_number{})) {}
 
 AgencyCallbackRegistry::~AgencyCallbackRegistry() = default;
 
-Result AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb, bool local) {
+Result AgencyCallbackRegistry::registerCallback(
+    std::shared_ptr<AgencyCallback> cb, bool local) {
   uint64_t id;
   while (true) {
     id = RandomGenerator::interval(std::numeric_limits<uint64_t>::max());
@@ -105,7 +108,8 @@ Result AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> 
   return res;
 }
 
-std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint64_t id) {
+std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(
+    uint64_t id) {
   READ_LOCKER(locker, _lock);
   auto it = _callbacks.find(id);
 
@@ -115,7 +119,8 @@ std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint64_t id)
   return (*it).second;
 }
 
-bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> cb) {
+bool AgencyCallbackRegistry::unregisterCallback(
+    std::shared_ptr<AgencyCallback> cb) {
   bool found = false;
   uint64_t id = 0;
   {
@@ -151,7 +156,8 @@ bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> 
 
     if (found) {
       if (cb->local()) {
-        auto& cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
+        auto& cache =
+            _agency.server().getFeature<ClusterFeature>().agencyCache();
         cache.unregisterCallback(cb->key, id);
       } else {
         _agency.unregisterCallback(cb->key, getEndpointUrl(id));

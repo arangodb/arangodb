@@ -41,8 +41,9 @@ class RocksDBSingleOperationTrxMethods : public RocksDBTrxBaseMethods {
   /// @brief undo the effects of the previous prepareOperation call
   void rollbackOperation(TRI_voc_document_operation_e operationType) override;
 
-  std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ColumnFamilyHandle*,
-                                                 ReadOptionsCallback readOptionsCallback) override;
+  std::unique_ptr<rocksdb::Iterator> NewIterator(
+      rocksdb::ColumnFamilyHandle*,
+      ReadOptionsCallback readOptionsCallback) override;
 
   bool iteratorMustCheckBounds(ReadOwnWrites) const override;
 };

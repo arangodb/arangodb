@@ -88,7 +88,8 @@ TEST_P(ConcurrentConnectionF, ApiVersionParallel) {
       }
     });
   }
-  ASSERT_TRUE(wg.wait_for(std::chrono::seconds(300)));  // wait for all threads to return
+  ASSERT_TRUE(wg.wait_for(
+      std::chrono::seconds(300)));  // wait for all threads to return
 
   // wait for all threads to end
   for (std::thread& t : joins) {
@@ -143,7 +144,8 @@ TEST_P(ConcurrentConnectionF, CreateDocumentsParallel) {
       }
     });
   }
-  ASSERT_TRUE(wg.wait_for(std::chrono::seconds(300)));  // wait for all threads to return
+  ASSERT_TRUE(wg.wait_for(
+      std::chrono::seconds(300)));  // wait for all threads to return
 
   // wait for all threads to end
   for (std::thread& t : joins) {
@@ -155,10 +157,13 @@ TEST_P(ConcurrentConnectionF, CreateDocumentsParallel) {
 
 static const ConnectionTestParams params[] = {
     {/*._protocol=*/fu::ProtocolType::Http, /* ._threads=*/2, /*._repeat=*/500},
-    {/*._protocol=*/fu::ProtocolType::Http2, /* ._threads=*/2, /*._repeat=*/500},
+    {/*._protocol=*/fu::ProtocolType::Http2, /* ._threads=*/2,
+     /*._repeat=*/500},
     {/*._protocol=*/fu::ProtocolType::Vst, /* ._threads=*/2, /*._repeat=*/500},
-    {/*._protocol=*/fu::ProtocolType::Http, /* ._threads=*/4, /*._repeat=*/5000},
-    {/*._protocol=*/fu::ProtocolType::Http2, /* ._threads=*/4, /*._repeat=*/5000},
+    {/*._protocol=*/fu::ProtocolType::Http, /* ._threads=*/4,
+     /*._repeat=*/5000},
+    {/*._protocol=*/fu::ProtocolType::Http2, /* ._threads=*/4,
+     /*._repeat=*/5000},
     {/*._protocol=*/fu::ProtocolType::Vst, /* ._threads=*/4, /*._repeat=*/5000},
 };
 

@@ -169,7 +169,8 @@ struct TestDate {
   }
 
   std::string const testName() const {
-    return "Input: " + _argBuilder.toJson() + " => " + (_isValid ? "true" : "false");
+    return "Input: " + _argBuilder.toJson() + " => " +
+           (_isValid ? "true" : "false");
   }
 
   void buildParams(VPackFunctionParameters& input) const {
@@ -391,7 +392,8 @@ TEST_F(DateFunctionsTestDateDiff, checking_weeks) {
 }
 
 TEST_F(DateFunctionsTestDateDiff, checking_months) {
-  double expectedDiff = dateDiffMillis / (1000 * 60 * 60 * 24) / avgDaysPerMonth;
+  double expectedDiff =
+      dateDiffMillis / (1000 * 60 * 60 * 24) / avgDaysPerMonth;
   auto allFlags = TestDateModifierFlagFactory::createAllFlags(
       TestDateModifierFlagFactory::FLAGS::MONTH);
   for (auto const& f : allFlags) {

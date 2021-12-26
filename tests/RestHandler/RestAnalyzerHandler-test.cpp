@@ -67,7 +67,8 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     return "rest-analyzer-empty";
   }
   EmptyAnalyzer() : irs::analysis::analyzer(irs::type<EmptyAnalyzer>::get()) {}
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  virtual irs::attribute* get_mutable(
+      irs::type_info::type_id type) noexcept override {
     if (type == irs::type<irs::frequency>::id()) {
       return &_attr;
     }
@@ -90,7 +91,8 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
   irs::frequency _attr;
 };
 
-REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make,
+                        EmptyAnalyzer::normalize);
 
 }  // namespace
 
@@ -100,7 +102,8 @@ REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::norma
 
 class RestAnalyzerHandlerTest
     : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+                                            arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
   TRI_vocbase_t& _system_vocbase;
@@ -121,26 +124,29 @@ class RestAnalyzerHandlerTest
   RestAnalyzerHandlerTest()
       : server(),
         _system_vocbase(server.getSystemDatabase()),
-        analyzers(server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()),
+        analyzers(
+            server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()),
         dbFeature(server.getFeature<arangodb::DatabaseFeature>()),
         authFeature(server.getFeature<arangodb::AuthenticationFeature>()),
         userManager(authFeature.userManager()),
         execContext(),
         execContextScope(&execContext) {
-    grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RW);
+    grantOnDb(arangodb::StaticStrings::SystemDatabase,
+              arangodb::auth::Level::RW);
 
     // TODO: This should at the very least happen in the mock
     // create system vocbase
     {
       std::shared_ptr<arangodb::LogicalCollection> unused;
       arangodb::OperationOptions options(arangodb::ExecContext::current());
-      arangodb::methods::Collections::createSystem(server.getSystemDatabase(), options,
-                                                   arangodb::tests::AnalyzerCollectionName,
-                                                   false, unused);
+      arangodb::methods::Collections::createSystem(
+          server.getSystemDatabase(), options,
+          arangodb::tests::AnalyzerCollectionName, false, unused);
     }
     createAnalyzers();
 
-    grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::NONE);
+    grantOnDb(arangodb::StaticStrings::SystemDatabase,
+              arangodb::auth::Level::NONE);
   }
 
   // Creates the analyzers that are used in all the tests
@@ -151,20 +157,20 @@ class RestAnalyzerHandlerTest
 
     name = arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
 
-    ASSERT_ARANGO_OK(
-        analyzers.emplace(result, name, "identity"s,
-                          VPackParser::fromJson("{\"args\":\"abc\"}"s)->slice()));
+    ASSERT_ARANGO_OK(analyzers.emplace(
+        result, name, "identity"s,
+        VPackParser::fromJson("{\"args\":\"abc\"}"s)->slice()));
 
     name = arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2";
-    ASSERT_ARANGO_OK(
-        analyzers.emplace(result, name, "identity"s,
-                          VPackParser::fromJson("{\"args\":\"abc\"}"s)->slice()));
+    ASSERT_ARANGO_OK(analyzers.emplace(
+        result, name, "identity"s,
+        VPackParser::fromJson("{\"args\":\"abc\"}"s)->slice()));
 
     name = arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer"s;
-    ASSERT_ARANGO_OK(
-        analyzers.emplace(result, name, "rest-analyzer-empty"s,
-                          VPackParser::fromJson("{\"args\":\"en\"}"s)->slice(),
-                          arangodb::iresearch::Features(irs::IndexFeatures::FREQ)));
+    ASSERT_ARANGO_OK(analyzers.emplace(
+        result, name, "rest-analyzer-empty"s,
+        VPackParser::fromJson("{\"args\":\"en\"}"s)->slice(),
+        arangodb::iresearch::Features(irs::IndexFeatures::FREQ)));
   };
 
   // Creates a new database
@@ -174,15 +180,15 @@ class RestAnalyzerHandlerTest
         std::string("[ { \"name\": \"" + name + "\" } ]"));
     ASSERT_EQ(TRI_ERROR_NO_ERROR, dbFeature.loadDatabases(databases->slice()));
 
-    grantOnDb({{name, arangodb::auth::Level::RW},
-               {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RW}});
+    grantOnDb(
+        {{name, arangodb::auth::Level::RW},
+         {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RW}});
 
     std::shared_ptr<arangodb::LogicalCollection> ignored;
     arangodb::OperationOptions options(arangodb::ExecContext::current());
-    arangodb::Result res =
-        arangodb::methods::Collections::createSystem(*dbFeature.useDatabase(name),
-                                                     options, arangodb::tests::AnalyzerCollectionName,
-                                                     false, ignored);
+    arangodb::Result res = arangodb::methods::Collections::createSystem(
+        *dbFeature.useDatabase(name), options,
+        arangodb::tests::AnalyzerCollectionName, false, ignored);
 
     ASSERT_TRUE(res.ok());
 
@@ -194,14 +200,16 @@ class RestAnalyzerHandlerTest
 
   // Grant permissions on one DB
   // NOTE that permissions are always overwritten.
-  void grantOnDb(std::string const& dbName, arangodb::auth::Level const& level) {
+  void grantOnDb(std::string const& dbName,
+                 arangodb::auth::Level const& level) {
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user =
-        userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
-            .first->second;
+    auto& user = userMap
+                     .emplace("", arangodb::auth::User::newUser(
+                                      "", "", arangodb::auth::Source::LDAP))
+                     .first->second;
 
-    // for system collections User::collectionAuthLevel(...) returns database auth::Level
+    // for system collections User::collectionAuthLevel(...) returns database
+    // auth::Level
     user.grantDatabase(dbName, level);
     // set user map to avoid loading configuration from system database
     userManager->setAuthInfo(userMap);
@@ -209,12 +217,14 @@ class RestAnalyzerHandlerTest
 
   // Grant permissions on multiple DBs
   // NOTE that permissions are always overwritten.
-  void grantOnDb(std::vector<std::pair<std::string const&, arangodb::auth::Level const&>> grants) {
+  void grantOnDb(
+      std::vector<std::pair<std::string const&, arangodb::auth::Level const&>>
+          grants) {
     arangodb::auth::UserMap userMap;
-    auto& user =
-        userMap
-            .emplace("", arangodb::auth::User::newUser(""s, ""s, arangodb::auth::Source::LDAP))
-            .first->second;
+    auto& user = userMap
+                     .emplace("", arangodb::auth::User::newUser(
+                                      ""s, ""s, arangodb::auth::Source::LDAP))
+                     .first->second;
 
     for (auto& g : grants) {
       user.grantDatabase(g.first, g.second);
@@ -237,8 +247,8 @@ TEST_F(RestAnalyzerHandlerTest, test_create_non_object_body) {
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
 
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::POST);
   request._payload.openArray();
   request._payload.close();
@@ -248,17 +258,20 @@ TEST_F(RestAnalyzerHandlerTest, test_create_non_object_body) {
   EXPECT_EQ(arangodb::rest::ResponseCode::BAD, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::BAD) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::BAD) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_BAD_PARAMETER ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_BAD_PARAMETER ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_create_no_name) {
@@ -268,13 +281,14 @@ TEST_F(RestAnalyzerHandlerTest, test_create_no_name) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::POST);
   request._payload.openObject();
   request._payload.add("type", arangodb::velocypack::Value("identity"));
-  request._payload.add("properties", arangodb::velocypack::Value(
-                                         arangodb::velocypack::ValueType::Null));
+  request._payload.add(
+      "properties",
+      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null));
   request._payload.close();
 
   auto status = handler.execute();
@@ -282,17 +296,20 @@ TEST_F(RestAnalyzerHandlerTest, test_create_no_name) {
   EXPECT_EQ(arangodb::rest::ResponseCode::BAD, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::BAD) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::BAD) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_BAD_PARAMETER ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_BAD_PARAMETER ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_create_no_permission) {
@@ -302,13 +319,14 @@ TEST_F(RestAnalyzerHandlerTest, test_create_no_permission) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::POST);
   request._payload.openObject();
   request._payload.add("name", VPackValue("unknownVocbase::testAnalyzer"));
   request._payload.add("type", VPackValue("identity"));
-  request._payload.add("properties", VPackValue(arangodb::velocypack::ValueType::Null));
+  request._payload.add("properties",
+                       VPackValue(arangodb::velocypack::ValueType::Null));
   request._payload.close();
 
   auto status = handler.execute();
@@ -316,17 +334,20 @@ TEST_F(RestAnalyzerHandlerTest, test_create_no_permission) {
   EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_FORBIDDEN ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_FORBIDDEN ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_create_invalid_symbols) {
@@ -336,13 +357,16 @@ TEST_F(RestAnalyzerHandlerTest, test_create_invalid_symbols) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::POST);
   request._payload.openObject();
-  request._payload.add("name", VPackValue(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer"));
+  request._payload.add(
+      "name",
+      VPackValue(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer"));
   request._payload.add("type", VPackValue("identity"));
-  request._payload.add("properties", VPackValue(arangodb::velocypack::ValueType::Null));
+  request._payload.add("properties",
+                       VPackValue(arangodb::velocypack::ValueType::Null));
   request._payload.close();
 
   auto status = handler.execute();
@@ -350,17 +374,20 @@ TEST_F(RestAnalyzerHandlerTest, test_create_invalid_symbols) {
   EXPECT_EQ(arangodb::rest::ResponseCode::BAD, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::BAD) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::BAD) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_BAD_PARAMETER ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_BAD_PARAMETER ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 // TODO: is this the smae test as above?
@@ -371,13 +398,14 @@ TEST_F(RestAnalyzerHandlerTest, test_create_invalid_symbols_2) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::POST);
   request._payload.openObject();
   request._payload.add("name", VPackValue("::testAnalyzer"));
   request._payload.add("type", VPackValue("identity"));
-  request._payload.add("properties", VPackValue(arangodb::velocypack::ValueType::Null));
+  request._payload.add("properties",
+                       VPackValue(arangodb::velocypack::ValueType::Null));
   request._payload.close();
 
   auto status = handler.execute();
@@ -385,17 +413,20 @@ TEST_F(RestAnalyzerHandlerTest, test_create_invalid_symbols_2) {
   EXPECT_EQ(arangodb::rest::ResponseCode::BAD, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::BAD) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::BAD) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_BAD_PARAMETER ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_BAD_PARAMETER ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_create_name_collision) {
@@ -405,8 +436,8 @@ TEST_F(RestAnalyzerHandlerTest, test_create_name_collision) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::POST);
   request._payload.openObject();
   request._payload.add("name", arangodb::velocypack::Value("emptyAnalyzer"));
@@ -421,17 +452,20 @@ TEST_F(RestAnalyzerHandlerTest, test_create_name_collision) {
   EXPECT_EQ(arangodb::rest::ResponseCode::BAD, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::BAD) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::BAD) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_BAD_PARAMETER ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_BAD_PARAMETER ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_create_duplicate_matching) {
@@ -441,8 +475,8 @@ TEST_F(RestAnalyzerHandlerTest, test_create_duplicate_matching) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::POST);
   request._payload.openObject();
   request._payload.add("name", VPackValue("testAnalyzer1"));
@@ -474,8 +508,8 @@ TEST_F(RestAnalyzerHandlerTest, test_create_not_authorized) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::POST);
   request._payload.openObject();
   request._payload.add("name", VPackValue("testAnalyzer2"));
@@ -489,17 +523,20 @@ TEST_F(RestAnalyzerHandlerTest, test_create_not_authorized) {
   EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_FORBIDDEN ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_FORBIDDEN ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_create_success) {
@@ -509,8 +546,8 @@ TEST_F(RestAnalyzerHandlerTest, test_create_success) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::POST);
   request._payload.openObject();
   request._payload.add("name", arangodb::velocypack::Value("testAnalyzer3"));
@@ -543,8 +580,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get_static_known) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
   request.addSuffix("identity");
 
@@ -553,13 +590,15 @@ TEST_F(RestAnalyzerHandlerTest, test_get_static_known) {
   EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::OK) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
-               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
-               false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::OK) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Error) &&
+       slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+       false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
   EXPECT_TRUE((slice.hasKey("name") && slice.get("name").isString() &&
                std::string("identity") == slice.get("name").copyString()));
   EXPECT_TRUE(slice.hasKey("type") && slice.get("type").isString());
@@ -576,8 +615,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get_static_unknown) {
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   TRI_ASSERT(responcePtr != nullptr);
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
   request.addSuffix("unknown");
 
@@ -586,17 +625,20 @@ TEST_F(RestAnalyzerHandlerTest, test_get_static_unknown) {
   EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_get_known) {
@@ -606,8 +648,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get_known) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
   request.addSuffix(arangodb::StaticStrings::SystemDatabase +
                     "::testAnalyzer1");
@@ -617,13 +659,15 @@ TEST_F(RestAnalyzerHandlerTest, test_get_known) {
   EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::OK) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
-               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
-               false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::OK) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Error) &&
+       slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+       false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
   EXPECT_TRUE((slice.hasKey("name") && slice.get("name").isString() &&
                arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" ==
                    slice.get("name").copyString()));
@@ -637,9 +681,10 @@ TEST_F(RestAnalyzerHandlerTest, test_get_custom) {
   createDatabase("FooDb"s);
   createDatabase("FooDb2"s);
 
-  grantOnDb({{"FooDb"s, arangodb::auth::Level::RW},
-             {"FooDb2"s, arangodb::auth::Level::RW},
-             {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO}});
+  grantOnDb(
+      {{"FooDb"s, arangodb::auth::Level::RW},
+       {"FooDb2"s, arangodb::auth::Level::RW},
+       {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO}});
 
   {
     TRI_vocbase_t& vocbase = *dbFeature.useDatabase("FooDb2");
@@ -647,8 +692,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get_custom) {
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
-    arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                     responcePtr.release());
+    arangodb::iresearch::RestAnalyzerHandler handler(
+        server.server(), requestPtr.release(), responcePtr.release());
     request.setRequestType(arangodb::rest::RequestType::GET);
     request.addSuffix("FooDb::testAnalyzer1");
 
@@ -663,8 +708,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get_custom) {
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
-    arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                     responcePtr.release());
+    arangodb::iresearch::RestAnalyzerHandler handler(
+        server.server(), requestPtr.release(), responcePtr.release());
     request.setRequestType(arangodb::rest::RequestType::GET);
     request.addSuffix(arangodb::StaticStrings::SystemDatabase +
                       "::testAnalyzer1");
@@ -679,8 +724,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get_custom) {
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
-    arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                     responcePtr.release());
+    arangodb::iresearch::RestAnalyzerHandler handler(
+        server.server(), requestPtr.release(), responcePtr.release());
     request.setRequestType(arangodb::rest::RequestType::GET);
     request.addSuffix("::testAnalyzer1");
     auto status = handler.execute();
@@ -691,14 +736,15 @@ TEST_F(RestAnalyzerHandlerTest, test_get_custom) {
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_get_known_not_authorized) {
-  grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::NONE);
+  grantOnDb(arangodb::StaticStrings::SystemDatabase,
+            arangodb::auth::Level::NONE);
 
   auto requestPtr = std::make_unique<GeneralRequestMock>(_system_vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
   request.addSuffix("testAnalyzer1");
 
@@ -707,17 +753,20 @@ TEST_F(RestAnalyzerHandlerTest, test_get_known_not_authorized) {
   EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_FORBIDDEN ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_FORBIDDEN ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_get_unknown_authorized) {
@@ -727,8 +776,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get_unknown_authorized) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
   request.addSuffix("unknown");
 
@@ -737,27 +786,31 @@ TEST_F(RestAnalyzerHandlerTest, test_get_unknown_authorized) {
   EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_get_unknown_not_authorized) {
-  grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::NONE);
+  grantOnDb(arangodb::StaticStrings::SystemDatabase,
+            arangodb::auth::Level::NONE);
   auto requestPtr = std::make_unique<GeneralRequestMock>(_system_vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
   request.addSuffix("unknown");
 
@@ -766,20 +819,24 @@ TEST_F(RestAnalyzerHandlerTest, test_get_unknown_not_authorized) {
   EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_FORBIDDEN ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_FORBIDDEN ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
-TEST_F(RestAnalyzerHandlerTest, test_get_unknown_analyzer_unknown_vocbase_authorized) {
+TEST_F(RestAnalyzerHandlerTest,
+       test_get_unknown_analyzer_unknown_vocbase_authorized) {
   grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO);
 
   // TODO
@@ -789,8 +846,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get_unknown_analyzer_unknown_vocbase_author
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
   request.addSuffix("unknown");
 
@@ -799,21 +856,26 @@ TEST_F(RestAnalyzerHandlerTest, test_get_unknown_analyzer_unknown_vocbase_author
   EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
-TEST_F(RestAnalyzerHandlerTest, test_get_unknown_analyzer_unknown_vocbase_not_authorized) {
-  grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::NONE);
+TEST_F(RestAnalyzerHandlerTest,
+       test_get_unknown_analyzer_unknown_vocbase_not_authorized) {
+  grantOnDb(arangodb::StaticStrings::SystemDatabase,
+            arangodb::auth::Level::NONE);
 
   // TODO
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
@@ -822,8 +884,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get_unknown_analyzer_unknown_vocbase_not_au
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
   request.addSuffix("unknown");
 
@@ -832,17 +894,20 @@ TEST_F(RestAnalyzerHandlerTest, test_get_unknown_analyzer_unknown_vocbase_not_au
   EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_FORBIDDEN ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_FORBIDDEN ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_list_system_database_authorized) {
@@ -852,8 +917,8 @@ TEST_F(RestAnalyzerHandlerTest, test_list_system_database_authorized) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
 
   std::set<std::string> expected = {
@@ -879,23 +944,27 @@ TEST_F(RestAnalyzerHandlerTest, test_list_system_database_authorized) {
   EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::OK) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
-               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
-               false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::OK) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Error) &&
+       slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+       false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
 
-  for (arangodb::velocypack::ArrayIterator itr(slice.get("result")); itr.valid(); ++itr) {
+  for (arangodb::velocypack::ArrayIterator itr(slice.get("result"));
+       itr.valid(); ++itr) {
     auto subSlice = *itr;
     EXPECT_TRUE(subSlice.isObject());
     EXPECT_TRUE(subSlice.hasKey("name") && subSlice.get("name").isString());
     EXPECT_TRUE(subSlice.hasKey("type") && subSlice.get("type").isString());
-    EXPECT_TRUE(
-        (subSlice.hasKey("properties") && (subSlice.get("properties").isObject() ||
-                                           subSlice.get("properties").isNull())));
-    EXPECT_TRUE(subSlice.hasKey("features") && subSlice.get("features").isArray());
+    EXPECT_TRUE((subSlice.hasKey("properties") &&
+                 (subSlice.get("properties").isObject() ||
+                  subSlice.get("properties").isNull())));
+    EXPECT_TRUE(subSlice.hasKey("features") &&
+                subSlice.get("features").isArray());
     EXPECT_EQ(1, expected.erase(subSlice.get("name").copyString()));
   }
 
@@ -903,14 +972,15 @@ TEST_F(RestAnalyzerHandlerTest, test_list_system_database_authorized) {
 }
 
 TEST_F(RestAnalyzerHandlerTest, test_list_system_database_not_authorized) {
-  grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::NONE);
+  grantOnDb(arangodb::StaticStrings::SystemDatabase,
+            arangodb::auth::Level::NONE);
 
   auto requestPtr = std::make_unique<GeneralRequestMock>(_system_vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
 
   std::set<std::string> expected = {
@@ -923,25 +993,29 @@ TEST_F(RestAnalyzerHandlerTest, test_list_system_database_not_authorized) {
   EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::OK) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
-               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
-               false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::OK) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Error) &&
+       slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+       false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
   EXPECT_TRUE((slice.hasKey("result") && slice.get("result").isArray() &&
                expected.size() == slice.get("result").length()));
 
-  for (arangodb::velocypack::ArrayIterator itr(slice.get("result")); itr.valid(); ++itr) {
+  for (arangodb::velocypack::ArrayIterator itr(slice.get("result"));
+       itr.valid(); ++itr) {
     auto subSlice = *itr;
     EXPECT_TRUE(subSlice.isObject());
     EXPECT_TRUE(subSlice.hasKey("name") && subSlice.get("name").isString());
     EXPECT_TRUE(subSlice.hasKey("type") && subSlice.get("type").isString());
-    EXPECT_TRUE(
-        (subSlice.hasKey("properties") && (subSlice.get("properties").isObject() ||
-                                           subSlice.get("properties").isNull())));
-    EXPECT_TRUE(subSlice.hasKey("features") && subSlice.get("features").isArray());
+    EXPECT_TRUE((subSlice.hasKey("properties") &&
+                 (subSlice.get("properties").isObject() ||
+                  subSlice.get("properties").isNull())));
+    EXPECT_TRUE(subSlice.hasKey("features") &&
+                subSlice.get("features").isArray());
     EXPECT_EQ(1, expected.erase(subSlice.get("name").copyString()));
   }
 
@@ -953,8 +1027,9 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_authorized) {
 
   arangodb::auth::UserMap userMap;
 
-  grantOnDb({{"testVocbase"s, arangodb::auth::Level::RW},
-             {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO}});
+  grantOnDb(
+      {{"testVocbase"s, arangodb::auth::Level::RW},
+       {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO}});
 
   TRI_vocbase_t& vocbase = *dbFeature.useDatabase("testVocbase");
 
@@ -962,11 +1037,12 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_authorized) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
-  grantOnDb({{"testVocbase"s, arangodb::auth::Level::RO},
-             {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO}});
+  grantOnDb(
+      {{"testVocbase"s, arangodb::auth::Level::RO},
+       {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO}});
   std::set<std::string> expected = {
       "identity",
       "text_de",
@@ -992,25 +1068,29 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_authorized) {
   EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::OK) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
-               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
-               false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::OK) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Error) &&
+       slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+       false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
   EXPECT_TRUE((slice.hasKey("result") && slice.get("result").isArray() &&
                expected.size() == slice.get("result").length()));
 
-  for (arangodb::velocypack::ArrayIterator itr(slice.get("result")); itr.valid(); ++itr) {
+  for (arangodb::velocypack::ArrayIterator itr(slice.get("result"));
+       itr.valid(); ++itr) {
     auto subSlice = *itr;
     EXPECT_TRUE(subSlice.isObject());
     EXPECT_TRUE(subSlice.hasKey("name") && subSlice.get("name").isString());
     EXPECT_TRUE(subSlice.hasKey("type") && subSlice.get("type").isString());
-    EXPECT_TRUE(
-        (subSlice.hasKey("properties") && (subSlice.get("properties").isObject() ||
-                                           subSlice.get("properties").isNull())));
-    EXPECT_TRUE(subSlice.hasKey("features") && subSlice.get("features").isArray());
+    EXPECT_TRUE((subSlice.hasKey("properties") &&
+                 (subSlice.get("properties").isObject() ||
+                  subSlice.get("properties").isNull())));
+    EXPECT_TRUE(subSlice.hasKey("features") &&
+                subSlice.get("features").isArray());
     EXPECT_EQ(1, expected.erase(subSlice.get("name").copyString()));
   }
 
@@ -1027,12 +1107,13 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_not_authorized) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
 
-  grantOnDb({{"testVocbase"s, arangodb::auth::Level::NONE},
-             {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO}});
+  grantOnDb(
+      {{"testVocbase"s, arangodb::auth::Level::NONE},
+       {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO}});
 
   std::set<std::string> expected = {
       "identity",
@@ -1057,32 +1138,37 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_not_authorized) {
   EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::OK) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
-               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
-               false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::OK) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Error) &&
+       slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+       false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
   EXPECT_TRUE((slice.hasKey("result") && slice.get("result").isArray() &&
                expected.size() == slice.get("result").length()));
 
-  for (arangodb::velocypack::ArrayIterator itr(slice.get("result")); itr.valid(); ++itr) {
+  for (arangodb::velocypack::ArrayIterator itr(slice.get("result"));
+       itr.valid(); ++itr) {
     auto subSlice = *itr;
     EXPECT_TRUE(subSlice.isObject());
     EXPECT_TRUE(subSlice.hasKey("name") && subSlice.get("name").isString());
     EXPECT_TRUE(subSlice.hasKey("type") && subSlice.get("type").isString());
-    EXPECT_TRUE(
-        (subSlice.hasKey("properties") && (subSlice.get("properties").isObject() ||
-                                           subSlice.get("properties").isNull())));
-    EXPECT_TRUE(subSlice.hasKey("features") && subSlice.get("features").isArray());
+    EXPECT_TRUE((subSlice.hasKey("properties") &&
+                 (subSlice.get("properties").isObject() ||
+                  subSlice.get("properties").isNull())));
+    EXPECT_TRUE(subSlice.hasKey("features") &&
+                subSlice.get("features").isArray());
     EXPECT_EQ(1, expected.erase(subSlice.get("name").copyString()));
   }
 
   EXPECT_TRUE(expected.empty());
 }
 
-TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_system_not_authorized) {
+TEST_F(RestAnalyzerHandlerTest,
+       test_list_non_system_database_system_not_authorized) {
   createDatabase("testVocbase"s);
 
   TRI_vocbase_t& vocbase = *dbFeature.useDatabase("testVocbase");
@@ -1090,12 +1176,13 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_system_not_authori
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
 
-  grantOnDb({{"testVocbase"s, arangodb::auth::Level::RO},
-             {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::NONE}});
+  grantOnDb(
+      {{"testVocbase"s, arangodb::auth::Level::RO},
+       {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::NONE}});
 
   std::set<std::string> expected = {
       "identity",
@@ -1119,25 +1206,29 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_system_not_authori
   EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::OK) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
-               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
-               false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::OK) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Error) &&
+       slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+       false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
   EXPECT_TRUE((slice.hasKey("result") && slice.get("result").isArray() &&
                expected.size() == slice.get("result").length()));
 
-  for (arangodb::velocypack::ArrayIterator itr(slice.get("result")); itr.valid(); ++itr) {
+  for (arangodb::velocypack::ArrayIterator itr(slice.get("result"));
+       itr.valid(); ++itr) {
     auto subSlice = *itr;
     EXPECT_TRUE(subSlice.isObject());
     EXPECT_TRUE(subSlice.hasKey("name") && subSlice.get("name").isString());
     EXPECT_TRUE(subSlice.hasKey("type") && subSlice.get("type").isString());
-    EXPECT_TRUE(
-        (subSlice.hasKey("properties") && (subSlice.get("properties").isObject() ||
-                                           subSlice.get("properties").isNull())));
-    EXPECT_TRUE(subSlice.hasKey("features") && subSlice.get("features").isArray());
+    EXPECT_TRUE((subSlice.hasKey("properties") &&
+                 (subSlice.get("properties").isObject() ||
+                  subSlice.get("properties").isNull())));
+    EXPECT_TRUE(subSlice.hasKey("features") &&
+                subSlice.get("features").isArray());
     EXPECT_EQ(1, expected.erase(subSlice.get("name").copyString()));
   }
   EXPECT_TRUE(expected.empty());
@@ -1153,12 +1244,13 @@ TEST_F(RestAnalyzerHandlerTest,
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::GET);
 
-  grantOnDb({{arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::NONE},
-             {"testVocbase"s, arangodb::auth::Level::NONE}});
+  grantOnDb(
+      {{arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::NONE},
+       {"testVocbase"s, arangodb::auth::Level::NONE}});
 
   std::set<std::string> expected = {
       "identity", "text_de", "text_en", "text_es", "text_fi",
@@ -1170,25 +1262,29 @@ TEST_F(RestAnalyzerHandlerTest,
   EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::OK) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
-               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
-               false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::OK) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Error) &&
+       slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+       false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
   EXPECT_TRUE((slice.hasKey("result") && slice.get("result").isArray() &&
                expected.size() == slice.get("result").length()));
 
-  for (arangodb::velocypack::ArrayIterator itr(slice.get("result")); itr.valid(); ++itr) {
+  for (arangodb::velocypack::ArrayIterator itr(slice.get("result"));
+       itr.valid(); ++itr) {
     auto subSlice = *itr;
     EXPECT_TRUE(subSlice.isObject());
     EXPECT_TRUE(subSlice.hasKey("name") && subSlice.get("name").isString());
     EXPECT_TRUE(subSlice.hasKey("type") && subSlice.get("type").isString());
-    EXPECT_TRUE(
-        (subSlice.hasKey("properties") && (subSlice.get("properties").isObject() ||
-                                           subSlice.get("properties").isNull())));
-    EXPECT_TRUE(subSlice.hasKey("features") && subSlice.get("features").isArray());
+    EXPECT_TRUE((subSlice.hasKey("properties") &&
+                 (subSlice.get("properties").isObject() ||
+                  subSlice.get("properties").isNull())));
+    EXPECT_TRUE(subSlice.hasKey("features") &&
+                subSlice.get("features").isArray());
     EXPECT_EQ(1, expected.erase(subSlice.get("name").copyString()));
   }
 
@@ -1203,8 +1299,8 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_invalid_params) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
 
   auto status = handler.execute();
@@ -1212,17 +1308,20 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_invalid_params) {
   EXPECT_EQ(arangodb::rest::ResponseCode::BAD, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::BAD) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::BAD) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_BAD_PARAMETER ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_BAD_PARAMETER ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 // unknown analyzer
@@ -1233,8 +1332,8 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_unknown_analyzer) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
   request.addSuffix("unknown");
 
@@ -1243,17 +1342,20 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_unknown_analyzer) {
   EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
 // not authorised
@@ -1264,8 +1366,8 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_not_authorized) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
   request.addSuffix("testAnalyzer1");
 
@@ -1274,17 +1376,20 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_not_authorized) {
   EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_FORBIDDEN ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_FORBIDDEN ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 
   // Check it's not gone
   auto analyzer =
@@ -1301,8 +1406,8 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_still_in_use) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
   request.addSuffix("testAnalyzer2");
   request.values().emplace("force", "false");
@@ -1318,17 +1423,20 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_still_in_use) {
   EXPECT_EQ(arangodb::rest::ResponseCode::CONFLICT, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::CONFLICT) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::CONFLICT) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
   EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-               TRI_ERROR_ARANGO_CONFLICT ==
-                   ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+       slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+       TRI_ERROR_ARANGO_CONFLICT ==
+           ErrorCode{
+               slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
   auto analyzer =
       analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
                     arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
@@ -1344,8 +1452,8 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_still_in_use_force) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
   request.addSuffix("testAnalyzer2");
   request.values().emplace("force", "true");
@@ -1361,13 +1469,15 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_still_in_use_force) {
   EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::OK) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
-               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
-               false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::OK) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Error) &&
+       slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+       false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
   EXPECT_TRUE((slice.hasKey("name") && slice.get("name").isString() &&
                arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2" ==
                    slice.get("name").copyString()));
@@ -1385,8 +1495,8 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_with_db_name) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
   request.addSuffix(arangodb::StaticStrings::SystemDatabase +
                     "::testAnalyzer1");
@@ -1407,8 +1517,8 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_success) {
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
-  arangodb::iresearch::RestAnalyzerHandler handler(server.server(), requestPtr.release(),
-                                                   responcePtr.release());
+  arangodb::iresearch::RestAnalyzerHandler handler(
+      server.server(), requestPtr.release(), responcePtr.release());
   request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
   request.addSuffix("testAnalyzer1");
 
@@ -1417,13 +1527,15 @@ TEST_F(RestAnalyzerHandlerTest, test_remove_success) {
   EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
   auto slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
-               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-               size_t(arangodb::rest::ResponseCode::OK) ==
-                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
-               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
-               false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Code) &&
+       slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+       size_t(arangodb::rest::ResponseCode::OK) ==
+           slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE(
+      (slice.hasKey(arangodb::StaticStrings::Error) &&
+       slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+       false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
   EXPECT_TRUE((slice.hasKey("name") && slice.get("name").isString() &&
                arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" ==
                    slice.get("name").copyString()));

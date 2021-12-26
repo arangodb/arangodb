@@ -40,8 +40,9 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   explicit RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex> const&);
 
   /// @brief return a VelocyPack representation of the index
-  void toVelocyPack(velocypack::Builder& builder,
-                    std::underlying_type<Index::Serialize>::type) const override;
+  void toVelocyPack(
+      velocypack::Builder& builder,
+      std::underlying_type<Index::Serialize>::type) const override;
 
   char const* typeName() const override { return _wrapped->typeName(); }
 
@@ -67,7 +68,8 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
   Result drop() override { return _wrapped->drop(); }
 
-  void afterTruncate(TRI_voc_tick_t tick, arangodb::transaction::Methods* trx) override {
+  void afterTruncate(TRI_voc_tick_t tick,
+                     arangodb::transaction::Methods* trx) override {
     _wrapped->afterTruncate(tick, trx);
   }
 
@@ -80,11 +82,14 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId, arangodb::velocypack::Slice slice,
-                OperationOptions const& options, bool /*performChecks*/) override;
+                LocalDocumentId const& documentId,
+                arangodb::velocypack::Slice slice,
+                OperationOptions const& options,
+                bool /*performChecks*/) override;
 
   /// remove index elements and put it in the specified write batch.
-  Result remove(transaction::Methods& trx, RocksDBMethods*, LocalDocumentId const& documentId,
+  Result remove(transaction::Methods& trx, RocksDBMethods*,
+                LocalDocumentId const& documentId,
                 arangodb::velocypack::Slice slice) override;
 
   /// @brief get index estimator, optional
