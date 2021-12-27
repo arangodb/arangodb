@@ -109,6 +109,8 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::v
     }
   }
   if constexpr (vertexUniqueness == VertexUniquenessLevel::NONE && edgeUniqueness == EdgeUniquenessLevel::PATH) {
+    LOG_DEVEL << "Step is first: " << step.isFirst();
+
     _uniqueEdges.clear();
 
     if (!step.isFirst()) {
@@ -313,18 +315,6 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::e
   aql::AqlValueGuard guard{res, mustDestroy};
   TRI_ASSERT(res.isBoolean());
   return res.toBoolean();
-}
-
-template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness,
-          EdgeUniquenessLevel edgeUniqueness>
-void PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::reset() {
-  if constexpr (vertexUniqueness != VertexUniquenessLevel::NONE) {
-    _uniqueVertices.clear();
-
-    if constexpr (edgeUniqueness != EdgeUniquenessLevel::NONE) {
-      _uniqueEdges.clear();
-    }
-  }
 }
 
 template <class ProviderType, class PathStore, VertexUniquenessLevel vertexUniqueness,

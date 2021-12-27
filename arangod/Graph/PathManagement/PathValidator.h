@@ -59,7 +59,7 @@ class PathValidator {
   using Step = typename Provider::Step;
 
  public:
-  PathValidator(Provider& provider, PathStore const& store,
+  PathValidator(Provider& provider, PathStore& store,
                 PathValidatorOptions opts);
   ~PathValidator();
 
@@ -67,8 +67,6 @@ class PathValidator {
   auto validatePath(typename PathStore::Step const& step,
                     PathValidator<Provider, PathStore, vertexUniqueness, edgeUniqueness> const& otherValidator)
       -> ValidationResult;
-
-  void reset();
 
   // Prune section
   bool usesPrune() const;
