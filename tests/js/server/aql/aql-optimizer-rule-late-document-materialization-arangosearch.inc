@@ -273,7 +273,7 @@
         let result = AQL_EXECUTE(query);
         assertEqual(0, result.json.length);
       },
-      testQueryResultsInSubquery() {
+      testQueryResultsInInnerLoop() {
         let query = "FOR c IN " + svn + " SEARCH c.value == 1 " +
                       " FOR d IN " + vn  + " SEARCH d.value IN [c.value, c.value + 1] SORT BM25(d) LIMIT 10 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
@@ -287,7 +287,7 @@
         });
         assertEqual(0, expected.size);
       },
-      testQueryResultsInOuterSubquery() {
+      testQueryResultsInOuterLoop() {
         let query = "FOR c IN " + svn + " SEARCH c.value == 1 SORT BM25(c) LIMIT 10 " +
                       " FOR d IN " + vn  + " SEARCH d.value IN [c.value, c.value + 1] RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
@@ -298,6 +298,22 @@
         result.json.forEach(function(doc) {
           assertTrue(expected.has(doc._key));
           expected.delete(doc._key);
+        });
+        assertEqual(0, expected.size);
+      },
+      testQueryResultsInSubquery() {
+        let query = "FOR c IN " + svn + " SEARCH c.value == 1 " +
+                      "LET values = (FOR d IN " + vn  + " SEARCH d.value IN [c.value, c.value + 1] SORT BM25(d) LIMIT 10 RETURN d._key) " +
+                    "RETURN values";
+        let plan = AQL_EXPLAIN(query).plan;
+        print(plan);
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        let result = AQL_EXECUTE(query);
+        assertEqual(2, result.json[0].length);
+        let expected = new Set(['c1', 'c2']);
+        result.json[0].forEach(function(doc) {
+          assertTrue(expected.has(doc));
+          expected.delete(doc);
         });
         assertEqual(0, expected.size);
       },
