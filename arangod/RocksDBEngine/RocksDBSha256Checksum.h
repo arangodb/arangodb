@@ -39,10 +39,13 @@ class RocksDBShaFileManager;
 
 class RocksDBSha256Checksum : public rocksdb::FileChecksumGenerator {
  public:
-  explicit RocksDBSha256Checksum(std::string const& filename, std::shared_ptr<RocksDBShaFileManager> shaFileManager);
+  explicit RocksDBSha256Checksum(
+      std::string const& filename,
+      std::shared_ptr<RocksDBShaFileManager> shaFileManager);
   ~RocksDBSha256Checksum();
 
-  // incrementally calculates the checksum and is called multiple times for individual data blocks
+  // incrementally calculates the checksum and is called multiple times for
+  // individual data blocks
   void Update(char const* data, size_t n) override;
   // called only once, will write sha file to disk
   void Finalize() override;
@@ -58,19 +61,24 @@ class RocksDBSha256Checksum : public rocksdb::FileChecksumGenerator {
   std::string _checksum;
 };
 
-class RocksDBShaFileManager : public rocksdb::EventListener, public std::enable_shared_from_this<RocksDBShaFileManager> {
+class RocksDBShaFileManager
+    : public rocksdb::EventListener,
+      public std::enable_shared_from_this<RocksDBShaFileManager> {
  public:
   RocksDBShaFileManager(std::string const& path) : _rootPath{path} {}
-  // updates hash table of key .sst files and .sha as values, can write or remove files
+  // updates hash table of key .sst files and .sha as values, can write or
+  // remove files
   void checkMissingShaFiles();
   // will delete sha files
-  void OnTableFileDeleted(const rocksdb::TableFileDeletionInfo& /*info*/) override;
+  void OnTableFileDeleted(
+      const rocksdb::TableFileDeletionInfo& /*info*/) override;
   // updates hash table and writes sha files
   bool storeShaItems(std::string const& fileName, std::string const& checksum);
   bool writeShaFile(std::string const& fileName, std::string const& checksum);
   void deleteFile(std::string const& pathName);
+
  private:
-  template <typename T>
+  template<typename T>
   bool isSstFilename(T const& fileName) const;
 
   std::unordered_map<std::string, std::string> _calculatedHashes;
@@ -80,7 +88,8 @@ class RocksDBShaFileManager : public rocksdb::EventListener, public std::enable_
 
 class RocksDBSha256ChecksumFactory : public rocksdb::FileChecksumGenFactory {
  public:
-  RocksDBSha256ChecksumFactory(std::shared_ptr<RocksDBShaFileManager> shaFileManager)
+  RocksDBSha256ChecksumFactory(
+      std::shared_ptr<RocksDBShaFileManager> shaFileManager)
       : _shaFileManager{std::move(shaFileManager)} {}
   std::unique_ptr<rocksdb::FileChecksumGenerator> CreateFileChecksumGenerator(
       rocksdb::FileChecksumGenContext const& context) override;
@@ -90,4 +99,4 @@ class RocksDBSha256ChecksumFactory : public rocksdb::FileChecksumGenFactory {
   std::shared_ptr<RocksDBShaFileManager> _shaFileManager;
 };
 
-}
+}  // namespace arangodb

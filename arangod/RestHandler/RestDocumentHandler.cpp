@@ -47,8 +47,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestDocumentHandler::RestDocumentHandler(application_features::ApplicationServer& server,
-                                         GeneralRequest* request, GeneralResponse* response)
+RestDocumentHandler::RestDocumentHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestDocumentHandler::~RestDocumentHandler() = default;
@@ -71,7 +72,9 @@ RestStatus RestDocumentHandler::execute() {
       return replaceDocument();
     case rest::RequestType::PATCH:
       return updateDocument();
-    default: { generateNotImplemented("ILLEGAL " + DOCUMENT_PATH); }
+    default: {
+      generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
+    }
   }
 
   // this handler is done
@@ -131,9 +134,11 @@ RestStatus RestDocumentHandler::insertDocument() {
   }
 
   if (!found || cname.empty()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_PATH +
-                  " POST /_api/document/<collection> or query parameter 'collection'");
+                      " POST /_api/document/<collection> or query parameter "
+                      "'collection'");
     return RestStatus::DONE;
   }
 
@@ -143,41 +148,48 @@ RestStatus RestDocumentHandler::insertDocument() {
     return RestStatus::DONE;
   }
 
-
   arangodb::OperationOptions opOptions(_context);
-  opOptions.isRestore = _request->parsedValue(StaticStrings::IsRestoreString, false);
-  opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
-  opOptions.validate = !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
-  opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
+  opOptions.isRestore =
+      _request->parsedValue(StaticStrings::IsRestoreString, false);
+  opOptions.waitForSync =
+      _request->parsedValue(StaticStrings::WaitForSyncString, false);
+  opOptions.validate =
+      !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
+  opOptions.returnNew =
+      _request->parsedValue(StaticStrings::ReturnNewString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
-  
+
   if (_request->parsedValue(StaticStrings::Overwrite, false)) {
     // the default behavior if just "overwrite" is set
     opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
   }
 
-
   std::string const& mode = _request->value(StaticStrings::OverwriteMode);
   if (!mode.empty()) {
-    auto overwriteMode = OperationOptions::determineOverwriteMode(std::string_view(mode));
+    auto overwriteMode =
+        OperationOptions::determineOverwriteMode(std::string_view(mode));
 
     if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
       opOptions.overwriteMode = overwriteMode;
 
       if (opOptions.overwriteMode == OperationOptions::OverwriteMode::Update) {
-        opOptions.mergeObjects = _request->parsedValue(StaticStrings::MergeObjectsString, true);
-        opOptions.keepNull = _request->parsedValue(StaticStrings::KeepNullString, false);
+        opOptions.mergeObjects =
+            _request->parsedValue(StaticStrings::MergeObjectsString, true);
+        opOptions.keepNull =
+            _request->parsedValue(StaticStrings::KeepNullString, false);
       }
     }
   }
-  opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false) &&
-                        opOptions.isOverwriteModeUpdateReplace();
+  opOptions.returnOld =
+      _request->parsedValue(StaticStrings::ReturnOldString, false) &&
+      opOptions.isOverwriteModeUpdateReplace();
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
   TRI_IF_FAILURE("delayed_synchronous_replication_request_processing") {
     if (!opOptions.isSynchronousReplicationFrom.empty()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+      std::this_thread::sleep_for(
+          std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
     }
   }
 
@@ -195,46 +207,51 @@ RestStatus RestDocumentHandler::insertDocument() {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
     return RestStatus::DONE;
   }
-  
+
   if (ServerState::instance()->isDBServer() &&
-      (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr ||
+      (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) ==
+           nullptr ||
        _activeTrx->state()->isReadOnlyTransaction())) {
-    // make sure that the current transaction includes the collection that we want to
-    // write into. this is not necessarily the case for follower transactions that
-    // are started lazily. in this case, we must reject the request.
-    // we _cannot_ do this for follower transactions, where shards may lazily be
-    // added (e.g. if servers A and B both replicate their own write ops to follower
-    // C one after the after, then C will first see only shards from A and then only
-    // from B).
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-        std::string("Transaction with id '") + std::to_string(_activeTrx->tid().id())
-        + "' does not contain collection '" + cname
-        + "' with the required access mode.");
+    // make sure that the current transaction includes the collection that we
+    // want to write into. this is not necessarily the case for follower
+    // transactions that are started lazily. in this case, we must reject the
+    // request. we _cannot_ do this for follower transactions, where shards may
+    // lazily be added (e.g. if servers A and B both replicate their own write
+    // ops to follower C one after the after, then C will first see only shards
+    // from A and then only from B).
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+        std::string("Transaction with id '") +
+            std::to_string(_activeTrx->tid().id()) +
+            "' does not contain collection '" + cname +
+            "' with the required access mode.");
   }
-  
+
   return waitForFuture(
       _activeTrx->insertAsync(cname, body, opOptions)
           .thenValue([=, this](OperationResult&& opres) {
             // Will commit if no error occured.
             // or abort if an error occured.
             // result stays valid!
-            return _activeTrx->finishAsync(opres.result).thenValue([=, this, opres(std::move(opres))](Result&& res) {
-              if (opres.fail()) {
-                generateTransactionError(cname, opres);
-                return;
-              }
+            return _activeTrx->finishAsync(opres.result)
+                .thenValue([=, this, opres(std::move(opres))](Result&& res) {
+                  if (opres.fail()) {
+                    generateTransactionError(cname, opres);
+                    return;
+                  }
 
-              if (res.fail()) {
-                generateTransactionError(cname, OperationResult(res, opOptions),
-                                         "");
-                return;
-              }
+                  if (res.fail()) {
+                    generateTransactionError(
+                        cname, OperationResult(res, opOptions), "");
+                    return;
+                  }
 
-              generateSaved(opres, cname,
-                            TRI_col_type_e(_activeTrx->getCollectionType(cname)),
-                            _activeTrx->transactionContextPtr()->getVPackOptions(),
-                            isMultiple);
-            });
+                  generateSaved(
+                      opres, cname,
+                      TRI_col_type_e(_activeTrx->getCollectionType(cname)),
+                      _activeTrx->transactionContextPtr()->getVPackOptions(),
+                      isMultiple);
+                });
           }));
 }
 
@@ -250,14 +267,16 @@ RestStatus RestDocumentHandler::readDocument() {
   switch (len) {
     case 0:
     case 1:
-      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+      generateError(rest::ResponseCode::NOT_FOUND,
+                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                     "expecting GET /_api/document/<collection>/<key>");
       return RestStatus::DONE;
     case 2:
       return readSingleDocument(true);
 
     default:
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+      generateError(rest::ResponseCode::BAD,
+                    TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                     "expecting GET /_api/document/<collection>/<key>");
       return RestStatus::DONE;
   }
@@ -272,14 +291,15 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
 
   // split the document reference
   std::string const& collection = suffixes[0];
-  
+
   std::string const& key = suffixes[1];
 
   // check for an etag
   bool isValidRevision;
   RevisionId ifNoneRid = extractRevision("if-none-match", isValidRevision);
   if (!isValidRevision) {
-    ifNoneRid = RevisionId::max();  // an impossible rev, so precondition failed will happen
+    ifNoneRid = RevisionId::max();  // an impossible rev, so precondition failed
+                                    // will happen
   }
 
   OperationOptions options(_context);
@@ -287,7 +307,8 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
 
   RevisionId ifRid = extractRevision("if-match", isValidRevision);
   if (!isValidRevision) {
-    ifRid = RevisionId::max();  // an impossible rev, so precondition failed will happen
+    ifRid = RevisionId::max();  // an impossible rev, so precondition failed
+                                // will happen
   }
 
   auto buffer = std::make_shared<VPackBuffer<uint8_t>>();
@@ -321,7 +342,8 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
 
   return waitForFuture(
       _activeTrx->documentAsync(collection, search, options)
-          .thenValue([=, this, buffer(std::move(buffer))](OperationResult opRes) {
+          .thenValue([=, this,
+                      buffer(std::move(buffer))](OperationResult opRes) {
             return _activeTrx->finishAsync(opRes.result)
                 .thenValue([=, this, opRes(std::move(opRes))](Result&& res) {
                   if (!opRes.ok()) {
@@ -330,8 +352,8 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
                   }
 
                   if (!res.ok()) {
-                    generateTransactionError(collection, OperationResult(res, options),
-                                             key, ifRid);
+                    generateTransactionError(
+                        collection, OperationResult(res, options), key, ifRid);
                     return;
                   }
 
@@ -344,8 +366,9 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
                   }
 
                   // use default options
-                  generateDocument(opRes.slice(), generateBody,
-                                   _activeTrx->transactionContextPtr()->getVPackOptions());
+                  generateDocument(
+                      opRes.slice(), generateBody,
+                      _activeTrx->transactionContextPtr()->getVPackOptions());
                 });
           }));
 }
@@ -383,7 +406,9 @@ RestStatus RestDocumentHandler::replaceDocument() {
 /// @brief was docuBlock REST_DOCUMENT_UPDATE
 ////////////////////////////////////////////////////////////////////////////////
 
-RestStatus RestDocumentHandler::updateDocument() { return modifyDocument(true); }
+RestStatus RestDocumentHandler::updateDocument() {
+  return modifyDocument(true);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function for replaceDocument and updateDocument
@@ -437,24 +462,32 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
 
   OperationOptions opOptions(_context);
   if ((!isArrayCase && !body.isObject()) || (isArrayCase && !body.isArray())) {
-    generateTransactionError(cname, OperationResult(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID, opOptions),
-                             "");
+    generateTransactionError(
+        cname,
+        OperationResult(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID, opOptions), "");
     return RestStatus::DONE;
   }
 
-  opOptions.isRestore = _request->parsedValue(StaticStrings::IsRestoreString, false);
-  opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
-  opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
-  opOptions.validate = !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
-  opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
-  opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false);
+  opOptions.isRestore =
+      _request->parsedValue(StaticStrings::IsRestoreString, false);
+  opOptions.ignoreRevs =
+      _request->parsedValue(StaticStrings::IgnoreRevsString, true);
+  opOptions.waitForSync =
+      _request->parsedValue(StaticStrings::WaitForSyncString, false);
+  opOptions.validate =
+      !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
+  opOptions.returnNew =
+      _request->parsedValue(StaticStrings::ReturnNewString, false);
+  opOptions.returnOld =
+      _request->parsedValue(StaticStrings::ReturnOldString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
   TRI_IF_FAILURE("delayed_synchronous_replication_request_processing") {
     if (!opOptions.isSynchronousReplicationFrom.empty()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+      std::this_thread::sleep_for(
+          std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
     }
   }
 
@@ -465,7 +498,8 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     bool isValidRevision;
     headerRev = extractRevision("if-match", isValidRevision);
     if (!isValidRevision) {
-      headerRev = RevisionId::max();  // an impossible revision, so precondition failed
+      headerRev =
+          RevisionId::max();  // an impossible revision, so precondition failed
     }
     if (headerRev.isSet()) {
       opOptions.ignoreRevs = false;
@@ -474,7 +508,8 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     VPackSlice keyInBody = body.get(StaticStrings::KeyString);
     RevisionId revInBody = RevisionId::fromSlice(body);
     if ((headerRev.isSet() && revInBody != headerRev) || keyInBody.isNone() ||
-        keyInBody.isNull() || (keyInBody.isString() && keyInBody.copyString() != key)) {
+        keyInBody.isNull() ||
+        (keyInBody.isString() && keyInBody.copyString() != key)) {
       // We need to rewrite the document with the given revision and key:
       buffer = std::make_shared<VPackBuffer<uint8_t>>();
       VPackBuilder builder(buffer);
@@ -483,17 +518,19 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
         TRI_SanitizeObject(body, builder);
         builder.add(StaticStrings::KeyString, VPackValue(key));
         if (headerRev.isSet()) {
-          builder.add(StaticStrings::RevString, VPackValue(headerRev.toString()));
+          builder.add(StaticStrings::RevString,
+                      VPackValue(headerRev.toString()));
         } else if (!opOptions.ignoreRevs && revInBody.isSet()) {
-          builder.add(StaticStrings::RevString, VPackValue(revInBody.toString()));
-          headerRev = revInBody;   // make sure that we report 412 and not 409
+          builder.add(StaticStrings::RevString,
+                      VPackValue(revInBody.toString()));
+          headerRev = revInBody;  // make sure that we report 412 and not 409
         }
       }
 
       body = builder.slice();
     } else if (!headerRev.isSet() && revInBody.isSet() &&
                opOptions.ignoreRevs == false) {
-      headerRev = revInBody;   // make sure that we report 412 and not 409
+      headerRev = revInBody;  // make sure that we report 412 and not 409
     }
   }
 
@@ -516,25 +553,29 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   if (ServerState::instance()->isDBServer() &&
-      (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr ||
+      (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) ==
+           nullptr ||
        _activeTrx->state()->isReadOnlyTransaction())) {
-    // make sure that the current transaction includes the collection that we want to
-    // write into. this is not necessarily the case for follower transactions that
-    // are started lazily. in this case, we must reject the request.
-    // we _cannot_ do this for follower transactions, where shards may lazily be
-    // added (e.g. if servers A and B both replicate their own write ops to follower
-    // C one after the after, then C will first see only shards from A and then only
-    // from B).
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-        std::string("Transaction with id '") + std::to_string(_activeTrx->tid().id())
-        + "' does not contain collection '" + cname
-        + "' with the required access mode.");
+    // make sure that the current transaction includes the collection that we
+    // want to write into. this is not necessarily the case for follower
+    // transactions that are started lazily. in this case, we must reject the
+    // request. we _cannot_ do this for follower transactions, where shards may
+    // lazily be added (e.g. if servers A and B both replicate their own write
+    // ops to follower C one after the after, then C will first see only shards
+    // from A and then only from B).
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+        std::string("Transaction with id '") +
+            std::to_string(_activeTrx->tid().id()) +
+            "' does not contain collection '" + cname +
+            "' with the required access mode.");
   }
-  
+
   auto f = futures::Future<OperationResult>::makeEmpty();
   if (isPatch) {
     // patching an existing document
-    opOptions.keepNull = _request->parsedValue(StaticStrings::KeepNullString, true);
+    opOptions.keepNull =
+        _request->parsedValue(StaticStrings::KeepNullString, true);
     opOptions.mergeObjects =
         _request->parsedValue(StaticStrings::MergeObjectsString, true);
     f = _activeTrx->updateAsync(cname, body, opOptions);
@@ -542,26 +583,32 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     f = _activeTrx->replaceAsync(cname, body, opOptions);
   }
 
-  return waitForFuture(std::move(f).thenValue([=, this, buffer(std::move(buffer))](OperationResult opRes) {
-    return _activeTrx->finishAsync(opRes.result).thenValue([=, this, opRes(std::move(opRes))](Result&& res) {
-      // ...........................................................................
-      // outside write transaction
-      // ...........................................................................
+  return waitForFuture(std::move(f).thenValue(
+      [=, this, buffer(std::move(buffer))](OperationResult opRes) {
+        return _activeTrx->finishAsync(opRes.result)
+            .thenValue([=, this, opRes(std::move(opRes))](Result&& res) {
+              // ...........................................................................
+              // outside write transaction
+              // ...........................................................................
 
-      if (opRes.fail()) {
-        generateTransactionError(cname, opRes, key, headerRev);
-        return;
-      }
+              if (opRes.fail()) {
+                generateTransactionError(cname, opRes, key, headerRev);
+                return;
+              }
 
-      if (!res.ok()) {
-        generateTransactionError(cname, OperationResult(res, opOptions), key, headerRev);
-        return;
-      }
+              if (!res.ok()) {
+                generateTransactionError(cname, OperationResult(res, opOptions),
+                                         key, headerRev);
+                return;
+              }
 
-      generateSaved(opRes, cname, TRI_col_type_e(_activeTrx->getCollectionType(cname)),
-                    _activeTrx->transactionContextPtr()->getVPackOptions(), isArrayCase);
-    });
-  }));
+              generateSaved(
+                  opRes, cname,
+                  TRI_col_type_e(_activeTrx->getCollectionType(cname)),
+                  _activeTrx->transactionContextPtr()->getVPackOptions(),
+                  isArrayCase);
+            });
+      }));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -580,7 +627,7 @@ RestStatus RestDocumentHandler::removeDocument() {
 
   // split the document reference
   std::string const& cname = suffixes[0];
-  
+
   std::string key;
   if (suffixes.size() == 2) {
     key = suffixes[1];
@@ -592,24 +639,29 @@ RestStatus RestDocumentHandler::removeDocument() {
     bool isValidRevision = false;
     revision = extractRevision("if-match", isValidRevision);
     if (!isValidRevision) {
-      revision = RevisionId::max();  // an impossible revision, so precondition failed
+      revision =
+          RevisionId::max();  // an impossible revision, so precondition failed
     }
   }
 
   OperationOptions opOptions(_context);
-  opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false);
-  opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
-  opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
+  opOptions.returnOld =
+      _request->parsedValue(StaticStrings::ReturnOldString, false);
+  opOptions.ignoreRevs =
+      _request->parsedValue(StaticStrings::IgnoreRevsString, true);
+  opOptions.waitForSync =
+      _request->parsedValue(StaticStrings::WaitForSyncString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
   TRI_IF_FAILURE("delayed_synchronous_replication_request_processing") {
     if (!opOptions.isSynchronousReplicationFrom.empty()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+      std::this_thread::sleep_for(
+          std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
     }
   }
-  
+
   VPackSlice search;
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
 
@@ -653,47 +705,56 @@ RestStatus RestDocumentHandler::removeDocument() {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
     return RestStatus::DONE;
   }
-  
+
   if (ServerState::instance()->isDBServer() &&
-      (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr ||
+      (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) ==
+           nullptr ||
        _activeTrx->state()->isReadOnlyTransaction())) {
-    // make sure that the current transaction includes the collection that we want to
-    // write into. this is not necessarily the case for follower transactions that
-    // are started lazily. in this case, we must reject the request.
-    // we _cannot_ do this for follower transactions, where shards may lazily be
-    // added (e.g. if servers A and B both replicate their own write ops to follower
-    // C one after the after, then C will first see only shards from A and then only
-    // from B).
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-        std::string("Transaction with id '") + std::to_string(_activeTrx->tid().id())
-        + "' does not contain collection '" + cname
-        + "' with the required access mode.");
+    // make sure that the current transaction includes the collection that we
+    // want to write into. this is not necessarily the case for follower
+    // transactions that are started lazily. in this case, we must reject the
+    // request. we _cannot_ do this for follower transactions, where shards may
+    // lazily be added (e.g. if servers A and B both replicate their own write
+    // ops to follower C one after the after, then C will first see only shards
+    // from A and then only from B).
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+        std::string("Transaction with id '") +
+            std::to_string(_activeTrx->tid().id()) +
+            "' does not contain collection '" + cname +
+            "' with the required access mode.");
   }
-  
+
   bool const isMultiple = search.isArray();
 
   return waitForFuture(
-      _activeTrx->removeAsync(cname, search, opOptions).thenValue([=, this, buffer(std::move(buffer))](OperationResult opRes) {
-        return _activeTrx->finishAsync(opRes.result).thenValue([=, this, opRes(std::move(opRes))](Result&& res) {
-          // ...........................................................................
-          // outside write transaction
-          // ...........................................................................
+      _activeTrx->removeAsync(cname, search, opOptions)
+          .thenValue([=, this,
+                      buffer(std::move(buffer))](OperationResult opRes) {
+            return _activeTrx->finishAsync(opRes.result)
+                .thenValue([=, this, opRes(std::move(opRes))](Result&& res) {
+                  // ...........................................................................
+                  // outside write transaction
+                  // ...........................................................................
 
-          if (opRes.fail()) {
-            generateTransactionError(cname, opRes, key, revision);
-            return;
-          }
+                  if (opRes.fail()) {
+                    generateTransactionError(cname, opRes, key, revision);
+                    return;
+                  }
 
-          if (!res.ok()) {
-            generateTransactionError(cname, OperationResult(res, opOptions), key);
-            return;
-          }
+                  if (!res.ok()) {
+                    generateTransactionError(
+                        cname, OperationResult(res, opOptions), key);
+                    return;
+                  }
 
-          generateDeleted(opRes, cname,
-                          TRI_col_type_e(_activeTrx->getCollectionType(cname)),
-                          _activeTrx->transactionContextPtr()->getVPackOptions(), isMultiple);
-        });
-      }));
+                  generateDeleted(
+                      opRes, cname,
+                      TRI_col_type_e(_activeTrx->getCollectionType(cname)),
+                      _activeTrx->transactionContextPtr()->getVPackOptions(),
+                      isMultiple);
+                });
+          }));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -713,7 +774,8 @@ RestStatus RestDocumentHandler::readManyDocuments() {
   std::string const& cname = suffixes[0];
 
   OperationOptions opOptions(_context);
-  opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
+  opOptions.ignoreRevs =
+      _request->parsedValue(StaticStrings::IgnoreRevsString, true);
 
   _activeTrx = createTransaction(cname, AccessMode::Type::READ, opOptions);
 
@@ -734,20 +796,25 @@ RestStatus RestDocumentHandler::readManyDocuments() {
     return RestStatus::DONE;
   }
 
-  return waitForFuture(_activeTrx->documentAsync(cname, search, opOptions).thenValue([=, this](OperationResult opRes) {
-    return _activeTrx->finishAsync(opRes.result).thenValue([=, this, opRes(std::move(opRes))](Result&& res) {
-      if (opRes.fail()) {
-        generateTransactionError(cname, opRes);
-        return;
-      }
+  return waitForFuture(
+      _activeTrx->documentAsync(cname, search, opOptions)
+          .thenValue([=, this](OperationResult opRes) {
+            return _activeTrx->finishAsync(opRes.result)
+                .thenValue([=, this, opRes(std::move(opRes))](Result&& res) {
+                  if (opRes.fail()) {
+                    generateTransactionError(cname, opRes);
+                    return;
+                  }
 
-      if (!res.ok()) {
-        generateTransactionError(cname, OperationResult(res, opOptions), "");
-        return;
-      }
+                  if (!res.ok()) {
+                    generateTransactionError(
+                        cname, OperationResult(res, opOptions), "");
+                    return;
+                  }
 
-      generateDocument(opRes.slice(), true,
-                       _activeTrx->transactionContextPtr()->getVPackOptions());
-    });
-  }));
+                  generateDocument(
+                      opRes.slice(), true,
+                      _activeTrx->transactionContextPtr()->getVPackOptions());
+                });
+          }));
 }

@@ -34,25 +34,25 @@
 #include <vector>
 
 namespace v8 {
-template <class T>
+template<class T>
 class Local;
-template <class T>
+template<class T>
 using Handle = Local<T>;
 class Value;
 class Isolate;
-}
+}  // namespace v8
 namespace arangodb {
 namespace aql {
 class SharedAqlItemBlockPtr;
 struct Range;
-}
+}  // namespace aql
 namespace velocypack {
-template <typename T>
+template<typename T>
 class Buffer;
 class Builder;
 struct Options;
 class Slice;
-}
+}  // namespace velocypack
 }  // namespace arangodb
 
 namespace arangodb {
@@ -102,7 +102,6 @@ struct AqlValueHintDouble {
   double const value;
 };
 
-
 struct AqlValueHintInt {
   explicit AqlValueHintInt(int64_t v) noexcept;
   explicit AqlValueHintInt(int v) noexcept;
@@ -129,21 +128,25 @@ struct AqlValue final {
  public:
   /// @brief AqlValueType, indicates what sort of value we have
   enum AqlValueType : uint8_t {
-    VPACK_INLINE = 0,      // contains vpack data, inline
-    VPACK_SLICE_POINTER,   // contains a pointer to a vpack document, memory is
-                           // not managed!
-    VPACK_MANAGED_SLICE,   // contains vpack, via pointer to a managed uint8_t
-                           // slice, allocated by new[] or malloc()
-    RANGE,    // a pointer to a range remembering lower and upper bound, managed
-    VPACK_INLINE_INT48,    // contains vpack data, inline and unpacked 48bit stored as 64bit int number value (system endianess)
-    VPACK_INLINE_INT64,    // contains vpack data, inline and unpacked 64bit int number value (in little-endian)
-    VPACK_INLINE_UINT64,   // contains vpack data, inline and unpacked 64bit uint number value (in little-endian)
-    VPACK_INLINE_DOUBLE    // contains vpack data, inline and unpacked 64bit double number value (in little-endian)
+    VPACK_INLINE = 0,     // contains vpack data, inline
+    VPACK_SLICE_POINTER,  // contains a pointer to a vpack document, memory is
+                          // not managed!
+    VPACK_MANAGED_SLICE,  // contains vpack, via pointer to a managed uint8_t
+                          // slice, allocated by new[] or malloc()
+    RANGE,  // a pointer to a range remembering lower and upper bound, managed
+    VPACK_INLINE_INT48,   // contains vpack data, inline and unpacked 48bit
+                          // stored as 64bit int number value (system endianess)
+    VPACK_INLINE_INT64,   // contains vpack data, inline and unpacked 64bit int
+                          // number value (in little-endian)
+    VPACK_INLINE_UINT64,  // contains vpack data, inline and unpacked 64bit uint
+                          // number value (in little-endian)
+    VPACK_INLINE_DOUBLE   // contains vpack data, inline and unpacked 64bit
+                          // double number value (in little-endian)
   };
 
   static_assert(iresearch::adjacencyChecker<AqlValueType>::checkAdjacency<
-                VPACK_INLINE_DOUBLE, VPACK_INLINE_UINT64, VPACK_INLINE_INT64,
-                VPACK_INLINE_INT48>(),
+                    VPACK_INLINE_DOUBLE, VPACK_INLINE_UINT64,
+                    VPACK_INLINE_INT64, VPACK_INLINE_INT48>(),
                 "Values are not adjacent");
 
   /// @brief Holds the actual data for this AqlValue
@@ -161,9 +164,9 @@ struct AqlValue final {
   /// data and is managed by the AqlValue. The second-last byte contains info
   /// about how the memory was allocated:
   /// - MemoryOriginType::New: memory was allocated by new[] and must be deleted
-  /// - MemoryOriginType::Malloc: memory was malloc'd and needs to be free'd  
+  /// - MemoryOriginType::Malloc: memory was malloc'd and needs to be free'd
   /// RANGE: a managed range object. The memory is managed by the AqlValue
-  /// 
+  ///
   /// AqlValue memory layout:
   /// Legend:
   /// AT - AqlValue Type byte
@@ -175,18 +178,20 @@ struct AqlValue final {
   /// ML - managed slice length
   /// ID - isDocument flag
   /// XX - unused
-  /// | 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  | 10 | 11 | 12 | 13 | 14 | 15 |   Bytes
-  /// | AT | ID | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD |   VPACK_SLICE_POINTER
-  /// | AT | MO | ML | ML | ML | ML | ML | ML | PD | PD | PD | PD | PD | PD | PD | PD |   VPACK_MANAGED_SLICE
-  /// | AT | XX | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD |   RANGE
-  /// | AT | ST | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD |   VPACK_INLINE
-  /// | AT | ST | SD | SD | SD | SD | SD | SD | ND | ND | ND | ND | ND | ND | ND | ND |   VPACK_48BIT_INLINE_INT
-  /// | AT | XX | XX | XX | XX | XX | XX | ST | SD | SD | SD | SD | SD | SD | SD | SD |   VPACK_64BIT_INLINE_(INT/UINT/DOUBLE)
+  /// | 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  | 10 | 11 | 12 | 13 | 14
+  /// | 15 |   Bytes | AT | ID | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD
+  /// | PD | PD | PD | PD |   VPACK_SLICE_POINTER | AT | MO | ML | ML | ML | ML
+  /// | ML | ML | PD | PD | PD | PD | PD | PD | PD | PD |   VPACK_MANAGED_SLICE
+  /// | AT | XX | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD
+  /// | PD |   RANGE | AT | ST | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD
+  /// | SD | SD | SD | SD |   VPACK_INLINE | AT | ST | SD | SD | SD | SD | SD |
+  /// SD | ND | ND | ND | ND | ND | ND | ND | ND |   VPACK_48BIT_INLINE_INT | AT
+  /// | XX | XX | XX | XX | XX | XX | ST | SD | SD | SD | SD | SD | SD | SD | SD
+  /// |   VPACK_64BIT_INLINE_(INT/UINT/DOUBLE)
  private:
-
   union {
     uint8_t aqlValueType;
-    uint64_t words[2]; // keep this for fast zeroing AqlValue
+    uint64_t words[2];  // keep this for fast zeroing AqlValue
 
     // RANGE
     struct {
@@ -213,27 +218,30 @@ struct AqlValue final {
         }
       }
 
-      uint64_t lengthOrigin; // First byte is AqlValue type. Second -  Memory origin. Other 6 bytes  - length
+      uint64_t lengthOrigin;  // First byte is AqlValue type. Second -  Memory
+                              // origin. Other 6 bytes  - length
       uint8_t* managedPointer;
     } managedSliceMeta;
-    static_assert(sizeof(managedSliceMeta) == 16, "VPACK_MANAGED_SLICE layout is not 16 bytes!");
+    static_assert(sizeof(managedSliceMeta) == 16,
+                  "VPACK_MANAGED_SLICE layout is not 16 bytes!");
 
     // VPACK_SLICE_POINTER
     struct {
       uint8_t padding;
       uint8_t isManagedDoc;
       uint8_t padding2[6];
-      uint8_t const* pointer; 
+      uint8_t const* pointer;
     } pointerMeta;
-    static_assert(sizeof(pointerMeta) == 16, "VPACK_SLICE_POINTER layout is not 16 bytes!");
+    static_assert(sizeof(pointerMeta) == 16,
+                  "VPACK_SLICE_POINTER layout is not 16 bytes!");
 
     // VPACK_INLINE
     struct {
       uint8_t padding;
-      uint8_t slice[15]; 
+      uint8_t slice[15];
     } inlineSliceMeta;
 
-    //VPACK_INLINE_INT48
+    // VPACK_INLINE_INT48
     struct {
       union {
         struct {
@@ -246,8 +254,9 @@ struct AqlValue final {
         } int48;
       } data;
     } shortNumberMeta;
-    static_assert(sizeof(shortNumberMeta) == 16, "VPACK_INLINE_INT48 layout is not 16 bytes!");
-    
+    static_assert(sizeof(shortNumberMeta) == 16,
+                  "VPACK_INLINE_INT48 layout is not 16 bytes!");
+
     // VPACK_INLINE_INT64
     // VPACK_INLINE_UINT64
     // VPACK_INLINE_DOUBLE
@@ -260,21 +269,22 @@ struct AqlValue final {
         struct {
           uint8_t padding[8];
           uint64_t val;
-        } uintLittleEndian; // also stores double
+        } uintLittleEndian;  // also stores double
         struct {
           uint8_t padding[8];
           int64_t val;
         } intLittleEndian;
       } data;
     } longNumberMeta;
-    static_assert(sizeof(longNumberMeta) == 16, "VPACK_INLINE_INT64 layout is not 16 bytes!");
+    static_assert(sizeof(longNumberMeta) == 16,
+                  "VPACK_INLINE_INT64 layout is not 16 bytes!");
   } _data;
 
   /// @brief type of memory that we are dealing with for values of type
   /// VPACK_MANAGED_SLICE
   enum class MemoryOriginType : uint8_t {
-    New = 0, // memory allocated by new[]
-    Malloc = 1, // memory allocated by malloc
+    New = 0,     // memory allocated by new[]
+    Malloc = 1,  // memory allocated by malloc
   };
 
  public:
@@ -284,7 +294,7 @@ struct AqlValue final {
 
   // construct from pointer, not copying!
   explicit AqlValue(uint8_t const* pointer);
-  
+
   // construct from another AqlValue and a new data pointer, not copying!
   explicit AqlValue(AqlValue const& other, void* data) noexcept;
 
@@ -326,9 +336,10 @@ struct AqlValue final {
 
   // construct from Slice, copying contents
   explicit AqlValue(arangodb::velocypack::Slice slice);
-  
+
   // construct from Slice and length, copying contents
-  AqlValue(arangodb::velocypack::Slice slice, arangodb::velocypack::ValueLength length);
+  AqlValue(arangodb::velocypack::Slice slice,
+           arangodb::velocypack::ValueLength length);
 
   // construct range type
   AqlValue(int64_t low, int64_t high);
@@ -409,7 +420,8 @@ struct AqlValue final {
   AqlValue get(CollectionNameResolver const& resolver, std::string_view name,
                bool& mustDestroy, bool copy) const;
   AqlValue get(CollectionNameResolver const& resolver,
-               std::vector<std::string> const& names, bool& mustDestroy, bool copy) const;
+               std::vector<std::string> const& names, bool& mustDestroy,
+               bool copy) const;
   bool hasKey(std::string_view name) const;
 
   /// @brief get the numeric value of an AqlValue
@@ -420,7 +432,7 @@ struct AqlValue final {
   /// @brief whether or not an AqlValue evaluates to true/false
   bool toBoolean() const;
 
-  /// @brief return the pointer to the underlying AqlValue. 
+  /// @brief return the pointer to the underlying AqlValue.
   /// only supported for AqlValue types with dynamic memory management
   void* data() const noexcept;
 
@@ -428,20 +440,22 @@ struct AqlValue final {
   Range const* range() const;
 
   /// @brief construct a V8 value as input for the expression execution in V8
-  v8::Handle<v8::Value> toV8(v8::Isolate* isolate, arangodb::velocypack::Options const*) const;
+  v8::Handle<v8::Value> toV8(v8::Isolate* isolate,
+                             arangodb::velocypack::Options const*) const;
 
   /// @brief materializes a value into the builder
   void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&,
                     bool resolveExternals, bool allowUnindexed) const;
 
   /// @brief materialize a value into a new one. this expands ranges
-  AqlValue materialize(velocypack::Options const*, bool& hasCopied, bool resolveExternals) const;
+  AqlValue materialize(velocypack::Options const*, bool& hasCopied,
+                       bool resolveExternals) const;
 
   /// @brief return the slice for the value
   /// this will throw if the value type is not VPACK_SLICE_POINTER,
   /// VPACK_INLINE, VPACK_MANAGED_SLICE
   arangodb::velocypack::Slice slice() const;
-  
+
   arangodb::velocypack::Slice slice(AqlValueType type) const;
 
   /// @brief clone a value
@@ -470,21 +484,24 @@ struct AqlValue final {
  private:
   /// @brief initializes value from a slice
   void initFromSlice(arangodb::velocypack::Slice slice);
-  
+
   /// @brief initializes value from a slice, when the length is already known
-  void initFromSlice(arangodb::velocypack::Slice slice, arangodb::velocypack::ValueLength length);
+  void initFromSlice(arangodb::velocypack::Slice slice,
+                     arangodb::velocypack::ValueLength length);
 
   /// @brief sets the value type
   void setType(AqlValueType type) noexcept;
 
-  template <bool isManagedDoc>
+  template<bool isManagedDoc>
   void setPointer(uint8_t const* pointer) noexcept;
-  
-  /// @brief return the memory origin type for values of type VPACK_MANAGED_SLICE
+
+  /// @brief return the memory origin type for values of type
+  /// VPACK_MANAGED_SLICE
   MemoryOriginType memoryOriginType() const noexcept;
-  
+
   /// @brief store meta information for values of type VPACK_MANAGED_SLICE
-  void setManagedSliceData(MemoryOriginType mot, arangodb::velocypack::ValueLength length);
+  void setManagedSliceData(MemoryOriginType mot,
+                           arangodb::velocypack::ValueLength length);
 };
 
 // Check that the defaulted constructors, destructor and assignment
@@ -492,11 +509,13 @@ struct AqlValue final {
 // AqlValue(AqlValue&&)
 static_assert(noexcept(AqlValue(std::declval<AqlValue>())));
 // AqlValue(AqlValue const&)
-static_assert(noexcept(AqlValue(static_cast<AqlValue const&>(std::declval<AqlValue>()))));
+static_assert(
+    noexcept(AqlValue(static_cast<AqlValue const&>(std::declval<AqlValue>()))));
 // AqlValue& operator=(AqlValue&&)
 static_assert(noexcept(std::declval<AqlValue>() = std::declval<AqlValue>()));
 // AqlValue& operator=(AqlValue const&)
-static_assert(noexcept(std::declval<AqlValue>() = static_cast<AqlValue const&>(std::declval<AqlValue>())));
+static_assert(noexcept(std::declval<AqlValue>() = static_cast<AqlValue const&>(
+                           std::declval<AqlValue>())));
 // ~AqlValue()
 static_assert(noexcept(std::declval<AqlValue>().~AqlValue()));
 
@@ -524,4 +543,3 @@ static_assert(sizeof(AqlValue) == 16, "invalid AqlValue size");
 }  // namespace aql
 
 }  // namespace arangodb
-

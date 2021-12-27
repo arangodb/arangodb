@@ -46,4 +46,3 @@ class LogAppenderSyslog final : public LogAppender {
 };
 #endif
 }  // namespace arangodb
-

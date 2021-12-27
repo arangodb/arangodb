@@ -35,20 +35,25 @@
 
 namespace {
 
-std::unordered_map<std::string, arangodb::LogTimeFormats::TimeFormat> const formatMap{
-  { "uptime", arangodb::LogTimeFormats::TimeFormat::Uptime }, 
-  { "uptime-millis", arangodb::LogTimeFormats::TimeFormat::UptimeMillis }, 
-  { "uptime-micros", arangodb::LogTimeFormats::TimeFormat::UptimeMicros }, 
-  { "timestamp", arangodb::LogTimeFormats::TimeFormat::UnixTimestamp }, 
-  { "timestamp-millis", arangodb::LogTimeFormats::TimeFormat::UnixTimestampMillis }, 
-  { "timestamp-micros", arangodb::LogTimeFormats::TimeFormat::UnixTimestampMicros }, 
-  { "utc-datestring", arangodb::LogTimeFormats::TimeFormat::UTCDateString }, 
-  { "utc-datestring-millis", arangodb::LogTimeFormats::TimeFormat::UTCDateStringMillis }, 
-  { "local-datestring", arangodb::LogTimeFormats::TimeFormat::LocalDateString }, 
+std::unordered_map<std::string,
+                   arangodb::LogTimeFormats::TimeFormat> const formatMap{
+    {"uptime", arangodb::LogTimeFormats::TimeFormat::Uptime},
+    {"uptime-millis", arangodb::LogTimeFormats::TimeFormat::UptimeMillis},
+    {"uptime-micros", arangodb::LogTimeFormats::TimeFormat::UptimeMicros},
+    {"timestamp", arangodb::LogTimeFormats::TimeFormat::UnixTimestamp},
+    {"timestamp-millis",
+     arangodb::LogTimeFormats::TimeFormat::UnixTimestampMillis},
+    {"timestamp-micros",
+     arangodb::LogTimeFormats::TimeFormat::UnixTimestampMicros},
+    {"utc-datestring", arangodb::LogTimeFormats::TimeFormat::UTCDateString},
+    {"utc-datestring-millis",
+     arangodb::LogTimeFormats::TimeFormat::UTCDateStringMillis},
+    {"local-datestring", arangodb::LogTimeFormats::TimeFormat::LocalDateString},
 };
 
-std::chrono::time_point<std::chrono::system_clock> const startTime = std::chrono::system_clock::now();
-    
+std::chrono::time_point<std::chrono::system_clock> const startTime =
+    std::chrono::system_clock::now();
+
 void appendNumber(uint64_t value, std::string& out, size_t size) {
   char buffer[22];
   size_t len = arangodb::basics::StringUtils::itoa(value, &buffer[0]);
@@ -62,14 +67,14 @@ void appendNumber(uint64_t value, std::string& out, size_t size) {
   out.append(&buffer[0], len);
 }
 
-}
+}  // namespace
 
 namespace arangodb {
 namespace LogTimeFormats {
 
 /// @brief whether or not the specified format is a local one
 bool isLocalFormat(TimeFormat format) {
-  return format == TimeFormat::LocalDateString; 
+  return format == TimeFormat::LocalDateString;
 }
 
 /// @brief whether or not the specified format produces string outputs
@@ -81,9 +86,7 @@ bool isStringFormat(TimeFormat format) {
 }
 
 /// @brief return the name of the default log time format
-std::string defaultFormatName() {
-  return "utc-datestring";
-}
+std::string defaultFormatName() { return "utc-datestring"; }
 
 /// @brief return the names of all log time formats
 std::unordered_set<std::string> getAvailableFormatNames() {
@@ -106,16 +109,14 @@ TimeFormat formatFromName(std::string const& name) {
 
   return (*it).second;
 }
-  
-void writeTime(std::string& out, 
-               TimeFormat format, 
+
+void writeTime(std::string& out, TimeFormat format,
                std::chrono::system_clock::time_point tp,
                std::chrono::system_clock::time_point startTp) {
   using namespace date;
   using namespace std::chrono;
 
-  if (format == TimeFormat::Uptime ||
-      format == TimeFormat::UptimeMillis ||
+  if (format == TimeFormat::Uptime || format == TimeFormat::UptimeMillis ||
       format == TimeFormat::UptimeMicros) {
     if (startTp == system_clock::time_point()) {
       // if startTp is not set by caller, we will use the recorded start time.
@@ -123,38 +124,49 @@ void writeTime(std::string& out,
       startTp = ::startTime;
     }
     // integral uptime value
-    arangodb::basics::StringUtils::itoa(uint64_t(duration_cast<seconds>(tp - startTp).count()), out);
+    arangodb::basics::StringUtils::itoa(
+        uint64_t(duration_cast<seconds>(tp - startTp).count()), out);
     if (format == TimeFormat::UptimeMillis) {
       // uptime with millisecond precision
       out.push_back('.');
-      appendNumber(uint64_t(duration_cast<milliseconds>(tp - startTp).count() % 1000), out, 3);
+      appendNumber(
+          uint64_t(duration_cast<milliseconds>(tp - startTp).count() % 1000),
+          out, 3);
     } else if (format == TimeFormat::UptimeMicros) {
       // uptime with microsecond precision
       out.push_back('.');
-      appendNumber(uint64_t(duration_cast<microseconds>(tp - startTp).count() % 1000000), out, 6);
+      appendNumber(
+          uint64_t(duration_cast<microseconds>(tp - startTp).count() % 1000000),
+          out, 6);
     }
   } else if (format == TimeFormat::UnixTimestamp) {
     // integral unix timestamp
-    arangodb::basics::StringUtils::itoa(uint64_t(duration_cast<seconds>(tp.time_since_epoch()).count()), out);
+    arangodb::basics::StringUtils::itoa(
+        uint64_t(duration_cast<seconds>(tp.time_since_epoch()).count()), out);
   } else if (format == TimeFormat::UnixTimestampMillis) {
     // unix timestamp with millisecond precision
     system_clock::time_point tp2(duration_cast<seconds>(tp.time_since_epoch()));
-    arangodb::basics::StringUtils::itoa(uint64_t(duration_cast<seconds>(tp2.time_since_epoch()).count()), out);
+    arangodb::basics::StringUtils::itoa(
+        uint64_t(duration_cast<seconds>(tp2.time_since_epoch()).count()), out);
     out.push_back('.');
-    appendNumber(uint64_t(duration_cast<milliseconds>(tp - tp2).count()), out, 3);
+    appendNumber(uint64_t(duration_cast<milliseconds>(tp - tp2).count()), out,
+                 3);
   } else if (format == TimeFormat::UnixTimestampMicros) {
     // unix timestamp with microsecond precision
     system_clock::time_point tp2(duration_cast<seconds>(tp.time_since_epoch()));
-    arangodb::basics::StringUtils::itoa(uint64_t(duration_cast<seconds>(tp2.time_since_epoch()).count()), out);
+    arangodb::basics::StringUtils::itoa(
+        uint64_t(duration_cast<seconds>(tp2.time_since_epoch()).count()), out);
     out.push_back('.');
-    appendNumber(uint64_t(duration_cast<microseconds>(tp - tp2).count()), out, 6);
+    appendNumber(uint64_t(duration_cast<microseconds>(tp - tp2).count()), out,
+                 6);
   } else {
     // all date-string variants handled here
     if (format == TimeFormat::UTCDateString ||
         format == TimeFormat::UTCDateStringMillis) {
       // UTC datestring
       // UTC datestring with milliseconds
-      arangodb::tp_sys_clock_ms secs(duration_cast<milliseconds>(tp.time_since_epoch()));
+      arangodb::tp_sys_clock_ms secs(
+          duration_cast<milliseconds>(tp.time_since_epoch()));
       auto days = floor<date::days>(secs);
       auto ymd = date::year_month_day(days);
       appendNumber(uint64_t(static_cast<int>(ymd.year())), out, 4);
@@ -169,7 +181,7 @@ void writeTime(std::string& out,
       appendNumber(uint64_t(day_time.minutes().count()), out, 2);
       out.push_back(':');
       appendNumber(uint64_t(day_time.seconds().count()), out, 2);
-        
+
       if (format == TimeFormat::UTCDateStringMillis) {
         out.push_back('.');
         appendNumber(uint64_t(day_time.subseconds().count()), out, 3);

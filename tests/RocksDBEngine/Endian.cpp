@@ -43,22 +43,26 @@ class RocksDBFormatTest : public ::testing::Test {
 TEST_F(RocksDBFormatTest, little_endian) {
   rocksutils::uintToPersistentLittleEndian<uint64_t>(out, 1);
   EXPECT_EQ(out.size(), 8);
-  EXPECT_EQ(rocksutils::uintFromPersistentLittleEndian<uint64_t>(out.data()), 1);
+  EXPECT_EQ(rocksutils::uintFromPersistentLittleEndian<uint64_t>(out.data()),
+            1);
   out.clear();
 
   rocksutils::uintToPersistentLittleEndian<uint64_t>(out, 1337);
   EXPECT_EQ(out.size(), 8);
-  EXPECT_EQ(rocksutils::uintFromPersistentLittleEndian<uint64_t>(out.data()), 1337);
+  EXPECT_EQ(rocksutils::uintFromPersistentLittleEndian<uint64_t>(out.data()),
+            1337);
   out.clear();
 
   rocksutils::uintToPersistentLittleEndian<uint64_t>(out, 1212321);
   EXPECT_EQ(out.size(), 8);
-  EXPECT_EQ(rocksutils::uintFromPersistentLittleEndian<uint64_t>(out.data()), 1212321);
+  EXPECT_EQ(rocksutils::uintFromPersistentLittleEndian<uint64_t>(out.data()),
+            1212321);
   out.clear();
 
   rocksutils::uintToPersistentLittleEndian<uint32_t>(out, 88888);
   EXPECT_EQ(out.size(), 4);
-  EXPECT_EQ(rocksutils::uintFromPersistentLittleEndian<uint32_t>(out.data()), 88888);
+  EXPECT_EQ(rocksutils::uintFromPersistentLittleEndian<uint32_t>(out.data()),
+            88888);
   out.clear();
 }
 
@@ -70,17 +74,20 @@ TEST_F(RocksDBFormatTest, big_endian) {
 
   rocksutils::uintToPersistentBigEndian<uint64_t>(out, 1337);
   EXPECT_EQ(out.size(), 8);
-  EXPECT_EQ(rocksutils::uintFromPersistentBigEndian<uint64_t>(out.data()), 1337);
+  EXPECT_EQ(rocksutils::uintFromPersistentBigEndian<uint64_t>(out.data()),
+            1337);
   out.clear();
 
   rocksutils::uintToPersistentBigEndian<uint64_t>(out, 1212321);
   EXPECT_EQ(out.size(), 8);
-  EXPECT_EQ(rocksutils::uintFromPersistentBigEndian<uint64_t>(out.data()), 1212321);
+  EXPECT_EQ(rocksutils::uintFromPersistentBigEndian<uint64_t>(out.data()),
+            1212321);
   out.clear();
 
   rocksutils::uintToPersistentBigEndian<uint32_t>(out, 88888);
   EXPECT_EQ(out.size(), 4);
-  EXPECT_EQ(rocksutils::uintFromPersistentBigEndian<uint32_t>(out.data()), 88888);
+  EXPECT_EQ(rocksutils::uintFromPersistentBigEndian<uint32_t>(out.data()),
+            88888);
   out.clear();
 }
 

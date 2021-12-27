@@ -43,62 +43,74 @@ struct LogContextTest : ::testing::Test {
 };
 
 TEST_F(LogContextTest, visit_visits_values_in_order_they_are_added) {
-  ScopedValue v1(LogContext::makeValue().with<LogKey1>(1).with<LogKey2>(2u).with<LogKey3>(std::int8_t(3)));
-  ScopedValue v2(LogContext::makeValue().with<LogKey4>(std::uint8_t(4)).with<LogKey5>(5.0f).with<LogKey6>("blubb"));
+  ScopedValue v1(
+      LogContext::makeValue().with<LogKey1>(1).with<LogKey2>(2u).with<LogKey3>(
+          std::int8_t(3)));
+  ScopedValue v2(LogContext::makeValue()
+                     .with<LogKey4>(std::uint8_t(4))
+                     .with<LogKey5>(5.0f)
+                     .with<LogKey6>("blubb"));
   unsigned cnt = 0;
   auto overloads = overload{
-    [&cnt](std::string_view key, std::int64_t value) {
-      if (cnt == 0) {
-        EXPECT_EQ(1, value);
-      } else if (cnt == 2) {
-        EXPECT_EQ(3, value);
-      } else {
-        EXPECT_TRUE(false) << "unexpected cnt " << cnt << " with value " << value;
-      }
-      ++cnt;
-    },
-    [&cnt](std::string_view key, std::uint64_t value) {
-      if (cnt == 1) {
-        EXPECT_EQ(2, value);
-      } else if (cnt == 3) {
-        EXPECT_EQ(4, value);
-      } else {
-        EXPECT_TRUE(false) << "unexpected cnt " << cnt << " with value " << value;
-      }
-      ++cnt;
-    },
-    [&cnt](std::string_view key, double value) {
-      EXPECT_EQ(4, cnt++);
-      EXPECT_EQ(5.0, value);
-    },
-    [&cnt](std::string_view key, std::string_view value) {
-      EXPECT_EQ("blubb", value) << "value: " << value;
-      EXPECT_EQ(5, cnt++);
-    },
+      [&cnt](std::string_view key, std::int64_t value) {
+        if (cnt == 0) {
+          EXPECT_EQ(1, value);
+        } else if (cnt == 2) {
+          EXPECT_EQ(3, value);
+        } else {
+          EXPECT_TRUE(false)
+              << "unexpected cnt " << cnt << " with value " << value;
+        }
+        ++cnt;
+      },
+      [&cnt](std::string_view key, std::uint64_t value) {
+        if (cnt == 1) {
+          EXPECT_EQ(2, value);
+        } else if (cnt == 3) {
+          EXPECT_EQ(4, value);
+        } else {
+          EXPECT_TRUE(false)
+              << "unexpected cnt " << cnt << " with value " << value;
+        }
+        ++cnt;
+      },
+      [&cnt](std::string_view key, double value) {
+        EXPECT_EQ(4, cnt++);
+        EXPECT_EQ(5.0, value);
+      },
+      [&cnt](std::string_view key, std::string_view value) {
+        EXPECT_EQ("blubb", value) << "value: " << value;
+        EXPECT_EQ(5, cnt++);
+      },
   };
   LogContext::OverloadVisitor visitor(std::move(overloads));
   LogContext::current().visit(visitor);
   EXPECT_EQ(cnt, 6);
 }
 
-TEST_F(LogContextTest, ScopedValue_sets_values_from_ValueBuilder_for_current_scope) {
+TEST_F(LogContextTest,
+       ScopedValue_sets_values_from_ValueBuilder_for_current_scope) {
   unsigned cnt = 0;
-  LogContext::OverloadVisitor countingVisitor([&cnt](std::string_view, auto&&) { ++cnt; });
-  
+  LogContext::OverloadVisitor countingVisitor(
+      [&cnt](std::string_view, auto&&) { ++cnt; });
+
   {
-    ScopedValue v(LogContext::makeValue().with<LogKey1>("blubb").with<LogKey2>(42));
+    ScopedValue v(
+        LogContext::makeValue().with<LogKey1>("blubb").with<LogKey2>(42));
     LogContext::current().visit(countingVisitor);
   }
   EXPECT_EQ(2, cnt);
-  
+
   LogContext::current().visit(countingVisitor);
   EXPECT_EQ(2, cnt);
 }
 
 TEST_F(LogContextTest, ScopedValue_sets_Values_for_current_scope) {
   unsigned cnt = 0;
-  LogContext::OverloadVisitor countingVisitor([&cnt](std::string_view, auto&&) { ++cnt; });
-  auto values = LogContext::makeValue().with<LogKey1>("blubb").with<LogKey2>(42).share();
+  LogContext::OverloadVisitor countingVisitor(
+      [&cnt](std::string_view, auto&&) { ++cnt; });
+  auto values =
+      LogContext::makeValue().with<LogKey1>("blubb").with<LogKey2>(42).share();
 
   {
     ScopedValue v(values);
@@ -118,7 +130,8 @@ TEST_F(LogContextTest, ScopedValue_sets_Values_for_current_scope) {
 
 TEST_F(LogContextTest, current_returns_copy_of_the_threads_current_LogContext) {
   unsigned cnt = 0;
-  LogContext::OverloadVisitor countingVisitor([&cnt](std::string_view, auto&&) { ++cnt; });
+  LogContext::OverloadVisitor countingVisitor(
+      [&cnt](std::string_view, auto&&) { ++cnt; });
   LogContext ctx;
   {
     auto v = ScopedValue::with<LogKey1>("blubb");
@@ -129,53 +142,62 @@ TEST_F(LogContextTest, current_returns_copy_of_the_threads_current_LogContext) {
   EXPECT_EQ(1, cnt);
 }
 
-TEST_F(LogContextTest, ScopedContext_sets_the_given_LogContext_for_the_current_scope) {
+TEST_F(LogContextTest,
+       ScopedContext_sets_the_given_LogContext_for_the_current_scope) {
   unsigned cnt = 0;
-  LogContext::OverloadVisitor countingVisitor([&cnt](std::string_view, auto&&) { ++cnt; });
+  LogContext::OverloadVisitor countingVisitor(
+      [&cnt](std::string_view, auto&&) { ++cnt; });
   LogContext ctx;
   {
-    ScopedValue v(LogContext::makeValue().with<LogKey1>("blubb").with<LogKey2>(42));
+    ScopedValue v(
+        LogContext::makeValue().with<LogKey1>("blubb").with<LogKey2>(42));
     ctx = LogContext::current();
   }
-  
+
   {
     LogContext::ScopedContext c(ctx);
     LogContext::current().visit(countingVisitor);
     EXPECT_EQ(2, cnt);
   }
-  
+
   LogContext::current().visit(countingVisitor);
   EXPECT_EQ(2, cnt);
 }
 
 TEST_F(LogContextTest, ScopedContext_does_nothing_if_contexts_are_equivalent) {
   unsigned cnt = 0;
-  LogContext::OverloadVisitor countingVisitor([&cnt](std::string_view, auto&&) { ++cnt; });
-  
-  ScopedValue v(LogContext::makeValue().with<LogKey1>("blubb").with<LogKey2>(42));
+  LogContext::OverloadVisitor countingVisitor(
+      [&cnt](std::string_view, auto&&) { ++cnt; });
+
+  ScopedValue v(
+      LogContext::makeValue().with<LogKey1>("blubb").with<LogKey2>(42));
   LogContext ctx = LogContext::current();
-  
+
   {
     LogContext::ScopedContext c(ctx);
     LogContext::current().visit(countingVisitor);
     EXPECT_EQ(2, cnt);
   }
-  
+
   LogContext::current().visit(countingVisitor);
   EXPECT_EQ(4, cnt);
 }
 
-TEST_F(LogContextTest, withLogContext_captures_the_current_LogContext_and_sets_it_for_the_scope_of_the_wrapped_callable) {
+TEST_F(
+    LogContextTest,
+    withLogContext_captures_the_current_LogContext_and_sets_it_for_the_scope_of_the_wrapped_callable) {
   unsigned cnt = 0;
-  LogContext::OverloadVisitor countingVisitor([&cnt](std::string_view, auto&&) { ++cnt; });
-  ScopedValue v(LogContext::makeValue().with<LogKey1>("blubb").with<LogKey2>(42));
-  
+  LogContext::OverloadVisitor countingVisitor(
+      [&cnt](std::string_view, auto&&) { ++cnt; });
+  ScopedValue v(
+      LogContext::makeValue().with<LogKey1>("blubb").with<LogKey2>(42));
+
   auto func = withLogContext([](LogContext::Visitor const& visitor) {
     LogContext::current().visit(visitor);
   });
-  
+
   func(countingVisitor);
   EXPECT_EQ(2, cnt);
 }
 
-}
+}  // namespace arangodb

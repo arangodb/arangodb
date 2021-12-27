@@ -97,9 +97,9 @@ std::string_view transaction::helpers::extractKeyPart(std::string_view key) {
 
 /// @brief extract the _id attribute from a slice, and convert it into a
 /// string, static method
-std::string transaction::helpers::extractIdString(CollectionNameResolver const* resolver,
-                                                  VPackSlice slice,
-                                                  VPackSlice const& base) {
+std::string transaction::helpers::extractIdString(
+    CollectionNameResolver const* resolver, VPackSlice slice,
+    VPackSlice const& base) {
   VPackSlice id;
 
   slice = slice.resolveExternal();
@@ -264,8 +264,8 @@ VPackSlice transaction::helpers::extractToFromDocument(VPackSlice slice) {
 /// @brief extract _key and _rev from a document, in one go
 /// this is an optimized version used when loading collections, WAL
 /// collection and compaction
-void transaction::helpers::extractKeyAndRevFromDocument(VPackSlice slice, VPackSlice& keySlice,
-                                                        RevisionId& revisionId) {
+void transaction::helpers::extractKeyAndRevFromDocument(
+    VPackSlice slice, VPackSlice& keySlice, RevisionId& revisionId) {
   slice = slice.resolveExternal();
   TRI_ASSERT(slice.isObject());
   TRI_ASSERT(slice.length() >= 2);
@@ -349,7 +349,8 @@ VPackSlice transaction::helpers::extractRevSliceFromDocument(VPackSlice slice) {
   return slice.get(StaticStrings::RevString);
 }
 
-std::string_view transaction::helpers::extractCollectionFromId(std::string_view id) {
+std::string_view transaction::helpers::extractCollectionFromId(
+    std::string_view id) {
   std::size_t index = id.find('/');
   if (index == std::string::npos) {
     // can't find the '/' to split, bail out with only logical response
@@ -384,20 +385,21 @@ OperationResult transaction::helpers::buildCountResult(
 }
 
 /// @brief creates an id string from a custom _id value and the _key string
-std::string transaction::helpers::makeIdFromCustom(CollectionNameResolver const* resolver,
-                                                   VPackSlice const& id,
-                                                   VPackSlice const& key) {
+std::string transaction::helpers::makeIdFromCustom(
+    CollectionNameResolver const* resolver, VPackSlice const& id,
+    VPackSlice const& key) {
   TRI_ASSERT(id.isCustom() && id.head() == 0xf3);
   TRI_ASSERT(key.isString());
 
-  DataSourceId cid{encoding::readNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t))};
+  DataSourceId cid{
+      encoding::readNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t))};
   return makeIdFromParts(resolver, cid, key);
 }
 
 /// @brief creates an id string from a collection name and the _key string
-std::string transaction::helpers::makeIdFromParts(CollectionNameResolver const* resolver,
-                                                  DataSourceId const& cid,
-                                                  VPackSlice const& key) {
+std::string transaction::helpers::makeIdFromParts(
+    CollectionNameResolver const* resolver, DataSourceId const& cid,
+    VPackSlice const& key) {
   TRI_ASSERT(key.isString());
 
   std::string resolved = resolver->getCollectionNameCluster(cid);
@@ -441,7 +443,8 @@ transaction::StringLeaser::StringLeaser(transaction::Methods* trx)
       _string(_transactionContext->leaseString()) {}
 
 /// @brief constructor, leases a StringBuffer
-transaction::StringLeaser::StringLeaser(transaction::Context* transactionContext)
+transaction::StringLeaser::StringLeaser(
+    transaction::Context* transactionContext)
     : _transactionContext(transactionContext),
       _string(_transactionContext->leaseString()) {}
 
@@ -453,7 +456,8 @@ transaction::StringLeaser::~StringLeaser() {
 // ============== BuilderLeaser ==============
 
 /// @brief constructor, leases a builder
-transaction::BuilderLeaser::BuilderLeaser(transaction::Context* transactionContext)
+transaction::BuilderLeaser::BuilderLeaser(
+    transaction::Context* transactionContext)
     : _transactionContext(transactionContext),
       _builder(_transactionContext->leaseBuilder()) {
   TRI_ASSERT(_builder != nullptr);
