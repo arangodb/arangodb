@@ -110,9 +110,10 @@ TEST_F(VocbaseTest, test_lookupDataSource) {
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"globallyUniqueId\": \"testCollectionGUID\", \"id\": 100, \"name\": "
       "\"testCollection\" }");
-  auto viewJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": 200, \"name\": \"testView\", \"type\": \"testViewType\" "
-      "}");  // any arbitrary view type
+  auto viewJson =
+      arangodb::velocypack::Parser::fromJson(
+          "{ \"id\": 200, \"name\": \"testView\", \"type\": \"testViewType\" "
+          "}");  // any arbitrary view type
   Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                   testDBInfo(server.server()));
 

@@ -70,7 +70,7 @@ class ReplicationApplierConfiguration {
   bool _includeFoxxQueues;   /// sync the _jobs and _queues collection
   bool _requireFromPresent;  /// while tailing WAL: leader must have the
                              /// client's requested tick
-  bool _incremental;         /// use incremental sync if we got local data
+  bool _incremental;  /// use incremental sync if we got local data
   bool _verbose;
   RestrictType _restrictType;
   std::set<std::string> _restrictCollections;

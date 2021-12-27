@@ -98,7 +98,7 @@ Result HttpResponseChecker::check(
   }
   constexpr size_t maxMsgBodySize = 4096;  // max amount of bytes in msg body to
                                            // truncate if too big to display
-  if (msgBody.size() > maxMsgBodySize) {   // truncate error message
+  if (msgBody.size() > maxMsgBodySize) {  // truncate error message
     msgBody.resize(maxMsgBodySize);
     msgBody.append("...");
   }
