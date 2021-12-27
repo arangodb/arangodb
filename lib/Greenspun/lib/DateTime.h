@@ -38,4 +38,3 @@ void RegisterAllDateTimeFunctions(Machine& ctx);
 
 }  // namespace greenspun
 }  // namespace arangodb
-

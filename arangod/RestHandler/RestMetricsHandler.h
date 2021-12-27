@@ -33,14 +33,10 @@ class RestMetricsHandler : public arangodb::RestBaseHandler {
                      GeneralResponse*);
 
   char const* name() const override final { return "RestMetricsHandler"; }
-  /// @brief must be on fast lane so that metrics can always be retrieved, 
+  /// @brief must be on fast lane so that metrics can always be retrieved,
   /// even from otherwise totally busy servers
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
-
 };
 
-
-
 }  // namespace arangodb
-

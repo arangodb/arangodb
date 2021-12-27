@@ -35,16 +35,15 @@ namespace pregel {
 namespace algos {
 namespace accumulators {
 
+template<typename D, template<typename> typename C>
+using non_empty_array_deserializer =
+    validate<array_deserializer<D, C>, utilities::not_empty_validator>;
 
-template<typename D, template <typename> typename C>
-using non_empty_array_deserializer = validate<
-    array_deserializer<D, C>, utilities::not_empty_validator>;
-
-template <typename K, typename V>
+template<typename K, typename V>
 using my_map = std::unordered_map<K, V>;
-template <typename V>
+template<typename V>
 using my_vector = std::vector<V>;
-template <typename V>
+template<typename V>
 using my_unordered_set = std::unordered_set<V>;
 
 bool isValidAccumulatorOptions(AccumulatorOptions const& options);
@@ -264,26 +263,30 @@ using vertex_accumulator_options_plan = parameter_list<
 // TODO: we could of course collect all parsing problems and return
 //       them in bulk
 struct vertex_accumulator_options_validator {
-
-  bool isDefinedCustomAccumulatorType(VertexAccumulatorOptions const& opts, std::string const& customTypeName) {
+  bool isDefinedCustomAccumulatorType(VertexAccumulatorOptions const& opts,
+                                      std::string const& customTypeName) {
     // C++2020 will have contains...
-    return opts.customAccumulators.find(customTypeName) != std::end(opts.customAccumulators);
+    return opts.customAccumulators.find(customTypeName) !=
+           std::end(opts.customAccumulators);
   }
 
-  std::optional<deserialize_error> validate(VertexAccumulatorOptions const& opts, accumulators_map_deserializer::constructed_type::value_type const& acc) {
+  std::optional<deserialize_error> validate(
+      VertexAccumulatorOptions const& opts,
+      accumulators_map_deserializer::constructed_type::value_type const& acc) {
     if (acc.second.type == AccumulatorType::CUSTOM) {
       // Custom accumulators have to have type set, this
       // is ensured by the validator.
       auto const& customTypeName = acc.second.customType.value();
       if (!isDefinedCustomAccumulatorType(opts, customTypeName)) {
-        return deserialize_error{"unknown custom accumulator type `"
-          + customTypeName + "` for `" + acc.first + "`."};
+        return deserialize_error{"unknown custom accumulator type `" +
+                                 customTypeName + "` for `" + acc.first + "`."};
       }
     }
     return {};
   }
 
-  std::optional<deserialize_error> operator()(VertexAccumulatorOptions const& opts) {
+  std::optional<deserialize_error> operator()(
+      VertexAccumulatorOptions const& opts) {
     for (auto const& acc : opts.globalAccumulators) {
       if (auto err = validate(opts, acc); err) {
         return err->wrap("validating global accumulator");
@@ -300,15 +303,19 @@ struct vertex_accumulator_options_validator {
 };
 
 using vertex_accumulator_options_deserializer_base =
-  utilities::constructing_deserializer<VertexAccumulatorOptions, vertex_accumulator_options_plan>;
+    utilities::constructing_deserializer<VertexAccumulatorOptions,
+                                         vertex_accumulator_options_plan>;
 
-using vertex_accumulator_options_deserializer = validator::validate<vertex_accumulator_options_deserializer_base, vertex_accumulator_options_validator>;
+using vertex_accumulator_options_deserializer =
+    validator::validate<vertex_accumulator_options_deserializer_base,
+                        vertex_accumulator_options_validator>;
 
 result<AccumulatorOptions, error> parseAccumulatorOptions(VPackSlice slice) {
   return deserialize<accumulator_options_deserializer>(slice);
 }
 
-result<VertexAccumulatorOptions, error> parseVertexAccumulatorOptions(VPackSlice slice) {
+result<VertexAccumulatorOptions, error> parseVertexAccumulatorOptions(
+    VPackSlice slice) {
   return deserialize<vertex_accumulator_options_deserializer>(slice);
 }
 

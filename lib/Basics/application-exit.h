@@ -42,4 +42,5 @@ void TRI_Application_Exit_SetExit(TRI_ExitFunction_t);
 [[noreturn]] void FATAL_ERROR_EXIT() noexcept;
 
 /// @brief aborts program execution, calling std::abort
-[[noreturn]] void FATAL_ERROR_ABORT() noexcept;;
+[[noreturn]] void FATAL_ERROR_ABORT() noexcept;
+;

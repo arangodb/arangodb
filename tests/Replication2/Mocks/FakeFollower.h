@@ -32,7 +32,8 @@ namespace arangodb::replication2::test {
 struct FakeFollower : AbstractFollower {
   FakeFollower(ParticipantId id) : participantId(std::move(id)) {}
 
-  [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const& override {
+  [[nodiscard]] auto getParticipantId() const noexcept
+      -> ParticipantId const& override {
     return participantId;
   };
 
@@ -46,7 +47,7 @@ struct FakeFollower : AbstractFollower {
     requests.pop_front();
   }
 
-  template <typename E>
+  template<typename E>
   void resolveRequestWithException(E&& e) {
     requests.front().promise.setException(std::forward<E>(e));
     requests.pop_front();

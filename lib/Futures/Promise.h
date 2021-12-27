@@ -30,13 +30,13 @@
 namespace arangodb {
 namespace futures {
 
-template <typename T>
+template<typename T>
 class Future;
 
 /// producer side of future-promise pair
 /// accesses on Promise have to be synchronized externally to
 /// be thread-safe
-template <typename T>
+template<typename T>
 class Promise {
   static_assert(!std::is_same<void, T>::value, "Promise<Unit> instead of void");
 
@@ -82,21 +82,22 @@ class Promise {
 
   /// Fulfill the Promise with exception `e` *as if* by
   ///   `setException(std::make_exception_ptr<E>(e))`.
-  template <class E>
-  typename std::enable_if<std::is_base_of<std::exception, E>::value>::type setException(E const& e) {
+  template<class E>
+  typename std::enable_if<std::is_base_of<std::exception, E>::value>::type
+  setException(E const& e) {
     setException(std::make_exception_ptr<E>(e));
   }
 
   /// Fulfill the Promise with the specified value using perfect forwarding.
   /// Functionally equivalent to `setTry(Try<T>(std::forward<M>(value)))`
-  template <class M>
+  template<class M>
   void setValue(M&& value) {
     static_assert(!std::is_same<T, void>::value, "Use setValue() instead");
     setTry(Try<T>(std::forward<M>(value)));
   }
 
   /// set void value
-  template <class B = T>
+  template<class B = T>
   typename std::enable_if<std::is_same<Unit, B>::value>::type setValue() {
     setTry(Try<Unit>());
   }
@@ -109,7 +110,7 @@ class Promise {
 
   /// Fulfill this Promise with the result of a function that takes no
   ///   arguments and returns something implicitly convertible to T.
-  template <class F>
+  template<class F>
   void setWith(F&& func) {
     throwIfFulfilled();
     getState().setResult(makeTryWith(std::forward<F>(func)));
@@ -118,7 +119,8 @@ class Promise {
   arangodb::futures::Future<T> getFuture();
 
  private:
-  explicit Promise(detail::SharedState<T>* state) : _state(state), _retrieved(false) {}
+  explicit Promise(detail::SharedState<T>* state)
+      : _state(state), _retrieved(false) {}
 
   // convenience method that checks if _state is set
   inline detail::SharedState<T>& getState() {
@@ -140,7 +142,8 @@ class Promise {
         _state->detachFuture();
       }
       if (!_state->hasResult()) {
-        auto ptr = std::make_exception_ptr(FutureException(ErrorCode::BrokenPromise));
+        auto ptr =
+            std::make_exception_ptr(FutureException(ErrorCode::BrokenPromise));
         _state->setResult(Try<T>(std::move(ptr)));
       }
       _state->detachPromise();

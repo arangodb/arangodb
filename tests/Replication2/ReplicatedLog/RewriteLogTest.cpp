@@ -33,11 +33,14 @@ struct RewriteLogTest : ReplicatedLogTest {};
 
 TEST_F(RewriteLogTest, rewrite_old_leader) {
   auto const entries = std::vector{
-      replication2::PersistingLogEntry(LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
-      replication2::PersistingLogEntry(LogTerm{2}, LogIndex{2},
-                             LogPayload::createFromString("second entry")),
-      replication2::PersistingLogEntry(LogTerm{2}, LogIndex{3},
-                             LogPayload::createFromString("third entry"))};
+      replication2::PersistingLogEntry(
+          LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
+      replication2::PersistingLogEntry(
+          LogTerm{2}, LogIndex{2},
+          LogPayload::createFromString("second entry")),
+      replication2::PersistingLogEntry(
+          LogTerm{2}, LogIndex{3},
+          LogPayload::createFromString("third entry"))};
 
   // create one log that has three entries
   auto followerLog = std::invoke([&] {
@@ -45,16 +48,18 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
     for (auto const& entry : entries) {
       persistedLog->setEntry(entry);
     }
-    return std::make_shared<TestReplicatedLog>(std::make_unique<LogCore>(persistedLog),
-                                               _logMetricsMock, defaultLogger());
+    return std::make_shared<TestReplicatedLog>(
+        std::make_unique<LogCore>(persistedLog), _logMetricsMock,
+        defaultLogger());
   });
 
   // create different log that has only one entry
   auto leaderLog = std::invoke([&] {
     auto persistedLog = makePersistedLog(LogId{2});
     persistedLog->setEntry(entries[0]);
-    return std::make_shared<TestReplicatedLog>(std::make_unique<LogCore>(persistedLog),
-                                               _logMetricsMock, defaultLogger());
+    return std::make_shared<TestReplicatedLog>(
+        std::make_unique<LogCore>(persistedLog), _logMetricsMock,
+        defaultLogger());
   });
 
   auto follower = followerLog->becomeFollower("follower", LogTerm{3}, "leader");
@@ -67,7 +72,8 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
     EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm(3), LogIndex(2)));
   }
   {
-    auto stats = std::get<FollowerStatus>(follower->getStatus().getVariant()).local;
+    auto stats =
+        std::get<FollowerStatus>(follower->getStatus().getVariant()).local;
     EXPECT_EQ(stats.commitIndex, LogIndex{0});
     EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm(2), LogIndex(3)));
   }
@@ -84,7 +90,8 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
     EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm(3), LogIndex(3)));
   }
   {
-    auto stats = std::get<FollowerStatus>(follower->getStatus().getVariant()).local;
+    auto stats =
+        std::get<FollowerStatus>(follower->getStatus().getVariant()).local;
     EXPECT_EQ(stats.commitIndex, LogIndex{0});
     EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm(2), LogIndex(3)));
   }
@@ -112,7 +119,8 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
     EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm(3), LogIndex(3)));
   }
   {
-    auto stats = std::get<FollowerStatus>(follower->getStatus().getVariant()).local;
+    auto stats =
+        std::get<FollowerStatus>(follower->getStatus().getVariant()).local;
     EXPECT_EQ(stats.commitIndex, LogIndex{3});
     EXPECT_EQ(stats.spearHead, TermIndexPair(LogTerm(3), LogIndex(3)));
   }
@@ -120,7 +128,7 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
   {
     auto entry = std::optional<PersistingLogEntry>();
     auto log = getPersistedLogById(LogId{1});
-    auto iter = log->read(LogIndex{1}); // The mock log returns all entries
+    auto iter = log->read(LogIndex{1});  // The mock log returns all entries
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
@@ -132,7 +140,8 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
     ASSERT_TRUE(entry.has_value());
     EXPECT_EQ(entry->logIndex(), LogIndex{2});
     EXPECT_EQ(entry->logTerm(), LogTerm{3});
-    EXPECT_EQ(entry->logPayload(), std::nullopt) << entry->logPayload().value().slice().toJson();
+    EXPECT_EQ(entry->logPayload(), std::nullopt)
+        << entry->logPayload().value().slice().toJson();
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
