@@ -38,4 +38,3 @@ struct ExecutionNodeStats {
     return *this;
   }
 };
-

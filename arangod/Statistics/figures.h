@@ -51,7 +51,7 @@ struct Counter {
 
   int64_t get() const { return _count.load(std::memory_order_relaxed); }
 
-private:
+ private:
   std::atomic<int64_t> _count;
 };
 
@@ -122,4 +122,3 @@ struct Distribution {
 };
 }  // namespace statistics
 }  // namespace arangodb
-

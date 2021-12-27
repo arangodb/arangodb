@@ -77,7 +77,7 @@ class ReadWriteLock {
 
   /// @brief releases the write-lock
   void unlockWrite() noexcept;
-  
+
   [[nodiscard]] bool isLocked() const noexcept;
   [[nodiscard]] bool isLockedRead() const noexcept;
   [[nodiscard]] bool isLockedWrite() const noexcept;
@@ -114,11 +114,11 @@ class ReadWriteLock {
   static_assert((QUEUED_WRITER_MASK & WRITE_LOCK) == 0,
                 "QUEUED_WRITER_MASK and WRITE_LOCK conflict");
 
-  static_assert((READER_MASK & READER_INC) != 0 && (READER_MASK & (READER_INC >> 1)) == 0,
+  static_assert((READER_MASK & READER_INC) != 0 &&
+                    (READER_MASK & (READER_INC >> 1)) == 0,
                 "READER_INC must be first bit in READER_MASK");
   static_assert((QUEUED_WRITER_MASK & QUEUED_WRITER_INC) != 0 &&
                     (QUEUED_WRITER_MASK & (QUEUED_WRITER_INC >> 1)) == 0,
                 "QUEUED_WRITER_INC must be first bit in QUEUED_WRITER_MASK");
 };
 }  // namespace arangodb::basics
-

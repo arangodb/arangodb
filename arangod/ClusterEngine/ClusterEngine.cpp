@@ -69,9 +69,7 @@ ClusterEngine::ClusterEngine(application_features::ApplicationServer& server)
 
 ClusterEngine::~ClusterEngine() = default;
 
-void ClusterEngine::setActualEngine(StorageEngine* e) {
-  _actualEngine = e;
-}
+void ClusterEngine::setActualEngine(StorageEngine* e) { _actualEngine = e; }
 
 bool ClusterEngine::isRocksDB() const {
   return !ClusterEngine::Mocking && _actualEngine &&
@@ -87,9 +85,7 @@ bool ClusterEngine::isMock() const {
 #endif
 }
 
-HealthData ClusterEngine::healthCheck() {
-  return {};
-}
+HealthData ClusterEngine::healthCheck() { return {}; }
 
 ClusterEngineType ClusterEngine::engineType() const {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -124,12 +120,13 @@ std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager(
 }
 
 std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
-    TRI_vocbase_t& vocbase, TransactionId tid, transaction::Options const& options) {
+    TRI_vocbase_t& vocbase, TransactionId tid,
+    transaction::Options const& options) {
   return std::make_shared<ClusterTransactionState>(vocbase, tid, options);
 }
 
-
-void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {
+void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder,
+                                                  VPackSlice info) {
   if (isRocksDB()) {
     // deliberately not add objectId
     if (!info.get(StaticStrings::CacheEnabled).isBool()) {
@@ -146,7 +143,8 @@ std::unique_ptr<PhysicalCollection> ClusterEngine::createPhysicalCollection(
 }
 
 void ClusterEngine::getStatistics(velocypack::Builder& builder, bool v2) const {
-  Result res = getEngineStatsFromDBServers(server().getFeature<ClusterFeature>(), builder);
+  Result res = getEngineStatsFromDBServers(
+      server().getFeature<ClusterFeature>(), builder);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -162,16 +160,18 @@ void ClusterEngine::getDatabases(arangodb::velocypack::Builder& result) {
   VPackObjectBuilder obj(&result);
   obj->add(StaticStrings::DataSourceId, VPackValue("1"));  // always pick 1
   obj->add(StaticStrings::DataSourceDeleted, VPackValue(false));
-  obj->add(StaticStrings::DataSourceName, VPackValue(StaticStrings::SystemDatabase));
+  obj->add(StaticStrings::DataSourceName,
+           VPackValue(StaticStrings::SystemDatabase));
 }
 
 void ClusterEngine::getCollectionInfo(TRI_vocbase_t& vocbase, DataSourceId cid,
                                       arangodb::velocypack::Builder& builder,
-                                      bool includeIndexes, TRI_voc_tick_t maxTick) {}
+                                      bool includeIndexes,
+                                      TRI_voc_tick_t maxTick) {}
 
-ErrorCode ClusterEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
-                                                  arangodb::velocypack::Builder& result,
-                                                  bool wasCleanShutdown, bool isUpgrade) {
+ErrorCode ClusterEngine::getCollectionsAndIndexes(
+    TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result,
+    bool wasCleanShutdown, bool isUpgrade) {
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -180,27 +180,30 @@ ErrorCode ClusterEngine::getViews(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-VPackBuilder ClusterEngine::getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                               ErrorCode& status) {
+VPackBuilder ClusterEngine::getReplicationApplierConfiguration(
+    TRI_vocbase_t& vocbase, ErrorCode& status) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-VPackBuilder ClusterEngine::getReplicationApplierConfiguration(ErrorCode& status) {
+VPackBuilder ClusterEngine::getReplicationApplierConfiguration(
+    ErrorCode& status) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 // database, collection and index management
 // -----------------------------------------
 
-std::unique_ptr<TRI_vocbase_t> ClusterEngine::openDatabase(arangodb::CreateDatabaseInfo&& info,
-                                                           bool isUpgrade) {
-  return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, std::move(info));
+std::unique_ptr<TRI_vocbase_t> ClusterEngine::openDatabase(
+    arangodb::CreateDatabaseInfo&& info, bool isUpgrade) {
+  return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR,
+                                         std::move(info));
 }
 
-std::unique_ptr<TRI_vocbase_t> ClusterEngine::createDatabase(arangodb::CreateDatabaseInfo&& info,
-                                                             ErrorCode& status) {
+std::unique_ptr<TRI_vocbase_t> ClusterEngine::createDatabase(
+    arangodb::CreateDatabaseInfo&& info, ErrorCode& status) {
   status = TRI_ERROR_INTERNAL;
-  auto rv = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, std::move(info));
+  auto rv = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR,
+                                            std::move(info));
   status = TRI_ERROR_NO_ERROR;
   return rv;
 }
@@ -232,13 +235,14 @@ arangodb::Result ClusterEngine::dropCollection(TRI_vocbase_t& vocbase,
 }
 
 void ClusterEngine::changeCollection(TRI_vocbase_t& vocbase,
-                                     LogicalCollection const& collection, bool doSync) {
+                                     LogicalCollection const& collection,
+                                     bool doSync) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-arangodb::Result ClusterEngine::renameCollection(TRI_vocbase_t& vocbase,
-                                                 LogicalCollection const& collection,
-                                                 std::string const& oldName) {
+arangodb::Result ClusterEngine::renameCollection(
+    TRI_vocbase_t& vocbase, LogicalCollection const& collection,
+    std::string const& oldName) {
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
@@ -254,7 +258,8 @@ arangodb::Result ClusterEngine::dropView(TRI_vocbase_t const& vocbase,
 }
 
 Result ClusterEngine::changeView(TRI_vocbase_t& vocbase,
-                                 arangodb::LogicalView const& view, bool /*doSync*/
+                                 arangodb::LogicalView const& view,
+                                 bool /*doSync*/
 ) {
   if (inRecovery()) {
     // nothing to do
@@ -263,7 +268,8 @@ Result ClusterEngine::changeView(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
-Result ClusterEngine::compactAll(bool changeLevel, bool compactBottomMostLevel) {
+Result ClusterEngine::compactAll(bool changeLevel,
+                                 bool compactBottomMostLevel) {
   auto& feature = server().getFeature<ClusterFeature>();
   return compactOnAllDBServers(feature, changeLevel, compactBottomMostLevel);
 }
@@ -292,20 +298,25 @@ void ClusterEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {
   ClusterRestHandlers::registerResources(&handlerFactory);
 }
 
-void ClusterEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) {
+void ClusterEngine::waitForEstimatorSync(
+    std::chrono::milliseconds maxWaitTime) {
   // fixes tests by allowing us to reload the cluster selectivity estimates
   // If test `shell-cluster-collection-selectivity.js` fails consider increasing
   // timeout
   std::this_thread::sleep_for(std::chrono::seconds(5));
 }
 
-auto ClusterEngine::createReplicatedLog(TRI_vocbase_t&, arangodb::replication2::LogId)
-    -> ResultT<std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>> {
+auto ClusterEngine::createReplicatedLog(TRI_vocbase_t&,
+                                        arangodb::replication2::LogId)
+    -> ResultT<
+        std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>> {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
-auto ClusterEngine::dropReplicatedLog(TRI_vocbase_t&,
-                                      std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> const&)
+auto ClusterEngine::dropReplicatedLog(
+    TRI_vocbase_t&,
+    std::shared_ptr<
+        arangodb::replication2::replicated_log::PersistedLog> const&)
     -> Result {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }

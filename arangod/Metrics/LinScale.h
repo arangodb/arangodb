@@ -29,7 +29,7 @@
 
 namespace arangodb::metrics {
 
-template <typename T>
+template<typename T>
 class LinScale final : public Scale<T> {
  public:
   using Value = T;

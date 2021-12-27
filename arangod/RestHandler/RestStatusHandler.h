@@ -44,4 +44,3 @@ class RestStatusHandler : public arangodb::RestBaseHandler {
   RestStatus executeMemoryProfile();
 };
 }  // namespace arangodb
-

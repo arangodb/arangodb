@@ -42,7 +42,7 @@ namespace arangodb::replication2::test {
 struct MyHelperLeaderState;
 struct MyHelperFactory;
 
-template <typename S>
+template<typename S>
 struct EmptyFollowerType : ReplicatedFollowerState<S> {
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using Stream = streams::Stream<EntryType>;
@@ -68,7 +68,8 @@ struct MyHelperState {
 
 struct MyHelperLeaderState : ReplicatedLeaderState<MyHelperState> {
  protected:
-  auto recoverEntries(std::unique_ptr<EntryIterator> ptr) -> futures::Future<Result> override {
+  auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
+      -> futures::Future<Result> override {
     TRI_ASSERT(recoveryTriggered == false);
     recoveryTriggered = true;
     return promise.getFuture();
@@ -84,7 +85,8 @@ struct MyHelperLeaderState : ReplicatedLeaderState<MyHelperState> {
 struct MyHelperFactory {
   explicit MyHelperFactory(ReplicatedStateRecoveryTest& test) : test(test) {}
   auto constructLeader() -> std::shared_ptr<MyHelperLeaderState>;
-  auto constructFollower() -> std::shared_ptr<EmptyFollowerType<MyHelperState>> {
+  auto constructFollower()
+      -> std::shared_ptr<EmptyFollowerType<MyHelperState>> {
     return std::make_shared<EmptyFollowerType<MyHelperState>>();
   }
   ReplicatedStateRecoveryTest& test;
@@ -104,7 +106,8 @@ struct ReplicatedStateRecoveryTest : test::ReplicatedLogTest {
       std::make_shared<ReplicatedStateFeature>();
 };
 
-auto MyHelperFactory::constructLeader() -> std::shared_ptr<MyHelperLeaderState> {
+auto MyHelperFactory::constructLeader()
+    -> std::shared_ptr<MyHelperLeaderState> {
   test.leaderState = std::make_shared<MyHelperLeaderState>();
   return test.leaderState;
 }
@@ -125,8 +128,9 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery) {
   auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
                                         LogTerm{1}, {follower});
   leader->triggerAsyncReplication();
-  auto replicatedState = std::dynamic_pointer_cast<ReplicatedState<MyHelperState>>(
-      feature->createReplicatedState("my-state", leaderLog));
+  auto replicatedState =
+      std::dynamic_pointer_cast<ReplicatedState<MyHelperState>>(
+          feature->createReplicatedState("my-state", leaderLog));
   ASSERT_NE(replicatedState, nullptr);
   ASSERT_EQ(leaderState, nullptr);
 
@@ -134,9 +138,11 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery) {
 
   {
     auto status = replicatedState->getStatus();
-    ASSERT_TRUE(std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
+    ASSERT_TRUE(
+        std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
     auto s = std::get<replicated_state::LeaderStatus>(status.variant);
-    EXPECT_EQ(s.state.state, LeaderInternalState::kWaitingForLeadershipEstablished);
+    EXPECT_EQ(s.state.state,
+              LeaderInternalState::kWaitingForLeadershipEstablished);
   }
 
   {
@@ -156,7 +162,8 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery) {
 
   {
     auto status = replicatedState->getStatus();
-    ASSERT_TRUE(std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
+    ASSERT_TRUE(
+        std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
     auto s = std::get<replicated_state::LeaderStatus>(status.variant);
     EXPECT_EQ(s.state.state, LeaderInternalState::kRecoveryInProgress);
   }
@@ -171,13 +178,15 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery) {
 
   {
     auto status = replicatedState->getStatus();
-    ASSERT_TRUE(std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
+    ASSERT_TRUE(
+        std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
     auto s = std::get<replicated_state::LeaderStatus>(status.variant);
     EXPECT_EQ(s.state.state, LeaderInternalState::kServiceAvailable);
   }
 
   {
-    // Now the leader state should be reachable through the replicated state object
+    // Now the leader state should be reachable through the replicated state
+    // object
     auto leaderStatePtr = replicatedState->getLeader();
     ASSERT_NE(leaderStatePtr, nullptr);
   }
@@ -197,8 +206,9 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery_error_DeathTest) {
   auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
                                         LogTerm{1}, {follower});
   leader->triggerAsyncReplication();
-  auto replicatedState = std::dynamic_pointer_cast<ReplicatedState<MyHelperState>>(
-      feature->createReplicatedState("my-state", leaderLog));
+  auto replicatedState =
+      std::dynamic_pointer_cast<ReplicatedState<MyHelperState>>(
+          feature->createReplicatedState("my-state", leaderLog));
   ASSERT_NE(replicatedState, nullptr);
   ASSERT_EQ(leaderState, nullptr);
 
@@ -206,9 +216,11 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery_error_DeathTest) {
 
   {
     auto status = replicatedState->getStatus();
-    ASSERT_TRUE(std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
+    ASSERT_TRUE(
+        std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
     auto s = std::get<replicated_state::LeaderStatus>(status.variant);
-    EXPECT_EQ(s.state.state, LeaderInternalState::kWaitingForLeadershipEstablished);
+    EXPECT_EQ(s.state.state,
+              LeaderInternalState::kWaitingForLeadershipEstablished);
   }
 
   ASSERT_EQ(leaderState, nullptr);
@@ -222,7 +234,8 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery_error_DeathTest) {
 
   {
     auto status = replicatedState->getStatus();
-    ASSERT_TRUE(std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
+    ASSERT_TRUE(
+        std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
     auto s = std::get<replicated_state::LeaderStatus>(status.variant);
     EXPECT_EQ(s.state.state, LeaderInternalState::kRecoveryInProgress);
   }
@@ -230,7 +243,8 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery_error_DeathTest) {
   // failing recovery should result in a crash
   ASSERT_DEATH_IF_SUPPORTED(
       {
-        leaderState->runRecovery(Result{TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT});
+        leaderState->runRecovery(
+            Result{TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT});
       },
       ".*");
 }
