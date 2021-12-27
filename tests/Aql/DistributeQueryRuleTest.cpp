@@ -24,6 +24,7 @@
 
 #include "Aql/Query.h"
 #include "Transaction/StandaloneContext.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include "../Mocks/Servers.h"
 
@@ -422,6 +423,51 @@ TEST_F(DistributeQueryRuleTest, distributed_sort) {
   // We need to keep DESC sort
   EXPECT_FALSE(sortVar.get("ascending").getBool());
 }
+
+TEST_F(DistributeQueryRuleTest, distributed_collect) {
+  auto queryString = R"aql(
+    FOR x IN collection
+      COLLECT val = x.value
+      RETURN val)aql";
+  auto plan = prepareQuery(queryString);
+
+  auto planSlice = plan->slice();
+  LOG_DEVEL << planSlice.toJson();
+  ASSERT_TRUE(planSlice.hasKey("nodes"));
+  planSlice = planSlice.get("nodes");
+  LOG_DEVEL << nodeNames(planSlice);
+  assertNodesMatch(planSlice, {"SingletonNode", "EnumerateCollectionNode",
+                               "CalculationNode", "CollectNode", "RemoteNode",
+                               "GatherNode", "CollectNode", "SortNode", "ReturnNode"});
+  auto dbServerCollect = planSlice.at(3);
+  auto gatherNode = planSlice.at(5);
+  auto coordinatorCollect = planSlice.at(6);
+  // TODO Why is there a SORT node?
+  auto sort = planSlice.at(7);
+  LOG_DEVEL << dbServerCollect.toJson();
+  LOG_DEVEL << gatherNode.toJson();
+  LOG_DEVEL << coordinatorCollect.toJson();
+  LOG_DEVEL << sort.toJson();
+  {
+    // TODO assert In Variable in DBServer
+    // TODO assert Out Variable in DBServer
+    // TODO assert collectOptions
+    // TODO assert parallelism
+    ASSERT_TRUE(dbServerCollect.isObject());
+    ASSERT_TRUE(coordinatorCollect.isObject());
+    // Assert that the OutVariable of the DBServer is the inVariable or Coordinator
+    auto dbServerCollectOut = dbServerCollect.get("groups").at(0).get("outVariable");
+    auto coordinatorCollectIn = coordinatorCollect.get("groups").at(0).get("inVariable");
+    EXPECT_TRUE(basics::VelocyPackHelper::equal(dbServerCollectOut, coordinatorCollectIn, false));
+  }
+
+  ASSERT_TRUE(gatherNode.isObject());
+  EXPECT_EQ(gatherNode.get("sortmode").copyString(), "unset");
+  auto sortBy = gatherNode.get("elements");
+  ASSERT_TRUE(sortBy.isArray());
+  ASSERT_EQ(sortBy.length(), 0);
+}
+
 
 TEST_F(DistributeQueryRuleTest, distributed_subquery_dbserver) {
   auto queryString = R"aql(

@@ -8757,6 +8757,89 @@ namespace {
     return gatherNode;
   }
 
+  ExecutionNode* createDBServerCollectVariant(ExecutionPlan& plan, CollectNode* collectNode, GatherNode* gatherNode) {
+    switch (collectNode->aggregationMethod()) {
+      case CollectOptions::CollectMethod::DISTINCT: {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+        break;
+      }
+      case CollectOptions::CollectMethod::COUNT: {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+        break;
+      }
+      case CollectOptions::CollectMethod::UNDEFINED:
+      case CollectOptions::CollectMethod::HASH:
+      case CollectOptions::CollectMethod::SORTED: {
+        // clone a COLLECT v1 = expr, v2 = expr ... operation from the
+        // coordinator to the DB server(s), and leave an aggregate COLLECT
+        // node on the coordinator for total aggregation
+
+        // The original optimizer rule did exclude Collects without
+        // output variables.
+        TRI_ASSERT(!collectNode->hasOutVariable());
+        std::vector<AggregateVarInfo> dbServerAggVars;
+        for (auto const& it : collectNode->aggregateVariables()) {
+          std::string_view func = Aggregator::pushToDBServerAs(it.type);
+          // Original code does not optimize here, this is not possible at this place
+          // TODO: CHECK we can never create a Collect statement triggering this assert
+          TRI_ASSERT(!func.empty());
+          auto outVariable = plan.getAst()->variables()->createTemporaryVariable();
+          dbServerAggVars.emplace_back(AggregateVarInfo{outVariable, it.inVar, std::string(func)});
+        }
+
+        // create new group variables
+        auto const& groupVars = collectNode->groupVariables();
+        std::vector<GroupVarInfo> outVars;
+        outVars.reserve(groupVars.size());
+        std::unordered_map<Variable const*, Variable const*> replacements;
+
+        for (auto const& it : groupVars) {
+          // create new out variables
+          auto out = plan.getAst()->variables()->createTemporaryVariable();
+          replacements.try_emplace(it.inVar, out);
+          outVars.emplace_back(GroupVarInfo{out, it.inVar});
+        }
+
+        auto dbCollectNode =
+            plan.createNode<CollectNode>(&plan, plan.nextId(), collectNode->getOptions(),
+                                          outVars, dbServerAggVars, nullptr,
+                                          nullptr, std::vector<Variable const*>(),
+                                          collectNode->variableMap(), false);
+        dbCollectNode->aggregationMethod(collectNode->aggregationMethod());
+        dbCollectNode->specialized();
+
+        std::vector<GroupVarInfo> copy;
+        size_t i = 0;
+        for (GroupVarInfo const& it : collectNode->groupVariables()) {
+          // replace input variables
+          copy.emplace_back(GroupVarInfo{/*outVar*/ it.outVar,
+                                         /*inVar*/ outVars[i].outVar});
+          ++i;
+        }
+        collectNode->groupVariables(copy);
+
+        size_t j = 0;
+        for (AggregateVarInfo& it : collectNode->aggregateVariables()) {
+          it.inVar = dbServerAggVars[j].outVar;
+          it.type = Aggregator::runOnCoordinatorAs(it.type);
+          ++j;
+        }
+
+        bool removeGatherNodeSort = (dbCollectNode->aggregationMethod() !=
+                                CollectOptions::CollectMethod::SORTED);
+
+        // in case we need to keep the sortedness of the GatherNode,
+        // we may need to replace some variable references in it due
+        // to the changes we made to the COLLECT node
+        if (gatherNode != nullptr && !removeGatherNodeSort &&
+            !replacements.empty() && !gatherNode->elements().empty()) {
+          replaceGatherNodeVariables(&plan, gatherNode, replacements);
+        }
+        return dbCollectNode;
+      }
+    }
+  }
+
   void addScatterBelow(ExecutionPlan& plan, ExecutionNode* node, ExecutionNode* scatterTo) {
     TRI_vocbase_t* vocbase = &plan.getAst()->query().vocbase();
     /*
@@ -9009,15 +9092,50 @@ namespace {
       // TODO: We may need to get more clever with the GATHER node here, regarding parallelism
       // TODO: We may need to improve the gather / even omit the gather, if we figure out Upper
       // only has a single Shard
-
-      auto gatherNode = addGatherAbove(plan, lower.getNode(), upper.getShardByNode());
       if (!additionalNodesWithContext.empty()) {
-        // Keep the Sort condition on the first sort node above the remote part.
-        // And move it into the gatherNode, this will cause the gather to get sorted.
-        auto sort = additionalNodesWithContext.front();
-        if (sort->getType() == ExecutionNode::SORT) {
-          gatherNode->elements(ExecutionNode::castTo<SortNode*>(sort)->elements());
+        // We have additional context to take into account.
+        // We need to check for some patterns of nodes.
+        auto firstContext = additionalNodesWithContext[0];
+        if (firstContext->getType() == ExecutionNode::SORT) {
+          bool handledAsCollect = false;
+          if (additionalNodesWithContext.size() > 1) {
+            auto collect = additionalNodesWithContext[1];
+            if (collect->getType() == ExecutionNode::COLLECT) {
+              // FOUND: COLLECT SORT (classical collect)
+              // Needs to transate to COLLECT(DB) GATHER COLLECT(COOR) SORT
+              LOG_DEVEL << "Hitting Sort/Collect Node";
+              // TODO Do we need to validate that SORT and COLLECT are related?
+              // TODO Do we need to validate that SORT and COLLECT have effect on Gather?
+              auto gatherNode = addGatherAbove(plan, collect, upper.getShardByNode());
+              auto dbServerCollect = createDBServerCollectVariant(
+                  plan, ExecutionNode::castTo<CollectNode*>(collect), gatherNode);
+              plan.insertBefore(gatherNode, dbServerCollect);
+              handledAsCollect = true;
+            }
+          }
+          if (!handledAsCollect) {
+            // FOUND: SORT
+            // Needs to translate to SORT GATHER(sorted)
+            LOG_DEVEL << "Hitting Sort Node";
+            auto gatherNode =
+                addGatherAbove(plan, lower.getNode(), upper.getShardByNode());
+            gatherNode->elements(ExecutionNode::castTo<SortNode*>(firstContext)->elements());
+          }
+        } else if (firstContext->getType() == ExecutionNode::COLLECT) {
+          // FOUND: COLLECT
+          // TODO: Implement me
+          LOG_DEVEL << "Hitting Collect Node";
+          TRI_ASSERT(false);
+          // plan.insertBefore(gatherNode, ExecutionNode *newNode)
+        } else {
+          // Unhandled Pattern
+          // TODO: Implement me
+          TRI_ASSERT(false);
         }
+      } else {
+        // TODO Do we need to validate that SORT and COLLECT have effect on Gather?
+        // No further context we can just add our gatherNode
+        addGatherAbove(plan, lower.getNode(), upper.getShardByNode());
       }
       if (!subqueryScopes.empty()) {
         auto& top = subqueryScopes.top();

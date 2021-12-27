@@ -87,7 +87,7 @@ CollectNode::CollectNode(
 CollectNode::~CollectNode() = default;
 
 ExecutionLocation CollectNode::getAllowedLocation() const {
-  return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
+  return ExecutionLocation(ExecutionLocation::LocationType::REQUIRES_CONTEXT);
 }
 
 /// @brief doToVelocyPack, for CollectNode
