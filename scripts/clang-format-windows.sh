@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# pre-requisite: MacOS-based system
+# pre-requisite: Windows-based system
 # pre-requisite: Docker
 
 # Get root directory of repo (can be passed as argument)
