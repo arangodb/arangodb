@@ -31,7 +31,6 @@
 #include <s2/s2latlng.h>
 #include <s2/s2region_coverer.h>
 
-
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -48,10 +47,11 @@ constexpr double kMaxRadiansBetweenPoints = kPi + kRadEps;
 // constexpr double kEarthRadiusInMeters = (6378.137 * 1000);
 // Volumetric mean radius
 constexpr double kEarthRadiusInMeters = (6371.000 * 1000);
-constexpr double kMaxDistanceBetweenPoints = kMaxRadiansBetweenPoints * kEarthRadiusInMeters;
+constexpr double kMaxDistanceBetweenPoints =
+    kMaxRadiansBetweenPoints * kEarthRadiusInMeters;
 
 constexpr double metersToRadians(double distanceInMeters) noexcept {
-  return std::max(0.0, std::min(distanceInMeters/ kEarthRadiusInMeters, M_PI));
+  return std::max(0.0, std::min(distanceInMeters / kEarthRadiusInMeters, M_PI));
 }
 
 enum class FilterType {
@@ -159,22 +159,20 @@ struct QueryParams {
     auto t = [](bool x) -> std::string {
       return x ? std::string("true") : std::string("false");
     };
-    std::string res = "minDistance: " + std::to_string(minDistance)
-      + " incl: " + t(minInclusive)
-      + " maxDistance: " + std::to_string(maxDistance)
-      + " incl: " + t(maxInclusive)
-      + " sorted: " + t(sorted)
-      + " ascending: " + t(ascending)
-      + " origin: " + std::to_string(origin.lng().degrees())
-      + " , " + std::to_string(origin.lat().degrees())
-      + " pointsOnly: " + t(pointsOnly)
-      + " limit: " + std::to_string(limit)
-      + " filterType: " + std::to_string((int) filterType)
-      + " filterShape: " + std::to_string((int) filterShape.type());
+    std::string res =
+        "minDistance: " + std::to_string(minDistance) +
+        " incl: " + t(minInclusive) +
+        " maxDistance: " + std::to_string(maxDistance) +
+        " incl: " + t(maxInclusive) + " sorted: " + t(sorted) +
+        " ascending: " + t(ascending) +
+        " origin: " + std::to_string(origin.lng().degrees()) + " , " +
+        std::to_string(origin.lat().degrees()) +
+        " pointsOnly: " + t(pointsOnly) + " limit: " + std::to_string(limit) +
+        " filterType: " + std::to_string((int)filterType) +
+        " filterShape: " + std::to_string((int)filterShape.type());
     return res;
   }
 };
 
 }  // namespace geo
 }  // namespace arangodb
-
