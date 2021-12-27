@@ -45,15 +45,16 @@ class StringHeap {
   explicit StringHeap(ResourceMonitor& resourceMonitor, size_t blockSize);
   ~StringHeap();
 
-  /// @brief register a string - implemented for std::string_view and HashedStringRef
-  template <typename T>
+  /// @brief register a string - implemented for std::string_view and
+  /// HashedStringRef
+  template<typename T>
   T registerString(T str);
- 
-  /// @brief clear all data from the StringHeap, not releasing any occupied memory 
-  /// the caller must make sure that nothing points into the data of the StringHeap
-  /// when calling this method
+
+  /// @brief clear all data from the StringHeap, not releasing any occupied
+  /// memory the caller must make sure that nothing points into the data of the
+  /// StringHeap when calling this method
   void clear() noexcept;
-  
+
  private:
   /// @brief allocate a new block of memory
   void allocateBlock();
@@ -78,4 +79,3 @@ class StringHeap {
   char* _end;
 };
 }  // namespace arangodb
-

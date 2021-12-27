@@ -36,13 +36,15 @@ auto StateGeneration::operator+(std::uint64_t delta) const -> StateGeneration {
   return StateGeneration{value + delta};
 }
 
-auto StateGeneration::saturatedDecrement(uint64_t delta) const noexcept -> StateGeneration {
+auto StateGeneration::saturatedDecrement(uint64_t delta) const noexcept
+    -> StateGeneration {
   if (value > delta) {
     return StateGeneration{value - delta};
   }
   return StateGeneration{0};
 }
 
-auto replicated_state::operator<<(std::ostream& os, StateGeneration g) -> std::ostream& {
+auto replicated_state::operator<<(std::ostream& os, StateGeneration g)
+    -> std::ostream& {
   return os << g.value;
 }

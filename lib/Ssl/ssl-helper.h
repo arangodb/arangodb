@@ -76,4 +76,3 @@ std::string protocolName(SslProtocol protocol);
 std::string lastSSLError();
 
 }  // namespace arangodb
-

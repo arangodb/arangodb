@@ -72,7 +72,8 @@ class IResearchViewSort {
     return _fields.empty();
   }
 
-  void emplace_back(std::vector<basics::AttributeName>&& field, bool direction) {
+  void emplace_back(std::vector<basics::AttributeName>&& field,
+                    bool direction) {
     _fields.emplace_back(std::move(field));
     _directions.emplace_back(direction);
   }
@@ -88,7 +89,8 @@ class IResearchViewSort {
     return true;
   }
 
-  std::vector<std::vector<basics::AttributeName>> const& fields() const noexcept {
+  std::vector<std::vector<basics::AttributeName>> const& fields()
+      const noexcept {
     return _fields;
   }
 
@@ -112,8 +114,7 @@ class IResearchViewSort {
  private:
   std::vector<std::vector<basics::AttributeName>> _fields;
   std::vector<bool> _directions;
-}; // IResearchViewSort
+};  // IResearchViewSort
 
-} // iresearch
-} // arangodb
-
+}  // namespace iresearch
+}  // namespace arangodb
