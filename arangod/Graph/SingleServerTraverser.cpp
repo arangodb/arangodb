@@ -79,7 +79,8 @@ void SingleServerTraverser::clear() {
   traverserCache()->clear();
 }
 
-bool SingleServerTraverser::getVertex(VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
+bool SingleServerTraverser::getVertex(
+    VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
   return _vertexGetter->getVertex(edge, path);
 }
 
@@ -87,7 +88,8 @@ bool SingleServerTraverser::getSingleVertex(VPackSlice edge,
                                             std::string_view sourceVertexId,
                                             uint64_t depth,
                                             std::string_view& targetVertexId) {
-  return _vertexGetter->getSingleVertex(edge, sourceVertexId, depth, targetVertexId);
+  return _vertexGetter->getSingleVertex(edge, sourceVertexId, depth,
+                                        targetVertexId);
 }
 
 void SingleServerTraverser::createEnumerator() {

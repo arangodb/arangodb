@@ -31,7 +31,8 @@ using namespace arangodb::aql;
 using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 
-MockTypedNode::MockTypedNode(ExecutionPlan* plan, ExecutionNodeId id, NodeType type)
+MockTypedNode::MockTypedNode(ExecutionPlan* plan, ExecutionNodeId id,
+                             NodeType type)
     : ExecutionNode(plan, id), _mockedType(type) {}
 
 ExecutionNode* MockTypedNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -46,11 +47,13 @@ ExecutionNode* MockTypedNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 std::unique_ptr<::arangodb::aql::ExecutionBlock> MockTypedNode::createBlock(
     ::arangodb::aql::ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ::arangodb::aql::ExecutionBlock*> const&) const {
+    std::unordered_map<ExecutionNode*, ::arangodb::aql::ExecutionBlock*> const&)
+    const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-void MockTypedNode::doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const {
+void MockTypedNode::doToVelocyPack(arangodb::velocypack::Builder&,
+                                   unsigned flags) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

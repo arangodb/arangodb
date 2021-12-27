@@ -35,7 +35,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-static void addVersionDetails(application_features::ApplicationServer& server, VPackBuilder& result) {
+static void addVersionDetails(application_features::ApplicationServer& server,
+                              VPackBuilder& result) {
   result.add("details", VPackValue(VPackValueType::Object));
   Version::getVPack(result);
 
@@ -43,7 +44,8 @@ static void addVersionDetails(application_features::ApplicationServer& server, V
   result.add("mode", VPackValue(serverFeature.operationModeString()));
   auto serverState = ServerState::instance();
   if (serverState != nullptr) {
-    result.add("role", VPackValue(ServerState::roleToString(serverState->getRole())));
+    result.add("role",
+               VPackValue(ServerState::roleToString(serverState->getRole())));
   }
 
   std::string host = ServerState::instance()->getHost();
@@ -57,17 +59,20 @@ static void addVersionDetails(application_features::ApplicationServer& server, V
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestVersionHandler::RestVersionHandler(application_features::ApplicationServer& server,
-                                       GeneralRequest* request, GeneralResponse* response)
+RestVersionHandler::RestVersionHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
-void RestVersionHandler::getVersion(application_features::ApplicationServer& server, bool allowInfo, bool includeDetails, VPackBuilder& result) {
+void RestVersionHandler::getVersion(
+    application_features::ApplicationServer& server, bool allowInfo,
+    bool includeDetails, VPackBuilder& result) {
   result.add(VPackValue(VPackValueType::Object));
   result.add("server", VPackValue("arango"));
 #ifdef USE_ENTERPRISE
-    result.add("license", VPackValue("enterprise"));
+  result.add("license", VPackValue("enterprise"));
 #else
-    result.add("license", VPackValue("community"));
+  result.add("license", VPackValue("community"));
 #endif
 
   if (allowInfo) {
@@ -83,12 +88,13 @@ void RestVersionHandler::getVersion(application_features::ApplicationServer& ser
 RestStatus RestVersionHandler::execute() {
   VPackBuilder result;
 
-  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security =
+      server().getFeature<ServerSecurityFeature>();
 
   bool const allowInfo = security.canAccessHardenedApi();
   bool const includeDetails = _request->parsedValue("details", false);
   getVersion(server(), allowInfo, includeDetails, result);
-  
+
   response()->setAllowCompression(true);
 
   generateResult(rest::ResponseCode::OK, result.slice());

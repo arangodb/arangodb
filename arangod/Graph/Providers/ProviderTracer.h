@@ -43,7 +43,7 @@ class TraversalStats;
 
 namespace graph {
 
-template <class ProviderImpl>
+template<class ProviderImpl>
 class ProviderTracer {
  public:
   using Step = typename ProviderImpl::Step;
@@ -60,11 +60,12 @@ class ProviderTracer {
   ProviderTracer& operator=(ProviderTracer const&) = delete;
   ProviderTracer& operator=(ProviderTracer&&) = default;
 
-  auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0) -> Step;
+  auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0)
+      -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;
-  auto expand(Step const& from, size_t previous, std::function<void(Step)> callback)
-      -> void;
+  auto expand(Step const& from, size_t previous,
+              std::function<void(Step)> callback) -> void;
 
   auto clear() -> void;
 

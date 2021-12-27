@@ -55,4 +55,3 @@ class RestActionHandler : public RestVocbaseBaseHandler {
   void* _data;
 };
 }  // namespace arangodb
-

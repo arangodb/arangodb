@@ -86,4 +86,3 @@ class CleanupFunctions {
 };
 }  // namespace basics
 }  // namespace arangodb
-

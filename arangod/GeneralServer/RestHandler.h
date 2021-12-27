@@ -43,9 +43,9 @@ class Exception;
 }
 
 namespace futures {
-template <typename T>
+template<typename T>
 class Future;
-template <typename T>
+template<typename T>
 class Try;
 }  // namespace futures
 
@@ -63,7 +63,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RestHandler& operator=(RestHandler const&) = delete;
 
  public:
-  RestHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
+  RestHandler(application_features::ApplicationServer&, GeneralRequest*,
+              GeneralResponse*);
   virtual ~RestHandler();
 
   void assignHandlerId();
@@ -75,7 +76,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   /// @brief called when the handler is dequeued in the scheduler
   void trackQueueEnd() noexcept;
-  
+
   /// @brief called when the handler execution is started
   void trackTaskStart() noexcept;
 
@@ -117,7 +118,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // what lane to use for this request
   virtual RequestLane lane() const = 0;
 
-  RequestLane determineRequestLane(); 
+  RequestLane determineRequestLane();
 
   virtual void prepareExecute(bool isContinue) {}
   virtual RestStatus execute() = 0;
@@ -155,14 +156,15 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // generates an error
   void generateError(arangodb::Result const&);
 
-  template <typename T>
+  template<typename T>
   RestStatus waitForFuture(futures::Future<T>&& f) {
     if (f.isReady()) {             // fast-path out
       f.result().throwIfFailed();  // just throw the error upwards
       return RestStatus::DONE;
     }
     bool done = false;
-    std::move(f).thenFinal(withLogContext([self = shared_from_this(), &done](futures::Try<T>&& t) -> void {
+    std::move(f).thenFinal(withLogContext([self = shared_from_this(),
+                                           &done](futures::Try<T>&& t) -> void {
       auto thisPtr = self.get();
       if (t.hasException()) {
         thisPtr->handleExceptionPtr(std::move(t).exception());
@@ -201,13 +203,14 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   void compressResponse();
 
  protected:
-  // This alias allows the RestHandler and derived classes to add values to the LogContext.
-  // The intention behind RestHandler being a friend of LogContext::Accessor and defining
-  // this alias as protected is to restrict usage of ScopedValues to RestHandlers only in
-  // order to prevent ScopedValues to be created in some inner function where they might
-  // cause significant performance overhead.
+  // This alias allows the RestHandler and derived classes to add values to the
+  // LogContext. The intention behind RestHandler being a friend of
+  // LogContext::Accessor and defining this alias as protected is to restrict
+  // usage of ScopedValues to RestHandlers only in order to prevent ScopedValues
+  // to be created in some inner function where they might cause significant
+  // performance overhead.
   using ScopedValue = LogContext::Accessor::ScopedValue;
- 
+
   std::unique_ptr<GeneralRequest> _request;
   std::unique_ptr<GeneralResponse> _response;
   application_features::ApplicationServer& _server;
@@ -236,4 +239,3 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
 }  // namespace rest
 }  // namespace arangodb
-

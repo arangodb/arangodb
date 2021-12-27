@@ -76,15 +76,17 @@ inline std::string filePath(arangodb::ManagedDirectory const& directory,
 }
 
 /// @brief Assembles the file path from the directory path and filename
-inline std::string filePath(std::string const& directory, std::string const& filename) {
+inline std::string filePath(std::string const& directory,
+                            std::string const& filename) {
   using arangodb::basics::FileUtils::buildFilename;
   return buildFilename(directory, filename);
 }
 
 /// @brief Opens a file given a path and flags
 inline int openFile(std::string const& path, int flags) {
-  return (::flagIsSet(flags, O_CREAT) ? TRI_CREATE(path.c_str(), flags, S_IRUSR | S_IWUSR)
-                                      : TRI_OPEN(path.c_str(), flags));
+  return (::flagIsSet(flags, O_CREAT)
+              ? TRI_CREATE(path.c_str(), flags, S_IRUSR | S_IWUSR)
+              : TRI_OPEN(path.c_str(), flags));
 }
 
 /// @brief Closes an open file and sets the status
@@ -99,10 +101,12 @@ inline void closeFile(int& fd, arangodb::Result& status) {
 }
 
 /// @brief determines if a file is writable
-bool isWritable(int fd, int flags, std::string const& path, arangodb::Result& status) {
+bool isWritable(int fd, int flags, std::string const& path,
+                arangodb::Result& status) {
   if (::flagNotSet(flags, O_WRONLY)) {
-    status = {TRI_ERROR_CANNOT_WRITE_FILE, "attempted to write to file " + path +
-                                               " opened in read-only mode!"};
+    status = {
+        TRI_ERROR_CANNOT_WRITE_FILE,
+        "attempted to write to file " + path + " opened in read-only mode!"};
     return false;
   }
   if (fd < 0) {
@@ -114,10 +118,12 @@ bool isWritable(int fd, int flags, std::string const& path, arangodb::Result& st
 }
 
 /// @brief determines if a file is readable
-bool isReadable(int fd, int flags, std::string const& path, arangodb::Result& status) {
+bool isReadable(int fd, int flags, std::string const& path,
+                arangodb::Result& status) {
   if (::flagIsSet(flags, O_WRONLY)) {
-    status = {TRI_ERROR_CANNOT_READ_FILE, "attempted to read from file " + path +
-                                              " opened in write-only mode!"};
+    status = {
+        TRI_ERROR_CANNOT_READ_FILE,
+        "attempted to read from file " + path + " opened in write-only mode!"};
     return false;
   }
   if (fd < 0) {
@@ -163,7 +169,8 @@ arangodb::Result initialStatus(int fd, std::string const& path, int flags)
 
 /// @brief Performs a raw (non-encrypted) write
 inline void rawWrite(int fd, char const* data, size_t length,
-                     arangodb::Result& status, std::string const& path, int flags) {
+                     arangodb::Result& status, std::string const& path,
+                     int flags) {
   while (length > 0) {
     ssize_t written = TRI_WRITE(fd, data, static_cast<TRI_write_t>(length));
     if (written < 0) {
@@ -176,17 +183,20 @@ inline void rawWrite(int fd, char const* data, size_t length,
 }
 
 /// @brief Performs a raw (non-decrypted) read
-inline TRI_read_return_t rawRead(int fd, char* buffer, size_t length, arangodb::Result& status,
-                       std::string const& path, int flags) {
-  TRI_read_return_t bytesRead = TRI_READ(fd, buffer, static_cast<TRI_read_t>(length));
+inline TRI_read_return_t rawRead(int fd, char* buffer, size_t length,
+                                 arangodb::Result& status,
+                                 std::string const& path, int flags) {
+  TRI_read_return_t bytesRead =
+      TRI_READ(fd, buffer, static_cast<TRI_read_t>(length));
   if (bytesRead < 0) {
     status = ::genericError(path, flags);
   }
   return bytesRead;
 }
 
-arangodb::Result readEncryptionFile(std::string const& directory, std::string& type,
-                                    arangodb::EncryptionFeature* encryptionFeature) {
+arangodb::Result readEncryptionFile(
+    std::string const& directory, std::string& type,
+    arangodb::EncryptionFeature* encryptionFeature) {
   using arangodb::basics::FileUtils::slurp;
   using arangodb::basics::StringUtils::trim;
 
@@ -207,8 +217,9 @@ arangodb::Result readEncryptionFile(std::string const& directory, std::string& t
 
   if (type != newType) {
     return {TRI_ERROR_BAD_PARAMETER,
-            std::string("encryption type in existing ENCRYPTION file '") + filename + "' (" + type +
-              ") does not match requested encryption type (" + newType + ")"};
+            std::string("encryption type in existing ENCRYPTION file '") +
+                filename + "' (" + type +
+                ") does not match requested encryption type (" + newType + ")"};
   }
   return {};
 }
@@ -234,9 +245,9 @@ void writeEncryptionFile(std::string const& directory, std::string& type) {
 
 namespace arangodb {
 
-ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& server,
-                                   std::string const& path, bool requireEmpty,
-                                   bool create, bool writeGzip)
+ManagedDirectory::ManagedDirectory(
+    application_features::ApplicationServer& server, std::string const& path,
+    bool requireEmpty, bool create, bool writeGzip)
     :
 #ifdef USE_ENTERPRISE
       _encryptionFeature{&server.getFeature<EncryptionFeature>()},
@@ -258,7 +269,8 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
     // path exists, but is a file, not a directory
     if (!isDirectory) {
       _status.reset(TRI_ERROR_FILE_EXISTS,
-                    std::string("the specified path '") + _path + "' already exists as a non-directory file");
+                    std::string("the specified path '") + _path +
+                        "' already exists as a non-directory file");
       return;
     }
 
@@ -267,11 +279,13 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
       // directory exists, has files, and we aren't allowed to overwrite
       if (requireEmpty) {
         _status.reset(TRI_ERROR_CANNOT_OVERWRITE_FILE,
-                      std::string("the specified path '") + _path + "' is a non-empty directory");
+                      std::string("the specified path '") + _path +
+                          "' is a non-empty directory");
         return;
       }
 
-      _status.reset(::readEncryptionFile(_path, _encryptionType, _encryptionFeature));
+      _status.reset(
+          ::readEncryptionFile(_path, _encryptionType, _encryptionFeature));
       if (::EncryptionTypeNone != _encryptionType) {
         _writeGzip = false;
       }
@@ -337,20 +351,21 @@ EncryptionFeature const* ManagedDirectory::encryptionFeature() const {
 }
 #endif
 
-std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(std::string const& filename,
-                                                                       int flags) {
+std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(
+    std::string const& filename, int flags) {
   std::unique_ptr<File> file;
 
   if (!_status.fail()) {  // directory is in a bad state?
     try {
-      bool gzFlag = filename.size() > 3 && 
+      bool gzFlag = filename.size() > 3 &&
                     (0 == filename.substr(filename.size() - 3).compare(".gz"));
-      file = std::make_unique<File>(*this, filename,
-                                    (ManagedDirectory::DefaultReadFlags ^ flags), gzFlag);
+      file = std::make_unique<File>(
+          *this, filename, (ManagedDirectory::DefaultReadFlags ^ flags),
+          gzFlag);
     } catch (...) {
-      _status.reset(TRI_ERROR_CANNOT_READ_FILE, "error opening file " +
-                                                    ::filePath(*this, filename) +
-                                                    " for reading");
+      _status.reset(
+          TRI_ERROR_CANNOT_READ_FILE,
+          "error opening file " + ::filePath(*this, filename) + " for reading");
       file.reset();
     }
   }
@@ -358,8 +373,8 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(std::stri
   return file;
 }
 
-std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(int fileDescriptor) {
-
+std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(
+    int fileDescriptor) {
   std::unique_ptr<File> file{nullptr};
 
   if (_status.fail()) {  // directory is in a bad state
@@ -369,17 +384,17 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(int fileD
   try {
     file = std::make_unique<File>(*this, fileDescriptor, false);
   } catch (...) {
-    _status.reset(TRI_ERROR_CANNOT_READ_FILE, "error opening console pipe"
-                                                  " for reading");
+    _status.reset(TRI_ERROR_CANNOT_READ_FILE,
+                  "error opening console pipe"
+                  " for reading");
     return {nullptr};
   }
 
   return file;
 }
 
-
 std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
-  std::string const& filename, bool overwrite, int flags, bool gzipOk) {
+    std::string const& filename, bool overwrite, int flags, bool gzipOk) {
   std::unique_ptr<File> file;
 
   if (_status.fail()) {  // directory is in a bad state
@@ -390,7 +405,7 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
     std::string filenameCopy = filename;
     if (_writeGzip && gzipOk) {
       filenameCopy.append(".gz");
-    } // if
+    }  // if
 
     // deal with existing file first if it exists
     auto path = ::filePath(*this, filenameCopy);
@@ -406,7 +421,8 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
     }
 
     file = std::make_unique<File>(*this, filenameCopy,
-                                  (ManagedDirectory::DefaultWriteFlags ^ flags), _writeGzip && gzipOk);
+                                  (ManagedDirectory::DefaultWriteFlags ^ flags),
+                                  _writeGzip && gzipOk);
   } catch (...) {
     return {nullptr};
   }
@@ -414,7 +430,8 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
   return file;
 }
 
-void ManagedDirectory::spitFile(std::string const& filename, std::string const& content) {
+void ManagedDirectory::spitFile(std::string const& filename,
+                                std::string const& content) {
   auto file = writableFile(filename, true);
   if (!file) {
     _status = ::genericError(filename, O_WRONLY);
@@ -441,7 +458,8 @@ VPackBuilder ManagedDirectory::vpackFromJsonFile(std::string const& filename) {
     // The Parser might throw;
     try {
       VPackParser parser(builder);
-      parser.parse(reinterpret_cast<uint8_t const*>(content.data()), content.size());
+      parser.parse(reinterpret_cast<uint8_t const*>(content.data()),
+                   content.size());
     } catch (...) {
       throw;  // TODO determine what to actually do here?
     }
@@ -460,9 +478,13 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
       _gzFile(nullptr),
 #ifdef USE_ENTERPRISE
       _context{::getContext(_directory, _fd, _flags)},
-      _status {::initialStatus(_fd, _path, _flags, _context.get())}
+      _status {
+  ::initialStatus(_fd, _path, _flags, _context.get())
+}
 #else
-      _status {::initialStatus(_fd, _path, _flags)}
+      _status {
+  ::initialStatus(_fd, _path, _flags)
+}
 #endif
 {
   TRI_ASSERT(::flagNotSet(_flags, O_RDWR));  // disallow read/write (encryption)
@@ -472,8 +494,7 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
   }
 }
 
-ManagedDirectory::File::File(ManagedDirectory const& directory,
-                             int fd,
+ManagedDirectory::File::File(ManagedDirectory const& directory, int fd,
                              bool isGzip)
     : _directory{directory},
       _path{"stdin"},
@@ -483,9 +504,13 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
       _gzFile(nullptr),
 #ifdef USE_ENTERPRISE
       _context{::getContext(_directory, _fd, _flags)},
-      _status {::initialStatus(_fd, _path, _flags, _context.get())}
+      _status {
+  ::initialStatus(_fd, _path, _flags, _context.get())
+}
 #else
-      _status {::initialStatus(_fd, _path, _flags)}
+      _status {
+  ::initialStatus(_fd, _path, _flags)
+}
 #endif
 {
   TRI_ASSERT(::flagNotSet(_flags, O_RDWR));  // disallow read/write (encryption)
@@ -502,7 +527,7 @@ ManagedDirectory::File::~File() {
       gzclose(_gzFile);
       _gzfd = -1;
       _gzFile = nullptr;
-    } // if
+    }  // if
 
     if (_fd >= 0) {
       ::closeFile(_fd, _status);
@@ -519,14 +544,14 @@ void ManagedDirectory::File::prepareGzip(char const* gzFlags) {
     //  simpler code to give it redundant handle
     _gzfd = TRI_DUP(_fd);
   }
-    
+
   _gzFile = gzdopen(_gzfd, gzFlags);
 
   if (_gzFile != nullptr) {
     // allocate a larger buffer for decompression.
     // 128kb seems to be enough here... larger buffers didn't
     // really improve speed during testing
-    int r = gzbuffer(_gzFile, 128 * 1024); 
+    int r = gzbuffer(_gzFile, 128 * 1024);
     if (r != 0) {
       _status.reset(TRI_ERROR_OUT_OF_MEMORY, "unable to allocate gzip buffer");
     }
@@ -549,7 +574,8 @@ void ManagedDirectory::File::writeNoLock(char const* data, size_t length) {
 
 #ifdef USE_ENTERPRISE
   if (_context && _directory.isEncrypted()) {
-    bool written = _directory.encryptionFeature()->writeData(*_context, data, length);
+    bool written =
+        _directory.encryptionFeature()->writeData(*_context, data, length);
     if (!written) {
       _status = _context->status();
     }
@@ -557,7 +583,8 @@ void ManagedDirectory::File::writeNoLock(char const* data, size_t length) {
   }
 #endif
   if (isGzip()) {
-    int const written = gzwrite(_gzFile, data, static_cast<unsigned int>(length));
+    int const written =
+        gzwrite(_gzFile, data, static_cast<unsigned int>(length));
     if (written < (int)length) {
       _status = ::genericError(_path, _flags);
     }
@@ -571,7 +598,8 @@ TRI_read_return_t ManagedDirectory::File::read(char* buffer, size_t length) {
   return readNoLock(buffer, length);
 }
 
-TRI_read_return_t ManagedDirectory::File::readNoLock(char* buffer, size_t length) {
+TRI_read_return_t ManagedDirectory::File::readNoLock(char* buffer,
+                                                     size_t length) {
   TRI_read_return_t bytesRead = -1;
   if (!::isReadable(_fd, _flags, _path, _status)) {
     return bytesRead;
@@ -579,7 +607,8 @@ TRI_read_return_t ManagedDirectory::File::readNoLock(char* buffer, size_t length
 
 #ifdef USE_ENTERPRISE
   if (_context && _directory.isEncrypted()) {
-    bytesRead = _directory.encryptionFeature()->readData(*_context, buffer, length);
+    bytesRead =
+        _directory.encryptionFeature()->readData(*_context, buffer, length);
     if (bytesRead < 0) {
       _status = _context->status();
     }
@@ -590,7 +619,7 @@ TRI_read_return_t ManagedDirectory::File::readNoLock(char* buffer, size_t length
     bytesRead = gzread(_gzFile, buffer, static_cast<unsigned int>(length));
   } else {
     bytesRead = ::rawRead(_fd, buffer, length, _status, _path, _flags);
-  } // else
+  }  // else
   return bytesRead;
 }
 
@@ -643,14 +672,13 @@ Result const& ManagedDirectory::File::close() {
     gzclose(_gzFile);
     _gzfd = -1;
     _gzFile = nullptr;
-  } // if
+  }  // if
 
   if (_fd >= 0) {
     ::closeFile(_fd, _status);
   }
   return _status;
 }
-
 
 std::int64_t ManagedDirectory::File::offset() const {
   MUTEX_LOCKER(lock, _mutex);
@@ -661,7 +689,7 @@ std::int64_t ManagedDirectory::File::offset() const {
     fileBytesRead = gzoffset(_gzFile);
   } else {
     fileBytesRead = TRI_LSEEK(_fd, 0L, SEEK_CUR);
-  } // else
+  }  // else
 
   return fileBytesRead;
 }
@@ -675,9 +703,10 @@ void ManagedDirectory::File::skip(size_t count) {
   char buffer[bufferSize];
 
   while (count > 0) {
-    TRI_read_return_t bytesRead = readNoLock(buffer, std::min(bufferSize, count));
+    TRI_read_return_t bytesRead =
+        readNoLock(buffer, std::min(bufferSize, count));
     if (bytesRead <= 0) {
-      break; // eof or error (_status will be set)
+      break;  // eof or error (_status will be set)
     }
 
     count -= bytesRead;

@@ -34,7 +34,8 @@ class MockTypedNode : public ::arangodb::aql::ExecutionNode {
   friend class ExecutionBlock;
 
  public:
-  MockTypedNode(::arangodb::aql::ExecutionPlan* plan, arangodb::aql::ExecutionNodeId id, NodeType);
+  MockTypedNode(::arangodb::aql::ExecutionPlan* plan,
+                arangodb::aql::ExecutionNodeId id, NodeType);
 
   // return mocked type
   NodeType getType() const override final;
@@ -43,16 +44,21 @@ class MockTypedNode : public ::arangodb::aql::ExecutionNode {
 
   // Necessary overrides, all not implemented:
 
-  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override;
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override;
 
   std::unique_ptr<::arangodb::aql::ExecutionBlock> createBlock(
       ::arangodb::aql::ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ::arangodb::aql::ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*,
+                         ::arangodb::aql::ExecutionBlock*> const&)
+      const override;
 
   ExecutionNode* clone(::arangodb::aql::ExecutionPlan* plan,
-                       bool withDependencies, bool withProperties) const override;
+                       bool withDependencies,
+                       bool withProperties) const override;
 
   ::arangodb::aql::CostEstimate estimateCost() const override;
+
  private:
   NodeType _mockedType{};
 };

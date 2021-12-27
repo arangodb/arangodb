@@ -24,4 +24,3 @@
 #pragma once
 
 void TRI_InitV8UserFunctions(v8::Isolate* isolate, v8::Handle<v8::Context>);
-

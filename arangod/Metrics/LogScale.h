@@ -29,14 +29,16 @@
 
 namespace arangodb::metrics {
 
-template <typename T>
+template<typename T>
 class LogScale final : public Scale<T> {
  public:
   using Value = T;
   static constexpr ScaleType kScaleType = ScaleType::Logarithmic;
 
-  static constexpr T getHighFromSmallestBucket(T smallestBucketSize, T base, T low, size_t n) {
-    return static_cast<T>((smallestBucketSize - low) * std::pow(base, n - 1) + low);
+  static constexpr T getHighFromSmallestBucket(T smallestBucketSize, T base,
+                                               T low, size_t n) {
+    return static_cast<T>((smallestBucketSize - low) * std::pow(base, n - 1) +
+                          low);
   }
   struct SupplySmallestBucket {};
   static constexpr auto kSupplySmallestBucket = SupplySmallestBucket{};
@@ -44,16 +46,18 @@ class LogScale final : public Scale<T> {
   LogScale(SupplySmallestBucket, T const& base, T const& low,
            T const& smallestBucketSize, size_t n)
       : LogScale{base, low,
-                 getHighFromSmallestBucket(smallestBucketSize, base, low, n), n} {}
+                 getHighFromSmallestBucket(smallestBucketSize, base, low, n),
+                 n} {}
 
   LogScale(T const& base, T const& low, T const& high, size_t n)
       : Scale<T>{low, high, n}, _base{base} {
     TRI_ASSERT(base > T(0));
     double nn = -1.0 * (n - 1);
     for (auto& i : this->_delim) {
-      i = static_cast<T>(static_cast<double>(high - low) *
-                             std::pow(static_cast<double>(base), static_cast<double>(nn++)) +
-                         static_cast<double>(low));
+      i = static_cast<T>(
+          static_cast<double>(high - low) *
+              std::pow(static_cast<double>(base), static_cast<double>(nn++)) +
+          static_cast<double>(low));
     }
     _div = this->_delim.front() - low;
     TRI_ASSERT(_div > T(0));
@@ -76,7 +80,8 @@ class LogScale final : public Scale<T> {
    * @return    index
    */
   size_t pos(T val) const {
-    return static_cast<size_t>(1 + std::floor(log((val - this->_low) / _div) / _lbase));
+    return static_cast<size_t>(
+        1 + std::floor(log((val - this->_low) / _div) / _lbase));
   }
 
   T base() const { return _base; }

@@ -30,6 +30,5 @@ namespace arangodb {
 namespace graph {
 using VertexType = arangodb::velocypack::HashedStringRef;
 using EdgeType = arangodb::velocypack::HashedStringRef;
-}
+}  // namespace graph
 }  // namespace arangodb
-
