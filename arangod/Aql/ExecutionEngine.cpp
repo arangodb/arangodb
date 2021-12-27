@@ -68,7 +68,7 @@ struct LimitFullCountChecker final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::Unique> {
   size_t subqueryRecursionCounter{0};
   bool seenFullCount{false};
-  bool seenLimit{false};
+  bool seenLimitWithoutSort{false};
 
   explicit LimitFullCountChecker() noexcept {}
 
@@ -76,26 +76,14 @@ struct LimitFullCountChecker final
     if (en->getType() == ExecutionNode::LIMIT) {
       auto const* limitNode = ExecutionNode::castTo<LimitNode const*>(en);
       if (limitNode->fullCount()) {
+        TRI_ASSERT(!seenFullCount);  // rule 1
         TRI_ASSERT(0 == subqueryRecursionCounter);  // rule 2
-        auto const* dependency = en->getFirstDependency();
-        TRI_ASSERT(!seenLimit ||
-                   (dependency &&
-                    dependency->getType() == ExecutionNode::SORT));  // rule 3
-        // rule 1
-        if (seenFullCount) {
-          auto const* parent = en->getFirstParent();
-          while (parent) {
-            if (parent->getType() == ExecutionNode::LIMIT) {
-              auto const* tmp = ExecutionNode::castTo<LimitNode const*>(parent);
-              TRI_ASSERT(false);
-              TRI_ASSERT(!tmp->fullCount());
-            }
-            parent = parent->getFirstParent();
-          }
-        }
+        TRI_ASSERT(!seenLimitWithoutSort);  // rule 3
         seenFullCount = true;
+      } else {
+        auto const* dependency = en->getFirstDependency();
+        seenLimitWithoutSort = !dependency || dependency->getType() == ExecutionNode::SORT;
       }
-      seenLimit = true;
     }
     return false;
   }
