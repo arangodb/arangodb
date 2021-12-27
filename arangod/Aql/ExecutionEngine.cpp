@@ -52,6 +52,68 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+namespace {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+using namespace arangodb;
+using namespace arangodb::aql;
+
+// Validating fullCount usage.
+// For fullCount the following applies:
+// 1. There can at most be one LIMIT that has fullCount: true
+// 2. Limit with fullCount:true cannot be within a subquery.
+// 3. Between the “root()” of the Plan (which in most cases is the RETURN
+//    Node) and the LIMIT with fullCount:true no other LIMIT is allowed
+//    (exception the ContrainedSort case now)
+struct LimitFullCountChecker final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::Unique> {
+  size_t subqueryRecursionCounter{0};
+  bool seenFullCount{false};
+  bool seenLimit{false};
+
+  explicit LimitFullCountChecker() noexcept {}
+
+  bool before(ExecutionNode* en) override {
+    if (en->getType() == ExecutionNode::LIMIT) {
+      auto const* limitNode = ExecutionNode::castTo<LimitNode const*>(en);
+      if (limitNode->fullCount()) {
+        TRI_ASSERT(0 == subqueryRecursionCounter);  // rule 2
+        auto const* dependency = en->getFirstDependency();
+        TRI_ASSERT(!seenLimit ||
+                   (dependency &&
+                    dependency->getType() == ExecutionNode::SORT));  // rule 3
+        // rule 1
+        if (seenFullCount) {
+          auto const* parent = en->getFirstParent();
+          while (parent) {
+            if (parent->getType() == ExecutionNode::LIMIT) {
+              auto const* tmp = ExecutionNode::castTo<LimitNode const*>(parent);
+              TRI_ASSERT(false);
+              TRI_ASSERT(!tmp->fullCount());
+            }
+            parent = parent->getFirstParent();
+          }
+        }
+        seenFullCount = true;
+      }
+      seenLimit = true;
+    }
+    return false;
+  }
+
+  /// @brief return true to enter subqueries, false otherwise
+  bool enterSubquery(ExecutionNode* /*super*/, ExecutionNode* /*sub*/) {
+    subqueryRecursionCounter++;
+    return true;
+  }
+
+  virtual void leaveSubquery(ExecutionNode* /*super*/, ExecutionNode* /*sub*/) {
+    TRI_ASSERT(subqueryRecursionCounter > 0);
+    subqueryRecursionCounter--;
+  }
+};
+#endif
+}  // namespace
+
 /**
  * @brief Create AQL blocks from a list of ExectionNodes
  * Only works in cluster mode
@@ -647,6 +709,13 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
                                           SerializationFormat format) {
   auto const role = arangodb::ServerState::instance()->getRole();
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (ServerState::instance()->isCoordinator() ||
+      ServerState::instance()->isSingleServer()) {
+    LimitFullCountChecker limitChecker;
+    plan.root()->walk(limitChecker);
+  }
+#endif
   plan.findVarUsage();
   if (planRegisters) {
     plan.planRegisters();
