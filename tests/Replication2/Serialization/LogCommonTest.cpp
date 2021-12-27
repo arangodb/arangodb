@@ -82,7 +82,7 @@ TEST(LogCommonTest, commit_fail_reason) {
 
   jsonBuffer = R"({"xyz": "NothingToCommit", "reason": "xyz"})"_vpack;
   jsonSlice = velocypack::Slice(jsonBuffer->data());
-  EXPECT_ANY_THROW({CommitFailReason::fromVelocyPack(jsonSlice);});
+  EXPECT_ANY_THROW({ CommitFailReason::fromVelocyPack(jsonSlice); });
 }
 
 TEST(LogCommonTest, log_config) {

@@ -51,12 +51,14 @@ class ClusterTraverser final : public Traverser {
   ///        Returns true if the vertex passes filtering conditions
   ///        Also apppends the _id value of the vertex in the given vector
 
-  bool getVertex(arangodb::velocypack::Slice, arangodb::traverser::EnumeratedPath& path) override;
+  bool getVertex(arangodb::velocypack::Slice,
+                 arangodb::traverser::EnumeratedPath& path) override;
 
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
-  bool getSingleVertex(arangodb::velocypack::Slice edge, std::string_view sourceVertexId,
-                       uint64_t depth, std::string_view& targetVertexId) override;
+  bool getSingleVertex(arangodb::velocypack::Slice edge,
+                       std::string_view sourceVertexId, uint64_t depth,
+                       std::string_view& targetVertexId) override;
 
   bool getVertex(std::string_view vertex, size_t depth) override;
 
@@ -70,7 +72,8 @@ class ClusterTraverser final : public Traverser {
   /// @brief Function to add the real data of a vertex into a velocypack builder
   //////////////////////////////////////////////////////////////////////////////
 
-  void addVertexToVelocyPack(std::string_view, arangodb::velocypack::Builder&) override;
+  void addVertexToVelocyPack(std::string_view,
+                             arangodb::velocypack::Builder&) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Destroy DBServer Traverser Engines
@@ -85,7 +88,8 @@ class ClusterTraverser final : public Traverser {
   /// @brief build the (single) path enumerator of this traverser
   void createEnumerator();
 
-  std::unordered_map<arangodb::velocypack::HashedStringRef, VPackSlice> _vertices;
+  std::unordered_map<arangodb::velocypack::HashedStringRef, VPackSlice>
+      _vertices;
 
   std::string const _dbname;
 
@@ -96,4 +100,3 @@ class ClusterTraverser final : public Traverser {
 
 }  // namespace traverser
 }  // namespace arangodb
-

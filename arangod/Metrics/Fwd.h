@@ -24,24 +24,24 @@
 
 namespace arangodb::metrics {
 
-template <typename T>
+template<typename T>
 class Batch;
 
 class Counter;
 
-template <typename T>
+template<typename T>
 class Gauge;
 
-template <typename T>
+template<typename T>
 class FixScale;
 
-template <typename T>
+template<typename T>
 class LinScale;
 
-template <typename T>
+template<typename T>
 class LogScale;
 
-template <typename Scale>
+template<typename Scale>
 class Histogram;
 
 class MetricsFeature;

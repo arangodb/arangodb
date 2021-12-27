@@ -74,14 +74,10 @@ struct NumberOfCoresCache {
 
 NumberOfCoresCache const cache;
 
-} // namespace
+}  // namespace
 
 /// @brief return number of cores from cache
-std::size_t arangodb::NumberOfCores::getValue() {
-  return ::cache.cachedValue;
-}
+std::size_t arangodb::NumberOfCores::getValue() { return ::cache.cachedValue; }
 
 /// @brief return if number of cores was overridden
-bool arangodb::NumberOfCores::overridden() {
-  return ::cache.overridden;
-}
+bool arangodb::NumberOfCores::overridden() { return ::cache.overridden; }

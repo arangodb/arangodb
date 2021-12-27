@@ -128,7 +128,8 @@ TEST_F(KShortestPathsFinderTest, path_of_length_1) {
   finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
   ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
-  auto cpr = checkPath(spo.get(), result, {"1", "2"}, {{}, {"v/1", "v/2"}}, msgs);
+  auto cpr =
+      checkPath(spo.get(), result, {"1", "2"}, {{}, {"v/1", "v/2"}}, msgs);
   ASSERT_TRUE(cpr) << msgs;
 }
 
@@ -141,8 +142,9 @@ TEST_F(KShortestPathsFinderTest, path_of_length_4) {
   finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
   ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
-  auto cpr = checkPath(spo.get(), result, {"1", "2", "3", "4"},
-                       {{}, {"v/1", "v/2"}, {"v/2", "v/3"}, {"v/3", "v/4"}}, msgs);
+  auto cpr =
+      checkPath(spo.get(), result, {"1", "2", "3", "4"},
+                {{}, {"v/1", "v/2"}, {"v/2", "v/3"}, {"v/3", "v/4"}}, msgs);
   ASSERT_TRUE(cpr) << msgs;
 }
 

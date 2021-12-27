@@ -64,7 +64,8 @@ class InputAqlItemRow {
   constexpr explicit InputAqlItemRow(CreateInvalidInputRowHint)
       : _block(nullptr), _baseIndex(0) {}
 
-  InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t baseIndex) noexcept;
+  InputAqlItemRow(SharedAqlItemBlockPtr const& block,
+                  size_t baseIndex) noexcept;
 
   InputAqlItemRow(SharedAqlItemBlockPtr&& block, size_t baseIndex) noexcept;
 
@@ -88,9 +89,10 @@ class InputAqlItemRow {
 
   RegisterCount getNumRegisters() const noexcept;
 
-  // This the old operator==. It tests if both rows refer to the _same_ block and
-  // the _same_ index.
-  [[nodiscard]] bool isSameBlockAndIndex(InputAqlItemRow const& other) const noexcept;
+  // This the old operator==. It tests if both rows refer to the _same_ block
+  // and the _same_ index.
+  [[nodiscard]] bool isSameBlockAndIndex(
+      InputAqlItemRow const& other) const noexcept;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // This checks whether the rows are equivalent, in the sense that they hold
@@ -128,9 +130,11 @@ class InputAqlItemRow {
   /// @brief toVelocyPack, transfer a single AqlItemRow to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
   /// Uses the same API as an AqlItemBlock with only a single row
-  void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&) const;
+  void toVelocyPack(velocypack::Options const*,
+                    arangodb::velocypack::Builder&) const;
 
-  void toSimpleVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&) const;
+  void toSimpleVelocyPack(velocypack::Options const*,
+                          arangodb::velocypack::Builder&) const;
 
  private:
   AqlItemBlock& block() noexcept;
@@ -151,4 +155,3 @@ class InputAqlItemRow {
 
 }  // namespace aql
 }  // namespace arangodb
-

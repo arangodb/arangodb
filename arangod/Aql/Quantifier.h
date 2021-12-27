@@ -46,8 +46,8 @@ struct Quantifier {
   static bool IsAllOrNone(AstNode const* quantifier);
 
   /// @brief determine the min/max number of matches for an array comparison
-  static std::pair<size_t, size_t> RequiredMatches(size_t inputSize, AstNode const* quantifier);
+  static std::pair<size_t, size_t> RequiredMatches(size_t inputSize,
+                                                   AstNode const* quantifier);
 };
 }  // namespace aql
 }  // namespace arangodb
-

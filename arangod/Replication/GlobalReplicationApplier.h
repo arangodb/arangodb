@@ -33,7 +33,8 @@ class GlobalReplicationApplier final : public ReplicationApplier {
   friend class GlobalTailingSyncer;
 
  public:
-  explicit GlobalReplicationApplier(ReplicationApplierConfiguration const& configuration);
+  explicit GlobalReplicationApplier(
+      ReplicationApplierConfiguration const& configuration);
 
   ~GlobalReplicationApplier();
 
@@ -50,15 +51,15 @@ class GlobalReplicationApplier final : public ReplicationApplier {
   void storeConfiguration(bool doSync) override;
 
   /// @brief load a persisted configuration for the applier
-  static ReplicationApplierConfiguration loadConfiguration(application_features::ApplicationServer&);
+  static ReplicationApplierConfiguration loadConfiguration(
+      application_features::ApplicationServer&);
 
   std::shared_ptr<InitialSyncer> buildInitialSyncer() const override;
-  std::shared_ptr<TailingSyncer> buildTailingSyncer(TRI_voc_tick_t initialTick,
-                                                    bool useTick) const override;
+  std::shared_ptr<TailingSyncer> buildTailingSyncer(
+      TRI_voc_tick_t initialTick, bool useTick) const override;
 
  protected:
   std::string getStateFilename() const override;
 };
 
 }  // namespace arangodb
-
