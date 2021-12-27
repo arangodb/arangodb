@@ -43,8 +43,9 @@ class ValidationResult;
 /*
  * TODO:
  *
- * - EdgeUniqueness, like vertex Uniqueness, and sometimes Edge and Vertex Uniqueness enforce each other.
- *   (e.g. => VertexUniqueness == PATH => EdgeUniquess PATH || NONE.
+ * - EdgeUniqueness, like vertex Uniqueness, and sometimes Edge and Vertex
+ * Uniqueness enforce each other. (e.g. => VertexUniqueness == PATH =>
+ * EdgeUniquess PATH || NONE.
  *
  * - Prune Condition.
  * - PostFilter Condition.
@@ -58,7 +59,8 @@ class PathValidator {
   using Step = typename Provider::Step;
 
  public:
-  PathValidator(Provider& provider, PathStore& store, PathValidatorOptions opts);
+  PathValidator(Provider& provider, PathStore const& store,
+                PathValidatorOptions opts);
   ~PathValidator();
 
   auto validatePath(typename PathStore::Step const& step) -> ValidationResult;
@@ -107,15 +109,16 @@ class PathValidator {
   arangodb::velocypack::Builder _tmpObjectBuilder;
 
  private:
-  auto evaluateVertexCondition(typename PathStore::Step const&) -> ValidationResult;
+  auto evaluateVertexCondition(typename PathStore::Step const&)
+      -> ValidationResult;
   auto evaluateVertexRestriction(typename PathStore::Step const& step) -> bool;
 
   auto exposeUniqueVertices() const
-      -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> const&;
+      -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
+                                         std::equal_to<VertexRef>> const&;
 
   auto evaluateVertexExpression(arangodb::aql::Expression* expression,
-                          arangodb::velocypack::Slice value) -> bool;
+                                arangodb::velocypack::Slice value) -> bool;
 };
 }  // namespace graph
 }  // namespace arangodb
-

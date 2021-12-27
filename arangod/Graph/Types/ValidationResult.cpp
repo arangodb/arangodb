@@ -61,7 +61,8 @@ void ValidationResult::combine(Type t) noexcept {
   }
 }
 
-std::ostream& arangodb::graph::operator<<(std::ostream& stream, ValidationResult const& res) {
+std::ostream& arangodb::graph::operator<<(std::ostream& stream,
+                                          ValidationResult const& res) {
   switch (res._type) {
     case ValidationResult::Type::TAKE:
       stream << "take";

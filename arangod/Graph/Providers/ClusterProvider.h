@@ -41,7 +41,7 @@
 namespace arangodb {
 
 namespace futures {
-template <typename T>
+template<typename T>
 class Future;
 }
 
@@ -56,9 +56,10 @@ class HashedStringRef;
 
 namespace graph {
 
-// TODO: we need to control from the outside if and which parts of the vertex - (will be implemented in the future via template parameters)
-// data should be returned THis is most-likely done via Template Parameter like
-// this: template<ProduceVertexData>
+// TODO: we need to control from the outside if and which parts of the vertex -
+// (will be implemented in the future via template parameters) data should be
+// returned THis is most-likely done via Template Parameter like this:
+// template<ProduceVertexData>
 class ClusterProvider {
  public:
   using Options = ClusterBaseProviderOptions;
@@ -138,7 +139,8 @@ class ClusterProvider {
 
     bool isResponsible(transaction::Methods* trx) const;
 
-    friend auto operator<<(std::ostream& out, Step const& step) -> std::ostream&;
+    friend auto operator<<(std::ostream& out, Step const& step)
+        -> std::ostream&;
 
    private:
     void setFetched() { _fetched = true; }
@@ -150,7 +152,8 @@ class ClusterProvider {
   };
 
  public:
-  ClusterProvider(arangodb::aql::QueryContext& queryContext, ClusterBaseProviderOptions opts,
+  ClusterProvider(arangodb::aql::QueryContext& queryContext,
+                  ClusterBaseProviderOptions opts,
                   arangodb::ResourceMonitor& resourceMonitor);
   ClusterProvider(ClusterProvider const&) = delete;
   ClusterProvider(ClusterProvider&&) = default;
@@ -160,13 +163,17 @@ class ClusterProvider {
 
   void clear();
 
-  auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0) -> Step;
-  auto fetch(std::vector<Step*> const& looseEnds) -> futures::Future<std::vector<Step*>>;
+  auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0)
+      -> Step;
+  auto fetch(std::vector<Step*> const& looseEnds)
+      -> futures::Future<std::vector<Step*>>;
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;
 
-  void addVertexToBuilder(Step::Vertex const& vertex, arangodb::velocypack::Builder& builder);
-  void addEdgeToBuilder(Step::Edge const& edge, arangodb::velocypack::Builder& builder);
+  void addVertexToBuilder(Step::Vertex const& vertex,
+                          arangodb::velocypack::Builder& builder);
+  void addEdgeToBuilder(Step::Edge const& edge,
+                        arangodb::velocypack::Builder& builder);
 
   // fetch vertices and store in cache
   auto fetchVerticesFromEngines(std::vector<Step*> const& looseEnds,
@@ -197,8 +204,9 @@ class ClusterProvider {
   arangodb::aql::TraversalStats _stats;
 
   /// @brief vertex reference to all connected edges including the edges target
-  containers::FlatHashMap<VertexType, std::vector<std::pair<EdgeType, VertexType>>> _vertexConnectedEdges;
+  containers::FlatHashMap<VertexType,
+                          std::vector<std::pair<EdgeType, VertexType>>>
+      _vertexConnectedEdges;
 };
 }  // namespace graph
 }  // namespace arangodb
-

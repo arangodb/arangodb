@@ -74,4 +74,3 @@ constexpr char const* WAIT_FOR_SYNC = "waitForSync";
 
 }  // namespace maintenance
 }  // namespace arangodb
-

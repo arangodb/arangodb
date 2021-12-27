@@ -48,8 +48,9 @@ namespace arangodb::replication2::replicated_log {
  * vocbase. Exactly one instance exists for each replicated log this server is a
  * participant of.
  *
- * It holds a single ILogParticipant; starting with a LogUnconfiguredParticipant,
- * this will usually be either a LogLeader or a LogFollower.
+ * It holds a single ILogParticipant; starting with a
+ * LogUnconfiguredParticipant, this will usually be either a LogLeader or a
+ * LogFollower.
  *
  * The active participant is also responsible for the singular LogCore of this
  * log, providing access to the physical log. The fact that only one LogCore
@@ -65,10 +66,11 @@ namespace arangodb::replication2::replicated_log {
  * atomically.
  */
 struct alignas(64) ReplicatedLog {
-  explicit ReplicatedLog(std::unique_ptr<LogCore> core,
-                         std::shared_ptr<ReplicatedLogMetrics> const& metrics,
-                         std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-                         LoggerContext const& logContext);
+  explicit ReplicatedLog(
+      std::unique_ptr<LogCore> core,
+      std::shared_ptr<ReplicatedLogMetrics> const& metrics,
+      std::shared_ptr<ReplicatedLogGlobalSettings const> options,
+      LoggerContext const& logContext);
 
   ~ReplicatedLog();
 
@@ -78,10 +80,12 @@ struct alignas(64) ReplicatedLog {
   auto operator=(ReplicatedLog const&) -> ReplicatedLog& = delete;
   auto operator=(ReplicatedLog&&) -> ReplicatedLog& = delete;
 
-  auto becomeLeader(LogConfig config, ParticipantId id, LogTerm term,
-                    std::vector<std::shared_ptr<AbstractFollower>> const& follower)
+  auto becomeLeader(
+      LogConfig config, ParticipantId id, LogTerm term,
+      std::vector<std::shared_ptr<AbstractFollower>> const& follower)
       -> std::shared_ptr<LogLeader>;
-  auto becomeFollower(ParticipantId id, LogTerm term, std::optional<ParticipantId> leaderId)
+  auto becomeFollower(ParticipantId id, LogTerm term,
+                      std::optional<ParticipantId> leaderId)
       -> std::shared_ptr<LogFollower>;
 
   auto getParticipant() const -> std::shared_ptr<ILogParticipant>;
@@ -91,8 +95,10 @@ struct alignas(64) ReplicatedLog {
 
   auto drop() -> std::unique_ptr<LogCore>;
 
-  template <typename F, std::enable_if_t<std::is_invocable_v<F, std::shared_ptr<LogLeader>>> = 0,
-            typename R = std::invoke_result_t<F, std::shared_ptr<LogLeader>>>
+  template<
+      typename F,
+      std::enable_if_t<std::is_invocable_v<F, std::shared_ptr<LogLeader>>> = 0,
+      typename R = std::invoke_result_t<F, std::shared_ptr<LogLeader>>>
   auto executeIfLeader(F&& f) {
     auto leaderPtr = std::dynamic_pointer_cast<LogLeader>(getParticipant());
     if constexpr (std::is_void_v<R>) {

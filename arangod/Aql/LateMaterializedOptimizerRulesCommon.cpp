@@ -29,8 +29,9 @@ using namespace arangodb::aql;
 namespace {
 
 // traverse the AST, using previsitor
-void traverseReadOnly(AstNode* node, AstNode* parentNode, size_t childNumber,
-                      std::function<bool(AstNode const*, AstNode*, size_t)> const& preVisitor) {
+void traverseReadOnly(
+    AstNode* node, AstNode* parentNode, size_t childNumber,
+    std::function<bool(AstNode const*, AstNode*, size_t)> const& preVisitor) {
   if (node == nullptr) {
     return;
   }
@@ -59,17 +60,18 @@ struct TraversalState {
   bool wasAccess;
 };
 
-}
+}  // namespace
 
-// determines attributes referenced in an expression for the specified out variable
+// determines attributes referenced in an expression for the specified out
+// variable
 template<typename T>
 bool latematerialized::getReferencedAttributes(AstNode* node,
                                                Variable const* variable,
                                                T& nodeAttrs) {
   TraversalState<T> state{variable, nodeAttrs, true, false};
 
-  auto preVisitor = [&state](AstNode const* node,
-      AstNode* parentNode, size_t childNumber) {
+  auto preVisitor = [&state](AstNode const* node, AstNode* parentNode,
+                             size_t childNumber) {
     if (node == nullptr) {
       return false;
     }
@@ -80,12 +82,16 @@ bool latematerialized::getReferencedAttributes(AstNode* node,
           typename T::DataType afData;
           afData.parentNode = parentNode;
           afData.childNumber = childNumber;
-          state.nodeAttrs.attrs.emplace_back(
-            typename T::AttributeAndField{std::vector<arangodb::basics::AttributeName>{
-              {std::string(node->getStringValue(), node->getStringLength()), false}}, std::move(afData)});
+          state.nodeAttrs.attrs.emplace_back(typename T::AttributeAndField{
+              std::vector<arangodb::basics::AttributeName>{
+                  {std::string(node->getStringValue(), node->getStringLength()),
+                   false}},
+              std::move(afData)});
           state.wasAccess = true;
         } else {
-          state.nodeAttrs.attrs.back().attr.emplace_back(std::string(node->getStringValue(), node->getStringLength()), false);
+          state.nodeAttrs.attrs.back().attr.emplace_back(
+              std::string(node->getStringValue(), node->getStringLength()),
+              false);
         }
         return true;
       case NODE_TYPE_REFERENCE: {
@@ -98,7 +104,8 @@ bool latematerialized::getReferencedAttributes(AstNode* node,
 
             return false;
           }
-          std::reverse(state.nodeAttrs.attrs.back().attr.begin(), state.nodeAttrs.attrs.back().attr.end());
+          std::reverse(state.nodeAttrs.attrs.back().attr.begin(),
+                       state.nodeAttrs.attrs.back().attr.end());
         } else if (state.wasAccess) {
           state.nodeAttrs.attrs.pop_back();
         }
@@ -126,10 +133,10 @@ bool latematerialized::getReferencedAttributes(AstNode* node,
   return state.optimize;
 }
 
-bool latematerialized::isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
-                                std::vector<arangodb::basics::AttributeName> const& attrs,
-                                bool ignoreExpansionInLast,
-                                std::vector<std::string>& postfix) {
+bool latematerialized::isPrefix(
+    std::vector<arangodb::basics::AttributeName> const& prefix,
+    std::vector<arangodb::basics::AttributeName> const& attrs,
+    bool ignoreExpansionInLast, std::vector<std::string>& postfix) {
   TRI_ASSERT(postfix.empty());
   if (prefix.size() > attrs.size()) {
     return false;
@@ -151,21 +158,17 @@ bool latematerialized::isPrefix(std::vector<arangodb::basics::AttributeName> con
   }
   if (i < attrs.size()) {
     postfix.reserve(attrs.size() - i);
-    std::transform(attrs.cbegin() + static_cast<ptrdiff_t>(i),
-                   attrs.cend(), std::back_inserter(postfix), [](auto const& attr) {
-      return attr.name;
-    });
+    std::transform(attrs.cbegin() + static_cast<ptrdiff_t>(i), attrs.cend(),
+                   std::back_inserter(postfix),
+                   [](auto const& attr) { return attr.name; });
   }
 
   return true;
 }
 
 template bool latematerialized::getReferencedAttributes(
-  AstNode* node,
-  Variable const* variable,
-  NodeExpressionWithAttrs& nodeAttrs);
+    AstNode* node, Variable const* variable,
+    NodeExpressionWithAttrs& nodeAttrs);
 
 template bool latematerialized::getReferencedAttributes(
-  AstNode* node,
-  Variable const* variable,
-  NodeWithAttrsColumn& nodeAttrs);
+    AstNode* node, Variable const* variable, NodeWithAttrsColumn& nodeAttrs);

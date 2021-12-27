@@ -83,7 +83,8 @@ TraversalExecutorInfos::TraversalExecutorInfos(
   // _fixedSource XOR _inputRegister
   // note: _fixedSource can be the empty string here
   TRI_ASSERT(_fixedSource.empty() ||
-             (!_fixedSource.empty() && _inputRegister.value() == RegisterId::maxRegisterId));
+             (!_fixedSource.empty() &&
+              _inputRegister.value() == RegisterId::maxRegisterId));
   // All Nodes are located in the AST it cannot be non existing.
   TRI_ASSERT(_ast != nullptr);
   if (isRefactor()) {
@@ -186,7 +187,8 @@ RegisterId TraversalExecutorInfos::getInputRegister() const {
   return _inputRegister;
 }
 
-std::vector<std::pair<Variable const*, RegisterId>> const& TraversalExecutorInfos::filterConditionVariables() const {
+std::vector<std::pair<Variable const*, RegisterId>> const&
+TraversalExecutorInfos::filterConditionVariables() const {
   return _filterConditionVariables;
 }
 
@@ -510,11 +512,12 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
         output.moveValueInto(_infos.pathRegister(), _inputRow, guard);
       }
 
-      // No output is requested from the register plan. We still need
-      // to copy the inputRow for the query to yield correct results.
-      if (!_infos.useVertexOutput() && !_infos.useEdgeOutput() && !_infos.usePathOutput()) {
-        output.copyRow(_inputRow);
-      }
+    // No output is requested from the register plan. We still need
+    // to copy the inputRow for the query to yield correct results.
+    if (!_infos.useVertexOutput() && !_infos.useEdgeOutput() &&
+        !_infos.usePathOutput()) {
+      output.copyRow(_inputRow);
+    }
 
       output.advanceRow();
     }
@@ -588,7 +591,8 @@ auto TraversalExecutor::doSkip(AqlCall& call) -> size_t {
   return skip;
 }
 
-auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input,
+                                    OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   TraversalStats oldStats;
   ExecutorState state{ExecutorState::HASMORE};
@@ -647,7 +651,8 @@ auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItem
   }
 }
 
-auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input,
+                                      AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   TraversalStats oldStats{};
   auto skipped = size_t{0};

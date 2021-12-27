@@ -47,7 +47,7 @@ namespace aql {
 class Query;
 class OutputAqlItemRow;
 class RegisterInfos;
-template <BlockPassthrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 
 class TraversalExecutorInfosHelper {
@@ -107,7 +107,8 @@ class TraversalExecutorInfos {
 
   RegisterId getInputRegister() const;
 
-  std::vector<std::pair<Variable const*, RegisterId>> const& filterConditionVariables() const;
+  std::vector<std::pair<Variable const*, RegisterId>> const&
+  filterConditionVariables() const;
 
   Ast* getAst() const;
 
@@ -160,7 +161,8 @@ class TraversalExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -173,7 +175,8 @@ class TraversalExecutor {
   TraversalExecutor(Fetcher& fetcher, Infos&);
   ~TraversalExecutor();
 
-  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input,
+                                 OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;

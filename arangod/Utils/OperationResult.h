@@ -110,4 +110,3 @@ struct OperationResult final {
 };
 
 }  // namespace arangodb
-

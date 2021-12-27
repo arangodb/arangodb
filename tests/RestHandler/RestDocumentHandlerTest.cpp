@@ -35,7 +35,8 @@
 // -----------------------------------------------------------------------------
 
 class RestDocumentHandlerTestBase
-    : public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::WARN> {
+    : public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER,
+                                            arangodb::LogLevel::WARN> {
  protected:
   arangodb::tests::mocks::MockRestServer server;
 
@@ -44,7 +45,8 @@ class RestDocumentHandlerTestBase
   ~RestDocumentHandlerTestBase() = default;
 };
 
-class RestDocumentHandlerTest : public RestDocumentHandlerTestBase, public ::testing::Test {
+class RestDocumentHandlerTest : public RestDocumentHandlerTestBase,
+                                public ::testing::Test {
  protected:
   RestDocumentHandlerTest() : RestDocumentHandlerTestBase{} {}
 
@@ -79,17 +81,19 @@ TEST_P(RestDocumentHandlerLaneTest, test_request_lane_replication) {
   auto fakeRequest = std::make_unique<GeneralRequestMock>(vocbase);
   auto fakeResponse = std::make_unique<GeneralResponseMock>();
   fakeRequest->setRequestType(_type);
-  fakeRequest->values().emplace(arangodb::StaticStrings::IsSynchronousReplicationString,
-                                "abc");
+  fakeRequest->values().emplace(
+      arangodb::StaticStrings::IsSynchronousReplicationString, "abc");
 
   arangodb::RestDocumentHandler testee(server.server(), fakeRequest.release(),
                                        fakeResponse.release());
-  ASSERT_EQ(arangodb::RequestLane::SERVER_SYNCHRONOUS_REPLICATION, testee.lane());
+  ASSERT_EQ(arangodb::RequestLane::SERVER_SYNCHRONOUS_REPLICATION,
+            testee.lane());
 }
 
-INSTANTIATE_TEST_CASE_P(RequestTypeVariations, RestDocumentHandlerLaneTest,
-                        ::testing::Values(arangodb::rest::RequestType::GET,
-                                          arangodb::rest::RequestType::PUT,
-                                          arangodb::rest::RequestType::POST,
-                                          arangodb::rest::RequestType::DELETE_REQ,
-                                          arangodb::rest::RequestType::PATCH));
+INSTANTIATE_TEST_CASE_P(
+    RequestTypeVariations, RestDocumentHandlerLaneTest,
+    ::testing::Values(arangodb::rest::RequestType::GET,
+                      arangodb::rest::RequestType::PUT,
+                      arangodb::rest::RequestType::POST,
+                      arangodb::rest::RequestType::DELETE_REQ,
+                      arangodb::rest::RequestType::PATCH));

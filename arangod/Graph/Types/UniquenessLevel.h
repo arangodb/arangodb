@@ -35,9 +35,10 @@ namespace graph {
 enum class VertexUniquenessLevel { NONE, PATH, GLOBAL };
 enum class EdgeUniquenessLevel { NONE, PATH, GLOBAL }; // TODO: [GraphRefactor] check if GLOBAL is actually correct here
 
-std::ostream& operator<<(std::ostream& stream, VertexUniquenessLevel const& level);
-std::ostream& operator<<(std::ostream& stream, EdgeUniquenessLevel const& level);
+std::ostream& operator<<(std::ostream& stream,
+                         VertexUniquenessLevel const& level);
+std::ostream& operator<<(std::ostream& stream,
+                         EdgeUniquenessLevel const& level);
 
 }  // namespace graph
 }  // namespace arangodb
-

@@ -56,10 +56,12 @@ using TracedKPathEnumerator =
 template <class ProviderType, VertexUniquenessLevel vertexUniqueness, EdgeUniquenessLevel edgeUniqueness, bool useTracing>
 struct BFSConfiguration {
   using Provider =
-      typename std::conditional<useTracing, ProviderTracer<ProviderType>, ProviderType>::type;
+      typename std::conditional<useTracing, ProviderTracer<ProviderType>,
+                                ProviderType>::type;
   using Step = typename Provider::Step;
   using Queue =
-      typename std::conditional<useTracing, QueueTracer<FifoQueue<Step>>, FifoQueue<Step>>::type;
+      typename std::conditional<useTracing, QueueTracer<FifoQueue<Step>>,
+                                FifoQueue<Step>>::type;
   using Store =
       typename std::conditional<useTracing, PathStoreTracer<PathStore<Step>>, PathStore<Step>>::type;
   using Validator = PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>;
@@ -68,10 +70,12 @@ struct BFSConfiguration {
 template <class ProviderType, VertexUniquenessLevel vertexUniqueness, EdgeUniquenessLevel edgeUniqueness, bool useTracing>
 struct DFSConfiguration {
   using Provider =
-      typename std::conditional<useTracing, ProviderTracer<ProviderType>, ProviderType>::type;
+      typename std::conditional<useTracing, ProviderTracer<ProviderType>,
+                                ProviderType>::type;
   using Step = typename Provider::Step;
   using Queue =
-      typename std::conditional<useTracing, QueueTracer<LifoQueue<Step>>, LifoQueue<Step>>::type;
+      typename std::conditional<useTracing, QueueTracer<LifoQueue<Step>>,
+                                LifoQueue<Step>>::type;
   using Store =
       typename std::conditional<useTracing, PathStoreTracer<PathStore<Step>>, PathStore<Step>>::type;
   using Validator = PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>;
@@ -80,10 +84,12 @@ struct DFSConfiguration {
 template <class ProviderType, VertexUniquenessLevel vertexUniqueness, EdgeUniquenessLevel edgeUniqueness, bool useTracing>
 struct WeightedConfiguration {
   using Provider =
-      typename std::conditional<useTracing, ProviderTracer<ProviderType>, ProviderType>::type;
+      typename std::conditional<useTracing, ProviderTracer<ProviderType>,
+                                ProviderType>::type;
   using Step = typename Provider::Step;
   using Queue =
-      typename std::conditional<useTracing, QueueTracer<WeightedQueue<Step>>, WeightedQueue<Step>>::type;
+      typename std::conditional<useTracing, QueueTracer<WeightedQueue<Step>>,
+                                WeightedQueue<Step>>::type;
   using Store =
       typename std::conditional<useTracing, PathStoreTracer<PathStore<Step>>, PathStore<Step>>::type;
   using Validator = PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>;

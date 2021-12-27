@@ -46,26 +46,29 @@ namespace arangodb::graph::enterprise {
 class SmartGraphStep;
 }  // namespace arangodb::graph::enterprise
 
-template <class ProviderType, class PathStoreType, class Step>
-SingleProviderPathResult<ProviderType, PathStoreType, Step>::SingleProviderPathResult(
-    Step step, ProviderType& provider, PathStoreType& store)
+template<class ProviderType, class PathStoreType, class Step>
+SingleProviderPathResult<ProviderType, PathStoreType,
+                         Step>::SingleProviderPathResult(Step step,
+                                                         ProviderType& provider,
+                                                         PathStoreType& store)
     : _step(std::move(step)), _provider(provider), _store(store) {}
 
-template <class ProviderType, class PathStoreType, class Step>
-auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::clear() -> void {
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::clear()
+    -> void {
   _vertices.clear();
   _edges.clear();
 }
 
-template <class ProviderType, class PathStoreType, class Step>
-auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::appendVertex(typename Step::Vertex v)
-    -> void {
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::appendVertex(
+    typename Step::Vertex v) -> void {
   _vertices.push_back(std::move(v));
 }
 
-template <class ProviderType, class PathStoreType, class Step>
-auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::prependVertex(typename Step::Vertex v)
-    -> void {
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::prependVertex(
+    typename Step::Vertex v) -> void {
   _vertices.insert(_vertices.begin(), std::move(v));
 }
 
@@ -80,9 +83,9 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::appendEdge(typ
   _edges.push_back(std::move(e));
 }
 
-template <class ProviderType, class PathStoreType, class Step>
-auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::prependEdge(typename Step::Edge e)
-    -> void {
+template<class ProviderType, class PathStoreType, class Step>
+auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::prependEdge(
+    typename Step::Edge e) -> void {
   _edges.insert(_edges.begin(), std::move(e));
 }
 
@@ -199,29 +202,39 @@ using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
 template class ::arangodb::graph::SingleProviderPathResult<
     ::arangodb::graph::SingleServerProvider<SingleServerProviderStep>,
-    ::arangodb::graph::PathStore<SingleServerProviderStep>, SingleServerProviderStep>;
+    ::arangodb::graph::PathStore<SingleServerProviderStep>,
+    SingleServerProviderStep>;
 
 template class ::arangodb::graph::SingleProviderPathResult<
-    ::arangodb::graph::ProviderTracer<::arangodb::graph::SingleServerProvider<SingleServerProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProviderStep>>, SingleServerProviderStep>;
+    ::arangodb::graph::ProviderTracer<
+        ::arangodb::graph::SingleServerProvider<SingleServerProviderStep>>,
+    ::arangodb::graph::PathStoreTracer<
+        ::arangodb::graph::PathStore<SingleServerProviderStep>>,
+    SingleServerProviderStep>;
 
 #ifdef USE_ENTERPRISE
 template class ::arangodb::graph::SingleProviderPathResult<
     ::arangodb::graph::SingleServerProvider<enterprise::SmartGraphStep>,
-    ::arangodb::graph::PathStore<enterprise::SmartGraphStep>, enterprise::SmartGraphStep>;
+    ::arangodb::graph::PathStore<enterprise::SmartGraphStep>,
+    enterprise::SmartGraphStep>;
 
 template class ::arangodb::graph::SingleProviderPathResult<
-    ::arangodb::graph::ProviderTracer<::arangodb::graph::SingleServerProvider<enterprise::SmartGraphStep>>,
-    ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<enterprise::SmartGraphStep>>, enterprise::SmartGraphStep>;
+    ::arangodb::graph::ProviderTracer<
+        ::arangodb::graph::SingleServerProvider<enterprise::SmartGraphStep>>,
+    ::arangodb::graph::PathStoreTracer<
+        ::arangodb::graph::PathStore<enterprise::SmartGraphStep>>,
+    enterprise::SmartGraphStep>;
 #endif
 
 // TODO: check if cluster is needed here
 /* ClusterProvider Section */
 template class ::arangodb::graph::SingleProviderPathResult<
-    ::arangodb::graph::ClusterProvider, ::arangodb::graph::PathStore<::arangodb::graph::ClusterProvider::Step>,
+    ::arangodb::graph::ClusterProvider,
+    ::arangodb::graph::PathStore<::arangodb::graph::ClusterProvider::Step>,
     ::arangodb::graph::ClusterProvider::Step>;
 
 template class ::arangodb::graph::SingleProviderPathResult<
     ::arangodb::graph::ProviderTracer<::arangodb::graph::ClusterProvider>,
-    ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<::arangodb::graph::ClusterProvider::Step>>,
+    ::arangodb::graph::PathStoreTracer<
+        ::arangodb::graph::PathStore<::arangodb::graph::ClusterProvider::Step>>,
     ::arangodb::graph::ClusterProvider::Step>;

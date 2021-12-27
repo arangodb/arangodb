@@ -37,7 +37,7 @@ class Builder;
 
 namespace graph {
 
-template <class ProviderType, class Step>
+template<class ProviderType, class Step>
 class PathResult {
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
@@ -51,7 +51,7 @@ class PathResult {
   auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void;
   auto lastVertexToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
   auto lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder) -> void;
-  
+
   auto isEmpty() const -> bool;
 
  private:
@@ -63,7 +63,7 @@ class PathResult {
   // For edges we need to load one edge less from here.
   size_t _numVerticesFromSourceProvider;
   size_t _numEdgesFromSourceProvider;
-  
+
   // Provider for the beginning of the path (source)
   ProviderType& _sourceProvider;
   // Provider for the end of the path (target)
@@ -71,4 +71,3 @@ class PathResult {
 };
 }  // namespace graph
 }  // namespace arangodb
-

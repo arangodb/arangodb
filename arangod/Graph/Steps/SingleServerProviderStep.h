@@ -32,10 +32,11 @@
 namespace arangodb {
 namespace graph {
 
-template <class StepType>
+template<class StepType>
 class SingleServerProvider;
 
-class SingleServerProviderStep : public arangodb::graph::BaseStep<SingleServerProviderStep> {
+class SingleServerProviderStep
+    : public arangodb::graph::BaseStep<SingleServerProviderStep> {
  public:
   using StepType = EdgeDocumentToken;
 
@@ -110,8 +111,8 @@ class SingleServerProviderStep : public arangodb::graph::BaseStep<SingleServerPr
 
   bool isResponsible(transaction::Methods* trx) const;
 
-  friend auto operator<<(std::ostream& out, SingleServerProviderStep const& step)
-      -> std::ostream&;
+  friend auto operator<<(std::ostream& out,
+                         SingleServerProviderStep const& step) -> std::ostream&;
 
  private:
   Vertex _vertex;

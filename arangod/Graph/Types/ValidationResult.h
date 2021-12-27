@@ -30,7 +30,8 @@ namespace graph {
 
 class ValidationResult {
  public:
-  friend std::ostream& operator<<(std::ostream& stream, ValidationResult const& res);
+  friend std::ostream& operator<<(std::ostream& stream,
+                                  ValidationResult const& res);
 
   enum class Type { TAKE, PRUNE, FILTER, FILTER_AND_PRUNE };
 
@@ -49,4 +50,3 @@ std::ostream& operator<<(std::ostream& stream, ValidationResult const& res);
 
 }  // namespace graph
 }  // namespace arangodb
-

@@ -63,12 +63,15 @@ TEST_F(ReplicatedStateFeatureTest, create_non_existing_state_machine) {
   feature->registerStateType<MyState>("my-state");
 
   auto log = makeReplicatedLog(LogId{1});
-  ASSERT_THROW({ auto instance = feature->createReplicatedState("FOOBAR", log); },
-               basics::Exception);
+  ASSERT_THROW(
+      { auto instance = feature->createReplicatedState("FOOBAR", log); },
+      basics::Exception);
 }
 
-TEST_F(ReplicatedStateFeatureTest, register_duplicated_state_machine_DeathTest) {
+TEST_F(ReplicatedStateFeatureTest,
+       register_duplicated_state_machine_DeathTest) {
   auto feature = std::make_shared<ReplicatedStateFeature>();
   feature->registerStateType<MyState>("my-state");
-  ASSERT_DEATH_IF_SUPPORTED({feature->registerStateType<MyState>("my-state");}, ".*");
+  ASSERT_DEATH_IF_SUPPORTED(
+      { feature->registerStateType<MyState>("my-state"); }, ".*");
 }

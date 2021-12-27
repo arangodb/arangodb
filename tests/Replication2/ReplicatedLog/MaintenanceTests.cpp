@@ -62,7 +62,8 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_participant) {
       },
   }};
 
-  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset, callNotify, actions);
+  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
+                     callNotify, actions);
 
   ASSERT_EQ(actions.size(), 1);
   auto const& action = actions.front();
@@ -73,7 +74,8 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_participant) {
   EXPECT_TRUE(callNotify);
 }
 
-TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_not_participant) {
+TEST_F(ReplicationMaintenanceTest,
+       create_replicated_log_we_are_not_participant) {
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{};
@@ -96,18 +98,22 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_not_participant)
       },
   }};
 
-  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset, callNotify, actions);
+  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
+                     callNotify, actions);
 
   ASSERT_EQ(actions.size(), 0);
   EXPECT_TRUE(dirtyset.find(database) == dirtyset.end());
   EXPECT_FALSE(callNotify);
 }
 
-TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_not_participant_but_have_the_log) {
+TEST_F(ReplicationMaintenanceTest,
+       create_replicated_log_we_are_not_participant_but_have_the_log) {
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{
-      {logId, replicated_log::LogStatus{replicated_log::UnconfiguredStatus{}}},
+      {logId,
+       replicated_log::QuickLogStatus{
+           replicated_log::ParticipantRole::kUnconfigured}},
   };
   auto const defaultConfig = LogConfig{};
 
@@ -128,7 +134,8 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_not_participant_
       },
   }};
 
-  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset, callNotify, actions);
+  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
+                     callNotify, actions);
 
   ASSERT_EQ(actions.size(), 1);
   auto const& action = actions.front();
@@ -143,7 +150,9 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_unconfigured) {
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{
-      {logId, replicated_log::LogStatus{replicated_log::UnconfiguredStatus{}}},
+      {logId,
+       replicated_log::QuickLogStatus{
+           replicated_log::ParticipantRole::kUnconfigured}},
   };
   auto const defaultConfig = LogConfig{};
 
@@ -164,7 +173,8 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_unconfigured) {
       },
   }};
 
-  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset, callNotify, actions);
+  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
+                     callNotify, actions);
 
   ASSERT_EQ(actions.size(), 1);
   auto const& action = actions.front();
@@ -178,10 +188,13 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_unconfigured) {
 TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_term) {
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
-  auto const localLogs = ReplicatedLogStatusMap{
-      {logId, replicated_log::LogStatus{replicated_log::FollowerStatus{
-                  {}, ParticipantId{"leader"}, LogTerm{4}, LogIndex{0}}}},
-  };
+  auto const localLogs = ReplicatedLogStatusMap{{
+      logId,
+      replicated_log::QuickLogStatus{
+          .role = replicated_log::ParticipantRole::kFollower,
+          .term = LogTerm{4},
+          .local = {}},
+  }};
   auto const defaultConfig = LogConfig{};
 
   auto const planLogs = ReplicatedLogSpecMap{{
@@ -201,7 +214,8 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_term) {
       },
   }};
 
-  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset, callNotify, actions);
+  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
+                     callNotify, actions);
 
   ASSERT_EQ(actions.size(), 1);
   auto const& action = actions.front();
@@ -212,22 +226,30 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_term) {
   EXPECT_TRUE(callNotify);
 }
 
-TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_generation) {
+TEST_F(ReplicationMaintenanceTest,
+       create_replicated_log_detect_wrong_generation) {
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
 
   // Expect updates in case we are leader
-  auto participantsConfig = ParticipantsConfig{
-      1,
-      {
-          {ParticipantId{"A"}, {}},
-          {ParticipantId{"leader"}, {}},
-      }};
-  auto leaderStatus = replicated_log::LeaderStatus{
-      {}, LogTerm{3}, {}, true, {}, {}, {}, participantsConfig, participantsConfig};
+  auto participantsConfig =
+      ParticipantsConfig{1,
+                         {
+                             {ParticipantId{"A"}, {}},
+                             {ParticipantId{"leader"}, {}},
+                         }};
+  auto leaderStatus = replicated_log::QuickLogStatus{
+      .role = replicated_log::ParticipantRole::kLeader,
+      .term = LogTerm{3},
+      .local = {},
+      .leadershipEstablished = true,
+      .activeParticipantConfig =
+          std::make_shared<ParticipantsConfig const>(participantsConfig),
+      .committedParticipantConfig =
+          std::make_shared<ParticipantsConfig const>(participantsConfig)};
 
   auto localLogs = ReplicatedLogStatusMap{
-      {logId, replicated_log::LogStatus{std::move(leaderStatus)}},
+      {logId, replicated_log::QuickLogStatus{std::move(leaderStatus)}},
   };
   auto const defaultConfig = LogConfig{};
 
@@ -248,7 +270,8 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_generation
        defaultConfig, participantsConfig},
   }};
 
-  diffReplicatedLogs(database, localLogs, planLogs, "leader", errors, dirtyset, callNotify, actions);
+  diffReplicatedLogs(database, localLogs, planLogs, "leader", errors, dirtyset,
+                     callNotify, actions);
 
   ASSERT_EQ(actions.size(), 1);
   auto const& action = actions.front();
@@ -260,11 +283,13 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_generation
 
   // No new updates in case we are follower
   localLogs = ReplicatedLogStatusMap{
-  {logId, replicated_log::LogStatus{replicated_log::FollowerStatus{
-      {}, ParticipantId{"leader"}, LogTerm{3}, LogIndex{0}}}},
-  };
+      {logId, replicated_log::QuickLogStatus{
+                  .role = replicated_log::ParticipantRole::kFollower,
+                  .term = LogTerm{3},
+                  .local = {}}}};
 
-  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset, callNotify, actions);
+  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
+                     callNotify, actions);
   EXPECT_EQ(actions.size(), 1);
   EXPECT_TRUE(dirtyset.find(database) != dirtyset.end());
   EXPECT_TRUE(callNotify);
@@ -274,11 +299,14 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_no_longer_in_plan) {
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{
-      {logId, replicated_log::LogStatus{replicated_log::FollowerStatus{
-                  {}, ParticipantId{"leader"}, LogTerm{3}, LogIndex{0}}}},
-  };
+      {logId, replicated_log::QuickLogStatus{
+                  .role = replicated_log::ParticipantRole::kFollower,
+                  .term = LogTerm{3},
+                  .local = {}}}};
+
   auto const planLogs = ReplicatedLogSpecMap{};
-  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset, callNotify, actions);
+  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
+                     callNotify, actions);
 
   ASSERT_EQ(actions.size(), 1);
   auto const& action = actions.front();

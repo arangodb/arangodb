@@ -51,14 +51,15 @@
 
 #define CONDITIONAL_READ_LOCKER(obj, lock, condition)                          \
   arangodb::basics::ReadLocker<typename std::decay<decltype(lock)>::type> obj( \
-      &lock, arangodb::basics::LockerType::BLOCKING, (condition), __FILE__, __LINE__)
+      &lock, arangodb::basics::LockerType::BLOCKING, (condition), __FILE__,    \
+      __LINE__)
 
 namespace arangodb::basics {
 
 /// @brief read locker
 /// A ReadLocker read-locks a read-write lock during its lifetime and unlocks
 /// the lock when it is destroyed.
-template <class LockType>
+template<class LockType>
 class ReadLocker {
   ReadLocker(ReadLocker const&) = delete;
   ReadLocker& operator=(ReadLocker const&) = delete;

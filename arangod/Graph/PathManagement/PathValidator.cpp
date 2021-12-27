@@ -130,19 +130,21 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::v
     PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness> const& otherValidator)
     -> ValidationResult {
   if constexpr (vertexUniqueness == VertexUniquenessLevel::PATH) {
-    // For PATH: take _uniqueVertices of otherValidator, and run Visitor of other side, check if one vertex is duplicate.
+    // For PATH: take _uniqueVertices of otherValidator, and run Visitor of
+    // other side, check if one vertex is duplicate.
     auto const& otherUniqueVertices = otherValidator.exposeUniqueVertices();
 
-    bool success =
-        _store.visitReversePath(step, [&](typename PathStore::Step const& innerStep) -> bool {
-          // compare memory address for equality (instead of comparing their values)
+    bool success = _store.visitReversePath(
+        step, [&](typename PathStore::Step const& innerStep) -> bool {
+          // compare memory address for equality (instead of comparing their
+          // values)
           if (&step == &innerStep) {
             return true;
           }
 
-          // If otherUniqueVertices has our step, we will return false and abort.
-          // Otherwise we'll return true here.
-          // This guarantees we have no vertex on both sides of the path twice.
+          // If otherUniqueVertices has our step, we will return false and
+          // abort. Otherwise we'll return true here. This guarantees we have no
+          // vertex on both sides of the path twice.
           return otherUniqueVertices.find(innerStep.getVertexIdentifier()) ==
                  otherUniqueVertices.end();
         });
@@ -152,7 +154,8 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::v
     return ValidationResult{ValidationResult::Type::TAKE};
   }
   if constexpr (vertexUniqueness == VertexUniquenessLevel::GLOBAL) {
-    auto const& [unused, added] = _uniqueVertices.emplace(step.getVertexIdentifier());
+    auto const& [unused, added] =
+        _uniqueVertices.emplace(step.getVertexIdentifier());
     // If this add fails, we need to exclude this path
     if (!added) {
       return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
@@ -280,7 +283,8 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::e
     _provider.addVertexToBuilder(step.getVertex(), _tmpObjectBuilder);
 
     // evaluate expression
-    bool satifiesCondition = evaluateVertexExpression(expr, _tmpObjectBuilder.slice());
+    bool satifiesCondition =
+        evaluateVertexExpression(expr, _tmpObjectBuilder.slice());
     if (!satifiesCondition) {
       if (_options.hasCompatibility38IncludeFirstVertex() && step.isFirst()) {
         return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};

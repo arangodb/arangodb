@@ -49,10 +49,7 @@ void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
-
-void ActionFeature::unprepare() {
-  TRI_CleanupActions();
-}
+void ActionFeature::unprepare() { TRI_CleanupActions(); }
 
 bool ActionFeature::allowUseDatabase() const { return _allowUseDatabase; }
 

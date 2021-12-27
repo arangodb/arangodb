@@ -28,11 +28,13 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-PathValidatorOptions::PathValidatorOptions(aql::Variable const* tmpVar,
-                                           arangodb::aql::FixedVarExpressionContext& expressionContext)
+PathValidatorOptions::PathValidatorOptions(
+    aql::Variable const* tmpVar,
+    arangodb::aql::FixedVarExpressionContext& expressionContext)
     : _tmpVar(tmpVar), _expressionCtx(expressionContext) {}
 
-void PathValidatorOptions::setAllVerticesExpression(std::unique_ptr<aql::Expression> expression) {
+void PathValidatorOptions::setAllVerticesExpression(
+    std::unique_ptr<aql::Expression> expression) {
   // All edge expression should not be set before
   TRI_ASSERT(_allVerticesExpression == nullptr);
   _allVerticesExpression = std::move(expression);
@@ -75,11 +77,13 @@ void PathValidatorOptions::setPostFilterContext(arangodb::aql::InputAqlItemRow& 
 void PathValidatorOptions::setVertexExpression(uint64_t depth,
                                                std::unique_ptr<aql::Expression> expression) {
   // Should not respecifiy the condition on a certain depth
-  TRI_ASSERT(_vertexExpressionOnDepth.find(depth) == _vertexExpressionOnDepth.end());
+  TRI_ASSERT(_vertexExpressionOnDepth.find(depth) ==
+             _vertexExpressionOnDepth.end());
   _vertexExpressionOnDepth.emplace(depth, std::move(expression));
 }
 
-aql::Expression* PathValidatorOptions::getVertexExpression(uint64_t depth) const {
+aql::Expression* PathValidatorOptions::getVertexExpression(
+    uint64_t depth) const {
   auto const& it = _vertexExpressionOnDepth.find(depth);
   if (it != _vertexExpressionOnDepth.end()) {
     return it->second.get();
@@ -106,13 +110,15 @@ void PathValidatorOptions::addAllowedVertexCollection(std::string const& collect
   _allowedVertexCollections.emplace_back(collectionName);
 }
 
-void PathValidatorOptions::addAllowedVertexCollections(std::vector<std::string> const& collectionNames) {
+void PathValidatorOptions::addAllowedVertexCollections(
+    std::vector<std::string> const& collectionNames) {
   for (auto& name : collectionNames) {
     addAllowedVertexCollection(name);
   }
 }
 
-std::vector<std::string> const& PathValidatorOptions::getAllowedVertexCollections() const {
+std::vector<std::string> const&
+PathValidatorOptions::getAllowedVertexCollections() const {
   return _allowedVertexCollections;
 }
 

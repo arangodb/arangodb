@@ -26,7 +26,7 @@
 
 namespace arangodb::metrics {
 
-template <typename T>
+template<typename T>
 class FixScale final : public Scale<T> {
  public:
   using Value = T;
