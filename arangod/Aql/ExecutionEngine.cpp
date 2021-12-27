@@ -101,12 +101,12 @@ struct LimitFullCountChecker final
   }
 
   /// @brief return true to enter subqueries, false otherwise
-  bool enterSubquery(ExecutionNode* /*super*/, ExecutionNode* /*sub*/) {
+  bool enterSubquery(ExecutionNode* /*super*/, ExecutionNode* /*sub*/) override {
     subqueryRecursionCounter++;
     return true;
   }
 
-  virtual void leaveSubquery(ExecutionNode* /*super*/, ExecutionNode* /*sub*/) {
+  virtual void leaveSubquery(ExecutionNode* /*super*/, ExecutionNode* /*sub*/) override {
     TRI_ASSERT(subqueryRecursionCounter > 0);
     subqueryRecursionCounter--;
   }
