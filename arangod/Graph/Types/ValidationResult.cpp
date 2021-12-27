@@ -29,13 +29,37 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 // PRUNE and Filter are both pruned.
-bool ValidationResult::isPruned() const noexcept { return _type != Type::TAKE; }
-
-bool ValidationResult::isFiltered() const noexcept {
-  return _type == Type::FILTER;
+bool ValidationResult::isPruned() const noexcept {
+  return _type == Type::PRUNE || _type == Type::FILTER_AND_PRUNE;
 }
 
-void ValidationResult::combine(Type t) noexcept { _type = std::max(_type, t); }
+bool ValidationResult::isFiltered() const noexcept {
+  return _type == Type::FILTER || _type == Type::FILTER_AND_PRUNE;
+}
+
+void ValidationResult::combine(Type t) noexcept {
+  switch(t) {
+    case Type::TAKE:
+      break;
+    case Type::PRUNE:
+      if (isFiltered()) {
+        _type = Type::FILTER_AND_PRUNE;
+      } else {
+        _type = Type::PRUNE;
+      }
+      break;
+    case Type::FILTER:
+      if (isPruned()) {
+        _type = Type::FILTER_AND_PRUNE;
+      } else {
+        _type = Type::FILTER;
+      }
+      break;
+    case Type::FILTER_AND_PRUNE:
+      _type = Type::FILTER_AND_PRUNE;
+      break;
+  }
+}
 
 std::ostream& arangodb::graph::operator<<(std::ostream& stream, ValidationResult const& res) {
   switch (res._type) {
@@ -47,6 +71,9 @@ std::ostream& arangodb::graph::operator<<(std::ostream& stream, ValidationResult
       break;
     case ValidationResult::Type::FILTER:
       stream << "filter";
+      break;
+    case ValidationResult::Type::FILTER_AND_PRUNE:
+      stream << "filter and prune";
       break;
   }
   return stream;

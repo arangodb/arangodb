@@ -681,6 +681,40 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     }
   };
 
+  auto checkPostFilterAvailability = [&](bool refactor, std::shared_ptr<aql::PruneExpressionEvaluator>& evaluator) {
+    std::vector<Variable const*> postFilterVars;
+    getPostFilterVariables(postFilterVars);
+    std::vector<RegisterId> postFilterRegs;
+    // Create List for _pruneVars
+    postFilterRegs.reserve(postFilterVars.size());
+    size_t vertexRegIdx = std::numeric_limits<std::size_t>::max();
+    size_t edgeRegIdx = std::numeric_limits<std::size_t>::max();
+    for (auto const v : postFilterVars) {
+      if (v == vertexOutVariable()) {
+        vertexRegIdx = postFilterRegs.size();
+        postFilterRegs.emplace_back(RegisterPlan::MaxRegisterId);
+      } else if (v == edgeOutVariable()) {
+        edgeRegIdx = postFilterRegs.size();
+        postFilterRegs.emplace_back(RegisterPlan::MaxRegisterId);
+      } else if (v == pathOutVariable()) {
+        TRI_ASSERT(false);
+      } else {
+        auto it = varInfo.find(v->id);
+        TRI_ASSERT(it != varInfo.end());
+        postFilterRegs.emplace_back(it->second.registerId);
+      }
+    }
+
+    if (!refactor) {
+      opts->activatePostFilter(std::move(postFilterVars), std::move(postFilterRegs), vertexRegIdx,
+                          edgeRegIdx, postFilterExpression());
+    } else {
+      auto expr = opts->createPostFilterEvaluator(std::move(postFilterVars), std::move(postFilterRegs), vertexRegIdx,
+                                             edgeRegIdx, postFilterExpression());
+      evaluator = std::move(expr);
+    }
+  };
+
   if (!opts->refactor() && pruneExpression() != nullptr) {
     // [GraphRefactor] TODO: shared_ptr::evaluator not needed here - we need to clean this up later
     std::shared_ptr<aql::PruneExpressionEvaluator> evaluator;
@@ -761,6 +795,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
      * Default SingleServer Traverser
      */
 
+    // TODO [GraphRefactor]: Remove me!
     opts->setRefactor(true);
     LOG_DEVEL << "[GraphRefactor] Refactor enabled: " << std::boolalpha
               << opts->refactor();
@@ -784,6 +819,12 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
         std::shared_ptr<aql::PruneExpressionEvaluator> pruneEvaluator;
         checkPruneAvailability(true, pruneEvaluator);
         validatorOptions.setPruneEvaluator(std::move(pruneEvaluator));
+      }
+
+      if (postFilterExpression() != nullptr) {
+        std::shared_ptr<aql::PruneExpressionEvaluator> postFilterEvaluator;
+        checkPostFilterAvailability(true, postFilterEvaluator);
+        validatorOptions.setPostFilterEvaluator(std::move(postFilterEvaluator));
       }
 
       // Vertex Expressions Section

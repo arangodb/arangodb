@@ -42,6 +42,10 @@ void PathValidatorOptions::setPruneEvaluator(std::shared_ptr<aql::PruneExpressio
   _pruneEvaluator = std::move(expression);
 }
 
+void PathValidatorOptions::setPostFilterEvaluator(std::shared_ptr<aql::PruneExpressionEvaluator>&& expression) {
+  _postFilterEvaluator = std::move(expression);
+}
+
 std::shared_ptr<aql::PruneExpressionEvaluator>& PathValidatorOptions::getPruneEvaluator() {
   return _pruneEvaluator;
 }

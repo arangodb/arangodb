@@ -86,7 +86,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::v
           return addedVertex;
         });
     if (!success) {
-      res.combine(ValidationResult::Type::FILTER);
+      res.combine(ValidationResult::Type::FILTER_AND_PRUNE);
     }
   }
   if constexpr (vertexUniqueness == VertexUniquenessLevel::GLOBAL) {
@@ -99,12 +99,12 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::v
           _uniqueEdges.emplace(step.getEdgeIdentifier());
       // If this add fails, we need to exclude this path
       if (!addedVertex || !addedEdge) {
-        res.combine(ValidationResult::Type::FILTER);
+        res.combine(ValidationResult::Type::FILTER_AND_PRUNE);
       }
     } else {
       // If this add fails, we need to exclude this path
       if (!addedVertex) {
-        res.combine(ValidationResult::Type::FILTER);
+        res.combine(ValidationResult::Type::FILTER_AND_PRUNE);
       }
     }
   }
@@ -116,7 +116,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::v
           _uniqueEdges.emplace(step.getEdgeIdentifier());
       // If this add fails, we need to exclude this path
       if (!addedEdge) {
-        res.combine(ValidationResult::Type::FILTER);
+        res.combine(ValidationResult::Type::FILTER_AND_PRUNE);
       }
     }
   }
@@ -147,7 +147,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::v
                  otherUniqueVertices.end();
         });
     if (!success) {
-      return ValidationResult{ValidationResult::Type::FILTER};
+      return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
     }
     return ValidationResult{ValidationResult::Type::TAKE};
   }
@@ -155,7 +155,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::v
     auto const& [unused, added] = _uniqueVertices.emplace(step.getVertexIdentifier());
     // If this add fails, we need to exclude this path
     if (!added) {
-      return ValidationResult{ValidationResult::Type::FILTER};
+      return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
     }
     return ValidationResult{ValidationResult::Type::TAKE};
   }
@@ -205,9 +205,9 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::e
   bool isAllowed = evaluateVertexRestriction(step);
   if (!isAllowed) {
     if (_options.hasCompatibility38IncludeFirstVertex() && step.isFirst()) {
-      return ValidationResult{ValidationResult::Type::PRUNE};
+      return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
     }
-    return ValidationResult{ValidationResult::Type::FILTER};
+    return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
   }
 
   // evaluate if vertex needs to be pruned
@@ -253,8 +253,22 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::e
   // Somehow existent old code in DepthFirstEnumerator::next() is a little bit
   // confusing.
   if (_options.usesPostFilter()) {
+    VPackBuilder vertexBuilder, edgeBuilder;
+
     auto& evaluator = _options.getPostFilterEvaluator();
-    if (evaluator->evaluate()) {
+
+    if (evaluator->needsVertex()) {
+      _provider.addVertexToBuilder(step.getVertex(), vertexBuilder);
+      evaluator->injectVertex(vertexBuilder.slice());
+    }
+    if (evaluator->needsEdge()) {
+      _provider.addEdgeToBuilder(step.getEdge(), edgeBuilder);
+      evaluator->injectEdge(edgeBuilder.slice());
+    }
+
+    TRI_ASSERT(!evaluator->needsPath());
+
+    if (!evaluator->evaluate()) {
       return ValidationResult{ValidationResult::Type::FILTER};
     }
   }
@@ -269,9 +283,9 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::e
     bool satifiesCondition = evaluateVertexExpression(expr, _tmpObjectBuilder.slice());
     if (!satifiesCondition) {
       if (_options.hasCompatibility38IncludeFirstVertex() && step.isFirst()) {
-        return ValidationResult{ValidationResult::Type::PRUNE};
+        return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
       }
-      return ValidationResult{ValidationResult::Type::FILTER};
+      return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
     }
   }
   return ValidationResult{ValidationResult::Type::TAKE};

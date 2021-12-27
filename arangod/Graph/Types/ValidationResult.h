@@ -32,7 +32,7 @@ class ValidationResult {
  public:
   friend std::ostream& operator<<(std::ostream& stream, ValidationResult const& res);
 
-  enum class Type { TAKE, PRUNE, FILTER };
+  enum class Type { TAKE, PRUNE, FILTER, FILTER_AND_PRUNE };
 
   explicit ValidationResult(Type type) : _type(type) {}
 

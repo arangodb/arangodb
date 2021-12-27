@@ -899,6 +899,14 @@ std::unique_ptr<aql::PruneExpressionEvaluator> TraverserOptions::createPruneEval
       std::move(regs), vertexVarIdx, edgeVarIdx, pathVarIdx, expr);
 }
 
+std::unique_ptr<aql::PruneExpressionEvaluator> TraverserOptions::createPostFilterEvaluator(
+    std::vector<aql::Variable const*> vars, std::vector<aql::RegisterId> regs,
+    size_t vertexVarIdx, size_t edgeVarIdx, aql::Expression* expr) {
+  return std::make_unique<aql::PruneExpressionEvaluator>(
+      _trx, _query, _aqlFunctionsInternalCache, std::move(vars),
+      std::move(regs), vertexVarIdx, edgeVarIdx, std::numeric_limits<std::size_t>::max(), expr);
+}
+
 void TraverserOptions::activatePrune(std::vector<aql::Variable const*> vars,
                                      std::vector<aql::RegisterId> regs,
                                      size_t vertexVarIdx, size_t edgeVarIdx,
@@ -911,9 +919,7 @@ void TraverserOptions::activatePostFilter(std::vector<aql::Variable const*> vars
                                           std::vector<aql::RegisterId> regs,
                                           size_t vertexVarIdx, size_t edgeVarIdx,
                                           aql::Expression* expr) {
-  _postFilterExpression = std::make_unique<aql::PruneExpressionEvaluator>(
-      _trx, _query, _aqlFunctionsInternalCache, std::move(vars), std::move(regs),
-      vertexVarIdx, edgeVarIdx, std::numeric_limits<std::size_t>::max(), expr);
+  _postFilterExpression = createPostFilterEvaluator(vars, regs, vertexVarIdx, edgeVarIdx,  expr);
 }
 
 double TraverserOptions::weightEdge(VPackSlice edge) const {

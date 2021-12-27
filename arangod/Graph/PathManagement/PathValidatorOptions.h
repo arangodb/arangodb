@@ -69,6 +69,8 @@ class PathValidatorOptions {
    */
   void setPruneEvaluator(std::shared_ptr<aql::PruneExpressionEvaluator>&& expression);
 
+  void setPostFilterEvaluator(std::shared_ptr<aql::PruneExpressionEvaluator>&& expression);
+
   /**
    * @brief Returns the current prune evaluator. It is possible that no prune
    * validator has been set.
