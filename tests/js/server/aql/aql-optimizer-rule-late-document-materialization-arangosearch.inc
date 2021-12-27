@@ -306,7 +306,6 @@
                       "LET values = (FOR d IN " + vn  + " SEARCH d.value IN [c.value, c.value + 1] SORT BM25(d) LIMIT 10 RETURN d._key) " +
                     "RETURN values";
         let plan = AQL_EXPLAIN(query).plan;
-        print(plan);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = AQL_EXECUTE(query);
         assertEqual(2, result.json[0].length);
