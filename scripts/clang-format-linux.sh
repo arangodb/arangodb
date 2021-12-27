@@ -11,15 +11,16 @@ echo "Enterprise directory: $adb_path/$ent_dir"
 cd "$adb_path"
 community_diff=$(git diff HEAD --diff-filter=ACMR --name-only -- '*.cpp' '*.hpp' '*.cc' '*.c' '*.h')
 
-if [ -d "$adb_path/$ent_dir" ] # assume enterprise directory is within arangodb directory
+if [ -d "$adb_path/$ent_dir" ]
 then
    cd "$adb_path/$ent_dir"
    enterprise_diff=$(git diff HEAD --diff-filter=ACMR --name-only -- '*.cpp' '*.hpp' '*.cc' '*.c' '*.h' | sed "s,^,$ent_dir/,")
 fi
 
+cd "$adb_path"
 diff="$community_diff $enterprise_diff"
 if ! [[ -z "${diff// }" ]]; then
-  docker run --rm -u "$(id -u):$(id -g)" -v "$adb_path":/usr/src/arangodb arangodb/clang-format:1.0 "$diff"
+  docker run --rm -u "$(id -u):$(id -g)" --mount type=bind,source="$adb_path",target=/usr/src/arangodb arangodb/clang-format:1.0 "$diff"
 fi
 
 echo "(done)"

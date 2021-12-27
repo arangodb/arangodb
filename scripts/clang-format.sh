@@ -16,9 +16,10 @@ then
    enterprise_diff=$(git diff HEAD --diff-filter=ACMR --name-only -- '*.cpp' '*.hpp' '*.cc' '*.c' '*.h' | sed "s,^,$ent_dir/,")
 fi
 
+cd "$adb_path"
 diff="$community_diff $enterprise_diff"
 if ! [[ -z "${diff// }" ]]; then
-  docker run --rm -v "$adb_path":/usr/src/arangodb arangodb/clang-format:1.0 "$diff"
+  docker run --rm --mount type=bind,source="$adb_path",target=/usr/src/arangodb arangodb/clang-format:1.0 "$diff"
 fi
 
 echo "(done)"
