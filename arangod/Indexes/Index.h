@@ -83,7 +83,7 @@ class Index {
         bool unique, bool sparse);
 
   Index(IndexId iid, LogicalCollection& collection,
-        arangodb::velocypack::Slice const& slice);
+        arangodb::velocypack::Slice slice);
 
   virtual ~Index();
 
@@ -144,10 +144,10 @@ class Index {
   };
 
   /// @brief return the index id
-  inline IndexId id() const { return _iid; }
+  IndexId id() const { return _iid; }
 
   /// @brief return the index name
-  inline std::string const& name() const {
+  std::string const& name() const {
     if (_name == StaticStrings::IndexNameEdgeFrom ||
         _name == StaticStrings::IndexNameEdgeTo) {
       return StaticStrings::IndexNameEdge;
@@ -159,8 +159,8 @@ class Index {
   void name(std::string const&);
 
   /// @brief return the index fields
-  inline std::vector<std::vector<arangodb::basics::AttributeName>> const&
-  fields() const {
+  std::vector<std::vector<arangodb::basics::AttributeName>> const& fields()
+      const {
     return _fields;
   }
 
@@ -173,8 +173,9 @@ class Index {
   }
 
   /// @brief return the index fields names
-  inline std::vector<std::vector<std::string>> fieldNames() const {
+  std::vector<std::vector<std::string>> fieldNames() const {
     std::vector<std::vector<std::string>> result;
+    result.reserve(_fields.size());
 
     for (auto const& it : _fields) {
       std::vector<std::string> parts;
@@ -250,15 +251,13 @@ class Index {
   inline bool unique() const { return _unique; }
 
   /// @brief validate fields from slice
-  static void validateFields(velocypack::Slice const& slice);
+  static void validateFields(velocypack::Slice slice);
 
   /// @brief return the name of the index
   char const* oldtypeName() const { return oldtypeName(type()); }
 
   /// @brief return the index type based on a type name
-  static IndexType type(char const* type, size_t len);
-
-  static IndexType type(std::string const& type);
+  static IndexType type(std::string_view type);
 
  public:
   virtual char const* typeName() const = 0;
@@ -448,6 +447,13 @@ class Index {
   static size_t sortWeight(arangodb::aql::AstNode const* node);
 
  protected:
+  static std::vector<std::vector<arangodb::basics::AttributeName>> parseFields(
+      arangodb::velocypack::Slice fields, bool allowEmpty, bool allowExpansion);
+
+  static std::vector<std::vector<arangodb::basics::AttributeName>> mergeFields(
+      std::vector<std::vector<arangodb::basics::AttributeName>> const& fields1,
+      std::vector<std::vector<arangodb::basics::AttributeName>> const& fields2);
+
   /// @brief return the name of the (sole) index attribute
   /// it is only allowed to call this method if the index contains a
   /// single attribute

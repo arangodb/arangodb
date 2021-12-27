@@ -55,15 +55,6 @@ using namespace date;
 
 namespace {
 
-/// @brief the _key attribute, which, when used in an index, will implictly make
-/// it unique (note that we must not refer to StaticStrings::KeyString here to
-/// avoid an init-order-fiasco
-/// TODO FIXME
-constexpr std::string_view keyAttribute("_key");
-
-std::vector<arangodb::basics::AttributeName> const KeyAttribute{
-    arangodb::basics::AttributeName(keyAttribute, false)};
-
 bool hasExpansion(
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields) {
   for (auto const& it : fields) {
@@ -72,32 +63,6 @@ bool hasExpansion(
     }
   }
   return false;
-}
-
-/// @brief set fields from slice
-std::vector<std::vector<arangodb::basics::AttributeName>> parseFields(
-    VPackSlice const& fields, bool allowExpansion) {
-  std::vector<std::vector<arangodb::basics::AttributeName>> result;
-  if (!fields.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
-                                   "invalid index description");
-  }
-
-  size_t const n = static_cast<size_t>(fields.length());
-  result.reserve(n);
-
-  for (VPackSlice name : VPackArrayIterator(fields)) {
-    if (!name.isString()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
-                                     "invalid index description");
-    }
-
-    std::vector<arangodb::basics::AttributeName> parsedAttributes;
-    TRI_ParseAttributeString(name.copyString(), parsedAttributes,
-                             allowExpansion);
-    result.emplace_back(std::move(parsedAttributes));
-  }
-  return result;
 }
 
 bool canBeNull(arangodb::aql::AstNode const* op,
@@ -163,16 +128,14 @@ void markAsNonNull(arangodb::aql::AstNode const* op,
   }
 }
 
-bool typeMatch(char const* type, size_t len, char const* expected) {
-  return (len == ::strlen(expected)) && (::memcmp(type, expected, len) == 0);
-}
-
 std::string defaultIndexName(VPackSlice const& slice) {
   auto type = arangodb::Index::type(
-      slice.get(arangodb::StaticStrings::IndexType).copyString());
+      slice.get(arangodb::StaticStrings::IndexType).stringView());
+
   if (type == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
     return arangodb::StaticStrings::IndexNamePrimary;
-  } else if (type == arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+  }
+  if (type == arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
     auto fields = slice.get(arangodb::StaticStrings::IndexFields);
     TRI_ASSERT(fields.isArray());
     auto firstField = fields.at(0);
@@ -234,7 +197,6 @@ Index::SortCosts Index::SortCosts::defaultCosts(size_t itemsInIndex) {
 
 // If the Index is on a coordinator instance the index may not access the
 // logical collection because it could be gone!
-
 Index::Index(
     IndexId iid, arangodb::LogicalCollection& collection,
     std::string const& name,
@@ -251,16 +213,16 @@ Index::Index(
 }
 
 Index::Index(IndexId iid, arangodb::LogicalCollection& collection,
-             VPackSlice const& slice)
+             VPackSlice slice)
     : _iid(iid),
       _collection(collection),
       _name(arangodb::basics::VelocyPackHelper::getStringValue(
           slice, arangodb::StaticStrings::IndexName,
           ::defaultIndexName(slice))),
-      _fields(::parseFields(
-          slice.get(arangodb::StaticStrings::IndexFields),
+      _fields(parseFields(
+          slice.get(arangodb::StaticStrings::IndexFields), /*allowEmpty*/ true,
           Index::allowExpansion(Index::type(
-              slice.get(arangodb::StaticStrings::IndexType).copyString())))),
+              slice.get(arangodb::StaticStrings::IndexType).stringView())))),
       _useExpansion(::hasExpansion(_fields)),
       _unique(arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, arangodb::StaticStrings::IndexUnique, false)),
@@ -297,11 +259,10 @@ size_t Index::sortWeight(arangodb::aql::AstNode const* node) {
 }
 
 /// @brief validate fields from slice
-void Index::validateFields(VPackSlice const& slice) {
-  VPackValueLength len;
-  const char* idxStr =
-      slice.get(arangodb::StaticStrings::IndexType).getString(len);
-  auto allowExpansion = Index::allowExpansion(Index::type(idxStr, len));
+void Index::validateFields(VPackSlice slice) {
+  std::string_view type =
+      slice.get(arangodb::StaticStrings::IndexType).stringView();
+  auto allowExpansion = Index::allowExpansion(Index::type(type));
 
   auto fields = slice.get(arangodb::StaticStrings::IndexFields);
   if (!fields.isArray()) {
@@ -321,54 +282,49 @@ void Index::validateFields(VPackSlice const& slice) {
 }
 
 /// @brief return the index type based on a type name
-Index::IndexType Index::type(char const* type, size_t len) {
-  if (::typeMatch(type, len, "primary")) {
+Index::IndexType Index::type(std::string_view type) {
+  if (type == "primary") {
     return TRI_IDX_TYPE_PRIMARY_INDEX;
   }
-  if (::typeMatch(type, len, "edge")) {
+  if (type == "edge") {
     return TRI_IDX_TYPE_EDGE_INDEX;
   }
-  if (::typeMatch(type, len, "hash")) {
+  if (type == "hash") {
     return TRI_IDX_TYPE_HASH_INDEX;
   }
-  if (::typeMatch(type, len, "skiplist")) {
+  if (type == "skiplist") {
     return TRI_IDX_TYPE_SKIPLIST_INDEX;
   }
-  if (::typeMatch(type, len, "ttl")) {
+  if (type == "ttl") {
     return TRI_IDX_TYPE_TTL_INDEX;
   }
-  if (::typeMatch(type, len, "persistent") ||
-      ::typeMatch(type, len, "rocksdb")) {
+  if (type == "persistent" || type == "rocksdb") {
     return TRI_IDX_TYPE_PERSISTENT_INDEX;
   }
-  if (::typeMatch(type, len, "fulltext")) {
+  if (type == "fulltext") {
     return TRI_IDX_TYPE_FULLTEXT_INDEX;
   }
-  if (::typeMatch(type, len, "geo")) {
+  if (type == "geo") {
     return TRI_IDX_TYPE_GEO_INDEX;
   }
-  if (::typeMatch(type, len, "geo1")) {
+  if (type == "geo1") {
     return TRI_IDX_TYPE_GEO1_INDEX;
   }
-  if (::typeMatch(type, len, "geo2")) {
+  if (type == "geo2") {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
-  if (::typeMatch(type, len, "zkd")) {
+  if (type == "zkd") {
     return TRI_IDX_TYPE_ZKD_INDEX;
   }
   std::string const& tmp = arangodb::iresearch::DATA_SOURCE_TYPE.name();
-  if (::typeMatch(type, len, tmp.c_str())) {
+  if (type == tmp) {
     return TRI_IDX_TYPE_IRESEARCH_LINK;
   }
-  if (::typeMatch(type, len, "noaccess")) {
+  if (type == "noaccess") {
     return TRI_IDX_TYPE_NO_ACCESS_INDEX;
   }
 
   return TRI_IDX_TYPE_UNKNOWN;
-}
-
-Index::IndexType Index::type(std::string const& type) {
-  return Index::type(type.c_str(), type.size());
 }
 
 /// @brief return the name of an index type
@@ -652,7 +608,8 @@ bool Index::implicitlyUnique() const {
   for (auto const& it : _fields) {
     // if _key is contained in the index fields definition, then the index is
     // implicitly unique
-    if (it == KeyAttribute) {
+    if (it.size() == 1 && it[0] == arangodb::basics::AttributeName(
+                                       StaticStrings::KeyString, false)) {
       return true;
     }
   }
@@ -1147,6 +1104,46 @@ void Index::normalizeFilterCosts(arangodb::Index::FilterCosts& costs,
 
   // box the estimated costs to [0 - inf)
   costs.estimatedCosts = std::max(double(0.0), costs.estimatedCosts);
+}
+
+/// @brief set fields from slice
+std::vector<std::vector<arangodb::basics::AttributeName>> Index::parseFields(
+    VPackSlice fields, bool allowEmpty, bool allowExpansion) {
+  std::vector<std::vector<arangodb::basics::AttributeName>> result;
+
+  if (fields.isArray()) {
+    size_t const n = static_cast<size_t>(fields.length());
+    result.reserve(n);
+
+    for (VPackSlice name : VPackArrayIterator(fields)) {
+      if (!name.isString()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
+                                       "invalid index description");
+      }
+
+      std::vector<arangodb::basics::AttributeName> parsedAttributes;
+      TRI_ParseAttributeString(name.copyString(), parsedAttributes,
+                               allowExpansion);
+      result.emplace_back(std::move(parsedAttributes));
+    }
+  }
+
+  if (result.empty() && !allowEmpty) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
+                                   "invalid index description");
+  }
+  return result;
+}
+
+std::vector<std::vector<arangodb::basics::AttributeName>> Index::mergeFields(
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields1,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields2) {
+  std::vector<std::vector<arangodb::basics::AttributeName>> result;
+  result.reserve(fields1.size() + fields2.size());
+
+  result.insert(result.end(), fields1.begin(), fields1.end());
+  result.insert(result.end(), fields2.begin(), fields2.end());
+  return result;
 }
 
 }  // namespace arangodb

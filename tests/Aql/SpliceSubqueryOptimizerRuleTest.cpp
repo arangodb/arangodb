@@ -507,7 +507,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
   bool called = false;
   auto result = collection->getPhysical()->read(
       trx.get(), std::string_view{"myKey"},
-      [&](LocalDocumentId const&, VPackSlice document) {
+      [&](LocalDocumentId const&, VPackSlice document, VPackSlice /*extra*/) {
         called = true;
         EXPECT_TRUE(document.isObject());
         EXPECT_TRUE(document.get("_key").isString());

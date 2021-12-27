@@ -158,7 +158,7 @@ class RocksDBIndex : public Index {
                uint64_t objectId, bool useCache);
 
   RocksDBIndex(IndexId id, LogicalCollection& collection,
-               arangodb::velocypack::Slice const& info,
+               arangodb::velocypack::Slice info,
                rocksdb::ColumnFamilyHandle* cf, bool useCache);
 
   inline bool useCache() const { return (_cacheEnabled && _cache); }

@@ -38,7 +38,8 @@ MaterializeExecutor<T>::ReadContext::copyDocumentCallback(ReadContext& ctx) {
   typedef std::function<arangodb::IndexIterator::DocumentCallback(ReadContext&)>
       CallbackFactory;
   static CallbackFactory const callbackFactory{[](ReadContext& ctx) {
-    return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
+    return [&ctx](LocalDocumentId /*id*/, VPackSlice doc,
+                  VPackSlice /*extra*/) {
       TRI_ASSERT(ctx._outputRow);
       TRI_ASSERT(ctx._inputRow);
       TRI_ASSERT(ctx._inputRow->isInitialized());

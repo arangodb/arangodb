@@ -11,6 +11,7 @@
                 <th class="collectionInfoTh">Extras</th>
                 <th class="collectionInfoTh">Selectivity Est.</th>
                 <th class="collectionInfoTh">Fields</th>
+                <th class="collectionInfoTh">Extra Fields</th>
                 <th class="collectionInfoTh">Name</th>
                 <th class="collectionInfoTh">Action</th>
               </tr>
@@ -19,6 +20,7 @@
             </tbody>
             <tfoot>
               <tr>
+                <td></td>
                 <td></td>
                 <td></td>
                 <td></td>
@@ -136,6 +138,17 @@
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Extra fields:</th>
+                  <th><input type="text" id="newPersistentExtraFields" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of extra attribute paths. The values of these attributes will be stored in the index as well. They can be used for projections, but cannot be used for filtering or sorting.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>

@@ -129,6 +129,7 @@ std::string const StaticStrings::DataSourceParameters("parameters");
 
 // Index definition fields
 std::string const StaticStrings::IndexExpireAfter("expireAfter");
+std::string const StaticStrings::IndexExtraFields("extraFields");
 std::string const StaticStrings::IndexFields("fields");
 std::string const StaticStrings::IndexId("id");
 std::string const StaticStrings::IndexInBackground("inBackground");

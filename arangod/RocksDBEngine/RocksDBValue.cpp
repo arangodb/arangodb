@@ -60,6 +60,10 @@ RocksDBValue RocksDBValue::VPackIndexValue() {
   return RocksDBValue(RocksDBEntryType::VPackIndexValue);
 }
 
+RocksDBValue RocksDBValue::VPackIndexValue(VPackSlice data) {
+  return RocksDBValue(RocksDBEntryType::VPackIndexValue, data);
+}
+
 RocksDBValue RocksDBValue::ZkdIndexValue() {
   return RocksDBValue(RocksDBEntryType::ZkdIndexValue);
 }
@@ -72,6 +76,11 @@ RocksDBValue RocksDBValue::UniqueZkdIndexValue(LocalDocumentId const& docId) {
 RocksDBValue RocksDBValue::UniqueVPackIndexValue(LocalDocumentId const& docId) {
   return RocksDBValue(RocksDBEntryType::UniqueVPackIndexValue, docId,
                       RevisionId::none());
+}
+
+RocksDBValue RocksDBValue::UniqueVPackIndexValue(LocalDocumentId const& docId,
+                                                 VPackSlice data) {
+  return RocksDBValue(RocksDBEntryType::UniqueVPackIndexValue, docId, data);
 }
 
 RocksDBValue RocksDBValue::View(VPackSlice data) {
@@ -152,6 +161,19 @@ VPackSlice RocksDBValue::data(std::string_view s) {
   return data(s.data(), s.size());
 }
 
+VPackSlice RocksDBValue::indexExtraFields(rocksdb::Slice const& slice) {
+  TRI_ASSERT(
+      VPackSlice(reinterpret_cast<uint8_t const*>(slice.data())).isArray());
+  return data(slice.data(), slice.size());
+}
+
+VPackSlice RocksDBValue::uniqueIndexExtraFields(rocksdb::Slice const& slice) {
+  TRI_ASSERT(VPackSlice(reinterpret_cast<uint8_t const*>(slice.data() +
+                                                         sizeof(uint64_t)))
+                 .isArray());
+  return data(slice.data() + sizeof(uint64_t), slice.size() - sizeof(uint64_t));
+}
+
 S2Point RocksDBValue::centroid(rocksdb::Slice const& s) {
   TRI_ASSERT(s.size() == sizeof(double) * 3);
   return S2Point(
@@ -198,18 +220,39 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
   }
 }
 
+RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
+                           VPackSlice data)
+    : _type(type), _buffer() {
+  switch (_type) {
+    case RocksDBEntryType::UniqueVPackIndexValue: {
+      size_t byteSize = static_cast<size_t>(data.byteSize());
+      _buffer.reserve(sizeof(uint64_t) + byteSize);
+      uint64ToPersistent(_buffer, docId.id());  // LocalDocumentId
+      _buffer.append(reinterpret_cast<char const*>(data.begin()), byteSize);
+      break;
+    }
+
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+}
+
 RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice data)
     : _type(type), _buffer() {
   switch (_type) {
+    case RocksDBEntryType::VPackIndexValue:
+      TRI_ASSERT(data.isArray());
+      [[fallthrough]];
+
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
     case RocksDBEntryType::ReplicatedLog:
     case RocksDBEntryType::View:
     case RocksDBEntryType::KeyGeneratorValue:
     case RocksDBEntryType::ReplicationApplierConfig: {
-      _buffer.reserve(static_cast<size_t>(data.byteSize()));
-      _buffer.append(reinterpret_cast<char const*>(data.begin()),
-                     static_cast<size_t>(data.byteSize()));
+      size_t byteSize = static_cast<size_t>(data.byteSize());
+      _buffer.reserve(byteSize);
+      _buffer.append(reinterpret_cast<char const*>(data.begin()), byteSize);
       break;
     }
 

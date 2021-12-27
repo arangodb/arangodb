@@ -163,7 +163,8 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
           auto res = _collection->getPhysical()->read(
               _trx, docId,
               [&](arangodb::LocalDocumentId const& token,
-                  arangodb::velocypack::Slice doc) -> bool {
+                  arangodb::velocypack::Slice doc,
+                  arangodb::velocypack::Slice /*extra*/) -> bool {
                 // The nextExtra API in EdgeIndex will deliver the _id value of
                 // the oposite vertex. We simulate that here by reading the real
                 // document one more time and just extracting this value.
@@ -764,7 +765,8 @@ class HashIndexIteratorMock final : public arangodb::IndexIterator {
 
   bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
     while (limit && _begin != _end) {
-      cb(_begin->first, _begin->second.slice());
+      cb(_begin->first, _begin->second.slice(),
+         arangodb::velocypack::Slice::emptyArraySlice());
       ++_begin;
       --limit;
     }
@@ -1399,7 +1401,8 @@ arangodb::Result PhysicalCollectionMock::read(
   before();
   auto it = _documents.find(key);
   if (it != _documents.end()) {
-    cb(it->second.docId(), arangodb::velocypack::Slice(it->second.vptr()));
+    cb(it->second.docId(), arangodb::velocypack::Slice(it->second.vptr()),
+       arangodb::velocypack::Slice::emptyArraySlice());
     return arangodb::Result(TRI_ERROR_NO_ERROR);
   }
   return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
@@ -1413,7 +1416,7 @@ arangodb::Result PhysicalCollectionMock::read(
   for (auto const& entry : _documents) {
     auto& doc = entry.second;
     if (doc.docId() == token) {
-      cb(token, doc.data());
+      cb(token, doc.data(), arangodb::velocypack::Slice::emptyArraySlice());
       return arangodb::Result{};
     }
   }

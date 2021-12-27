@@ -293,7 +293,8 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(
         return collection->getPhysical()
             ->read(
                 _trx, token,
-                [&](LocalDocumentId const&, VPackSlice edgeDoc) {
+                [&](LocalDocumentId const&, VPackSlice edgeDoc,
+                    VPackSlice /*extra*/) {
                   stats.addScannedIndex(1);
 #ifdef USE_ENTERPRISE
                   if (_trx->skipInaccessible()) {

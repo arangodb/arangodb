@@ -400,7 +400,13 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
   } catch (basics::Exception const& ex) {
     TRI_ASSERT(_firstFailure.ok());
     // store only the first failure we got
-    _firstFailure = {ex.code(), ex.what()};
+    std::string msg(ex.what());
+    msg.append(" [node #")
+        .append(std::to_string(getPlanNode()->id().id()))
+        .append(": ")
+        .append(getPlanNode()->getTypeString())
+        .append("]");
+    _firstFailure.reset(ex.code(), std::move(msg));
     LOG_QUERY("7289a", DEBUG)
         << printBlockInfo()
         << " local statemachine failed with exception: " << ex.what();
@@ -408,7 +414,13 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
   } catch (std::exception const& ex) {
     TRI_ASSERT(_firstFailure.ok());
     // store only the first failure we got
-    _firstFailure = {TRI_ERROR_INTERNAL, ex.what()};
+    std::string msg(ex.what());
+    msg.append(" [node #")
+        .append(std::to_string(getPlanNode()->id().id()))
+        .append(": ")
+        .append(getPlanNode()->getTypeString())
+        .append("]");
+    _firstFailure.reset(TRI_ERROR_INTERNAL, std::move(msg));
     LOG_QUERY("2bbd5", DEBUG)
         << printBlockInfo()
         << " local statemachine failed with exception: " << ex.what();
