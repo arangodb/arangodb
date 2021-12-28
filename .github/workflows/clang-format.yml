@@ -15,4 +15,3 @@ jobs:
         uses: arangodb/clang-format-action@1.0.1
         with:
           sources: ${{env.CHANGED_FILES}}
-
