@@ -68,35 +68,50 @@ struct LimitFullCountChecker final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::Unique> {
   size_t subqueryRecursionCounter{0};
   bool seenFullCount{false};
-  bool seenLimitWithoutSort{false};
+  bool seenFullCountLimitWithoutSort{false};
 
   explicit LimitFullCountChecker() noexcept {}
 
-  bool before(ExecutionNode* en) override {
-    if (en->getType() == ExecutionNode::LIMIT) {
-      auto const* limitNode = ExecutionNode::castTo<LimitNode const*>(en);
-      if (limitNode->fullCount()) {
-        TRI_ASSERT(!seenFullCount);  // rule 1
-        TRI_ASSERT(0 == subqueryRecursionCounter);  // rule 2
-        TRI_ASSERT(!seenLimitWithoutSort);  // rule 3
-        seenFullCount = true;
-      } else {
-        auto const* dependency = en->getFirstDependency();
-        seenLimitWithoutSort = !dependency || dependency->getType() == ExecutionNode::SORT;
-      }
+  void after(ExecutionNode* en) override {
+    switch (en->getType()) {
+      case ExecutionNode::LIMIT: {
+        auto const* limitNode = ExecutionNode::castTo<LimitNode const*>(en);
+        if (limitNode->fullCount()) {
+          TRI_ASSERT(!seenFullCount);                 // rule 1
+          TRI_ASSERT(0 == subqueryRecursionCounter);  // rule 2
+          auto const* dependency = en->getFirstDependency();
+          seenFullCountLimitWithoutSort =
+                !dependency || dependency->getType() != ExecutionNode::SORT;
+          seenFullCount = true;
+        } else {
+          if (0 == subqueryRecursionCounter) {
+            TRI_ASSERT(!seenFullCountLimitWithoutSort);  // rule 3
+          }
+        }
+
+      } break;
+      case ExecutionNode::SUBQUERY_START:
+        ++subqueryRecursionCounter;
+        break;
+      case ExecutionNode::SUBQUERY_END:
+        TRI_ASSERT(subqueryRecursionCounter > 0);
+        --subqueryRecursionCounter;
+        break;
+      default:
+        // noop
+        break;
     }
-    return false;
   }
 
   /// @brief return true to enter subqueries, false otherwise
   bool enterSubquery(ExecutionNode* /*super*/, ExecutionNode* /*sub*/) override {
-    subqueryRecursionCounter++;
+    ++subqueryRecursionCounter;
     return true;
   }
 
   virtual void leaveSubquery(ExecutionNode* /*super*/, ExecutionNode* /*sub*/) override {
     TRI_ASSERT(subqueryRecursionCounter > 0);
-    subqueryRecursionCounter--;
+    --subqueryRecursionCounter;
   }
 };
 #endif
@@ -701,7 +716,7 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
   if (ServerState::instance()->isCoordinator() ||
       ServerState::instance()->isSingleServer()) {
     LimitFullCountChecker limitChecker;
-    plan.root()->walk(limitChecker);
+    plan.root()->walkSubqueriesFirst(limitChecker);
   }
 #endif
   plan.findVarUsage();
