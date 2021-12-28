@@ -43,8 +43,10 @@ RestActionHandler::RestActionHandler(
 
 RestStatus RestActionHandler::execute() {
   // need an action
-  if (_action == nullptr) { generateNotImplemented(_request->fullUrl()); return RestStatus::DONE;
-}
+  if (_action == nullptr) {
+    generateNotImplemented(_request->fullUrl());
+    return RestStatus::DONE;
+  }
 
   // extract the sub-request type
   rest::RequestType type = _request->requestType();
