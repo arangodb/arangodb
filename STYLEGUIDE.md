@@ -1,3 +1,39 @@
+# ArangoDB Clang-Format
+
+ArangoDB uses `clang-format` to lint the codebase of [arangodb/arangodb](https://github.com/arangodb/arangodb) & [arangodb/enterprise](https://github.com/arangodb/enterprise).
+
+You are expected to format your local changes via clang-format. Here are your options:
+
+1. Lint with a **pre-commit git hook** (OS dependant)
+    * pre-requisites
+        * Docker
+        * Git 2.9+
+    * how-to (one-time setup)
+        * `cd arangodb`
+        * `git config core.hooksPath .git/hooks`
+        * `cp .githooks/pre-commit-[linux, macos, windows] .git/hooks/pre-commit`
+        * `cd enterprise`
+        * `git config core.hooksPath .git/hooks`
+        * `cp .githooks/pre-commit-[linux, macos, windows] .git/hooks/pre-commit`
+2. Lint with a **local shell script** (OS dependant)
+    * pre-requisites
+        * Docker
+    * how-to (must run manually)
+        * `cd arangodb`
+        * `./scripts/clang-format-[linux, macos, windows].sh`
+
+3. Lint with a **codebase-wide format script** (not recommended unless absolutely necessary)
+    * pre-requisites
+        * Docker
+    * how-to
+        * See [pull/15417#comment](https://github.com/arangodb/arangodb/pull/15417#issuecomment-1001211838) 
+
+4. Lint with your **custom clang-format setup**
+    * This would be up to you to configure, if you do not want to rely on Docker and/or already have a way of automatically linting your changes via clang-format. We still highly encourage that you use `clang-format 12` or higher.
+
+Once your changes are pushed, a [Github Action CI](https://github.com/arangodb/clang-format-action) will be triggered to validate that your changes comply to the [established clang-format standard](https://github.com/arangodb/arangodb/blob/devel/.clang-format). Should you be missing any format specifications, your push’s CI will fail.
+
+
 # ArangoDB coding guidelines
 
 This document is mostly derived from [Google C++ Style
