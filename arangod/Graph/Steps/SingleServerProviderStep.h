@@ -97,9 +97,7 @@ class SingleServerProviderStep
     return _vertex.getID();
   }
 
-  StepType getEdgeIdentifier() const {
-    return _edge.getID();
-  }
+  StepType getEdgeIdentifier() const { return _edge.getID(); }
 
   std::string getCollectionName() const {
     auto collectionNameResult = extractCollectionName(_vertex.getID());

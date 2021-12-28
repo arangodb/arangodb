@@ -95,8 +95,10 @@ class ClusterProvider {
       explicit Edge(EdgeType tkn) : _edge(std::move(tkn)) {}
       Edge() : _edge() {}
 
-      void addToBuilder(ClusterProvider& provider, arangodb::velocypack::Builder& builder) const;
-      StepType const& getID() const;  // TODO: Performance Test compare EdgeType <-> EdgeDocumentToken
+      void addToBuilder(ClusterProvider& provider,
+                        arangodb::velocypack::Builder& builder) const;
+      StepType const& getID() const;  // TODO: Performance Test compare EdgeType
+                                      // <-> EdgeDocumentToken
       bool isValid() const;
 
      private:
@@ -125,9 +127,7 @@ class ClusterProvider {
     bool isLooseEnd() const { return !_fetched; }
 
     VertexType getVertexIdentifier() const { return _vertex.getID(); }
-    StepType getEdgeIdentifier() const {
-      return _edge.getID();
-    }
+    StepType getEdgeIdentifier() const { return _edge.getID(); }
 
     std::string getCollectionName() const {
       auto collectionNameResult = extractCollectionName(_vertex.getID());

@@ -56,9 +56,13 @@ namespace arangodb {
 namespace tests {
 namespace graph {
 
-class DFSFinderTest : public ::testing::TestWithParam<MockGraphProvider::LooseEndBehaviour> {
-  // using DFSFinder = DFSEnumerator<MockGraphProvider, VertexUniquenessLevel::PATH>;
-  using DFSFinder = TracedDFSEnumerator<MockGraphProvider, VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>;
+class DFSFinderTest
+    : public ::testing::TestWithParam<MockGraphProvider::LooseEndBehaviour> {
+  // using DFSFinder = DFSEnumerator<MockGraphProvider,
+  // VertexUniquenessLevel::PATH>;
+  using DFSFinder =
+      TracedDFSEnumerator<MockGraphProvider, VertexUniquenessLevel::PATH,
+                          EdgeUniquenessLevel::PATH>;
 
  protected:
   bool activateLogging{false};

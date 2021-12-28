@@ -162,7 +162,8 @@ class GraphEnumerator : public PathEnumerator {
     ++_idx;
     while (true) {
       if (_idx < _edges.size()) {
-        _nextDepth.emplace_back(_edges.at(_idx).get(StaticStrings::ToString).stringView());
+        _nextDepth.emplace_back(
+            _edges.at(_idx).get(StaticStrings::ToString).stringView());
         return true;
       } else {
         if (_currentDepth.empty()) {
@@ -291,25 +292,29 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
   RegisterId inReg;
   RegisterId outReg;
   TraverserHelper* traverser;
-  std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId, TraversalExecutorInfosHelper::OutputNameHash> registerMapping;
+  std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId,
+                     TraversalExecutorInfosHelper::OutputNameHash>
+      registerMapping;
 
   std::string const noFixed;
   RegisterInfos registerInfos;
 
-  std::pair<std::vector<arangodb::graph::IndexAccessor>,
-            std::unordered_map<uint64_t, std::vector<arangodb::graph::IndexAccessor>>>
+  std::pair<
+      std::vector<arangodb::graph::IndexAccessor>,
+      std::unordered_map<uint64_t, std::vector<arangodb::graph::IndexAccessor>>>
       usedIndexes{};
   const aql::Variable tmpVar{"dummy", 1337, false};
   AqlFunctionsInternalCache aqlCache{};
   arangodb::aql::FixedVarExpressionContext exprContext{
       *server.createFakeTransaction().get(), *fakedQuery.get(), aqlCache};
-  arangodb::graph::BaseProviderOptions baseProviderOptions{&tmpVar,
-                                                           std::move(usedIndexes),
-                                                           exprContext,
-                                                           {}};
-  arangodb::graph::PathValidatorOptions pathValidatorOptions{&tmpVar, exprContext};
+  arangodb::graph::BaseProviderOptions baseProviderOptions{
+      &tmpVar, std::move(usedIndexes), exprContext, {}};
+  arangodb::graph::PathValidatorOptions pathValidatorOptions{&tmpVar,
+                                                             exprContext};
   arangodb::graph::OneSidedEnumeratorOptions enumeratorOptions{1, 1};
-  TraversalExecutorInfos executorInfos;  // TODO [GraphRefactor]: We need to test all variants of graph refactor here as well
+  TraversalExecutorInfos
+      executorInfos;  // TODO [GraphRefactor]: We need to test all variants of
+                      // graph refactor here as well
 
   TraversalExecutorTestInputStartVertex()
       : fakedQuery(server.createFakeQuery()),
@@ -322,9 +327,11 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
         inReg(0),
         outReg(1),
         traverser(traverserPtr.get()),
-        registerMapping{{TraversalExecutorInfosHelper::OutputName::VERTEX, outReg}},
+        registerMapping{
+            {TraversalExecutorInfosHelper::OutputName::VERTEX, outReg}},
         noFixed(""),
-        registerInfos(RegIdSet{inReg}, RegIdSet{outReg}, 1, 2, {}, {RegIdSet{0}}),
+        registerInfos(RegIdSet{inReg}, RegIdSet{outReg}, 1, 2, {},
+                      {RegIdSet{0}}),
         enumeratorOptions(1, 1),
         executorInfos(std::move(traverserPtr), registerMapping, noFixed, inReg,
                       filterConditionVariables, fakedQuery->ast(),
@@ -332,7 +339,8 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
                       traverser::TraverserOptions::UniquenessLevel::NONE,
                       traverser::TraverserOptions::Order::DFS, false,
                       server.createFakeTransaction().get(), *fakedQuery.get(),
-                      std::move(baseProviderOptions), std::move(pathValidatorOptions),
+                      std::move(baseProviderOptions),
+                      std::move(pathValidatorOptions),
                       std::move(enumeratorOptions)) {}
 };
 
@@ -496,25 +504,29 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
   TraverserHelper* traverser;
   std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters;
   std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters;
-  std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId, TraversalExecutorInfosHelper::OutputNameHash> registerMapping;
+  std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId,
+                     TraversalExecutorInfosHelper::OutputNameHash>
+      registerMapping;
 
   std::string const fixed;
   RegisterInfos registerInfos;
 
-  std::pair<std::vector<arangodb::graph::IndexAccessor>,
-            std::unordered_map<uint64_t, std::vector<arangodb::graph::IndexAccessor>>>
+  std::pair<
+      std::vector<arangodb::graph::IndexAccessor>,
+      std::unordered_map<uint64_t, std::vector<arangodb::graph::IndexAccessor>>>
       usedIndexes{};
   const aql::Variable tmpVar{"dummy", 1337, false};
   AqlFunctionsInternalCache aqlCache{};
   arangodb::aql::FixedVarExpressionContext exprContext{
       *server.createFakeTransaction().get(), *fakedQuery.get(), aqlCache};
-  arangodb::graph::BaseProviderOptions baseProviderOptions{&tmpVar,
-                                                           std::move(usedIndexes),
-                                                           exprContext,
-                                                           {}};
-  arangodb::graph::PathValidatorOptions pathValidatorOptions{&tmpVar, exprContext};
+  arangodb::graph::BaseProviderOptions baseProviderOptions{
+      &tmpVar, std::move(usedIndexes), exprContext, {}};
+  arangodb::graph::PathValidatorOptions pathValidatorOptions{&tmpVar,
+                                                             exprContext};
   arangodb::graph::OneSidedEnumeratorOptions enumeratorOptions{1, 1};
-  TraversalExecutorInfos executorInfos;  // TODO [GraphRefactor]: We need to test all variants of graph refactor here as well
+  TraversalExecutorInfos
+      executorInfos;  // TODO [GraphRefactor]: We need to test all variants of
+                      // graph refactor here as well
 
   TraversalExecutorTestConstantStartVertex()
       : fakedQuery(server.createFakeQuery()),
@@ -526,16 +538,19 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
             std::make_unique<TraverserHelper>(&traversalOptions, myGraph)),
         outReg(1),
         traverser(traverserPtr.get()),
-        registerMapping{{TraversalExecutorInfosHelper::OutputName::VERTEX, outReg}},
+        registerMapping{
+            {TraversalExecutorInfosHelper::OutputName::VERTEX, outReg}},
         fixed("v/1"),
         registerInfos({}, RegIdSet{1}, 1, 2, {}, {RegIdSet{0}}),
         executorInfos(std::move(traverserPtr), registerMapping, fixed,
                       RegisterPlan::MaxRegisterId, filterConditionVariables,
-                      fakedQuery->ast(), traverser::TraverserOptions::UniquenessLevel::NONE,
+                      fakedQuery->ast(),
+                      traverser::TraverserOptions::UniquenessLevel::NONE,
                       traverser::TraverserOptions::UniquenessLevel::NONE,
                       traverser::TraverserOptions::Order::DFS, false,
                       server.createFakeTransaction().get(), *fakedQuery.get(),
-                      std::move(baseProviderOptions), std::move(pathValidatorOptions),
+                      std::move(baseProviderOptions),
+                      std::move(pathValidatorOptions),
                       std::move(enumeratorOptions)) {}
 };
 

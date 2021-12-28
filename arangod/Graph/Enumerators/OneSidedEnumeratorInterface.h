@@ -49,8 +49,10 @@ class PathResultInterface {
   virtual ~PathResultInterface() {}
 
   virtual auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void = 0;
-  virtual auto lastVertexToVelocyPack(arangodb::velocypack::Builder& builder) -> void = 0;
-  virtual auto lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder) -> void = 0;
+  virtual auto lastVertexToVelocyPack(arangodb::velocypack::Builder& builder)
+      -> void = 0;
+  virtual auto lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder)
+      -> void = 0;
 };
 
 class TraversalEnumerator {
@@ -77,8 +79,10 @@ class TraversalEnumerator {
 
   virtual auto validatorUsesPrune() const -> bool = 0;
   virtual auto validatorUsesPostFilter() const -> bool = 0;
-  virtual auto setPruneValidatorContext(aql::InputAqlItemRow& inputRow) -> void = 0;
-  virtual auto setPostFilterValidatorContext(aql::InputAqlItemRow& inputRow) -> void = 0;
+  virtual auto setPruneValidatorContext(aql::InputAqlItemRow& inputRow)
+      -> void = 0;
+  virtual auto setPostFilterValidatorContext(aql::InputAqlItemRow& inputRow)
+      -> void = 0;
   virtual auto unpreparePruneValidatorContext() -> void = 0;
   virtual auto unpreparePostFilterValidatorContext() -> void = 0;
 };

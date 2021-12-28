@@ -505,22 +505,35 @@ using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
 template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::FifoQueue<SingleServerProviderStep>,
-    ::arangodb::graph::PathStore<SingleServerProviderStep>, SingleServerProvider<SingleServerProviderStep>,
-    ::arangodb::graph::PathValidator<SingleServerProvider<SingleServerProviderStep>, PathStore<SingleServerProviderStep>, VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+    ::arangodb::graph::PathStore<SingleServerProviderStep>,
+    SingleServerProvider<SingleServerProviderStep>,
+    ::arangodb::graph::PathValidator<
+        SingleServerProvider<SingleServerProviderStep>,
+        PathStore<SingleServerProviderStep>, VertexUniquenessLevel::PATH,
+        EdgeUniquenessLevel::PATH>>;
 
 template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::QueueTracer<::arangodb::graph::FifoQueue<SingleServerProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProviderStep>>,
-    ::arangodb::graph::ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
-    ::arangodb::graph::PathValidator<::arangodb::graph::ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
-                                     ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProviderStep>>, VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+    ::arangodb::graph::QueueTracer<
+        ::arangodb::graph::FifoQueue<SingleServerProviderStep>>,
+    ::arangodb::graph::PathStoreTracer<
+        ::arangodb::graph::PathStore<SingleServerProviderStep>>,
+    ::arangodb::graph::ProviderTracer<
+        SingleServerProvider<SingleServerProviderStep>>,
+    ::arangodb::graph::PathValidator<
+        ::arangodb::graph::ProviderTracer<
+            SingleServerProvider<SingleServerProviderStep>>,
+        ::arangodb::graph::PathStoreTracer<
+            ::arangodb::graph::PathStore<SingleServerProviderStep>>,
+        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
 /* ClusterProvider Section */
 
 template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProvider::Step>,
     ::arangodb::graph::PathStore<ClusterProvider::Step>, ClusterProvider,
-    ::arangodb::graph::PathValidator<ClusterProvider, PathStore<ClusterProvider::Step>, VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+    ::arangodb::graph::PathValidator<
+        ClusterProvider, PathStore<ClusterProvider::Step>,
+        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
 template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::QueueTracer<
@@ -528,5 +541,8 @@ template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::PathStoreTracer<
         ::arangodb::graph::PathStore<ClusterProvider::Step>>,
     ::arangodb::graph::ProviderTracer<ClusterProvider>,
-    ::arangodb::graph::PathValidator<::arangodb::graph::ProviderTracer<ClusterProvider>,
-                                     ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<ClusterProvider::Step>>, VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+    ::arangodb::graph::PathValidator<
+        ::arangodb::graph::ProviderTracer<ClusterProvider>,
+        ::arangodb::graph::PathStoreTracer<
+            ::arangodb::graph::PathStore<ClusterProvider::Step>>,
+        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;

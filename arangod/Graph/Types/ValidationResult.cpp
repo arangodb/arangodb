@@ -38,7 +38,7 @@ bool ValidationResult::isFiltered() const noexcept {
 }
 
 void ValidationResult::combine(Type t) noexcept {
-  switch(t) {
+  switch (t) {
     case Type::TAKE:
       break;
     case Type::PRUNE:

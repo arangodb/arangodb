@@ -40,19 +40,23 @@ void PathValidatorOptions::setAllVerticesExpression(
   _allVerticesExpression = std::move(expression);
 }
 
-void PathValidatorOptions::setPruneEvaluator(std::shared_ptr<aql::PruneExpressionEvaluator>&& expression) {
+void PathValidatorOptions::setPruneEvaluator(
+    std::shared_ptr<aql::PruneExpressionEvaluator>&& expression) {
   _pruneEvaluator = std::move(expression);
 }
 
-void PathValidatorOptions::setPostFilterEvaluator(std::shared_ptr<aql::PruneExpressionEvaluator>&& expression) {
+void PathValidatorOptions::setPostFilterEvaluator(
+    std::shared_ptr<aql::PruneExpressionEvaluator>&& expression) {
   _postFilterEvaluator = std::move(expression);
 }
 
-std::shared_ptr<aql::PruneExpressionEvaluator>& PathValidatorOptions::getPruneEvaluator() {
+std::shared_ptr<aql::PruneExpressionEvaluator>&
+PathValidatorOptions::getPruneEvaluator() {
   return _pruneEvaluator;
 }
 
-std::shared_ptr<aql::PruneExpressionEvaluator>& PathValidatorOptions::getPostFilterEvaluator() {
+std::shared_ptr<aql::PruneExpressionEvaluator>&
+PathValidatorOptions::getPostFilterEvaluator() {
   return _postFilterEvaluator;
 }
 
@@ -64,18 +68,20 @@ bool PathValidatorOptions::usesPostFilter() const {
   return _postFilterEvaluator != nullptr;
 }
 
-void PathValidatorOptions::setPruneContext(arangodb::aql::InputAqlItemRow& inputRow) {
+void PathValidatorOptions::setPruneContext(
+    arangodb::aql::InputAqlItemRow& inputRow) {
   TRI_ASSERT(_pruneEvaluator != nullptr);
   _pruneEvaluator->prepareContext(inputRow);
 }
 
-void PathValidatorOptions::setPostFilterContext(arangodb::aql::InputAqlItemRow& inputRow) {
+void PathValidatorOptions::setPostFilterContext(
+    arangodb::aql::InputAqlItemRow& inputRow) {
   TRI_ASSERT(_postFilterEvaluator != nullptr);
   _postFilterEvaluator->prepareContext(inputRow);
 }
 
-void PathValidatorOptions::setVertexExpression(uint64_t depth,
-                                               std::unique_ptr<aql::Expression> expression) {
+void PathValidatorOptions::setVertexExpression(
+    uint64_t depth, std::unique_ptr<aql::Expression> expression) {
   // Should not respecifiy the condition on a certain depth
   TRI_ASSERT(_vertexExpressionOnDepth.find(depth) ==
              _vertexExpressionOnDepth.end());
@@ -103,7 +109,8 @@ void PathValidatorOptions::unpreparePostFilterContext() {
   }
 }
 
-void PathValidatorOptions::addAllowedVertexCollection(std::string const& collectionName) {
+void PathValidatorOptions::addAllowedVertexCollection(
+    std::string const& collectionName) {
   TRI_ASSERT(std::find(_allowedVertexCollections.begin(),
                        _allowedVertexCollections.end(),
                        collectionName) == _allowedVertexCollections.end());

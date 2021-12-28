@@ -425,5 +425,7 @@ template class ::arangodb::aql::KShortestPathsExecutor<
 
 /* Fallback Section - Can be removed completely after refactor is done */
 
-template class ::arangodb::aql::KShortestPathsExecutorInfos<arangodb::graph::KShortestPathsFinder>;
-template class ::arangodb::aql::KShortestPathsExecutor<arangodb::graph::KShortestPathsFinder>;
+template class ::arangodb::aql::KShortestPathsExecutorInfos<
+    arangodb::graph::KShortestPathsFinder>;
+template class ::arangodb::aql::KShortestPathsExecutor<
+    arangodb::graph::KShortestPathsFinder>;

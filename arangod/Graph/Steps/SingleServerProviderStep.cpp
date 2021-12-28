@@ -65,7 +65,8 @@ VertexType const& SingleServerProviderStep::Vertex::getID() const {
   return _vertex;
 }
 
-SingleServerProviderStep::StepType const& SingleServerProviderStep::Edge::getID() const {
+SingleServerProviderStep::StepType const&
+SingleServerProviderStep::Edge::getID() const {
   return _token;
 }
 

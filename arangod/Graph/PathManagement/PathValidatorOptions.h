@@ -67,12 +67,14 @@ class PathValidatorOptions {
 
   // Prune section
   /**
-   * @brief Sets a prune evaluator. This needs to be called from within an Aql Node,
-   * as the node itself holds all the expressions.
+   * @brief Sets a prune evaluator. This needs to be called from within an Aql
+   * Node, as the node itself holds all the expressions.
    */
-  void setPruneEvaluator(std::shared_ptr<aql::PruneExpressionEvaluator>&& expression);
+  void setPruneEvaluator(
+      std::shared_ptr<aql::PruneExpressionEvaluator>&& expression);
 
-  void setPostFilterEvaluator(std::shared_ptr<aql::PruneExpressionEvaluator>&& expression);
+  void setPostFilterEvaluator(
+      std::shared_ptr<aql::PruneExpressionEvaluator>&& expression);
 
   /**
    * @brief Returns the current prune evaluator. It is possible that no prune
@@ -134,7 +136,8 @@ class PathValidatorOptions {
  private:
   // Vertex expression section
   std::shared_ptr<aql::Expression> _allVerticesExpression;
-  containers::FlatHashMap<uint64_t, std::shared_ptr<aql::Expression>> _vertexExpressionOnDepth;
+  containers::FlatHashMap<uint64_t, std::shared_ptr<aql::Expression>>
+      _vertexExpressionOnDepth;
   std::vector<std::string> _allowedVertexCollections;
 
   // Prune section
@@ -146,7 +149,8 @@ class PathValidatorOptions {
   aql::Variable const* _tmpVar;
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
 
-  // TODO [GraphRefactor]: Compatibility section (can be removed during this refactor)
+  // TODO [GraphRefactor]: Compatibility section (can be removed during this
+  // refactor)
   bool _compatibility38IncludeFirstVertex = false;
 };
 }  // namespace graph

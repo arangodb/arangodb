@@ -64,10 +64,12 @@ class SingleProviderPathResult : public PathResultInterface {
   auto toVelocyPack(arangodb::velocypack::Builder& builder) -> void override;
 
   // Writing last vertex of the path to VelocyPack
-  auto lastVertexToVelocyPack(arangodb::velocypack::Builder& builder) -> void override;
+  auto lastVertexToVelocyPack(arangodb::velocypack::Builder& builder)
+      -> void override;
 
   // Writing last edge of the path to VelocyPack
-  auto lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder) -> void override;
+  auto lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder)
+      -> void override;
 
   auto isEmpty() const -> bool;
   ProviderType* getProvider() { return &_provider; }

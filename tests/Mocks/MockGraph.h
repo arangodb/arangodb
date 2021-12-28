@@ -92,7 +92,8 @@ class MockGraph {
   MockGraph() {}
   ~MockGraph() {}
 
-  EdgeDef addEdge(size_t uniqueEdgeId, std::string from, std::string to, double weight = 1.0);
+  EdgeDef addEdge(size_t uniqueEdgeId, std::string from, std::string to,
+                  double weight = 1.0);
   EdgeDef addEdge(size_t from, size_t to, double weight = 1.0);
 
   auto edges() const -> std::vector<EdgeDef> const& { return _edges; }

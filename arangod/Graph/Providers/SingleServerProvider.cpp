@@ -136,24 +136,30 @@ auto SingleServerProvider<Step>::expand(
   LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Expanding " << vertex.getID();
   _cursor->rearm(vertex.getID(), step.getDepth());
-  _cursor->readAll(*this, _stats, step.getDepth(), [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorID) -> void {
-    VertexType id = _cache.persistString(([&]() -> auto {
-      if (edge.isString()) {
-        return VertexType(edge);
-      } else {
-        VertexType other(transaction::helpers::extractFromFromDocument(edge));
-        if (other == vertex.getID()) {  // TODO: Check getId - discuss
-          other = VertexType(transaction::helpers::extractToFromDocument(edge));
-        }
-        return other;
-      }
-    })());
-    // TODO: Adjust log output
-    LOG_TOPIC("c9168", TRACE, Logger::GRAPHS)
-        << "<SingleServerProvider> Neighbor of " << vertex.getID() << " -> " << id;
+  _cursor->readAll(
+      *this, _stats, step.getDepth(),
+      [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorID) -> void {
+        VertexType id = _cache.persistString(([&]() -> auto {
+          if (edge.isString()) {
+            return VertexType(edge);
+          } else {
+            VertexType other(
+                transaction::helpers::extractFromFromDocument(edge));
+            if (other == vertex.getID()) {  // TODO: Check getId - discuss
+              other =
+                  VertexType(transaction::helpers::extractToFromDocument(edge));
+            }
+            return other;
+          }
+        })());
+        // TODO: Adjust log output
+        LOG_TOPIC("c9168", TRACE, Logger::GRAPHS)
+            << "<SingleServerProvider> Neighbor of " << vertex.getID() << " -> "
+            << id;
 
-    callback(Step{id, std::move(eid), previous, step.getDepth() + 1, _opts.weightEdge(step.getWeight(), edge), cursorID});
-  });
+        callback(Step{id, std::move(eid), previous, step.getDepth() + 1,
+                      _opts.weightEdge(step.getWeight(), edge), cursorID});
+      });
 }
 
 template<class Step>

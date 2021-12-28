@@ -140,8 +140,10 @@ class OneSidedEnumerator : public TraversalEnumerator {
   auto validatorUsesPrune() const -> bool override;
   auto validatorUsesPostFilter() const -> bool override;
 
-  auto setPruneValidatorContext(aql::InputAqlItemRow& inputRow) -> void override;
-  auto setPostFilterValidatorContext(aql::InputAqlItemRow& inputRow) -> void override;
+  auto setPruneValidatorContext(aql::InputAqlItemRow& inputRow)
+      -> void override;
+  auto setPostFilterValidatorContext(aql::InputAqlItemRow& inputRow)
+      -> void override;
 
   auto unpreparePruneValidatorContext() -> void override;
   auto unpreparePostFilterValidatorContext() -> void override;

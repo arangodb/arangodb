@@ -181,7 +181,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   std::unique_ptr<aql::PruneExpressionEvaluator> createPruneEvaluator(
       std::vector<aql::Variable const*> vars, std::vector<aql::RegisterId> regs,
-      size_t vertexVarIdx, size_t edgeVarIdx, size_t pathVarIdx, aql::Expression* expr);
+      size_t vertexVarIdx, size_t edgeVarIdx, size_t pathVarIdx,
+      aql::Expression* expr);
 
   std::unique_ptr<aql::PruneExpressionEvaluator> createPostFilterEvaluator(
       std::vector<aql::Variable const*> vars, std::vector<aql::RegisterId> regs,

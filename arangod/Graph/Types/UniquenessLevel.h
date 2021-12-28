@@ -33,7 +33,11 @@ namespace graph {
 // easier to reason about, and to avoid accidential missuse of
 // any of them.
 enum class VertexUniquenessLevel { NONE, PATH, GLOBAL };
-enum class EdgeUniquenessLevel { NONE, PATH, GLOBAL }; // TODO: [GraphRefactor] check if GLOBAL is actually correct here
+enum class EdgeUniquenessLevel {
+  NONE,
+  PATH,
+  GLOBAL
+};  // TODO: [GraphRefactor] check if GLOBAL is actually correct here
 
 std::ostream& operator<<(std::ostream& stream,
                          VertexUniquenessLevel const& level);

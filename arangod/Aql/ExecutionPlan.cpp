@@ -276,7 +276,8 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
             // query and if the query is not a modification query.
             options->setParallelism(Ast::validatedParallelism(value));
           }
-        } else if (name == StaticStrings::GraphRefactorFlag && value->isTrue()) {
+        } else if (name == StaticStrings::GraphRefactorFlag &&
+                   value->isTrue()) {
           options->setRefactor(value);
         } else {
           ExecutionPlan::invalidOptionAttribute(ast->query(), "TRAVERSAL",

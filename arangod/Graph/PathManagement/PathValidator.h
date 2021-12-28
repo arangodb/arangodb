@@ -35,7 +35,7 @@ namespace arangodb {
 namespace aql {
 class PruneExpressionEvaluator;
 class InputAqlItemRow;
-}
+}  // namespace aql
 namespace graph {
 
 class ValidationResult;
@@ -52,8 +52,9 @@ class ValidationResult;
  * - Path Conditions. Vertex, Edge maybe in LookupInfo
  *     (e.g. p.vertices[*].name ALL == "HANS")
  */
-template <class Provider, class PathStore, VertexUniquenessLevel vertexUniqueness,
-          EdgeUniquenessLevel edgeUniqueness>
+template<class Provider, class PathStore,
+         VertexUniquenessLevel vertexUniqueness,
+         EdgeUniquenessLevel edgeUniqueness>
 class PathValidator {
   using VertexRef = arangodb::velocypack::HashedStringRef;
   using Step = typename Provider::Step;
@@ -65,7 +66,8 @@ class PathValidator {
 
   auto validatePath(typename PathStore::Step const& step) -> ValidationResult;
   auto validatePath(typename PathStore::Step const& step,
-                    PathValidator<Provider, PathStore, vertexUniqueness, edgeUniqueness> const& otherValidator)
+                    PathValidator<Provider, PathStore, vertexUniqueness,
+                                  edgeUniqueness> const& otherValidator)
       -> ValidationResult;
 
   // Prune section
@@ -84,9 +86,9 @@ class PathValidator {
   void unpreparePostFilterContext();
 
  private:
-  // TODO [GraphRefactor]: const of _store has been removed as it is now necessary
-  // to build a PathResult in place. Please double check if we find a better and
-  // more elegant solution.
+  // TODO [GraphRefactor]: const of _store has been removed as it is now
+  // necessary to build a PathResult in place. Please double check if we find a
+  // better and more elegant solution.
   PathStore& _store;
   Provider& _provider;
 
@@ -95,7 +97,9 @@ class PathValidator {
   //       e.g. std::enable_if<vertexUniqueness != NONE>
   // VertexUniqueness == GLOBAL || PATH => EdgeUniqueness = PATH
   // VertexUniqueness == NONE => EdgeUniqueness == ANY (from user or PATH)
-  ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> _uniqueVertices;
+  ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
+                                  std::equal_to<VertexRef>>
+      _uniqueVertices;
   ::arangodb::containers::HashSet<
       typename PathStore::Step::StepType,
       std::hash<typename PathStore::Step::StepType>,
