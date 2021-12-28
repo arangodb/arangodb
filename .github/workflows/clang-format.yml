@@ -1,0 +1,17 @@
+name: clang-format
+on: push
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Get changed files within arangod, client-tools (arangosh), lib, & tests
+        run: echo "CHANGED_FILES=$(git diff --name-only ${{ github.event.before }}..${{ github.event.after }} -- arangod/ client-tools/ arangosh/ lib/ tests/ | grep -e .cpp -e .hpp -e .cc -e .c -e .h | sed -z 's/\n/\ /g')" >> $GITHUB_ENV
+      - name: Echo changed files
+        run: echo $CHANGED_FILES
+      - name: arangodb-clang-format
+        uses: arangodb/clang-format-action@1.0.1
+        with:
+          sources: ${{env.CHANGED_FILES}} 
