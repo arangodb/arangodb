@@ -46,12 +46,14 @@ using namespace arangodb::graph;
 using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
-constexpr size_t costPerVertexOrEdgeType = sizeof(arangodb::velocypack::HashedStringRef);
+constexpr size_t costPerVertexOrEdgeType =
+    sizeof(arangodb::velocypack::HashedStringRef);
 
 std::string const edgeUrl = "/_internal/traverser/edge/";
 std::string const vertexUrl = "/_internal/traverser/vertex/";
 
-VertexType getEdgeDestination(arangodb::velocypack::Slice edge, VertexType const& origin) {
+VertexType getEdgeDestination(arangodb::velocypack::Slice edge,
+                              VertexType const& origin) {
   if (edge.isString()) {
     return VertexType{edge};
   }
@@ -70,7 +72,8 @@ VertexType getEdgeDestination(arangodb::velocypack::Slice edge, VertexType const
 
 namespace arangodb {
 namespace graph {
-auto operator<<(std::ostream& out, ClusterProvider::Step const& step) -> std::ostream& {
+auto operator<<(std::ostream& out, ClusterProvider::Step const& step)
+    -> std::ostream& {
   out << step._vertex.getID();
   return out;
 }
@@ -83,7 +86,8 @@ ClusterProvider::Step::Step(VertexType v)
 ClusterProvider::Step::Step(VertexType v, EdgeType edge, size_t prev)
     : BaseStep(prev), _vertex(v), _edge(std::move(edge)), _fetched(false) {}
 
-ClusterProvider::Step::Step(VertexType v, EdgeType edge, size_t prev, bool fetched)
+ClusterProvider::Step::Step(VertexType v, EdgeType edge, size_t prev,
+                            bool fetched)
     : BaseStep(prev), _vertex(v), _edge(std::move(edge)), _fetched(fetched) {}
 
 ClusterProvider::Step::~Step() = default;
@@ -102,7 +106,8 @@ bool ClusterProvider::Step::isResponsible(transaction::Methods* trx) const {
 ClusterProvider::ClusterProvider(arangodb::aql::QueryContext& queryContext,
                                  ClusterBaseProviderOptions opts,
                                  arangodb::ResourceMonitor& resourceMonitor)
-    : _trx(std::make_unique<arangodb::transaction::Methods>(queryContext.newTrxContext())),
+    : _trx(std::make_unique<arangodb::transaction::Methods>(
+          queryContext.newTrxContext())),
       _query(&queryContext),
       _resourceMonitor(&resourceMonitor),
       _opts(std::move(opts)),
@@ -113,20 +118,23 @@ ClusterProvider::~ClusterProvider() { clear(); }
 void ClusterProvider::clear() {
   for (auto const& entry : _vertexConnectedEdges) {
     _resourceMonitor->decreaseMemoryUsage(
-        costPerVertexOrEdgeType + (entry.second.size() * (costPerVertexOrEdgeType * 2)));
+        costPerVertexOrEdgeType +
+        (entry.second.size() * (costPerVertexOrEdgeType * 2)));
   }
   _vertexConnectedEdges.clear();
 }
 
-auto ClusterProvider::startVertex(VertexType vertex, size_t depth, double weight) -> Step {
-  LOG_TOPIC("da308", TRACE, Logger::GRAPHS) << "<ClusterProvider> Start Vertex:" << vertex;
+auto ClusterProvider::startVertex(VertexType vertex, size_t depth,
+                                  double weight) -> Step {
+  LOG_TOPIC("da308", TRACE, Logger::GRAPHS)
+      << "<ClusterProvider> Start Vertex:" << vertex;
   // Create the default initial step.
   TRI_ASSERT(weight == 0.0);  // Not implemented yet
   return Step(_opts.getCache()->persistString(vertex));
 }
 
-void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEnds,
-                                               std::vector<Step*>& result) {
+void ClusterProvider::fetchVerticesFromEngines(
+    std::vector<Step*> const& looseEnds, std::vector<Step*>& result) {
   auto const* engines = _opts.engines();
   // slow path, sharding not deducable from _id
   transaction::BuilderLeaser leased(trx());
@@ -136,7 +144,8 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
     TRI_ASSERT(looseEnd->isLooseEnd());
     auto const& vertexId = looseEnd->getVertex().getID();
     if (!_opts.getCache()->isVertexCached(vertexId)) {
-      leased->add(VPackValuePair(vertexId.data(), vertexId.length(), VPackValueType::String));
+      leased->add(VPackValuePair(vertexId.data(), vertexId.length(),
+                                 VPackValueType::String));
     }
   }
   leased->close();  // 'keys' Array
@@ -154,7 +163,8 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
   ScopeGuard sg([&]() noexcept {
     for (Future<network::Response>& f : futures) {
       try {
-        // TODO: As soon as we switch to the new future library, we need to replace the wait with proper *finally* method.
+        // TODO: As soon as we switch to the new future library, we need to
+        // replace the wait with proper *finally* method.
         f.wait();
       } catch (...) {
       }
@@ -162,10 +172,10 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
   });
 
   for (auto const& engine : *engines) {
-    futures.emplace_back(
-        network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Put,
-                                  ::vertexUrl + StringUtils::itoa(engine.second),
-                                  leased->bufferRef(), reqOpts));
+    futures.emplace_back(network::sendRequestRetry(
+        pool, "server:" + engine.first, fuerte::RestVerb::Put,
+        ::vertexUrl + StringUtils::itoa(engine.second), leased->bufferRef(),
+        reqOpts));
   }
 
   for (Future<network::Response>& f : futures) {
@@ -185,7 +195,8 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
     }
     if (r.statusCode() != fuerte::StatusOK) {
       // We have an error case here. Throw it.
-      THROW_ARANGO_EXCEPTION(network::resultFromBody(resSlice, TRI_ERROR_INTERNAL));
+      THROW_ARANGO_EXCEPTION(
+          network::resultFromBody(resSlice, TRI_ERROR_INTERNAL));
     }
 
     for (auto pair : VPackObjectIterator(resSlice, /*sequential*/ true)) {
@@ -222,7 +233,8 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
   // put back all looseEnds we we're able to cache
   for (auto& lE : looseEnds) {
     if (!_opts.getCache()->isVertexCached(lE->getVertexIdentifier())) {
-      // if we end up here, we we're not able to cache the requested vertex (e.g. it does not exist)
+      // if we end up here, we we're not able to cache the requested vertex
+      // (e.g. it does not exist)
       _query->warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
                                          lE->getVertexIdentifier().toString());
       _opts.getCache()->cacheVertex(std::move(lE->getVertexIdentifier()),
@@ -252,12 +264,12 @@ void ClusterProvider::destroyEngines() {
   auto const* engines = _opts.engines();
   for (auto const& engine : *engines) {
     _stats.addHttpRequests(1);
-    auto res =
-        network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Delete,
-                                  "/_internal/traverser/" +
-                                      arangodb::basics::StringUtils::itoa(engine.second),
-                                  VPackBuffer<uint8_t>(), options)
-            .get();
+    auto res = network::sendRequestRetry(
+                   pool, "server:" + engine.first, fuerte::RestVerb::Delete,
+                   "/_internal/traverser/" +
+                       arangodb::basics::StringUtils::itoa(engine.second),
+                   VPackBuffer<uint8_t>(), options)
+                   .get();
 
     if (res.error != fuerte::Error::NoError) {
       // Note If there was an error on server side we do not have
@@ -271,7 +283,8 @@ void ClusterProvider::destroyEngines() {
 
 Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
   auto const* engines = _opts.engines();
-  // TODO Assert that the vertex is not in _vertexConnections after no-loose-end handling todo is done.
+  // TODO Assert that the vertex is not in _vertexConnections after no-loose-end
+  // handling todo is done.
   transaction::BuilderLeaser leased(trx());
   leased->openObject(true);
   leased->add("backward", VPackValue(_opts.isBackward()));
@@ -290,7 +303,8 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
   ScopeGuard sg([&]() noexcept {
     for (Future<network::Response>& f : futures) {
       try {
-        // TODO: As soon as we switch to the new future library, we need to replace the wait with proper *finally* method.
+        // TODO: As soon as we switch to the new future library, we need to
+        // replace the wait with proper *finally* method.
         f.wait();
       } catch (...) {
       }
@@ -298,10 +312,10 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
   });
 
   for (auto const& engine : *engines) {
-    futures.emplace_back(
-        network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Put,
-                                  ::edgeUrl + StringUtils::itoa(engine.second),
-                                  leased->bufferRef(), reqOpts));
+    futures.emplace_back(network::sendRequestRetry(
+        pool, "server:" + engine.first, fuerte::RestVerb::Put,
+        ::edgeUrl + StringUtils::itoa(engine.second), leased->bufferRef(),
+        reqOpts));
   }
 
   std::vector<std::pair<EdgeType, VertexType>> connectedEdges;
@@ -322,8 +336,10 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
     if (res.fail()) {
       return res;
     }
-    _stats.addFiltered(Helper::getNumericValue<size_t>(resSlice, "filtered", 0));
-    _stats.addScannedIndex(Helper::getNumericValue<size_t>(resSlice, "readIndex", 0));
+    _stats.addFiltered(
+        Helper::getNumericValue<size_t>(resSlice, "filtered", 0));
+    _stats.addScannedIndex(
+        Helper::getNumericValue<size_t>(resSlice, "readIndex", 0));
 
     bool allCached = true;
     VPackSlice edges = resSlice.get("edges");
@@ -341,10 +357,11 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
         allCached = false;
       }
 
-      arangodb::velocypack::HashedStringRef edgeIdRef(edge.get(StaticStrings::IdString));
+      arangodb::velocypack::HashedStringRef edgeIdRef(
+          edge.get(StaticStrings::IdString));
 
-      auto edgeToEmplace =
-          std::make_pair(edgeIdRef, VertexType{getEdgeDestination(edge, vertex)});
+      auto edgeToEmplace = std::make_pair(
+          edgeIdRef, VertexType{getEdgeDestination(edge, vertex)});
 
       connectedEdges.emplace_back(edgeToEmplace);
     }
@@ -356,10 +373,13 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
   // Note: This disables the ScopeGuard
   futures.clear();
 
-  std::uint64_t memoryPerItem = costPerVertexOrEdgeType + (connectedEdges.size() * (costPerVertexOrEdgeType * 2));
+  std::uint64_t memoryPerItem =
+      costPerVertexOrEdgeType +
+      (connectedEdges.size() * (costPerVertexOrEdgeType * 2));
   ResourceUsageScope guard(*_resourceMonitor, memoryPerItem);
 
-  auto [it, inserted] = _vertexConnectedEdges.emplace(vertex, std::move(connectedEdges));
+  auto [it, inserted] =
+      _vertexConnectedEdges.emplace(vertex, std::move(connectedEdges));
   if (inserted) {
     guard.steal();
   }
@@ -400,7 +420,8 @@ auto ClusterProvider::fetch(std::vector<Step*> const& looseEnds)
 }
 
 auto ClusterProvider::expand(Step const& step, size_t previous,
-                             std::function<void(Step)> const& callback) -> void {
+                             std::function<void(Step)> const& callback)
+    -> void {
   TRI_ASSERT(!step.isLooseEnd());
   auto const& vertex = step.getVertex();
 
@@ -418,14 +439,15 @@ auto ClusterProvider::expand(Step const& step, size_t previous,
   }
 }
 
-void ClusterProvider::addVertexToBuilder(Step::Vertex const& vertex,
-                                         arangodb::velocypack::Builder& builder) {
+void ClusterProvider::addVertexToBuilder(
+    Step::Vertex const& vertex, arangodb::velocypack::Builder& builder) {
   TRI_ASSERT(_opts.getCache()->isVertexCached(vertex.getID()));
   builder.add(_opts.getCache()->getCachedVertex(vertex.getID()));
 };
 
 auto ClusterProvider::addEdgeToBuilder(Step::Edge const& edge,
-                                       arangodb::velocypack::Builder& builder) -> void {
+                                       arangodb::velocypack::Builder& builder)
+    -> void {
   builder.add(_opts.getCache()->getCachedEdge(edge.getID()));
 }
 

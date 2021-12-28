@@ -22,7 +22,6 @@
 
 #pragma once
 
-
 #include "Cluster/ActionBase.h"
 
 namespace arangodb::maintenance {

@@ -38,8 +38,8 @@ struct ShortestPathAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   std::string _source, _target;
 
  public:
-  explicit ShortestPathAlgorithm(application_features::ApplicationServer& server,
-                                 VPackSlice userParams);
+  explicit ShortestPathAlgorithm(
+      application_features::ApplicationServer& server, VPackSlice userParams);
 
   bool supportsAsyncMode() const override { return true; }
 
@@ -52,7 +52,8 @@ struct ShortestPathAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
     return new MinCombiner<int64_t>();
   }
 
-  VertexComputation<int64_t, int64_t, int64_t>* createComputation(WorkerConfig const* config) const override;
+  VertexComputation<int64_t, int64_t, int64_t>* createComputation(
+      WorkerConfig const* config) const override;
   IAggregator* aggregator(std::string const& name) const override;
   std::set<std::string> initialActiveSet() override;
 };

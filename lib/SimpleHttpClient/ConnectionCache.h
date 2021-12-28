@@ -39,22 +39,23 @@ class ApplicationServer;
 
 namespace httpclient {
 class ConnectionCache;
-class GeneralClientConnection; 
+class GeneralClientConnection;
 
 struct ConnectionLease {
   ConnectionLease();
   ConnectionLease(ConnectionCache* cache,
                   std::unique_ptr<GeneralClientConnection> connection);
-  
+
   ~ConnectionLease();
-  
+
   ConnectionLease(ConnectionLease const&) = delete;
   ConnectionLease& operator=(ConnectionLease const&) = delete;
-  
+
   ConnectionLease(ConnectionLease&& other) noexcept;
   ConnectionLease& operator=(ConnectionLease&& other) noexcept;
 
-  /// @brief prevent the connection from being inserted back into the connection cache
+  /// @brief prevent the connection from being inserted back into the connection
+  /// cache
   void preventRecycling() noexcept;
 
   ConnectionCache* _cache;
@@ -63,7 +64,7 @@ struct ConnectionLease {
 };
 
 class ConnectionCache {
-  ConnectionCache(ConnectionCache const&) = delete; 
+  ConnectionCache(ConnectionCache const&) = delete;
   ConnectionCache& operator=(ConnectionCache const&) = delete;
 
  public:
@@ -74,21 +75,25 @@ class ConnectionCache {
     size_t maxConnectionsPerEndpoint;
   };
 
-  explicit ConnectionCache(arangodb::application_features::ApplicationServer& server,
-                           Options const& options); 
+  explicit ConnectionCache(
+      arangodb::application_features::ApplicationServer& server,
+      Options const& options);
   ~ConnectionCache();
 
-  ConnectionLease acquire(std::string endpoint,
-                          double connectTimeout, double requestTimeout,
-                          size_t connectRetries, uint64_t sslProtocol);
+  ConnectionLease acquire(std::string endpoint, double connectTimeout,
+                          double requestTimeout, size_t connectRetries,
+                          uint64_t sslProtocol);
 
-  /// @brief the force flag also moves unconnected connections back into the cache.
-  /// this is currently used only for testing
-  void release(std::unique_ptr<GeneralClientConnection> connection, bool force = false);
+  /// @brief the force flag also moves unconnected connections back into the
+  /// cache. this is currently used only for testing
+  void release(std::unique_ptr<GeneralClientConnection> connection,
+               bool force = false);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  std::unordered_map<std::string, std::vector<std::unique_ptr<GeneralClientConnection>>> const& connections() const { 
-    return  _connections;
+  std::unordered_map<
+      std::string, std::vector<std::unique_ptr<GeneralClientConnection>>> const&
+  connections() const {
+    return _connections;
   }
 #endif
 
@@ -98,8 +103,10 @@ class ConnectionCache {
   Options const _options;
 
   mutable arangodb::Mutex _lock;
-  
-  std::unordered_map<std::string, std::vector<std::unique_ptr<GeneralClientConnection>>> _connections;
+
+  std::unordered_map<std::string,
+                     std::vector<std::unique_ptr<GeneralClientConnection>>>
+      _connections;
 
   uint64_t _connectionsCreated;
   uint64_t _connectionsRecycled;

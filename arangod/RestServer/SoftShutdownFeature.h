@@ -36,7 +36,8 @@ namespace arangodb {
 
 class SoftShutdownTracker;
 
-class SoftShutdownFeature final : public application_features::ApplicationFeature {
+class SoftShutdownFeature final
+    : public application_features::ApplicationFeature {
  public:
   SoftShutdownFeature(application_features::ApplicationServer& server);
   SoftShutdownTracker& softShutdownTracker() const {
@@ -50,7 +51,8 @@ class SoftShutdownFeature final : public application_features::ApplicationFeatur
   std::shared_ptr<SoftShutdownTracker> _softShutdownTracker;
 };
 
-class SoftShutdownTracker : public std::enable_shared_from_this<SoftShutdownTracker> {
+class SoftShutdownTracker
+    : public std::enable_shared_from_this<SoftShutdownTracker> {
   // This is a class which tracks the proceedings in case of a soft shutdown.
   // Soft shutdown is a means to shut down a coordinator gracefully. It
   // means that certain things are allowed to run to completion but
@@ -64,15 +66,13 @@ class SoftShutdownTracker : public std::enable_shared_from_this<SoftShutdownTrac
   // bit in each counter is reset. Then no new activity should be begun.
 
  private:
-  
   application_features::ApplicationServer& _server;
-  std::atomic<bool> _softShutdownOngoing; // flag, if soft shutdown is ongoing
+  std::atomic<bool> _softShutdownOngoing;  // flag, if soft shutdown is ongoing
   std::mutex _workItemMutex;
-  Scheduler::WorkHandle _workItem;    // used for soft shutdown checker
+  Scheduler::WorkHandle _workItem;  // used for soft shutdown checker
   std::function<void(bool)> _checkFunc;
 
  public:
-
   struct Status {
     uint64_t AQLcursors{0};
     uint64_t transactions{0};
@@ -83,23 +83,19 @@ class SoftShutdownTracker : public std::enable_shared_from_this<SoftShutdownTrac
     uint64_t lowPrioQueuedRequests{0};
 
     bool const softShutdownOngoing;
-    
-    explicit Status(bool softShutdownOngoing) 
-       : softShutdownOngoing(softShutdownOngoing) {}
-       
+
+    explicit Status(bool softShutdownOngoing)
+        : softShutdownOngoing(softShutdownOngoing) {}
+
     bool allClear() const noexcept {
-      return AQLcursors == 0 &&
-             transactions == 0 &&
-             pendingJobs == 0 &&
-             doneJobs == 0 &&
-             lowPrioOngoingRequests == 0 &&
-             lowPrioQueuedRequests == 0 &&
-             pregelConductors == 0;
+      return AQLcursors == 0 && transactions == 0 && pendingJobs == 0 &&
+             doneJobs == 0 && lowPrioOngoingRequests == 0 &&
+             lowPrioQueuedRequests == 0 && pregelConductors == 0;
     }
   };
 
   SoftShutdownTracker(application_features::ApplicationServer& server);
-  ~SoftShutdownTracker() {};
+  ~SoftShutdownTracker(){};
 
   void initiateSoftShutdown();
 
@@ -124,7 +120,7 @@ class SoftShutdownTracker : public std::enable_shared_from_this<SoftShutdownTrac
 
  private:
   bool checkAndShutdownIfAllClear() const;
-    // returns true if actual shutdown triggered
+  // returns true if actual shutdown triggered
   void initiateActualShutdown() const;
 };
 

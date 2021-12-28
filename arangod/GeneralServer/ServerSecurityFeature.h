@@ -27,9 +27,11 @@
 
 namespace arangodb {
 
-class ServerSecurityFeature final : public application_features::ApplicationFeature {
+class ServerSecurityFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit ServerSecurityFeature(application_features::ApplicationServer& server);
+  explicit ServerSecurityFeature(
+      application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
@@ -47,4 +49,3 @@ class ServerSecurityFeature final : public application_features::ApplicationFeat
 };
 
 }  // namespace arangodb
-

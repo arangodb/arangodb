@@ -38,7 +38,7 @@ class SpinLocker {
   SpinLocker(Mode mode, ReadWriteSpinLock& lock, bool doLock = true,
              Effort effort = Effort::Succeed)
       : _lock(lock), _mode(mode), _locked(false) {
-    if (doLock) {      
+    if (doLock) {
       if (effort == Effort::Succeed) {
         if (_mode == Mode::Read) {
           _lock.lockRead();
@@ -65,12 +65,10 @@ class SpinLocker {
     }
   }
 
-  ~SpinLocker() {
-    release();
-  }
+  ~SpinLocker() { release(); }
 
   SpinLocker(SpinLocker&& other)
-    : _lock(other._lock), _mode(other._mode), _locked(other._locked) {
+      : _lock(other._lock), _mode(other._mode), _locked(other._locked) {
     other._locked = false;
   }
 
@@ -101,4 +99,3 @@ class SpinLocker {
 };
 
 }  // namespace arangodb::basics
-

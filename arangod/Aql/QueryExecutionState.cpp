@@ -46,22 +46,25 @@ static std::string const StateNames[] = {
 };
 
 // make sure the state strings and the actual states match
-static_assert(sizeof(StateNames) / sizeof(std::string) ==
-                  static_cast<size_t>(QueryExecutionState::ValueType::INVALID_STATE) + 1,
-              "invalid number of ExecutionState values");
+static_assert(
+    sizeof(StateNames) / sizeof(std::string) ==
+        static_cast<size_t>(QueryExecutionState::ValueType::INVALID_STATE) + 1,
+    "invalid number of ExecutionState values");
 
 size_t QueryExecutionState::toNumber(QueryExecutionState::ValueType value) {
   return static_cast<size_t>(value);
 }
 
 /// @brief get a description of the query's current state
-std::string const& QueryExecutionState::toString(QueryExecutionState::ValueType state) {
+std::string const& QueryExecutionState::toString(
+    QueryExecutionState::ValueType state) {
   return StateNames[static_cast<int>(state)];
 }
 
 /// @brief get a description of the query's current state, prefixed with "
 /// (while "
-std::string QueryExecutionState::toStringWithPrefix(QueryExecutionState::ValueType state) {
+std::string QueryExecutionState::toStringWithPrefix(
+    QueryExecutionState::ValueType state) {
   return std::string(" (while " + StateNames[static_cast<int>(state)] + ")");
 }
 

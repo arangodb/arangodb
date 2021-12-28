@@ -49,25 +49,31 @@ class ExportFeature final : public application_features::ApplicationFeature,
   ExportFeature(application_features::ApplicationServer& server, int* result);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions> options) override;
+  void validateOptions(
+      std::shared_ptr<options::ProgramOptions> options) override;
   void prepare() override final;
   void start() override final;
-  std::shared_ptr<VPackBuilder> customQueryBindVars() const { return _customQueryBindVarsBuilder; }
+  std::shared_ptr<VPackBuilder> customQueryBindVars() const {
+    return _customQueryBindVarsBuilder;
+  }
 
  private:
   void collectionExport(httpclient::SimpleHttpClient* httpClient);
   void queryExport(httpclient::SimpleHttpClient* httpClient);
-  void writeFirstLine(ManagedDirectory::File& fd, std::string const& fileName, std::string const& collection);
-  void writeBatch(ManagedDirectory::File& fd, VPackArrayIterator it, std::string const& fileName);
+  void writeFirstLine(ManagedDirectory::File& fd, std::string const& fileName,
+                      std::string const& collection);
+  void writeBatch(ManagedDirectory::File& fd, VPackArrayIterator it,
+                  std::string const& fileName);
   void graphExport(httpclient::SimpleHttpClient* httpClient);
-  void writeGraphBatch(ManagedDirectory::File& fd, VPackArrayIterator it, std::string const& fileName);
+  void writeGraphBatch(ManagedDirectory::File& fd, VPackArrayIterator it,
+                       std::string const& fileName);
   void xgmmlWriteOneAtt(ManagedDirectory::File& fd, VPackSlice const& slice,
                         std::string const& name, int deep = 0);
 
   void writeToFile(ManagedDirectory::File& fd, std::string const& string);
-  std::shared_ptr<VPackBuilder> httpCall(httpclient::SimpleHttpClient* httpClient,
-                                         std::string const& url, arangodb::rest::RequestType,
-                                         std::string postBody = "");
+  std::shared_ptr<VPackBuilder> httpCall(
+      httpclient::SimpleHttpClient* httpClient, std::string const& url,
+      arangodb::rest::RequestType, std::string postBody = "");
 
   void appendCsvStringValue(std::string& output, std::string const& value);
 
@@ -80,7 +86,7 @@ class ExportFeature final : public application_features::ApplicationFeature,
   std::vector<std::string> _csvFields;
   std::string _outputDirectory;
   double _customQueryMaxRuntime;
-  bool _useMaxRuntime; 
+  bool _useMaxRuntime;
   bool _escapeCsvFormulae;
   bool _xgmmlLabelOnly;
   bool _overwrite;
@@ -100,4 +106,3 @@ class ExportFeature final : public application_features::ApplicationFeature,
 };
 
 }  // namespace arangodb
-

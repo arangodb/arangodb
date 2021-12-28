@@ -37,23 +37,28 @@
 
 namespace arangodb::replication2::test {
 
-struct DelayedFollowerLog : replicated_log::AbstractFollower, replicated_log::ILogParticipant {
-  explicit DelayedFollowerLog(std::shared_ptr<replicated_log::LogFollower> follower)
+struct DelayedFollowerLog : replicated_log::AbstractFollower,
+                            replicated_log::ILogParticipant {
+  explicit DelayedFollowerLog(
+      std::shared_ptr<replicated_log::LogFollower> follower)
       : _follower(std::move(follower)) {}
 
   DelayedFollowerLog(LoggerContext const& logContext,
                      std::shared_ptr<ReplicatedLogMetricsMock> logMetricsMock,
-                     ParticipantId const& id, std::unique_ptr<replicated_log::LogCore> logCore,
+                     ParticipantId const& id,
+                     std::unique_ptr<replicated_log::LogCore> logCore,
                      LogTerm term, ParticipantId leaderId)
       : DelayedFollowerLog([&] {
-          auto inMemoryLog = replicated_log::InMemoryLog::loadFromLogCore(*logCore);
+          auto inMemoryLog =
+              replicated_log::InMemoryLog::loadFromLogCore(*logCore);
           return std::make_shared<replicated_log::LogFollower>(
               logContext, std::move(logMetricsMock), id, std::move(logCore),
               term, std::move(leaderId), std::move(inMemoryLog));
         }()) {}
 
   auto appendEntries(replicated_log::AppendEntriesRequest req)
-      -> arangodb::futures::Future<replicated_log::AppendEntriesResult> override {
+      -> arangodb::futures::Future<
+          replicated_log::AppendEntriesResult> override {
     auto future = _asyncQueue.doUnderLock([&](auto& queue) {
       return queue.emplace_back(std::make_shared<AsyncRequest>(std::move(req)))
           ->promise.getFuture();
@@ -76,7 +81,7 @@ struct DelayedFollowerLog : replicated_log::AbstractFollower, replicated_log::IL
   }
 
   void runAllAsyncAppendEntries() {
-    while(hasPendingAppendEntries()) {
+    while (hasPendingAppendEntries()) {
       runAsyncAppendEntries();
     }
   }
@@ -85,7 +90,8 @@ struct DelayedFollowerLog : replicated_log::AbstractFollower, replicated_log::IL
     return _follower->getCommitIndex();
   }
 
-  using WaitForAsyncPromise = futures::Promise<replicated_log::AppendEntriesRequest>;
+  using WaitForAsyncPromise =
+      futures::Promise<replicated_log::AppendEntriesRequest>;
 
   struct AsyncRequest {
     explicit AsyncRequest(replicated_log::AppendEntriesRequest request)
@@ -114,11 +120,14 @@ struct DelayedFollowerLog : replicated_log::AbstractFollower, replicated_log::IL
     return _follower->getQuickStatus();
   }
 
-  [[nodiscard]] auto resign() && -> std::tuple<std::unique_ptr<replicated_log::LogCore>, DeferredAction> override {
+  [[nodiscard]] auto resign() && -> std::tuple<
+      std::unique_ptr<replicated_log::LogCore>, DeferredAction> override {
     return std::move(*_follower).resign();
   }
 
-  auto waitFor(LogIndex index) -> WaitForFuture override { return _follower->waitFor(index); }
+  auto waitFor(LogIndex index) -> WaitForFuture override {
+    return _follower->waitFor(index);
+  }
 
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override {
     return _follower->waitForIterator(index);
@@ -136,11 +145,13 @@ struct DelayedFollowerLog : replicated_log::AbstractFollower, replicated_log::IL
 struct TestReplicatedLog : replicated_log::ReplicatedLog {
   using ReplicatedLog::becomeLeader;
   using ReplicatedLog::ReplicatedLog;
-  auto becomeFollower(ParticipantId const& id, LogTerm term, ParticipantId leaderId)
+  auto becomeFollower(ParticipantId const& id, LogTerm term,
+                      ParticipantId leaderId)
       -> std::shared_ptr<DelayedFollowerLog>;
 
-  auto becomeLeader(ParticipantId const& id, LogTerm term,
-                    std::vector<std::shared_ptr<replicated_log::AbstractFollower>> const&,
-                    std::size_t writeConcern) -> std::shared_ptr<replicated_log::LogLeader>;
+  auto becomeLeader(
+      ParticipantId const& id, LogTerm term,
+      std::vector<std::shared_ptr<replicated_log::AbstractFollower>> const&,
+      std::size_t writeConcern) -> std::shared_ptr<replicated_log::LogLeader>;
 };
 }  // namespace arangodb::replication2::test

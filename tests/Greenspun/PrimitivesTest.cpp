@@ -1422,7 +1422,8 @@ TEST_F(GreenspunTest, reduce_dict_init_dicts) {
     FAIL() << res.error().toString();
   }
   ASSERT_TRUE(res.ok());
-  ASSERT_EQ(result.slice().toJson(), R"json({"a":2,"b":4,"c":6,"d":4,"e":5})json");
+  ASSERT_EQ(result.slice().toJson(),
+            R"json({"a":2,"b":4,"c":6,"d":4,"e":5})json");
 }
 
 TEST_F(GreenspunTest, sort) {

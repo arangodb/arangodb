@@ -38,20 +38,23 @@
 
 namespace arangodb::greenspun {
 
-EvalResult DateTime_dateStringToUnix(Machine& ctx, VPackSlice const paramsList, VPackBuilder& result) {
+EvalResult DateTime_dateStringToUnix(Machine& ctx, VPackSlice const paramsList,
+                                     VPackBuilder& result) {
   if (!paramsList.isArray() || paramsList.length() != 1) {
-      return EvalError("expected exactly one string as parameter, found: " + paramsList.toJson());
+    return EvalError("expected exactly one string as parameter, found: " +
+                     paramsList.toJson());
   }
 
   auto dateString = paramsList.at(0);
   if (!dateString.isString()) {
-    return EvalError("expected exactly one string as parameter, found: " + dateString.toJson());
+    return EvalError("expected exactly one string as parameter, found: " +
+                     dateString.toJson());
   }
 
   tp_sys_clock_ms tp;
   // Here it shows that implementing this parser ourselves would
   // allow for better error messages from the datetime parser...
-  if(!basics::parseDateTime(dateString.stringView(), tp)) {
+  if (!basics::parseDateTime(dateString.stringView(), tp)) {
     return EvalError("string did not parse as date");
   }
 
@@ -62,4 +65,4 @@ EvalResult DateTime_dateStringToUnix(Machine& ctx, VPackSlice const paramsList, 
 void RegisterAllDateTimeFunctions(Machine& ctx) {
   ctx.setFunction("datestring->unix", DateTime_dateStringToUnix);
 }
-}
+}  // namespace arangodb::greenspun

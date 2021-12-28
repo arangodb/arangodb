@@ -110,14 +110,16 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
       ISOLATE;
 
       if (TRI_HasProperty(context, isolate, o, "offset")) {
-        v8::Handle<v8::Value> offset = TRI_GetProperty(context, isolate, o, "offset");
+        v8::Handle<v8::Value> offset =
+            TRI_GetProperty(context, isolate, o, "offset");
         if (offset->IsNumber()) {
           offsetValue = TRI_GET_INT32(offset);
         }
       }
 
       if (TRI_HasProperty(context, isolate, o, "parent")) {
-        v8::Handle<v8::Value> parent = TRI_GetProperty(context, isolate, o, "parent");
+        v8::Handle<v8::Value> parent =
+            TRI_GetProperty(context, isolate, o, "parent");
         if (!parent->IsObject()) {
           return nullptr;
         }
@@ -163,14 +165,16 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
       ISOLATE;
 
       if (TRI_HasProperty(context, isolate, o, "length")) {
-        v8::Handle<v8::Value> length = TRI_GetProperty(context, isolate, o, "length");
+        v8::Handle<v8::Value> length =
+            TRI_GetProperty(context, isolate, o, "length");
         if (length->IsNumber()) {
           lengthValue = TRI_GET_INT32(length);
         }
       }
 
       if (TRI_HasProperty(context, isolate, o, "parent")) {
-        v8::Handle<v8::Value> parent = TRI_GetProperty(context, isolate, o, "parent");
+        v8::Handle<v8::Value> parent =
+            TRI_GetProperty(context, isolate, o, "parent");
         if (!parent->IsObject()) {
           return 0;
         }
@@ -218,7 +222,8 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
   /// @brief C++ API for constructing fast buffer
   //////////////////////////////////////////////////////////////////////////////
 
-  static v8::Handle<v8::Object> New(v8::Isolate* isolate, v8::Handle<v8::String> string);
+  static v8::Handle<v8::Object> New(v8::Isolate* isolate,
+                                    v8::Handle<v8::String> string);
 
   static V8Buffer* New(v8::Isolate* isolate, size_t length);
 

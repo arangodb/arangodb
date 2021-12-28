@@ -30,7 +30,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace aql {
 
@@ -39,7 +39,7 @@ struct ModificationOptions : OperationOptions {
   /// @brief constructor, using default values
   explicit ModificationOptions(arangodb::velocypack::Slice const&);
 
-  ModificationOptions() 
+  ModificationOptions()
       : OperationOptions(),
         ignoreErrors(false),
         ignoreDocumentNotFound(false),
@@ -56,4 +56,3 @@ struct ModificationOptions : OperationOptions {
 
 }  // namespace aql
 }  // namespace arangodb
-
