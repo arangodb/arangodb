@@ -14,4 +14,4 @@ jobs:
       - name: arangodb-clang-format
         uses: arangodb/clang-format-action@1.0.1
         with:
-          sources: ${{env.CHANGED_FILES}}
+          sources: ${{env.CHANGED_FILES}} 
