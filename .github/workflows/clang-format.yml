@@ -2,7 +2,12 @@ name: clang-format
 on:
   workflow_dispatch:
   pull_request:
-    branches: [ devel, "3.9" ]
+    branches: [ devel ]
+    paths:
+      - "arangod/**"
+      - "client-tools/**"
+      - "lib/**"
+      - "tests/**"
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -11,7 +16,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Get changed files within arangod, client-tools (arangosh), lib, & tests
-        run: echo "CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT ${{ github.event.pull_request.base.sha }}..${{ github.sha }} -- arangod/ client-tools/ arangosh/ lib/ tests/ | grep -e .cpp$ -e .hpp$ -e .cc$ -e .c$ -e .h$ | xargs)" >> $GITHUB_ENV
+        run: echo "CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT ${{ github.event.pull_request.base.sha }}..${{ github.sha }} -- arangod/ client-tools/ lib/ tests/ | grep -e .cpp$ -e .hpp$ -e .cc$ -e .c$ -e .h$ | xargs)" >> $GITHUB_ENV
       - name: Echo changed files
         run: echo $CHANGED_FILES
       - name: arangodb-clang-format
