@@ -70,7 +70,7 @@ struct LimitFullCountChecker final
   bool seenFullCount{false};
   bool seenFullCountLimitWithoutSort{false};
 
-  explicit LimitFullCountChecker() noexcept {}
+LimitFullCountChecker() = default;
 
   void after(ExecutionNode* en) override {
     switch (en->getType()) {
