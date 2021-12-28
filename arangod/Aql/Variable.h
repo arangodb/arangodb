@@ -24,6 +24,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 
 #include "Aql/AqlValue.h"
 #include "Aql/types.h"
@@ -40,9 +41,19 @@ class Ast;
 struct AstNode;
 
 struct Variable {
+  /// @brief name of $OLD variable
+  static constexpr std::string_view NAME_OLD = "$OLD";
+
+  /// @brief name of $NEW variable
+  static constexpr std::string_view NAME_NEW = "$NEW";
+
+  /// @brief name of $CURRENT variable
+  static constexpr std::string_view NAME_CURRENT = "$CURRENT";
+
   /// @brief indicates the type of the variable
   enum class Type {
-    /// @brief a regular variable with a value determined while executing the query
+    /// @brief a regular variable with a value determined while executing the
+    /// query
     Regular,
     /// @brief a variable with a constant value
     Const
@@ -55,11 +66,12 @@ struct Variable {
 
   /// @brief destroy the variable
   ~Variable();
-  
+
   Variable* clone() const;
 
   /// @brief registers a constant value for the variable
-  /// this constant value is used for constant propagation while creating the AST
+  /// this constant value is used for constant propagation while creating the
+  /// AST
   void setConstAstNode(AstNode* node) { _constAstNode = node; }
 
   /// @brief returns a constant value registered for this variable
@@ -75,16 +87,17 @@ struct Variable {
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 
   /// @brief replace a variable by another
-  static Variable const* replace(Variable const*,
-                                 std::unordered_map<VariableId, Variable const*> const&);
+  static Variable const* replace(
+      Variable const*, std::unordered_map<VariableId, Variable const*> const&);
 
   /// @brief factory for (optional) variables from VPack
-  static Variable* varFromVPack(Ast* ast, arangodb::velocypack::Slice const& base,
-                                char const* variableName, bool optional = false);
-
+  static Variable* varFromVPack(Ast* ast,
+                                arangodb::velocypack::Slice const& base,
+                                char const* variableName,
+                                bool optional = false);
 
   bool isEqualTo(Variable const& other) const;
-  
+
   /// @brief returns the type of the variable. The type is determined based
   // on the constantValue. If constantValue.isNone, the type is Type::Regular,
   // otherwise it is Type::Const
@@ -104,30 +117,20 @@ struct Variable {
   /// note: this cannot be const as variables can be renamed by the optimizer
   std::string name;
 
-  /// @brief whether or not the source data for this variable is from a collection 
-  /// (i.e. is a document). this is only used for optimizations
+  /// @brief whether or not the source data for this variable is from a
+  /// collection (i.e. is a document). this is only used for optimizations
   bool isDataFromCollection;
- 
-  /// @brief name of $OLD variable
-  static char const* const NAME_OLD;
 
-  /// @brief name of $NEW variable
-  static char const* const NAME_NEW;
-
-  /// @brief name of $CURRENT variable
-  static char const* const NAME_CURRENT;
-
-private:
+ private:
   /// @brief constant variable value (points to another AstNode)
   /// Used for constant propagation while creating the AST.
   AstNode* _constAstNode{nullptr};
-  
+
   // TODO - we have two kinds of const values here; this should be cleaned up!
-  /// @brief for const variables, this stores the constant value determined while
-  /// initializing the plan.
-  /// Note: the variable takes ownership of this value and destroys it
+  /// @brief for const variables, this stores the constant value determined
+  /// while initializing the plan. Note: the variable takes ownership of this
+  /// value and destroys it
   AqlValue _constantValue;
 };
 }  // namespace aql
 }  // namespace arangodb
-

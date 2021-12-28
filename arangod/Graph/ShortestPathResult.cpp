@@ -31,7 +31,6 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -50,7 +49,8 @@ void ShortestPathResult::clear() {
   _edges.clear();
 }
 
-AqlValue ShortestPathResult::edgeToAqlValue(TraverserCache* cache, size_t position) const {
+AqlValue ShortestPathResult::edgeToAqlValue(TraverserCache* cache,
+                                            size_t position) const {
   if (position == 0) {
     // First Edge is defined as NULL
     return AqlValue(AqlValueHintNull());
@@ -59,14 +59,15 @@ AqlValue ShortestPathResult::edgeToAqlValue(TraverserCache* cache, size_t positi
   return cache->fetchEdgeAqlResult(_edges[position - 1]);
 }
 
-AqlValue ShortestPathResult::vertexToAqlValue(TraverserCache* cache, size_t position) const {
+AqlValue ShortestPathResult::vertexToAqlValue(TraverserCache* cache,
+                                              size_t position) const {
   TRI_ASSERT(position < _vertices.size());
   arangodb::aql::AqlValue result;
   cache->appendVertex(_vertices[position], result);
   return result;
 }
 
-void ShortestPathResult::addVertex(arangodb::velocypack::StringRef v) {
+void ShortestPathResult::addVertex(std::string_view v) {
   TRI_ASSERT(_edges.size() == _vertices.size());
   _vertices.emplace_back(v);
 }

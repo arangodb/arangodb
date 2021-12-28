@@ -1,0 +1,28 @@
+# Boost.STLInterfaces Library Tests Jamfile
+
+#          Copyright Oliver Kowalke 2013.
+#          Copyright Modified Work Barrett Adair 2020
+# Distributed under the Boost Software License, Version 1.0.
+#    (See accompanying file LICENSE_1_0.txt or copy at
+#          http://www.boost.org/LICENSE_1_0.txt)
+
+import testing ;
+import ../../config/checks/config : requires ;
+
+project :
+    requirements
+        [ requires cxx14_constexpr ]
+;
+
+run forward.cpp ;
+run detail.cpp ;
+run array.cpp ;
+run output.cpp ;
+run input.cpp ;
+run reverse_iter.cpp ;
+run static_vec_noncopyable.cpp ;
+run bidirectional.cpp ;
+run random_access.cpp ;
+run static_vec.cpp ;
+
+compile compile_seq_cont_rvalue_constrained_pop_back.cpp ;

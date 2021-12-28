@@ -39,19 +39,12 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace {
-// hack for MSVC
-auto getStringView(velocypack::Slice slice) -> std::string_view {
-  velocypack::StringRef ref = slice.stringRef();
-  return std::string_view(ref.data(), ref.size());
-}
-}  // namespace
-
 auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
   if (ADB_UNLIKELY(!slice.isObject())) {
     using namespace std::string_literals;
     return Result(TRI_ERROR_TYPE_ERROR,
-                  "When deserializating AqlCall: Expected object, got "s + slice.typeName());
+                  "When deserializating AqlCall: Expected object, got "s +
+                      slice.typeName());
   }
 
   auto expectedPropertiesFound = std::map<std::string_view, bool>{};
@@ -65,7 +58,8 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
   auto offset = decltype(AqlCall::offset){0};
   auto fullCount = false;
 
-  auto const readLimit = [](velocypack::Slice slice) -> ResultT<AqlCall::Limit> {
+  auto const readLimit =
+      [](velocypack::Slice slice) -> ResultT<AqlCall::Limit> {
     auto const type = slice.type();
     if (type == velocypack::ValueType::String &&
         slice.isEqualString(StaticStrings::AqlRemoteInfinity)) {
@@ -84,7 +78,7 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
       message += "When reading limit: ";
       if (slice.isString()) {
         message += "Unexpected value '";
-        message += getStringView(slice);
+        message += slice.stringView();
         message += "'";
       } else {
         message += "Unexpected type ";
@@ -94,8 +88,8 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
     }
   };
 
-  auto const readLimitType =
-      [](velocypack::Slice slice) -> ResultT<std::optional<AqlCall::LimitType>> {
+  auto const readLimitType = [](velocypack::Slice slice)
+      -> ResultT<std::optional<AqlCall::LimitType>> {
     if (slice.isNull()) {
       return {std::nullopt};
     }
@@ -106,7 +100,7 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
       message += slice.typeName();
       return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
     }
-    auto value = getStringView(slice);
+    auto value = slice.stringView();
     if (value == StaticStrings::AqlRemoteLimitTypeSoft) {
       return {AqlCall::LimitType::SOFT};
     } else if (value == StaticStrings::AqlRemoteLimitTypeHard) {
@@ -132,7 +126,8 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
     return slice.getBool();
   };
 
-  auto const readOffset = [](velocypack::Slice slice) -> ResultT<decltype(offset)> {
+  auto const readOffset =
+      [](velocypack::Slice slice) -> ResultT<decltype(offset)> {
     if (!slice.isInteger()) {
       auto message = std::string{
           "When deserializating AqlCall: When reading offset: "
@@ -156,7 +151,7 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
       return Result(TRI_ERROR_TYPE_ERROR,
                     "When deserializating AqlCall: Key is not a string");
     }
-    auto const key = getStringView(keySlice);
+    auto const key = keySlice.stringView();
 
     if (auto propIt = expectedPropertiesFound.find(key);
         ADB_LIKELY(propIt != expectedPropertiesFound.end())) {
@@ -247,14 +242,12 @@ void AqlCall::toVelocyPack(velocypack::Builder& builder) const {
     limit = softLimit;
   }
 
-  auto const limitValue =
-      std::visit(overload{
-                     [](Infinity) {
-                       return Value(StaticStrings::AqlRemoteInfinity);
-                     },
-                     [](std::size_t limit) { return Value(limit); },
-                 },
-                 limit);
+  auto const limitValue = std::visit(
+      overload{
+          [](Infinity) { return Value(StaticStrings::AqlRemoteInfinity); },
+          [](std::size_t limit) { return Value(limit); },
+      },
+      limit);
   auto const limitTypeValue = std::invoke([&]() {
     if (!limitType.has_value()) {
       return Value(ValueType::Null);
@@ -297,13 +290,12 @@ auto AqlCall::requestLessDataThan(AqlCall const& other) const noexcept -> bool {
 
 auto aql::operator<<(std::ostream& out, AqlCall::LimitPrinter const& printer)
     -> std::ostream& {
-  return std::visit(overload{[&out](size_t const& i) -> std::ostream& {
-                               return out << i;
-                             },
-                             [&out](AqlCall::Infinity const&) -> std::ostream& {
-                               return out << "unlimited";
-                             }},
-                    printer._limit);
+  return std::visit(
+      overload{[&out](size_t const& i) -> std::ostream& { return out << i; },
+               [&out](AqlCall::Infinity const&) -> std::ostream& {
+                 return out << "unlimited";
+               }},
+      printer._limit);
 }
 
 auto aql::operator<<(std::ostream& out, AqlCall const& call) -> std::ostream& {

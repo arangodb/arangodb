@@ -25,6 +25,7 @@
 
 #include "Graph/Helpers/TraceEntry.h"
 #include "Basics/ResourceUsage.h"
+#include "Containers/FlatHashMap.h"
 
 #include <unordered_map>
 #include <vector>
@@ -32,7 +33,7 @@
 namespace arangodb {
 namespace graph {
 
-template <class QueueImpl>
+template<class QueueImpl>
 class QueueTracer {
   using Step = typename QueueImpl::Step;
 
@@ -54,9 +55,8 @@ class QueueTracer {
 
   // Mapping MethodName => Statistics
   // We make this mutable to not violate the captured API
-  mutable std::unordered_map<std::string, TraceEntry> _stats;
+  mutable containers::FlatHashMap<std::string, TraceEntry> _stats;
 };
 
 }  // namespace graph
 }  // namespace arangodb
-

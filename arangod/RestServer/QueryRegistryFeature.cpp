@@ -40,7 +40,11 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/LogScale.h"
+#include "Metrics/MetricsFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -49,56 +53,68 @@ using namespace arangodb::options;
 
 namespace {
 
-uint64_t defaultMemoryLimit(uint64_t available, double reserveFraction, double percentage) {
+uint64_t defaultMemoryLimit(uint64_t available, double reserveFraction,
+                            double percentage) {
   if (available == 0) {
-    // we don't know how much memory is available, so we cannot do any sensible calculation
+    // we don't know how much memory is available, so we cannot do any sensible
+    // calculation
     return 0;
   }
 
-  // this function will produce the following results for a reserveFraction of 0.2 and a 
-  // percentage of 0.75 for some common available memory values:
+  // this function will produce the following results for a reserveFraction of
+  // 0.2 and a percentage of 0.75 for some common available memory values:
   //
-  //    Available memory:            0      (0MiB)  Limit:            0   unlimited, %mem:  n/a
-  //    Available memory:    134217728    (128MiB)  Limit:     33554432     (32MiB), %mem: 25.0
-  //    Available memory:    268435456    (256MiB)  Limit:     67108864     (64MiB), %mem: 25.0
-  //    Available memory:    536870912    (512MiB)  Limit:    201326592    (192MiB), %mem: 37.5
-  //    Available memory:    805306368    (768MiB)  Limit:    402653184    (384MiB), %mem: 50.0
-  //    Available memory:   1073741824   (1024MiB)  Limit:    603979776    (576MiB), %mem: 56.2
-  //    Available memory:   2147483648   (2048MiB)  Limit:   1288490189   (1228MiB), %mem: 60.0
-  //    Available memory:   4294967296   (4096MiB)  Limit:   2576980377   (2457MiB), %mem: 60.0
-  //    Available memory:   8589934592   (8192MiB)  Limit:   5153960755   (4915MiB), %mem: 60.0
-  //    Available memory:  17179869184  (16384MiB)  Limit:  10307921511   (9830MiB), %mem: 60.0
-  //    Available memory:  25769803776  (24576MiB)  Limit:  15461882265  (14745MiB), %mem: 60.0
-  //    Available memory:  34359738368  (32768MiB)  Limit:  20615843021  (19660MiB), %mem: 60.0
-  //    Available memory:  42949672960  (40960MiB)  Limit:  25769803776  (24576MiB), %mem: 60.0
-  //    Available memory:  68719476736  (65536MiB)  Limit:  41231686041  (39321MiB), %mem: 60.0
-  //    Available memory: 103079215104  (98304MiB)  Limit:  61847529063  (58982MiB), %mem: 60.0
-  //    Available memory: 137438953472 (131072MiB)  Limit:  82463372083  (78643MiB), %mem: 60.0
-  //    Available memory: 274877906944 (262144MiB)  Limit: 164926744167 (157286MiB), %mem: 60.0
-  //    Available memory: 549755813888 (524288MiB)  Limit: 329853488333 (314572MiB), %mem: 60.0
-  
+  //    Available memory:            0      (0MiB)  Limit:            0
+  //    unlimited, %mem:  n/a Available memory:    134217728    (128MiB)  Limit:
+  //    33554432     (32MiB), %mem: 25.0 Available memory:    268435456 (256MiB)
+  //    Limit:     67108864     (64MiB), %mem: 25.0 Available memory: 536870912
+  //    (512MiB)  Limit:    201326592    (192MiB), %mem: 37.5 Available memory:
+  //    805306368    (768MiB)  Limit:    402653184    (384MiB), %mem: 50.0
+  //    Available memory:   1073741824   (1024MiB)  Limit:    603979776
+  //    (576MiB), %mem: 56.2 Available memory:   2147483648   (2048MiB)  Limit:
+  //    1288490189   (1228MiB), %mem: 60.0 Available memory:   4294967296
+  //    (4096MiB)  Limit:   2576980377   (2457MiB), %mem: 60.0 Available memory:
+  //    8589934592   (8192MiB)  Limit:   5153960755   (4915MiB), %mem: 60.0
+  //    Available memory:  17179869184  (16384MiB)  Limit:  10307921511
+  //    (9830MiB), %mem: 60.0 Available memory:  25769803776  (24576MiB)  Limit:
+  //    15461882265  (14745MiB), %mem: 60.0 Available memory:  34359738368
+  //    (32768MiB)  Limit:  20615843021  (19660MiB), %mem: 60.0 Available
+  //    memory:  42949672960  (40960MiB)  Limit:  25769803776  (24576MiB),
+  //    %mem: 60.0 Available memory:  68719476736  (65536MiB)  Limit:
+  //    41231686041  (39321MiB), %mem: 60.0 Available memory: 103079215104
+  //    (98304MiB)  Limit:  61847529063  (58982MiB), %mem: 60.0 Available
+  //    memory: 137438953472 (131072MiB)  Limit:  82463372083  (78643MiB),
+  //    %mem: 60.0 Available memory: 274877906944 (262144MiB)  Limit:
+  //    164926744167 (157286MiB), %mem: 60.0 Available memory: 549755813888
+  //    (524288MiB)  Limit: 329853488333 (314572MiB), %mem: 60.0
+
   // for a reserveFraction of 0.05 and a percentage of 0.95 it will produce:
   //
-  //    Available memory:            0      (0MiB)  Limit:            0   unlimited, %mem:  n/a
-  //    Available memory:    134217728    (128MiB)  Limit:     33554432     (32MiB), %mem: 25.0
-  //    Available memory:    268435456    (256MiB)  Limit:     67108864     (64MiB), %mem: 25.0
-  //    Available memory:    536870912    (512MiB)  Limit:    255013683    (243MiB), %mem: 47.5
-  //    Available memory:    805306368    (768MiB)  Limit:    510027366    (486MiB), %mem: 63.3
-  //    Available memory:   1073741824   (1024MiB)  Limit:    765041049    (729MiB), %mem: 71.2
-  //    Available memory:   2147483648   (2048MiB)  Limit:   1785095782   (1702MiB), %mem: 83.1
-  //    Available memory:   4294967296   (4096MiB)  Limit:   3825205248   (3648MiB), %mem: 89.0
-  //    Available memory:   8589934592   (8192MiB)  Limit:   7752415969   (7393MiB), %mem: 90.2
-  //    Available memory:  17179869184  (16384MiB)  Limit:  15504831938  (14786MiB), %mem: 90.2
-  //    Available memory:  25769803776  (24576MiB)  Limit:  23257247908  (22179MiB), %mem: 90.2
-  //    Available memory:  34359738368  (32768MiB)  Limit:  31009663877  (29573MiB), %mem: 90.2
-  //    Available memory:  42949672960  (40960MiB)  Limit:  38762079846  (36966MiB), %mem: 90.2
-  //    Available memory:  68719476736  (65536MiB)  Limit:  62019327755  (59146MiB), %mem: 90.2
-  //    Available memory: 103079215104  (98304MiB)  Limit:  93028991631  (88719MiB), %mem: 90.2
-  //    Available memory: 137438953472 (131072MiB)  Limit: 124038655509 (118292MiB), %mem: 90.2
-  //    Available memory: 274877906944 (262144MiB)  Limit: 248077311017 (236584MiB), %mem: 90.2
-  //    Available memory: 549755813888 (524288MiB)  Limit: 496154622034 (473169MiB), %mem: 90.2
-  
-    // reserveFraction% of RAM will be considered as a reserve
+  //    Available memory:            0      (0MiB)  Limit:            0
+  //    unlimited, %mem:  n/a Available memory:    134217728    (128MiB)  Limit:
+  //    33554432     (32MiB), %mem: 25.0 Available memory:    268435456 (256MiB)
+  //    Limit:     67108864     (64MiB), %mem: 25.0 Available memory: 536870912
+  //    (512MiB)  Limit:    255013683    (243MiB), %mem: 47.5 Available memory:
+  //    805306368    (768MiB)  Limit:    510027366    (486MiB), %mem: 63.3
+  //    Available memory:   1073741824   (1024MiB)  Limit:    765041049
+  //    (729MiB), %mem: 71.2 Available memory:   2147483648   (2048MiB)  Limit:
+  //    1785095782   (1702MiB), %mem: 83.1 Available memory:   4294967296
+  //    (4096MiB)  Limit:   3825205248   (3648MiB), %mem: 89.0 Available memory:
+  //    8589934592   (8192MiB)  Limit:   7752415969   (7393MiB), %mem: 90.2
+  //    Available memory:  17179869184  (16384MiB)  Limit:  15504831938
+  //    (14786MiB), %mem: 90.2 Available memory:  25769803776  (24576MiB) Limit:
+  //    23257247908  (22179MiB), %mem: 90.2 Available memory:  34359738368
+  //    (32768MiB)  Limit:  31009663877  (29573MiB), %mem: 90.2 Available
+  //    memory:  42949672960  (40960MiB)  Limit:  38762079846  (36966MiB),
+  //    %mem: 90.2 Available memory:  68719476736  (65536MiB)  Limit:
+  //    62019327755  (59146MiB), %mem: 90.2 Available memory: 103079215104
+  //    (98304MiB)  Limit:  93028991631  (88719MiB), %mem: 90.2 Available
+  //    memory: 137438953472 (131072MiB)  Limit: 124038655509 (118292MiB),
+  //    %mem: 90.2 Available memory: 274877906944 (262144MiB)  Limit:
+  //    248077311017 (236584MiB), %mem: 90.2 Available memory: 549755813888
+  //    (524288MiB)  Limit: 496154622034 (473169MiB), %mem: 90.2
+
+  // reserveFraction% of RAM will be considered as a reserve
   uint64_t reserve = static_cast<uint64_t>(available * reserveFraction);
 
   // minimum reserve memory is 256MB
@@ -110,20 +126,21 @@ uint64_t defaultMemoryLimit(uint64_t available, double reserveFraction, double p
     dyn = 0.0;
   }
 
-  return std::max(static_cast<uint64_t>(dyn), static_cast<uint64_t>(0.25 * available));
+  return std::max(static_cast<uint64_t>(dyn),
+                  static_cast<uint64_t>(0.25 * available));
 }
 
-} // namespace
+}  // namespace
 
 namespace arangodb {
 
 std::atomic<aql::QueryRegistry*> QueryRegistryFeature::QUERY_REGISTRY{nullptr};
 
 struct QueryTimeScale {
-  static log_scale_t<double> scale() { return {2., 0.0, 50.0, 20}; }
+  static metrics::LogScale<double> scale() { return {2., 0.0, 50.0, 20}; }
 };
 struct SlowQueryTimeScale {
-  static log_scale_t<double> scale() { return {2., 1.0, 2000.0, 10}; }
+  static metrics::LogScale<double> scale() { return {2., 1.0, 2000.0, 10}; }
 };
 
 DECLARE_COUNTER(arangodb_aql_all_query_total,
@@ -131,7 +148,7 @@ DECLARE_COUNTER(arangodb_aql_all_query_total,
 DECLARE_HISTOGRAM(arangodb_aql_query_time, QueryTimeScale,
                   "Execution time histogram for all AQL queries [s]");
 DECLARE_LEGACY_COUNTER(arangodb_aql_slow_query_total,
-                "Total number of slow AQL queries finished");
+                       "Total number of slow AQL queries finished");
 DECLARE_HISTOGRAM(arangodb_aql_slow_query_time, SlowQueryTimeScale,
                   "Execution time histogram for slow AQL queries [s]");
 DECLARE_COUNTER(arangodb_aql_total_query_time_msec_total,
@@ -149,7 +166,8 @@ DECLARE_COUNTER(arangodb_aql_global_query_memory_limit_reached_total,
 DECLARE_COUNTER(arangodb_aql_local_query_memory_limit_reached_total,
                 "Number of local AQL query memory limit violations");
 
-QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServer& server)
+QueryRegistryFeature::QueryRegistryFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, "QueryRegistry"),
       _trackingEnabled(true),
       _trackSlowQueries(true),
@@ -165,8 +183,10 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _parallelizeTraversals(true),
 #endif
       _allowCollectionsInExpressions(false),
-      _queryGlobalMemoryLimit(defaultMemoryLimit(PhysicalMemory::getValue(), 0.1, 0.90)),
-      _queryMemoryLimit(defaultMemoryLimit(PhysicalMemory::getValue(), 0.2, 0.75)),
+      _queryGlobalMemoryLimit(
+          defaultMemoryLimit(PhysicalMemory::getValue(), 0.1, 0.90)),
+      _queryMemoryLimit(
+          defaultMemoryLimit(PhysicalMemory::getValue(), 0.2, 0.75)),
       _queryMaxRuntime(aql::QueryOptions::defaultMaxRuntime),
       _maxQueryPlans(aql::QueryOptions::defaultMaxNumberOfPlans),
       _maxNodesPerCallstack(aql::QueryOptions::defaultMaxNodesPerCallstack),
@@ -178,26 +198,28 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _slowStreamingQueryThreshold(10.0),
       _queryRegistryTTL(0.0),
       _queryCacheMode("off"),
-      _queryTimes(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_query_time{})),
-      _slowQueryTimes(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_slow_query_time{})),
-      _totalQueryExecutionTime(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_total_query_time_msec_total{})),
-      _queriesCounter(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_all_query_total{})),
-      _slowQueriesCounter(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_slow_query_total{})),
-      _runningQueries(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_current_query{})),
-      _globalQueryMemoryUsage(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_global_memory_usage{})),
-      _globalQueryMemoryLimit(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_global_memory_limit{})),
+      _queryTimes(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_aql_query_time{})),
+      _slowQueryTimes(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_aql_slow_query_time{})),
+      _totalQueryExecutionTime(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_aql_total_query_time_msec_total{})),
+      _queriesCounter(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_aql_all_query_total{})),
+      _slowQueriesCounter(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_aql_slow_query_total{})),
+      _runningQueries(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_aql_current_query{})),
+      _globalQueryMemoryUsage(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_aql_global_memory_usage{})),
+      _globalQueryMemoryLimit(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_aql_global_memory_limit{})),
       _globalQueryMemoryLimitReached(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_global_query_memory_limit_reached_total{})),
+          server.getFeature<metrics::MetricsFeature>().add(
+              arangodb_aql_global_query_memory_limit_reached_total{})),
       _localQueryMemoryLimitReached(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_local_query_memory_limit_reached_total{})) {
+          server.getFeature<metrics::MetricsFeature>().add(
+              arangodb_aql_local_query_memory_limit_reached_total{})) {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
@@ -208,64 +230,84 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
   _queryCacheIncludeSystem = properties.includeSystem;
 }
 
-void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void QueryRegistryFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
   options->addSection("query", "AQL queries");
 
   options->addOldOption("database.query-cache-mode", "query.cache-mode");
   options->addOldOption("database.query-cache-max-results",
                         "query.cache-entries");
   options->addOldOption("database.disable-query-tracking", "query.tracking");
-  
-  options->addOption("--query.global-memory-limit",
-                     "memory threshold for all AQL queries combined (in bytes, 0 = no limit)",
-                     new UInt64Parameter(&_queryGlobalMemoryLimit, PhysicalMemory::getValue()),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic))
-                     .setIntroducedIn(30800);
 
-  options->addOption("--query.memory-limit",
-                     "memory threshold per AQL query (in bytes, 0 = no limit)",
-                     new UInt64Parameter(&_queryMemoryLimit, PhysicalMemory::getValue()),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
-  
-  options->addOption("--query.memory-limit-override",
-                     "allow increasing per-query memory limits for individual queries",
-                     new BooleanParameter(&_queryMemoryLimitOverride))
-                     .setIntroducedIn(30800);
-  
-  options->addOption("--query.max-runtime",
-                     "runtime threshold for AQL queries (in seconds, 0 = no limit)",
-                     new DoubleParameter(&_queryMaxRuntime))
-                     .setIntroducedIn(30607).setIntroducedIn(30703);
+  options
+      ->addOption("--query.global-memory-limit",
+                  "memory threshold for all AQL queries combined (in bytes, 0 "
+                  "= no limit)",
+                  new UInt64Parameter(&_queryGlobalMemoryLimit,
+                                      PhysicalMemory::getValue()),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Dynamic))
+      .setIntroducedIn(30800);
+
+  options->addOption(
+      "--query.memory-limit",
+      "memory threshold per AQL query (in bytes, 0 = no limit)",
+      new UInt64Parameter(&_queryMemoryLimit, PhysicalMemory::getValue()),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
+
+  options
+      ->addOption(
+          "--query.memory-limit-override",
+          "allow increasing per-query memory limits for individual queries",
+          new BooleanParameter(&_queryMemoryLimitOverride))
+      .setIntroducedIn(30800);
+
+  options
+      ->addOption(
+          "--query.max-runtime",
+          "runtime threshold for AQL queries (in seconds, 0 = no limit)",
+          new DoubleParameter(&_queryMaxRuntime))
+      .setIntroducedIn(30607)
+      .setIntroducedIn(30703);
 
   options->addOption("--query.tracking", "whether to track queries",
                      new BooleanParameter(&_trackingEnabled));
 
-  options->addOption("--query.tracking-slow-queries", "whether to track slow queries",
-                     new BooleanParameter(&_trackSlowQueries))
-                     .setIntroducedIn(30704);
+  options
+      ->addOption("--query.tracking-slow-queries",
+                  "whether to track slow queries",
+                  new BooleanParameter(&_trackSlowQueries))
+      .setIntroducedIn(30704);
 
-  options->addOption("--query.tracking-with-querystring", "whether to track the query string",
-                     new BooleanParameter(&_trackQueryString))
-                     .setIntroducedIn(30704);
+  options
+      ->addOption("--query.tracking-with-querystring",
+                  "whether to track the query string",
+                  new BooleanParameter(&_trackQueryString))
+      .setIntroducedIn(30704);
 
   options->addOption("--query.tracking-with-bindvars",
                      "whether to track bind vars with AQL queries",
                      new BooleanParameter(&_trackBindVars));
-  
-  options->addOption("--query.tracking-with-datasources", "whether to track data sources with AQL queries",
-                     new BooleanParameter(&_trackDataSources))
-                     .setIntroducedIn(30704);
+
+  options
+      ->addOption("--query.tracking-with-datasources",
+                  "whether to track data sources with AQL queries",
+                  new BooleanParameter(&_trackDataSources))
+      .setIntroducedIn(30704);
 
   options->addOption("--query.fail-on-warning",
                      "whether AQL queries should fail with errors even for "
                      "recoverable warnings",
                      new BooleanParameter(&_failOnWarning));
-  
-  options->addOption("--query.require-with",
-                     "whether AQL queries should require the `WITH collection-name` clause even on single servers "
-                     "(enable this to remove this behavior difference between single server and cluster)",
-                     new BooleanParameter(&_requireWith))
-                     .setIntroducedIn(30800);
+
+  options
+      ->addOption("--query.require-with",
+                  "whether AQL queries should require the `WITH "
+                  "collection-name` clause even on single servers "
+                  "(enable this to remove this behavior difference between "
+                  "single server and cluster)",
+                  new BooleanParameter(&_requireWith))
+      .setIntroducedIn(30800);
 
   options->addOption("--query.slow-threshold",
                      "threshold for slow AQL queries (in seconds)",
@@ -302,33 +344,41 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOption("--query.optimizer-max-plans",
                      "maximum number of query plans to create for a query",
                      new UInt64Parameter(&_maxQueryPlans));
-                     
-options->addOption("--query.max-nodes-per-callstack",
-                     "maximum number execution nodes on the callstack before "
-                     "splitting the remaining nodes into a separate thread",
-                     new UInt64Parameter(&_maxNodesPerCallstack),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-                     .setIntroducedIn(30900);
 
-  options->addOption("--query.registry-ttl",
-                     "default time-to-live of cursors and query snippets (in "
-                     "seconds); if <= 0, value will default to 30 for "
-                     "single-server instances or 600 for coordinator instances",
-                     new DoubleParameter(&_queryRegistryTTL),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
-  
+  options
+      ->addOption(
+          "--query.max-nodes-per-callstack",
+          "maximum number execution nodes on the callstack before "
+          "splitting the remaining nodes into a separate thread",
+          new UInt64Parameter(&_maxNodesPerCallstack),
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setIntroducedIn(30900);
+
+  options->addOption(
+      "--query.registry-ttl",
+      "default time-to-live of cursors and query snippets (in "
+      "seconds); if <= 0, value will default to 30 for "
+      "single-server instances or 600 for coordinator instances",
+      new DoubleParameter(&_queryRegistryTTL),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+
 #ifdef USE_ENTERPRISE
-  options->addOption("--query.smart-joins",
-                     "enable SmartJoins query optimization",
-                     new BooleanParameter(&_smartJoins),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Enterprise))
-                     .setIntroducedIn(30405);
-  
-  options->addOption("--query.parallelize-traversals",
-                     "enable traversal parallelization",
-                     new BooleanParameter(&_parallelizeTraversals),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Enterprise))
-                     .setIntroducedIn(30701);
+  options
+      ->addOption("--query.smart-joins", "enable SmartJoins query optimization",
+                  new BooleanParameter(&_smartJoins),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Hidden,
+                      arangodb::options::Flags::Enterprise))
+      .setIntroducedIn(30405);
+
+  options
+      ->addOption("--query.parallelize-traversals",
+                  "enable traversal parallelization",
+                  new BooleanParameter(&_parallelizeTraversals),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Hidden,
+                      arangodb::options::Flags::Enterprise))
+      .setIntroducedIn(30701);
 
   // this is an Enterprise-only option
   // in Community Edition, _maxParallelism will stay at its default value
@@ -339,29 +389,36 @@ options->addOption("--query.max-nodes-per-callstack",
           "maximum number of threads to use for a single query; "
           "actual query execution may use less depending on various factors",
           new UInt64Parameter(&_maxParallelism),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
-                                              arangodb::options::Flags::Enterprise))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Hidden,
+              arangodb::options::Flags::Enterprise))
       .setIntroducedIn(30701);
 #endif
-  
-  options->addOption("--query.allow-collections-in-expressions",
-                     "allow full collections to be used in AQL expressions",
-                     new BooleanParameter(&_allowCollectionsInExpressions),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-                     .setIntroducedIn(30800).setDeprecatedIn(30900);
+
+  options
+      ->addOption(
+          "--query.allow-collections-in-expressions",
+          "allow full collections to be used in AQL expressions",
+          new BooleanParameter(&_allowCollectionsInExpressions),
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setIntroducedIn(30800)
+      .setDeprecatedIn(30900);
 }
 
-void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void QueryRegistryFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> options) {
   if (_queryGlobalMemoryLimit > 0 &&
       _queryMemoryLimit > _queryGlobalMemoryLimit) {
     LOG_TOPIC("2af5f", FATAL, Logger::AQL)
-        << "invalid value for `--query.global-memory-limit`. expecting 0 or a value >= `--query.memory-limit`";
+        << "invalid value for `--query.global-memory-limit`. expecting 0 or a "
+           "value >= `--query.memory-limit`";
     FATAL_ERROR_EXIT();
   }
 
   if (_queryMaxRuntime < 0.0) {
     LOG_TOPIC("46572", FATAL, Logger::AQL)
-        << "invalid value for `--query.max-runtime`. expecting 0 or a positive value";
+        << "invalid value for `--query.max-runtime`. expecting 0 or a positive "
+           "value";
     FATAL_ERROR_EXIT();
   }
 
@@ -374,18 +431,22 @@ void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
 
   // cap the value somehow. creating this many plans really does not make sense
   _maxQueryPlans = std::min(_maxQueryPlans, decltype(_maxQueryPlans)(1024));
-  
-  _maxParallelism = std::clamp(_maxParallelism, static_cast<uint64_t>(1),
-                               static_cast<uint64_t>(NumberOfCores::getValue()));
-                               
+
+  _maxParallelism =
+      std::clamp(_maxParallelism, static_cast<uint64_t>(1),
+                 static_cast<uint64_t>(NumberOfCores::getValue()));
+
   if (_queryRegistryTTL <= 0) {
-    TRI_ASSERT(ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED);
+    TRI_ASSERT(ServerState::instance()->getRole() !=
+               ServerState::ROLE_UNDEFINED);
     // set to default value based on instance type
-    _queryRegistryTTL = ServerState::instance()->isSingleServer() ? 30.0 : 600.0;
+    _queryRegistryTTL =
+        ServerState::instance()->isSingleServer() ? 30.0 : 600.0;
   }
 
-  TRI_ASSERT(_queryGlobalMemoryLimit == 0 || _queryMemoryLimit <= _queryGlobalMemoryLimit);
-  
+  TRI_ASSERT(_queryGlobalMemoryLimit == 0 ||
+             _queryMemoryLimit <= _queryGlobalMemoryLimit);
+
   aql::QueryOptions::defaultMemoryLimit = _queryMemoryLimit;
   aql::QueryOptions::defaultMaxNumberOfPlans = _maxQueryPlans;
   aql::QueryOptions::defaultMaxNodesPerCallstack = _maxNodesPerCallstack;
@@ -400,7 +461,7 @@ void QueryRegistryFeature::prepare() {
   GlobalResourceMonitor::instance().memoryLimit(_queryGlobalMemoryLimit);
   // prepare gauge value
   _globalQueryMemoryLimit = _queryGlobalMemoryLimit;
-  
+
 #ifndef ARANGODB_USE_GOOGLE_TESTS
   // we are now intentionally not printing this message during testing,
   // because otherwise it would be printed a *lot* of times
@@ -408,11 +469,13 @@ void QueryRegistryFeature::prepare() {
   if (server().options() != nullptr &&
       !server().options()->processingResult().touched("--query.memory-limit")) {
     LOG_TOPIC("f6e0e", INFO, Logger::AQL)
-        << "memory limit per AQL query automatically set to " << _queryMemoryLimit << " bytes. "
-        << "to modify this value, please adjust the startup option `--query.memory-limit`";
+        << "memory limit per AQL query automatically set to "
+        << _queryMemoryLimit << " bytes. "
+        << "to modify this value, please adjust the startup option "
+           "`--query.memory-limit`";
   }
 #endif
-  
+
   if (ServerState::instance()->isCoordinator()) {
     // turn the query cache off on the coordinator, as it is not implemented
     // for the cluster
@@ -420,12 +483,13 @@ void QueryRegistryFeature::prepare() {
   }
 
   // configure the query cache
-  arangodb::aql::QueryCacheProperties properties{arangodb::aql::QueryCache::modeString(_queryCacheMode),
-                                                 _queryCacheMaxResultsCount,
-                                                 _queryCacheMaxResultsSize,
-                                                 _queryCacheMaxEntrySize,
-                                                 _queryCacheIncludeSystem,
-                                                 _trackBindVars};
+  arangodb::aql::QueryCacheProperties properties{
+      arangodb::aql::QueryCache::modeString(_queryCacheMode),
+      _queryCacheMaxResultsCount,
+      _queryCacheMaxResultsSize,
+      _queryCacheMaxEntrySize,
+      _queryCacheIncludeSystem,
+      _trackBindVars};
   arangodb::aql::QueryCache::instance()->properties(properties);
   // create the query registry
   _queryRegistry = std::make_unique<aql::QueryRegistry>(_queryRegistryTTL);
@@ -460,21 +524,19 @@ void QueryRegistryFeature::updateMetrics() {
   _localQueryMemoryLimitReached = stats.localLimitReached;
 }
 
-void QueryRegistryFeature::trackQueryStart() noexcept {
-  ++_runningQueries;
-}
+void QueryRegistryFeature::trackQueryStart() noexcept { ++_runningQueries; }
 
-void QueryRegistryFeature::trackQueryEnd(double time) { 
-  ++_queriesCounter; 
+void QueryRegistryFeature::trackQueryEnd(double time) {
+  ++_queriesCounter;
   _queryTimes.count(time);
   _totalQueryExecutionTime += static_cast<uint64_t>(1000.0 * time);
   --_runningQueries;
 }
 
-void QueryRegistryFeature::trackSlowQuery(double time) { 
+void QueryRegistryFeature::trackSlowQuery(double time) {
   // query is already counted here as normal query, so don't count it
   // again in _queryTimes or _totalQueryExecutionTime
-  ++_slowQueriesCounter; 
+  ++_slowQueriesCounter;
   _slowQueryTimes.count(time);
 }
 

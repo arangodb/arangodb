@@ -1,0 +1,15 @@
+{
+    "key": "flyweight",
+    "name": "Flyweight",
+    "authors": [
+        "Joaqu\u00edn M L\u00f3pez Mu\u00f1oz"
+    ],
+    "description": "Design pattern to manage large quantities of highly redundant objects.",
+    "category": [
+        "Patterns"
+    ],
+    "maintainers": [
+        "Joaquin M Lopez Munoz <joaquin.lopezmunoz -at- gmail.com>"
+    ],
+    "cxxstd": "03"
+}

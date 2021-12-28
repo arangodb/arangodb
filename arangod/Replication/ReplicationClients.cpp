@@ -46,7 +46,8 @@ struct SyncerInfo {
         clientId(progress.clientId),
         clientInfo(progress.clientInfo) {}
 
-  SyncerInfo(SyncerId syncerId, ServerId clientId, std::string const& clientInfo)
+  SyncerInfo(SyncerId syncerId, ServerId clientId,
+             std::string const& clientInfo)
       : syncerId(syncerId), clientId(clientId), clientInfo(clientInfo) {}
 
   SyncerId const syncerId;
@@ -67,8 +68,10 @@ std::ostream& operator<<(std::ostream& ostream, SyncerInfo const& info) {
 
 /// @brief simply extend the lifetime of a specific client, so that its entry
 /// does not expire but does not update the client's lastServedTick value
-void ReplicationClientsProgressTracker::extend(SyncerId syncerId, ServerId clientId,
-                                               std::string const& clientInfo, double ttl) {
+void ReplicationClientsProgressTracker::extend(SyncerId syncerId,
+                                               ServerId clientId,
+                                               std::string const& clientInfo,
+                                               double ttl) {
   auto const key = getKey(syncerId, clientId);
   if (key.first == KeyType::INVALID) {
     // we will not store any info for these client ids
@@ -105,9 +108,11 @@ void ReplicationClientsProgressTracker::extend(SyncerId syncerId, ServerId clien
 
 /// @brief simply update the progress of a specific client, so that its entry
 /// does not expire this will update the client's lastServedTick value
-void ReplicationClientsProgressTracker::track(SyncerId syncerId, ServerId clientId,
+void ReplicationClientsProgressTracker::track(SyncerId syncerId,
+                                              ServerId clientId,
                                               std::string const& clientInfo,
-                                              TRI_voc_tick_t lastServedTick, double ttl) {
+                                              TRI_voc_tick_t lastServedTick,
+                                              double ttl) {
   auto const key = getKey(syncerId, clientId);
   if (key.first == KeyType::INVALID) {
     // we will not store any info for these client ids
@@ -127,12 +132,10 @@ void ReplicationClientsProgressTracker::track(SyncerId syncerId, ServerId client
 
   // insert new client entry
   auto const [it, inserted] = _clients.try_emplace(
-    key,
-    arangodb::lazyConstruct([&]{
-      return ReplicationClientProgress(timestamp, expires, lastServedTick,
-                                                  syncerId, clientId, clientInfo);
-    })
-  );
+      key, arangodb::lazyConstruct([&] {
+        return ReplicationClientProgress(timestamp, expires, lastServedTick,
+                                         syncerId, clientId, clientInfo);
+      }));
   auto const syncer = syncerId.toString();
 
   if (inserted) {
@@ -148,17 +151,18 @@ void ReplicationClientsProgressTracker::track(SyncerId syncerId, ServerId client
   if (lastServedTick > 0) {
     it->second.lastServedTick = lastServedTick;
     LOG_TOPIC("47d4a", TRACE, Logger::REPLICATION)
-          << "updating replication client entry for " << SyncerInfo{it->second}
+        << "updating replication client entry for " << SyncerInfo{it->second}
         << " using TTL " << ttl << ", last tick: " << lastServedTick;
   } else {
     LOG_TOPIC("fce26", TRACE, Logger::REPLICATION)
-          << "updating replication client entry for " << SyncerInfo{it->second}
+        << "updating replication client entry for " << SyncerInfo{it->second}
         << " using TTL " << ttl;
   }
 }
 
 /// @brief serialize the existing clients to a VelocyPack builder
-void ReplicationClientsProgressTracker::toVelocyPack(velocypack::Builder& builder) const {
+void ReplicationClientsProgressTracker::toVelocyPack(
+    velocypack::Builder& builder) const {
   TRI_ASSERT(builder.isOpenArray());
   READ_LOCKER(readLocker, _lock);
 
@@ -173,16 +177,19 @@ void ReplicationClientsProgressTracker::toVelocyPack(velocypack::Builder& builde
     // lastSeenStamp and expireStamp use the steady_clock. Convert them to
     // system_clock before serialization.
     double const lastSeenStamp =
-        ReplicationClientProgress::steadyClockToSystemClock(progress.lastSeenStamp);
+        ReplicationClientProgress::steadyClockToSystemClock(
+            progress.lastSeenStamp);
     double const expireStamp =
-        ReplicationClientProgress::steadyClockToSystemClock(progress.expireStamp);
+        ReplicationClientProgress::steadyClockToSystemClock(
+            progress.expireStamp);
     TRI_GetTimeStampReplication(lastSeenStamp, &buffer[0], sizeof(buffer));
     builder.add("time", VPackValue(buffer));
 
     TRI_GetTimeStampReplication(expireStamp, &buffer[0], sizeof(buffer));
     builder.add("expires", VPackValue(buffer));
 
-    builder.add("lastServedTick", VPackValue(std::to_string(progress.lastServedTick)));
+    builder.add("lastServedTick",
+                VPackValue(std::to_string(progress.lastServedTick)));
     builder.close();
   }
 }
@@ -203,12 +210,33 @@ void ReplicationClientsProgressTracker::garbageCollect(double thresholdStamp) {
       auto const& progress = it->second;
       // found an entry that is already expired
       LOG_TOPIC("8d7db", DEBUG, Logger::REPLICATION)
-          << "removing expired replication client entry for " << SyncerInfo{progress};
+          << "removing expired replication client entry for "
+          << SyncerInfo{progress};
       it = _clients.erase(it);
     } else {
       ++it;
     }
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  LOG_TOPIC("239fb", DEBUG, Logger::REPLICATION)
+      << "replication progress tracker has " << _clients.size()
+      << " clients left";
+
+  if (!_clients.empty()) {
+    for (auto const& it : _clients) {
+      ReplicationClientProgress const& value = it.second;
+
+      LOG_TOPIC("81d72", TRACE, Logger::REPLICATION)
+          << "replication progress tracker entry: "
+          << "server: " << value.clientId.id()
+          << ", syncer: " << value.syncerId.toString()
+          << ", lastServed: " << value.lastServedTick
+          << ", lastSeen: " << value.lastSeenStamp
+          << ", expire: " << value.expireStamp;
+    }
+  }
+#endif
 }
 
 /// @brief return the lowest lastServedTick value for all clients
@@ -222,7 +250,8 @@ uint64_t ReplicationClientsProgressTracker::lowestServedValue() const {
   return value;
 }
 
-void ReplicationClientsProgressTracker::untrack(SyncerId const syncerId, ServerId const clientId,
+void ReplicationClientsProgressTracker::untrack(SyncerId const syncerId,
+                                                ServerId const clientId,
                                                 std::string const& clientInfo) {
   auto const key = getKey(syncerId, clientId);
   if (key.first == KeyType::INVALID) {
@@ -237,21 +266,23 @@ void ReplicationClientsProgressTracker::untrack(SyncerId const syncerId, ServerI
   _clients.erase(key);
 }
 
-double ReplicationClientProgress::steadyClockToSystemClock(double steadyTimestamp) {
+double ReplicationClientProgress::steadyClockToSystemClock(
+    double steadyTimestamp) {
   using namespace std::chrono;
 
-  auto steadyTimePoint =
-      time_point<steady_clock, duration<double>>(duration<double>(steadyTimestamp));
+  auto steadyTimePoint = time_point<steady_clock, duration<double>>(
+      duration<double>(steadyTimestamp));
   auto systemTimePoint =
-      system_clock::now() +
-      duration_cast<system_clock::duration>(steadyTimePoint - steady_clock::now());
+      system_clock::now() + duration_cast<system_clock::duration>(
+                                steadyTimePoint - steady_clock::now());
 
   return duration<double>(systemTimePoint.time_since_epoch()).count();
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 ReplicationClientsProgressTracker::~ReplicationClientsProgressTracker() {
-  if (!_clients.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REPLICATION)) {
+  if (!_clients.empty() &&
+      Logger::isEnabled(LogLevel::TRACE, Logger::REPLICATION)) {
     VPackBuilder builder;
     builder.openArray();
     toVelocyPack(builder);

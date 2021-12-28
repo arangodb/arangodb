@@ -23,9 +23,8 @@
 
 #include "LdapUrlParser.h"
 
-#include <velocypack/StringRef.h>
-
 #include <regex>
+#include <string_view>
 
 using namespace arangodb;
 
@@ -63,13 +62,13 @@ LdapUrlParseResult LdapUrlParser::parse(std::string const& url) {
 void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
   result.valid = true;
 
-  arangodb::velocypack::StringRef view(url);
+  std::string_view view(url);
   if (view.substr(0, 7).compare("ldap://") == 0) {
     // skip over initial "ldap://"
-    view = arangodb::velocypack::StringRef(view.data() + 7);
+    view = std::string_view(view.data() + 7);
     result.protocol.populate(std::string("ldap"));
   } else if (view.substr(0, 8).compare("ldaps://") == 0) {
-    view = arangodb::velocypack::StringRef(view.data() + 8);
+    view = std::string_view(view.data() + 8);
     result.protocol.populate(std::string("ldaps"));
   } else {
     result.protocol.populate(std::string("ldap"));
@@ -88,36 +87,40 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
       l = pos;
     }
 
-    arangodb::velocypack::StringRef host(view.data(), l);
+    std::string_view host(view.data(), l);
     size_t colon = host.find(':');
     if (colon == std::string::npos) {
       // no port
       result.host.populate(std::string(host.data(), host.size()));
     } else {
       result.host.populate(std::string(host.data(), colon));
-      result.port.populate(std::string(host.data() + colon + 1, host.size() - colon - 1));
+      result.port.populate(
+          std::string(host.data() + colon + 1, host.size() - colon - 1));
 
-      if (!std::regex_match(result.port.value,
-                            std::regex("^[0-9]+$", std::regex::nosubs | std::regex::ECMAScript))) {
+      if (!std::regex_match(
+              result.port.value,
+              std::regex("^[0-9]+$",
+                         std::regex::nosubs | std::regex::ECMAScript))) {
         // port number must be numeric
         result.valid = false;
       }
     }
 
-    if (!std::regex_match(result.host.value,
-                          std::regex("^[a-zA-Z0-9\\-.]+$",
-                                     std::regex::nosubs | std::regex::ECMAScript))) {
+    if (!std::regex_match(
+            result.host.value,
+            std::regex("^[a-zA-Z0-9\\-.]+$",
+                       std::regex::nosubs | std::regex::ECMAScript))) {
       // host pattern is invalid
       result.valid = false;
     }
 
-    view = arangodb::velocypack::StringRef(host.data() + host.size());
+    view = std::string_view(host.data() + host.size());
   }
 
   // handle basedn
   if (!view.empty() && view[0] == '/') {
     // skip over "/"
-    view = arangodb::velocypack::StringRef(view.data() + 1);
+    view = std::string_view(view.data() + 1);
 
     size_t l = view.size();
     size_t pos = view.find('?');
@@ -125,7 +128,7 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
       l = pos;
     }
 
-    arangodb::velocypack::StringRef basedn(view.data(), l);
+    std::string_view basedn(view.data(), l);
     result.basedn.populate(std::string(basedn.data(), basedn.size()));
     if (basedn.empty()) {
       // basedn is empty
@@ -137,7 +140,7 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
       result.valid = false;
     }
 
-    view = arangodb::velocypack::StringRef(basedn.data() + basedn.size());
+    view = std::string_view(basedn.data() + basedn.size());
   } else {
     // if there is no basedn, we cannot have anything else
     if (!view.empty()) {
@@ -150,7 +153,7 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
   // handle searchAttribute
   if (!view.empty() && view[0] == '?') {
     // skip over "?"
-    view = arangodb::velocypack::StringRef(view.data() + 1);
+    view = std::string_view(view.data() + 1);
 
     size_t l = view.size();
     size_t pos = view.find('?');
@@ -158,18 +161,19 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
       l = pos;
     }
 
-    arangodb::velocypack::StringRef searchAttribute(view.data(), l);
+    std::string_view searchAttribute(view.data(), l);
     result.searchAttribute.populate(
         std::string(searchAttribute.data(), searchAttribute.size()));
     if (result.searchAttribute.value.empty() ||
-        !std::regex_match(result.searchAttribute.value,
-                          std::regex("^[a-zA-Z0-9\\-_]+$",
-                                     std::regex::nosubs | std::regex::ECMAScript))) {
+        !std::regex_match(
+            result.searchAttribute.value,
+            std::regex("^[a-zA-Z0-9\\-_]+$",
+                       std::regex::nosubs | std::regex::ECMAScript))) {
       // search attribute pattern is invalid
       result.valid = false;
     }
 
-    view = arangodb::velocypack::StringRef(searchAttribute.data() + searchAttribute.size());
+    view = std::string_view(searchAttribute.data() + searchAttribute.size());
   } else {
     // if there is no searchAttribute, there must not be anything else
     if (!view.empty()) {
@@ -182,7 +186,7 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
   // handle deep
   if (!view.empty() && view[0] == '?') {
     // skip over "?"
-    view = arangodb::velocypack::StringRef(view.data() + 1);
+    view = std::string_view(view.data() + 1);
 
     size_t l = view.size();
     size_t pos = view.find('?');
@@ -190,17 +194,18 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
       l = pos;
     }
 
-    arangodb::velocypack::StringRef deep(view.data(), l);
+    std::string_view deep(view.data(), l);
     result.deep.populate(std::string(deep.data(), deep.size()));
     if (result.deep.value.empty() ||
-        !std::regex_match(result.deep.value,
-                          std::regex("^[a-zA-Z0-9\\-_]+$",
-                                     std::regex::nosubs | std::regex::ECMAScript))) {
+        !std::regex_match(
+            result.deep.value,
+            std::regex("^[a-zA-Z0-9\\-_]+$",
+                       std::regex::nosubs | std::regex::ECMAScript))) {
       // invalid deep pattern
       result.valid = false;
     }
 
-    view = arangodb::velocypack::StringRef(deep.data() + deep.size());
+    view = std::string_view(deep.data() + deep.size());
   }
 
   // we must be at the end of the string here

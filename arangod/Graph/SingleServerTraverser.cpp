@@ -32,8 +32,6 @@
 #include "Graph/WeightedEnumerator.h"
 #include "Transaction/Methods.h"
 
-#include <velocypack/StringRef.h>
-
 #include <memory>
 
 using namespace arangodb;
@@ -47,26 +45,26 @@ SingleServerTraverser::SingleServerTraverser(TraverserOptions* opts)
 
 SingleServerTraverser::~SingleServerTraverser() = default;
 
-void SingleServerTraverser::addVertexToVelocyPack(arangodb::velocypack::StringRef vid,
+void SingleServerTraverser::addVertexToVelocyPack(std::string_view vid,
                                                   VPackBuilder& result) {
   _opts->cache()->appendVertex(vid, result);
 }
 
-aql::AqlValue SingleServerTraverser::fetchVertexData(arangodb::velocypack::StringRef vid) {
+aql::AqlValue SingleServerTraverser::fetchVertexData(std::string_view vid) {
   arangodb::aql::AqlValue result;
   _opts->cache()->appendVertex(vid, result);
   return result;
 }
 
 void SingleServerTraverser::setStartVertex(std::string const& vid) {
-  arangodb::velocypack::StringRef const s(vid);
+  std::string_view const s(vid);
   if (!vertexMatchesConditions(s, 0)) {
     // Start vertex invalid
     _done = true;
     return;
   }
 
-  arangodb::velocypack::StringRef persId = _opts->cache()->persistString(s);
+  std::string_view persId = _opts->cache()->persistString(s);
   _vertexGetter->reset(persId);
   _enumerator->setStartVertex(persId);
   _done = false;
@@ -77,18 +75,21 @@ void SingleServerTraverser::clear() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(!_vertexGetter->pointsIntoTraverserCache());
 #endif
+  _enumerator->clear();
   traverserCache()->clear();
 }
 
-bool SingleServerTraverser::getVertex(VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
+bool SingleServerTraverser::getVertex(
+    VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
   return _vertexGetter->getVertex(edge, path);
 }
 
 bool SingleServerTraverser::getSingleVertex(VPackSlice edge,
-                                            arangodb::velocypack::StringRef sourceVertexId,
+                                            std::string_view sourceVertexId,
                                             uint64_t depth,
-                                            arangodb::velocypack::StringRef& targetVertexId) {
-  return _vertexGetter->getSingleVertex(edge, sourceVertexId, depth, targetVertexId);
+                                            std::string_view& targetVertexId) {
+  return _vertexGetter->getSingleVertex(edge, sourceVertexId, depth,
+                                        targetVertexId);
 }
 
 void SingleServerTraverser::createEnumerator() {
@@ -116,6 +117,6 @@ void SingleServerTraverser::createEnumerator() {
   }
 }
 
-bool SingleServerTraverser::getVertex(arangodb::velocypack::StringRef vertex, size_t depth) {
+bool SingleServerTraverser::getVertex(std::string_view vertex, size_t depth) {
   return _vertexGetter->getVertex(vertex, depth);
 }

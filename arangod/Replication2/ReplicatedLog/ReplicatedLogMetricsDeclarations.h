@@ -22,25 +22,28 @@
 
 #pragma once
 
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/LogScale.h"
 
 #include <cstdint>
 
 namespace arangodb {
 
 struct AppendEntriesRttScale {
-  using scale_t = log_scale_t<std::uint64_t>;
+  using scale_t = metrics::LogScale<std::uint64_t>;
   static scale_t scale() {
     // values in us, smallest bucket is up to 1ms, scales up to 2^16ms =~ 65s.
-    return {scale_t::supply_smallest_bucket, 2, 0, 1'000, 16};
+    return {scale_t::kSupplySmallestBucket, 2, 0, 1'000, 16};
   }
 };
 
 struct InsertBytesScale {
-  using scale_t = log_scale_t<std::uint64_t>;
+  using scale_t = metrics::LogScale<std::uint64_t>;
   static scale_t scale() {
     // 1 byte up to 16GiB (1 * 4^17 = 16 * 2^30).
-    return {scale_t::supply_smallest_bucket, 4, 0, 1, 17};
+    return {scale_t::kSupplySmallestBucket, 4, 0, 1, 17};
   }
 };
 
@@ -49,8 +52,9 @@ DECLARE_GAUGE(arangodb_replication2_replicated_log_number, std::uint64_t,
 
 DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_append_entries_rtt,
                   AppendEntriesRttScale, "RTT for AppendEntries requests [us]");
-DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_follower_append_entries_rt,
-                  AppendEntriesRttScale, "RT for AppendEntries call [us]");
+DECLARE_HISTOGRAM(
+    arangodb_replication2_replicated_log_follower_append_entries_rt,
+    AppendEntriesRttScale, "RT for AppendEntries call [us]");
 
 DECLARE_COUNTER(arangodb_replication2_replicated_log_creation_total,
                 "Number of replicated logs created since server start");
@@ -62,11 +66,13 @@ DECLARE_GAUGE(
     arangodb_replication2_replicated_log_leader_number, std::uint64_t,
     "Number of replicated logs this server has, and is currently a leader of");
 
-DECLARE_GAUGE(arangodb_replication2_replicated_log_follower_number, std::uint64_t,
+DECLARE_GAUGE(arangodb_replication2_replicated_log_follower_number,
+              std::uint64_t,
               "Number of replicated logs this server has, and is currently a "
               "follower of");
 
-DECLARE_GAUGE(arangodb_replication2_replicated_log_inactive_number, std::uint64_t,
+DECLARE_GAUGE(arangodb_replication2_replicated_log_inactive_number,
+              std::uint64_t,
               "Number of replicated logs this server has, and is currently "
               "neither leader nor follower of");
 
@@ -78,7 +84,8 @@ DECLARE_COUNTER(arangodb_replication2_replicated_log_started_following_total,
                 "Number of times a replicated log on this server started "
                 "following a leader in a term");
 
-DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_inserts_bytes, InsertBytesScale,
+DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_inserts_bytes,
+                  InsertBytesScale,
                   "Number of bytes per insert in replicated log leader "
                   "instances on this server [bytes]");
 

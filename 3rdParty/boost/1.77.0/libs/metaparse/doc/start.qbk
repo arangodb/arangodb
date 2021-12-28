@@ -1,0 +1,20 @@
+[#start]
+[section start]
+
+[h1 Synopsis]
+
+  struct start;
+
+This is a [link metaprogramming_value template metaprogramming value] of type
+[link source_position source position].
+
+[h1 Description]
+
+It represents the beginning of an input text.
+
+[h1 Header]
+
+  #include <boost/metaparse/start.hpp>
+
+[endsect]
+

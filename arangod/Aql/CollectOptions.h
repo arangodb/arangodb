@@ -24,12 +24,13 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 
 namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 namespace aql {
 struct Variable;
 
@@ -46,7 +47,7 @@ struct CollectOptions final {
   CollectOptions& operator=(CollectOptions const& other) = default;
 
   /// @brief constructor
-  explicit CollectOptions(arangodb::velocypack::Slice const&);
+  explicit CollectOptions(arangodb::velocypack::Slice);
 
   /// @brief whether or not the method can be used
   bool canUseMethod(CollectMethod method) const;
@@ -58,10 +59,10 @@ struct CollectOptions final {
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 
   /// @brief get the aggregation method from a string
-  static CollectMethod methodFromString(std::string const&);
+  static CollectMethod methodFromString(std::string_view);
 
   /// @brief stringify the aggregation method
-  static std::string methodToString(CollectOptions::CollectMethod method);
+  static std::string_view methodToString(CollectOptions::CollectMethod method);
 
   CollectMethod method;
 };
@@ -79,4 +80,3 @@ struct AggregateVarInfo final {
 
 }  // namespace aql
 }  // namespace arangodb
-

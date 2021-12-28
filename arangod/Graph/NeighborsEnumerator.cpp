@@ -34,26 +34,30 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
-NeighborsEnumerator::NeighborsEnumerator(Traverser* traverser, TraverserOptions* opts)
-    : PathEnumerator(traverser, opts),
-      _searchDepth(0) {
-
+NeighborsEnumerator::NeighborsEnumerator(Traverser* traverser,
+                                         TraverserOptions* opts)
+    : PathEnumerator(traverser, opts), _searchDepth(0) {
   TRI_ASSERT(opts->isUseBreadthFirst());
-  TRI_ASSERT(opts->uniqueVertices == arangodb::traverser::TraverserOptions::GLOBAL);
+  TRI_ASSERT(opts->uniqueVertices ==
+             arangodb::traverser::TraverserOptions::GLOBAL);
   TRI_ASSERT(!opts->hasDepthLookupInfo());
 }
 
-void NeighborsEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
-  PathEnumerator::setStartVertex(startVertex);
-
+void NeighborsEnumerator::clear() {
   _allFound.clear();
   _currentDepth.clear();
   _lastDepth.clear();
   _iterator = _currentDepth.end();
   _toPrune.clear();
   _searchDepth = 0;
+}
 
-  _allFound.insert(startVertex);
+void NeighborsEnumerator::setStartVertex(std::string_view startVertex) {
+  PathEnumerator::setStartVertex(startVertex);
+
+  clear();
+
+  _allFound.emplace(startVertex);
   _currentDepth.insert(startVertex);
   _iterator = _currentDepth.begin();
 }
@@ -112,7 +116,8 @@ bool NeighborsEnumerator::next() {
     // Do the full depth in one go.
     for (auto const& nextVertex : _lastDepth) {
       EdgeCursor* cursor = getCursor(nextVertex, _searchDepth);
-      cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice vertex, size_t cursorId) {
+      cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice vertex,
+                          size_t cursorId) {
         if (!keepEdge(eid, vertex, nextVertex, _searchDepth, cursorId)) {
           return;
         }
@@ -120,7 +125,8 @@ bool NeighborsEnumerator::next() {
         // Counting should be done in readAll
         if (!vertex.isString()) {
           TRI_ASSERT(vertex.isObject());
-          VPackSlice tmp = transaction::helpers::extractFromFromDocument(vertex);
+          VPackSlice tmp =
+              transaction::helpers::extractFromFromDocument(vertex);
           if (tmp.compareString(nextVertex.data(), nextVertex.length()) == 0) {
             tmp = transaction::helpers::extractToFromDocument(vertex);
           }
@@ -128,9 +134,9 @@ bool NeighborsEnumerator::next() {
           vertex = tmp;
         }
 
-        arangodb::velocypack::StringRef v(vertex);
+        std::string_view v(vertex.stringView());
 
-        if (_allFound.find(v) == _allFound.end()) {
+        if (!_allFound.contains(v)) {
           v = _opts->cache()->persistString(v);
 
           if (_traverser->vertexMatchesConditions(v, _searchDepth + 1)) {
@@ -171,7 +177,8 @@ arangodb::aql::AqlValue NeighborsEnumerator::lastEdgeToAqlValue() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-arangodb::aql::AqlValue NeighborsEnumerator::pathToAqlValue(arangodb::velocypack::Builder& result) {
+arangodb::aql::AqlValue NeighborsEnumerator::pathToAqlValue(
+    arangodb::velocypack::Builder& result) {
   // If we get here the optimizer decided we do NOT need paths
   // But the Block asks for it.
   TRI_ASSERT(false);
@@ -190,7 +197,7 @@ void NeighborsEnumerator::swapLastAndCurrentDepth() {
   _currentDepth.clear();
 }
 
-bool NeighborsEnumerator::shouldPrune(arangodb::velocypack::StringRef v) {
+bool NeighborsEnumerator::shouldPrune(std::string_view v) {
   // Prune here
   if (!_opts->usesPrune()) {
     return false;

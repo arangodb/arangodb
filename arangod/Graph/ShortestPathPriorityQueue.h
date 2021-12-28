@@ -28,11 +28,12 @@
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 namespace graph {
 
-template <typename Key, typename Value, typename Weight>
+template<typename Key, typename Value, typename Weight>
 class ShortestPathPriorityQueue {
   // This class implements a data structure that is a key/value
   // store with the additional property that every Value has a
@@ -188,7 +189,8 @@ class ShortestPathPriorityQueue {
   /// @brief popMinimal, returns true if something was returned and false
   /// if the structure is empty. Key and Value are stored in k and v.
   /// This will keep the unique_ptr inside the history for further lookup.
-  /// In case you doe not want to lookup the value, you need to call stealMinimal
+  /// In case you doe not want to lookup the value, you need to call
+  /// stealMinimal
   //////////////////////////////////////////////////////////////////////////////
 
   bool popMinimal(Key& k, Value*& v) {
@@ -384,7 +386,7 @@ class ShortestPathPriorityQueue {
   /// @brief _lookup, this provides O(1) lookup by Key
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<Key, ssize_t> _lookup;
+  containers::FlatHashMap<Key, ssize_t> _lookup;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _isHeap, starts as false, in which case we only use a deque,

@@ -1,0 +1,68 @@
+#
+# Copyright (c) 2003-2021 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+
+import feature ;
+
+lib socket ; # SOLARIS, QNXNTO
+lib nsl ; # SOLARIS
+lib ws2_32 ; # NT
+lib mswsock ; # NT
+lib ipv6 ; # HPUX
+lib network ; # HAIKU
+
+project
+  : requirements
+    <library>/boost/date_time//boost_date_time
+    <library>/boost/system//boost_system
+    <library>/boost/chrono//boost_chrono
+    <library>/boost/regex//boost_regex
+    <define>BOOST_ALL_NO_LIB=1
+    <threading>multi
+    <target-os>linux:<define>_XOPEN_SOURCE=600
+    <target-os>linux:<define>_GNU_SOURCE=1
+    <target-os>solaris:<define>_XOPEN_SOURCE=500
+    <target-os>solaris:<define>__EXTENSIONS__
+    <target-os>solaris:<library>socket
+    <target-os>solaris:<library>nsl
+    <target-os>windows:<define>_WIN32_WINNT=0x0501
+    <target-os>windows,<toolset>cw:<library>ws2_32
+    <target-os>windows,<toolset>cw:<library>mswsock
+    <target-os>windows,<toolset>gcc:<library>ws2_32
+    <target-os>windows,<toolset>gcc:<library>mswsock
+    <target-os>windows,<toolset>gcc-cygwin:<define>__USE_W32_SOCKETS
+    <target-os>hpux,<toolset>gcc:<define>_XOPEN_SOURCE_EXTENDED
+    <target-os>hpux:<library>ipv6
+    <target-os>qnxnto:<library>socket
+    <target-os>haiku:<library>network
+  ;
+
+test-suite "asio" :
+  [ run any_executor.cpp ]
+  [ run blocking.cpp ]
+  [ run blocking_adaptation.cpp ]
+  [ run bulk_execute.cpp ]
+  [ run bulk_guarantee.cpp ]
+  [ run connect.cpp : : : : execution_connect ]
+  [ run context_as.cpp ]
+  [ run execute.cpp ]
+  [ run executor.cpp ]
+  [ run invocable_archetype.cpp ]
+  [ run mapping.cpp ]
+  [ run operation_state.cpp ]
+  [ run outstanding_work.cpp ]
+  [ run prefer_only.cpp ]
+  [ run receiver.cpp ]
+  [ run relationship.cpp ]
+  [ run schedule.cpp ]
+  [ run scheduler.cpp ]
+  [ run sender.cpp ]
+  [ run set_done.cpp ]
+  [ run set_error.cpp ]
+  [ run set_value.cpp ]
+  [ run start.cpp ]
+  [ run submit.cpp ]
+  ;

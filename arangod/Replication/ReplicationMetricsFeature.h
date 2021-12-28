@@ -24,7 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "RestServer/Metrics.h"
+#include "Metrics/Fwd.h"
 
 #include <cstdint>
 
@@ -33,14 +33,17 @@ namespace application_features {
 class ApplicationServer;
 }
 
-class ReplicationMetricsFeature final : public application_features::ApplicationFeature {
+class ReplicationMetricsFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit ReplicationMetricsFeature(application_features::ApplicationServer& server);
+  explicit ReplicationMetricsFeature(
+      application_features::ApplicationServer& server);
 
   struct InitialSyncStats {
-    explicit InitialSyncStats(ReplicationMetricsFeature& feature, bool autoPublish) noexcept
+    explicit InitialSyncStats(ReplicationMetricsFeature& feature,
+                              bool autoPublish) noexcept
         : feature(feature), autoPublish(autoPublish) {}
-    
+
     // will update the system-wide statistics with the current values
     ~InitialSyncStats() noexcept;
 
@@ -48,7 +51,7 @@ class ReplicationMetricsFeature final : public application_features::Application
 
     /// @brief updates the system-wide metrics
     void publish();
-    
+
     /// @brief resets the local statistics
     void reset() noexcept;
 
@@ -82,9 +85,11 @@ class ReplicationMetricsFeature final : public application_features::Application
     // total time spent waiting on response for initial call to
     // /_api/replication/keys
     double waitedForInitial = 0.0;
-    // total time spent waiting for responses to /_api/replication/keys?type=keys
+    // total time spent waiting for responses to
+    // /_api/replication/keys?type=keys
     double waitedForKeys = 0.0;
-    // total time spent waiting for responses to /_api/replication/keys?type=docs
+    // total time spent waiting for responses to
+    // /_api/replication/keys?type=docs
     double waitedForDocs = 0.0;
     double waitedForInsertions = 0.0;
     double waitedForRemovals = 0.0;
@@ -93,20 +98,21 @@ class ReplicationMetricsFeature final : public application_features::Application
   };
 
   struct TailingSyncStats {
-    explicit TailingSyncStats(ReplicationMetricsFeature& feature, bool autoPublish) noexcept
+    explicit TailingSyncStats(ReplicationMetricsFeature& feature,
+                              bool autoPublish) noexcept
         : feature(feature), autoPublish(autoPublish) {}
-    
+
     // will update the system-wide statistics with the current values
     ~TailingSyncStats() noexcept;
 
     ReplicationMetricsFeature& feature;
-    
+
     /// @brief updates the system-wide metrics
     void publish();
-    
+
     /// @brief resets the local statistics
     void reset() noexcept;
-    
+
     TailingSyncStats& operator+=(TailingSyncStats const& other) noexcept;
 
     // total number of requests to /_api/wal/tail
@@ -125,75 +131,74 @@ class ReplicationMetricsFeature final : public application_features::Application
     bool autoPublish;
   };
 
-  Counter& synchronousTimeTotal();
-  Counter& synchronousOpsTotal();
+  metrics::Counter& synchronousTimeTotal();
+  metrics::Counter& synchronousOpsTotal();
 
  private:
   // dump statistics
-  
+
   // total number of requests to /_api/replication/dump
-  Counter& _numDumpRequests;
+  metrics::Counter& _numDumpRequests;
   // total number of bytes received for dump requests
-  Counter& _numDumpBytesReceived;
+  metrics::Counter& _numDumpBytesReceived;
   // total number of markers processed for dump requests
-  Counter& _numDumpDocuments;
+  metrics::Counter& _numDumpDocuments;
   // total time spent waiting for responses to /_api/replication/dump
-  Counter& _waitedForDump;
+  metrics::Counter& _waitedForDump;
   // total time spent for locally applying dump markers
-  Counter& _waitedForDumpApply;
+  metrics::Counter& _waitedForDumpApply;
 
   // initial sync statistics
-  
+
   // total number of requests to /_api/replication/keys?type=keys
-  Counter& _numSyncKeysRequests;
+  metrics::Counter& _numSyncKeysRequests;
   // total number of requests to /_api/replication/keys?type=docs
-  Counter& _numSyncDocsRequests;
+  metrics::Counter& _numSyncDocsRequests;
   // total number of documents that for which document data were requested
-  Counter& _numSyncDocsRequested;
+  metrics::Counter& _numSyncDocsRequested;
   // total number of insert operations performed during sync
-  Counter& _numSyncDocsInserted;
+  metrics::Counter& _numSyncDocsInserted;
   // total number of remove operations performed during sync
-  Counter& _numSyncDocsRemoved;
+  metrics::Counter& _numSyncDocsRemoved;
   // total number of bytes received for keys and docs requests
-  Counter& _numSyncBytesReceived;
+  metrics::Counter& _numSyncBytesReceived;
   // total time spent waiting on response for initial call to
   // /_api/replication/keys
-  Counter& _waitedForSyncInitial;
+  metrics::Counter& _waitedForSyncInitial;
   // total time spent waiting for responses to /_api/replication/keys?type=keys
-  Counter& _waitedForSyncKeys;
+  metrics::Counter& _waitedForSyncKeys;
   // total time spent waiting for responses to /_api/replication/keys?type=docs
-  Counter& _waitedForSyncDocs;
-  Counter& _waitedForSyncInsertions;
-  Counter& _waitedForSyncRemovals;
-  
+  metrics::Counter& _waitedForSyncDocs;
+  metrics::Counter& _waitedForSyncInsertions;
+  metrics::Counter& _waitedForSyncRemovals;
+
   // tailing statistics
-  
+
   // total number of requests to tailing API
-  Counter& _numTailingRequests;
+  metrics::Counter& _numTailingRequests;
   // required follow tick value ... is not present on leader ...
-  Counter& _numTailingFollowTickNotPresent;
+  metrics::Counter& _numTailingFollowTickNotPresent;
   // total number of processed markers during tailing
-  Counter& _numTailingProcessedMarkers;
+  metrics::Counter& _numTailingProcessedMarkers;
   // total number of processed document markers during tailing
-  Counter& _numTailingProcessedDocuments;
+  metrics::Counter& _numTailingProcessedDocuments;
   // total number of processed removals markers during tailing
-  Counter& _numTailingProcessedRemovals;
+  metrics::Counter& _numTailingProcessedRemovals;
   // total number of bytes received for tailing requests
-  Counter& _numTailingBytesReceived;
+  metrics::Counter& _numTailingBytesReceived;
   // total number of failed connection attempts during tailing syncing
-  Counter& _numFailedConnects;
+  metrics::Counter& _numFailedConnects;
   // total time spent waiting for tail requests
-  Counter& _waitedForTailing;
+  metrics::Counter& _waitedForTailing;
   // total time spent waiting for applying tailing markers
-  Counter& _waitedForTailingApply;
+  metrics::Counter& _waitedForTailingApply;
 
   // synchronous statistics
 
   // total time spent doing synchronous replication operations
-  Counter& _syncTimeTotal;
+  metrics::Counter& _syncTimeTotal;
   // total number of synchronous replication operations
-  Counter& _syncOpsTotal;
+  metrics::Counter& _syncOpsTotal;
 };
 
-} // namespace arangodb
-
+}  // namespace arangodb

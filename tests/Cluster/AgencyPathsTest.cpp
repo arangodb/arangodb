@@ -403,21 +403,27 @@ static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Databas
 #undef CONSTRUCTIBLE_MESSAGE
 
 // Check the types of aliases, so we need only basic tests for them later.
-static_assert(std::is_same<decltype(root()->arango()), decltype(aliases::arango())>::value,
+static_assert(std::is_same<decltype(root()->arango()),
+                           decltype(aliases::arango())>::value,
               "Aliases should have the same type as the aliased expression!");
-static_assert(std::is_same<decltype(root()->arango()->plan()), decltype(aliases::plan())>::value,
+static_assert(std::is_same<decltype(root()->arango()->plan()),
+                           decltype(aliases::plan())>::value,
               "Aliases should have the same type as the aliased expression!");
-static_assert(std::is_same<decltype(root()->arango()->current()), decltype(aliases::current())>::value,
+static_assert(std::is_same<decltype(root()->arango()->current()),
+                           decltype(aliases::current())>::value,
               "Aliases should have the same type as the aliased expression!");
-static_assert(std::is_same<decltype(root()->arango()->target()), decltype(aliases::target())>::value,
+static_assert(std::is_same<decltype(root()->arango()->target()),
+                           decltype(aliases::target())>::value,
               "Aliases should have the same type as the aliased expression!");
-static_assert(std::is_same<decltype(root()->arango()->supervision()), decltype(aliases::supervision())>::value,
+static_assert(std::is_same<decltype(root()->arango()->supervision()),
+                           decltype(aliases::supervision())>::value,
               "Aliases should have the same type as the aliased expression!");
 
 class AgencyPathsTest : public ::testing::Test {
  protected:
   // Vector of {expected, actual} pairs.
-  std::vector<std::pair<std::vector<std::string> const, std::shared_ptr<Path const> const>> const ioPairs{
+  std::vector<std::pair<std::vector<std::string> const,
+                        std::shared_ptr<Path const> const>> const ioPairs{
       // Turn autoformat off here, to allow for easy multiline editing!
       // clang-format off
       {{"arango"}, root()->arango()},

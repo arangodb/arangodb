@@ -57,11 +57,13 @@ struct read_ret_t {
   std::vector<bool> success;  // Query's precond OK
   query_t result;             // Query result
 
-  read_ret_t(bool a, std::string const& id) : accepted(a), redirect(id) {}
+  read_ret_t(bool a, std::string id) : accepted(a), redirect(std::move(id)) {}
 
-  read_ret_t(bool a, std::string const& id,
-             std::vector<bool>&& suc, query_t&& res)
-      : accepted(a), redirect(id), success(std::move(suc)), result(std::move(res)) {}
+  read_ret_t(bool a, std::string id, std::vector<bool> suc, query_t res)
+      : accepted(a),
+        redirect(std::move(id)),
+        success(std::move(suc)),
+        result(std::move(res)) {}
 };
 
 struct write_ret_t {
@@ -70,10 +72,14 @@ struct write_ret_t {
   std::vector<apply_ret_t> applied;
   std::vector<index_t> indices;  // Indices of log entries (if any) to wait for
   write_ret_t() : accepted(false), redirect("") {}
-  write_ret_t(bool a, std::string const& id) : accepted(a), redirect(id) {}
-  write_ret_t(bool a, std::string const& id, std::vector<apply_ret_t> const& app,
-              std::vector<index_t> const& idx)
-      : accepted(a), redirect(id), applied(app), indices(idx) {}
+  write_ret_t(bool a, std::string id) : accepted(a), redirect(std::move(id)) {}
+  write_ret_t(bool a, std::string id, std::vector<apply_ret_t> app,
+              std::vector<index_t> idx)
+      : accepted(a),
+        redirect(std::move(id)),
+        applied(std::move(app)),
+        indices(std::move(idx)) {}
+
   bool successful() const {
     return !indices.empty() &&
            std::find(indices.begin(), indices.end(), 0) == indices.end();
@@ -81,7 +87,8 @@ struct write_ret_t {
 };
 
 inline std::ostream& operator<<(std::ostream& o, write_ret_t const& w) {
-  o << "accepted: " << w.accepted << ", redirect: " << w.redirect << ", indices: [";
+  o << "accepted: " << w.accepted << ", redirect: " << w.redirect
+    << ", indices: [";
   for (const auto& i : w.indices) {
     o << i << ", ";
   }
@@ -96,10 +103,14 @@ struct trans_ret_t {
   size_t failed;
   query_t result;
   trans_ret_t() : accepted(false), redirect(""), maxind(0), failed(0) {}
-  trans_ret_t(bool a, std::string const& id)
-      : accepted(a), redirect(id), maxind(0), failed(0) {}
-  trans_ret_t(bool a, std::string const& id, index_t mi, size_t f, query_t const& res)
-      : accepted(a), redirect(id), maxind(mi), failed(f), result(res) {}
+  trans_ret_t(bool a, std::string id)
+      : accepted(a), redirect(std::move(id)), maxind(0), failed(0) {}
+  trans_ret_t(bool a, std::string id, index_t mi, size_t f, query_t res)
+      : accepted(a),
+        redirect(std::move(id)),
+        maxind(mi),
+        failed(f),
+        result(std::move(res)) {}
 };
 
 struct log_t {
@@ -110,18 +121,17 @@ struct log_t {
   std::chrono::milliseconds timestamp;  // Timestamp
 
   /// @brief creates a log entry, fully copying it from the buffer
-  log_t(index_t idx, term_t t, buffer_t const& e,
-        std::string const& clientId,
+  log_t(index_t idx, term_t t, buffer_t const& e, std::string const& clientId,
         uint64_t const& m = 0)
       : index(idx),
         term(t),
-        entry(std::make_shared<arangodb::velocypack::Buffer<uint8_t>>(*e.get())),
+        entry(
+            std::make_shared<arangodb::velocypack::Buffer<uint8_t>>(*e.get())),
         clientId(clientId),
         timestamp(m) {}
-  
+
   /// @brief creates a log entry, taking over the buffer
-  log_t(index_t idx, term_t t, buffer_t&& e,
-        std::string const& clientId,
+  log_t(index_t idx, term_t t, buffer_t&& e, std::string const& clientId,
         uint64_t const& m = 0)
       : index(idx),
         term(t),
@@ -137,12 +147,13 @@ struct log_t {
     builder.add("query", VPackSlice(entry->data()));
     builder.add("clientId", VPackValue(clientId));
     builder.add("timestamp", VPackValue(timestamp.count()));
-    
+
     builder.close();
   }
 
   friend std::ostream& operator<<(std::ostream& o, log_t const& l) {
-    o << l.index << " " << l.term << " " << VPackSlice(l.entry->data()).toJson() << " "
+    o << l.index << " " << l.term << " " << VPackSlice(l.entry->data()).toJson()
+      << " "
       << " " << l.clientId << " " << l.timestamp.count();
     return o;
   }
@@ -157,9 +168,10 @@ struct priv_rpc_ret_t {
 }  // namespace consensus
 }  // namespace arangodb
 
-inline std::ostream& operator<<(std::ostream& o, arangodb::consensus::log_t const& l) {
-  o << l.index << " " << l.term << " " << VPackSlice(l.entry->data()).toJson() << " "
+inline std::ostream& operator<<(std::ostream& o,
+                                arangodb::consensus::log_t const& l) {
+  o << l.index << " " << l.term << " " << VPackSlice(l.entry->data()).toJson()
+    << " "
     << " " << l.clientId << " " << l.timestamp.count();
   return o;
 }
-

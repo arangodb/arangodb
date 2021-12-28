@@ -33,27 +33,26 @@ using namespace arangodb;
 using namespace arangodb::rocksutils;
 
 const char RocksDBKey::_stringSeparator = '\0';
-  
+
 RocksDBKey::RocksDBKey(std::string* leased)
-      : _type(RocksDBEntryType::Document),  // placeholder
-        _local(),
-        _buffer(leased != nullptr ? leased : &_local) {}
+    : _type(RocksDBEntryType::Document),  // placeholder
+      _local(),
+      _buffer(leased != nullptr ? leased : &_local) {}
 
 RocksDBKey::RocksDBKey(rocksdb::Slice slice)
-      : _type(static_cast<RocksDBEntryType>(slice.data()[0])),
-        _local(slice.data(), slice.size()),
-        _buffer(&_local) {}
-  
+    : _type(static_cast<RocksDBEntryType>(slice.data()[0])),
+      _local(slice.data(), slice.size()),
+      _buffer(&_local) {}
+
 RocksDBKey::RocksDBKey(RocksDBKey&& other) noexcept
-      : _type(other._type),
-        _local(),
-        _buffer(&_local) {
+    : _type(other._type), _local(), _buffer(&_local) {
   _local.assign(std::move(*(other._buffer)));
   other._buffer = &(other._local);
 }
-  
+
 /// @brief verify that a key actually contains the given local document id
-bool RocksDBKey::containsLocalDocumentId(LocalDocumentId const& documentId) const {
+bool RocksDBKey::containsLocalDocumentId(
+    LocalDocumentId const& documentId) const {
   switch (_type) {
     case RocksDBEntryType::Document:
     case RocksDBEntryType::EdgeIndexValue:
@@ -76,24 +75,29 @@ bool RocksDBKey::containsLocalDocumentId(LocalDocumentId const& documentId) cons
   return false;
 }
 
-void RocksDBKey::constructZkdIndexValue(uint64_t indexId, const zkd::byte_string& value) {
+void RocksDBKey::constructZkdIndexValue(uint64_t indexId,
+                                        const zkd::byte_string& value) {
   _type = RocksDBEntryType::ZkdIndexValue;
   size_t keyLength = sizeof(uint64_t) + value.size();
   _buffer->clear();
   _buffer->reserve(keyLength);
   uint64ToPersistent(*_buffer, indexId);
-  auto sv = std::string_view{reinterpret_cast<const char*>(value.data()), value.size()};
+  auto sv = std::string_view{reinterpret_cast<const char*>(value.data()),
+                             value.size()};
   _buffer->append(sv.data(), sv.size());
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
-void RocksDBKey::constructZkdIndexValue(uint64_t indexId, zkd::byte_string const& value, LocalDocumentId documentId) {
+void RocksDBKey::constructZkdIndexValue(uint64_t indexId,
+                                        zkd::byte_string const& value,
+                                        LocalDocumentId documentId) {
   _type = RocksDBEntryType::ZkdIndexValue;
   size_t keyLength = sizeof(uint64_t) + value.size() + sizeof(uint64_t);
   _buffer->clear();
   _buffer->reserve(keyLength);
   uint64ToPersistent(*_buffer, indexId);
-  auto sv = std::string_view{reinterpret_cast<const char*>(value.data()), value.size()};
+  auto sv = std::string_view{reinterpret_cast<const char*>(value.data()),
+                             value.size()};
   _buffer->append(sv.data(), sv.size());
   uint64ToPersistent(*_buffer, documentId.id());
   TRI_ASSERT(_buffer->size() == keyLength);
@@ -110,7 +114,8 @@ void RocksDBKey::constructDatabase(TRI_voc_tick_t databaseId) {
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
-void RocksDBKey::constructCollection(TRI_voc_tick_t databaseId, DataSourceId collectionId) {
+void RocksDBKey::constructCollection(TRI_voc_tick_t databaseId,
+                                     DataSourceId collectionId) {
   TRI_ASSERT(databaseId != 0 && collectionId.isSet());
   _type = RocksDBEntryType::Collection;
   size_t keyLength = sizeof(char) + 2 * sizeof(uint64_t);
@@ -122,7 +127,8 @@ void RocksDBKey::constructCollection(TRI_voc_tick_t databaseId, DataSourceId col
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
-void RocksDBKey::constructDocument(uint64_t objectId, LocalDocumentId documentId) {
+void RocksDBKey::constructDocument(uint64_t objectId,
+                                   LocalDocumentId documentId) {
   TRI_ASSERT(objectId != 0);
   _type = RocksDBEntryType::Document;
   size_t keyLength = 2 * sizeof(uint64_t);
@@ -134,7 +140,7 @@ void RocksDBKey::constructDocument(uint64_t objectId, LocalDocumentId documentId
 }
 
 void RocksDBKey::constructPrimaryIndexValue(uint64_t indexId,
-                                            arangodb::velocypack::StringRef const& primaryKey) {
+                                            std::string_view primaryKey) {
   TRI_ASSERT(indexId != 0 && !primaryKey.empty());
   _type = RocksDBEntryType::PrimaryIndexValue;
   size_t keyLength = sizeof(uint64_t) + primaryKey.size();
@@ -145,13 +151,8 @@ void RocksDBKey::constructPrimaryIndexValue(uint64_t indexId,
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
-void RocksDBKey::constructPrimaryIndexValue(uint64_t indexId, char const* primaryKey) {
-  TRI_ASSERT(indexId != 0);
-  arangodb::velocypack::StringRef const keyRef(primaryKey);
-  constructPrimaryIndexValue(indexId, keyRef);
-}
-
-void RocksDBKey::constructEdgeIndexValue(uint64_t indexId, arangodb::velocypack::StringRef const& vertexId,
+void RocksDBKey::constructEdgeIndexValue(uint64_t indexId,
+                                         std::string_view vertexId,
                                          LocalDocumentId documentId) {
   TRI_ASSERT(indexId != 0 && !vertexId.empty());
   _type = RocksDBEntryType::EdgeIndexValue;
@@ -166,7 +167,8 @@ void RocksDBKey::constructEdgeIndexValue(uint64_t indexId, arangodb::velocypack:
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
-void RocksDBKey::constructVPackIndexValue(uint64_t indexId, VPackSlice const& indexValues,
+void RocksDBKey::constructVPackIndexValue(uint64_t indexId,
+                                          VPackSlice indexValues,
                                           LocalDocumentId documentId) {
   TRI_ASSERT(indexId != 0 && !indexValues.isNone());
   _type = RocksDBEntryType::VPackIndexValue;
@@ -180,7 +182,8 @@ void RocksDBKey::constructVPackIndexValue(uint64_t indexId, VPackSlice const& in
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
-void RocksDBKey::constructUniqueVPackIndexValue(uint64_t indexId, VPackSlice const& indexValues) {
+void RocksDBKey::constructUniqueVPackIndexValue(uint64_t indexId,
+                                                VPackSlice const& indexValues) {
   TRI_ASSERT(indexId != 0 && !indexValues.isNone());
   _type = RocksDBEntryType::UniqueVPackIndexValue;
   size_t const byteSize = static_cast<size_t>(indexValues.byteSize());
@@ -193,7 +196,7 @@ void RocksDBKey::constructUniqueVPackIndexValue(uint64_t indexId, VPackSlice con
 }
 
 void RocksDBKey::constructFulltextIndexValue(uint64_t indexId,
-                                             arangodb::velocypack::StringRef const& word,
+                                             std::string_view const& word,
                                              LocalDocumentId documentId) {
   TRI_ASSERT(indexId != 0 && !word.empty());
   _type = RocksDBEntryType::FulltextIndexValue;
@@ -218,7 +221,7 @@ void RocksDBKey::constructGeoIndexValue(uint64_t indexId, uint64_t value,
   _buffer->clear();
   _buffer->reserve(keyLength);
   uint64ToPersistent(*_buffer, indexId);
-  uintToPersistentBigEndian<uint64_t>(*_buffer, value); // always big endian
+  uintToPersistentBigEndian<uint64_t>(*_buffer, value);  // always big endian
   uint64ToPersistent(*_buffer, documentId.id());
   TRI_ASSERT(_buffer->size() == keyLength);
 }
@@ -301,7 +304,8 @@ void RocksDBKey::constructRevisionTreeValue(uint64_t collectionObjectId) {
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
-void RocksDBKey::constructLogEntry(uint64_t objectId, replication2::LogIndex idx) {
+void RocksDBKey::constructLogEntry(uint64_t objectId,
+                                   replication2::LogIndex idx) {
   TRI_ASSERT(objectId != 0);
   _type = RocksDBEntryType::LogEntry;
   size_t keyLength = 2 * sizeof(uint64_t);
@@ -314,15 +318,15 @@ void RocksDBKey::constructLogEntry(uint64_t objectId, replication2::LogIndex idx
 
 void RocksDBKey::constructReplicatedLog(TRI_voc_tick_t databaseId,
                                         arangodb::replication2::LogId logId) {
-    TRI_ASSERT(databaseId != 0);
-    _type = RocksDBEntryType::ReplicatedLog;
-    size_t keyLength = sizeof(char) + 2 * sizeof(uint64_t);
-    _buffer->clear();
-    _buffer->reserve(keyLength);
-    _buffer->push_back(static_cast<char>(_type));
-    uint64ToPersistent(*_buffer, databaseId);
-    uint64ToPersistent(*_buffer, logId.id());
-    TRI_ASSERT(_buffer->size() == keyLength);
+  TRI_ASSERT(databaseId != 0);
+  _type = RocksDBEntryType::ReplicatedLog;
+  size_t keyLength = sizeof(char) + 2 * sizeof(uint64_t);
+  _buffer->clear();
+  _buffer->reserve(keyLength);
+  _buffer->push_back(static_cast<char>(_type));
+  uint64ToPersistent(*_buffer, databaseId);
+  uint64ToPersistent(*_buffer, logId.id());
+  TRI_ASSERT(_buffer->size() == keyLength);
 }
 
 // ========================= Member methods ===========================
@@ -388,22 +392,23 @@ LocalDocumentId RocksDBKey::edgeDocumentId(rocksdb::Slice const slice) {
   TRI_ASSERT(size >= (sizeof(char) * 3 + 2 * sizeof(uint64_t)));
   // 1 byte prefix + 8 byte objectID + _from/_to + 1 byte \0
   // + 8 byte revision ID + 1-byte 0xff
-  return LocalDocumentId(uint64FromPersistent(data + size - sizeof(uint64_t) - sizeof(char)));
+  return LocalDocumentId(
+      uint64FromPersistent(data + size - sizeof(uint64_t) - sizeof(char)));
 }
 
-arangodb::velocypack::StringRef RocksDBKey::primaryKey(RocksDBKey const& key) {
+std::string_view RocksDBKey::primaryKey(RocksDBKey const& key) {
   return primaryKey(key._buffer->data(), key._buffer->size());
 }
 
-arangodb::velocypack::StringRef RocksDBKey::primaryKey(rocksdb::Slice const& slice) {
+std::string_view RocksDBKey::primaryKey(rocksdb::Slice const& slice) {
   return primaryKey(slice.data(), slice.size());
 }
 
-arangodb::velocypack::StringRef RocksDBKey::vertexId(RocksDBKey const& key) {
+std::string_view RocksDBKey::vertexId(RocksDBKey const& key) {
   return vertexId(key._buffer->data(), key._buffer->size());
 }
 
-arangodb::velocypack::StringRef RocksDBKey::vertexId(rocksdb::Slice const& slice) {
+std::string_view RocksDBKey::vertexId(rocksdb::Slice const& slice) {
   return vertexId(slice.data(), slice.size());
 }
 
@@ -459,7 +464,8 @@ DataSourceId RocksDBKey::collectionId(char const* data, size_t size) {
     case RocksDBEntryType::Collection:
     case RocksDBEntryType::View: {
       TRI_ASSERT(size >= (sizeof(char) + (2 * sizeof(uint64_t))));
-      return DataSourceId{uint64FromPersistent(data + sizeof(char) + sizeof(uint64_t))};
+      return DataSourceId{
+          uint64FromPersistent(data + sizeof(char) + sizeof(uint64_t))};
     }
 
     default:
@@ -474,7 +480,8 @@ DataSourceId RocksDBKey::viewId(char const* data, size_t size) {
   switch (type) {
     case RocksDBEntryType::View: {
       TRI_ASSERT(size >= (sizeof(char) + (2 * sizeof(uint64_t))));
-      return DataSourceId{uint64FromPersistent(data + sizeof(char) + sizeof(uint64_t))};
+      return DataSourceId{
+          uint64FromPersistent(data + sizeof(char) + sizeof(uint64_t))};
     }
 
     default:
@@ -488,19 +495,19 @@ uint64_t RocksDBKey::objectId(char const* data, size_t size) {
   return uint64FromPersistent(data);
 }
 
-arangodb::velocypack::StringRef RocksDBKey::primaryKey(char const* data, size_t size) {
+std::string_view RocksDBKey::primaryKey(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size > sizeof(uint64_t));
-  return arangodb::velocypack::StringRef(data + sizeof(uint64_t), size - sizeof(uint64_t));
+  return std::string_view(data + sizeof(uint64_t), size - sizeof(uint64_t));
 }
 
-arangodb::velocypack::StringRef RocksDBKey::vertexId(char const* data, size_t size) {
+std::string_view RocksDBKey::vertexId(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size > sizeof(uint64_t) * 2);
   // 8 byte objectID + _from/_to + 1 byte \0 +
   // 8 byte revision ID + 1-byte 0xff
   size_t keySize = size - (sizeof(char) + sizeof(uint64_t)) * 2;
-  return arangodb::velocypack::StringRef(data + sizeof(uint64_t), keySize);
+  return std::string_view(data + sizeof(uint64_t), keySize);
 }
 
 VPackSlice RocksDBKey::indexedVPack(char const* data, size_t size) {
@@ -512,8 +519,9 @@ VPackSlice RocksDBKey::indexedVPack(char const* data, size_t size) {
 zkd::byte_string_view RocksDBKey::zkdIndexValue(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size > 2 * sizeof(uint64_t));
-  return zkd::byte_string_view(reinterpret_cast<const std::byte*>(data) + sizeof(uint64_t),
-                               size - 2 * sizeof(uint64_t));
+  return zkd::byte_string_view(
+      reinterpret_cast<const std::byte*>(data) + sizeof(uint64_t),
+      size - 2 * sizeof(uint64_t));
 }
 
 zkd::byte_string_view RocksDBKey::zkdIndexValue(const rocksdb::Slice& slice) {
@@ -523,7 +531,8 @@ zkd::byte_string_view RocksDBKey::zkdIndexValue(const rocksdb::Slice& slice) {
 namespace arangodb {
 
 std::ostream& operator<<(std::ostream& stream, RocksDBKey const& key) {
-  stream << "[key type: " << arangodb::rocksDBEntryTypeName(RocksDBKey::type(key)) << " ";
+  stream << "[key type: "
+         << arangodb::rocksDBEntryTypeName(RocksDBKey::type(key)) << " ";
 
   auto dump = [&stream](rocksdb::Slice const& slice) {
     size_t const n = slice.size();

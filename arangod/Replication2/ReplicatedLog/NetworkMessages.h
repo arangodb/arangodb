@@ -22,7 +22,6 @@
 
 #pragma once
 
-
 #include <Basics/ErrorCode.h>
 #include <Containers/ImmerMemoryPolicy.h>
 
@@ -32,9 +31,11 @@
 #if (_MSC_VER >= 1)
 // suppress warnings:
 #pragma warning(push)
-// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of data
+// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of
+// data
 #pragma warning(disable : 4267)
-// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
+// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift
+// intended?)
 #pragma warning(disable : 4334)
 #endif
 #include <immer/flex_vector.hpp>
@@ -51,49 +52,57 @@ class Result;
 
 namespace arangodb::replication2::replicated_log {
 
-struct MessageId : implement_compare<MessageId> {
+struct MessageId {
   constexpr MessageId() noexcept : value{0} {}
   constexpr explicit MessageId(std::uint64_t value) noexcept : value{value} {}
 
-  friend auto operator<=(MessageId, MessageId) noexcept -> bool;
+  friend auto operator<=>(MessageId, MessageId) noexcept = default;
   friend auto operator++(MessageId& id) -> MessageId&;
   friend auto operator<<(std::ostream& os, MessageId id) -> std::ostream&;
+  friend auto to_string(MessageId id) -> std::string;
 
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
+
  private:
   std::uint64_t value;
 };
 
-auto operator<=(MessageId, MessageId) noexcept -> bool;
 auto operator++(MessageId& id) -> MessageId&;
 auto operator<<(std::ostream& os, MessageId id) -> std::ostream&;
+auto to_string(MessageId id) -> std::string;
 
 struct AppendEntriesResult {
   LogTerm const logTerm;
   ErrorCode const errorCode;
-  AppendEntriesErrorReason const reason;
+  AppendEntriesErrorReason reason;
   MessageId messageId;
 
   std::optional<TermIndexPair> conflict;
 
   [[nodiscard]] auto isSuccess() const noexcept -> bool;
 
-  AppendEntriesResult(LogTerm, MessageId, TermIndexPair conflict) noexcept;
+  AppendEntriesResult(LogTerm term, MessageId id, TermIndexPair conflict,
+                      AppendEntriesErrorReason reason) noexcept;
   AppendEntriesResult(LogTerm, MessageId) noexcept;
   AppendEntriesResult(LogTerm logTerm, ErrorCode errorCode,
                       AppendEntriesErrorReason reason, MessageId) noexcept;
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesResult;
 
-  static auto withConflict(LogTerm, MessageId, TermIndexPair conflict) noexcept -> AppendEntriesResult;
-  static auto withRejection(LogTerm, MessageId, AppendEntriesErrorReason) noexcept -> AppendEntriesResult;
-  static auto withPersistenceError(LogTerm, MessageId, Result const&) noexcept -> AppendEntriesResult;
+  static auto withConflict(LogTerm, MessageId, TermIndexPair conflict) noexcept
+      -> AppendEntriesResult;
+  static auto withRejection(LogTerm, MessageId,
+                            AppendEntriesErrorReason) noexcept
+      -> AppendEntriesResult;
+  static auto withPersistenceError(LogTerm, MessageId, Result const&) noexcept
+      -> AppendEntriesResult;
   static auto withOk(LogTerm, MessageId) noexcept -> AppendEntriesResult;
 };
 
 struct AppendEntriesRequest {
   using EntryContainer =
-      ::immer::flex_vector<InMemoryLogEntry, arangodb::immer::arango_memory_policy>;
+      ::immer::flex_vector<InMemoryLogEntry,
+                           arangodb::immer::arango_memory_policy>;
 
   LogTerm leaderTerm;
   ParticipantId leaderId;
@@ -113,8 +122,10 @@ struct AppendEntriesRequest {
 
   AppendEntriesRequest(AppendEntriesRequest&& other) noexcept;
   AppendEntriesRequest(AppendEntriesRequest const& other) = default;
-  auto operator=(AppendEntriesRequest&& other) noexcept -> AppendEntriesRequest&;
-  auto operator=(AppendEntriesRequest const& other) -> AppendEntriesRequest& = default;
+  auto operator=(AppendEntriesRequest&& other) noexcept
+      -> AppendEntriesRequest&;
+  auto operator=(AppendEntriesRequest const& other)
+      -> AppendEntriesRequest& = default;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesRequest;
@@ -123,10 +134,12 @@ struct AppendEntriesRequest {
 }  // namespace arangodb::replication2::replicated_log
 
 namespace arangodb {
-template <>
+template<>
 struct velocypack::Extractor<replication2::replicated_log::MessageId> {
-  static auto extract(velocypack::Slice slice) -> replication2::replicated_log::MessageId {
-    return replication2::replicated_log::MessageId{slice.getNumericValue<uint64_t>()};
+  static auto extract(velocypack::Slice slice)
+      -> replication2::replicated_log::MessageId {
+    return replication2::replicated_log::MessageId{
+        slice.getNumericValue<uint64_t>()};
   }
 };
-}
+}  // namespace arangodb

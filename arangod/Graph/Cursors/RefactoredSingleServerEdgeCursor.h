@@ -28,6 +28,7 @@
 #include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/QueryContext.h"
+#include "Containers/FlatHashMap.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
 
@@ -57,10 +58,10 @@ struct IndexAccessor;
 
 struct EdgeDocumentToken;
 
-template <class StepType>
+template<class StepType>
 class SingleServerProvider;
 
-template <class StepType>
+template<class StepType>
 class RefactoredSingleServerEdgeCursor {
  public:
   struct LookupInfo {
@@ -94,18 +95,20 @@ class RefactoredSingleServerEdgeCursor {
   RefactoredSingleServerEdgeCursor(
       transaction::Methods* trx, arangodb::aql::Variable const* tmpVar,
       std::vector<IndexAccessor>& globalIndexConditions,
-      std::unordered_map<uint64_t, std::vector<IndexAccessor>>& depthBasedIndexConditions,
-      arangodb::aql::FixedVarExpressionContext& expressionContext, bool requiresFullDocument);
+      std::unordered_map<uint64_t, std::vector<IndexAccessor>>&
+          depthBasedIndexConditions,
+      arangodb::aql::FixedVarExpressionContext& expressionContext,
+      bool requiresFullDocument);
 
   ~RefactoredSingleServerEdgeCursor();
 
-  using Callback =
-      std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)>;
+  using Callback = std::function<void(EdgeDocumentToken&&,
+                                      arangodb::velocypack::Slice, size_t)>;
 
  private:
   aql::Variable const* _tmpVar;
   std::vector<LookupInfo> _lookupInfo;
-  std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
+  containers::FlatHashMap<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
 
   transaction::Methods* _trx;
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
@@ -113,13 +116,15 @@ class RefactoredSingleServerEdgeCursor {
 
  public:
   void readAll(SingleServerProvider<StepType>& provider,
-               aql::TraversalStats& stats, size_t depth, Callback const& callback);
+               aql::TraversalStats& stats, size_t depth,
+               Callback const& callback);
 
   void rearm(VertexType vertex, uint64_t depth);
 
   void prepareIndexExpressions(aql::Ast* ast);
 
-  bool evaluateEdgeExpression(arangodb::aql::Expression* expression, VPackSlice value);
+  bool evaluateEdgeExpression(arangodb::aql::Expression* expression,
+                              VPackSlice value);
 
  private:
   auto getLookupInfos(uint64_t depth) -> std::vector<LookupInfo>&;

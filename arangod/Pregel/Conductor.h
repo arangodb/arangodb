@@ -26,7 +26,6 @@
 #include "Basics/Common.h"
 
 #include "Basics/Mutex.h"
-#include "Basics/asio_ns.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Reports.h"
@@ -72,17 +71,19 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   const uint64_t _executionNumber;
   VPackBuilder _userParams;
   std::unique_ptr<IAlgorithm> _algorithm;
-  mutable Mutex _callbackMutex;  // prevents concurrent calls to finishedGlobalStep
+  mutable Mutex
+      _callbackMutex;  // prevents concurrent calls to finishedGlobalStep
 
   std::vector<CollectionID> _vertexCollections;
   std::vector<CollectionID> _edgeCollections;
   std::vector<ServerID> _dbServers;
   std::vector<ShardID> _allShards;  // persistent shard list
-  
+
   // maps from vertex collection name to a list of edge collections that this
-  // vertex collection is restricted to. only use for a collection if there is at least
-  // one entry for the collection!
-  std::unordered_map<CollectionID, std::vector<CollectionID>> _edgeCollectionRestrictions;
+  // vertex collection is restricted to. only use for a collection if there is
+  // at least one entry for the collection!
+  std::unordered_map<CollectionID, std::vector<CollectionID>>
+      _edgeCollectionRestrictions;
 
   // initialized on startup
   std::unique_ptr<AggregatorHandler> _aggregators;
@@ -111,14 +112,17 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   double _finalizationStartTimeSecs = 0.0;
   double _storeTimeSecs = 0.0;
   double _endTimeSecs = 0.0;
-  double _stepStartTimeSecs = 0.0; // start time of current gss
+  double _stepStartTimeSecs = 0.0;  // start time of current gss
   Scheduler::WorkHandle _workHandle;
 
   bool _startGlobalStep();
-  ErrorCode _initializeWorkers(std::string const& suffix, VPackSlice additional);
+  ErrorCode _initializeWorkers(std::string const& suffix,
+                               VPackSlice additional);
   ErrorCode _finalizeWorkers();
-  ErrorCode _sendToAllDBServers(std::string const& path, VPackBuilder const& message);
-  ErrorCode _sendToAllDBServers(std::string const& path, VPackBuilder const& message,
+  ErrorCode _sendToAllDBServers(std::string const& path,
+                                VPackBuilder const& message);
+  ErrorCode _sendToAllDBServers(std::string const& path,
+                                VPackBuilder const& message,
                                 std::function<void(VPackSlice)> handle);
   void _ensureUniqueResponse(VPackSlice body);
 
@@ -134,7 +138,8 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
             std::vector<CollectionID> const& vertexCollections,
             std::vector<CollectionID> const& edgeCollections,
-            std::unordered_map<std::string, std::vector<std::string>> const& edgeCollectionRestrictions,
+            std::unordered_map<std::string, std::vector<std::string>> const&
+                edgeCollectionRestrictions,
             std::string const& algoName, VPackSlice const& userConfig,
             PregelFeature& feature);
 
@@ -147,11 +152,12 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   void toVelocyPack(arangodb::velocypack::Builder& result) const;
 
   double totalRuntimeSecs() const {
-    return _endTimeSecs == 0.0 ? TRI_microtime() - _startTimeSecs : _endTimeSecs - _startTimeSecs;
+    return _endTimeSecs == 0.0 ? TRI_microtime() - _startTimeSecs
+                               : _endTimeSecs - _startTimeSecs;
   }
 
   bool canBeGarbageCollected() const;
-  
+
   uint64_t executionNumber() const { return _executionNumber; }
 
  private:

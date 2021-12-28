@@ -44,7 +44,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -55,7 +54,8 @@ constexpr size_t costPerPersistedString =
     sizeof(void*) + sizeof(arangodb::velocypack::HashedStringRef);
 
 bool isWithClauseMissing(arangodb::basics::Exception const& ex) {
-  if (ServerState::instance()->isDBServer() && ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+  if (ServerState::instance()->isDBServer() &&
+      ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
     // on a DB server, we could have got here only in the OneShard case.
     // in this case turn the rather misleading "collection or view not found"
     // error into a nicer "collection not known to traversal, please add WITH"
@@ -77,16 +77,21 @@ TraverserCache::TraverserCache(aql::QueryContext& query, BaseOptions* opts)
       _trx(opts->trx()),
       _insertedDocuments(0),
       _filteredDocuments(0),
-      _stringHeap(query.resourceMonitor(), 4096), /* arbitrary block-size, may be adjusted for performance */
+      _stringHeap(
+          query.resourceMonitor(),
+          4096), /* arbitrary block-size, may be adjusted for performance */
       _baseOptions(opts),
-      _allowImplicitCollections(
-          ServerState::instance()->isSingleServer() &&
-          !_query.vocbase().server().getFeature<QueryRegistryFeature>().requireWith()) {}
+      _allowImplicitCollections(ServerState::instance()->isSingleServer() &&
+                                !_query.vocbase()
+                                     .server()
+                                     .getFeature<QueryRegistryFeature>()
+                                     .requireWith()) {}
 
 TraverserCache::~TraverserCache() { clear(); }
 
 void TraverserCache::clear() {
-  _query.resourceMonitor().decreaseMemoryUsage(_persistedStrings.size() * ::costPerPersistedString);
+  _query.resourceMonitor().decreaseMemoryUsage(_persistedStrings.size() *
+                                               ::costPerPersistedString);
 
   _persistedStrings.clear();
   _mmdr.clear();
@@ -105,12 +110,14 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
     return arangodb::velocypack::Slice::nullSlice();
   }
 
-  if (!col->getPhysical()->readDocument(_trx, idToken.localDocumentId(), _mmdr, ReadOwnWrites::no)) {
+  if (!col->getPhysical()->readDocument(_trx, idToken.localDocumentId(), _mmdr,
+                                        ReadOwnWrites::no)) {
     // We already had this token, inconsistent state. Return NULL in Production
     LOG_TOPIC("3acb3", ERR, arangodb::Logger::GRAPHS)
         << "Could not extract indexed edge document, return 'null' instead. "
         << "This is most likely a caching issue. Try: 'db." << col->name()
-        << ".unload(); db." << col->name() << ".load()' in arangosh to fix this.";
+        << ".unload(); db." << col->name()
+        << ".load()' in arangosh to fix this.";
     TRI_ASSERT(false);  // for maintainer mode
     return arangodb::velocypack::Slice::nullSlice();
   }
@@ -118,7 +125,7 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
   return VPackSlice(_mmdr.vpack());
 }
 
-bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id,
+bool TraverserCache::appendVertex(std::string_view id,
                                   arangodb::velocypack::Builder& result) {
   if (!_baseOptions->produceVertices()) {
     // this traversal does not produce any vertices
@@ -131,11 +138,12 @@ bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id,
     // Invalid input. If we get here somehow we managed to store invalid
     // _from/_to values or the traverser let an illegal start id through
     TRI_ASSERT(false);  // for maintainer mode
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_INVALID_EDGE,
-                                   "edge contains invalid value " + id.toString());
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_GRAPH_INVALID_EDGE,
+        "edge contains invalid value " + std::string(id));
   }
 
-  std::string collectionName = id.substr(0, pos).toString();
+  std::string collectionName = std::string(id.substr(0, pos));
 
   auto const& map = _baseOptions->collectionToShard();
   if (!map.empty()) {
@@ -148,16 +156,17 @@ bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id,
   }
 
   try {
-    transaction::AllowImplicitCollectionsSwitcher disallower(_trx->state()->options(),
-                                                             _allowImplicitCollections);
+    transaction::AllowImplicitCollectionsSwitcher disallower(
+        _trx->state()->options(), _allowImplicitCollections);
 
-    Result res = _trx->documentFastPathLocal(collectionName, id.substr(pos + 1),
-                                             [&](LocalDocumentId const&, VPackSlice doc) {
-                                               ++_insertedDocuments;
-                                               // copying...
-                                               result.add(doc);
-                                               return true;
-                                             });
+    Result res = _trx->documentFastPathLocal(
+        collectionName, id.substr(pos + 1),
+        [&](LocalDocumentId const&, VPackSlice doc) {
+          ++_insertedDocuments;
+          // copying...
+          result.add(doc);
+          return true;
+        });
 
     if (res.ok()) {
       return true;
@@ -170,10 +179,11 @@ bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id,
   } catch (basics::Exception const& ex) {
     if (isWithClauseMissing(ex)) {
       // turn the error into a different error
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-                                     "collection not known to traversal: '" + collectionName +
-                                         "'. please add 'WITH " + collectionName +
-                                         "' as the first line in your AQL");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+          "collection not known to traversal: '" + collectionName +
+              "'. please add 'WITH " + collectionName +
+              "' as the first line in your AQL");
     }
     // rethrow original error
     throw;
@@ -182,14 +192,14 @@ bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id,
   ++_insertedDocuments;
 
   // Register a warning. It is okay though but helps the user
-  std::string msg = "vertex '" + id.toString() + "' not found";
+  std::string msg = "vertex '" + std::string(id) + "' not found";
   _query.warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg);
   // This is expected, we may have dangling edges. Interpret as NULL
   result.add(arangodb::velocypack::Slice::nullSlice());
   return false;
 }
 
-bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id,
+bool TraverserCache::appendVertex(std::string_view id,
                                   arangodb::aql::AqlValue& result) {
   result = arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull());
 
@@ -206,7 +216,7 @@ bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id,
     return false;
   }
 
-  std::string collectionName = id.substr(0, pos).toString();
+  std::string collectionName = std::string(id.substr(0, pos));
 
   auto const& map = _baseOptions->collectionToShard();
   if (!map.empty()) {
@@ -219,17 +229,17 @@ bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id,
   }
 
   try {
-    transaction::AllowImplicitCollectionsSwitcher disallower(_trx->state()->options(),
-                                                             _allowImplicitCollections);
+    transaction::AllowImplicitCollectionsSwitcher disallower(
+        _trx->state()->options(), _allowImplicitCollections);
 
-    Result res =
-        _trx->documentFastPathLocal(collectionName, id.substr(pos + 1),
-                                    [&](LocalDocumentId const&, VPackSlice doc) {
-                                      ++_insertedDocuments;
-                                      // copying...
-                                      result = arangodb::aql::AqlValue(doc);
-                                      return true;
-                                    });
+    Result res = _trx->documentFastPathLocal(
+        collectionName, id.substr(pos + 1),
+        [&](LocalDocumentId const&, VPackSlice doc) {
+          ++_insertedDocuments;
+          // copying...
+          result = arangodb::aql::AqlValue(doc);
+          return true;
+        });
 
     if (res.ok()) {
       return true;
@@ -242,10 +252,11 @@ bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id,
   } catch (basics::Exception const& ex) {
     if (isWithClauseMissing(ex)) {
       // turn the error into a different error
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-                                     "collection not known to traversal: '" + collectionName +
-                                         "'. please add 'WITH " + collectionName +
-                                         "' as the first line in your AQL");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+          "collection not known to traversal: '" + collectionName +
+              "'. please add 'WITH " + collectionName +
+              "' as the first line in your AQL");
     }
     // rethrow original error
     throw;
@@ -254,8 +265,9 @@ bool TraverserCache::appendVertex(arangodb::velocypack::StringRef id,
   ++_insertedDocuments;
 
   // Register a warning. It is okay though but helps the user
-  std::string msg = "vertex '" + id.toString() + "' not found";
-  _query.warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
+  std::string msg = "vertex '" + std::string(id) + "' not found";
+  _query.warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+                                    msg.c_str());
   // This is expected, we may have dangling edges. Interpret as NULL
   return false;
 }
@@ -266,25 +278,29 @@ void TraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idToken,
   builder.add(lookupToken(idToken));
 }
 
-aql::AqlValue TraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const& idToken) {
+aql::AqlValue TraverserCache::fetchEdgeAqlResult(
+    EdgeDocumentToken const& idToken) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   return aql::AqlValue(lookupToken(idToken));
 }
 
-arangodb::velocypack::StringRef TraverserCache::persistString(arangodb::velocypack::StringRef idString) {
-  return persistString(arangodb::velocypack::HashedStringRef(
-                           idString.data(), static_cast<uint32_t>(idString.size())))
-      .stringRef();
+std::string_view TraverserCache::persistString(std::string_view idString) {
+  return persistString(
+             arangodb::velocypack::HashedStringRef(
+                 idString.data(), static_cast<uint32_t>(idString.size())))
+      .stringView();
 }
 
-arangodb::velocypack::HashedStringRef TraverserCache::persistString(arangodb::velocypack::HashedStringRef idString) {
+arangodb::velocypack::HashedStringRef TraverserCache::persistString(
+    arangodb::velocypack::HashedStringRef idString) {
   auto it = _persistedStrings.find(idString);
   if (it != _persistedStrings.end()) {
     return *it;
   }
   auto res = _stringHeap.registerString(idString);
   {
-    ResourceUsageScope guard(_query.resourceMonitor(), ::costPerPersistedString);
+    ResourceUsageScope guard(_query.resourceMonitor(),
+                             ::costPerPersistedString);
 
     _persistedStrings.emplace(res);
 

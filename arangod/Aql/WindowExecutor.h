@@ -34,6 +34,7 @@
 
 #include <deque>
 #include <memory>
+#include <string>
 
 namespace arangodb {
 namespace aql {
@@ -42,7 +43,7 @@ struct AqlCall;
 class AqlItemBlockInputRange;
 class OutputAqlItemRow;
 class RegisterInfos;
-template <BlockPassthrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 
 class WindowExecutorInfos {
@@ -54,10 +55,11 @@ class WindowExecutorInfos {
    * @param aggregateRegisters Input and output Register for Aggregation
    * @param options The AQL transaction, as it might be needed for aggregates
    */
-  WindowExecutorInfos(WindowBounds const& b, RegisterId rangeRegister,
-                      std::vector<std::string>&& aggregateTypes,
-                      std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-                      QueryWarnings& warnings, velocypack::Options const* options);
+  WindowExecutorInfos(
+      WindowBounds const& b, RegisterId rangeRegister,
+      std::vector<std::string> aggregateTypes,
+      std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
+      QueryWarnings& warnings, velocypack::Options const* options);
 
   WindowExecutorInfos() = delete;
   WindowExecutorInfos(WindowExecutorInfos&&) = default;
@@ -68,7 +70,7 @@ class WindowExecutorInfos {
   WindowBounds const& bounds() const;
   RegisterId rangeRegister() const;
   std::vector<std::pair<RegisterId, RegisterId>> getAggregatedRegisters() const;
-  std::vector<std::string> getAggregateTypes() const;
+  std::vector<std::string> const& getAggregateTypes() const;
   QueryWarnings& warnings() const;
   velocypack::Options const* getVPackOptions() const;
 
@@ -104,12 +106,15 @@ class BaseWindowExecutor {
 
   Infos const& infos() const noexcept;
 
-  static AggregatorList createAggregators(BaseWindowExecutor::Infos const& infos);
+  static AggregatorList createAggregators(
+      BaseWindowExecutor::Infos const& infos);
 
   void applyAggregators(InputAqlItemRow& input);
   void resetAggregators();
-  void produceOutputRow(InputAqlItemRow& input, OutputAqlItemRow& output, bool reset);
-  void produceInvalidOutputRow(InputAqlItemRow& input, OutputAqlItemRow& output);
+  void produceOutputRow(InputAqlItemRow& input, OutputAqlItemRow& output,
+                        bool reset);
+  void produceInvalidOutputRow(InputAqlItemRow& input,
+                               OutputAqlItemRow& output);
 
  protected:
   Infos const& _infos;
@@ -117,13 +122,15 @@ class BaseWindowExecutor {
 };
 
 /**
- * @brief Implementation of Window Executor, accumulates all rows it sees can be passthrough
+ * @brief Implementation of Window Executor, accumulates all rows it sees can be
+ * passthrough
  */
 class AccuWindowExecutor : public BaseWindowExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Enable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Enable;
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -136,33 +143,37 @@ class AccuWindowExecutor : public BaseWindowExecutor {
   AccuWindowExecutor(Fetcher& fetcher, Infos&);
   ~AccuWindowExecutor();
 
-  
   void initializeCursor();
-  
+
   /**
    * @brief produce the next Row of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
-  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input,
+                                 OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
 
   /**
    * @brief skip the next Row of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
-  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                   AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
-  
+
   /**
    * @brief This Executor does not know how many distinct rows will be fetched
    * from upstream, it can only report how many it has found by itself, plus
    * it knows that it can only create as many new rows as pulled from upstream.
    * So it will overestimate.
    */
-  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                             AqlCall const& call) const noexcept -> size_t;
+  [[nodiscard]] auto expectedNumberOfRowsNew(
+      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+      -> size_t;
 };
 
 /**
@@ -172,7 +183,8 @@ class WindowExecutor : public BaseWindowExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -188,27 +200,32 @@ class WindowExecutor : public BaseWindowExecutor {
   /**
    * @brief produce the next Row of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
-  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input,
+                                 OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
 
   /**
    * @brief skip the next Row of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
-  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                   AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
-  
+
   /**
    * @brief This Executor does not know how many distinct rows will be fetched
    * from upstream, it can only report how many it has found by itself, plus
    * it knows that it can only create as many new rows as pulled from upstream.
    * So it will overestimate.
    */
-  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                             AqlCall const& call) const noexcept -> size_t;
+  [[nodiscard]] auto expectedNumberOfRowsNew(
+      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+      -> size_t;
 
  private:
   ExecutorState consumeInputRange(AqlItemBlockInputRange& input);
@@ -225,4 +242,3 @@ class WindowExecutor : public BaseWindowExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Containers/FlatHashSet.h"
 #include "Graph/PathEnumerator.h"
 
 #include <velocypack/Slice.h>
@@ -33,11 +34,11 @@ namespace graph {
 // @brief Enumerator optimized for neighbors. Does not allow edge access
 
 class NeighborsEnumerator final : public arangodb::traverser::PathEnumerator {
-  std::unordered_set<arangodb::velocypack::StringRef> _allFound;
-  std::unordered_set<arangodb::velocypack::StringRef> _currentDepth;
-  std::unordered_set<arangodb::velocypack::StringRef> _lastDepth;
-  std::unordered_set<arangodb::velocypack::StringRef>::iterator _iterator;
-  std::unordered_set<arangodb::velocypack::StringRef> _toPrune;
+  containers::FlatHashSet<std::string_view> _allFound;
+  containers::FlatHashSet<std::string_view> _currentDepth;
+  containers::FlatHashSet<std::string_view> _lastDepth;
+  containers::FlatHashSet<std::string_view>::iterator _iterator;
+  containers::FlatHashSet<std::string_view> _toPrune;
 
   uint64_t _searchDepth;
 
@@ -47,7 +48,9 @@ class NeighborsEnumerator final : public arangodb::traverser::PathEnumerator {
 
   ~NeighborsEnumerator() = default;
 
-  void setStartVertex(arangodb::velocypack::StringRef startVertex) override;
+  void clear() final;
+
+  void setStartVertex(std::string_view startVertex) override;
 
   /// @brief Get the next Path element from the traversal.
   bool next() override;
@@ -61,9 +64,8 @@ class NeighborsEnumerator final : public arangodb::traverser::PathEnumerator {
  private:
   void swapLastAndCurrentDepth();
 
-  bool shouldPrune(arangodb::velocypack::StringRef v);
+  bool shouldPrune(std::string_view v);
 };
 
 }  // namespace graph
 }  // namespace arangodb
-

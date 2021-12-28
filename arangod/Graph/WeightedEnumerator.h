@@ -45,14 +45,14 @@ class WeightedEnumerator final : public arangodb::traverser::PathEnumerator {
   struct PathStep {
     size_t fromIndex;
     graph::EdgeDocumentToken fromEdgeToken;
-    arangodb::velocypack::StringRef currentVertexId;
+    std::string_view currentVertexId;
     double accumWeight;
 
    public:
-    explicit PathStep(arangodb::velocypack::StringRef vertex);
+    explicit PathStep(std::string_view vertex);
 
     PathStep(size_t sourceIdx, graph::EdgeDocumentToken&& edge,
-             arangodb::velocypack::StringRef vertex, double weight);
+             std::string_view vertex, double weight);
 
     ~PathStep() = default;
 
@@ -68,14 +68,15 @@ class WeightedEnumerator final : public arangodb::traverser::PathEnumerator {
     size_t depth;
 
     graph::EdgeDocumentToken forwardEdgeToken;
-    arangodb::velocypack::StringRef forwardVertexId;
+    std::string_view forwardVertexId;
 
    private:
     NextEdge() = delete;
 
    public:
-    explicit NextEdge(size_t fromIndex, double accumWeight, size_t depth, graph::EdgeDocumentToken forwardEdgeToken,
-                      arangodb::velocypack::StringRef forwardVertexId)
+    explicit NextEdge(size_t fromIndex, double accumWeight, size_t depth,
+                      graph::EdgeDocumentToken forwardEdgeToken,
+                      std::string_view forwardVertexId)
         : fromIndex(fromIndex),
           accumWeight(accumWeight),
           depth(depth),
@@ -100,10 +101,10 @@ class WeightedEnumerator final : public arangodb::traverser::PathEnumerator {
   /// @brief Position of the last returned value in the schreier vector
   size_t _lastReturned;
 
-  template <typename T>
+  template<typename T>
   using min_heap = std::priority_queue<T, std::vector<T>, std::greater<T>>;
 
-  template <typename T>
+  template<typename T>
   struct clearable_min_heap : min_heap<T> {
     using min_heap<T>::min_heap;
 
@@ -128,7 +129,9 @@ class WeightedEnumerator final : public arangodb::traverser::PathEnumerator {
 
   ~WeightedEnumerator() = default;
 
-  void setStartVertex(arangodb::velocypack::StringRef startVertex) override;
+  void clear() final;
+
+  void setStartVertex(std::string_view startVertex) override;
 
   /// @brief Get the next Path element from the traversal.
   bool next() override;
@@ -138,13 +141,16 @@ class WeightedEnumerator final : public arangodb::traverser::PathEnumerator {
   aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder& result) override;
 
  private:
-  bool pathContainsVertex(size_t index, arangodb::velocypack::StringRef vertex) const;
-  bool pathContainsEdge(size_t index, graph::EdgeDocumentToken const& edge) const;
+  bool pathContainsVertex(size_t index, std::string_view vertex) const;
+  bool pathContainsEdge(size_t index,
+                        graph::EdgeDocumentToken const& edge) const;
 
   aql::AqlValue vertexToAqlValue(size_t index);
   aql::AqlValue edgeToAqlValue(size_t index);
-  aql::AqlValue pathToIndexToAqlValue(arangodb::velocypack::Builder& result, size_t index);
-  velocypack::Slice pathToIndexToSlice(arangodb::velocypack::Builder& result, size_t index, bool fromPrune);
+  aql::AqlValue pathToIndexToAqlValue(arangodb::velocypack::Builder& result,
+                                      size_t index);
+  velocypack::Slice pathToIndexToSlice(arangodb::velocypack::Builder& result,
+                                       size_t index, bool fromPrune);
 
   bool shouldPrune();
   double weightEdge(arangodb::velocypack::Slice edge) const;
@@ -153,8 +159,9 @@ class WeightedEnumerator final : public arangodb::traverser::PathEnumerator {
   void expandVertex(size_t vertexIndex, size_t depth);
   bool expandEdge(NextEdge edge);
 
-  static velocypack::StringRef getToVertex(velocypack::Slice edge, velocypack::StringRef from);
-  bool validDisjointPath(size_t index, arangodb::velocypack::StringRef vertex) const;
+  static std::string_view getToVertex(velocypack::Slice edge,
+                                      std::string_view from);
+  bool validDisjointPath(size_t index, std::string_view vertex) const;
 };
 }  // namespace graph
 }  // namespace arangodb

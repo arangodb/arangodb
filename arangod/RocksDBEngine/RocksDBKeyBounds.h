@@ -30,7 +30,6 @@
 
 #include <rocksdb/slice.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <iosfwd>
@@ -73,7 +72,8 @@ class RocksDBKeyBounds {
   /// @brief Bounds for all index-entries- within a range belonging to a
   ///  specified primary index
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds PrimaryIndex(uint64_t indexId, std::string const& lower,
+  static RocksDBKeyBounds PrimaryIndex(uint64_t indexId,
+                                       std::string const& lower,
                                        std::string const& upper);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -86,7 +86,7 @@ class RocksDBKeyBounds {
   /// related to the specified vertex
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds EdgeIndexVertex(uint64_t indexId,
-                                          arangodb::velocypack::StringRef const& vertexId);
+                                          std::string_view vertexId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all index-entries belonging to a specified non-unique
@@ -113,7 +113,8 @@ class RocksDBKeyBounds {
   /// @brief Bounds for all entries in geo index
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds GeoIndex(uint64_t indexId);
-  static RocksDBKeyBounds GeoIndex(uint64_t indexId, uint64_t minCell, uint64_t maxCell);
+  static RocksDBKeyBounds GeoIndex(uint64_t indexId, uint64_t minCell,
+                                   uint64_t maxCell);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all index-entries within a value range belonging to a
@@ -126,14 +127,16 @@ class RocksDBKeyBounds {
   /// @brief Bounds for all documents within a value range belonging to a
   /// specified unique index
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId, VPackSlice const& left,
+  static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId,
+                                           VPackSlice const& left,
                                            VPackSlice const& right);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all documents within a value range belonging to a
   /// specified unique index. this method is used for point lookups
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId, VPackSlice const& left);
+  static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId,
+                                           VPackSlice const& left);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all views belonging to a specified database
@@ -148,12 +151,12 @@ class RocksDBKeyBounds {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all entries of a fulltext index, matching prefixes
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds FulltextIndexPrefix(uint64_t, arangodb::velocypack::StringRef const&);
+  static RocksDBKeyBounds FulltextIndexPrefix(uint64_t, std::string_view);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all entries of a fulltext index, matching the word
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds FulltextIndexComplete(uint64_t, arangodb::velocypack::StringRef const&);
+  static RocksDBKeyBounds FulltextIndexComplete(uint64_t, std::string_view);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all index-entries belonging to a specified non-unique
@@ -207,13 +210,15 @@ class RocksDBKeyBounds {
   explicit RocksDBKeyBounds(RocksDBEntryType type);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, bool second);
-  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, arangodb::velocypack::StringRef const& second);
-  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, VPackSlice const& second);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
-                   VPackSlice const& second, VPackSlice const& third);
-  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, uint64_t second, uint64_t third);
-  RocksDBKeyBounds(RocksDBEntryType type, uint64_t id, std::string const& lower,
-                   std::string const& upper);
+                   std::string_view second);
+  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, VPackSlice second);
+  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, VPackSlice second,
+                   VPackSlice third);
+  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, uint64_t second,
+                   uint64_t third);
+  RocksDBKeyBounds(RocksDBEntryType type, uint64_t id, std::string_view lower,
+                   std::string_view upper);
 
  private:
   // private class that will hold both bounds in a single buffer (with only one
@@ -225,7 +230,8 @@ class RocksDBKeyBounds {
     BoundsBuffer() : _separatorPosition(0) {}
 
     BoundsBuffer(BoundsBuffer const& other)
-        : _buffer(other._buffer), _separatorPosition(other._separatorPosition) {}
+        : _buffer(other._buffer),
+          _separatorPosition(other._separatorPosition) {}
 
     BoundsBuffer(BoundsBuffer&& other) noexcept
         : _buffer(std::move(other._buffer)),
@@ -300,4 +306,3 @@ class RocksDBKeyBounds {
 std::ostream& operator<<(std::ostream&, RocksDBKeyBounds const&);
 
 }  // namespace arangodb
-

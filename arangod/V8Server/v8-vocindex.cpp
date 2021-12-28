@@ -84,7 +84,8 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   TRI_V8ToVPack(isolate, builder, args[0], false, false);
 
   VPackBuilder output;
-  auto res = methods::Indexes::ensureIndex(collection, builder.slice(), create, output);
+  auto res = methods::Indexes::ensureIndex(collection, builder.slice(), create,
+                                           output);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -98,7 +99,8 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
 /// @brief was docuBlock collectionEnsureIndex
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_EnsureIndexVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_EnsureIndexVocbaseCol(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -112,7 +114,8 @@ static void JS_EnsureIndexVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& 
 /// @brief looks up an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_LookupIndexVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_LookupIndexVocbaseCol(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -124,7 +127,8 @@ static void JS_LookupIndexVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& 
 /// @brief was docuBlock col_dropIndex
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_DropIndexVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_DropIndexVocbaseCol(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
@@ -160,7 +164,8 @@ static void JS_DropIndexVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& ar
 /// @brief was docuBlock collectionGetIndexes
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_GetIndexesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_GetIndexesVocbaseCol(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -173,7 +178,8 @@ static void JS_GetIndexesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
   auto flags = Index::makeFlags(Index::Serialize::Estimates);
 
   if (args.Length() > 0 && TRI_ObjectToBoolean(isolate, args[0])) {
-    flags = Index::makeFlags(Index::Serialize::Estimates, Index::Serialize::Figures);
+    flags = Index::makeFlags(Index::Serialize::Estimates,
+                             Index::Serialize::Figures);
   }
 
   bool withHidden = false;
@@ -205,7 +211,8 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   auto& vocbase = GetContextVocBase(isolate);
 
   if (vocbase.isDangling()) {
-    events::CreateCollection(vocbase.name(), "", TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    events::CreateCollection(vocbase.name(), "",
+                             TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   } else if (args.Length() < 1 || args.Length() > 4) {
     events::CreateCollection(vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
@@ -239,8 +246,9 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     if (!args[1]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
     }
-    TRI_V8ToVPack(isolate, properties,
-                  args[1]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()), false);
+    TRI_V8ToVPack(
+        isolate, properties,
+        args[1]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()), false);
     propSlice = properties.slice();
   }
 
@@ -252,36 +260,39 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   if (args.Length() >= 3 && args[args.Length() - 1]->IsObject()) {
     v8::Handle<v8::Object> obj =
-        args[args.Length() - 1]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
-    createWaitsForSyncReplication =
-        TRI_GetOptionalBooleanProperty(isolate, obj, "waitForSyncReplication",
-                                       createWaitsForSyncReplication);
+        args[args.Length() - 1]->ToObject(TRI_IGETC).FromMaybe(
+            v8::Local<v8::Object>());
+    createWaitsForSyncReplication = TRI_GetOptionalBooleanProperty(
+        isolate, obj, "waitForSyncReplication", createWaitsForSyncReplication);
 
-    enforceReplicationFactor =
-        TRI_GetOptionalBooleanProperty(isolate, obj, "enforceReplicationFactor",
-                                       enforceReplicationFactor);
+    enforceReplicationFactor = TRI_GetOptionalBooleanProperty(
+        isolate, obj, "enforceReplicationFactor", enforceReplicationFactor);
   }
 
   VPackBuilder filtered = methods::Collections::filterInput(propSlice);
   propSlice = filtered.slice();
 
+  bool allowSystem = VelocyPackHelper::getBooleanValue(
+      propSlice, StaticStrings::DataSourceSystem, false);
+
   v8::Handle<v8::Value> result;
   std::shared_ptr<LogicalCollection> coll;
   OperationOptions options(ExecContext::current());
-  auto res = methods::Collections::create(vocbase,  // collection vocbase
-                                          options,
-                                          name,            // collection name
-                                          collectionType,  // collection type
-                                          propSlice,  // collection properties
-                                          createWaitsForSyncReplication,  // replication wait flag
-                                          enforceReplicationFactor,
-                                          false,  // is new Database?, here always false
-                                          coll);
+  auto res = methods::Collections::create(
+      vocbase,  // collection vocbase
+      options,
+      name,                           // collection name
+      collectionType,                 // collection type
+      propSlice,                      // collection properties
+      createWaitsForSyncReplication,  // replication wait flag
+      enforceReplicationFactor,
+      false,  // is new Database?, here always false
+      coll, allowSystem);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-  
+
   if (coll) {
     result = WrapCollection(isolate, coll);
   }
@@ -303,7 +314,8 @@ static void JS_CreateVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// @brief was docuBlock collectionCreateDocumentCollection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_CreateDocumentCollectionVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_CreateDocumentCollectionVocbase(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   CreateVocBase(args, TRI_COL_TYPE_DOCUMENT);
   TRI_V8_TRY_CATCH_END
@@ -313,25 +325,27 @@ static void JS_CreateDocumentCollectionVocbase(v8::FunctionCallbackInfo<v8::Valu
 /// @brief was docuBlock collectionCreateEdgeCollection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_CreateEdgeCollectionVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_CreateEdgeCollectionVocbase(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   CreateVocBase(args, TRI_COL_TYPE_EDGE);
   TRI_V8_TRY_CATCH_END
 }
 
-void TRI_InitV8IndexArangoDB(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> rt) {
+void TRI_InitV8IndexArangoDB(v8::Isolate* isolate,
+                             v8::Handle<v8::ObjectTemplate> rt) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_create"),
                        JS_CreateVocbase, true);
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "_createEdgeCollection"),
                        JS_CreateEdgeCollectionVocbase);
-  TRI_AddMethodVocbase(isolate, rt,
-                       TRI_V8_ASCII_STRING(isolate,
-                                           "_createDocumentCollection"),
-                       JS_CreateDocumentCollectionVocbase);
+  TRI_AddMethodVocbase(
+      isolate, rt, TRI_V8_ASCII_STRING(isolate, "_createDocumentCollection"),
+      JS_CreateDocumentCollectionVocbase);
 }
 
-void TRI_InitV8IndexCollection(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> rt) {
+void TRI_InitV8IndexCollection(v8::Isolate* isolate,
+                               v8::Handle<v8::ObjectTemplate> rt) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "dropIndex"),
                        JS_DropIndexVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "ensureIndex"),
@@ -340,6 +354,7 @@ void TRI_InitV8IndexCollection(v8::Isolate* isolate, v8::Handle<v8::ObjectTempla
                        JS_LookupIndexVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getIndexes"),
                        JS_GetIndexesVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "indexes"),
-                       JS_GetIndexesVocbaseCol);  // indexes() is an alias for getIndexes() now!
+  TRI_AddMethodVocbase(
+      isolate, rt, TRI_V8_ASCII_STRING(isolate, "indexes"),
+      JS_GetIndexesVocbaseCol);  // indexes() is an alias for getIndexes() now!
 }

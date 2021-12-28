@@ -29,7 +29,8 @@
 
 using namespace arangodb::greenspun;
 
-EvalResult Prim_StringHuh(Machine& ctx, VPackSlice const slice, VPackBuilder& result) {
+EvalResult Prim_StringHuh(Machine& ctx, VPackSlice const slice,
+                          VPackBuilder& result) {
   auto res = extract<VPackSlice>(slice);
   if (res.fail()) {
     return res.error();
@@ -40,7 +41,8 @@ EvalResult Prim_StringHuh(Machine& ctx, VPackSlice const slice, VPackBuilder& re
   return {};
 }
 
-EvalResult Prim_StringLength(Machine& ctx, VPackSlice const slice, VPackBuilder& result) {
+EvalResult Prim_StringLength(Machine& ctx, VPackSlice const slice,
+                             VPackBuilder& result) {
   auto res = extract<std::string_view>(slice);
   if (res.fail()) {
     return res.error();
@@ -51,13 +53,15 @@ EvalResult Prim_StringLength(Machine& ctx, VPackSlice const slice, VPackBuilder&
   return {};
 }
 
-EvalResult Prim_StringRef(Machine& ctx, VPackSlice const slice, VPackBuilder& result) {
+EvalResult Prim_StringRef(Machine& ctx, VPackSlice const slice,
+                          VPackBuilder& result) {
   auto res = extract<std::string_view, double>(slice);
   if (res.fail()) {
     return res.error();
   }
 
-  auto&& [str, idx] = res.value();
+  auto&& [str, didx] = res.value();
+  auto const idx = static_cast<std::size_t>(didx);
   if (idx >= str.length()) {
     return EvalError("index out of bounds");
   }
@@ -67,13 +71,15 @@ EvalResult Prim_StringRef(Machine& ctx, VPackSlice const slice, VPackBuilder& re
   return {};
 }
 
-EvalResult Prim_StringSet(Machine& ctx, VPackSlice const slice, VPackBuilder& result) {
+EvalResult Prim_StringSet(Machine& ctx, VPackSlice const slice,
+                          VPackBuilder& result) {
   auto res = extract<std::string, double, std::string_view>(slice);
   if (res.fail()) {
     return res.error();
   }
 
-  auto&& [str, idx, c] = res.value();
+  auto&& [str, didx, c] = res.value();
+  auto const idx = static_cast<std::size_t>(didx);
   if (idx >= str.length()) {
     return EvalError("index out of bounds");
   }
@@ -87,15 +93,18 @@ EvalResult Prim_StringSet(Machine& ctx, VPackSlice const slice, VPackBuilder& re
   return {};
 }
 
-EvalResult Prim_StringCopy(Machine& ctx, VPackSlice const slice, VPackBuilder& result) {
+EvalResult Prim_StringCopy(Machine& ctx, VPackSlice const slice,
+                           VPackBuilder& result) {
   return EvalError("not implemented");
 }
 
-EvalResult Prim_StringAppend(Machine& ctx, VPackSlice const slice, VPackBuilder& result) {
+EvalResult Prim_StringAppend(Machine& ctx, VPackSlice const slice,
+                             VPackBuilder& result) {
   return EvalError("not implemented");
 }
 
-EvalResult Prim_StringJoin(Machine& ctx, VPackSlice const slice, VPackBuilder& result) {
+EvalResult Prim_StringJoin(Machine& ctx, VPackSlice const slice,
+                           VPackBuilder& result) {
   auto res = extract<VPackArrayIterator, std::string_view>(slice);
   if (res.fail()) {
     return res.error();
@@ -118,7 +127,8 @@ EvalResult Prim_StringJoin(Machine& ctx, VPackSlice const slice, VPackBuilder& r
   return {};
 }
 
-EvalResult Prim_StringCat(Machine& ctx, VPackSlice const params, VPackBuilder& result) {
+EvalResult Prim_StringCat(Machine& ctx, VPackSlice const params,
+                          VPackBuilder& result) {
   std::string str;
 
   for (auto iter = VPackArrayIterator(params); iter.valid(); iter++) {

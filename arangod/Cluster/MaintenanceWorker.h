@@ -26,7 +26,6 @@
 
 #include "Basics/Thread.h"
 #include "Cluster/Action.h"
-#include "RestServer/Metrics.h"
 
 namespace arangodb {
 
@@ -37,9 +36,12 @@ namespace maintenance {
 class MaintenanceWorker : public Thread {
  public:
   explicit MaintenanceWorker(MaintenanceFeature& feature,
-                    std::unordered_set<std::string> const& labels = std::unordered_set<std::string>());
+                             int minimalPriorityAllowed,
+                             std::unordered_set<std::string> const& labels =
+                                 std::unordered_set<std::string>());
 
-  MaintenanceWorker(MaintenanceFeature& feature, std::shared_ptr<Action>& directAction);
+  MaintenanceWorker(MaintenanceFeature& feature,
+                    std::shared_ptr<Action>& directAction);
 
   virtual ~MaintenanceWorker() { shutdown(); }
 
@@ -82,6 +84,8 @@ class MaintenanceWorker : public Thread {
 
   const std::unordered_set<std::string> _labels;
 
+  int const _minimalPriorityAllowed;
+
  private:
   MaintenanceWorker(MaintenanceWorker const&) = delete;
 
@@ -91,4 +95,3 @@ class MaintenanceWorker : public Thread {
 
 }  // namespace maintenance
 }  // namespace arangodb
-

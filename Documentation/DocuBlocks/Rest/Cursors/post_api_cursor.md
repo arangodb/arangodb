@@ -79,6 +79,9 @@ The number of execution nodes in the query plan after that stack splitting is
 performed to avoid a potential stack overflow. Defaults to the configured value
 of the startup option `--query.max-nodes-per-callstack`.
 
+This option is only useful for testing and debugging and normally does not need
+any adjustment.
+
 @RESTSTRUCT{maxWarningCount,post_api_cursor_opts,integer,optional,int64}
 Limits the maximum number of warnings a query will return. The number of warnings
 a query will return is limited to 10 by default, but that number can be increased
@@ -239,6 +242,16 @@ accessed in the query.
 
 @RESTRETURNCODE{405}
 The server will respond with *HTTP 405* if an unsupported HTTP method is used.
+
+@RESTRETURNCODE{410}
+The server will respond with *HTTP 410* if a server which processes the query
+or is the leader for a shard which is used in the query stops responding, but 
+the connection has not been closed.
+
+@RESTRETURNCODE{503}
+The server will respond with *HTTP 503* if a server which processes the query
+or is the leader for a shard which is used in the query is down, either for 
+going through a restart, a failure or connectivity issues.
 
 @EXAMPLES
 

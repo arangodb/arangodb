@@ -38,7 +38,8 @@ using namespace arangodb::replication2::test;
 
 struct AppendEntriesBatchTest
     : ReplicatedLogTest,
-      ::testing::WithParamInterface<std::tuple<ReplicatedLogGlobalSettings, std::vector<LogPayload>>> {
+      ::testing::WithParamInterface<
+          std::tuple<ReplicatedLogGlobalSettings, std::vector<LogPayload>>> {
   AppendEntriesBatchTest() : _payloads(std::get<1>(GetParam())) {
     *_optionsMock = std::get<0>(GetParam());
   }
@@ -76,7 +77,16 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
     auto currentSize = size_t{0};
     while (auto log = it->next()) {
       currentSize += log->approxByteSize();
-      if (currentSize >= _optionsMock->_maxNetworkBatchSize) {
+      if (currentSize >= _optionsMock->_thresholdNetworkBatchSize) {
+        numRequests += 1;
+        currentSize = 0;
+      }
+    }
+    {
+      // Add first entry in term
+      currentSize += PersistingLogEntry{LogTerm{5}, LogIndex{1}, std::nullopt}
+                         .approxByteSize();
+      if (currentSize >= _optionsMock->_thresholdNetworkBatchSize) {
         numRequests += 1;
         currentSize = 0;
       }
@@ -88,20 +98,20 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
 
     expectedNumRequests += numRequests;
 
-    return std::make_shared<TestReplicatedLog>(std::make_unique<LogCore>(persistedLog),
-                                               _logMetricsMock, _optionsMock,
-                                               LoggerContext(Logger::REPLICATION2));
+    return std::make_shared<TestReplicatedLog>(
+        std::make_unique<LogCore>(persistedLog), _logMetricsMock, _optionsMock,
+        LoggerContext(Logger::REPLICATION2));
   });
 
   auto followerLog = makeReplicatedLog(LogId{1});
-  auto follower = followerLog->becomeFollower("follower", LogTerm{4}, "leader");
-  auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2);
+  auto follower = followerLog->becomeFollower("follower", LogTerm{5}, "leader");
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{5}, {follower}, 2);
 
   {
     if (_payloads.size() > 0) {
       auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant());
       EXPECT_EQ(stats.local.spearHead,
-                TermIndexPair(LogTerm{4}, LogIndex{_payloads.size()}));
+                TermIndexPair(LogTerm{5}, LogIndex{_payloads.size() + 1}));
       EXPECT_EQ(stats.local.commitIndex, LogIndex{0});
 
       EXPECT_EQ(stats.follower.at("follower").spearHead.index,
@@ -131,34 +141,38 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
 
   {
     auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant());
-    EXPECT_EQ(stats.local.spearHead.index, LogIndex{_payloads.size()});
-    EXPECT_EQ(stats.local.commitIndex, LogIndex{_payloads.size()});
+    EXPECT_EQ(stats.local.spearHead.index, LogIndex{_payloads.size() + 1});
+    EXPECT_EQ(stats.local.commitIndex, LogIndex{_payloads.size() + 1});
   }
   {
     auto stats = std::get<FollowerStatus>(follower->getStatus().getVariant());
-    EXPECT_EQ(stats.local.spearHead.index, LogIndex{_payloads.size()});
-    EXPECT_EQ(stats.local.commitIndex, LogIndex{_payloads.size()});
+    EXPECT_EQ(stats.local.spearHead.index, LogIndex{_payloads.size() + 1});
+    EXPECT_EQ(stats.local.commitIndex, LogIndex{_payloads.size() + 1});
   }
 }
 
-auto testReplicatedLogOptions =
-    testing::Values(ReplicatedLogGlobalSettings{5, 5}, ReplicatedLogGlobalSettings{1024, 1024},
-                    ReplicatedLogGlobalSettings{1024 * 1024, 1024 * 1024});
+auto testReplicatedLogOptions = testing::Values(
+    ReplicatedLogGlobalSettings{5, 5}, ReplicatedLogGlobalSettings{1024, 1024},
+    ReplicatedLogGlobalSettings{1024 * 1024, 1024 * 1024});
 
 auto testPayloads = testing::Values(
     std::vector<LogPayload>{LogPayload::createFromString("a")},
     std::vector<LogPayload>{LogPayload::createFromString("a"),
                             LogPayload::createFromString("b")},
-    std::vector<LogPayload>{LogPayload::createFromString(std::string(1024, 'a'))},
+    std::vector<LogPayload>{
+        LogPayload::createFromString(std::string(1024, 'a'))},
     std::vector<LogPayload>{LogPayload::createFromString("Hello, world"),
                             LogPayload::createFromString("Bye, world")},
     std::vector<LogPayload>(1024, LogPayload::createFromString("")),
-    std::vector<LogPayload>{LogPayload::createFromString(std::string(1024, 'a')),
-                            LogPayload::createFromString("Hello, world"),
-                            LogPayload::createFromString("Bye, world")},
-    std::vector<LogPayload>(1024, LogPayload::createFromString(std::string(1024, 'a'))));
+    std::vector<LogPayload>{
+        LogPayload::createFromString(std::string(1024, 'a')),
+        LogPayload::createFromString("Hello, world"),
+        LogPayload::createFromString("Bye, world")},
+    std::vector<LogPayload>(
+        1024, LogPayload::createFromString(std::string(1024, 'a'))));
 
 // Use a sequence of payload of pre-defined sizes and send them;
 // count the number of batches that are created.
 INSTANTIATE_TEST_CASE_P(AppendEntriesBatchTestInstance, AppendEntriesBatchTest,
-                        testing::Combine(testReplicatedLogOptions, testPayloads));
+                        testing::Combine(testReplicatedLogOptions,
+                                         testPayloads));

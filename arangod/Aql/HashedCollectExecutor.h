@@ -33,9 +33,12 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
+#include "Aql/AqlValueGroup.h"
+
+#include "Containers/FlatHashMap.h"
 
 #include <memory>
-#include <unordered_map>
+#include <string>
 
 namespace arangodb {
 struct ResourceMonitor;
@@ -46,7 +49,7 @@ struct AqlCall;
 class AqlItemBlockInputRange;
 class OutputAqlItemRow;
 class RegisterInfos;
-template <BlockPassthrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 struct Aggregator;
 
@@ -65,11 +68,12 @@ class HashedCollectExecutorInfos {
    * @param aggregateRegisters Input and output Register for Aggregation
    * @param trxPtr The AQL transaction, as it might be needed for aggregates
    */
-  HashedCollectExecutorInfos(std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
-                             RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
-                             std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-                             velocypack::Options const* vpackOptions, 
-                             arangodb::ResourceMonitor& resourceMonitor);
+  HashedCollectExecutorInfos(
+      std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
+      RegisterId collectRegister, std::vector<std::string> aggregateTypes,
+      std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
+      velocypack::Options const* vpackOptions,
+      arangodb::ResourceMonitor& resourceMonitor);
 
   HashedCollectExecutorInfos() = delete;
   HashedCollectExecutorInfos(HashedCollectExecutorInfos&&) = default;
@@ -77,8 +81,10 @@ class HashedCollectExecutorInfos {
   ~HashedCollectExecutorInfos() = default;
 
  public:
-  std::vector<std::pair<RegisterId, RegisterId>> const& getGroupRegisters() const;
-  std::vector<std::pair<RegisterId, RegisterId>> const& getAggregatedRegisters() const;
+  std::vector<std::pair<RegisterId, RegisterId>> const& getGroupRegisters()
+      const;
+  std::vector<std::pair<RegisterId, RegisterId>> const& getAggregatedRegisters()
+      const;
   std::vector<std::string> const& getAggregateTypes() const;
   velocypack::Options const* getVPackOptions() const;
   RegisterId getCollectRegister() const noexcept;
@@ -99,7 +105,7 @@ class HashedCollectExecutorInfos {
   /// this register is also used for counting in case WITH COUNT INTO var is
   /// used
   RegisterId _collectRegister;
-  
+
   /// @brief the transaction for this query
   velocypack::Options const* _vpackOptions;
 
@@ -115,7 +121,8 @@ class HashedCollectExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = false;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -131,17 +138,21 @@ class HashedCollectExecutor {
   /**
    * @brief produce the next Row of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
-  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input,
+                                 OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
 
   /**
    * @brief skip the next Row of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
-  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                   AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
   /**
@@ -150,23 +161,27 @@ class HashedCollectExecutor {
    * it knows that it can only create as many new rows as pulled from upstream.
    * So it will overestimate.
    */
-  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                             AqlCall const& call) const noexcept -> size_t;
+  [[nodiscard]] auto expectedNumberOfRowsNew(
+      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+      -> size_t;
 
  private:
   struct ValueAggregators {
-    ValueAggregators(std::vector<Aggregator::Factory const*> factories, velocypack::Options const* opts);
+    ValueAggregators(std::vector<Aggregator::Factory const*> factories,
+                     velocypack::Options const* opts);
     ~ValueAggregators();
     std::size_t size() const;
     Aggregator& operator[](std::size_t index);
     static void operator delete(void* ptr);
+
    private:
     std::size_t _size;
   };
   using GroupKeyType = HashedAqlValueGroup;
   using GroupValueType = std::unique_ptr<ValueAggregators>;
   using GroupMapType =
-      std::unordered_map<GroupKeyType, GroupValueType, AqlValueGroupHash, AqlValueGroupEqual>;
+      containers::FlatHashMap<GroupKeyType, GroupValueType, AqlValueGroupHash,
+                              AqlValueGroupEqual>;
 
   Infos const& infos() const noexcept;
 
@@ -189,7 +204,8 @@ class HashedCollectExecutor {
 
   void destroyAllGroupsAqlValues();
 
-  static std::vector<Aggregator::Factory const*> createAggregatorFactories(HashedCollectExecutor::Infos const& infos);
+  static std::vector<Aggregator::Factory const*> createAggregatorFactories(
+      HashedCollectExecutor::Infos const& infos);
 
   GroupMapType::iterator findOrEmplaceGroup(InputAqlItemRow& input);
 
@@ -213,7 +229,8 @@ class HashedCollectExecutor {
   GroupMapType _allGroups;
   GroupMapType::const_iterator _currentGroup;
 
-  bool _isInitialized;  // init() was called successfully (e.g. it returned DONE)
+  bool
+      _isInitialized;  // init() was called successfully (e.g. it returned DONE)
 
   std::vector<Aggregator::Factory const*> _aggregatorFactories;
 
@@ -224,4 +241,3 @@ class HashedCollectExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

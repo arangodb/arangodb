@@ -43,7 +43,7 @@
 #include "Replication/ReplicationFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/EnvironmentFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -70,12 +70,13 @@ network::Headers buildHeaders() {
   }
   return headers;
 }
-}
+}  // namespace
 
-RestSupportInfoHandler::RestSupportInfoHandler(application_features::ApplicationServer& server,
-                                               GeneralRequest* request, GeneralResponse* response)
+RestSupportInfoHandler::RestSupportInfoHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
-  
+
 RestStatus RestSupportInfoHandler::execute() {
   GeneralServerFeature& gs = server().getFeature<GeneralServerFeature>();
   auto const& apiPolicy = gs.supportInfoApiPolicy();
@@ -88,9 +89,10 @@ RestStatus RestSupportInfoHandler::execute() {
       return RestStatus::DONE;
     }
   }
- 
+
   if (apiPolicy == "hardened") {
-    ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+    ServerSecurityFeature& security =
+        server().getFeature<ServerSecurityFeature>();
     if (!security.canAccessHardenedApi()) {
       // superuser can still access API even if hardened
       if (!ExecContext::current().isSuperuser()) {
@@ -106,28 +108,33 @@ RestStatus RestSupportInfoHandler::execute() {
   }
 
   if (_request->databaseName() != StaticStrings::SystemDatabase) {
-    generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
-                  TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    generateError(
+        GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
+        TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
     return RestStatus::DONE;
   }
- 
+
   // used for all types of responses
   VPackBuilder hostInfo;
   buildHostInfo(hostInfo);
   std::string timeString;
-  LogTimeFormats::writeTime(timeString, LogTimeFormats::TimeFormat::UTCDateString, std::chrono::system_clock::now());
-    
-  bool const isActiveFailover = server().getFeature<ReplicationFeature>().isActiveFailoverEnabled();
-  bool const fanout = (ServerState::instance()->isCoordinator() || isActiveFailover) && 
-                      !_request->parsedValue("local", false);
+  LogTimeFormats::writeTime(timeString,
+                            LogTimeFormats::TimeFormat::UTCDateString,
+                            std::chrono::system_clock::now());
+
+  bool const isActiveFailover =
+      server().getFeature<ReplicationFeature>().isActiveFailoverEnabled();
+  bool const fanout =
+      (ServerState::instance()->isCoordinator() || isActiveFailover) &&
+      !_request->parsedValue("local", false);
 
   VPackBuilder result;
   result.openObject();
-  
+
   if (ServerState::instance()->isSingleServer() && !isActiveFailover) {
     result.add("deployment", VPackValue(VPackValueType::Object));
     result.add("type", VPackValue("single"));
-    result.close(); // deployment
+    result.close();  // deployment
     result.add("host", hostInfo.slice());
     result.add("date", VPackValue(timeString));
   } else {
@@ -142,7 +149,7 @@ RestStatus RestSupportInfoHandler::execute() {
         TRI_ASSERT(ServerState::instance()->isCoordinator());
         result.add("type", VPackValue("cluster"));
       }
-      
+
       // build results for all servers
       result.add("servers", VPackValue(VPackValueType::Object));
       // we come first!
@@ -154,7 +161,7 @@ RestStatus RestSupportInfoHandler::execute() {
       if (pool == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
-    
+
       std::vector<network::FutureRes> futures;
 
       network::RequestOptions options;
@@ -183,11 +190,13 @@ RestStatus RestSupportInfoHandler::execute() {
           continue;
         }
 
-        auto f = network::sendRequestRetry(pool, "server:" + server.first, fuerte::RestVerb::Get,
-                                           _request->requestPath(), VPackBuffer<uint8_t>{}, options, ::buildHeaders());
+        auto f = network::sendRequestRetry(
+            pool, "server:" + server.first, fuerte::RestVerb::Get,
+            _request->requestPath(), VPackBuffer<uint8_t>{}, options,
+            ::buildHeaders());
         futures.emplace_back(std::move(f));
       }
-    
+
       if (!futures.empty()) {
         auto responses = futures::collectAll(futures).get();
         for (auto const& it : responses) {
@@ -196,16 +205,18 @@ RestStatus RestSupportInfoHandler::execute() {
           if (res.fail()) {
             THROW_ARANGO_EXCEPTION(res);
           }
-            
+
           auto slice = resp.slice();
           // copy results from other server
           if (slice.isObject()) {
-            result.add(basics::StringUtils::replace(resp.destination, "server:", ""), slice.get("host"));
+            result.add(
+                basics::StringUtils::replace(resp.destination, "server:", ""),
+                slice.get("host"));
           }
         }
       }
 
-      result.close(); // servers
+      result.close();  // servers
 
       auto manager = AsyncAgencyCommManager::INSTANCE.get();
       if (manager != nullptr) {
@@ -220,9 +231,9 @@ RestStatus RestSupportInfoHandler::execute() {
         result.add(VPackValue("shards"));
         ci.getShardStatisticsGlobal(/*restrictServer*/ "", result);
       }
-      
-      result.close(); // deployment
-      
+
+      result.close();  // deployment
+
       result.add("date", VPackValue(timeString));
     } else {
       // DB server or other coordinator
@@ -237,8 +248,9 @@ RestStatus RestSupportInfoHandler::execute() {
 }
 
 void RestSupportInfoHandler::buildHostInfo(VPackBuilder& result) {
-  bool const isActiveFailover = server().getFeature<ReplicationFeature>().isActiveFailoverEnabled();
-  
+  bool const isActiveFailover =
+      server().getFeature<ReplicationFeature>().isActiveFailoverEnabled();
+
   result.openObject();
 
   if (ServerState::instance()->isRunningInCluster() || isActiveFailover) {
@@ -246,11 +258,13 @@ void RestSupportInfoHandler::buildHostInfo(VPackBuilder& result) {
     result.add("alias", VPackValue(ServerState::instance()->getShortName()));
     result.add("endpoint", VPackValue(ServerState::instance()->getEndpoint()));
   }
-  
-  result.add("role", VPackValue(ServerState::roleToString(ServerState::instance()->getRole())));
-  result.add("maintenance", VPackValue(ServerState::instance()->isMaintenance()));
+
+  result.add("role", VPackValue(ServerState::roleToString(
+                         ServerState::instance()->getRole())));
+  result.add("maintenance",
+             VPackValue(ServerState::instance()->isMaintenance()));
   result.add("readOnly", VPackValue(ServerState::instance()->readOnly()));
-  
+
   result.add("version", VPackValue(ARANGODB_VERSION));
   result.add("build", VPackValue(Version::getBuildRepository()));
 #ifdef USE_ENTERPRISE
@@ -259,32 +273,31 @@ void RestSupportInfoHandler::buildHostInfo(VPackBuilder& result) {
   result.add("license", VPackValue("community"));
 #endif
 
-
   EnvironmentFeature const& ef = server().getFeature<EnvironmentFeature>();
   result.add("os", VPackValue(ef.operatingSystem()));
   result.add("platform", VPackValue(Version::getPlatform()));
-  
+
   result.add("physicalMemory", VPackValue(VPackValueType::Object));
   result.add("value", VPackValue(PhysicalMemory::getValue()));
   result.add("overridden", VPackValue(PhysicalMemory::overridden()));
-  result.close(); // physical memory
-  
+  result.close();  // physical memory
+
   result.add("numberOfCores", VPackValue(VPackValueType::Object));
   result.add("value", VPackValue(NumberOfCores::getValue()));
   result.add("overridden", VPackValue(NumberOfCores::overridden()));
-  result.close(); // number of cores
-        
+  result.close();  // number of cores
+
   result.add("processStats", VPackValue(VPackValueType::Object));
   ServerStatistics const& serverInfo =
-    server().getFeature<MetricsFeature>().serverStatistics();
+      server().getFeature<metrics::MetricsFeature>().serverStatistics();
   result.add("processUptime", VPackValue(serverInfo.uptime()));
 
   ProcessInfo info = TRI_ProcessInfoSelf();
   result.add("numberOfThreads", VPackValue(info._numberThreads));
   result.add("virtualSize", VPackValue(info._virtualSize));
   result.add("residentSetSize", VPackValue(info._residentSize));
-  result.close(); // processStats
-  
+  result.close();  // processStats
+
   CpuUsageFeature& cpuUsage = server().getFeature<CpuUsageFeature>();
   if (cpuUsage.isEnabled()) {
     auto snapshot = cpuUsage.snapshot();
@@ -293,33 +306,37 @@ void RestSupportInfoHandler::buildHostInfo(VPackBuilder& result) {
     result.add("systemPercent", VPackValue(snapshot.systemPercent()));
     result.add("idlePercent", VPackValue(snapshot.idlePercent()));
     result.add("iowaitPercent", VPackValue(snapshot.iowaitPercent()));
-    result.close(); // cpustats
+    result.close();  // cpustats
   }
 
   if (!ServerState::instance()->isCoordinator()) {
     result.add("engineStats", VPackValue(VPackValueType::Object));
     VPackBuilder stats;
-    StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+    StorageEngine& engine =
+        server().getFeature<EngineSelectorFeature>().engine();
     engine.getStatistics(stats, /*v2*/ true);
 
-    auto names = { 
-      // edge cache
-      "cache.limit", "cache.allocated",
-      // sizes
-      "rocksdb.estimate-num-keys",
-      "rocksdb.estimate-live-data-size",
-      "rocksdb.live-sst-files-size",
-      // block cache
-      "rocksdb.block-cache-capacity", "rocksdb.block-cache-usage", 
-      // disk
-      "rocksdb.free-disk-space", "rocksdb.total-disk-space", 
+    auto names = {
+        // edge cache
+        "cache.limit",
+        "cache.allocated",
+        // sizes
+        "rocksdb.estimate-num-keys",
+        "rocksdb.estimate-live-data-size",
+        "rocksdb.live-sst-files-size",
+        // block cache
+        "rocksdb.block-cache-capacity",
+        "rocksdb.block-cache-usage",
+        // disk
+        "rocksdb.free-disk-space",
+        "rocksdb.total-disk-space",
     };
     for (auto const& name : names) {
       if (auto slice = stats.slice().get(name); !slice.isNone()) {
         result.add(name, slice);
       }
     }
-    result.close(); // engineStats
+    result.close();  // engineStats
   }
 
   result.close();

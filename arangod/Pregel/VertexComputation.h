@@ -36,11 +36,11 @@
 namespace arangodb {
 namespace pregel {
 
-template <typename V, typename E, typename M>
+template<typename V, typename E, typename M>
 class Worker;
 class IAggregator;
 
-template <typename V, typename E, typename M>
+template<typename V, typename E, typename M>
 class VertexContext {
   friend class Worker<V, E, M>;
 
@@ -55,13 +55,13 @@ class VertexContext {
  public:
   virtual ~VertexContext() = default;
 
-  template <typename T>
+  template<typename T>
   inline void aggregate(std::string const& name, T const& value) {
     T const* ptr = &value;
     _writeAggregators->aggregate(name, ptr);
   }
 
-  template <typename T>
+  template<typename T>
   inline const T& getAggregatedValueRef(std::string const& name) {
     auto ptr = _readAggregators->getAggregatedValue(name);
     TRI_ASSERT(ptr != nullptr);
@@ -82,9 +82,7 @@ class VertexContext {
 
   inline WorkerContext const* context() const { return _context; }
 
-  V* mutableVertexData() {
-    return &(_vertexEntry->data());
-  }
+  V* mutableVertexData() { return &(_vertexEntry->data()); }
 
   V const& vertexData() const { return _vertexEntry->data(); }
 
@@ -108,17 +106,18 @@ class VertexContext {
   bool isActive() { return _vertexEntry->active(); }
 
   inline uint64_t phaseGlobalSuperstep() {
-    return globalSuperstep() - getAggregatedValueRef<uint64_t>(Utils::phaseFirstStepKey);
+    return globalSuperstep() -
+           getAggregatedValueRef<uint64_t>(Utils::phaseFirstStepKey);
   }
   inline uint64_t globalSuperstep() const { return _gss; }
   inline uint64_t localSuperstep() const { return _lss; }
 
   PregelShard shard() const { return _vertexEntry->shard(); }
-  velocypack::StringRef key() const { return _vertexEntry->key(); }
+  std::string_view key() const { return _vertexEntry->key(); }
   PregelID pregelId() const { return _vertexEntry->pregelId(); }
 };
 
-template <typename V, typename E, typename M>
+template<typename V, typename E, typename M>
 class VertexComputation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
   OutCache<M>* _cache = nullptr;
@@ -133,7 +132,7 @@ class VertexComputation : public VertexContext<V, E, M> {
   }
 
   void sendMessage(PregelID const& pid, M const& data) {
-    _cache->appendMessage(pid.shard, velocypack::StringRef(pid.key), data);
+    _cache->appendMessage(pid.shard, std::string_view(pid.key), data);
   }
 
   /// Send message along outgoing edges to all reachable neighbours
@@ -162,7 +161,7 @@ class VertexComputation : public VertexContext<V, E, M> {
   ReportManager& getReportManager() { return _reports; }
 };
 
-template <typename V, typename E, typename M>
+template<typename V, typename E, typename M>
 class VertexCompensation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
 

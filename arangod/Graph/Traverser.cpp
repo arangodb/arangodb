@@ -37,11 +37,11 @@ using namespace arangodb;
 using namespace arangodb::traverser;
 using namespace arangodb::graph;
 
-bool Traverser::VertexGetter::getVertex(VPackSlice edge,
-                                        arangodb::traverser::EnumeratedPath& path) {
+bool Traverser::VertexGetter::getVertex(
+    VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
   // getSingleVertex will populate s and register the underlying character data
   // if the vertex is found.
-  arangodb::velocypack::StringRef s;
+  std::string_view s;
   if (!getSingleVertex(edge, path.lastVertex(), path.numVertices(), s)) {
     return false;
   }
@@ -51,9 +51,9 @@ bool Traverser::VertexGetter::getVertex(VPackSlice edge,
 }
 
 bool Traverser::VertexGetter::getSingleVertex(arangodb::velocypack::Slice edge,
-                                              arangodb::velocypack::StringRef cmp,
+                                              std::string_view cmp,
                                               uint64_t depth,
-                                              arangodb::velocypack::StringRef& result) {
+                                              std::string_view& result) {
   VPackSlice resSlice = edge;
   if (!resSlice.isString()) {
     resSlice = transaction::helpers::extractFromFromDocument(edge);
@@ -63,7 +63,7 @@ bool Traverser::VertexGetter::getSingleVertex(arangodb::velocypack::Slice edge,
   }
   TRI_ASSERT(resSlice.isString());
 
-  arangodb::velocypack::StringRef s(resSlice);
+  std::string_view s(resSlice.stringView());
   if (!_traverser->vertexMatchesConditions(s, depth)) {
     return false;
   }
@@ -72,7 +72,7 @@ bool Traverser::VertexGetter::getSingleVertex(arangodb::velocypack::Slice edge,
   return true;
 }
 
-void Traverser::VertexGetter::reset(arangodb::velocypack::StringRef const&) {}
+void Traverser::VertexGetter::reset(std::string_view) {}
 
 // nothing to do
 void Traverser::VertexGetter::clear() {}
@@ -83,14 +83,15 @@ bool Traverser::VertexGetter::pointsIntoTraverserCache() const noexcept {
 }
 #endif
 
-bool Traverser::VertexGetter::getVertex(arangodb::velocypack::StringRef vertex, size_t depth) {
+bool Traverser::VertexGetter::getVertex(std::string_view vertex, size_t depth) {
   return _traverser->vertexMatchesConditions(vertex, depth);
 }
 
-bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
+bool Traverser::UniqueVertexGetter::getVertex(
+    VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
   // getSingleVertex will populate s and register the underlying character data
   // if the vertex is found.
-  arangodb::velocypack::StringRef s;
+  std::string_view s;
   if (!getSingleVertex(edge, path.lastVertex(), path.numVertices(), s)) {
     return false;
   }
@@ -99,14 +100,15 @@ bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge, arangodb::travers
   return true;
 }
 
-bool Traverser::UniqueVertexGetter::getVertex(arangodb::velocypack::StringRef vertex, size_t depth) {
+bool Traverser::UniqueVertexGetter::getVertex(std::string_view vertex,
+                                              size_t depth) {
   if (_returnedVertices.find(vertex) != _returnedVertices.end()) {
     // This vertex is not unique.
     _traverser->traverserCache()->increaseFilterCounter();
     return false;
   }
 
-  if(!_traverser->vertexMatchesConditions(vertex, depth)) {
+  if (!_traverser->vertexMatchesConditions(vertex, depth)) {
     return false;
   }
 
@@ -114,10 +116,9 @@ bool Traverser::UniqueVertexGetter::getVertex(arangodb::velocypack::StringRef ve
   return true;
 }
 
-bool Traverser::UniqueVertexGetter::getSingleVertex(arangodb::velocypack::Slice edge,
-                                                    arangodb::velocypack::StringRef cmp,
-                                                    uint64_t depth,
-                                                    arangodb::velocypack::StringRef& result) {
+bool Traverser::UniqueVertexGetter::getSingleVertex(
+    arangodb::velocypack::Slice edge, std::string_view cmp, uint64_t depth,
+    std::string_view& result) {
   VPackSlice resSlice = edge;
   if (!resSlice.isString()) {
     resSlice = transaction::helpers::extractFromFromDocument(edge);
@@ -127,7 +128,7 @@ bool Traverser::UniqueVertexGetter::getSingleVertex(arangodb::velocypack::Slice 
     TRI_ASSERT(resSlice.isString());
   }
 
-  arangodb::velocypack::StringRef s(resSlice);
+  std::string_view s(resSlice.stringView());
 
   // First check if we visited it. If not, then mark
   if (_returnedVertices.find(s) != _returnedVertices.end()) {
@@ -158,16 +159,14 @@ bool Traverser::UniqueVertexGetter::pointsIntoTraverserCache() const noexcept {
 }
 #endif
 
-void Traverser::UniqueVertexGetter::reset(arangodb::velocypack::StringRef const& startVertex) {
+void Traverser::UniqueVertexGetter::reset(std::string_view startVertex) {
   _returnedVertices.clear();
   // The startVertex always counts as visited!
   _returnedVertices.emplace(startVertex);
 }
 
 Traverser::Traverser(arangodb::traverser::TraverserOptions* opts)
-    : _trx(opts->trx()),
-      _done(true),
-      _opts(opts) {
+    : _trx(opts->trx()), _done(true), _opts(opts) {
   if (opts->uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
     _vertexGetter = std::make_unique<UniqueVertexGetter>(this);
   } else {
@@ -178,12 +177,13 @@ Traverser::Traverser(arangodb::traverser::TraverserOptions* opts)
 Traverser::~Traverser() = default;
 
 bool arangodb::traverser::Traverser::edgeMatchesConditions(VPackSlice e,
-                                                           arangodb::velocypack::StringRef vid,
-                                                           uint64_t depth, size_t cursorId) {
+                                                           std::string_view vid,
+                                                           uint64_t depth,
+                                                           size_t cursorId) {
   return _opts->evaluateEdgeExpression(e, vid, depth, cursorId);
 }
 
-bool arangodb::traverser::Traverser::vertexMatchesConditions(arangodb::velocypack::StringRef v,
+bool arangodb::traverser::Traverser::vertexMatchesConditions(std::string_view v,
                                                              uint64_t depth) {
   if (_opts->vertexHasFilter(depth)) {
     // We always need to destroy this vertex

@@ -120,6 +120,7 @@ std::string const StaticStrings::Properties("properties");
 std::string const StaticStrings::DataSourceDeleted("deleted");
 std::string const StaticStrings::DataSourceGuid("globallyUniqueId");
 std::string const StaticStrings::DataSourceId("id");
+std::string const StaticStrings::DataSourceCid("cid");
 std::string const StaticStrings::DataSourceName("name");
 std::string const StaticStrings::DataSourcePlanId("planId");
 std::string const StaticStrings::DataSourceSystem("isSystem");
@@ -205,6 +206,7 @@ std::string const StaticStrings::HLCHeader("x-arango-hlc");
 std::string const StaticStrings::KeepAlive("Keep-Alive");
 std::string const StaticStrings::LeaderEndpoint("x-arango-endpoint");
 std::string const StaticStrings::Location("location");
+std::string const StaticStrings::LockLocation("lockLocation");
 std::string const StaticStrings::NoSniff("nosniff");
 std::string const StaticStrings::Origin("origin");
 std::string const StaticStrings::PotentialDirtyRead(
@@ -220,7 +222,8 @@ std::string const StaticStrings::Unlimited = "unlimited";
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");
 std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
 std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
-std::string const StaticStrings::XArangoQueueTimeSeconds("x-arango-queue-time-seconds");
+std::string const StaticStrings::XArangoQueueTimeSeconds(
+    "x-arango-queue-time-seconds");
 
 // mime types
 std::string const StaticStrings::MimeTypeDump(
@@ -266,14 +269,10 @@ std::string const StaticStrings::WriteConcern("writeConcern");
 std::string const StaticStrings::ShardingSingle("single");
 std::string const StaticStrings::ReplicationVersion("replicationVersion");
 std::string const StaticStrings::ReplicatedLogs("replicatedLogs");
+std::string_view const StaticStrings::SoftWriteConcern("softWriteConcern");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");
-std::string const StaticStrings::IsDisjoint("isDisjoint");
-std::string const StaticStrings::IsHybrid("isHybrid");
-std::string const StaticStrings::GraphIsSmart("isSmart");
-std::string const StaticStrings::GraphIsSatellite("isSatellite");
-std::string const StaticStrings::GraphSatellites("satellites");
 std::string const StaticStrings::GraphFrom("from");
 std::string const StaticStrings::GraphTo("to");
 std::string const StaticStrings::GraphOptions("options");
@@ -282,10 +281,22 @@ std::string const StaticStrings::GraphSmartGraphAttribute(
 std::string const StaticStrings::GraphEdgeDefinitions("edgeDefinitions");
 std::string const StaticStrings::GraphEdgeDefinitionType("type");
 std::string const StaticStrings::GraphOrphans("orphanCollections");
-std::string const StaticStrings::GraphInitial("initial");
-std::string const StaticStrings::GraphInitialCid("initialCid");
+
 std::string const StaticStrings::GraphName("name");
 std::string const StaticStrings::GraphTraversalProfileLevel("traversalProfile");
+
+// smart graph relevant attributes
+std::string const StaticStrings::IsDisjoint("isDisjoint");
+std::string const StaticStrings::IsHybrid("isHybrid");
+std::string const StaticStrings::GraphIsSmart("isSmart");
+std::string const StaticStrings::GraphIsSatellite("isSatellite");
+std::string const StaticStrings::GraphSatellites("satellites");
+std::string const StaticStrings::GraphInitial("initial");
+std::string const StaticStrings::GraphInitialCid("initialCid");
+std::string const StaticStrings::ShadowCollections("shadowCollections");
+std::string const StaticStrings::FullLocalPrefix("_local_");
+std::string const StaticStrings::FullFromPrefix("_from_");
+std::string const StaticStrings::FullToPrefix("_to_");
 
 // Pregel Section Start
 

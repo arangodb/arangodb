@@ -30,13 +30,14 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace aql {
 
@@ -53,13 +54,14 @@ class VariableGenerator {
 
  public:
   /// @brief visit all variables
-  void visit(std::function<void(Variable*)> const&); 
+  void visit(std::function<void(Variable*)> const&);
 
   /// @brief return a map of all variable ids with their names
-  std::unordered_map<VariableId, std::string const> variables(bool includeTemporaries) const;
+  std::unordered_map<VariableId, std::string const> variables(
+      bool includeTemporaries) const;
 
   /// @brief generate a variable
-  Variable* createVariable(std::string name, bool isUserDefined);
+  Variable* createVariable(std::string_view name, bool isUserDefined);
 
   /// @brief generate a variable from VelocyPack
   Variable* createVariable(arangodb::velocypack::Slice);
@@ -91,6 +93,10 @@ class VariableGenerator {
   /// @brief validate a variable name
   static bool isValidName(char const* p, char const* end) noexcept;
 
+  static bool isValidName(std::string_view name) noexcept {
+    return isValidName(name.data(), name.data() + name.size());
+  }
+
  private:
   /// @brief returns the next variable id
   VariableId nextId() noexcept;
@@ -104,4 +110,3 @@ class VariableGenerator {
 };
 }  // namespace aql
 }  // namespace arangodb
-

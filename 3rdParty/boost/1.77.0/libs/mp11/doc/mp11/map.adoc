@@ -1,0 +1,88 @@
+////
+Copyright 2017 Peter Dimov
+
+Distributed under the Boost Software License, Version 1.0.
+
+See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt
+////
+
+[#map]
+# Map Operations, <boost/mp11/map.hpp>
+:toc:
+:toc-title:
+:idprefix:
+
+A map is a list of lists, the inner lists having at least one element (the key.) The keys of the map must be unique.
+
+## mp_is_map<M>
+
+    template<class M> using mp_is_map = /*...*/;
+
+`mp_is_map<M>` is `mp_true` if `M` is a map, `mp_false` otherwise.
+
+## mp_map_find<M, K>
+
+    template<class M, class K> using mp_map_find = /*...*/;
+
+`mp_map_find<M, K>` is an alias for the element of the map `M` with a key `K`, or for `void`, if there is no such element.
+
+## mp_map_contains<M, K>
+
+    template<class M, class K> using mp_map_contains =
+        mp_not<std::is_same<mp_map_find<M, K>, void>>;
+
+`mp_map_contains<M, K>` is `mp_true` if the map `M` contains an element with a key `K`, `mp_false` otherwise.
+
+## mp_map_insert<M, T>
+
+    template<class M, class T> using mp_map_insert =
+        mp_if< mp_map_contains<M, mp_first<T>>, M, mp_push_back<M, T> >;
+
+Inserts the element `T` into the map `M`, if an element with a key `mp_first<T>` is not already in `M`.
+
+## mp_map_replace<M, T>
+
+    template<class M, class T> using mp_map_replace = /*...*/;
+
+If the map `M` does not contain an element with a key `mp_first<T>`, inserts it (using `mp_push_back<M, T>`); otherwise,
+replaces the existing element with `T`.
+
+## mp_map_update<M, T, F>
+
+    template<class M, class T, template<class...> class F> using mp_map_update = /*...*/;
+
+If the map `M` does not contain an element with a key `mp_first<T>`, inserts it (using `mp_push_back<M, T>`); otherwise,
+replaces the existing element `L<X, Y...>` with `L<X, F<X, Y...>>`.
+
+.Using mp_map_update to count the number of occurrences of types in a list
+```
+template<class T, class U> using inc2nd = mp_int<U::value + 1>;
+
+template<class M, class T> using count_types =
+    mp_map_update<M, std::pair<T, mp_int<1>>, inc2nd>;
+
+using L1 = mp_list<float, char, float, float, float, float, char, float>;
+
+using R1 = mp_fold<L1, std::tuple<>, count_types>;
+// std::tuple<std::pair<float, mp_int<6>>, std::pair<char, mp_int<2>>>
+```
+
+## mp_map_update_q<M, T, Q>
+
+    template<class M, class T, class Q> using mp_map_update_q =
+        mp_map_update<M, T, Q::template fn>;
+
+As `mp_map_update`, but takes a quoted metafunction.
+
+## mp_map_erase<M, K>
+
+    template<class M, class K> using mp_map_erase = /*...*/;
+
+If the map `M` contains an element with a key `K`, removes it.
+
+## mp_map_keys<M>
+
+    template<class M> using mp_map_keys = mp_transform<mp_first, M>;
+
+`mp_map_keys<M>` returns a list of the keys of `M`. When `M` is a valid map, the keys are unique, so the result is a set.

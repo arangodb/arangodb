@@ -20,12 +20,13 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MOCKS_PREPARED_RESPONSE_CONNECTION_POOL
-#define ARANGODB_MOCKS_PREPARED_RESPONSE_CONNECTION_POOL 1
+#pragma once
 
 #include "Network/ConnectionPool.h"
 #include "Rest/CommonDefines.h"
 #include "Rest/GeneralResponse.h"
+
+#include <velocypack/velocypack-aliases.h>
 
 #include <vector>
 
@@ -71,22 +72,25 @@ class PreparedRequestResponse {
   std::unique_ptr<GeneralResponse> _response;
 };
 
-class PreparedResponseConnectionPool final : public arangodb::network::ConnectionPool {
+class PreparedResponseConnectionPool final
+    : public arangodb::network::ConnectionPool {
  public:
-  explicit PreparedResponseConnectionPool(arangodb::AgencyCache& agencyCache,
-                                          arangodb::network::ConnectionPool::Config const& config);
+  explicit PreparedResponseConnectionPool(
+      arangodb::AgencyCache& agencyCache,
+      arangodb::network::ConnectionPool::Config const& config);
 
-  std::shared_ptr<arangodb::fuerte::Connection> createConnection(arangodb::fuerte::ConnectionBuilder&) override;
+  std::shared_ptr<arangodb::fuerte::Connection> createConnection(
+      arangodb::fuerte::ConnectionBuilder&) override;
 
   void addPreparedResponses(std::pair<std::string, std::string> const& endpoint,
                             std::vector<PreparedRequestResponse> responses);
 
  private:
   arangodb::AgencyCache& _cache;
-  std::unordered_map<std::string, std::shared_ptr<std::vector<PreparedRequestResponse>>> _responses;
+  std::unordered_map<std::string,
+                     std::shared_ptr<std::vector<PreparedRequestResponse>>>
+      _responses;
 };
 
 }  // namespace tests
 }  // namespace arangodb
-
-#endif

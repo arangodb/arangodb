@@ -33,25 +33,62 @@
 
 namespace arangodb::replication2::replicated_log {
 
+enum class ParticipantRole { kUnconfigured, kLeader, kFollower };
+
+/**
+ * @brief A minimalist variant of LogStatus, designed to replace FollowerStatus
+ * and LeaderStatus where only basic information is needed.
+ */
+struct QuickLogStatus {
+  ParticipantRole role{ParticipantRole::kUnconfigured};
+  std::optional<LogTerm> term{};
+  std::optional<LogStatistics> local{};
+  bool leadershipEstablished{false};
+
+  // The following make sense only for a leader.
+  std::shared_ptr<ParticipantsConfig const> activeParticipantConfig{};
+  std::shared_ptr<ParticipantsConfig const> committedParticipantConfig{};
+
+  [[nodiscard]] auto getCurrentTerm() const noexcept -> std::optional<LogTerm>;
+  [[nodiscard]] auto getLocalStatistics() const noexcept
+      -> std::optional<LogStatistics>;
+};
+
 struct FollowerStatistics : LogStatistics {
   AppendEntriesErrorReason lastErrorReason;
   std::chrono::duration<double, std::milli> lastRequestLatencyMS;
   FollowerState internalState;
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics;
+
+  friend auto operator==(FollowerStatistics const& left,
+                         FollowerStatistics const& right) noexcept -> bool;
+  friend auto operator!=(FollowerStatistics const& left,
+                         FollowerStatistics const& right) noexcept -> bool;
 };
+
+[[nodiscard]] auto operator==(FollowerStatistics const& left,
+                              FollowerStatistics const& right) noexcept -> bool;
+[[nodiscard]] auto operator!=(FollowerStatistics const& left,
+                              FollowerStatistics const& right) noexcept -> bool;
 
 struct LeaderStatus {
   LogStatistics local;
   LogTerm term;
   LogIndex largestCommonIndex;
+  bool leadershipEstablished{false};
   std::unordered_map<ParticipantId, FollowerStatistics> follower;
   // now() - insertTP of last uncommitted entry
   std::chrono::duration<double, std::milli> commitLagMS;
   CommitFailReason lastCommitStatus;
+  ParticipantsConfig activeParticipantConfig;
+  ParticipantsConfig committedParticipantConfig;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> LeaderStatus;
+
+  friend auto operator==(LeaderStatus const& left,
+                         LeaderStatus const& right) noexcept -> bool = default;
 };
 
 struct FollowerStatus {
@@ -70,7 +107,8 @@ struct UnconfiguredStatus {
 };
 
 struct LogStatus {
-  using VariantType = std::variant<UnconfiguredStatus, LeaderStatus, FollowerStatus>;
+  using VariantType =
+      std::variant<UnconfiguredStatus, LeaderStatus, FollowerStatus>;
 
   // default constructs as unconfigured status
   LogStatus() = default;
@@ -81,12 +119,16 @@ struct LogStatus {
   [[nodiscard]] auto getVariant() const noexcept -> VariantType const&;
 
   [[nodiscard]] auto getCurrentTerm() const noexcept -> std::optional<LogTerm>;
-  [[nodiscard]] auto getLocalStatistics() const noexcept -> std::optional<LogStatistics>;
+  [[nodiscard]] auto getLocalStatistics() const noexcept
+      -> std::optional<LogStatistics>;
+
+  [[nodiscard]] auto asLeaderStatus() const noexcept -> LeaderStatus const*;
 
   static auto fromVelocyPack(velocypack::Slice slice) -> LogStatus;
   void toVelocyPack(velocypack::Builder& builder) const;
+
  private:
   VariantType _variant;
 };
 
-}
+}  // namespace arangodb::replication2::replicated_log

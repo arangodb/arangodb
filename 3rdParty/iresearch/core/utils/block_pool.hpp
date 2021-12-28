@@ -1052,10 +1052,10 @@ class block_pool {
   typedef proxy_block_t<T, BlockSize> block_type;
   typedef AllocType allocator;
   typedef typename allocator::value_type value_type;
-  typedef typename allocator::reference reference;
-  typedef typename allocator::const_reference const_reference;
-  typedef typename allocator::pointer pointer;
-  typedef typename allocator::const_pointer const_pointer;
+  typedef typename allocator::value_type& reference;
+  typedef typename allocator::value_type const& const_reference;
+  typedef typename std::allocator_traits<allocator>::pointer pointer;
+  typedef typename std::allocator_traits<allocator>::const_pointer const_pointer;
   typedef block_pool<value_type, BlockSize, allocator> my_type;
 
   typedef block_pool_iterator<my_type> iterator;

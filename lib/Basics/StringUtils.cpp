@@ -163,29 +163,25 @@ unsigned char const BASE64U_REVS[256] = {
 };
 
 inline bool isBase64(unsigned char c) {
-  return (c >= '0' && c <= '9') ||
-         (c >= 'a' && c <= 'z') ||
-         (c >= 'A' && c <= 'Z') ||
-         c == '+' || c == '/';
+  return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||
+         (c >= 'A' && c <= 'Z') || c == '+' || c == '/';
 }
 
 inline bool isBase64U(unsigned char c) {
-  return (c >= '0' && c <= '9') ||
-         (c >= 'a' && c <= 'z') ||
-         (c >= 'A' && c <= 'Z') ||
-         c == '-' || c == '_';
+  return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||
+         (c >= 'A' && c <= 'Z') || c == '-' || c == '_';
 }
 
 unsigned char consume(char const*& s) {
   return *reinterpret_cast<unsigned char const*>(s++);
 }
 
-template <typename InputType>
+template<typename InputType>
 inline bool isEqual(InputType const& c1, InputType const& c2) {
   return c1 == c2;
 }
 
-template <typename InputType, typename LengthType>
+template<typename InputType, typename LengthType>
 LengthType levenshtein(InputType const* lhs, InputType const* rhs,
                        LengthType lhsSize, LengthType rhsSize) {
   TRI_ASSERT(lhsSize >= rhsSize);
@@ -215,7 +211,8 @@ LengthType levenshtein(InputType const* lhs, InputType const* rhs,
   return next;
 }
 
-size_t levenshteinDistance(std::vector<uint32_t>& vect1, std::vector<uint32_t>& vect2) {
+size_t levenshteinDistance(std::vector<uint32_t>& vect1,
+                           std::vector<uint32_t>& vect2) {
   if (vect1.empty() || vect2.empty()) {
     return vect1.size() ? vect1.size() : vect2.size();
   }
@@ -231,21 +228,17 @@ size_t levenshteinDistance(std::vector<uint32_t>& vect1, std::vector<uint32_t>& 
   uint32_t const* r = vect2.data();
 
   if (lhsSize < std::numeric_limits<uint8_t>::max()) {
-    return static_cast<size_t>(
-        ::levenshtein<uint32_t, uint8_t>(l, r, static_cast<uint8_t>(lhsSize),
-                                         static_cast<uint8_t>(rhsSize)));
+    return static_cast<size_t>(::levenshtein<uint32_t, uint8_t>(
+        l, r, static_cast<uint8_t>(lhsSize), static_cast<uint8_t>(rhsSize)));
   } else if (lhsSize < std::numeric_limits<uint16_t>::max()) {
-    return static_cast<size_t>(
-        ::levenshtein<uint32_t, uint16_t>(l, r, static_cast<uint16_t>(lhsSize),
-                                          static_cast<uint16_t>(rhsSize)));
+    return static_cast<size_t>(::levenshtein<uint32_t, uint16_t>(
+        l, r, static_cast<uint16_t>(lhsSize), static_cast<uint16_t>(rhsSize)));
   } else if (lhsSize < std::numeric_limits<uint32_t>::max()) {
-    return static_cast<size_t>(
-        ::levenshtein<uint32_t, uint32_t>(l, r, static_cast<uint32_t>(lhsSize),
-                                          static_cast<uint32_t>(rhsSize)));
+    return static_cast<size_t>(::levenshtein<uint32_t, uint32_t>(
+        l, r, static_cast<uint32_t>(lhsSize), static_cast<uint32_t>(rhsSize)));
   }
-  return static_cast<size_t>(
-      ::levenshtein<uint32_t, uint64_t>(l, r, static_cast<uint64_t>(lhsSize),
-                                        static_cast<uint64_t>(rhsSize)));
+  return static_cast<size_t>(::levenshtein<uint32_t, uint64_t>(
+      l, r, static_cast<uint64_t>(lhsSize), static_cast<uint64_t>(rhsSize)));
 }
 
 }  // namespace
@@ -258,11 +251,11 @@ namespace StringUtils {
 // STRING CONVERSION
 // .............................................................................
 
-std::string escapeUnicode(std::string const& name, bool escapeSlash) {
-  size_t len = name.length();
+std::string escapeUnicode(std::string_view value, bool escapeSlash) {
+  size_t len = value.length();
 
   if (len == 0) {
-    return name;
+    return std::string(value);
   }
 
   // cppcheck-suppress unsignedPositive
@@ -274,7 +267,7 @@ std::string escapeUnicode(std::string const& name, bool escapeSlash) {
 
   auto buffer = std::make_unique<char[]>(6 * len + 1);
   char* qtr = buffer.get();
-  char const* ptr = name.c_str();
+  char const* ptr = value.data();
   char const* end = ptr + len;
 
   for (; ptr < end; ++ptr, ++qtr) {
@@ -449,7 +442,7 @@ std::string escapeUnicode(std::string const& name, bool escapeSlash) {
   return result;
 }
 
-std::vector<std::string> split(std::string const& source, char delim) {
+std::vector<std::string> split(std::string_view source, char delim) {
   std::vector<std::string> result;
 
   char const* q = source.data();
@@ -470,7 +463,8 @@ std::vector<std::string> split(std::string const& source, char delim) {
   return result;
 }
 
-std::vector<std::string> split(std::string const& source, std::string const& delim) {
+std::vector<std::string> split(std::string_view source,
+                               std::string_view delim) {
   std::vector<std::string> result;
 
   char const* q = source.data();
@@ -491,21 +485,21 @@ std::vector<std::string> split(std::string const& source, std::string const& del
   return result;
 }
 
-std::string trim(std::string const& sourceStr, std::string const& trimStr) {
+std::string trim(std::string_view sourceStr, std::string_view trimStr) {
   size_t s = sourceStr.find_first_not_of(trimStr);
 
-  if (s == std::string::npos) {
+  if (s == std::string_view::npos) {
     return std::string();
   }
   size_t e = sourceStr.find_last_not_of(trimStr);
   return std::string(sourceStr, s, e - s + 1);
 }
 
-void trimInPlace(std::string& str, std::string const& trimStr) {
+void trimInPlace(std::string& str, std::string_view trimStr) {
   size_t s = str.find_first_not_of(trimStr);
   size_t e = str.find_last_not_of(trimStr);
 
-  if (s == std::string::npos) {
+  if (s == std::string_view::npos) {
     str.clear();
   } else if (s == 0 && e == str.length() - 1) {
     // nothing to do
@@ -516,22 +510,22 @@ void trimInPlace(std::string& str, std::string const& trimStr) {
   }
 }
 
-std::string lTrim(std::string const& str, std::string const& trimStr) {
+std::string lTrim(std::string_view str, std::string_view trimStr) {
   size_t s = str.find_first_not_of(trimStr);
 
-  if (s == std::string::npos) {
+  if (s == std::string_view::npos) {
     return std::string();
-  } 
-  return std::string(str, s);
+  }
+  return std::string(str.data(), s);
 }
 
-std::string rTrim(std::string const& sourceStr, std::string const& trimStr) {
+std::string rTrim(std::string_view sourceStr, std::string_view trimStr) {
   size_t e = sourceStr.find_last_not_of(trimStr);
 
-  return std::string(sourceStr, 0, e + 1);
+  return std::string(sourceStr.data(), 0, e + 1);
 }
 
-void rTrimInPlace(std::string& str, std::string const& trimStr) {
+void rTrimInPlace(std::string& str, std::string_view trimStr) {
   size_t e = str.find_last_not_of(trimStr);
 
   if (e + 1 < str.length()) {
@@ -539,30 +533,30 @@ void rTrimInPlace(std::string& str, std::string const& trimStr) {
   }
 }
 
-std::string lFill(std::string const& sourceStr, size_t size, char fill) {
+std::string lFill(std::string_view sourceStr, size_t size, char fill) {
   size_t l = sourceStr.size();
 
   if (l >= size) {
-    return sourceStr;
+    return std::string(sourceStr);
   }
 
-  return std::string(size - l, fill) + sourceStr;
+  return std::string(size - l, fill).append(sourceStr);
 }
 
-std::string rFill(std::string const& sourceStr, size_t size, char fill) {
+std::string rFill(std::string_view sourceStr, size_t size, char fill) {
   size_t l = sourceStr.size();
 
   if (l >= size) {
-    return sourceStr;
+    return std::string(sourceStr);
   }
 
-  return sourceStr + std::string(size - l, fill);
+  return std::string(sourceStr) + std::string(size - l, fill);
 }
 
-std::vector<std::string> wrap(std::string const& sourceStr, size_t size,
-                              std::string const& breaks) {
+std::vector<std::string> wrap(std::string_view sourceStr, size_t size,
+                              std::string_view breaks) {
   std::vector<std::string> result;
-  std::string next = sourceStr;
+  std::string next = std::string(sourceStr);
 
   if (size > 0) {
     while (next.size() > size) {
@@ -592,15 +586,15 @@ std::vector<std::string> wrap(std::string const& sourceStr, size_t size,
 /// e.g. replace("aaebbbbcce","bb","bbb") = "aaebbbbbbcce"
 /// e.g. replace("aaebbbbcce","bbb","bb") = "aaebbbcce"
 
-std::string replace(std::string const& sourceStr, std::string const& fromStr,
-                    std::string const& toStr) {
+std::string replace(std::string_view sourceStr, std::string_view fromStr,
+                    std::string_view toStr) {
   size_t fromLength = fromStr.length();
   size_t toLength = toStr.length();
   size_t sourceLength = sourceStr.length();
 
   // cannot perform a replace if the sourceStr = "" or fromStr = ""
   if (fromLength == 0 || sourceLength == 0) {
-    return sourceStr;
+    return std::string(sourceStr);
   }
 
   // the max amount of memory is:
@@ -648,13 +642,17 @@ std::string replace(std::string const& sourceStr, std::string const& fromStr,
   return std::string(ptr, k);
 }
 
-void tolowerInPlace(std::string& str) {
+void tolower(std::string_view str, std::string& result) {
+  TRI_ASSERT(str.size() == result.size());
+
   // unrolled version of
+  // size_t idx = 0;
   // for (auto& c : str) {
-  //   c = StringUtils::tolower(c);
+  //   result[idx++] = StringUtils::tolower(c);
   // }
   auto pos = str.data();
   auto end = pos + str.size();
+  std::size_t out = 0;
 
   while (pos != end) {
     size_t len = end - pos;
@@ -664,81 +662,77 @@ void tolowerInPlace(std::string& str) {
 
     switch (len) {
       case 4:
-        pos[3] = StringUtils::tolower(pos[3]);
+        result[out + 3] = StringUtils::tolower(pos[3]);
         [[fallthrough]];
       case 3:
-        pos[2] = StringUtils::tolower(pos[2]);
+        result[out + 2] = StringUtils::tolower(pos[2]);
         [[fallthrough]];
       case 2:
-        pos[1] = StringUtils::tolower(pos[1]);
+        result[out + 1] = StringUtils::tolower(pos[1]);
         [[fallthrough]];
       case 1:
-        pos[0] = StringUtils::tolower(pos[0]);
+        result[out] = StringUtils::tolower(pos[0]);
     }
     pos += len;
+    out += len;
   }
 }
 
-std::string tolower(std::string&& str) {
-  tolowerInPlace(str);
-  return std::move(str);
-}
-
-std::string tolower(std::string const& str) {
-  std::string result = str;
-  tolowerInPlace(result);
-  return result;
-}
-
-void toupperInPlace(std::string& str) {
-  // unrolled version of
-  // for (auto& c : str) {
-  //   c = StringUtils::toupper(c);
-  // }
-  auto pos = str.data();
-  auto end = pos + str.size();
-
-  while (pos != end) {
-    size_t len = end - pos;
-    if (len > 4) {
-      len = 4;
-    }
-
-    switch (len) {
-      case 4:
-        pos[3] = StringUtils::toupper(pos[3]);
-        [[fallthrough]];
-      case 3:
-        pos[2] = StringUtils::toupper(pos[2]);
-        [[fallthrough]];
-      case 2:
-        pos[1] = StringUtils::toupper(pos[1]);
-        [[fallthrough]];
-      case 1:
-        pos[0] = StringUtils::toupper(pos[0]);
-    }
-    pos += len;
-  }
-}
-
-std::string toupper(std::string&& str) {
-  toupperInPlace(str);
-  return std::move(str);
-}
-
-std::string toupper(std::string const& str) {
+std::string tolower(std::string_view str) {
   std::string result;
   result.resize(str.size());
-
-  size_t i = 0;
-  for (auto& c : result) {
-    c = StringUtils::toupper(str[i++]);
-  }
-
+  StringUtils::tolower(str, result);
   return result;
 }
 
-bool isPrefix(std::string const& str, std::string const& prefix) {
+void tolowerInPlace(std::string& str) { StringUtils::tolower(str, str); }
+
+void toupper(std::string_view str, std::string& result) {
+  TRI_ASSERT(str.size() == result.size());
+
+  // unrolled version of
+  // size_t idx = 0;
+  // for (auto& c : str) {
+  //   result[idx++] = StringUtils::toupper(c);
+  // }
+  auto pos = str.data();
+  auto end = pos + str.size();
+  std::size_t out = 0;
+
+  while (pos != end) {
+    size_t len = end - pos;
+    if (len > 4) {
+      len = 4;
+    }
+
+    switch (len) {
+      case 4:
+        result[out + 3] = StringUtils::toupper(pos[3]);
+        [[fallthrough]];
+      case 3:
+        result[out + 2] = StringUtils::toupper(pos[2]);
+        [[fallthrough]];
+      case 2:
+        result[out + 1] = StringUtils::toupper(pos[1]);
+        [[fallthrough]];
+      case 1:
+        result[out] = StringUtils::toupper(pos[0]);
+    }
+    pos += len;
+    out += len;
+  }
+}
+
+std::string toupper(std::string_view str) {
+  std::string result;
+  result.resize(str.size());
+  StringUtils::toupper(str, result);
+  return result;
+}
+
+void toupperInPlace(std::string& str) { StringUtils::toupper(str, str); }
+
+bool isPrefix(std::string_view str, std::string_view prefix) {
   if (prefix.length() > str.length()) {
     return false;
   } else if (prefix.length() == str.length()) {
@@ -748,22 +742,23 @@ bool isPrefix(std::string const& str, std::string const& prefix) {
   }
 }
 
-bool isSuffix(std::string const& str, std::string const& postfix) {
+bool isSuffix(std::string_view str, std::string_view postfix) {
   if (postfix.length() > str.length()) {
     return false;
   } else if (postfix.length() == str.length()) {
     return str == postfix;
   } else {
-    return str.compare(str.size() - postfix.length(), postfix.length(), postfix) == 0;
+    return str.compare(str.size() - postfix.length(), postfix.length(),
+                       postfix) == 0;
   }
 }
 
-std::string urlDecodePath(std::string const& str) {
+std::string urlDecodePath(std::string_view str) {
   std::string result;
   // reserve enough room so we do not need to re-alloc
   result.reserve(str.size() + 16);
 
-  char const* src = str.c_str();
+  char const* src = str.data();
   char const* end = src + str.size();
 
   while (src < end) {
@@ -804,12 +799,12 @@ std::string urlDecodePath(std::string const& str) {
   return result;
 }
 
-std::string urlDecode(std::string const& str) {
+std::string urlDecode(std::string_view str) {
   std::string result;
   // reserve enough room so we do not need to re-alloc
   result.reserve(str.size() + 16);
 
-  char const* src = str.c_str();
+  char const* src = str.data();
   char const* end = src + str.size();
 
   for (; src < end && *src != '%'; ++src) {
@@ -861,10 +856,6 @@ std::string urlDecode(std::string const& str) {
   return result;
 }
 
-std::string urlEncode(std::string const& str) {
-  return urlEncode(str.c_str(), str.size());
-}
-
 std::string urlEncode(char const* src, size_t const len) {
   static char hexChars[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
                               '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
@@ -910,6 +901,10 @@ std::string urlEncode(char const* src, size_t const len) {
   return result;
 }
 
+std::string urlEncode(std::string_view value) {
+  return StringUtils::urlEncode(value.data(), value.size());
+}
+
 void encodeURIComponent(std::string& result, char const* src, size_t len) {
   char const* end = src + len;
 
@@ -943,8 +938,8 @@ std::string encodeURIComponent(char const* src, size_t len) {
   return result;
 }
 
-std::string encodeURIComponent(std::string const& str) {
-  return encodeURIComponent(str.data(), str.size());
+std::string encodeURIComponent(std::string_view value) {
+  return StringUtils::encodeURIComponent(value.data(), value.size());
 }
 
 std::string soundex(char const* src, size_t len) {
@@ -988,11 +983,12 @@ std::string soundex(char const* src, size_t len) {
   return result;
 }
 
-std::string soundex(std::string const& str) {
-  return soundex(str.data(), str.size());
+std::string soundex(std::string_view value) {
+  return StringUtils::soundex(value.data(), value.size());
 }
 
-unsigned int levenshteinDistance(char const* s1, size_t l1, char const* s2, size_t l2) {
+unsigned int levenshteinDistance(char const* s1, size_t l1, char const* s2,
+                                 size_t l2) {
   // convert input strings to vectors of (multi-byte) character numbers
   std::vector<uint32_t> vect1 = characterCodes(s1, l1);
   std::vector<uint32_t> vect2 = characterCodes(s2, l2);
@@ -1040,7 +1036,8 @@ std::vector<uint32_t> characterCodes(char const* s, size_t length) {
                                        "invalid UTF-8 sequence");
       }
       charNums.push_back((n << 24U) + (uint32_t(::consume(s)) << 16U) +
-                         (uint32_t(::consume(s)) << 8U) + (uint32_t(::consume(s))));
+                         (uint32_t(::consume(s)) << 8U) +
+                         (uint32_t(::consume(s))));
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "invalid UTF-8 sequence");
@@ -1475,7 +1472,7 @@ std::string ftoa(double i) {
 // CONVERT FROM STRING
 // .............................................................................
 
-bool boolean(std::string const& str) {
+bool boolean(std::string_view str) {
   if (str.empty()) {
     return false;
   }
@@ -1489,67 +1486,87 @@ bool boolean(std::string const& str) {
   return false;
 }
 
-uint64_t uint64_trusted(char const* value, size_t length) {
+int64_t int64(char const* value, size_t size) noexcept {
+  int64_t result = 0;
+  std::from_chars(value, value + size, result, 10);
+  return result;
+}
+
+int64_t int64(std::string_view value) noexcept {
+  return StringUtils::int64(value.data(), value.size());
+}
+
+uint64_t uint64(char const* value, size_t size) noexcept {
+  uint64_t result = 0;
+  std::from_chars(value, value + size, result, 10);
+  return result;
+}
+
+uint64_t uint64(std::string_view value) noexcept {
+  return StringUtils::uint64(value.data(), value.size());
+}
+
+uint64_t uint64_trusted(char const* value, size_t length) noexcept {
   uint64_t result = 0;
 
   switch (length) {
     case 20:
       result += (value[length - 20] - '0') * 10000000000000000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 19:
       result += (value[length - 19] - '0') * 1000000000000000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 18:
       result += (value[length - 18] - '0') * 100000000000000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 17:
       result += (value[length - 17] - '0') * 10000000000000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 16:
       result += (value[length - 16] - '0') * 1000000000000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 15:
       result += (value[length - 15] - '0') * 100000000000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 14:
       result += (value[length - 14] - '0') * 10000000000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 13:
       result += (value[length - 13] - '0') * 1000000000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 12:
       result += (value[length - 12] - '0') * 100000000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 11:
       result += (value[length - 11] - '0') * 10000000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 10:
       result += (value[length - 10] - '0') * 1000000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 9:
       result += (value[length - 9] - '0') * 100000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 8:
       result += (value[length - 8] - '0') * 10000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 7:
       result += (value[length - 7] - '0') * 1000000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 6:
       result += (value[length - 6] - '0') * 100000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 5:
       result += (value[length - 5] - '0') * 10000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 4:
       result += (value[length - 4] - '0') * 1000ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 3:
       result += (value[length - 3] - '0') * 100ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 2:
       result += (value[length - 2] - '0') * 10ULL;
-    [[fallthrough]];
+      [[fallthrough]];
     case 1:
       result += (value[length - 1] - '0');
   }
@@ -1557,8 +1574,28 @@ uint64_t uint64_trusted(char const* value, size_t length) {
   return result;
 }
 
-double doubleDecimal(std::string const& str) {
-  return doubleDecimal(str.c_str(), str.size());
+uint64_t uint64_trusted(std::string_view value) noexcept {
+  return uint64_trusted(value.data(), value.size());
+}
+
+int32_t int32(char const* value, size_t size) noexcept {
+  int32_t result = 0;
+  std::from_chars(value, value + size, result, 10);
+  return result;
+}
+
+int32_t int32(std::string_view value) noexcept {
+  return StringUtils::int32(value.data(), value.size());
+}
+
+uint32_t uint32(char const* value, size_t size) noexcept {
+  uint32_t result = 0;
+  std::from_chars(value, value + size, result, 10);
+  return result;
+}
+
+uint32_t uint32(std::string_view value) noexcept {
+  return StringUtils::uint32(value.data(), value.size());
 }
 
 double doubleDecimal(char const* value, size_t size) {
@@ -1635,12 +1672,16 @@ double doubleDecimal(char const* value, size_t size) {
   return (v / e) * pow(10.0, double(expValue));
 }
 
-float floatDecimal(std::string const& str) {
-  return floatDecimal(str.c_str(), str.size());
+double doubleDecimal(std::string_view value) {
+  return StringUtils::doubleDecimal(value.data(), value.size());
 }
 
 float floatDecimal(char const* value, size_t size) {
-  return (float)doubleDecimal(value, size);
+  return static_cast<float>(doubleDecimal(value, size));
+}
+
+float floatDecimal(std::string_view value) {
+  return StringUtils::floatDecimal(value.data(), value.size());
 }
 
 // .............................................................................
@@ -1653,7 +1694,8 @@ std::string encodeBase64(char const* in, size_t len) {
 
   unsigned char charArray3[3];
   unsigned char charArray4[4];
-  unsigned char const* bytesToEncode = reinterpret_cast<unsigned char const*>(in);
+  unsigned char const* bytesToEncode =
+      reinterpret_cast<unsigned char const*>(in);
 
   int i = 0;
   while (len--) {
@@ -1661,8 +1703,10 @@ std::string encodeBase64(char const* in, size_t len) {
 
     if (i == 3) {
       charArray4[0] = (charArray3[0] & 0xfc) >> 2;
-      charArray4[1] = ((charArray3[0] & 0x03) << 4) + ((charArray3[1] & 0xf0) >> 4);
-      charArray4[2] = ((charArray3[1] & 0x0f) << 2) + ((charArray3[2] & 0xc0) >> 6);
+      charArray4[1] =
+          ((charArray3[0] & 0x03) << 4) + ((charArray3[1] & 0xf0) >> 4);
+      charArray4[2] =
+          ((charArray3[1] & 0x0f) << 2) + ((charArray3[2] & 0xc0) >> 6);
       charArray4[3] = charArray3[2] & 0x3f;
 
       for (i = 0; i < 4; i++) {
@@ -1679,8 +1723,10 @@ std::string encodeBase64(char const* in, size_t len) {
     }
 
     charArray4[0] = (charArray3[0] & 0xfc) >> 2;
-    charArray4[1] = ((charArray3[0] & 0x03) << 4) + ((charArray3[1] & 0xf0) >> 4);
-    charArray4[2] = ((charArray3[1] & 0x0f) << 2) + ((charArray3[2] & 0xc0) >> 6);
+    charArray4[1] =
+        ((charArray3[0] & 0x03) << 4) + ((charArray3[1] & 0xf0) >> 4);
+    charArray4[2] =
+        ((charArray3[1] & 0x0f) << 2) + ((charArray3[2] & 0xc0) >> 6);
     charArray4[3] = charArray3[2] & 0x3f;
 
     for (int j = 0; (j < i + 1); j++) {
@@ -1695,15 +1741,7 @@ std::string encodeBase64(char const* in, size_t len) {
   return ret;
 }
 
-std::string encodeBase64(std::string const& str) {
-  return encodeBase64(str.data(), str.size());
-}
-
-std::string encodeBase64(std::string_view str) {
-  return encodeBase64(str.data(), str.size());
-}
-
-std::string decodeBase64(std::string const& source) {
+std::string decodeBase64(std::string_view source) {
   unsigned char charArray4[4];
   unsigned char charArray3[3];
 
@@ -1725,7 +1763,8 @@ std::string decodeBase64(std::string const& source) {
       }
 
       charArray3[0] = (charArray4[0] << 2) + ((charArray4[1] & 0x30) >> 4);
-      charArray3[1] = ((charArray4[1] & 0xf) << 4) + ((charArray4[2] & 0x3c) >> 2);
+      charArray3[1] =
+          ((charArray4[1] & 0xf) << 4) + ((charArray4[2] & 0x3c) >> 2);
       charArray3[2] = ((charArray4[2] & 0x3) << 6) + charArray4[3];
 
       for (i = 0; (i < 3); i++) {
@@ -1746,7 +1785,8 @@ std::string decodeBase64(std::string const& source) {
     }
 
     charArray3[0] = (charArray4[0] << 2) + ((charArray4[1] & 0x30) >> 4);
-    charArray3[1] = ((charArray4[1] & 0xf) << 4) + ((charArray4[2] & 0x3c) >> 2);
+    charArray3[1] =
+        ((charArray4[1] & 0xf) << 4) + ((charArray4[2] & 0x3c) >> 2);
     charArray3[2] = ((charArray4[2] & 0x3) << 6) + charArray4[3];
 
     for (int j = 0; j < i - 1; j++) {
@@ -1757,7 +1797,11 @@ std::string decodeBase64(std::string const& source) {
   return ret;
 }
 
-std::string encodeBase64U(std::string const& in) {
+std::string encodeBase64(std::string_view value) {
+  return StringUtils::encodeBase64(value.data(), value.size());
+}
+
+std::string encodeBase64U(std::string_view in) {
   unsigned char charArray3[3];
   unsigned char charArray4[4];
 
@@ -1767,7 +1811,7 @@ std::string encodeBase64U(std::string const& in) {
   int i = 0;
 
   unsigned char const* bytesToEncode =
-      reinterpret_cast<unsigned char const*>(in.c_str());
+      reinterpret_cast<unsigned char const*>(in.data());
   size_t in_len = in.size();
 
   while (in_len--) {
@@ -1775,8 +1819,10 @@ std::string encodeBase64U(std::string const& in) {
 
     if (i == 3) {
       charArray4[0] = (charArray3[0] & 0xfc) >> 2;
-      charArray4[1] = ((charArray3[0] & 0x03) << 4) + ((charArray3[1] & 0xf0) >> 4);
-      charArray4[2] = ((charArray3[1] & 0x0f) << 2) + ((charArray3[2] & 0xc0) >> 6);
+      charArray4[1] =
+          ((charArray3[0] & 0x03) << 4) + ((charArray3[1] & 0xf0) >> 4);
+      charArray4[2] =
+          ((charArray3[1] & 0x0f) << 2) + ((charArray3[2] & 0xc0) >> 6);
       charArray4[3] = charArray3[2] & 0x3f;
 
       for (i = 0; i < 4; i++) {
@@ -1793,8 +1839,10 @@ std::string encodeBase64U(std::string const& in) {
     }
 
     charArray4[0] = (charArray3[0] & 0xfc) >> 2;
-    charArray4[1] = ((charArray3[0] & 0x03) << 4) + ((charArray3[1] & 0xf0) >> 4);
-    charArray4[2] = ((charArray3[1] & 0x0f) << 2) + ((charArray3[2] & 0xc0) >> 6);
+    charArray4[1] =
+        ((charArray3[0] & 0x03) << 4) + ((charArray3[1] & 0xf0) >> 4);
+    charArray4[2] =
+        ((charArray3[1] & 0x0f) << 2) + ((charArray3[2] & 0xc0) >> 6);
     charArray4[3] = charArray3[2] & 0x3f;
 
     for (int j = 0; (j < i + 1); j++) {
@@ -1809,7 +1857,7 @@ std::string encodeBase64U(std::string const& in) {
   return ret;
 }
 
-std::string decodeBase64U(std::string const& source) {
+std::string decodeBase64U(std::string_view source) {
   unsigned char charArray4[4];
   unsigned char charArray3[3];
 
@@ -1832,7 +1880,8 @@ std::string decodeBase64U(std::string const& source) {
       }
 
       charArray3[0] = (charArray4[0] << 2) + ((charArray4[1] & 0x30) >> 4);
-      charArray3[1] = ((charArray4[1] & 0xf) << 4) + ((charArray4[2] & 0x3c) >> 2);
+      charArray3[1] =
+          ((charArray4[1] & 0xf) << 4) + ((charArray4[2] & 0x3c) >> 2);
       charArray3[2] = ((charArray4[2] & 0x3) << 6) + charArray4[3];
 
       for (i = 0; (i < 3); i++) {
@@ -1853,7 +1902,8 @@ std::string decodeBase64U(std::string const& source) {
     }
 
     charArray3[0] = (charArray4[0] << 2) + ((charArray4[1] & 0x30) >> 4);
-    charArray3[1] = ((charArray4[1] & 0xf) << 4) + ((charArray4[2] & 0x3c) >> 2);
+    charArray3[1] =
+        ((charArray4[1] & 0xf) << 4) + ((charArray4[2] & 0x3c) >> 2);
     charArray3[2] = ((charArray4[2] & 0x3) << 6) + charArray4[3];
 
     for (int j = 0; j < i - 1; j++) {
@@ -1868,7 +1918,7 @@ std::string decodeBase64U(std::string const& source) {
 // ADDITIONAL STRING UTILITIES
 // .............................................................................
 
-std::string correctPath(std::string const& incorrectPath) {
+std::string correctPath(std::string_view incorrectPath) {
 #ifdef _WIN32
   return replace(incorrectPath, "/", "\\");
 #else
@@ -1891,8 +1941,8 @@ std::string encodeHex(char const* value, size_t length) {
   return result;
 }
 
-std::string encodeHex(std::string const& value) {
-  return encodeHex(value.data(), value.size());
+std::string encodeHex(std::string_view value) {
+  return StringUtils::encodeHex(value.data(), value.size());
 }
 
 std::string decodeHex(char const* value, size_t length) {
@@ -1941,15 +1991,16 @@ std::string decodeHex(char const* value, size_t length) {
   return result;
 }
 
-std::string decodeHex(std::string const& value) {
-  return decodeHex(value.data(), value.size());
+std::string decodeHex(std::string_view value) {
+  return StringUtils::decodeHex(value.data(), value.size());
 }
 
-void escapeRegexParams(std::string& out, const char* ptr, size_t length) {
+void escapeRegexParams(std::string& out, char const* ptr, size_t length) {
   for (size_t i = 0; i < length; ++i) {
     char const c = ptr[i];
-    if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' || c == '{' || c == '}' ||
-        c == '^' || c == '$' || c == '|' || c == '.' || c == '*' || c == '\\') {
+    if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' || c == '{' ||
+        c == '}' || c == '^' || c == '$' || c == '|' || c == '.' || c == '*' ||
+        c == '\\') {
       // character with special meaning in a regex
       out.push_back('\\');
     }
@@ -1957,7 +2008,7 @@ void escapeRegexParams(std::string& out, const char* ptr, size_t length) {
   }
 }
 
-std::string escapeRegexParams(std::string const& in) {
+std::string escapeRegexParams(std::string_view in) {
   std::string out;
   escapeRegexParams(out, in.data(), in.size());
   return out;
@@ -1968,22 +2019,22 @@ std::string formatSize(uint64_t value) {
   if (value < 1000) {
     if (value == 1) {
       out = "1";
-      label ="byte";
+      label = "byte";
     } else {
       out = std::to_string(value);
       label = "bytes";
     }
   } else if (value < 1000'000ULL) {
-    out = std::to_string((double) value / double(1000));
+    out = std::to_string((double)value / double(1000));
     label = "KB";
   } else if (value < 1'000'000'000ULL) {
-    out = std::to_string((double) value / 1e6);
+    out = std::to_string((double)value / 1e6);
     label = "MB";
   } else if (value < 1'000'000'000'000ULL) {
-    out = std::to_string((double) value / 1e9);
+    out = std::to_string((double)value / 1e9);
     label = "GB";
   } else if (value < 1'000'000'000'000'000ULL) {
-    out = std::to_string((double) value / 1e12);
+    out = std::to_string((double)value / 1e12);
     label = "TB";
   }
   out = arangodb::basics::StringUtils::replace(out, ",", ".");

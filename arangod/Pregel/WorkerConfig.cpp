@@ -43,7 +43,8 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   VPackSlice coordID = params.get(Utils::coordinatorIdKey);
   VPackSlice vertexShardMap = params.get(Utils::vertexShardsKey);
   VPackSlice edgeShardMap = params.get(Utils::edgeShardsKey);
-  VPackSlice edgeCollectionRestrictions = params.get(Utils::edgeCollectionRestrictionsKey);
+  VPackSlice edgeCollectionRestrictions =
+      params.get(Utils::edgeCollectionRestrictionsKey);
   VPackSlice execNum = params.get(Utils::executionNumberKey);
   VPackSlice collectionPlanIdMap = params.get(Utils::collectionPlanIdMapKey);
   VPackSlice globalShards = params.get(Utils::globalShardListKey);
@@ -62,11 +63,12 @@ void WorkerConfig::updateConfig(VPackSlice params) {
 
   VPackSlice userParams = params.get(Utils::userParametersKey);
   VPackSlice parallel = userParams.get(Utils::parallelismKey);
-  
+
   size_t maxP = PregelFeature::availableParallelism();
   _parallelism = std::max<size_t>(1, std::min<size_t>(maxP / 4, 16));
   if (parallel.isInteger()) {
-    _parallelism = std::min<size_t>(std::max<size_t>(1, parallel.getUInt()), maxP);
+    _parallelism =
+        std::min<size_t>(std::max<size_t>(1, parallel.getUInt()), maxP);
   }
 
   // list of all shards, equal on all workers. Used to avoid storing strings of
@@ -81,7 +83,8 @@ void WorkerConfig::updateConfig(VPackSlice params) {
 
   // To access information based on a user defined collection name we need the
   for (auto it : VPackObjectIterator(collectionPlanIdMap)) {
-    _collectionPlanIdMap.try_emplace(it.key.copyString(), it.value.copyString());
+    _collectionPlanIdMap.try_emplace(it.key.copyString(),
+                                     it.value.copyString());
   }
 
   // Ordered list of shards for each vertex collection on the CURRENT db server
@@ -90,7 +93,7 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   // edges in the third edge shard. This should speed up the startup
   for (auto pair : VPackObjectIterator(vertexShardMap)) {
     CollectionID cname = pair.key.copyString();
-    
+
     std::vector<ShardID> shards;
     for (VPackSlice shardSlice : VPackArrayIterator(pair.value)) {
       ShardID shard = shardSlice.copyString();
@@ -106,7 +109,7 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   // Ordered list of edge shards for each collection
   for (auto pair : VPackObjectIterator(edgeShardMap)) {
     CollectionID cname = pair.key.copyString();
-    
+
     std::vector<ShardID> shards;
     for (VPackSlice shardSlice : VPackArrayIterator(pair.value)) {
       ShardID shard = shardSlice.copyString();
@@ -120,17 +123,19 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   if (edgeCollectionRestrictions.isObject()) {
     for (auto pair : VPackObjectIterator(edgeCollectionRestrictions)) {
       CollectionID cname = pair.key.copyString();
-    
+
       std::vector<ShardID> shards;
       for (VPackSlice shardSlice : VPackArrayIterator(pair.value)) {
         shards.push_back(shardSlice.copyString());
       }
-      _edgeCollectionRestrictions.try_emplace(std::move(cname), std::move(shards));
+      _edgeCollectionRestrictions.try_emplace(std::move(cname),
+                                              std::move(shards));
     }
   }
 }
-  
-std::vector<ShardID> const& WorkerConfig::edgeCollectionRestrictions(ShardID const& shard) const {
+
+std::vector<ShardID> const& WorkerConfig::edgeCollectionRestrictions(
+    ShardID const& shard) const {
   auto it = _edgeCollectionRestrictions.find(shard);
   if (it != _edgeCollectionRestrictions.end()) {
     return (*it).second;
@@ -144,16 +149,16 @@ PregelID WorkerConfig::documentIdToPregel(std::string const& documentID) const {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not a valid document id");
   }
-  VPackStringRef docRef(documentID);
-  VPackStringRef collPart = docRef.substr(0, pos);
-  VPackStringRef keyPart = docRef.substr(pos + 1);
+  std::string_view docRef(documentID);
+  std::string_view collPart = docRef.substr(0, pos);
+  std::string_view keyPart = docRef.substr(pos + 1);
 
   ShardID responsibleShard;
 
   auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-  Utils::resolveShard(ci, this, collPart.toString(), StaticStrings::KeyString,
+  Utils::resolveShard(ci, this, std::string(collPart), StaticStrings::KeyString,
                       keyPart, responsibleShard);
 
   PregelShard source = this->shardId(responsibleShard);
-  return PregelID(source, keyPart.toString());
+  return PregelID(source, std::string(keyPart));
 }

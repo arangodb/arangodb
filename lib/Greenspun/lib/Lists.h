@@ -27,5 +27,3 @@
 namespace arangodb::greenspun {
 void RegisterAllListFunctions(Machine& ctx);
 }  // namespace arangodb::greenspun
-
-

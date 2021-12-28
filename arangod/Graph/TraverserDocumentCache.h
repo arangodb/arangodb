@@ -36,8 +36,8 @@ namespace graph {
 
 class TraverserDocumentCache final : public TraverserCache {
  public:
-  TraverserDocumentCache(aql::QueryContext& query, 
-                         std::shared_ptr<arangodb::cache::Cache> cache, 
+  TraverserDocumentCache(aql::QueryContext& query,
+                         std::shared_ptr<arangodb::cache::Cache> cache,
                          BaseOptions*);
 
   ~TraverserDocumentCache();
@@ -52,8 +52,10 @@ class TraverserDocumentCache final : public TraverserCache {
                             arangodb::velocypack::Builder& builder) override;
 
   /// Looks up the document and inserts it into the builder
-  bool appendVertex(arangodb::velocypack::StringRef idString, arangodb::velocypack::Builder& result) override;
-  bool appendVertex(arangodb::velocypack::StringRef idString, arangodb::aql::AqlValue& result) override;
+  bool appendVertex(std::string_view idString,
+                    arangodb::velocypack::Builder& result) override;
+  bool appendVertex(std::string_view idString,
+                    arangodb::aql::AqlValue& result) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result
@@ -70,10 +72,10 @@ class TraverserDocumentCache final : public TraverserCache {
   ///        stays valid. Finding should not be retained very long, if it is
   ///        needed for longer, copy the value.
   //////////////////////////////////////////////////////////////////////////////
-  cache::Finding lookup(arangodb::velocypack::StringRef idString);
+  cache::Finding lookup(std::string_view idString);
 
  private:
-  void insertIntoCache(arangodb::velocypack::StringRef id,
+  void insertIntoCache(std::string_view id,
                        arangodb::velocypack::Slice const& document);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -83,4 +85,3 @@ class TraverserDocumentCache final : public TraverserCache {
 };
 }  // namespace graph
 }  // namespace arangodb
-

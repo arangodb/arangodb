@@ -1,0 +1,25 @@
+////
+Copyright 2019 Peter Dimov
+
+Distributed under the Boost Software License, Version 1.0.
+
+See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt
+////
+
+[#implementation]
+# Implementation
+:idprefix: implementation_
+
+## Dependencies
+
+This implementation only depends on Boost.Config and Boost.Mp11.
+
+## Supported Compilers
+
+* GCC 4.8 or later with `-std=c++11` or above
+* Clang 3.5 or later with `-std=c++11` or above
+* Visual Studio 2015, 2017, 2019
+
+Tested on https://travis-ci.org/boostorg/variant2/[Travis] and
+https://ci.appveyor.com/project/pdimov/variant2-fkab9[Appveyor].

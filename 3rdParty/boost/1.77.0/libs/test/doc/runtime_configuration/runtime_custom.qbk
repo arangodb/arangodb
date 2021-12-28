@@ -1,0 +1,144 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section Custom command line arguments]
+
+It is possible to pass custom command line arguments to the test module. The general format for passing custom
+arguments is the following:
+
+``
+<boost_test_module> [<boost_test_arg1>...] [-- [<custom_parameter1>...]
+``
+
+This means that everything that is passed after "`--`" is considered as a custom parameter and will not be intercepted nor interpreted
+by the __UTF__. This avoids any troubleshooting between the __UTF__ parameters and the custom ones.
+
+There are several use cases for accessing the arguments passed on the command line:
+
+* instantiating an object used in test cases and which is dependant on parameters external to the test-module:
+  the name of the graphic card, the credentials for a database connection, etc. The rest of the test module would check
+  that the functions in test are not sensitive to this type of parametrization. One can also imagine running this same
+  test module with different parameters (different graphic cards...) in a batched manner,
+* modifying the test tree by adding or parametrizing test cases: the arguments passed on the command line may contain
+  for instance a set of parameters that define test cases.
+
+In the first scenario, [link ref_consuming_cmd_test_case test cases] or fixtures, including
+[link ref_consuming_cmd_global_fixture global fixtures], may be used. Since those are part of the test tree, they can benefit from the __UTF__ rich set of assertions
+and controlled execution environment.
+
+In the second scenario, the command line argument interact directly with the content of the test tree: by passing specific
+arguments, different set of tests are created. There are mainly two options for achieving this: using a dedicated
+[link ref_consuming_cmd_init_function initialization function] or using [link ref_consuming_cmd_dataset data driven] test cases.
+The error handling of the command line parameters needs however to be adapted.
+
+[#ref_consuming_cmd_test_case][h4 Consuming custom arguments from a test case]
+The [link boost_test.tests_organization.test_tree.master_test_suite master test suite] collects the custom arguments
+passed to the test module in the following way:
+
+* `argv[0]`, usually set by the operating system as the executable name, remains unchanged
+* any argument interpreted by the test module is removed from `argv`
+* the empty token `--` is removed as well
+* any additional argument passed after the empty token is reported in `argv` starting at index `1`
+
+[bt_example runtime-configuration_1..Basic custom command line..run-fail]
+
+[#ref_consuming_cmd_global_fixture][h4 Consuming custom arguments from a global fixture]
+Another possibility for consuming the custom command line arguments would be from within a
+[link boost_test.tests_organization.fixtures.global global fixture]. This is especially useful
+when external parameters are needed for instantiating global objects used in the test module.
+
+The usage is the same as for test cases. The following example runs the test module twice with
+different arguments, and illustrate the feature.
+
+[tip The global fixture can check for the correctness of the custom arguments and may abort the full run
+ of the test module.]
+
+[bt_example runtime-configuration_2..Command line arguments interpreted in a global fixtures..run-fail]
+
+The above example instantiates a specific device through the `DeviceInterface::factory` member function. The
+name of the device to instantiate is passed via the command line argument `--device-name`, and the instantiated
+device is available through the global object `CommandLineDeviceInit::device`.
+The module requires `3` arguments on the command line:
+
+* `framework::master_test_suite().argv[0]` is the test module name as explained in the previous paragraph
+* `framework::master_test_suite().argv[1]` should be equal to `--device-name`
+* `framework::master_test_suite().argv[2]` should be the name of the device to instantiate
+
+As it can be seen in the shell outputs, any command line argument consumed by the __UTF__ is removed from
+`argc` / `argv`. Since global fixtures are running in the __UTF__ controlled environment, any fatal error reported
+by the fixture (through the __BOOST_TEST_REQUIRE__ assertion) aborts the test execution. Non fatal errors
+on the other hand do not abort the test-module and are reported as assertion failure, and would not prevent the execution
+of the test case `check_device_has_meaningful_name`.
+
+[note It is possible to have several global fixtures in a test module, spread over several compilation units.
+ Each of those fixture may in turn be accessing a specific part of the command line.]
+
+
+[#ref_consuming_cmd_init_function][h4 Parametrizing the test tree from command line in the initialization function]
+The initialization function are described in details in this [link boost_test.adv_scenarios.test_module_init_overview section].
+The initialization function is called before any other test or fixture, and before entering the master test suite. The initialization
+function is not considered as a test-case, although it is called under the controlled execution
+environment of the __UTF__. This means that:
+
+* the errors will be properly handled,
+* loggers are not fully operational,
+* it is not possible to use the __UTF__ assertion macros like __BOOST_TEST__ as it is not a test-case.
+
+The following example shows how to use the command line arguments parsing described above to create/add new test cases
+to the test tree. It also shows very limited support to messages (does not work for all loggers), and error handling.
+
+[bt_example runtime-configuration_3..Init function parametrized from the command line..run-fail]
+
+As seen in this example, the error handling is quite different than a regular test-case:
+
+* For the /alternative/ initialization API (see
+  __BOOST_TEST_ALTERNATIVE_INIT_API__), the easiest way to indicate an error would be to return `false`
+  in case of failure.
+* For the /obsolete/ and /alternative/, raising an exception such as `std::runtime_error` or
+  [classref boost::unit_test::framework::setup_error] as above works as well.
+
+[#ref_consuming_cmd_dataset][h4 Data-driven test cases parametrized from the command line]
+It is possible to use the command line arguments to manipulate the dataset generated by a data-drive test case.
+
+By default, datasets are created before entering the `main` of the test module, and try to be efficient in the number
+of copies of their arguments. It is however possible
+to indicate a delay for the evaluation of the dataset by constructing the dataset with the `make_delayed` function.
+
+With the `make_delayed`, the construction of the dataset will happen at the same time as the construction of the
+test tree during the test module initialization, and not before. It is this way possible to access the
+[link boost_test.tests_organization.test_tree.master_test_suite master test suite] and its command line arguments.
+
+The example below shows a complex dataset generation from the content of an external file. The data contained
+in the file participates to the definition of the test case.
+
+[bt_example runtime-configuration_4..Dataset test case parametrized from the command line..run-fail]
+
+
+* Using `make_delayed`, the tests generated from a dataset are instantiated during the framework setup. This
+  let the dataset generator access the `argc` and `argv` of the master test suite.
+* The generation of the test-cases out of this dataset happens before the global fixture are reached (and before
+  any test cases), and after the initialization function.
+* The generator of the dataset is [*not] considered being a test case and the __UTF__ assertions are not accessible.
+  However, the __UTF__ will catch the exceptions raised during the generation of the test-cases by the dataset.
+  To report an error, a `std::logic_error` or [classref boost::unit_test::framework::setup_error] can be raised
+  and will be reported by the __UTF__.
+
+[/
+[h4 Handling errors]
+The handling of errors that happen during the command line parsing has been discussed through the examples above.
+
+Some additional notes:
+
+* an exception occurring in a global fixture or the initialization function will be caught by the framework and will abort
+  the test module
+* a global fixture is attached to the [link boost_test.tests_organization.test_tree.master_test_suite master test suite], and
+  any failure there will be reported by the loggers properly.
+* A global fixture cannot manipulate the test tree, while the data-driven tests or custom initialization functions can.
+
+]
+
+[endsect] [/ Custom runtime parameters]

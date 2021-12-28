@@ -35,8 +35,6 @@
 #include "Transaction/Helpers.h"
 #include "VocBase/voc-types.h"
 
-#include <velocypack/StringRef.h>
-
 namespace arangodb {
 
 namespace transaction {
@@ -126,12 +124,12 @@ class Traverser {
     virtual bool getVertex(arangodb::velocypack::Slice,
                            arangodb::traverser::EnumeratedPath& path);
 
-    virtual bool getSingleVertex(arangodb::velocypack::Slice, arangodb::velocypack::StringRef,
-                                 uint64_t, arangodb::velocypack::StringRef&);
+    virtual bool getSingleVertex(arangodb::velocypack::Slice, std::string_view,
+                                 uint64_t, std::string_view&);
 
-    virtual bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth);
+    virtual bool getVertex(std::string_view vertex, size_t depth);
 
-    virtual void reset(arangodb::velocypack::StringRef const&);
+    virtual void reset(std::string_view);
 
     virtual void clear();
 
@@ -157,12 +155,12 @@ class Traverser {
     bool getVertex(arangodb::velocypack::Slice,
                    arangodb::traverser::EnumeratedPath& path) override;
 
-    bool getSingleVertex(arangodb::velocypack::Slice, arangodb::velocypack::StringRef,
-                         uint64_t, arangodb::velocypack::StringRef&) override;
+    bool getSingleVertex(arangodb::velocypack::Slice, std::string_view,
+                         uint64_t, std::string_view&) override;
 
-    bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth) override;
+    bool getVertex(std::string_view vertex, size_t depth) override;
 
-    void reset(arangodb::velocypack::StringRef const&) override;
+    void reset(std::string_view) override;
 
     void clear() override;
 
@@ -171,7 +169,7 @@ class Traverser {
 #endif
 
    private:
-    std::unordered_set<arangodb::velocypack::StringRef> _returnedVertices;
+    std::unordered_set<std::string_view> _returnedVertices;
   };
 
  public:
@@ -229,11 +227,10 @@ class Traverser {
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
   virtual bool getSingleVertex(arangodb::velocypack::Slice edge,
-                               arangodb::velocypack::StringRef sourceVertexId,
-                               uint64_t depth,
-                               arangodb::velocypack::StringRef& targetVertexId) = 0;
+                               std::string_view sourceVertexId, uint64_t depth,
+                               std::string_view& targetVertexId) = 0;
 
-  virtual bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth) = 0;
+  virtual bool getVertex(std::string_view vertex, size_t depth) = 0;
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -295,10 +292,10 @@ class Traverser {
   bool hasMore() const { return !_done; }
 
   bool edgeMatchesConditions(arangodb::velocypack::Slice edge,
-                             arangodb::velocypack::StringRef vid,
-                             uint64_t depth, size_t cursorId);
+                             std::string_view vid, uint64_t depth,
+                             size_t cursorId);
 
-  bool vertexMatchesConditions(arangodb::velocypack::StringRef vid, uint64_t depth);
+  bool vertexMatchesConditions(std::string_view vid, uint64_t depth);
 
   transaction::Methods* trx() const { return _trx; }
 
@@ -325,12 +322,11 @@ class Traverser {
   TraverserOptions* _opts;
 
   /// @brief Function to fetch the real data of a vertex into an AQLValue
-  virtual aql::AqlValue fetchVertexData(arangodb::velocypack::StringRef vid) = 0;
+  virtual aql::AqlValue fetchVertexData(std::string_view vid) = 0;
 
   /// @brief Function to add the real data of a vertex into a velocypack builder
-  virtual void addVertexToVelocyPack(arangodb::velocypack::StringRef vid,
+  virtual void addVertexToVelocyPack(std::string_view vid,
                                      arangodb::velocypack::Builder&) = 0;
 };
 }  // namespace traverser
 }  // namespace arangodb
-

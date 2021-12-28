@@ -26,7 +26,7 @@
 #include "Agency/AgencyComm.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
-#include "RestServer/Metrics.h"
+#include "Metrics/Fwd.h"
 
 #include <memory>
 
@@ -45,7 +45,8 @@ class AgencyCallbackRegistry {
   ~AgencyCallbackRegistry();
 
   /// @brief register a callback
-  [[nodiscard]] Result registerCallback(std::shared_ptr<AgencyCallback> cb, bool local = true);
+  [[nodiscard]] Result registerCallback(std::shared_ptr<AgencyCallback> cb,
+                                        bool local = true);
 
   /// @brief unregister a callback
   bool unregisterCallback(std::shared_ptr<AgencyCallback> cb);
@@ -65,11 +66,10 @@ class AgencyCallbackRegistry {
   std::unordered_map<uint64_t, std::shared_ptr<AgencyCallback>> _callbacks;
 
   /// @brief total number of callbacks ever registered
-  Counter& _totalCallbacksRegistered;
-  
+  metrics::Counter& _totalCallbacksRegistered;
+
   /// @brief current number of callbacks registered
-  Gauge<uint64_t>& _callbacksCount;
+  metrics::Gauge<uint64_t>& _callbacksCount;
 };
 
 }  // namespace arangodb
-

@@ -44,4 +44,3 @@ class RocksDBSkiplistIndex : public RocksDBVPackIndex {
 };
 
 }  // namespace arangodb
-

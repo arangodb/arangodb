@@ -39,37 +39,41 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
-WeightedEnumerator::PathStep::PathStep(arangodb::velocypack::StringRef vertex)
+WeightedEnumerator::PathStep::PathStep(std::string_view vertex)
     : fromIndex(0),
       fromEdgeToken(EdgeDocumentToken()),
       currentVertexId(std::move(vertex)),
       accumWeight(0.0) {}
 
-WeightedEnumerator::PathStep::PathStep(size_t sourceIdx, EdgeDocumentToken&& edge,
-                                       arangodb::velocypack::StringRef vertex, double weight)
+WeightedEnumerator::PathStep::PathStep(size_t sourceIdx,
+                                       EdgeDocumentToken&& edge,
+                                       std::string_view vertex, double weight)
     : fromIndex(sourceIdx),
       fromEdgeToken(edge),
       currentVertexId(std::move(vertex)),
       accumWeight(weight) {}
 
-WeightedEnumerator::WeightedEnumerator(Traverser* traverser, TraverserOptions* opts)
+WeightedEnumerator::WeightedEnumerator(Traverser* traverser,
+                                       TraverserOptions* opts)
     : PathEnumerator(traverser, opts), _schreierIndex(0), _lastReturned(0) {
   _schreier.reserve(32);
 }
 
-void WeightedEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
-  PathEnumerator::setStartVertex(startVertex);
-
+void WeightedEnumerator::clear() {
   _schreier.clear();
   _schreierIndex = 0;
   _lastReturned = 0;
   _queue.clear();
+}
 
+void WeightedEnumerator::setStartVertex(std::string_view startVertex) {
+  PathEnumerator::setStartVertex(startVertex);
+  clear();
   _schreier.emplace_back(startVertex);
 }
 
 bool WeightedEnumerator::expandEdge(NextEdge nextEdge) {
-  VPackStringRef const toVertex = nextEdge.forwardVertexId;
+  std::string_view const toVertex = nextEdge.forwardVertexId;
 
   // we already have the toVertex, so we don't need to load the edge again
   // getSingleVertex does nothing but that and checking conditions
@@ -84,8 +88,9 @@ bool WeightedEnumerator::expandEdge(NextEdge nextEdge) {
         return false;
       }
     }
-    _schreier.emplace_back(nextEdge.fromIndex, std::move(nextEdge.forwardEdgeToken),
-                           toVertex, nextEdge.accumWeight);
+    _schreier.emplace_back(nextEdge.fromIndex,
+                           std::move(nextEdge.forwardEdgeToken), toVertex,
+                           nextEdge.accumWeight);
 
     if (!shouldPrune()) {
       // expand all edges on this vertex
@@ -100,14 +105,15 @@ bool WeightedEnumerator::expandEdge(NextEdge nextEdge) {
 
 void WeightedEnumerator::expandVertex(size_t vertexIndex, size_t depth) {
   PathStep const& currentStep = _schreier[vertexIndex];
-  VPackStringRef vertex = currentStep.currentVertexId;
+  std::string_view vertex = currentStep.currentVertexId;
 
   if (depth >= _opts->maxDepth) {
     return;
   }
 
   EdgeCursor* cursor = getCursor(vertex, depth);
-  cursor->readAll([&](graph::EdgeDocumentToken&& eid, VPackSlice e, size_t cursorIdx) -> void {
+  cursor->readAll([&](graph::EdgeDocumentToken&& eid, VPackSlice e,
+                      size_t cursorIdx) -> void {
     // transform edge if required
     if (e.isString()) {
       // this will result in a document request.
@@ -128,8 +134,10 @@ void WeightedEnumerator::expandVertex(size_t vertexIndex, size_t depth) {
     }
 
     double forwardWeight = currentStep.accumWeight + weightEdge(e);
-    VPackStringRef toVertex = _opts->cache()->persistString(getToVertex(e, vertex));
-    _queue.emplace(vertexIndex, forwardWeight, depth + 1, std::move(eid), toVertex);
+    std::string_view toVertex =
+        _opts->cache()->persistString(getToVertex(e, vertex));
+    _queue.emplace(vertexIndex, forwardWeight, depth + 1, std::move(eid),
+                   toVertex);
   });
 
   incHttpRequests(cursor->httpRequests());
@@ -221,7 +229,8 @@ arangodb::aql::AqlValue WeightedEnumerator::lastEdgeToAqlValue() {
   return edgeToAqlValue(_lastReturned);
 }
 
-arangodb::aql::AqlValue WeightedEnumerator::pathToAqlValue(arangodb::velocypack::Builder& result) {
+arangodb::aql::AqlValue WeightedEnumerator::pathToAqlValue(
+    arangodb::velocypack::Builder& result) {
   return pathToIndexToAqlValue(result, _lastReturned);
 }
 
@@ -240,8 +249,10 @@ arangodb::aql::AqlValue WeightedEnumerator::edgeToAqlValue(size_t index) {
 }
 
 VPackSlice WeightedEnumerator::pathToIndexToSlice(VPackBuilder& result,
-                                                  size_t index, bool fromPrune) {
-  for (_tempPathHelper.clear(); index != 0; index = _schreier[index].fromIndex) {
+                                                  size_t index,
+                                                  bool fromPrune) {
+  for (_tempPathHelper.clear(); index != 0;
+       index = _schreier[index].fromIndex) {
     _tempPathHelper.emplace_back(index);
   }
 
@@ -250,36 +261,41 @@ VPackSlice WeightedEnumerator::pathToIndexToSlice(VPackBuilder& result,
     VPackObjectBuilder ob(&result);
     if (fromPrune || _opts->producePathsEdges()) {  // edges
       VPackArrayBuilder ab(&result, StaticStrings::GraphQueryEdges);
-      std::for_each(_tempPathHelper.rbegin(), _tempPathHelper.rend(), [&](size_t idx) {
-        _opts->cache()->insertEdgeIntoResult(_schreier[idx].fromEdgeToken, result);
-      });
+      std::for_each(_tempPathHelper.rbegin(), _tempPathHelper.rend(),
+                    [&](size_t idx) {
+                      _opts->cache()->insertEdgeIntoResult(
+                          _schreier[idx].fromEdgeToken, result);
+                    });
     }
     if (fromPrune || _opts->producePathsVertices()) {  // vertices
       VPackArrayBuilder ab(&result, StaticStrings::GraphQueryVertices);
       _traverser->addVertexToVelocyPack(_schreier[0].currentVertexId, result);
-      std::for_each(_tempPathHelper.rbegin(), _tempPathHelper.rend(), [&](size_t idx) {
-        _traverser->addVertexToVelocyPack(_schreier[idx].currentVertexId, result);
-      });
+      std::for_each(_tempPathHelper.rbegin(), _tempPathHelper.rend(),
+                    [&](size_t idx) {
+                      _traverser->addVertexToVelocyPack(
+                          _schreier[idx].currentVertexId, result);
+                    });
     }
     if (fromPrune || _opts->producePathsWeights()) {  // weights
       VPackArrayBuilder ab(&result, StaticStrings::GraphQueryWeights);
       result.add(VPackValue(_schreier[0].accumWeight));
-      std::for_each(_tempPathHelper.rbegin(), _tempPathHelper.rend(), [&](size_t idx) {
-        result.add(VPackValue(_schreier[idx].accumWeight));
-      });
+      std::for_each(_tempPathHelper.rbegin(), _tempPathHelper.rend(),
+                    [&](size_t idx) {
+                      result.add(VPackValue(_schreier[idx].accumWeight));
+                    });
     }
   }
   TRI_ASSERT(result.isClosed());
   return result.slice();
 }
 
-arangodb::aql::AqlValue WeightedEnumerator::pathToIndexToAqlValue(arangodb::velocypack::Builder& result,
-                                                                  size_t index) {
+arangodb::aql::AqlValue WeightedEnumerator::pathToIndexToAqlValue(
+    arangodb::velocypack::Builder& result, size_t index) {
   return arangodb::aql::AqlValue(pathToIndexToSlice(result, index, false));
 }
 
 bool WeightedEnumerator::pathContainsVertex(size_t index,
-                                            arangodb::velocypack::StringRef vertex) const {
+                                            std::string_view vertex) const {
   while (true) {
     TRI_ASSERT(index < _schreier.size());
     auto const& step = _schreier[index];
@@ -295,8 +311,8 @@ bool WeightedEnumerator::pathContainsVertex(size_t index,
   }
 }
 
-bool WeightedEnumerator::pathContainsEdge(size_t index,
-                                          graph::EdgeDocumentToken const& edge) const {
+bool WeightedEnumerator::pathContainsEdge(
+    size_t index, graph::EdgeDocumentToken const& edge) const {
   while (index != 0) {
     TRI_ASSERT(index < _schreier.size());
     auto const& step = _schreier[index];
@@ -339,7 +355,8 @@ bool WeightedEnumerator::shouldPrune() {
     evaluator->injectEdge(edge.slice());
   }
   if (evaluator->needsPath()) {
-    VPackSlice path = pathToIndexToSlice(*pathBuilder.get(), _schreierIndex, true);
+    VPackSlice path =
+        pathToIndexToSlice(*pathBuilder.get(), _schreierIndex, true);
     evaluator->injectPath(path);
   }
   return evaluator->evaluate();
@@ -349,19 +366,19 @@ double WeightedEnumerator::weightEdge(VPackSlice edge) const {
   return _opts->weightEdge(edge);
 }
 
-velocypack::StringRef WeightedEnumerator::getToVertex(velocypack::Slice edge,
-                                                      velocypack::StringRef from) {
+std::string_view WeightedEnumerator::getToVertex(velocypack::Slice edge,
+                                                 std::string_view from) {
   TRI_ASSERT(edge.isObject());
   VPackSlice resSlice = transaction::helpers::extractToFromDocument(edge);
   if (resSlice.isEqualString(from)) {
     resSlice = transaction::helpers::extractFromFromDocument(edge);
   }
-  return resSlice.stringRef();
+  return resSlice.stringView();
 }
 
 #ifndef USE_ENTERPRISE
 bool WeightedEnumerator::validDisjointPath(size_t index,
-                                           arangodb::velocypack::StringRef vertex) const {
+                                           std::string_view vertex) const {
   return true;
 }
 #endif

@@ -37,14 +37,14 @@ using namespace arangodb::replication2::test;
 
 struct WaitForSyncTest : ReplicatedLogTest {};
 
-
 TEST_F(WaitForSyncTest, no_wait_for_sync) {
   auto const waitForSync = false;
   auto const term = LogTerm{4};
 
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto follower = std::make_shared<FakeFollower>("follower");
-  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, waitForSync), "leader", term, {follower});
+  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, waitForSync),
+                                        "leader", term, {follower});
   // first entry is always with waitForSync
   leader->triggerAsyncReplication();
   follower->handleAllRequestsWithOk();
@@ -62,9 +62,8 @@ TEST_F(WaitForSyncTest, no_wait_for_sync) {
   }
 
   {
-    auto result = AppendEntriesResult{term, TRI_ERROR_NO_ERROR,
-                                      AppendEntriesErrorReason::NONE,
-                                      follower->currentRequest().messageId};
+    auto result = AppendEntriesResult{
+        term, TRI_ERROR_NO_ERROR, {}, follower->currentRequest().messageId};
     follower->resolveRequest(std::move(result));
   }
 }
@@ -75,7 +74,8 @@ TEST_F(WaitForSyncTest, global_wait_for_sync) {
 
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto follower = std::make_shared<FakeFollower>("follower");
-  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, waitForSync), "leader", term, {follower});
+  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, waitForSync),
+                                        "leader", term, {follower});
   // first entry is always with waitForSync
   leader->triggerAsyncReplication();
   follower->handleAllRequestsWithOk();
@@ -93,9 +93,8 @@ TEST_F(WaitForSyncTest, global_wait_for_sync) {
   }
 
   {
-    auto result = AppendEntriesResult{term, TRI_ERROR_NO_ERROR,
-                                      AppendEntriesErrorReason::NONE,
-                                      follower->currentRequest().messageId};
+    auto result = AppendEntriesResult{
+        term, TRI_ERROR_NO_ERROR, {}, follower->currentRequest().messageId};
     follower->resolveRequest(std::move(result));
   }
 }
@@ -106,7 +105,8 @@ TEST_F(WaitForSyncTest, per_entry_wait_for_sync) {
 
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto follower = std::make_shared<FakeFollower>("follower");
-  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, waitForSync), "leader", term, {follower});
+  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, waitForSync),
+                                        "leader", term, {follower});
   // first entry is always with waitForSync
   leader->triggerAsyncReplication();
   follower->handleAllRequestsWithOk();
@@ -124,9 +124,8 @@ TEST_F(WaitForSyncTest, per_entry_wait_for_sync) {
   }
 
   {
-    auto result = AppendEntriesResult{term, TRI_ERROR_NO_ERROR,
-                                      AppendEntriesErrorReason::NONE,
-                                      follower->currentRequest().messageId};
+    auto result = AppendEntriesResult{
+        term, TRI_ERROR_NO_ERROR, {}, follower->currentRequest().messageId};
     follower->resolveRequest(std::move(result));
   }
 }

@@ -26,14 +26,15 @@
 // public rocksdb headers
 #include <rocksdb/listener.h>
 
-#include "RestServer/Metrics.h"
+#include "Metrics/Fwd.h"
 
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
 
-/// @brief Gathers better metrics from RocksDB than we can get by scraping alone.
+/// @brief Gathers better metrics from RocksDB than we can get by scraping
+/// alone.
 class RocksDBMetricsListener : public rocksdb::EventListener {
  public:
   explicit RocksDBMetricsListener(application_features::ApplicationServer&);
@@ -41,9 +42,8 @@ class RocksDBMetricsListener : public rocksdb::EventListener {
   void OnStallConditionsChanged(const rocksdb::WriteStallInfo& info) override;
 
  protected:
-  Counter& _writeStalls;
-  Counter& _writeStops;
+  metrics::Counter& _writeStalls;
+  metrics::Counter& _writeStops;
 };
 
 }  // namespace arangodb
-

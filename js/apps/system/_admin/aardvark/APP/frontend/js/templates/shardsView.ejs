@@ -16,16 +16,6 @@
   <% var collectionName; %>
   <% var first = 0; %>
 
-  <%
-  var collectionInSync = function (name) {
-    var result = false;
-    if (_.isEqual(collections[name].Current, collections[name].Plan)) {
-      return true;
-    }
-    return result;
-  };
-  %>
-
   <% _.each(collections, function(collection, name) { %>
   <div class="sectionShard" id="<%= name %>">
     <% collectionName = name %>
@@ -37,19 +27,38 @@
       <div class="sectionHeader pure-g">
         <% } %>
 
+        <% var collectionExpanded = (visible.indexOf(name) !== -1); %>
+        <% var collectionInSync = (_.isEqual(collections[name].Current, collections[name].Plan)); %>
+        <% 
+           var numShards = 0;
+           var outOfSyncShards = 0;
+           _.each(collection.Plan, function(shard, name) { 
+             numShards++;
+             var foundOutOfSync = false;
+             _.each(shard.followers, function(s) { 
+               if (collections[collectionName].Current[name].followers.indexOf(s) === -1) { 
+                 foundOutOfSync = true;
+               }
+             });
+             if (foundOutOfSync) {
+               outOfSyncShards++;
+             }
+           });
+        %>
+
         <div class="pure-u-22-24">
           <div class="title" style="position: relative; top: -4px;">
-            <% var numShards = Object.keys(collection.Plan).length; %>
-            <%= name %> (<%= numShards + ' shard' + (numShards !== 1 ? 's' : '') %>)
+            <%= name %> (<%= numShards + ' shard' + (numShards !== 1 ? 's' : '') %><%= (outOfSyncShards > 0 ? " - " + outOfSyncShards + " syncing..." : "") %>)
           </div>
         </div>
+
         <div class="pure-u-2-24 shardSyncIcons">
-          <% if (visible.indexOf(name) !== -1) { %>
+          <% if (collectionExpanded) { %>
             <i style="margin-left: 10px; color: #fff;" class="fa fa-arrow-down"></i>
           <% } else { %>
             <i style="margin-left: 10px; color: #fff;" class="fa fa-arrow-right"></i>
           <% } %>
-          <% if (collectionInSync(name)) { %>
+          <% if (collectionInSync) { %>
             <i style="margin-left: 10px;" class="fa fa-check-circle"></i>
           <% } else { %>
             <i style="margin-left: 10px;" class="fa fa-times-circle"></i>
@@ -57,7 +66,7 @@
         </div>
       </div>
 
-      <% if (visible.indexOf(name) !== -1) { %>
+      <% if (collectionExpanded) { %>
       <div class="sectionShardContent">
         <% } else { %>
         <div class="sectionShardContent" style="display: none">
@@ -71,7 +80,7 @@
             </div>
           </div>
 
-          <% var counter = 0; var shardClass; %>
+          <% var shardClass; %>
           <% _.each(collection.Plan, function(shard, name) { %>
             <div class="pure-g pure-table pure-table-body">
 
@@ -89,14 +98,15 @@
                 <div class="<%= genClass1 %> left"><%= name %></div>
                 <div class="shardLeader <%= genClass1 %> positive left"><span><%= shard.leader %></span></div>
 
-                <% var found = null; %>
-                <% _.each(shard.followers, function(db) { %>
-                  <% if (db === shard.leader) { %>
-                    <% found = true; %>
+                <% var foundLeader = false; %>
+                <% _.each(shard.followers, function(s) { %>
+                  <% if (s === shard.leader) { %>
+                    <% foundLeader = true; %>
                   <% } %>
                 <% }); %>
 
-                <% if (found) { %>
+                <% var shardsNotInSync = 0; %>
+                <% if (foundLeader) { %>
                   <div class="<%= genClass2 %> mid"><i class="fa fa-circle-o-notch fa-spin"></i></div>
                 <% } else { %>
                   <% if (shard.followers.length === 0) { %>
@@ -106,31 +116,27 @@
                     <% var counter2 = 0; %>
                     <% var shardCssClass = 'inSync'; %>
 
-                    <% var shardsNotInSync = 0; %>
-                    <% _.each(shard.followers, function(db) { %>
-
-                      <% if (collections[collectionName].Current[name].followers.indexOf(db) > -1) { %>
+                    <% _.each(shard.followers, function(s) { %>
+                      <% if (collections[collectionName].Current[name].followers.indexOf(s) > -1) { %>
                         <% shardCssClass = 'inSync'; %>
                       <% } else { %>
                         <% shardCssClass = 'notInSync'; %>
                         <% shardsNotInSync++; %>
                       <% } %>
-
-                      <% if (shard.followers.length === 1) { %>
-                        <% string += '<span class="' + shardCssClass + '">' + db + '</span> '; %>
-                      <% } else { %>
-                        <% if (counter2 === 0) { %>
-                          <% string += '<span class="' + shardCssClass + '">' + db + '</span>'; counter2++; %>
-                        <% } else { %>
-                          <% string += ", " + '<span class="' + shardCssClass + '">' + db + '</span>'; %>
-                        <% } %>
+                      <% if (serversFailed[s]) { %>
+                        <% shardCssClass = 'failed'; %>
                       <% } %>
+
+                      <% if (counter2++ > 0) { %>
+                        <% string += ', '; %>
+                      <% } %>
+                      <% string += '<span class="' + shardCssClass + '">' + s + '</span>'; %>
                     <% }); %>
 
                     <div class="shardFollowers <%= genClass2 %> left"><%= string %></div>
                   <% } %>
 
-                  <% if (collectionInSync(collectionName)) { %>
+                  <% if (collectionInSync) { %>
                     <div class="<%= genClass1 %> left progressWrapper"><i class="fa fa-check-circle"></i></div>
                   <% } else { %>
                     <% if (shardsNotInSync > 0) { %>
@@ -146,7 +152,6 @@
               </div>
             </div>
 
-            <% counter++; %>
           <% }); %>
         </div>
 

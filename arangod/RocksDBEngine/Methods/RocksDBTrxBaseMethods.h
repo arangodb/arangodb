@@ -26,15 +26,18 @@
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 
 namespace arangodb {
-  
+
 /// transaction wrapper, uses the current rocksdb transaction
 class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
  public:
-  explicit RocksDBTrxBaseMethods(RocksDBTransactionState*, rocksdb::TransactionDB* db);
-  
+  explicit RocksDBTrxBaseMethods(RocksDBTransactionState*,
+                                 rocksdb::TransactionDB* db);
+
   ~RocksDBTrxBaseMethods();
 
-  virtual bool isIndexingDisabled() const final override{ return _indexingDisabled; }
+  virtual bool isIndexingDisabled() const final override {
+    return _indexingDisabled;
+  }
 
   /// @brief returns true if indexing was disabled by this call
   bool DisableIndexing() final override;
@@ -42,15 +45,15 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   bool EnableIndexing() final override;
 
   Result beginTransaction() override;
-  
+
   Result commitTransaction() final override;
 
   Result abortTransaction() final override;
-  
+
   TRI_voc_tick_t lastOperationTick() const noexcept override;
 
   uint64_t numCommits() const noexcept final override { return _numCommits; }
-  
+
   bool ensureSnapshot() final override;
 
   rocksdb::SequenceNumber GetSequenceNumber() const noexcept final override;
@@ -58,28 +61,29 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   bool hasOperations() const noexcept final override {
     return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
   }
-  
+
   uint64_t numOperations() const noexcept final override {
     return _numInserts + _numUpdates + _numRemoves;
   }
 
-  /// @brief add an operation for a transaction collection
-  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
-  /// performed
-  Result addOperation(DataSourceId collectionId, RevisionId revisionId,
-                      TRI_voc_document_operation_e opType) override;
+  /// @brief add an operation for a transaction
+  Result addOperation(TRI_voc_document_operation_e opType) override;
 
-  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*,
-                      rocksdb::Slice const&, rocksdb::PinnableSlice*, ReadOwnWrites) override;
+  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
+                      rocksdb::PinnableSlice*, ReadOwnWrites) override;
   rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
                                rocksdb::Slice const&,
                                rocksdb::PinnableSlice*) final override;
   rocksdb::Status Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
-                      rocksdb::Slice const& val, bool assume_tracked) final override;
-  rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+                      rocksdb::Slice const& val,
+                      bool assume_tracked) final override;
+  rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*,
+                               RocksDBKey const& key,
                                rocksdb::Slice const& val) final override;
-  rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) final override;
-  rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) final override;
+  rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*,
+                         RocksDBKey const& key) final override;
+  rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*,
+                               RocksDBKey const&) final override;
   void PutLogData(rocksdb::Slice const&) final override;
 
   void SetSavePoint() final override;
@@ -92,7 +96,7 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
 
   /// @brief create a new rocksdb transaction
   virtual void createTransaction();
-  
+
   arangodb::Result doCommit();
 
   rocksdb::TransactionDB* _db{nullptr};
@@ -102,10 +106,10 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
 
   /// @brief rocksdb transaction may be null for read only transactions
   rocksdb::Transaction* _rocksTransaction{nullptr};
-  
-    /// store the number of log entries in WAL
+
+  /// store the number of log entries in WAL
   uint64_t _numLogdata{0};
-  
+
   /// @brief number of commits, including intermediate commits
   uint64_t _numCommits{0};
   // if a transaction gets bigger than these values then an automatic
@@ -120,9 +124,8 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
 
   /// @brief tick of last added & written operation
   TRI_voc_tick_t _lastWrittenOperationTick{0};
-  
+
   bool _indexingDisabled{false};
 };
 
 }  // namespace arangodb
-

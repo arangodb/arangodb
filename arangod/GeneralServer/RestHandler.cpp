@@ -55,8 +55,7 @@ using namespace arangodb::rest;
 
 RestHandler::RestHandler(application_features::ApplicationServer& server,
                          GeneralRequest* request, GeneralResponse* response)
-    :
-      _request(request),
+    : _request(request),
       _response(response),
       _server(server),
       _statistics(),
@@ -69,7 +68,8 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
 RestHandler::~RestHandler() {
   if (_trackedAsOngoingLowPrio) {
     // someone forgot to call trackTaskEnd 🤔
-    TRI_ASSERT(PriorityRequestLane(determineRequestLane()) == RequestPriority::LOW);
+    TRI_ASSERT(PriorityRequestLane(determineRequestLane()) ==
+               RequestPriority::LOW);
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
   }
@@ -116,12 +116,11 @@ RequestLane RestHandler::determineRequestLane() {
 
 void RestHandler::trackQueueStart() noexcept {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  _statistics.SET_QUEUE_START(SchedulerFeature::SCHEDULER->queueStatistics()._queued);
+  _statistics.SET_QUEUE_START(
+      SchedulerFeature::SCHEDULER->queueStatistics()._queued);
 }
 
-void RestHandler::trackQueueEnd() noexcept {
-  _statistics.SET_QUEUE_END();
-}
+void RestHandler::trackQueueEnd() noexcept { _statistics.SET_QUEUE_END(); }
 
 void RestHandler::trackTaskStart() noexcept {
   TRI_ASSERT(!_trackedAsOngoingLowPrio);
@@ -135,7 +134,8 @@ void RestHandler::trackTaskStart() noexcept {
 
 void RestHandler::trackTaskEnd() noexcept {
   if (_trackedAsOngoingLowPrio) {
-    TRI_ASSERT(PriorityRequestLane(determineRequestLane()) == RequestPriority::LOW);
+    TRI_ASSERT(PriorityRequestLane(determineRequestLane()) ==
+               RequestPriority::LOW);
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
     _trackedAsOngoingLowPrio = false;
@@ -143,7 +143,8 @@ void RestHandler::trackTaskEnd() noexcept {
     // update the time the last low priority item spent waiting in the queue.
 
     // the queueing time is in ms
-    uint64_t queueTimeMs = static_cast<uint64_t>(_statistics.ELAPSED_WHILE_QUEUED() * 1000.0);
+    uint64_t queueTimeMs =
+        static_cast<uint64_t>(_statistics.ELAPSED_WHILE_QUEUED() * 1000.0);
     SchedulerFeature::SCHEDULER->setLastLowPriorityDequeueTime(queueTimeMs);
   }
 }
@@ -218,8 +219,10 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       // in this case ClusterComm will add the default superuser token
       std::string const& username = _request->user();
       if (!username.empty()) {
-        headers.emplace(StaticStrings::Authorization,
-                        "bearer " + fuerte::jwt::generateUserToken(auth->tokenCache().jwtSecret(), username));
+        headers.emplace(
+            StaticStrings::Authorization,
+            "bearer " + fuerte::jwt::generateUserToken(
+                            auth->tokenCache().jwtSecret(), username));
       }
     }
   }
@@ -238,35 +241,41 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     options.contentType = rest::contentTypeToString(_request->contentType());
   }
 
-  options.acceptType = rest::contentTypeToString(_request->contentTypeResponse());
+  options.acceptType =
+      rest::contentTypeToString(_request->contentTypeResponse());
 
   for (auto const& i : _request->values()) {
     options.param(i.first, i.second);
   }
 
-  auto requestType =
-      fuerte::from_string(GeneralRequest::translateMethod(_request->requestType()));
+  auto requestType = fuerte::from_string(
+      GeneralRequest::translateMethod(_request->requestType()));
 
-  VPackStringRef resPayload = _request->rawPayload();
+  std::string_view resPayload = _request->rawPayload();
   VPackBuffer<uint8_t> payload(resPayload.size());
   payload.append(resPayload.data(), resPayload.size());
 
   nf.trackForwardedRequest();
 
   // Should the coordinator be gone by now, we'll respond with 404.
-  // There is no point forwarding requests. This affects transactions, cursors, ...
-  if (server().getFeature<ClusterFeature>().clusterInfo().getServerEndpoint(serverId).empty()) {
+  // There is no point forwarding requests. This affects transactions, cursors,
+  // ...
+  if (server()
+          .getFeature<ClusterFeature>()
+          .clusterInfo()
+          .getServerEndpoint(serverId)
+          .empty()) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_CLUSTER_SERVER_UNKNOWN,
                   std::string("cluster server ") + serverId + " unknown");
     return Result(TRI_ERROR_CLUSTER_SERVER_UNKNOWN);
   }
 
-  auto future = network::sendRequestRetry(pool, "server:" + serverId, requestType,
-                                          _request->requestPath(), std::move(payload),
-                                          options, std::move(headers));
-  auto cb = [this, serverId, useVst,
-             self = shared_from_this()](network::Response&& response) -> Result {
+  auto future = network::sendRequestRetry(
+      pool, "server:" + serverId, requestType, _request->requestPath(),
+      std::move(payload), options, std::move(headers));
+  auto cb = [this, serverId, useVst, self = shared_from_this()](
+                network::Response&& response) -> Result {
     auto res = network::fuerteToArangoErrorCode(response);
     if (res != TRI_ERROR_NO_ERROR) {
       generateError(res);
@@ -274,7 +283,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     }
 
     resetResponse(static_cast<rest::ResponseCode>(response.statusCode()));
-    _response->setContentType(fuerte::v1::to_string(response.response().contentType()));
+    _response->setContentType(
+        fuerte::v1::to_string(response.response().contentType()));
 
     if (!useVst) {
       HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
@@ -286,7 +296,6 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     } else {
       _response->setPayload(std::move(*response.response().stealPayload()));
     }
-
 
     auto const& resultHeaders = response.response().messageHeader().meta();
     for (auto const& it : resultHeaders) {
@@ -312,45 +321,50 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("11929", WARN, arangodb::Logger::FIXME)
-      << "maintainer mode: caught exception in " << name() << ": " << ex.what();
+        << "maintainer mode: caught exception in " << name() << ": "
+        << ex.what();
 #endif
     handleError(ex);
   } catch (arangodb::velocypack::Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("fdcbc", WARN, arangodb::Logger::FIXME)
-      << "maintainer mode: caught velocypack exception in " << name() << ": "
-      << ex.what();
+        << "maintainer mode: caught velocypack exception in " << name() << ": "
+        << ex.what();
 #endif
     bool const isParseError =
-      (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
-       ex.errorCode() == arangodb::velocypack::Exception::UnexpectedControlCharacter);
-    Exception err(isParseError ? TRI_ERROR_HTTP_CORRUPTED_JSON : TRI_ERROR_INTERNAL,
-                  std::string("VPack error: ") + ex.what(), __FILE__, __LINE__);
+        (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
+         ex.errorCode() ==
+             arangodb::velocypack::Exception::UnexpectedControlCharacter);
+    Exception err(
+        isParseError ? TRI_ERROR_HTTP_CORRUPTED_JSON : TRI_ERROR_INTERNAL,
+        std::string("VPack error: ") + ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (std::bad_alloc const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("5c9f6", WARN, arangodb::Logger::FIXME)
-      << "maintainer mode: caught memory exception in " << name() << ": "
-      << ex.what();
+        << "maintainer mode: caught memory exception in " << name() << ": "
+        << ex.what();
 #endif
     Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (std::exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("252ea", WARN, arangodb::Logger::FIXME)
-      << "maintainer mode: caught exception in " << name() << ": " << ex.what();
+        << "maintainer mode: caught exception in " << name() << ": "
+        << ex.what();
 #endif
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (...) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC("f729d", WARN, arangodb::Logger::FIXME) << "maintainer mode: caught unknown exception in " << name();
+    LOG_TOPIC("f729d", WARN, arangodb::Logger::FIXME)
+        << "maintainer mode: caught unknown exception in " << name();
 #endif
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
 } catch (...) {
-  // we can only get here if putting together an error response or an 
+  // we can only get here if putting together an error response or an
   // error log message failed with an exception. there is nothing we
   // can do here to signal this problem.
 }
@@ -366,7 +380,7 @@ void RestHandler::runHandlerStateMachine() {
         break;
 
       case HandlerState::EXECUTE: {
-        executeEngine(/*isContinue*/false);
+        executeEngine(/*isContinue*/ false);
         if (_state == HandlerState::PAUSED) {
           shutdownExecute(false);
           LOG_TOPIC("23a33", DEBUG, Logger::COMMUNICATION)
@@ -377,9 +391,9 @@ void RestHandler::runHandlerStateMachine() {
       }
 
       case HandlerState::CONTINUED: {
-        executeEngine(/*isContinue*/true);
+        executeEngine(/*isContinue*/ true);
         if (_state == HandlerState::PAUSED) {
-          shutdownExecute(/*isFinalized*/false);
+          shutdownExecute(/*isFinalized*/ false);
           LOG_TOPIC("23727", DEBUG, Logger::COMMUNICATION)
               << "Pausing rest handler execution " << this;
           return;  // stop state machine
@@ -397,7 +411,7 @@ void RestHandler::runHandlerStateMachine() {
         _statistics.SET_REQUEST_END();
 
         // shutdownExecute is noexcept
-        shutdownExecute(true); // may not be moved down
+        shutdownExecute(true);  // may not be moved down
 
         _state = HandlerState::DONE;
 
@@ -459,7 +473,7 @@ void RestHandler::prepareEngine() {
 bool RestHandler::wakeupHandler() {
   RECURSIVE_MUTEX_LOCKER(_executionMutex, _executionMutexOwner);
   if (_state == HandlerState::PAUSED) {
-    runHandlerStateMachine(); // may change _state
+    runHandlerStateMachine();  // may change _state
     return _state == HandlerState::PAUSED;
   }
   return false;
@@ -498,7 +512,8 @@ void RestHandler::executeEngine(bool isContinue) {
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("11928", WARN, arangodb::Logger::FIXME)
-        << "maintainer mode: caught exception in " << name() << ": " << ex.what();
+        << "maintainer mode: caught exception in " << name() << ": "
+        << ex.what();
 #endif
     handleError(ex);
   } catch (arangodb::velocypack::Exception const& ex) {
@@ -509,9 +524,11 @@ void RestHandler::executeEngine(bool isContinue) {
 #endif
     bool const isParseError =
         (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
-         ex.errorCode() == arangodb::velocypack::Exception::UnexpectedControlCharacter);
-    Exception err(isParseError ? TRI_ERROR_HTTP_CORRUPTED_JSON : TRI_ERROR_INTERNAL,
-                  std::string("VPack error: ") + ex.what(), __FILE__, __LINE__);
+         ex.errorCode() ==
+             arangodb::velocypack::Exception::UnexpectedControlCharacter);
+    Exception err(
+        isParseError ? TRI_ERROR_HTTP_CORRUPTED_JSON : TRI_ERROR_INTERNAL,
+        std::string("VPack error: ") + ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (std::bad_alloc const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -524,13 +541,15 @@ void RestHandler::executeEngine(bool isContinue) {
   } catch (std::exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("252e9", WARN, arangodb::Logger::FIXME)
-        << "maintainer mode: caught exception in " << name() << ": " << ex.what();
+        << "maintainer mode: caught exception in " << name() << ": "
+        << ex.what();
 #endif
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (...) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC("f729c", WARN, arangodb::Logger::FIXME) << "maintainer mode: caught unknown exception in " << name();
+    LOG_TOPIC("f729c", WARN, arangodb::Logger::FIXME)
+        << "maintainer mode: caught unknown exception in " << name();
 #endif
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
@@ -567,17 +586,16 @@ void RestHandler::generateError(rest::ResponseCode code, ErrorCode errorNumber,
 
 void RestHandler::compressResponse() {
   if (_response->isCompressionAllowed()) {
-
     switch (_request->acceptEncoding()) {
       case rest::EncodingType::DEFLATE:
         _response->deflate();
-        _response->setHeaderNC(StaticStrings::ContentEncoding, StaticStrings::EncodingDeflate);
+        _response->setHeaderNC(StaticStrings::ContentEncoding,
+                               StaticStrings::EncodingDeflate);
         break;
 
       default:
         break;
     }
-
   }
 }
 
@@ -585,7 +603,8 @@ void RestHandler::compressResponse() {
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestHandler::generateError(rest::ResponseCode code, ErrorCode errorNumber) {
+void RestHandler::generateError(rest::ResponseCode code,
+                                ErrorCode errorNumber) {
   auto const message = TRI_errno_string(errorNumber);
 
   if (message.data() != nullptr) {

@@ -31,12 +31,16 @@
 #include "VocBase/voc-types.h"
 
 #include <chrono>
+#include <memory>
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace network {
 class ConnectionPool;
 }
 
+class DatabaseTailingSyncer;
 class LogicalCollection;
 struct SyncerId;
 
@@ -54,46 +58,47 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
 
   std::string const& clientInfoString() const;
 
-  arangodb::replutils::LeaderInfo const& leaderInfo() const;
-  void setLeaderInfo(arangodb::replutils::LeaderInfo const& leaderInfo);
-
  private:
+  arangodb::Result collectionCountOnLeader(std::string const& endpoint,
+                                           uint64_t& c);
+
   arangodb::Result getReadLock(network::ConnectionPool* pool,
-                               std::string const& endpoint, 
-                               std::string const& collection, 
-                               std::string const& clientId,
-                               uint64_t rlid, 
-                               bool soft, 
-                               double timeout);
+                               std::string const& endpoint,
+                               std::string const& collection,
+                               std::string const& clientId, uint64_t rlid,
+                               bool soft, double timeout);
 
   arangodb::Result startReadLockOnLeader(std::string const& endpoint,
                                          std::string const& collection,
-                                         std::string const& clientId, 
-                                         uint64_t& rlid,
-                                         bool soft, 
+                                         std::string const& clientId,
+                                         uint64_t& rlid, bool soft,
                                          double timeout = 300.0);
 
   arangodb::ResultT<TRI_voc_tick_t> catchupWithReadLock(
-      std::string const& ep, 
-      LogicalCollection const& collection,
-      std::string const& clientId, 
-      std::string const& leader, TRI_voc_tick_t lastLogTick, VPackBuilder& builder);
+      std::string const& ep, LogicalCollection const& collection,
+      std::string const& clientId, std::string const& leader,
+      TRI_voc_tick_t lastLogTick,
+      std::shared_ptr<DatabaseTailingSyncer> tailingSyncer);
 
   arangodb::Result catchupWithExclusiveLock(
-      std::string const& ep, 
-      LogicalCollection& collection, 
-      std::string const& clientId,
-      std::string const& leader, SyncerId syncerId,
-      TRI_voc_tick_t lastLogTick, VPackBuilder& builder);
+      std::string const& ep, LogicalCollection& collection,
+      std::string const& clientId, std::string const& leader, SyncerId syncerId,
+      TRI_voc_tick_t lastLogTick,
+      std::shared_ptr<DatabaseTailingSyncer> tailingSyncer);
 
-  /// @brief Short, informative description of the replication client, passed to the server
+  std::shared_ptr<DatabaseTailingSyncer> buildTailingSyncer(
+      TRI_vocbase_t& vocbase, std::string const& endpoint);
+
+  /// @brief Short, informative description of the replication client, passed to
+  /// the server
   std::string _clientInfoString;
 
-  /// @brief information about the leader, reused across multiple replication steps
-  arangodb::replutils::LeaderInfo _leaderInfo;
   uint64_t _followingTermId;
+
+  /// @brief maximum tick until which we need to run WAL tailing for. 0 means
+  /// "no restriction"
+  uint64_t _tailingUpperBoundTick;
 };
 
 }  // namespace maintenance
 }  // namespace arangodb
-

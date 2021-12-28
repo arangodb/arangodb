@@ -79,38 +79,31 @@ void RocksDBSavePoint::prepareOperation(RevisionId rid) {
 /// @brief acknowledges the current savepoint, so there
 /// will be no rollback when the destructor is called
 Result RocksDBSavePoint::finish(RevisionId rid) {
-  bool hasPerformedIntermediateCommit = false;
   Result res = basics::catchToResult([&]() -> Result {
-    return _state.addOperation(_collectionId, rid, _operationType, hasPerformedIntermediateCommit);
+    return _state.addOperation(_collectionId, rid, _operationType);
   });
 
   if (!_handled) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(_numCommitsAtStart + (hasPerformedIntermediateCommit ? 1 : 0) == _state.numCommits());
+    TRI_ASSERT(_numCommitsAtStart == _state.numCommits());
 #endif
 
     if (res.ok()) {
-      if (!hasPerformedIntermediateCommit) {
-        // pop the savepoint from the transaction in order to
-        // save some memory for transactions with many operations
-        // this is only safe to do when we have a created a savepoint
-        // when creating the guard, and when there hasn't been an
-        // intermediate commit in the transaction
-        // when there has been an intermediate commit, we must
-        // leave the savepoint alone, because it belonged to another
-        // transaction, and the current transaction will not have any
-        // savepoint
-        _state.rocksdbMethods(_collectionId)->PopSavePoint();
-      }
-    
+      // pop the savepoint from the transaction in order to
+      // save some memory for transactions with many operations
+      // this is only safe to do when we have a created a savepoint
+      // when creating the guard, and when there hasn't been an
+      // intermediate commit in the transaction
+      // when there has been an intermediate commit, we must
+      // leave the savepoint alone, because it belonged to another
+      // transaction, and the current transaction will not have any
+      // savepoint
+      _state.rocksdbMethods(_collectionId)->PopSavePoint();
+
       // this will prevent the rollback call in the destructor
       _handled = true;
     } else {
       TRI_ASSERT(res.fail());
-      if (hasPerformedIntermediateCommit) {
-        // very rare case reached only during testing
-        _handled = true;
-      }
     }
   }
 
@@ -137,7 +130,7 @@ void RocksDBSavePoint::rollback() {
     // std::string::resize instead of a full rebuild of the WBWI
     // from the WriteBatch)
     s = _rocksMethods.RollbackToWriteBatchSavePoint();
-  }  
+  }
   TRI_ASSERT(s.ok());
 
   _rocksMethods.rollbackOperation(_operationType);
@@ -145,4 +138,4 @@ void RocksDBSavePoint::rollback() {
   _handled = true;  // in order to not roll back again by accident
 }
 
-} // namespace
+}  // namespace arangodb

@@ -35,13 +35,17 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ResignShardLeadership.h"
 #include "Indexes/Index.h"
+#include "Logger/LogContextKeys.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedLog/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Metrics/Counter.h"
+#include "Metrics/Gauge.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/LogScale.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
@@ -51,7 +55,6 @@
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
@@ -68,8 +71,8 @@ static std::unordered_set<std::string> const alwaysRemoveProperties({ID, NAME});
 static VPackValue const VP_DELETE("delete");
 static VPackValue const VP_SET("set");
 
-static VPackStringRef const PRIMARY("primary");
-static VPackStringRef const EDGE("edge");
+static std::string_view const PRIMARY("primary");
+static std::string_view const EDGE("edge");
 
 static int indexOf(VPackSlice const& slice, std::string const& val) {
   if (slice.isArray()) {
@@ -90,16 +93,18 @@ static std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
       arangodb::velocypack::Collection::remove(s, alwaysRemoveProperties));
 }
 
-static std::shared_ptr<VPackBuilder> compareRelevantProps(VPackSlice const& first,
-                                                          VPackSlice const& second) {
-  static std::vector<std::string> const compareProperties{WAIT_FOR_SYNC, SCHEMA, CACHE_ENABLED,
-                                                          StaticStrings::InternalValidatorTypes};
+static std::shared_ptr<VPackBuilder> compareRelevantProps(
+    VPackSlice const& first, VPackSlice const& second) {
+  static std::vector<std::string> const compareProperties{
+      WAIT_FOR_SYNC, SCHEMA, CACHE_ENABLED,
+      StaticStrings::InternalValidatorTypes};
   auto result = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder b(result.get());
     for (auto const& property : compareProperties) {
       auto const& planned = first.get(property);
-      if (!basics::VelocyPackHelper::equal(planned, second.get(property), false) &&
+      if (!basics::VelocyPackHelper::equal(planned, second.get(property),
+                                           false) &&
           !planned.isNone()) {  // Register any change
         result->add(property, planned);
       }
@@ -108,9 +113,12 @@ static std::shared_ptr<VPackBuilder> compareRelevantProps(VPackSlice const& firs
   return result;
 }
 
-static VPackBuilder compareIndexes(StorageEngine& engine, std::string const& dbname,
-                                   std::string const& collname, std::string const& shname,
-                                   VPackSlice const& plan, VPackSlice const& local,
+static VPackBuilder compareIndexes(StorageEngine& engine,
+                                   std::string const& dbname,
+                                   std::string const& collname,
+                                   std::string const& shname,
+                                   VPackSlice const& plan,
+                                   VPackSlice const& local,
                                    MaintenanceFeature::errors_t const& errors,
                                    std::unordered_set<std::string>& indis) {
   TRI_ASSERT(plan.isArray());
@@ -120,7 +128,8 @@ static VPackBuilder compareIndexes(StorageEngine& engine, std::string const& dbn
     VPackArrayBuilder a(&builder);
     for (auto const& pindex : VPackArrayIterator(plan)) {
       // Skip primary and edge indexes
-      VPackStringRef ptype = pindex.get(StaticStrings::IndexType).stringRef();
+      std::string_view ptype =
+          pindex.get(StaticStrings::IndexType).stringView();
       if (ptype == PRIMARY || ptype == EDGE) {
         continue;
       }
@@ -135,7 +144,8 @@ static VPackBuilder compareIndexes(StorageEngine& engine, std::string const& dbn
       if (local.isArray()) {
         for (auto const& lindex : VPackArrayIterator(local)) {
           // Skip primary and edge indexes
-          VPackStringRef ltype = lindex.get(StaticStrings::IndexType).stringRef();
+          std::string_view ltype =
+              lindex.get(StaticStrings::IndexType).stringView();
           if (ltype == PRIMARY || ltype == EDGE) {
             continue;
           }
@@ -144,9 +154,9 @@ static VPackBuilder compareIndexes(StorageEngine& engine, std::string const& dbn
           TRI_ASSERT(localId.isString());
           // The local ID has the form <collectionName>/<ID>, to compare,
           // we need to extract the local ID:
-          VPackStringRef localIdS = localId.stringRef();
+          std::string_view localIdS = localId.stringView();
           auto pos = localIdS.find('/');
-          if (pos != std::string::npos) {
+          if (pos != std::string_view::npos) {
             localIdS = localIdS.substr(pos + 1);
           }
 
@@ -191,9 +201,9 @@ static VPackBuilder compareIndexes(StorageEngine& engine, std::string const& dbn
           builder.add(pindex);
         } else {
           LOG_TOPIC("ceb3d", DEBUG, Logger::MAINTENANCE)
-              << "Previous failure exists for index " << planIdS
-              << " on shard " << dbname << "/" << shname << " for central "
-              << dbname << "/" << collname << "- skipping";
+              << "Previous failure exists for index " << planIdS << " on shard "
+              << dbname << "/" << shname << " for central " << dbname << "/"
+              << collname << "- skipping";
         }
       }
     }
@@ -202,7 +212,8 @@ static VPackBuilder compareIndexes(StorageEngine& engine, std::string const& dbn
   return builder;
 }
 
-static std::string CreateLeaderString(std::string const& leaderId, bool shouldBeLeading) {
+static std::string CreateLeaderString(std::string const& leaderId,
+                                      bool shouldBeLeading) {
   if (shouldBeLeading) {
     return std::string();
   }
@@ -215,10 +226,12 @@ static std::string CreateLeaderString(std::string const& leaderId, bool shouldBe
 
 static void handlePlanShard(
     StorageEngine& engine, uint64_t planIndex, VPackSlice const& cprops,
-    VPackSlice const& ldb, std::string const& dbname, std::string const& colname,
-    std::string const& shname, std::string const& serverId,
-    std::string const& leaderId, std::unordered_set<std::string>& commonShrds,
-    std::unordered_set<std::string>& indis, MaintenanceFeature::errors_t& errors,
+    VPackSlice const& ldb, std::string const& dbname,
+    std::string const& colname, std::string const& shname,
+    std::string const& serverId, std::string const& leaderId,
+    std::unordered_set<std::string>& commonShrds,
+    std::unordered_set<std::string>& indis,
+    MaintenanceFeature::errors_t& errors,
     std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
     std::vector<std::shared_ptr<ActionDescription>>& actions,
     MaintenanceFeature::ShardActionMap const& shardActionMap) {
@@ -295,20 +308,22 @@ static void handlePlanShard(
     if (properties->slice().length() > 0 || !followersToDropString.empty()) {
       if (errors.shards.find(fullShardLabel) == errors.shards.end()) {
         description = std::make_shared<ActionDescription>(
-            std::map<std::string, std::string>{{NAME, UPDATE_COLLECTION},
-             {DATABASE, dbname},
-             {COLLECTION, colname},
-             {SHARD, shname},
-             {SERVER_ID, serverId},
-             {FOLLOWERS_TO_DROP, followersToDropString}},
+            std::map<std::string, std::string>{
+                {NAME, UPDATE_COLLECTION},
+                {DATABASE, dbname},
+                {COLLECTION, colname},
+                {SHARD, shname},
+                {SERVER_ID, serverId},
+                {FOLLOWERS_TO_DROP, followersToDropString}},
             HIGHER_PRIORITY, true, std::move(properties));
         makeDirty.insert(dbname);
         callNotify = true;
         actions.emplace_back(std::move(description));
       } else {
         LOG_TOPIC("0285b", DEBUG, Logger::MAINTENANCE)
-            << "Previous failure exists for local shard " << dbname << "/" << shname
-            << "for central " << dbname << "/" << colname << "- skipping";
+            << "Previous failure exists for local shard " << dbname << "/"
+            << shname << "for central " << dbname << "/" << colname
+            << "- skipping";
       }
     }
     if (!leading && shouldBeLeading) {
@@ -320,13 +335,13 @@ static void handlePlanShard(
           << ", should be leader: ";
       description = std::make_shared<ActionDescription>(
           std::map<std::string, std::string>{
-            {NAME, TAKEOVER_SHARD_LEADERSHIP},
-            {DATABASE, dbname},
-            {COLLECTION, colname},
-            {SHARD, shname},
-            {LOCAL_LEADER, std::string(localLeader)},
-            {OLD_CURRENT_COUNTER, "0"},  // legacy, no longer used
-            {PLAN_RAFT_INDEX, std::to_string(planIndex)}},
+              {NAME, TAKEOVER_SHARD_LEADERSHIP},
+              {DATABASE, dbname},
+              {COLLECTION, colname},
+              {SHARD, shname},
+              {LOCAL_LEADER, std::string(localLeader)},
+              {OLD_CURRENT_COUNTER, "0"},  // legacy, no longer used
+              {PLAN_RAFT_INDEX, std::to_string(planIndex)}},
           LEADER_PRIORITY, true);
       makeDirty.insert(dbname);
       callNotify = true;
@@ -350,16 +365,16 @@ static void handlePlanShard(
           // when the shard is locked for maintenance.
           makeDirty.insert(dbname);
           callNotify = true;
-          actions.emplace_back(
-            std::make_shared<ActionDescription>(
+          actions.emplace_back(std::make_shared<ActionDescription>(
               std::map<std::string, std::string>{
-                {NAME, ENSURE_INDEX},
-                {DATABASE, dbname},
-                {COLLECTION, colname},
-                {SHARD, shname},
-                {StaticStrings::IndexType, index.get(StaticStrings::IndexType).copyString()},
-                {FIELDS, index.get(FIELDS).toJson()},
-                {ID, index.get(ID).copyString()}},
+                  {NAME, ENSURE_INDEX},
+                  {DATABASE, dbname},
+                  {COLLECTION, colname},
+                  {SHARD, shname},
+                  {StaticStrings::IndexType,
+                   index.get(StaticStrings::IndexType).copyString()},
+                  {FIELDS, index.get(FIELDS).toJson()},
+                  {ID, index.get(ID).copyString()}},
               INDEX_PRIORITY, false, std::make_shared<VPackBuilder>(index)));
         }
       }
@@ -369,58 +384,59 @@ static void handlePlanShard(
         errors.shards.end()) {
       auto props = createProps(cprops);  // Only once might need often!
       description = std::make_shared<ActionDescription>(
-        std::map<std::string, std::string>{
-          {NAME, CREATE_COLLECTION},
-          {COLLECTION, colname},
-          {SHARD, shname},
-          {DATABASE, dbname},
-          {SERVER_ID, serverId},
-          {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)}},
-        shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true, std::move(props));
+          std::map<std::string, std::string>{
+              {NAME, CREATE_COLLECTION},
+              {COLLECTION, colname},
+              {SHARD, shname},
+              {DATABASE, dbname},
+              {SERVER_ID, serverId},
+              {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)}},
+          shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true,
+          std::move(props));
       makeDirty.insert(dbname);
       callNotify = true;
       actions.emplace_back(std::move(description));
     } else {
       LOG_TOPIC("c1d8e", DEBUG, Logger::MAINTENANCE)
-          << "Previous failure exists for creating local shard " << dbname << "/"
-          << shname << "for central " << dbname << "/" << colname << "- skipping";
+          << "Previous failure exists for creating local shard " << dbname
+          << "/" << shname << "for central " << dbname << "/" << colname
+          << "- skipping";
     }
   }
 }
 
-static void handleLocalShard(std::string const& dbname, std::string const& colname,
-                             VPackSlice const& cprops, VPackSlice const& shardMap,
-                             std::unordered_set<std::string>& commonShrds,
-                             std::unordered_set<std::string>& indis,
-                             std::string const& serverId,
-                             std::vector<std::shared_ptr<ActionDescription>>& actions,
-                             std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
-                             MaintenanceFeature::ShardActionMap const& shardActionMap) {
+static void handleLocalShard(
+    std::string const& dbname, std::string const& colname,
+    VPackSlice const& cprops, VPackSlice const& shardMap,
+    std::unordered_set<std::string>& commonShrds,
+    std::unordered_set<std::string>& indis, std::string const& serverId,
+    std::vector<std::shared_ptr<ActionDescription>>& actions,
+    std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
+    MaintenanceFeature::ShardActionMap const& shardActionMap) {
   // First check if the shard is locked:
   auto iter = shardActionMap.find(colname);
   if (iter != shardActionMap.end()) {
     makeDirty.insert(dbname);
     // do not set callNotify here to avoid a busy loop
     LOG_TOPIC("aaed6", DEBUG, Logger::MAINTENANCE)
-    << "Skipping handleLocalShard for shard " << colname
-    << " because it is locked by an action: " << *iter->second;
+        << "Skipping handleLocalShard for shard " << colname
+        << " because it is locked by an action: " << *iter->second;
     return;
   }
 
   std::shared_ptr<ActionDescription> description;
 
-  std::unordered_set<std::string>::const_iterator it = commonShrds.find(colname);
+  std::unordered_set<std::string>::const_iterator it =
+      commonShrds.find(colname);
 
-  auto localLeader = cprops.get(THE_LEADER).stringRef();
+  auto localLeader = cprops.get(THE_LEADER).stringView();
   bool const isLeading = localLeader.empty();
   if (it == commonShrds.end()) {
     // This collection is not planned anymore, can drop it
     description = std::make_shared<ActionDescription>(
-      std::map<std::string, std::string>{
-        {NAME, DROP_COLLECTION},
-        {DATABASE, dbname},
-        {SHARD, colname}},
-      isLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true);
+        std::map<std::string, std::string>{
+            {NAME, DROP_COLLECTION}, {DATABASE, dbname}, {SHARD, colname}},
+        isLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true);
     makeDirty.insert(dbname);
     callNotify = true;
     actions.emplace_back(std::move(description));
@@ -454,10 +470,10 @@ static void handleLocalShard(std::string const& dbname, std::string const& colna
 
   if (activeResign || adjustResignState) {
     description = std::make_shared<ActionDescription>(
-      std::map<std::string, std::string>{{NAME, RESIGN_SHARD_LEADERSHIP},
-                                         {DATABASE, dbname},
-                                         {SHARD, colname}},
-      RESIGN_PRIORITY, true);
+        std::map<std::string, std::string>{{NAME, RESIGN_SHARD_LEADERSHIP},
+                                           {DATABASE, dbname},
+                                           {SHARD, colname}},
+        RESIGN_PRIORITY, true);
     makeDirty.insert(dbname);
     callNotify = true;
     actions.emplace_back(description);
@@ -467,7 +483,8 @@ static void handleLocalShard(std::string const& dbname, std::string const& colna
   if (cprops.hasKey(INDEXES)) {
     if (cprops.get(INDEXES).isArray()) {
       for (auto const& index : VPackArrayIterator(cprops.get(INDEXES))) {
-        VPackStringRef type = index.get(StaticStrings::IndexType).stringRef();
+        std::string_view type =
+            index.get(StaticStrings::IndexType).stringView();
         if (type != PRIMARY && type != EDGE) {
           std::string const id = index.get(ID).copyString();
 
@@ -480,10 +497,11 @@ static void handleLocalShard(std::string const& dbname, std::string const& colna
             // want that they can run in parallel.
             makeDirty.insert(dbname);
             callNotify = true;
-            actions.emplace_back(
-              std::make_shared<ActionDescription>(
-                std::map<std::string, std::string>{
-                  {NAME, DROP_INDEX}, {DATABASE, dbname}, {SHARD, colname}, {"index", id}},
+            actions.emplace_back(std::make_shared<ActionDescription>(
+                std::map<std::string, std::string>{{NAME, DROP_INDEX},
+                                                   {DATABASE, dbname},
+                                                   {SHARD, colname},
+                                                   {"index", id}},
                 INDEX_PRIORITY, false));
           }
         }
@@ -507,7 +525,7 @@ VPackBuilder getShardMap(VPackSlice const& collections) {
         }
 
         for (auto shard : VPackObjectIterator(collection.value.get(SHARDS))) {
-          shardMap.add(shard.key.stringRef(), shard.value);
+          shardMap.add(shard.key.stringView(), shard.value);
         }
       }
     }
@@ -518,51 +536,67 @@ VPackBuilder getShardMap(VPackSlice const& collections) {
 void arangodb::maintenance::diffReplicatedLogs(
     DatabaseID const& database, ReplicatedLogStatusMap const& localLogs,
     ReplicatedLogSpecMap const& planLogs, std::string const& serverId,
-    MaintenanceFeature::errors_t& errors, std::unordered_set<DatabaseID>& makeDirty,
-    bool& callNotify, std::vector<std::shared_ptr<ActionDescription>>& actions) {
+    MaintenanceFeature::errors_t& errors,
+    std::unordered_set<DatabaseID>& makeDirty, bool& callNotify,
+    std::vector<std::shared_ptr<ActionDescription>>& actions) {
   using namespace arangodb::replication2;
 
-  auto const createReplicatedLogAction = [&](LogId id, agency::LogPlanSpecification const* spec) {
-    auto specStr = std::invoke([&] {
-      VPackBuilder builder;
-      auto slice = VPackSlice::noneSlice();
-      if (spec != nullptr) {
-        spec->toVelocyPack(builder);
-        slice = builder.slice();
-      }
-      return StringUtils::encodeBase64(slice.startAs<char>(), slice.byteSize());
-    });
+  auto const createReplicatedLogAction =
+      [&](LogId id, agency::LogPlanSpecification const* spec) {
+        auto specStr = std::invoke([&] {
+          VPackBuilder builder;
+          auto slice = VPackSlice::noneSlice();
+          if (spec != nullptr) {
+            spec->toVelocyPack(builder);
+            slice = builder.slice();
+          }
+          return StringUtils::encodeBase64(slice.startAs<char>(),
+                                           slice.byteSize());
+        });
 
-    auto description = std::make_shared<ActionDescription>(
-        std::map<std::string, std::string>{
-            {std::string(NAME), std::string(UPDATE_REPLICATED_LOG)},
-            {std::string(DATABASE), database},
-            {REPLICATED_LOG_ID, std::to_string(id.id())},
-            {REPLICATED_LOG_SPEC, specStr},
-        },
-        NORMAL_PRIORITY, false);
+        auto description = std::make_shared<ActionDescription>(
+            std::map<std::string, std::string>{
+                {std::string(NAME), std::string(UPDATE_REPLICATED_LOG)},
+                {std::string(DATABASE), database},
+                {REPLICATED_LOG_ID, std::to_string(id.id())},
+                {REPLICATED_LOG_SPEC, specStr},
+            },
+            NORMAL_PRIORITY, false);
 
-    makeDirty.insert(database);
-    callNotify = true;
-    actions.emplace_back(std::move(description));
-  };
+        makeDirty.insert(database);
+        callNotify = true;
+        actions.emplace_back(std::move(description));
+      };
 
   // check all plan log entries
   for (auto const& [logId, spec] : planLogs) {
     if (spec.currentTerm && spec.currentTerm->participants.find(serverId) !=
                                 spec.currentTerm->participants.end()) {
       // check if there are logs that do not exist locally
-      if (auto localIt = localLogs.find(spec.id); localIt == std::end(localLogs)) {
+      if (auto localIt = localLogs.find(spec.id);
+          localIt == std::end(localLogs)) {
         createReplicatedLogAction(spec.id, &spec);
       } else {
         // check if the term is the same
-        bool const requiresUpdate = std::invoke([&, &status = localIt->second, &spec = spec] {
-          if (spec.currentTerm.has_value()) {
-            auto currentTerm = status.getCurrentTerm();
-            return !currentTerm.has_value() || *currentTerm != spec.currentTerm->term;
-          }
-          return false;
-        });
+        bool const requiresUpdate =
+            std::invoke([&, &status = localIt->second, &spec = spec] {
+              // check if term has changed
+              auto currentTerm = status.getCurrentTerm();
+              if (!currentTerm.has_value() ||
+                  *currentTerm != spec.currentTerm->term) {
+                return true;
+              }
+
+              // check if participants generation has changed (in case we are
+              // the leader)
+              if (status.role == replicated_log::ParticipantRole::kLeader) {
+                if (status.activeParticipantConfig->generation <
+                    spec.participantsConfig.generation) {
+                  return true;
+                }
+              }
+              return false;
+            });
 
         // Create UpdateLogAction
         if (requiresUpdate) {
@@ -574,10 +608,13 @@ void arangodb::maintenance::diffReplicatedLogs(
 
   for (auto const& [id, status] : localLogs) {
     bool const dropLog = std::invoke([&, &id = id] {
+      // Drop a replicated log if
+      // either it is no longer in plan or ...
       auto it = planLogs.find(id);
       if (it == std::end(planLogs)) {
         return true;
       }
+      // ... we are no longer a participant
       auto const& spec = it->second;
       return !spec.currentTerm.has_value() ||
              (spec.currentTerm->participants.find(serverId) ==
@@ -606,7 +643,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
   // Sie betreten den funktionalen Sektor.
 
   arangodb::Result result;
-  std::unordered_set<std::string> commonShrds;  // Intersection collections plan&local
+  std::unordered_set<std::string>
+      commonShrds;                        // Intersection collections plan&local
   std::unordered_set<std::string> indis;  // Intersection indexes plan&local
 
   // Plan to local mismatch ----------------------------------------------------
@@ -614,23 +652,22 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
   for (auto const& p : plan) {
     auto const& dbname = p.first;
     auto pb = p.second->slice()[0];
-    auto const& pdb = pb.get(
-      std::vector<std::string>{AgencyCommHelper::path(), PLAN, DATABASES, dbname});
+    auto const& pdb = pb.get(std::vector<std::string>{AgencyCommHelper::path(),
+                                                      PLAN, DATABASES, dbname});
 
     if (pdb.isObject() && local.find(dbname) == local.end()) {
       if (errors.databases.find(dbname) == errors.databases.end()) {
         makeDirty.insert(dbname);
         callNotify = true;
-        actions.emplace_back(
-          std::make_shared<ActionDescription>(
+        actions.emplace_back(std::make_shared<ActionDescription>(
             std::map<std::string, std::string>{
-              {std::string(NAME), std::string(CREATE_DATABASE)},
-              {std::string(DATABASE), std::move(dbname)}},
-            HIGHER_PRIORITY, false,
-                               std::make_shared<VPackBuilder>(pdb)));
+                {std::string(NAME), std::string(CREATE_DATABASE)},
+                {std::string(DATABASE), std::move(dbname)}},
+            HIGHER_PRIORITY, false, std::make_shared<VPackBuilder>(pdb)));
       } else {
         LOG_TOPIC("3a6a8", DEBUG, Logger::MAINTENANCE)
-          << "Previous failure exists for creating database " << dbname << "skipping";
+            << "Previous failure exists for creating database " << dbname
+            << "skipping";
       }
     }
   }
@@ -644,29 +681,29 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
         needDrop = true;
       } else {
         VPackSlice pb = it->second->slice()[0];
-        VPackSlice pdb = pb.get(
-          std::vector<std::string>{AgencyCommHelper::path(), PLAN, DATABASES, dbname});
+        VPackSlice pdb = pb.get(std::vector<std::string>{
+            AgencyCommHelper::path(), PLAN, DATABASES, dbname});
         if (pdb.isNone() || pdb.isEmptyObject()) {
           LOG_TOPIC("12274", INFO, Logger::MAINTENANCE)
-            << "Dropping databases: pdb is "
-            << std::string(pdb.isNone() ? "non Slice" : pdb.toJson());
+              << "Dropping databases: pdb is "
+              << std::string(pdb.isNone() ? "non Slice" : pdb.toJson());
           needDrop = true;
         }
       }
       if (needDrop) {
         makeDirty.insert(dbname);
         callNotify = true;
-        actions.emplace_back(
-          std::make_shared<ActionDescription>(
+        actions.emplace_back(std::make_shared<ActionDescription>(
             std::map<std::string, std::string>{
-              {std::string(NAME), std::string(DROP_DATABASE)},
-              {std::string(DATABASE), std::move(dbname)}},
+                {std::string(NAME), std::string(DROP_DATABASE)},
+                {std::string(DATABASE), std::move(dbname)}},
             HIGHER_PRIORITY, false));
       }
     }
   }
 
-  // Check errors for databases, which are no longer in plan and remove from errors
+  // Check errors for databases, which are no longer in plan and remove from
+  // errors
   for (auto& database : errors.databases) {
     auto const& dbname = database.first;
     if (dirty.find(dbname) != dirty.end()) {
@@ -682,8 +719,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     auto const pit = plan.find(dbname);
     if (pit != plan.end() && lit != local.end()) {
       auto pdb = pit->second->slice()[0];
-      std::vector<std::string> ppath {
-        AgencyCommHelper::path(), PLAN, COLLECTIONS, dbname};
+      std::vector<std::string> ppath{AgencyCommHelper::path(), PLAN,
+                                     COLLECTIONS, dbname};
       if (!pdb.hasKey(ppath)) {
         continue;
       }
@@ -691,22 +728,27 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       try {
         auto const& ldb = lit->second->slice();
         if (ldb.isObject() && pdb.isObject()) {
-          for (auto const& pcol : VPackObjectIterator(pdb, true)) { // each plan collection
+          for (auto const& pcol :
+               VPackObjectIterator(pdb, true)) {  // each plan collection
             auto const& cprops = pcol.value;
             // for each shard
             TRI_ASSERT(cprops.isObject());
-            for (auto const& shard : VPackObjectIterator(cprops.get(SHARDS))) { // each shard
+            for (auto const& shard :
+                 VPackObjectIterator(cprops.get(SHARDS))) {  // each shard
 
               if (shard.value.isArray()) {
-                for (auto const& dbs : VPackArrayIterator(shard.value)) { //each dbserver with shard
-                  // We only care for shards, where we find us as "serverId" or "_serverId"
-                  if (dbs.isEqualString(serverId) || dbs.isEqualString(UNDERSCORE + serverId)) {
+                for (auto const& dbs : VPackArrayIterator(
+                         shard.value)) {  // each dbserver with shard
+                  // We only care for shards, where we find us as "serverId" or
+                  // "_serverId"
+                  if (dbs.isEqualString(serverId) ||
+                      dbs.isEqualString(UNDERSCORE + serverId)) {
                     // at this point a shard is in plan, we have the db for it
-                    handlePlanShard(engine, planIndex, cprops, ldb, dbname,
-                                    pcol.key.copyString(), shard.key.copyString(),
-                                    serverId, shard.value[0].copyString(),
-                                    commonShrds, indis, errors, makeDirty,
-                                    callNotify, actions, shardActionMap);
+                    handlePlanShard(
+                        engine, planIndex, cprops, ldb, dbname,
+                        pcol.key.copyString(), shard.key.copyString(), serverId,
+                        shard.value[0].copyString(), commonShrds, indis, errors,
+                        makeDirty, callNotify, actions, shardActionMap);
                     break;
                   }
                 }
@@ -716,7 +758,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
         }
       } catch (std::exception const& e) {
         LOG_TOPIC("49e89", WARN, Logger::MAINTENANCE)
-          << "Failed to get collection from local information: " << e.what();
+            << "Failed to get collection from local information: " << e.what();
       }
     }
   }
@@ -731,21 +773,23 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       continue;
     }
     auto const& ldbname = lit->first;
-    auto const  ldbslice = lit->second->slice(); // local collection
+    auto const ldbslice = lit->second->slice();  // local collection
 
     auto const pit = plan.find(ldbname);
-    if (pit != plan.end()) {     // have in plan
-      auto plan = pit->second->slice()[0].get(       // plan collections
-        std::vector<std::string>{AgencyCommHelper::path(), PLAN, COLLECTIONS, ldbname});
+    if (pit != plan.end()) {                    // have in plan
+      auto plan = pit->second->slice()[0].get(  // plan collections
+          std::vector<std::string>{AgencyCommHelper::path(), PLAN, COLLECTIONS,
+                                   ldbname});
       if (ldbslice.isObject()) {
-        // Note that if `plan` is not an object, then `getShardMap` will simply return
-        // an empty object, which is fine for `handleLocalShard`, so we do not have
-        // to check anything else here.
+        // Note that if `plan` is not an object, then `getShardMap` will simply
+        // return an empty object, which is fine for `handleLocalShard`, so we
+        // do not have to check anything else here.
         for (auto const& lcol : VPackObjectIterator(ldbslice)) {
           auto const& colname = lcol.key.copyString();
-          auto const shardMap = getShardMap(plan);            // plan shards -> servers
+          auto const shardMap = getShardMap(plan);  // plan shards -> servers
           handleLocalShard(ldbname, colname, lcol.value, shardMap.slice(),
-                           commonShrds, indis, serverId, actions, makeDirty, callNotify, shardActionMap);
+                           commonShrds, indis, serverId, actions, makeDirty,
+                           callNotify, shardActionMap);
         }
       }
     }
@@ -763,8 +807,10 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     }
 
     auto const& logs = lit->second;
-    auto plans = pit->second->slice()[0].get(
-        cluster::paths::aliases::plan()->replicatedLogs()->database(dbname)->vec());
+    auto plans = pit->second->slice()[0].get(cluster::paths::aliases::plan()
+                                                 ->replicatedLogs()
+                                                 ->database(dbname)
+                                                 ->vec());
     if (!plans.isObject()) {
       continue;
     }
@@ -781,18 +827,20 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
   }
 
   // See if shard errors can be thrown out:
-  // Check all shard errors in feature, if database or collection gone -> reset error
+  // Check all shard errors in feature, if database or collection gone -> reset
+  // error
 
   for (auto& shard : errors.shards) {
     std::vector<std::string> path = split(shard.first, '/');
     auto const& dbname = path[0];
     auto const& colname = path[1];
 
-    if (dirty.find(dbname) != dirty.end()) { // only if among dirty
+    if (dirty.find(dbname) != dirty.end()) {  // only if among dirty
       auto const planit = plan.find(dbname);
 
-      if (planit == plan.end() ||                        // database gone
-          !planit->second->slice()[0].hasKey(std::vector<std::string>{ // collection gone
+      if (planit == plan.end() ||  // database gone
+          !planit->second->slice()[0].hasKey(std::vector<std::string>{
+              // collection gone
               AgencyCommHelper::path(), PLAN, COLLECTIONS, dbname, colname})) {
         shard.second.reset();
       }
@@ -800,21 +848,23 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
   }
 
   // See if index errors can be thrown out:
-  // Check all shard errors in feature, if database, collection or index gone -> reset error
+  // Check all shard errors in feature, if database, collection or index gone ->
+  // reset error
 
   for (auto& shard : errors.indexes) {
-    std::vector<std::string> path = split(shard.first, '/'); // dbname, collection, shardid
+    std::vector<std::string> path =
+        split(shard.first, '/');  // dbname, collection, shardid
     auto const& dbname = path[0];
     auto const& colname = path[1];
 
-    if (dirty.find(dbname) != dirty.end()) { // only if among dirty
+    if (dirty.find(dbname) != dirty.end()) {  // only if among dirty
 
       auto const planit = plan.find(dbname);
 
-      std::vector<std::string> path{
-        AgencyCommHelper::path(), PLAN, COLLECTIONS, dbname, colname};
-      if (planit == plan.end() ||                        // db gone
-          !planit->second->slice()[0].hasKey(path)) { // collection gone
+      std::vector<std::string> path{AgencyCommHelper::path(), PLAN, COLLECTIONS,
+                                    dbname, colname};
+      if (planit == plan.end() ||                      // db gone
+          !planit->second->slice()[0].hasKey(path)) {  // collection gone
         for (auto& index : shard.second) {
           index.second.reset();
         }
@@ -851,14 +901,14 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 /// @brief handle plan for local databases
 
 arangodb::Result arangodb::maintenance::executePlan(
-  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& plan,
-  uint64_t planIndex, std::unordered_set<std::string> const& dirty,
-  std::unordered_set<std::string> const& moreDirt,
-  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& local,
-  std::string const& serverId, arangodb::MaintenanceFeature& feature, VPackBuilder& report,
-  MaintenanceFeature::ShardActionMap const& shardActionMap,
-  ReplicatedLogStatusMapByDatabase const& localLogs) {
-
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
+    uint64_t planIndex, std::unordered_set<std::string> const& dirty,
+    std::unordered_set<std::string> const& moreDirt,
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    std::string const& serverId, arangodb::MaintenanceFeature& feature,
+    VPackBuilder& report,
+    MaintenanceFeature::ShardActionMap const& shardActionMap,
+    ReplicatedLogStatusMapByDatabase const& localLogs) {
   // Errors from maintenance feature
   MaintenanceFeature::errors_t errors;
   arangodb::Result result = feature.copyAllErrors(errors);
@@ -879,7 +929,8 @@ arangodb::Result arangodb::maintenance::executePlan(
     VPackArrayBuilder a(&report);
     std::unordered_set<DatabaseID> makeDirty;
     bool callNotify = false;
-    auto& engine = feature.server().getFeature<EngineSelectorFeature>().engine();
+    auto& engine =
+        feature.server().getFeature<EngineSelectorFeature>().engine();
     diffPlanLocal(engine, plan, planIndex, dirty, local, serverId, errors,
                   makeDirty, callNotify, actions, shardActionMap, localLogs);
     feature.addDirty(makeDirty, callNotify);
@@ -888,10 +939,12 @@ arangodb::Result arangodb::maintenance::executePlan(
   for (auto const& action : actions) {
     // check if any action from moreDirt
     // and db not in feature.dirty
-    if (action->has(DATABASE) && moreDirt.find(action->get(DATABASE)) != moreDirt.end() &&
+    if (action->has(DATABASE) &&
+        moreDirt.find(action->get(DATABASE)) != moreDirt.end() &&
         !feature.isDirty(action->get(DATABASE))) {
-      LOG_TOPIC("38739", ERR, Logger::MAINTENANCE) <<
-        "Maintenance feature detected action " << *action << " for randomly chosen database";
+      LOG_TOPIC("38739", ERR, Logger::MAINTENANCE)
+          << "Maintenance feature detected action " << *action
+          << " for randomly chosen database";
       TRI_ASSERT(false);
     }
   }
@@ -918,7 +971,8 @@ arangodb::Result arangodb::maintenance::executePlan(
     }
   }
 
-  bool const debugActions = arangodb::Logger::isEnabled(LogLevel::DEBUG, Logger::MAINTENANCE);
+  bool const debugActions =
+      arangodb::Logger::isEnabled(LogLevel::DEBUG, Logger::MAINTENANCE);
 
   if (debugActions) {
     // open ACTIONS
@@ -964,7 +1018,8 @@ arangodb::Result arangodb::maintenance::executePlan(
 }
 
 /// @brief add new database to current
-void addDatabaseToTransactions(std::string const& name, Transactions& transactions) {
+void addDatabaseToTransactions(std::string const& name,
+                               Transactions& transactions) {
   // [ {"dbPath":{}}, {"dbPath":{"oldEmpty":true}} ]
 
   std::string dbPath = CURRENT_COLLECTIONS + name;
@@ -988,10 +1043,10 @@ void addDatabaseToTransactions(std::string const& name, Transactions& transactio
 /// @brief report local to current
 arangodb::Result arangodb::maintenance::diffLocalCurrent(
 
-  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& local,
-  VPackSlice const& current, std::string const& serverId, Transactions& transactions,
-  MaintenanceFeature::ShardActionMap const& shardActionMap) {
-
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    VPackSlice const& current, std::string const& serverId,
+    Transactions& transactions,
+    MaintenanceFeature::ShardActionMap const& shardActionMap) {
   // Iterate over local databases
   for (auto const& ldbo : local) {
     std::string const& dbname = ldbo.first;
@@ -1008,14 +1063,14 @@ arangodb::Result arangodb::maintenance::diffLocalCurrent(
 
 /// @brief Phase one: Compare plan and local and create descriptions
 arangodb::Result arangodb::maintenance::phaseOne(
-  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
-  uint64_t planIndex, std::unordered_set<std::string> const& dirty,
-  std::unordered_set<std::string> const& moreDirt,
-  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
-  std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
-  MaintenanceFeature::ShardActionMap const& shardActionMap,
-  ReplicatedLogStatusMapByDatabase const& localLogs) {
-
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
+    uint64_t planIndex, std::unordered_set<std::string> const& dirty,
+    std::unordered_set<std::string> const& moreDirt,
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    std::string const& serverId, MaintenanceFeature& feature,
+    VPackBuilder& report,
+    MaintenanceFeature::ShardActionMap const& shardActionMap,
+    ReplicatedLogStatusMapByDatabase const& localLogs) {
   auto start = std::chrono::steady_clock::now();
 
   arangodb::Result result;
@@ -1026,11 +1081,12 @@ arangodb::Result arangodb::maintenance::phaseOne(
 
     // Execute database changes
     try {
-      result = executePlan(
-        plan, planIndex, dirty, moreDirt, local, serverId, feature, report, shardActionMap, localLogs);
+      result = executePlan(plan, planIndex, dirty, moreDirt, local, serverId,
+                           feature, report, shardActionMap, localLogs);
     } catch (std::exception const& e) {
       LOG_TOPIC("55938", ERR, Logger::MAINTENANCE)
-          << "Error executing plan: " << e.what() << ". " << __FILE__ << ":" << __LINE__;
+          << "Error executing plan: " << e.what() << ". " << __FILE__ << ":"
+          << __LINE__;
     }
   }
 
@@ -1041,9 +1097,13 @@ arangodb::Result arangodb::maintenance::phaseOne(
   }
 
   auto end = std::chrono::steady_clock::now();
-  uint64_t total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-  feature._phase1_runtime_msec->get().count(total_ms);
-  feature._phase1_accum_runtime_msec->get().count(total_ms);
+  uint64_t total_ms =
+      std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+          .count();
+  TRI_ASSERT(feature._phase1_runtime_msec != nullptr);
+  feature._phase1_runtime_msec->count(total_ms);
+  TRI_ASSERT(feature._phase1_accum_runtime_msec != nullptr);
+  feature._phase1_accum_runtime_msec->count(total_ms);
 
   return result;
 }
@@ -1051,13 +1111,14 @@ arangodb::Result arangodb::maintenance::phaseOne(
 static VPackBuilder removeSelectivityEstimate(VPackSlice const& index) {
   TRI_ASSERT(index.isObject());
   return arangodb::velocypack::Collection::remove(
-    index, std::unordered_set<std::string>({SELECTIVITY_ESTIMATE}));
+      index, std::unordered_set<std::string>({SELECTIVITY_ESTIMATE}));
 }
 
 static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
     DatabaseFeature& df, VPackSlice const& info, VPackSlice const& planServers,
     std::string const& database, std::string const& shard,
-    std::string const& ourselves, MaintenanceFeature::errors_t const& allErrors) {
+    std::string const& ourselves,
+    MaintenanceFeature::errors_t const& allErrors) {
   VPackBuilder ret;
 
   try {
@@ -1077,8 +1138,9 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
       return {ret, true, true};
     }
 
-    std::string errorKey =
-        database + "/" + std::to_string(collection->planId().id()) + "/" + shard;
+    std::string errorKey = database + "/" +
+                           std::to_string(collection->planId().id()) + "/" +
+                           shard;
     {
       VPackObjectBuilder r(&ret);
       auto it = allErrors.shards.find(errorKey);
@@ -1090,7 +1152,8 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
         VPackSlice errs(static_cast<uint8_t const*>(it->second->data()));
         ret.add(StaticStrings::Error, errs.get(StaticStrings::Error));
         ret.add(StaticStrings::ErrorNum, errs.get(StaticStrings::ErrorNum));
-        ret.add(StaticStrings::ErrorMessage, errs.get(StaticStrings::ErrorMessage));
+        ret.add(StaticStrings::ErrorMessage,
+                errs.get(StaticStrings::ErrorMessage));
       }
       ret.add(VPackValue(INDEXES));
       {
@@ -1107,7 +1170,8 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
               auto it2 = it1->second.find(id);
               if (it2 != it1->second.end()) {
                 // Add the error instead:
-                ret.add(VPackSlice(static_cast<uint8_t const*>(it2->second->data())));
+                ret.add(VPackSlice(
+                    static_cast<uint8_t const*>(it2->second->data())));
                 continue;
               }
             }
@@ -1117,7 +1181,8 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
           if (it1 != allErrors.indexes.end()) {
             for (auto const& p : it1->second) {
               if (indexesDone.find(p.first) == indexesDone.end()) {
-                ret.add(VPackSlice(static_cast<uint8_t const*>(p.second->data())));
+                ret.add(
+                    VPackSlice(static_cast<uint8_t const*>(p.second->data())));
               }
             }
           }
@@ -1149,15 +1214,17 @@ bool equivalent(VPackSlice const& local, VPackSlice const& current) {
   TRI_ASSERT(local.isObject());
   TRI_ASSERT(current.isObject());
   for (auto const& i : VPackObjectIterator(local, true)) {
-    if (!VPackNormalizedCompare::equals(i.value, current.get(i.key.stringRef()))) {
+    if (!VPackNormalizedCompare::equals(i.value,
+                                        current.get(i.key.stringView()))) {
       return false;
     }
   }
   return true;
 }
 
-static VPackBuilder assembleLocalDatabaseInfo(DatabaseFeature& df, std::string const& database,
-                                              MaintenanceFeature::errors_t const& allErrors) {
+static VPackBuilder assembleLocalDatabaseInfo(
+    DatabaseFeature& df, std::string const& database,
+    MaintenanceFeature::errors_t const& allErrors) {
   // This creates the VelocyPack that is put into
   // /Current/Databases/<dbname>/<serverID>  for a database.
 
@@ -1178,7 +1245,8 @@ static VPackBuilder assembleLocalDatabaseInfo(DatabaseFeature& df, std::string c
         VPackSlice errs(static_cast<uint8_t const*>(it->second->data()));
         ret.add(StaticStrings::Error, errs.get(StaticStrings::Error));
         ret.add(StaticStrings::ErrorNum, errs.get(StaticStrings::ErrorNum));
-        ret.add(StaticStrings::ErrorMessage, errs.get(StaticStrings::ErrorMessage));
+        ret.add(StaticStrings::ErrorMessage,
+                errs.get(StaticStrings::ErrorMessage));
       }
       ret.add(ID, VPackValue(std::to_string(vocbase->id())));
       ret.add("name", VPackValue(vocbase->name()));
@@ -1198,6 +1266,196 @@ static VPackBuilder assembleLocalDatabaseInfo(DatabaseFeature& df, std::string c
   }
 }
 
+static auto reportCurrentReplicatedLogLocal(
+    replication2::replicated_log::QuickLogStatus const& status,
+    replication2::agency::LogCurrentLocalState const* currentLocal)
+    -> std::optional<replication2::agency::LogCurrentLocalState> {
+  // Check if there is term locally (i.e. in status)
+  if (auto localTerm = status.getCurrentTerm(); localTerm.has_value()) {
+    // If so, check if there is nothing in Agency/Current or the term value is
+    // different
+    if (currentLocal == nullptr || currentLocal->term != *localTerm) {
+      auto localStats = status.getLocalStatistics();
+      TRI_ASSERT(
+          localStats
+              .has_value());  // if status has a term, then it has statistics
+      replication2::agency::LogCurrentLocalState localState;
+      localState.term = localTerm.value();
+      localState.spearhead = localStats->spearHead;
+      return localState;
+    }
+  }
+  return std::nullopt;
+}
+
+static auto reportCurrentReplicatedLogLeader(
+    replication2::replicated_log::QuickLogStatus const& status,
+    replication2::agency::LogCurrent::Leader const* currentLeader)
+    -> std::optional<replication2::agency::LogCurrent::Leader> {
+  TRI_ASSERT(status.role ==
+             replication2::replicated_log::ParticipantRole::kLeader)
+      << "expected participant with leader role";
+  if (status.leadershipEstablished) {
+    // check if either there is no entry in current yet, the term has changed or
+    // the participant config generation has changed.
+    bool requiresUpdate =
+        currentLeader == nullptr ||
+        currentLeader->term != status.getCurrentTerm() ||
+        currentLeader->committedParticipantsConfig.generation !=
+            status.committedParticipantConfig->generation;
+
+    if (requiresUpdate) {
+      replication2::agency::LogCurrent::Leader leader;
+      leader.term = *status.getCurrentTerm();
+      leader.committedParticipantsConfig = *status.activeParticipantConfig;
+      return leader;
+    }
+  }
+
+  return std::nullopt;
+}
+
+static void writeUpdateReplicatedLogLeader(
+    VPackBuilder& report, replication2::LogId id, DatabaseID const& dbName,
+    replication2::LogTerm localTerm,
+    replication2::agency::LogCurrent::Leader const& leader) {
+  // update Current/ReplicatedLogs/<dbname>/<logId>/leader/term with
+  // currentTerm and precondition
+  //  Plan/ReplicatedLogs/<dbname>/<logId>/term/term == currentTerm
+  using namespace cluster::paths;
+  auto reportPath = aliases::current()
+                        ->replicatedLogs()
+                        ->database(dbName)
+                        ->log(to_string(id))
+                        ->leader()
+                        ->str(SkipComponents(
+                            1) /* skip first path component, i.e. 'arango' */);
+  auto preconditionPath =
+      aliases::plan()
+          ->replicatedLogs()
+          ->database(dbName)
+          ->log(to_string(id))
+          ->currentTerm()
+          ->term()
+          ->str(
+              SkipComponents(1) /* skip first path component, i.e. 'arango' */);
+  report.add(VPackValue(reportPath));
+  {
+    VPackObjectBuilder o(&report);
+    report.add(OP, VP_SET);
+    report.add(VPackValue("payload"));
+    leader.toVelocyPack(report);
+    {
+      VPackObjectBuilder preconditionBuilder(&report, "precondition");
+      report.add(preconditionPath, VPackValue(localTerm));
+    }
+  }
+}
+
+static void writeUpdateReplicatedLogLocal(
+    VPackBuilder& report, replication2::LogId id, DatabaseID const& dbName,
+    ServerID const& serverId, replication2::LogTerm localTerm,
+    replication2::agency::LogCurrentLocalState const& local) {
+  // Check
+  // Current/ReplicatedLogs/<dbname>/<logId>/localStatus/<serverId>/currentTerm
+  // != currentTerm if so, update
+  // Current/ReplicatedLogs/<dbname>/<logId>/localStatus/<serverId> with
+  //  {"currentTerm": currentTerm, "spearHead": {"index": last-index, "term":
+  //  last-term}}
+  // and precondition
+  //  Plan/ReplicatedLogs/<dbname>/<logId>/term/term == currentTerm
+
+  using namespace cluster::paths;
+  auto reportPath = aliases::current()
+                        ->replicatedLogs()
+                        ->database(dbName)
+                        ->log(to_string(id))
+                        ->localStatus()
+                        ->participant(serverId)
+                        ->str(SkipComponents(
+                            1) /* skip first path component, i.e. 'arango' */);
+  auto preconditionPath =
+      aliases::plan()
+          ->replicatedLogs()
+          ->database(dbName)
+          ->log(to_string(id))
+          ->currentTerm()
+          ->term()
+          ->str(
+              SkipComponents(1) /* skip first path component, i.e. 'arango' */);
+  report.add(VPackValue(reportPath));
+  {
+    VPackObjectBuilder o(&report);
+    report.add(OP, VP_SET);
+    report.add(VPackValue("payload"));
+    local.toVelocyPack(report);
+    {
+      VPackObjectBuilder preconditionBuilder(&report, "precondition");
+      report.add(preconditionPath, VPackValue(localTerm));
+    }
+  }
+}
+
+static void reportCurrentReplicatedLog(
+    VPackBuilder& report,
+    replication2::replicated_log::QuickLogStatus const& status, VPackSlice cur,
+    replication2::LogId id, std::string const& dbName,
+    std::string const& serverId) {
+  auto logContext =
+      LoggerContext{Logger::MAINTENANCE}.with<logContextKeyLogId>(id);
+  auto localTerm = status.getCurrentTerm();
+  LOG_CTX("11dbd", TRACE, logContext)
+      << "checking replicated log " << id
+      << " local term = " << (localTerm ? to_string(*localTerm) : "n/a");
+
+  if (!localTerm.has_value()) {
+    return;
+  }
+
+  auto currentSlice = cur.get(cluster::paths::aliases::current()
+                                  ->replicatedLogs()
+                                  ->database(dbName)
+                                  ->log(to_string(id))
+                                  ->vec());
+  if (currentSlice.isNone()) {
+    return;
+  }
+  // load current into memory
+  auto current = replication2::agency::LogCurrent::fromVelocyPack(currentSlice);
+
+  {
+    auto localState =
+        std::invoke([&]() -> replication2::agency::LogCurrentLocalState const* {
+          if (auto iter = current.localState.find(serverId);
+              iter != std::end(current.localState)) {
+            return &iter->second;
+          }
+          return nullptr;
+        });
+
+    if (auto result = reportCurrentReplicatedLogLocal(status, localState);
+        result.has_value()) {
+      writeUpdateReplicatedLogLocal(report, id, dbName, serverId, *localTerm,
+                                    *result);
+    }
+  }
+
+  {
+    if (status.role == replication2::replicated_log::ParticipantRole::kLeader) {
+      auto currentLeader =
+          std::invoke([&]() -> replication2::agency::LogCurrent::Leader const* {
+            if (current.leader.has_value()) {
+              return &current.leader.value();
+            }
+            return nullptr;
+          });
+      if (auto result = reportCurrentReplicatedLogLeader(status, currentLeader);
+          result.has_value()) {
+        writeUpdateReplicatedLogLeader(report, id, dbName, *localTerm, *result);
+      }
+    }
+  }
+}
 // updateCurrentForCollections
 // diff current and local and prepare agency transactions or whatever
 // to update current. Will report the errors created locally to the agency
@@ -1205,7 +1463,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     MaintenanceFeature& feature,
     std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
     std::unordered_set<std::string> const& dirty,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& current,
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const&
+        current,
     std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
     MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
     VPackBuilder& report, ShardStatistics& shardStats,
@@ -1215,7 +1474,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     VPackSlice ldb;
     if (lit == local.end()) {
       LOG_TOPIC("324e7", TRACE, Logger::MAINTENANCE)
-        << "database " << dbName << " missing in local";
+          << "database " << dbName << " missing in local";
     } else {
       ldb = lit->second->slice();
     }
@@ -1224,7 +1483,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     VPackSlice cur;
     if (cit == current.end()) {
       LOG_TOPIC("427e3", TRACE, Logger::MAINTENANCE)
-        << dbName << " missing in current";
+          << dbName << " missing in current";
     } else {
       TRI_ASSERT(cit->second->slice().isArray());
       TRI_ASSERT(cit->second->slice().length() == 1);
@@ -1236,29 +1495,30 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     VPackSlice pdb;
     if (pit == plan.end()) {
       LOG_TOPIC("47e23", TRACE, Logger::MAINTENANCE)
-        << dbName << " missing in plan";
+          << dbName << " missing in plan";
     } else {
       TRI_ASSERT(pit->second->slice().isArray());
       TRI_ASSERT(pit->second->slice().length() == 1);
       pdb = pit->second->slice()[0];
-      std::vector<std::string> ppath{
-        AgencyCommHelper::path(), PLAN, COLLECTIONS, dbName};
+      std::vector<std::string> ppath{AgencyCommHelper::path(), PLAN,
+                                     COLLECTIONS, dbName};
       TRI_ASSERT(pdb.isObject());
 
       // Plan of this database's collections
       pdb = pdb.get(ppath);
       if (!pdb.isNone()) {
         shardMap = getShardMap(pdb);
-      } 
+      }
     }
 
-    auto cdbpath = std::vector<std::string>{
-      AgencyCommHelper::path(), CURRENT, DATABASES, dbName, serverId};
+    auto cdbpath = std::vector<std::string>{AgencyCommHelper::path(), CURRENT,
+                                            DATABASES, dbName, serverId};
 
     if (ldb.isObject()) {
       auto& df = feature.server().getFeature<DatabaseFeature>();
       if (cur.isNone() || (cur.isObject() && !cur.hasKey(cdbpath))) {
-        auto const localDatabaseInfo = assembleLocalDatabaseInfo(df, dbName, allErrors);
+        auto const localDatabaseInfo =
+            assembleLocalDatabaseInfo(df, dbName, allErrors);
         TRI_ASSERT(!localDatabaseInfo.slice().isNone());
         if (!localDatabaseInfo.slice().isEmptyObject() &&
             !localDatabaseInfo.slice().isNone()) {
@@ -1275,23 +1535,27 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         auto const shName = shard.key.copyString();
         auto const shSlice = shard.value;
         TRI_ASSERT(shSlice.isObject());
-        auto const colName = shSlice.get(StaticStrings::DataSourcePlanId).copyString();
+        auto const colName =
+            shSlice.get(StaticStrings::DataSourcePlanId).copyString();
         shardStats.numShards += 1;
 
         VPackBuilder error;
         if (shSlice.get(THE_LEADER).copyString().empty()) {  // Leader
           try {
             // Check that we are the leader of this shard in the Plan, together
-            // with the precondition below that the Plan is unchanged, this ensures
-            // that we only ever modify Current if we are the leader in the Plan:
+            // with the precondition below that the Plan is unchanged, this
+            // ensures that we only ever modify Current if we are the leader in
+            // the Plan:
 
-            auto const planPath = std::vector<std::string>{colName, "shards", shName};
+            auto const planPath =
+                std::vector<std::string>{colName, "shards", shName};
             if (!pdb.isObject() || !pdb.hasKey(planPath)) {
               LOG_TOPIC("43242", DEBUG, Logger::MAINTENANCE)
-                << "Ooops, we have a shard for which we believe to be the "
-                "leader, but the Plan does not have it any more, we do not "
-                "report in Current about this, database: "
-                << dbName << ", shard: " << shName;
+                  << "Ooops, we have a shard for which we believe to be the "
+                     "leader, but the Plan does not have it any more, we do "
+                     "not "
+                     "report in Current about this, database: "
+                  << dbName << ", shard: " << shName;
               continue;
             }
 
@@ -1299,21 +1563,24 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
             VPackSlice thePlanList = pdb.get(planPath);
             if (!thePlanList.isArray() || thePlanList.length() == 0 ||
-                !thePlanList[0].isString() || !thePlanList[0].isEqualStringUnchecked(serverId)) {
+                !thePlanList[0].isString() ||
+                !thePlanList[0].isEqualStringUnchecked(serverId)) {
               LOG_TOPIC("87776", DEBUG, Logger::MAINTENANCE)
-                << "Ooops, we have a shard for which we believe to be the "
-                "leader,"
-                " but the Plan says otherwise, we do not report in Current "
-                "about this, database: "
-                << dbName << ", shard: " << shName;
+                  << "Ooops, we have a shard for which we believe to be the "
+                     "leader,"
+                     " but the Plan says otherwise, we do not report in "
+                     "Current "
+                     "about this, database: "
+                  << dbName << ", shard: " << shName;
               continue;
             }
 
             TRI_ASSERT(shardMap.slice().isObject());
 
             auto const [localCollectionInfo, shardInSync, shardReplicated] =
-                assembleLocalCollectionInfo(df, shSlice, shardMap.slice().get(shName),
-                                            dbName, shName, serverId, allErrors);
+                assembleLocalCollectionInfo(
+                    df, shSlice, shardMap.slice().get(shName), dbName, shName,
+                    serverId, allErrors);
             // Collection no longer exists
             TRI_ASSERT(!localCollectionInfo.slice().isNone());
             if (localCollectionInfo.slice().isEmptyObject() ||
@@ -1329,12 +1596,18 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
               shardStats.numNotReplicated += 1;
             }
 
-            auto cp = std::vector<std::string>{
-              AgencyCommHelper::path(), CURRENT, COLLECTIONS, dbName, colName, shName};
+            auto cp = std::vector<std::string>{AgencyCommHelper::path(),
+                                               CURRENT,
+                                               COLLECTIONS,
+                                               dbName,
+                                               colName,
+                                               shName};
             auto inCurrent = cur.isObject() && cur.hasKey(cp);
 
-            if (!inCurrent || !equivalent(localCollectionInfo.slice(), cur.get(cp))) {
-              report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" + colName + "/" + shName));
+            if (!inCurrent ||
+                !equivalent(localCollectionInfo.slice(), cur.get(cp))) {
+              report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" +
+                                    colName + "/" + shName));
 
               {
                 VPackObjectBuilder o(&report);
@@ -1346,23 +1619,29 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
                 report.add(VPackValue("precondition"));
                 {
                   VPackObjectBuilder p(&report);
-                  report.add(PLAN_COLLECTIONS + dbName + "/" + colName + "/shards/" + shName,
+                  report.add(PLAN_COLLECTIONS + dbName + "/" + colName +
+                                 "/shards/" + shName,
                              thePlanList);
                 }
               }
             }
           } catch (std::exception const& ex) {
-            LOG_TOPIC("cc837", WARN, Logger::MAINTENANCE) 
-                << "caught exception in Maintenance for database '" << dbName << "': " << ex.what();
+            LOG_TOPIC("cc837", WARN, Logger::MAINTENANCE)
+                << "caught exception in Maintenance for database '" << dbName
+                << "': " << ex.what();
             throw;
           }
         } else {  // Follower
 
           if (cur.isObject()) {
             try {
-              auto servers =
-                std::vector<std::string>{
-                AgencyCommHelper::path(), CURRENT, COLLECTIONS, dbName, colName, shName, SERVERS};
+              auto servers = std::vector<std::string>{AgencyCommHelper::path(),
+                                                      CURRENT,
+                                                      COLLECTIONS,
+                                                      dbName,
+                                                      colName,
+                                                      shName,
+                                                      SERVERS};
               auto s = cur.get(servers);
               if (s.isArray() && s[0].copyString() == serverId) {
                 // We are in the situation after a restart, that we do not know
@@ -1376,26 +1655,30 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
                   // resign and add a precondition that this is still the case:
 
                   auto const planPath =
-                    std::vector<std::string>{colName, "shards", shName};
+                      std::vector<std::string>{colName, "shards", shName};
                   if (!pdb.isObject() || !pdb.hasKey(planPath)) {
                     LOG_TOPIC("65432", DEBUG, Logger::MAINTENANCE)
-                      << "Ooops, we have a shard for which we believe that we "
-                      "just resigned, but the Plan does not have it any "
-                      "more,"
-                      " we do not report in Current about this, database: "
-                      << dbName << ", shard: " << shName;
+                        << "Ooops, we have a shard for which we believe that "
+                           "we "
+                           "just resigned, but the Plan does not have it any "
+                           "more,"
+                           " we do not report in Current about this, database: "
+                        << dbName << ", shard: " << shName;
                     continue;
                   }
 
                   VPackSlice thePlanList = pdb.get(planPath);
                   if (!thePlanList.isArray() || thePlanList.length() == 0 ||
                       !thePlanList[0].isString() ||
-                      !thePlanList[0].isEqualStringUnchecked(UNDERSCORE + serverId)) {
+                      !thePlanList[0].isEqualStringUnchecked(UNDERSCORE +
+                                                             serverId)) {
                     LOG_TOPIC("99987", DEBUG, Logger::MAINTENANCE)
-                      << "Ooops, we have a shard for which we believe that we "
-                      "have just resigned, but the Plan says otherwise, we "
-                      "do not report in Current about this, database: "
-                      << dbName << ", shard: " << shName;
+                        << "Ooops, we have a shard for which we believe that "
+                           "we "
+                           "have just resigned, but the Plan says otherwise, "
+                           "we "
+                           "do not report in Current about this, database: "
+                        << dbName << ", shard: " << shName;
                     continue;
                   }
                   VPackBuilder ns;
@@ -1404,14 +1687,16 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
                     if (s.isArray()) {
                       bool front = true;
                       for (auto const& i : VPackArrayIterator(s)) {
-                        ns.add(VPackValue((!front) ? i.copyString()
-                                          : UNDERSCORE + i.copyString()));
+                        ns.add(VPackValue((!front)
+                                              ? i.copyString()
+                                              : UNDERSCORE + i.copyString()));
                         front = false;
                       }
                     }
                   }
                   report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" +
-                                        colName + "/" + shName + "/" + SERVERS));
+                                        colName + "/" + shName + "/" +
+                                        SERVERS));
 
                   {
                     VPackObjectBuilder o(&report);
@@ -1420,15 +1705,16 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
                     {
                       VPackObjectBuilder p(&report, "precondition");
                       report.add(PLAN_COLLECTIONS + dbName + "/" + colName +
-                                 "/shards/" + shName,
+                                     "/shards/" + shName,
                                  thePlanList);
                     }
                   }
                 }
               }
             } catch (std::exception const& ex) {
-              LOG_TOPIC("8f63e", WARN, Logger::MAINTENANCE) 
-                  << "caught exception in Maintenance for database '" << dbName << "': " << ex.what();
+              LOG_TOPIC("8f63e", WARN, Logger::MAINTENANCE)
+                  << "caught exception in Maintenance for database '" << dbName
+                  << "': " << ex.what();
               throw;
             }
           }
@@ -1440,7 +1726,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     try {
       VPackSlice cdb;
       if (cur.isObject()) {
-        cdbpath = std::vector<std::string>{AgencyCommHelper::path(), CURRENT, DATABASES, dbName};
+        cdbpath = std::vector<std::string>{AgencyCommHelper::path(), CURRENT,
+                                           DATABASES, dbName};
         cdb = cur.get(cdbpath);
       }
 
@@ -1470,15 +1757,16 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         }
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC("999ff", WARN, Logger::MAINTENANCE) 
-          << "caught exception in Maintenance for database '" << dbName << "': " << ex.what();
+      LOG_TOPIC("999ff", WARN, Logger::MAINTENANCE)
+          << "caught exception in Maintenance for database '" << dbName
+          << "': " << ex.what();
       throw;
     }
-  
 
     // UpdateCurrentForCollections
     try {
-      std::vector<std::string> curcolpath{AgencyCommHelper::path(), CURRENT, COLLECTIONS, dbName};
+      std::vector<std::string> curcolpath{AgencyCommHelper::path(), CURRENT,
+                                          COLLECTIONS, dbName};
       VPackSlice curcolls;
       if (cur.isObject() && cur.hasKey(curcolpath)) {
         curcolls = cur.get(curcolpath);
@@ -1493,21 +1781,22 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           for (auto const& shard : VPackObjectIterator(collection.value)) {
             TRI_ASSERT(shard.value.isObject());
 
-            if (!pdb.isObject()) { //This database is no longer in plan,
-              continue;            // thus no shardMap exists for it
+            if (!pdb.isObject()) {  // This database is no longer in plan,
+              continue;             // thus no shardMap exists for it
             }
-            
+
             // Shard in current and has servers
             auto servers = shard.value.get(SERVERS);
             auto const shName = shard.key.copyString();
 
             TRI_ASSERT(ldb.isObject());
-            
+
             if (servers.isArray() && servers.length() > 0  // servers in current
-                && servers[0].stringRef() == serverId     // we are leading
-                && !ldb.hasKey(shName)  // no local collection
+                && servers[0].stringView() == serverId     // we are leading
+                && !ldb.hasKey(shName)                  // no local collection
                 && !shardMap.slice().hasKey(shName)) {  // no such shard in plan
-              report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" + colName + "/" + shName));
+              report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" +
+                                    colName + "/" + shName));
               {
                 VPackObjectBuilder o(&report);
                 report.add(OP, VP_DELETE);
@@ -1517,84 +1806,18 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         }
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC("13c97", WARN, Logger::MAINTENANCE) 
-          << "caught exception in Maintenance for database '" << dbName << "': " << ex.what();
+      LOG_TOPIC("13c97", WARN, Logger::MAINTENANCE)
+          << "caught exception in Maintenance for database '" << dbName
+          << "': " << ex.what();
       throw;
     }
 
     // UpdateReplicatedLogs
     try {
-
-      if (auto logsIter = localLogs.find(dbName); logsIter != std::end(localLogs)) {
+      if (auto logsIter = localLogs.find(dbName);
+          logsIter != std::end(localLogs)) {
         for (auto const& [id, status] : logsIter->second) {
-          // Check Current/ReplicatedLogs/<dbname>/<logId>/localStatus/<serverId>/currentTerm != currentTerm
-          // if so, update Current/ReplicatedLogs/<dbname>/<logId>/localStatus/<serverId> with
-          //  {"currentTerm": currentTerm, "spearHead": {"index": last-index, "term": last-term}}
-          // and precondition
-          //  Plan/ReplicatedLogs/<dbname>/<logId>/term/term == currentTerm
-          auto localTerm = status.getCurrentTerm();
-          if (!localTerm.has_value()) {
-            continue;
-          }
-
-          auto termInCurrent = cur.get(cluster::paths::aliases::current()
-                                           ->replicatedLogs()
-                                           ->database(dbName)
-                                           ->log(to_string(id))
-                                           ->localStatus()
-                                           ->participant(serverId)
-                                           ->term()
-                                           ->vec());
-
-          if (!termInCurrent.isNone() &&
-              replication2::LogTerm{termInCurrent.extract<uint64_t>()} ==
-                  localTerm.value()) {
-            // nothing to do
-            continue;
-          }
-
-          auto logContext =
-              LoggerContext{Logger::MAINTENANCE}.with<logContextKeyLogId>(id);
-
-          LOG_CTX("11dbd", TRACE, logContext)
-              << "checking replicated log " << id << " local term = "
-              << (localTerm ? to_string(*localTerm) : "n/a") << " current "
-              << (!termInCurrent.isNone() ? termInCurrent.toJson() : "n/a");
-
-          auto localStats = status.getLocalStatistics();
-          TRI_ASSERT(localStats.has_value()); // if status has a term, then it has statistics
-          replication2::agency::LogCurrentLocalState localState;
-          localState.term = localTerm.value();
-          localState.spearhead = localStats->spearHead;
-
-          using namespace cluster::paths;
-          auto reportPath =
-              aliases::current()
-                  ->replicatedLogs()
-                  ->database(dbName)
-                  ->log(to_string(id))
-                  ->localStatus()
-                  ->participant(serverId)
-                  ->str(SkipComponents(1) /* skip first path component, i.e. 'arango' */);
-          auto preconditionPath =
-              aliases::plan()
-                  ->replicatedLogs()
-                  ->database(dbName)
-                  ->log(to_string(id))
-                  ->currentTerm()
-                  ->term()
-                  ->str(SkipComponents(1) /* skip first path component, i.e. 'arango' */);
-          report.add(VPackValue(reportPath));
-          {
-            VPackObjectBuilder o(&report);
-            report.add(OP, VP_SET);
-            report.add(VPackValue("payload"));
-            localState.toVelocyPack(report);
-            {
-              VPackObjectBuilder preconditionBuilder(&report, "precondition");
-              report.add(preconditionPath, VPackValue(localTerm.value().value));
-            }
-          }
+          reportCurrentReplicatedLog(report, status, cur, id, dbName, serverId);
         }
       }
     } catch (std::exception const& ex) {
@@ -1604,7 +1827,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       throw;
     }
 
-  } // next database
+  }  // next database
 
   // Let's find database errors for databases which do not occur in Local
   // but in Plan:
@@ -1623,15 +1846,18 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             VPackSlice errs(static_cast<uint8_t const*>(p.second->data()));
             TRI_ASSERT(errs.isObject());
             report.add(StaticStrings::Error, errs.get(StaticStrings::Error));
-            report.add(StaticStrings::ErrorNum, errs.get(StaticStrings::ErrorNum));
-            report.add(StaticStrings::ErrorMessage, errs.get(StaticStrings::ErrorMessage));
+            report.add(StaticStrings::ErrorNum,
+                       errs.get(StaticStrings::ErrorNum));
+            report.add(StaticStrings::ErrorMessage,
+                       errs.get(StaticStrings::ErrorMessage));
           }
         }
       }
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC("d40a3", WARN, Logger::MAINTENANCE) 
-        << "caught exception in Maintenance databases error reporting: " << ex.what();
+    LOG_TOPIC("d40a3", WARN, Logger::MAINTENANCE)
+        << "caught exception in Maintenance databases error reporting: "
+        << ex.what();
     throw;
   }
 
@@ -1669,12 +1895,14 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
               AgencyCommHelper::path(), PLAN, COLLECTIONS, d, c, "shards", s};
 
           if (!pdb.isObject()) {
-            LOG_TOPIC("2647d", WARN, Logger::MAINTENANCE) 
-              << "plan database in error reporting struct is not an object: " << pdb.toJson();
+            LOG_TOPIC("2647d", WARN, Logger::MAINTENANCE)
+                << "plan database in error reporting struct is not an object: "
+                << pdb.toJson();
           }
           if (!ldb.isObject()) {
-            LOG_TOPIC("8fe58", WARN, Logger::MAINTENANCE) 
-              << "local database in error reporting struct is not an object: " << ldb.toJson();
+            LOG_TOPIC("8fe58", WARN, Logger::MAINTENANCE)
+                << "local database in error reporting struct is not an object: "
+                << ldb.toJson();
           }
           TRI_ASSERT(pdb.isObject());
           TRI_ASSERT(ldb.isObject());
@@ -1683,13 +1911,14 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             if (servers.isArray()) {
               TRI_ASSERT(cit != current.end());
 
-              std::vector<std::string> const curPath {
-                AgencyCommHelper::path(), CURRENT, COLLECTIONS, d, c, s};
+              std::vector<std::string> const curPath{
+                  AgencyCommHelper::path(), CURRENT, COLLECTIONS, d, c, s};
               VPackSlice theErr(static_cast<uint8_t const*>(p.second->data()));
               TRI_ASSERT(cit->second->slice().isObject());
               if (!cit->second->slice().hasKey(curPath) ||
                   !equivalent(theErr, cit->second->slice().get(curPath))) {
-                report.add(VPackValue(CURRENT_COLLECTIONS + d + "/" + c + "/" + s));
+                report.add(
+                    VPackValue(CURRENT_COLLECTIONS + d + "/" + c + "/" + s));
                 {
                   VPackObjectBuilder o(&report);
                   report.add(OP, VP_SET);
@@ -1702,8 +1931,9 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       }
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC("ceb1a", WARN, Logger::MAINTENANCE) 
-        << "caught exception in Maintenance shards error reporting: " << ex.what();
+    LOG_TOPIC("ceb1a", WARN, Logger::MAINTENANCE)
+        << "caught exception in Maintenance shards error reporting: "
+        << ex.what();
     throw;
   }
 
@@ -1711,22 +1941,22 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 }
 
 void arangodb::maintenance::syncReplicatedShardsWithLeaders(
-  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& plan,
-  std::unordered_set<std::string> const& dirty,
-  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& current,
-  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
-  std::string const& serverId, MaintenanceFeature& feature,
-  MaintenanceFeature::ShardActionMap const& shardActionMap,
-  std::unordered_set<std::string>& makeDirty) {
-
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
+    std::unordered_set<std::string> const& dirty,
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const&
+        current,
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    std::string const& serverId, MaintenanceFeature& feature,
+    MaintenanceFeature::ShardActionMap const& shardActionMap,
+    std::unordered_set<std::string>& makeDirty,
+    std::unordered_set<std::string> const& failedServers) {
   for (auto const& dbname : dirty) {
-
     auto pit = plan.find(dbname);
     VPackSlice pdb;
     if (pit != plan.end()) {
       pdb = pit->second->slice()[0];
-      auto const ppath =
-        std::vector<std::string>{AgencyCommHelper::path(), PLAN, COLLECTIONS, dbname};
+      auto const ppath = std::vector<std::string>{AgencyCommHelper::path(),
+                                                  PLAN, COLLECTIONS, dbname};
       if (!pdb.hasKey(ppath)) {
         continue;
       } else {
@@ -1753,8 +1983,8 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
       cdb = cit->second->slice()[0];
       TRI_ASSERT(cdb.isObject());
 
-      auto const cpath =
-        std::vector<std::string>{AgencyCommHelper::path(), CURRENT, COLLECTIONS, dbname};
+      auto const cpath = std::vector<std::string>{AgencyCommHelper::path(),
+                                                  CURRENT, COLLECTIONS, dbname};
       if (!cdb.hasKey(cpath)) {
         continue;
       } else {
@@ -1766,7 +1996,7 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
 
     TRI_ASSERT(pdb.isObject());
     for (auto const& pcol : VPackObjectIterator(pdb)) {
-      VPackStringRef const colname = pcol.key.stringRef();
+      std::string_view colname = pcol.key.stringView();
 
       TRI_ASSERT(cdb.isObject());
       VPackSlice const cdbcol = cdb.get(colname);
@@ -1776,14 +2006,14 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
 
       TRI_ASSERT(pcol.value.isObject());
       for (auto const& pshrd : VPackObjectIterator(pcol.value.get(SHARDS))) {
-        VPackStringRef const shname = pshrd.key.stringRef();
+        std::string_view const shname = pshrd.key.stringView();
 
         // First check if the shard is locked:
-        auto it = shardActionMap.find(shname.toString());
+        auto it = shardActionMap.find(std::string(shname));
         if (it != shardActionMap.end()) {
           LOG_TOPIC("aaed5", DEBUG, Logger::MAINTENANCE)
-            << "Skipping SyncReplicatedShardsWithLeader for shard " << shname
-            << " because it is locked by an action: " << *it->second;
+              << "Skipping SyncReplicatedShardsWithLeader for shard " << shname
+              << " because it is locked by an action: " << *it->second;
           makeDirty.emplace(dbname);
           continue;
         }
@@ -1798,8 +2028,8 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         VPackSlice const cshrd = cdbcol.get(shname);
         if (!cshrd.isObject()) {
           LOG_TOPIC("402a4", DEBUG, Logger::MAINTENANCE)
-            << "Shard " << shname
-            << " not in current yet. Rescheduling maintenance.";
+              << "Shard " << shname
+              << " not in current yet. Rescheduling maintenance.";
           continue;
         }
 
@@ -1818,30 +2048,33 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         if (indexOf(cservers, serverId) > 0) {
           continue;
         }
-       
+
         std::string leader = pservers[0].copyString();
-        std::shared_ptr<ActionDescription> description = std::make_shared<ActionDescription>(
-          std::map<std::string, std::string>{
-            {NAME, SYNCHRONIZE_SHARD},
-            {DATABASE, dbname},
-            {COLLECTION, colname.toString()},
-            {SHARD, shname.toString()},
-            {THE_LEADER, std::move(leader)},
-            {SHARD_VERSION, std::to_string(feature.shardVersion(shname.toString()))}},
-          SYNCHRONIZE_PRIORITY, true);
+        std::shared_ptr<ActionDescription> description =
+            std::make_shared<ActionDescription>(
+                std::map<std::string, std::string>{
+                    {NAME, SYNCHRONIZE_SHARD},
+                    {DATABASE, dbname},
+                    {COLLECTION, std::string(colname)},
+                    {SHARD, std::string(shname)},
+                    {THE_LEADER, std::move(leader)},
+                    {SHARD_VERSION, std::to_string(feature.shardVersion(
+                                        std::string(shname)))}},
+                SYNCHRONIZE_PRIORITY, true);
         std::string shardName = description->get(SHARD);
         bool ok = feature.lockShard(shardName, description);
         TRI_ASSERT(ok);
         try {
-          Result res = feature.addAction(std::move(description), false);
+          Result res = feature.addAction(description, false);
           if (res.fail()) {
             feature.unlockShard(shardName);
           }
         } catch (std::exception const& exc) {
           feature.unlockShard(shardName);
           LOG_TOPIC("86763", INFO, Logger::MAINTENANCE)
-            << "Exception caught when adding synchronize shard action, unlocking shard "
-            << shardName << " again: " << exc.what();
+              << "Exception caught when adding synchronize shard action, "
+                 "unlocking shard "
+              << shardName << " again: " << exc.what();
         }
       }
     }
@@ -1850,14 +2083,15 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
 
 /// @brief Phase two: See, what we can report to the agency
 arangodb::Result arangodb::maintenance::phaseTwo(
-  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& plan,
-  std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& cur,
-  uint64_t currentIndex, std::unordered_set<std::string> const& dirty,
-  std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
-  std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report,
-  MaintenanceFeature::ShardActionMap const& shardActionMap,
-  ReplicatedLogStatusMapByDatabase const& localLogs) {
-
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& plan,
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& cur,
+    uint64_t currentIndex, std::unordered_set<std::string> const& dirty,
+    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>> const& local,
+    std::string const& serverId, MaintenanceFeature& feature,
+    VPackBuilder& report,
+    MaintenanceFeature::ShardActionMap const& shardActionMap,
+    ReplicatedLogStatusMapByDatabase const& localLogs,
+    std::unordered_set<std::string> const& failedServers) {
   auto start = std::chrono::steady_clock::now();
 
   MaintenanceFeature::errors_t allErrors;
@@ -1880,7 +2114,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(
                                  serverId, report, shardStats, localLogs);
       } catch (std::exception const& e) {
         LOG_TOPIC("c9a75", ERR, Logger::MAINTENANCE)
-          << "Error reporting in current: " << e.what();
+            << "Error reporting in current: " << e.what();
       }
     }
 
@@ -1890,11 +2124,13 @@ arangodb::Result arangodb::maintenance::phaseTwo(
       VPackObjectBuilder agency(&report);
       try {
         std::unordered_set<std::string> makeDirty;
-        syncReplicatedShardsWithLeaders(plan, dirty, cur, local, serverId, feature, shardActionMap, makeDirty);
+        syncReplicatedShardsWithLeaders(plan, dirty, cur, local, serverId,
+                                        feature, shardActionMap, makeDirty,
+                                        failedServers);
         feature.addDirty(makeDirty, false);
       } catch (std::exception const& e) {
         LOG_TOPIC("7e286", ERR, Logger::MAINTENANCE)
-          << "Error scheduling shards: " << e.what();
+            << "Error scheduling shards: " << e.what();
       }
     }
   }
@@ -1906,14 +2142,26 @@ arangodb::Result arangodb::maintenance::phaseTwo(
   }
 
   auto end = std::chrono::steady_clock::now();
-  uint64_t total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-  feature._phase2_runtime_msec->get().count(total_ms);
-  feature._phase2_accum_runtime_msec->get().count(total_ms);
+  uint64_t total_ms =
+      std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+          .count();
+  TRI_ASSERT(feature._phase2_runtime_msec != nullptr);
+  feature._phase2_runtime_msec->count(total_ms);
+  TRI_ASSERT(feature._phase2_accum_runtime_msec != nullptr);
+  feature._phase2_accum_runtime_msec->count(total_ms);
 
-  feature._shards_out_of_sync->get().operator=(shardStats.numOutOfSyncShards);
-  feature._shards_total_count->get().operator=(shardStats.numShards);
-  feature._shards_leader_count->get().operator=(shardStats.numLeaderShards);
-  feature._shards_not_replicated_count->get().operator=(shardStats.numNotReplicated);
+  TRI_ASSERT(feature._shards_out_of_sync != nullptr);
+  feature._shards_out_of_sync->store(shardStats.numOutOfSyncShards,
+                                     std::memory_order_relaxed);
+  TRI_ASSERT(feature._shards_total_count != nullptr);
+  feature._shards_total_count->store(shardStats.numShards,
+                                     std::memory_order_relaxed);
+  TRI_ASSERT(feature._shards_leader_count != nullptr);
+  feature._shards_leader_count->store(shardStats.numLeaderShards,
+                                      std::memory_order_relaxed);
+  TRI_ASSERT(feature._shards_not_replicated_count != nullptr);
+  feature._shards_not_replicated_count->store(shardStats.numNotReplicated,
+                                              std::memory_order_relaxed);
 
   return result;
 }

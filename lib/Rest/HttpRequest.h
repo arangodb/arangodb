@@ -36,7 +36,7 @@ struct Options;
 }  // namespace velocypack
 
 class HttpRequest final : public GeneralRequest {
-  friend class RestBatchHandler; // TODO remove
+  friend class RestBatchHandler;  // TODO remove
 
  public:
   HttpRequest(ConnectionInfo const&, uint64_t mid, bool allowMethodOverride);
@@ -61,22 +61,21 @@ class HttpRequest final : public GeneralRequest {
   /// @brief the body content length
   size_t contentLength() const override { return _payload.size(); }
   // Payload
-  arangodb::velocypack::StringRef rawPayload() const override;
+  std::string_view rawPayload() const override;
   arangodb::velocypack::Slice payload(bool strictValidation) override;
   void setPayload(arangodb::velocypack::Buffer<uint8_t> buffer) override {
     _payload = std::move(buffer);
   }
 
-  arangodb::velocypack::Buffer<uint8_t>& body() {
-    return _payload;
-  }
+  arangodb::velocypack::Buffer<uint8_t>& body() { return _payload; }
 
   /// @brief sets a key/value header
   //  this function is called by setHeaders and get offsets to
   //  the found key / value with respective lengths.
   //  the function sets member variables like _contentType. All
   //  key that do not get special treatment end um in the _headers map.
-  void setHeader(char const* key, size_t keyLength, char const* value, size_t valueLength);
+  void setHeader(char const* key, size_t keyLength, char const* value,
+                 size_t valueLength);
   /// @brief sets a key-only header
   void setHeader(char const* key, size_t keyLength);
 
@@ -88,7 +87,6 @@ class HttpRequest final : public GeneralRequest {
   void setArrayValue(char const* key, size_t length, char const* value);
 
  private:
-
   /// used by RestBatchHandler (an API straight from hell)
   void parseHeader(char* buffer, size_t length);
   void setValues(char* buffer, char* end);
@@ -106,4 +104,3 @@ class HttpRequest final : public GeneralRequest {
   bool _validatedPayload = false;
 };
 }  // namespace arangodb
-

@@ -1,0 +1,4 @@
+[#getting_started_25]
+
+  template <class S, class Item> struct reverse_binary_op : eval_binary_op< typename boost::mpl::at_c<Item, 0>::type, boost::mpl::at_c<Item, 1>::type::value, S > {};
+

@@ -57,8 +57,9 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace {
-arangodb::Result writeSettings(arangodb::StorageEngine& engine, rocksdb::WriteBatch& batch,
-                               VPackBuilder& b, uint64_t seqNumber) {
+arangodb::Result writeSettings(arangodb::StorageEngine& engine,
+                               rocksdb::WriteBatch& batch, VPackBuilder& b,
+                               uint64_t seqNumber) {
   using arangodb::EngineSelectorFeature;
   using arangodb::Logger;
   using arangodb::Result;
@@ -77,17 +78,20 @@ arangodb::Result writeSettings(arangodb::StorageEngine& engine, rocksdb::WriteBa
   b.close();
 
   VPackSlice slice = b.slice();
-  LOG_TOPIC("f5e34", DEBUG, Logger::ENGINES) << "writing settings: " << slice.toJson();
+  LOG_TOPIC("f5e34", DEBUG, Logger::ENGINES)
+      << "writing settings: " << slice.toJson();
 
   RocksDBKey key;
   key.constructSettingsValue(RocksDBSettingsType::ServerTick);
   rocksdb::Slice value(slice.startAs<char>(), slice.byteSize());
 
   rocksdb::Status s =
-      batch.Put(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+      batch.Put(RocksDBColumnFamilyManager::get(
+                    RocksDBColumnFamilyManager::Family::Definitions),
                 key.string(), value);
   if (!s.ok()) {
-    LOG_TOPIC("140ec", WARN, Logger::ENGINES) << "writing settings failed: " << s.ToString();
+    LOG_TOPIC("140ec", WARN, Logger::ENGINES)
+        << "writing settings failed: " << s.ToString();
     return arangodb::rocksutils::convertStatus(s);
   }
 
@@ -116,8 +120,8 @@ bool RocksDBSettingsManager::lockForSync(bool force) {
   if (force) {
     while (true) {
       bool expected = false;
-      bool res = _syncing.compare_exchange_strong(expected, true, std::memory_order_acquire,
-                                                  std::memory_order_relaxed);
+      bool res = _syncing.compare_exchange_strong(
+          expected, true, std::memory_order_acquire, std::memory_order_relaxed);
       if (res) {
         break;
       }
@@ -126,7 +130,8 @@ bool RocksDBSettingsManager::lockForSync(bool force) {
   } else {
     bool expected = false;
 
-    if (!_syncing.compare_exchange_strong(expected, true, std::memory_order_acquire,
+    if (!_syncing.compare_exchange_strong(expected, true,
+                                          std::memory_order_acquire,
                                           std::memory_order_relaxed)) {
       return false;
     }
@@ -177,7 +182,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   auto mappings = _engine.collectionMappings();
 
   // reserve 1MB of scratch space to work with
-  _scratch.reserve(10485760);  
+  _scratch.reserve(10485760);
 
   for (auto const& pair : mappings) {
     TRI_voc_tick_t dbid = pair.first;
@@ -195,14 +200,18 @@ Result RocksDBSettingsManager::sync(bool force) {
     } catch (...) {
       // will fail if collection does not exist
     }
-    if (!coll) {
+    // Collections which are marked as isAStub are not allowed to have
+    // physicalCollections. Therefore, we cannot continue serializing in that
+    // case.
+    if (!coll || coll->isAStub()) {
       continue;
     }
-    auto sg2 = arangodb::scopeGuard([&]() noexcept { vocbase->releaseCollection(coll.get()); });
+    auto sg2 = arangodb::scopeGuard(
+        [&]() noexcept { vocbase->releaseCollection(coll.get()); });
 
     LOG_TOPIC("afb17", TRACE, Logger::ENGINES)
         << "syncing metadata for collection '" << coll->name() << "'";
-  
+
     // clear our scratch buffer for this round
     _scratch.clear();
 
@@ -236,17 +245,20 @@ Result RocksDBSettingsManager::sync(bool force) {
   }
 
   auto const lastSync = _lastSync.load();
-  
-  LOG_TOPIC("53e4c", TRACE, Logger::ENGINES) 
-      << "about to store lastSync. previous value: " << lastSync << ", current value: " << minSeqNr;
+
+  LOG_TOPIC("53e4c", TRACE, Logger::ENGINES)
+      << "about to store lastSync. previous value: " << lastSync
+      << ", current value: " << minSeqNr;
 
   if (minSeqNr < lastSync) {
     if (minSeqNr != 0) {
-      LOG_TOPIC("1038e", ERR, Logger::ENGINES) << "min tick is smaller than "
-        "safe delete tick (minSeqNr: " << minSeqNr << ") < (lastSync = " << lastSync << ")";
+      LOG_TOPIC("1038e", ERR, Logger::ENGINES)
+          << "min tick is smaller than "
+             "safe delete tick (minSeqNr: "
+          << minSeqNr << ") < (lastSync = " << lastSync << ")";
       TRI_ASSERT(false);
     }
-    return Result(); // do not move backwards in time
+    return Result();  // do not move backwards in time
   }
   TRI_ASSERT(lastSync <= minSeqNr);
   if (!didWork) {
@@ -255,9 +267,10 @@ Result RocksDBSettingsManager::sync(bool force) {
     _lastSync.store(minSeqNr);
     return Result();  // nothing was written
   }
-  
+
   TRI_IF_FAILURE("TransactionChaos::randomSleep") {
-    std::this_thread::sleep_for(std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
   }
 
   _tmpBuilder.clear();
@@ -273,7 +286,8 @@ Result RocksDBSettingsManager::sync(bool force) {
   wo.sync = true;
   auto s = _db->Write(wo, &batch);
   if (s.ok()) {
-    LOG_TOPIC("103ae", TRACE, Logger::ENGINES) << "updating lastSync to " << minSeqNr;
+    LOG_TOPIC("103ae", TRACE, Logger::ENGINES)
+        << "updating lastSync to " << minSeqNr;
     _lastSync.store(std::max(_lastSync.load(), minSeqNr));
   }
 
@@ -287,41 +301,48 @@ void RocksDBSettingsManager::loadSettings() {
   rocksdb::PinnableSlice result;
   rocksdb::Status status =
       _db->Get(rocksdb::ReadOptions(),
-               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+               RocksDBColumnFamilyManager::get(
+                   RocksDBColumnFamilyManager::Family::Definitions),
                key.string(), &result);
   if (status.ok()) {
     // key may not be there, so don't fail when not found
-    VPackSlice slice = VPackSlice(reinterpret_cast<uint8_t const*>(result.data()));
+    VPackSlice slice =
+        VPackSlice(reinterpret_cast<uint8_t const*>(result.data()));
     TRI_ASSERT(slice.isObject());
-    LOG_TOPIC("7458b", TRACE, Logger::ENGINES) << "read initial settings: " << slice.toJson();
+    LOG_TOPIC("7458b", TRACE, Logger::ENGINES)
+        << "read initial settings: " << slice.toJson();
 
     if (!result.empty()) {
       try {
         if (slice.hasKey("tick")) {
           uint64_t lastTick =
               basics::VelocyPackHelper::stringUInt64(slice.get("tick"));
-          LOG_TOPIC("369d3", TRACE, Logger::ENGINES) << "using last tick: " << lastTick;
+          LOG_TOPIC("369d3", TRACE, Logger::ENGINES)
+              << "using last tick: " << lastTick;
           TRI_UpdateTickServer(lastTick);
         }
 
         if (slice.hasKey("hlc")) {
           uint64_t lastHlc =
               basics::VelocyPackHelper::stringUInt64(slice.get("hlc"));
-          LOG_TOPIC("647a8", TRACE, Logger::ENGINES) << "using last hlc: " << lastHlc;
+          LOG_TOPIC("647a8", TRACE, Logger::ENGINES)
+              << "using last hlc: " << lastHlc;
           TRI_HybridLogicalClock(lastHlc);
         }
 
         if (slice.hasKey("releasedTick")) {
           _initialReleasedTick =
               basics::VelocyPackHelper::stringUInt64(slice.get("releasedTick"));
-          LOG_TOPIC("e13f4", TRACE, Logger::ENGINES) << "using released tick: " << _initialReleasedTick;
+          LOG_TOPIC("e13f4", TRACE, Logger::ENGINES)
+              << "using released tick: " << _initialReleasedTick;
           _engine.releaseTick(_initialReleasedTick);
         }
 
         if (slice.hasKey("lastSync")) {
           _lastSync =
               basics::VelocyPackHelper::stringUInt64(slice.get("lastSync"));
-          LOG_TOPIC("9e695", TRACE, Logger::ENGINES) << "last background settings sync: " << _lastSync;
+          LOG_TOPIC("9e695", TRACE, Logger::ENGINES)
+              << "last background settings sync: " << _lastSync;
         }
       } catch (...) {
         LOG_TOPIC("1b3de", WARN, Logger::ENGINES)

@@ -23,16 +23,26 @@
 
 #pragma once
 
-#include <velocypack/Buffer.h>
+#include <cstddef>
+#include <cstdint>
+
+#include "Basics/ErrorCode.h"
 
 namespace arangodb {
 namespace encoding {
 
-bool gzipUncompress(uint8_t* compressed, size_t compressedLength,
-                    arangodb::velocypack::Buffer<uint8_t>& uncompressed);
+template<typename T>
+[[nodiscard]] ErrorCode gzipUncompress(uint8_t const* compressed,
+                                       size_t compressedLength,
+                                       T& uncompressed);
 
-bool gzipDeflate(uint8_t* compressed, size_t compressedLength,
-                 arangodb::velocypack::Buffer<uint8_t>& uncompressed);
+template<typename T>
+[[nodiscard]] ErrorCode gzipInflate(uint8_t const* compressed,
+                                    size_t compressedLength, T& uncompressed);
+
+template<typename T>
+[[nodiscard]] ErrorCode gzipDeflate(uint8_t const* uncompressed,
+                                    size_t uncompressedLength, T& compressed);
 
 }  // namespace encoding
 }  // namespace arangodb

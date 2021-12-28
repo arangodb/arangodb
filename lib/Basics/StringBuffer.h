@@ -28,6 +28,7 @@
 #include <cstring>
 #include <iosfwd>
 #include <sstream>
+#include <string_view>
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
@@ -73,9 +74,6 @@ void TRI_AnnihilateStringBuffer(TRI_string_buffer_t*);
 /// @brief frees the string buffer and the pointer
 void TRI_FreeStringBuffer(TRI_string_buffer_t*);
 
-/// @brief compress the string buffer using deflate
-ErrorCode TRI_DeflateStringBuffer(TRI_string_buffer_t*, size_t);
-
 /// @brief ensure the string buffer has a specific capacity
 ErrorCode TRI_ReserveStringBuffer(TRI_string_buffer_t*, size_t const);
 
@@ -110,28 +108,33 @@ void TRI_ResetStringBuffer(TRI_string_buffer_t*);
 char* TRI_StealStringBuffer(TRI_string_buffer_t*);
 
 /// @brief copies the string buffer
-ErrorCode TRI_CopyStringBuffer(TRI_string_buffer_t* self, TRI_string_buffer_t const* source);
+ErrorCode TRI_CopyStringBuffer(TRI_string_buffer_t* self,
+                               TRI_string_buffer_t const* source);
 
 /// @brief removes the first characters
 void TRI_EraseFrontStringBuffer(TRI_string_buffer_t*, size_t);
 
 /// @brief replaces characters
-ErrorCode TRI_ReplaceStringStringBuffer(TRI_string_buffer_t* self, char const* str, size_t len);
+ErrorCode TRI_ReplaceStringStringBuffer(TRI_string_buffer_t* self,
+                                        char const* str, size_t len);
 
 /// @brief appends character
 ErrorCode TRI_AppendCharStringBuffer(TRI_string_buffer_t* self, char chr);
 
 /// @brief appends characters
-ErrorCode TRI_AppendStringStringBuffer(TRI_string_buffer_t* self, char const* str);
+ErrorCode TRI_AppendStringStringBuffer(TRI_string_buffer_t* self,
+                                       char const* str);
 
 /// @brief appends characters
 ErrorCode TRI_AppendString2StringBuffer(TRI_string_buffer_t* self,
                                         char const* str, size_t len);
 
 /// @brief appends characters but does not check buffer bounds
-static inline void TRI_AppendCharUnsafeStringBuffer(TRI_string_buffer_t* self, char chr) {
+static inline void TRI_AppendCharUnsafeStringBuffer(TRI_string_buffer_t* self,
+                                                    char chr) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(self->_len - static_cast<size_t>(self->_current - self->_buffer) > 0);
+  TRI_ASSERT(self->_len - static_cast<size_t>(self->_current - self->_buffer) >
+             0);
 #endif
   *self->_current++ = chr;
 }
@@ -140,16 +143,19 @@ static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self,
                                                       char const* str) {
   size_t len = strlen(str);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(self->_len - static_cast<size_t>(self->_current - self->_buffer) >= len);
+  TRI_ASSERT(self->_len - static_cast<size_t>(self->_current - self->_buffer) >=
+             len);
 #endif
   memcpy(self->_current, str, len);
   self->_current += len;
 }
 
 static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self,
-                                                      char const* str, size_t len) {
+                                                      char const* str,
+                                                      size_t len) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(self->_len - static_cast<size_t>(self->_current - self->_buffer) >= len);
+  TRI_ASSERT(self->_len - static_cast<size_t>(self->_current - self->_buffer) >=
+             len);
 #endif
   memcpy(self->_current, str, len);
   self->_current += len;
@@ -158,7 +164,8 @@ static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self,
 static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self,
                                                       std::string const& str) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(self->_len - static_cast<size_t>(self->_current - self->_buffer) >= str.size());
+  TRI_ASSERT(self->_len - static_cast<size_t>(self->_current - self->_buffer) >=
+             str.size());
 #endif
   memcpy(self->_current, str.c_str(), str.size());
   self->_current += str.size();
@@ -166,7 +173,8 @@ static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self,
 
 /// @brief appends characters but json-encode the string
 ErrorCode TRI_AppendJsonEncodedStringStringBuffer(TRI_string_buffer_t* self,
-                                                  char const* src, size_t length,
+                                                  char const* src,
+                                                  size_t length,
                                                   bool escapeSlash);
 
 /// @brief appends integer with 8 bits
@@ -179,25 +187,30 @@ ErrorCode TRI_AppendUInt8StringBuffer(TRI_string_buffer_t* self, uint8_t attr);
 ErrorCode TRI_AppendInt16StringBuffer(TRI_string_buffer_t* self, int16_t attr);
 
 /// @brief appends unsigned integer with 32 bits
-ErrorCode TRI_AppendUInt16StringBuffer(TRI_string_buffer_t* self, uint16_t attr);
+ErrorCode TRI_AppendUInt16StringBuffer(TRI_string_buffer_t* self,
+                                       uint16_t attr);
 
 /// @brief appends integer with 32 bits
 ErrorCode TRI_AppendInt32StringBuffer(TRI_string_buffer_t* self, int32_t attr);
 
 /// @brief appends unsigned integer with 32 bits
-ErrorCode TRI_AppendUInt32StringBuffer(TRI_string_buffer_t* self, uint32_t attr);
+ErrorCode TRI_AppendUInt32StringBuffer(TRI_string_buffer_t* self,
+                                       uint32_t attr);
 
 /// @brief appends integer with 64 bits
 ErrorCode TRI_AppendInt64StringBuffer(TRI_string_buffer_t* self, int64_t attr);
 
 /// @brief appends unsigned integer with 64 bits
-ErrorCode TRI_AppendUInt64StringBuffer(TRI_string_buffer_t* self, uint64_t attr);
+ErrorCode TRI_AppendUInt64StringBuffer(TRI_string_buffer_t* self,
+                                       uint64_t attr);
 
 /// @brief appends unsigned integer with 32 bits in hex
-ErrorCode TRI_AppendUInt32HexStringBuffer(TRI_string_buffer_t* self, uint32_t attr);
+ErrorCode TRI_AppendUInt32HexStringBuffer(TRI_string_buffer_t* self,
+                                          uint32_t attr);
 
 /// @brief appends unsigned integer with 64 bits in hex
-ErrorCode TRI_AppendUInt64HexStringBuffer(TRI_string_buffer_t* self, uint64_t attr);
+ErrorCode TRI_AppendUInt64HexStringBuffer(TRI_string_buffer_t* self,
+                                          uint64_t attr);
 
 /// @brief appends floating point number with 8 bits
 ErrorCode TRI_AppendDoubleStringBuffer(TRI_string_buffer_t* self, double attr);
@@ -206,13 +219,15 @@ ErrorCode TRI_AppendDoubleStringBuffer(TRI_string_buffer_t* self, double attr);
 ErrorCode TRI_AppendCsvInt32StringBuffer(TRI_string_buffer_t* self, int32_t i);
 
 /// @brief appends csv unisgned 32-bit integer
-ErrorCode TRI_AppendCsvUInt32StringBuffer(TRI_string_buffer_t* self, uint32_t i);
+ErrorCode TRI_AppendCsvUInt32StringBuffer(TRI_string_buffer_t* self,
+                                          uint32_t i);
 
 /// @brief appends csv 64-bit integer
 ErrorCode TRI_AppendCsvInt64StringBuffer(TRI_string_buffer_t* self, int64_t i);
 
 /// @brief appends csv unsigned 64-bit integer
-ErrorCode TRI_AppendCsvUInt64StringBuffer(TRI_string_buffer_t* self, uint64_t i);
+ErrorCode TRI_AppendCsvUInt64StringBuffer(TRI_string_buffer_t* self,
+                                          uint64_t i);
 
 /// @brief appends csv double
 ErrorCode TRI_AppendCsvDoubleStringBuffer(TRI_string_buffer_t* self, double d);
@@ -269,17 +284,11 @@ class StringBuffer {
     return TRI_ReserveStringBuffer(&_buffer, length);
   }
 
-  /// @brief compress the buffer using deflate
-  ErrorCode deflate(size_t bufferSize) {
-    return TRI_DeflateStringBuffer(&_buffer, bufferSize);
-  }
-
-  /// @brief uncompress the buffer into stringstream out, using zlib-inflate
-  ErrorCode inflate(std::stringstream& out, size_t bufferSize = 16384, size_t skip = 0);
+  /// @brief compress the buffer in place, using zlib-deflate
+  ErrorCode deflate();
 
   /// @brief uncompress the buffer into StringBuffer out, using zlib-inflate
-  ErrorCode inflate(arangodb::basics::StringBuffer& out,
-                    size_t bufferSize = 16384, size_t skip = 0);
+  ErrorCode inflate(arangodb::basics::StringBuffer& out, size_t skip = 0);
 
   /// @brief returns the low level buffer
   TRI_string_buffer_t* stringBuffer() { return &_buffer; }
@@ -399,6 +408,14 @@ class StringBuffer {
   }
 
   /// @brief appends characters
+  StringBuffer& append(char const* str, size_t len) {
+    TRI_AppendString2StringBuffer(&_buffer, str, len);
+    return *this;
+  }
+
+  StringBuffer& append(char const* str) { return append(str, strlen(str)); }
+
+  /// @brief appends characters
   StringBuffer& appendText(char const* str, size_t len) {
     TRI_AppendString2StringBuffer(&_buffer, str, len);
     return *this;
@@ -409,14 +426,8 @@ class StringBuffer {
   }
 
   /// @brief appends characters
-  StringBuffer& appendText(char const* str) {
-    TRI_AppendString2StringBuffer(&_buffer, str, strlen(str));
-    return *this;
-  }
-
-  /// @brief appends string
-  StringBuffer& appendText(std::string const& str) {
-    TRI_AppendString2StringBuffer(&_buffer, str.c_str(), str.length());
+  StringBuffer& appendText(std::string_view str) {
+    TRI_AppendString2StringBuffer(&_buffer, str.data(), str.size());
     return *this;
   }
 
@@ -577,4 +588,3 @@ class StringBuffer {
 }  // namespace arangodb
 
 std::ostream& operator<<(std::ostream&, arangodb::basics::StringBuffer const&);
-

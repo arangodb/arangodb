@@ -56,6 +56,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/SmartContext.h"
 #include "Utils/CollectionNameResolver.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 
 #include <Containers/HashSet.h>
 #include "VPackDeserializer/deserializer.h"
@@ -66,7 +67,8 @@ using namespace arangodb::velocypack::deserializer;
 using namespace arangodb::aql;
 
 constexpr const char QUERY_STRING_PARAM_NAME[] = "queryString";
-constexpr const char COLLAPSE_ARRAY_POSITIONS_PARAM_NAME[] = "collapsePositions";
+constexpr const char COLLAPSE_ARRAY_POSITIONS_PARAM_NAME[] =
+    "collapsePositions";
 constexpr const char KEEP_NULL_PARAM_NAME[] = "keepNull";
 constexpr const char BATCH_SIZE_PARAM_NAME[] = "batchSize";
 constexpr const char MEMORY_LIMIT_PARAM_NAME[] = "memoryLimit";
@@ -74,29 +76,32 @@ constexpr const char CALCULATION_PARAMETER_NAME[] = "param";
 constexpr const char RETURN_TYPE_PARAM_NAME[] = "returnType";
 
 constexpr const uint32_t MAX_BATCH_SIZE{1000};
-constexpr const uint32_t MAX_MEMORY_LIMIT{33554432U}; // 32Mb
+constexpr const uint32_t MAX_MEMORY_LIMIT{33554432U};  // 32Mb
 
 using Options = arangodb::iresearch::AqlAnalyzer::Options;
 
 struct OptionsValidator {
   std::optional<deserialize_error> operator()(Options const& opts) const {
     if (opts.queryString.empty()) {
-      return deserialize_error{std::string("Value of '").append(QUERY_STRING_PARAM_NAME).append("' should be non empty string")};
+      return deserialize_error{std::string("Value of '")
+                                   .append(QUERY_STRING_PARAM_NAME)
+                                   .append("' should be non empty string")};
     }
     if (opts.batchSize == 0) {
-      return deserialize_error{
-          std::string("Value of '").append(BATCH_SIZE_PARAM_NAME).append("' should be greater than 0")};
+      return deserialize_error{std::string("Value of '")
+                                   .append(BATCH_SIZE_PARAM_NAME)
+                                   .append("' should be greater than 0")};
     }
     if (opts.batchSize > MAX_BATCH_SIZE) {
-      return deserialize_error{
-          std::string("Value of '")
-              .append(BATCH_SIZE_PARAM_NAME)
-              .append("' should be less or equal to ")
-              .append(std::to_string(MAX_BATCH_SIZE))};
+      return deserialize_error{std::string("Value of '")
+                                   .append(BATCH_SIZE_PARAM_NAME)
+                                   .append("' should be less or equal to ")
+                                   .append(std::to_string(MAX_BATCH_SIZE))};
     }
     if (opts.memoryLimit == 0) {
-      return deserialize_error{
-          std::string("Value of '").append(MEMORY_LIMIT_PARAM_NAME).append("' should be greater than 0")};
+      return deserialize_error{std::string("Value of '")
+                                   .append(MEMORY_LIMIT_PARAM_NAME)
+                                   .append("' should be greater than 0")};
     }
     if (opts.memoryLimit > MAX_MEMORY_LIMIT) {
       return deserialize_error{std::string("Value of '")
@@ -107,37 +112,50 @@ struct OptionsValidator {
     if (opts.returnType != arangodb::iresearch::AnalyzerValueType::String &&
         opts.returnType != arangodb::iresearch::AnalyzerValueType::Number &&
         opts.returnType != arangodb::iresearch::AnalyzerValueType::Bool) {
-       return deserialize_error{
-           std::string("Value of '").append(RETURN_TYPE_PARAM_NAME)
-             .append("' should be ")
-             .append(arangodb::iresearch::ANALYZER_VALUE_TYPE_STRING)
-             .append(" or ")
-             .append(arangodb::iresearch::ANALYZER_VALUE_TYPE_NUMBER)
-             .append(" or ")
-             .append(arangodb::iresearch::ANALYZER_VALUE_TYPE_BOOL)};
+      return deserialize_error{
+          std::string("Value of '")
+              .append(RETURN_TYPE_PARAM_NAME)
+              .append("' should be ")
+              .append(arangodb::iresearch::ANALYZER_VALUE_TYPE_STRING)
+              .append(" or ")
+              .append(arangodb::iresearch::ANALYZER_VALUE_TYPE_NUMBER)
+              .append(" or ")
+              .append(arangodb::iresearch::ANALYZER_VALUE_TYPE_BOOL)};
     }
     return {};
   }
 };
 
-using OptionsDeserializer = utilities::constructing_deserializer<Options, parameter_list<
-  factory_deserialized_parameter<QUERY_STRING_PARAM_NAME, values::value_deserializer<std::string>, true>,
-  factory_simple_parameter<COLLAPSE_ARRAY_POSITIONS_PARAM_NAME, bool, false, values::numeric_value<bool, false>>,
-  factory_simple_parameter<KEEP_NULL_PARAM_NAME, bool, false, values::numeric_value<bool, true>>,
-  factory_simple_parameter<BATCH_SIZE_PARAM_NAME, uint32_t, false, values::numeric_value<uint32_t, 10>>,
-  factory_simple_parameter<MEMORY_LIMIT_PARAM_NAME, uint32_t, false, values::numeric_value<uint32_t, 1048576U>>,
-  factory_deserialized_default<RETURN_TYPE_PARAM_NAME,
-                               arangodb::iresearch::AnalyzerValueTypeEnumDeserializer,
-                               values::numeric_value<arangodb::iresearch::AnalyzerValueType,
-                                   static_cast<std::underlying_type_t<arangodb::iresearch::AnalyzerValueType>>(
-                                       arangodb::iresearch::AnalyzerValueType::String)>>
-  >>;
+using OptionsDeserializer = utilities::constructing_deserializer<
+    Options,
+    parameter_list<
+        factory_deserialized_parameter<QUERY_STRING_PARAM_NAME,
+                                       values::value_deserializer<std::string>,
+                                       true>,
+        factory_simple_parameter<COLLAPSE_ARRAY_POSITIONS_PARAM_NAME, bool,
+                                 false, values::numeric_value<bool, false>>,
+        factory_simple_parameter<KEEP_NULL_PARAM_NAME, bool, false,
+                                 values::numeric_value<bool, true>>,
+        factory_simple_parameter<BATCH_SIZE_PARAM_NAME, uint32_t, false,
+                                 values::numeric_value<uint32_t, 10>>,
+        factory_simple_parameter<MEMORY_LIMIT_PARAM_NAME, uint32_t, false,
+                                 values::numeric_value<uint32_t, 1048576U>>,
+        factory_deserialized_default<
+            RETURN_TYPE_PARAM_NAME,
+            arangodb::iresearch::AnalyzerValueTypeEnumDeserializer,
+            values::numeric_value<
+                arangodb::iresearch::AnalyzerValueType,
+                static_cast<std::underlying_type_t<
+                    arangodb::iresearch::AnalyzerValueType>>(
+                    arangodb::iresearch::AnalyzerValueType::String)>>>>;
 
-using ValidatingOptionsDeserializer = validate<OptionsDeserializer, OptionsValidator>;
+using ValidatingOptionsDeserializer =
+    validate<OptionsDeserializer, OptionsValidator>;
 
 bool parse_options_slice(VPackSlice const& slice,
                          arangodb::iresearch::AqlAnalyzer::Options& options) {
-  auto const res = deserialize<ValidatingOptionsDeserializer, hints::hint_list<hints::ignore_unknown>>(slice);
+  auto const res = deserialize<ValidatingOptionsDeserializer,
+                               hints::hint_list<hints::ignore_unknown>>(slice);
   if (!res.ok()) {
     LOG_TOPIC("d88b8", WARN, arangodb::iresearch::TOPIC)
         << "Failed to deserialize options from JSON while constructing '"
@@ -161,19 +179,21 @@ bool normalize_slice(VPackSlice const& slice, VPackBuilder& builder) {
     builder.add(MEMORY_LIMIT_PARAM_NAME, VPackValue(options.memoryLimit));
     switch (options.returnType) {
       case arangodb::iresearch::AnalyzerValueType::String:
-        builder.add(RETURN_TYPE_PARAM_NAME,
-          VPackValue(arangodb::iresearch::ANALYZER_VALUE_TYPE_STRING));
+        builder.add(
+            RETURN_TYPE_PARAM_NAME,
+            VPackValue(arangodb::iresearch::ANALYZER_VALUE_TYPE_STRING));
         break;
       case arangodb::iresearch::AnalyzerValueType::Number:
-        builder.add(RETURN_TYPE_PARAM_NAME,
-          VPackValue(arangodb::iresearch::ANALYZER_VALUE_TYPE_NUMBER));
+        builder.add(
+            RETURN_TYPE_PARAM_NAME,
+            VPackValue(arangodb::iresearch::ANALYZER_VALUE_TYPE_NUMBER));
         break;
       case arangodb::iresearch::AnalyzerValueType::Bool:
         builder.add(RETURN_TYPE_PARAM_NAME,
-          VPackValue(arangodb::iresearch::ANALYZER_VALUE_TYPE_BOOL));
+                    VPackValue(arangodb::iresearch::ANALYZER_VALUE_TYPE_BOOL));
         break;
       default:
-          TRI_ASSERT(false);
+        TRI_ASSERT(false);
     }
     return true;
   }
@@ -187,28 +207,44 @@ class CalculationTransactionState final : public arangodb::TransactionState {
   explicit CalculationTransactionState(TRI_vocbase_t& vocbase)
       : TransactionState(vocbase, arangodb::TransactionId(0),
                          arangodb::transaction::Options()) {
-    updateStatus(arangodb::transaction::Status::RUNNING);  // always running to make ASSERTS happy
+    updateStatus(arangodb::transaction::Status::RUNNING);  // always running to
+                                                           // make ASSERTS happy
   }
 
   ~CalculationTransactionState() override {
     if (status() == arangodb::transaction::Status::RUNNING) {
-      updateStatus(arangodb::transaction::Status::ABORTED);  // simulate state changes to make ASSERTS happy
+      updateStatus(
+          arangodb::transaction::Status::ABORTED);  // simulate state changes to
+                                                    // make ASSERTS happy
     }
   }
   /// @brief begin a transaction
-  [[nodiscard]] arangodb::Result beginTransaction(arangodb::transaction::Hints) override {
+  [[nodiscard]] arangodb::Result beginTransaction(
+      arangodb::transaction::Hints) override {
     return {};
   }
 
   /// @brief commit a transaction
-  [[nodiscard]] arangodb::Result commitTransaction(arangodb::transaction::Methods*) override {
-    updateStatus(arangodb::transaction::Status::COMMITTED);  // simulate state changes to make ASSERTS happy
+  [[nodiscard]] arangodb::Result commitTransaction(
+      arangodb::transaction::Methods*) override {
+    updateStatus(
+        arangodb::transaction::Status::COMMITTED);  // simulate state changes to
+                                                    // make ASSERTS happy
     return {};
   }
 
   /// @brief abort a transaction
-  [[nodiscard]] arangodb::Result abortTransaction(arangodb::transaction::Methods*) override {
-    updateStatus(arangodb::transaction::Status::ABORTED);  // simulate state changes to make ASSERTS happy
+  [[nodiscard]] arangodb::Result abortTransaction(
+      arangodb::transaction::Methods*) override {
+    updateStatus(
+        arangodb::transaction::Status::ABORTED);  // simulate state changes to
+                                                  // make ASSERTS happy
+    return {};
+  }
+
+  [[nodiscard]] arangodb::Result performIntermediateCommitIfRequired(
+      arangodb::DataSourceId collectionId) override {
+    // Analyzers do not write. so do nothing
     return {};
   }
 
@@ -222,23 +258,28 @@ class CalculationTransactionState final : public arangodb::TransactionState {
   }
 
   std::unique_ptr<arangodb::TransactionCollection> createTransactionCollection(
-      arangodb::DataSourceId cid, arangodb::AccessMode::Type accessType) override {
+      arangodb::DataSourceId cid,
+      arangodb::AccessMode::Type accessType) override {
     TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 };
 
 /// @brief Dummy transaction context which just gives dummy state
-struct CalculationTransactionContext final : public arangodb::transaction::SmartContext {
+struct CalculationTransactionContext final
+    : public arangodb::transaction::SmartContext {
   explicit CalculationTransactionContext(TRI_vocbase_t& vocbase)
-      : SmartContext(vocbase, arangodb::transaction::Context::makeTransactionId(), nullptr),
+      : SmartContext(vocbase,
+                     arangodb::transaction::Context::makeTransactionId(),
+                     nullptr),
         _state(vocbase) {}
 
   /// @brief get transaction state, determine commit responsiblity
-  std::shared_ptr<arangodb::TransactionState> acquireState(arangodb::transaction::Options const& options,
-                                                 bool& responsibleForCommit) override {
-    return std::shared_ptr<arangodb::TransactionState>(std::shared_ptr<arangodb::TransactionState>(),
-                                                       &_state);
+  std::shared_ptr<arangodb::TransactionState> acquireState(
+      arangodb::transaction::Options const& options,
+      bool& responsibleForCommit) override {
+    return std::shared_ptr<arangodb::TransactionState>(
+        std::shared_ptr<arangodb::TransactionState>(), &_state);
   }
 
   /// @brief unregister the transaction
@@ -262,17 +303,19 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
         _resolver(vocbase),
         _transactionContext(vocbase) {
     _ast = std::make_unique<Ast>(*this, NON_CONST_PARAMETERS);
-    _trx = AqlTransaction::create(newTrxContext(), _collections, _queryOptions.transactionOptions,
+    _trx = AqlTransaction::create(newTrxContext(), _collections,
+                                  _queryOptions.transactionOptions,
                                   std::unordered_set<std::string>{});
     _trx->addHint(arangodb::transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
-    _trx->addHint(arangodb::transaction::Hints::Hint::SINGLE_OPERATION);  // to avoid taking db snapshot
+    _trx->addHint(arangodb::transaction::Hints::Hint::
+                      SINGLE_OPERATION);  // to avoid taking db snapshot
     _trx->begin();
   }
 
   virtual arangodb::aql::QueryOptions const& queryOptions() const override {
     return _queryOptions;
   }
-  
+
   virtual arangodb::aql::QueryOptions& queryOptions() noexcept override {
     return _queryOptions;
   }
@@ -295,9 +338,11 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
   }
 
   /// @brief create a transaction::Context
-  virtual std::shared_ptr<arangodb::transaction::Context> newTrxContext() const override {
+  virtual std::shared_ptr<arangodb::transaction::Context> newTrxContext()
+      const override {
     return std::shared_ptr<arangodb::transaction::Context>(
-        std::shared_ptr<arangodb::transaction::Context>(), &_transactionContext);
+        std::shared_ptr<arangodb::transaction::Context>(),
+        &_transactionContext);
   }
 
   virtual arangodb::transaction::Methods& trxForOptimization() override {
@@ -330,7 +375,8 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
 frozen::set<irs::string_ref, 4> forbiddenFunctions{"TOKENS", "NGRAM_MATCH",
                                                    "PHRASE", "ANALYZER"};
 
-arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t& vocbase) {
+arangodb::Result validateQuery(std::string const& queryStringRaw,
+                               TRI_vocbase_t& vocbase) {
   try {
     CalculationQueryContext queryContext(vocbase);
     auto queryString = arangodb::aql::QueryString(queryStringRaw);
@@ -341,29 +387,34 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
     ast->validateAndOptimize(queryContext.trxForOptimization());
     AstNode* astRoot = const_cast<AstNode*>(ast->root());
     TRI_ASSERT(astRoot);
-    // Forbid all V8 related stuff as it is not available on DBServers where analyzers run.
+    // Forbid all V8 related stuff as it is not available on DBServers where
+    // analyzers run.
     if (ast->willUseV8()) {
       return {TRI_ERROR_BAD_PARAMETER,
               "V8 usage is forbidden for aql analyzer"};
     }
 
-    // no modification (as data access is forbidden) but to give more clear error message
+    // no modification (as data access is forbidden) but to give more clear
+    // error message
     if (ast->containsModificationNode()) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "DML is forbidden for aql analyzer"};
+      return {TRI_ERROR_BAD_PARAMETER, "DML is forbidden for aql analyzer"};
     }
 
-    // no traversal (also data access is forbidden) but to give more clear error message
+    // no traversal (also data access is forbidden) but to give more clear error
+    // message
     if (ast->containsTraversal()) {
       return {TRI_ERROR_BAD_PARAMETER,
               "Traversal usage is forbidden for aql analyzer"};
     }
 
     std::string errorMessage;
-    // Forbid to use functions that reference analyzers -> problems on recovery as analyzers are not available for querying.
-    // Forbid all non-Dbserver runnable functions as it is not available on DBServers where analyzers run.
+    // Forbid to use functions that reference analyzers -> problems on recovery
+    // as analyzers are not available for querying. Forbid all non-Dbserver
+    // runnable functions as it is not available on DBServers where analyzers
+    // run.
     arangodb::aql::Ast::traverseReadOnly(
-        ast->root(), [&errorMessage](arangodb::aql::AstNode const* node) -> bool {
+        ast->root(),
+        [&errorMessage](arangodb::aql::AstNode const* node) -> bool {
           TRI_ASSERT(node);
           switch (node->type) {
             // these nodes are ok unconditionally
@@ -426,11 +477,16 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
               break;
             // some nodes are ok with restrictions
             case arangodb::aql::NODE_TYPE_FCALL: {
-              auto func = static_cast<arangodb::aql::Function*>(node->getData());
-              if (!func->hasFlag(arangodb::aql::Function::Flags::CanRunOnDBServerCluster) ||
-                  !func->hasFlag(arangodb::aql::Function::Flags::CanRunOnDBServerOneShard) ||
-                  func->hasFlag(arangodb::aql::Function::Flags::CanReadDocuments) ||
-                  forbiddenFunctions.find(func->name) != forbiddenFunctions.end()) {
+              auto func =
+                  static_cast<arangodb::aql::Function*>(node->getData());
+              if (!func->hasFlag(arangodb::aql::Function::Flags::
+                                     CanRunOnDBServerCluster) ||
+                  !func->hasFlag(arangodb::aql::Function::Flags::
+                                     CanRunOnDBServerOneShard) ||
+                  func->hasFlag(
+                      arangodb::aql::Function::Flags::CanReadDocuments) ||
+                  forbiddenFunctions.find(func->name) !=
+                      forbiddenFunctions.end()) {
                 errorMessage = "Function '";
                 errorMessage.append(func->name)
                     .append("' is forbidden for aql analyzer");
@@ -438,7 +494,8 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
               }
             } break;
             case arangodb::aql::NODE_TYPE_PARAMETER: {
-              irs::string_ref parameterName(node->getStringValue(), node->getStringLength());
+              irs::string_ref parameterName(node->getStringValue(),
+                                            node->getStringLength());
               if (parameterName != CALCULATION_PARAMETER_NAME) {
                 errorMessage = "Invalid bind parameter found '";
                 errorMessage.append(parameterName).append("'");
@@ -448,7 +505,8 @@ arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t&
             // by default all is forbidden
             default:
               errorMessage = "Node type '";
-              errorMessage.append(node->getTypeString()).append("' is forbidden for aql analyzer");
+              errorMessage.append(node->getTypeString())
+                  .append("' is forbidden for aql analyzer");
               return false;
           }
           return true;
@@ -477,7 +535,8 @@ irs::analysis::analyzer::ptr make_slice(VPackSlice const& slice) {
       return std::make_unique<arangodb::iresearch::AqlAnalyzer>(options);
     } else {
       LOG_TOPIC("f775e", WARN, arangodb::iresearch::TOPIC)
-          << "error validating calculation query: " << validationRes.errorMessage();
+          << "error validating calculation query: "
+          << validationRes.errorMessage();
     }
   }
   return nullptr;
@@ -490,11 +549,13 @@ ExecutionNode* getCalcNode(ExecutionNode* node) {
   }
 
   auto& deps = node->getDependencies();
-  if (deps.size() == 1 && deps[0]->getType() == ExecutionNode::NodeType::CALCULATION) {
+  if (deps.size() == 1 &&
+      deps[0]->getType() == ExecutionNode::NodeType::CALCULATION) {
     auto calcNode = deps[0];
 
     auto& deps2 = calcNode->getDependencies();
-    if (deps2.size() == 1 && deps2[0]->getType() == ExecutionNode::NodeType::SINGLETON) {
+    if (deps2.size() == 1 &&
+        deps2[0]->getType() == ExecutionNode::NodeType::SINGLETON) {
       return calcNode;
     }
   }
@@ -506,7 +567,8 @@ ExecutionNode* getCalcNode(ExecutionNode* node) {
 namespace arangodb {
 namespace iresearch {
 
-/*static*/ bool AqlAnalyzer::normalize_vpack(const irs::string_ref& args, std::string& out) {
+/*static*/ bool AqlAnalyzer::normalize_vpack(const irs::string_ref& args,
+                                             std::string& out) {
   auto const slice = arangodb::iresearch::slice(args);
   VPackBuilder builder;
   if (normalize_slice(slice, builder)) {
@@ -518,7 +580,7 @@ namespace iresearch {
 }
 
 /*static*/ bool AqlAnalyzer::normalize_json(const irs::string_ref& args,
-                                                    std::string& out) {
+                                            std::string& out) {
   auto src = VPackParser::fromJson(args.c_str(), args.size());
   VPackBuilder builder;
   if (normalize_slice(src->slice(), builder)) {
@@ -528,13 +590,14 @@ namespace iresearch {
   return false;
 }
 
-/*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_vpack(irs::string_ref const& args) {
+/*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_vpack(
+    irs::string_ref const& args) {
   auto const slice = arangodb::iresearch::slice(args);
   return make_slice(slice);
 }
 
-
-/*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_json(irs::string_ref const& args) {
+/*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_json(
+    irs::string_ref const& args) {
   auto builder = VPackParser::fromJson(args.c_str(), args.size());
   return make_slice(builder->slice());
 }
@@ -545,7 +608,7 @@ bool tryOptimize(AqlAnalyzer* analyzer) {
     TRI_ASSERT(execNode->getType() == ExecutionNode::NodeType::CALCULATION);
     analyzer->_nodeToOptimize = static_cast<CalculationNode*>(execNode);
     // allocate memory for result
-    analyzer->_queryResults = analyzer->_itemBlockManager.requestBlock(1,1);
+    analyzer->_queryResults = analyzer->_itemBlockManager.requestBlock(1, 1);
     return true;
   }
 
@@ -561,15 +624,16 @@ void resetFromExpression(AqlAnalyzer* analyzer) {
 
   // create context
   // value is not needed since getting it from _bindedNodes
-  SingleVarExpressionContext ctx(trx, query, analyzer->_aqlFunctionsInternalCache);
+  SingleVarExpressionContext ctx(trx, query,
+                                 analyzer->_aqlFunctionsInternalCache);
 
-  analyzer->_executionState = ExecutionState::DONE; // already calculated
+  analyzer->_executionState = ExecutionState::DONE;  // already calculated
 
   // put calculated value in _queryResults
-  analyzer->_queryResults->destroyValue(0,0);
+  analyzer->_queryResults->destroyValue(0, 0);
   bool mustDestroy = true;
 
-  analyzer->_queryResults->setValue(0,0, e->execute(&ctx, mustDestroy));
+  analyzer->_queryResults->setValue(0, 0, e->execute(&ctx, mustDestroy));
 
   analyzer->_engineResultRegister = 0;
 }
@@ -590,13 +654,15 @@ bool AqlAnalyzer::isOptimized() const {
 #endif
 
 AqlAnalyzer::AqlAnalyzer(Options const& options)
-  : irs::analysis::analyzer(irs::type<AqlAnalyzer>::get()),
-    _options(options),
-    _query(new CalculationQueryContext(arangodb::DatabaseFeature::getCalculationVocbase())),
-    _itemBlockManager(_query->resourceMonitor(), SerializationFormat::SHADOWROWS),
-    _engine(0, *_query, _itemBlockManager,
-            SerializationFormat::SHADOWROWS, nullptr),
-    _resetImpl(&resetFromQuery) {
+    : irs::analysis::analyzer(irs::type<AqlAnalyzer>::get()),
+      _options(options),
+      _query(new CalculationQueryContext(
+          arangodb::DatabaseFeature::getCalculationVocbase())),
+      _itemBlockManager(_query->resourceMonitor(),
+                        SerializationFormat::SHADOWROWS),
+      _engine(0, *_query, _itemBlockManager, SerializationFormat::SHADOWROWS,
+              nullptr),
+      _resetImpl(&resetFromQuery) {
   _query->resourceMonitor().memoryLimit(_options.memoryLimit);
   std::get<AnalyzerValueTypeAttribute>(_attrs).value = _options.returnType;
   TRI_ASSERT(validateQuery(_options.queryString,
@@ -608,19 +674,25 @@ bool AqlAnalyzer::next() {
   do {
     if (_queryResults != nullptr) {
       while (_queryResults->numRows() > _resultRowIdx) {
-        AqlValue const& value =  _queryResults->getValueReference(_resultRowIdx++, _engineResultRegister) ;
+        AqlValue const& value = _queryResults->getValueReference(
+            _resultRowIdx++, _engineResultRegister);
         if (_options.keepNull || !value.isNull(true)) {
           switch (_options.returnType) {
             case AnalyzerValueType::String:
               if (value.isString()) {
-                std::get<2>(_attrs).value = arangodb::iresearch::getBytesRef(value.slice());
+                std::get<2>(_attrs).value =
+                    arangodb::iresearch::getBytesRef(value.slice());
               } else {
                 VPackFunctionParameters params{_params_arena};
                 params.push_back(value);
-                aql::SingleVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
-                _valueBuffer = aql::Functions::ToString(&ctx, *_query->ast()->root(), params);
+                aql::SingleVarExpressionContext ctx(
+                    _query->trxForOptimization(), *_query,
+                    _aqlFunctionsInternalCache);
+                _valueBuffer = aql::Functions::ToString(
+                    &ctx, *_query->ast()->root(), params);
                 TRI_ASSERT(_valueBuffer.isString());
-                std::get<2>(_attrs).value = irs::ref_cast<irs::byte_type>(_valueBuffer.slice().stringView());
+                std::get<2>(_attrs).value = irs::ref_cast<irs::byte_type>(
+                    _valueBuffer.slice().stringView());
               }
               break;
             case AnalyzerValueType::Number:
@@ -629,8 +701,11 @@ bool AqlAnalyzer::next() {
               } else {
                 VPackFunctionParameters params{_params_arena};
                 params.push_back(value);
-                aql::SingleVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
-                _valueBuffer = aql::Functions::ToNumber(&ctx, *_query->ast()->root(), params);
+                aql::SingleVarExpressionContext ctx(
+                    _query->trxForOptimization(), *_query,
+                    _aqlFunctionsInternalCache);
+                _valueBuffer = aql::Functions::ToNumber(
+                    &ctx, *_query->ast()->root(), params);
                 TRI_ASSERT(_valueBuffer.isNumber());
                 std::get<3>(_attrs).value = _valueBuffer.slice();
               }
@@ -641,8 +716,11 @@ bool AqlAnalyzer::next() {
               } else {
                 VPackFunctionParameters params{_params_arena};
                 params.push_back(value);
-                aql::SingleVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
-                _valueBuffer = aql::Functions::ToBool(&ctx, *_query->ast()->root(), params);
+                aql::SingleVarExpressionContext ctx(
+                    _query->trxForOptimization(), *_query,
+                    _aqlFunctionsInternalCache);
+                _valueBuffer = aql::Functions::ToBool(
+                    &ctx, *_query->ast()->root(), params);
                 TRI_ASSERT(_valueBuffer.isBoolean());
                 std::get<3>(_attrs).value = _valueBuffer.slice();
               }
@@ -650,8 +728,10 @@ bool AqlAnalyzer::next() {
             default:
               // new return type added?
               TRI_ASSERT(false);
-              LOG_TOPIC("a9ba5", WARN, iresearch::TOPIC) << "Unexpected AqlAnalyzer return type " <<
-                static_cast<std::underlying_type_t<AnalyzerValueType>>(_options.returnType);
+              LOG_TOPIC("a9ba5", WARN, iresearch::TOPIC)
+                  << "Unexpected AqlAnalyzer return type "
+                  << static_cast<std::underlying_type_t<AnalyzerValueType>>(
+                         _options.returnType);
               std::get<2>(_attrs).value = irs::bytes_ref::EMPTY;
               _valueBuffer = AqlValue();
               std::get<3>(_attrs).value = _valueBuffer.slice();
@@ -663,13 +743,16 @@ bool AqlAnalyzer::next() {
       }
     }
     if (_executionState == ExecutionState::HASMORE) {
-      _executionState = ExecutionState::DONE;  // set to done to terminate in case of exception
+      _executionState = ExecutionState::DONE;  // set to done to terminate in
+                                               // case of exception
       _resultRowIdx = 0;
       _queryResults = nullptr;
       try {
-        AqlCallStack aqlStack{AqlCallList{AqlCall::SimulateGetSome(_options.batchSize)}};
+        AqlCallStack aqlStack{
+            AqlCallList{AqlCall::SimulateGetSome(_options.batchSize)}};
         SkipResult skip;
-        std::tie(_executionState, skip, _queryResults) = _engine.execute(aqlStack);
+        std::tie(_executionState, skip, _queryResults) =
+            _engine.execute(aqlStack);
         TRI_ASSERT(skip.nothingSkipped());
         TRI_ASSERT(_executionState != ExecutionState::WAITING);
       } catch (std::exception const& e) {
@@ -682,8 +765,9 @@ bool AqlAnalyzer::next() {
             << " AQL query: " << _options.queryString;
       }
     }
-  } while (_executionState != ExecutionState::DONE || (_queryResults != nullptr &&
-                                                       _queryResults->numRows() > _resultRowIdx));
+  } while (
+      _executionState != ExecutionState::DONE ||
+      (_queryResults != nullptr && _queryResults->numRows() > _resultRowIdx));
   return false;
 }
 
@@ -698,33 +782,41 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
       parser.parse();
       AstNode* astRoot = const_cast<AstNode*>(ast->root());
       TRI_ASSERT(astRoot);
-      Ast::traverseAndModify(astRoot, [this, field, ast](AstNode* node) -> AstNode* {
-        if (node->type == NODE_TYPE_PARAMETER) {
+      Ast::traverseAndModify(
+          astRoot, [this, field, ast](AstNode* node) -> AstNode* {
+            if (node->type == NODE_TYPE_PARAMETER) {
           // should be only our parameter name. see validation method!
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-          TRI_ASSERT(irs::string_ref(node->getStringValue(), node->getStringLength()) ==
-                     CALCULATION_PARAMETER_NAME);
+              TRI_ASSERT(irs::string_ref(node->getStringValue(),
+                                         node->getStringLength()) ==
+                         CALCULATION_PARAMETER_NAME);
 #endif
-          // FIXME: move to computed value once here could be not only strings
-          auto newNode = ast->createNodeValueMutableString(field.c_str(), field.size());
-          // finally note that the node was created from a bind parameter
-          newNode->setFlag(FLAG_BIND_PARAMETER);
-          newNode->setFlag(DETERMINED_CONSTANT);  // keep value as non-constant to prevent optimizations
-          newNode->setFlag(DETERMINED_NONDETERMINISTIC, VALUE_NONDETERMINISTIC);
-          _bindedNodes.push_back(newNode);
-          return newNode;
-        } else {
-          return node;
-        }
-      });
+              // FIXME: move to computed value once here could be not only
+              // strings
+              auto newNode = ast->createNodeValueMutableString(field.c_str(),
+                                                               field.size());
+              // finally note that the node was created from a bind parameter
+              newNode->setFlag(FLAG_BIND_PARAMETER);
+              newNode->setFlag(
+                  DETERMINED_CONSTANT);  // keep value as non-constant to
+                                         // prevent optimizations
+              newNode->setFlag(DETERMINED_NONDETERMINISTIC,
+                               VALUE_NONDETERMINISTIC);
+              _bindedNodes.push_back(newNode);
+              return newNode;
+            } else {
+              return node;
+            }
+          });
       ast->validateAndOptimize(_query->trxForOptimization());
 
-      std::unique_ptr<ExecutionPlan> plan = ExecutionPlan::instantiateFromAst(ast, true);
+      std::unique_ptr<ExecutionPlan> plan =
+          ExecutionPlan::instantiateFromAst(ast, true);
 
-      // run the plan through the optimizer, executing only the absolutely necessary
-      // optimizer rules (we skip all other rules to save time). we have to execute
-      // the "splice-subqueries" rule here so we replace all SubqueryNodes with
-      // SubqueryStartNodes and SubqueryEndNodes.
+      // run the plan through the optimizer, executing only the absolutely
+      // necessary optimizer rules (we skip all other rules to save time). we
+      // have to execute the "splice-subqueries" rule here so we replace all
+      // SubqueryNodes with SubqueryStartNodes and SubqueryEndNodes.
       Optimizer optimizer(1);
       // disable all rules which are not necessary
       optimizer.disableRules(plan.get(), [](OptimizerRule const& rule) -> bool {
@@ -763,4 +855,4 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
   return false;
 }
 }  // namespace iresearch
-} // namespace arangodb
+}  // namespace arangodb

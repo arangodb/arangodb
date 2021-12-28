@@ -429,29 +429,6 @@ static bool HasSSE42() {
   }
 }
 
-// The following is currently not used, it is a fallback for the case
-// that the pure assembler source cannot be assembled or linked for
-// some reason.
-
-#if 0
-extern "C" uint32_t TRI_BlockCrc32_intrinsics(uint32_t value,
-                                              char const* data,
-                                              size_t length) {
-  uint64_t tmp = value;
-  auto p = reinterpret_cast<uint64_t const*>(data);
-  while (length >= 8) {
-    tmp = _mm_crc32_u64(tmp, *p++);
-    length -= 8;
-  }
-  auto p2 = reinterpret_cast<unsigned char const*>(p);
-  value = static_cast<uint32_t>(tmp);
-  while (length-- > 0) {
-    value = _mm_crc32_u8(value, *p2++);
-  }
-  return value;
-}
-#endif
-
 #endif
 
 /// @brief CRC32 value of data block
@@ -481,9 +458,11 @@ uint32_t TRI_BlockCrc32_C(uint32_t value, char const* data, size_t length) {
     uint32_t one = *current++ ^ value;
     uint32_t two = *current++;
 
-    value = Crc32Lookup[0][(two >> 24) & 0xFF] ^ Crc32Lookup[1][(two >> 16) & 0xFF] ^
+    value = Crc32Lookup[0][(two >> 24) & 0xFF] ^
+            Crc32Lookup[1][(two >> 16) & 0xFF] ^
             Crc32Lookup[2][(two >> 8) & 0xFF] ^ Crc32Lookup[3][two & 0xFF] ^
-            Crc32Lookup[4][(one >> 24) & 0xFF] ^ Crc32Lookup[5][(one >> 16) & 0xFF] ^
+            Crc32Lookup[4][(one >> 24) & 0xFF] ^
+            Crc32Lookup[5][(one >> 16) & 0xFF] ^
             Crc32Lookup[6][(one >> 8) & 0xFF] ^ Crc32Lookup[7][one & 0xFF];
     length -= 8;
   }
@@ -498,19 +477,21 @@ uint32_t TRI_BlockCrc32_C(uint32_t value, char const* data, size_t length) {
 }
 
 #if ENABLE_ASM_CRC32 == 1
-static uint32_t TRI_BlockCrc32_Detect(uint32_t hash, char const* data, size_t length) {
+static uint32_t TRI_BlockCrc32_Detect(uint32_t hash, char const* data,
+                                      size_t length) {
   if (HasSSE42()) {
     TRI_BlockCrc32 = TRI_BlockCrc32_SSE42;
-    // TRI_BlockCrc32 = TRI_BlockCrc32_intrinsics;
   } else {
     TRI_BlockCrc32 = TRI_BlockCrc32_C;
   }
   return (*TRI_BlockCrc32)(hash, data, length);
 }
 
-uint32_t (*TRI_BlockCrc32)(uint32_t hash, char const* data, size_t length) = TRI_BlockCrc32_Detect;
+uint32_t (*TRI_BlockCrc32)(uint32_t hash, char const* data,
+                           size_t length) = TRI_BlockCrc32_Detect;
 #else
-uint32_t (*TRI_BlockCrc32)(uint32_t hash, char const* data, size_t length) = TRI_BlockCrc32_C;
+uint32_t (*TRI_BlockCrc32)(uint32_t hash, char const* data,
+                           size_t length) = TRI_BlockCrc32_C;
 #endif
 
 }  // extern "C"

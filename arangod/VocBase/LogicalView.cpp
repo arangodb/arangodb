@@ -41,7 +41,6 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/Utf8Helper.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -56,8 +55,10 @@ namespace arangodb {
 // is relevant for this view
 LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice definition)
     : LogicalDataSource(LogicalView::category(),
-                        LogicalDataSource::Type::emplace(arangodb::basics::VelocyPackHelper::getStringRef(
-                            definition, StaticStrings::DataSourceType, VPackStringRef())),
+                        LogicalDataSource::Type::emplace(
+                            arangodb::basics::VelocyPackHelper::getStringView(
+                                definition, StaticStrings::DataSourceType,
+                                std::string_view())),
                         vocbase, definition) {
   // ensure that the 'definition' was used as the configuration source
   if (!definition.isObject()) {
@@ -66,8 +67,10 @@ LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice definition)
         "got an invalid view definition while constructing LogicalView");
   }
 
-  bool extendedNames = vocbase.server().getFeature<DatabaseFeature>().extendedNamesForViews();
-  if (!ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames, name())) {
+  bool extendedNames =
+      vocbase.server().getFeature<DatabaseFeature>().extendedNamesForViews();
+  if (!ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames,
+                                        name())) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -84,24 +87,28 @@ LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice definition)
 Result LogicalView::appendVelocyPack(velocypack::Builder& builder,
                                      Serialization context) const {
   if (!builder.isOpenObject()) {
-    return Result(TRI_ERROR_BAD_PARAMETER,
-                  std::string(
-                      "invalid builder provided for LogicalView definition"));
+    return Result(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("invalid builder provided for LogicalView definition"));
   }
 
-  builder.add(StaticStrings::DataSourceType, arangodb::velocypack::Value(type().name()));
+  builder.add(StaticStrings::DataSourceType,
+              arangodb::velocypack::Value(type().name()));
 
   return appendVelocyPackImpl(builder, context);
 }
 
 bool LogicalView::canUse(arangodb::auth::Level const& level) {
   // as per https://github.com/arangodb/backlog/issues/459
-  return ExecContext::current().canUseDatabase(vocbase().name(), level); // can use vocbase
+  return ExecContext::current().canUseDatabase(vocbase().name(),
+                                               level);  // can use vocbase
 
-  /* FIXME TODO per-view authentication checks disabled as per https://github.com/arangodb/backlog/issues/459
-  return !ctx // authentication not enabled
+  /* FIXME TODO per-view authentication checks disabled as per
+  https://github.com/arangodb/backlog/issues/459 return !ctx // authentication
+  not enabled
     || (ctx->canUseDatabase(vocbase.name(), level) // can use vocbase
-        && (ctx->canUseCollection(vocbase.name(), name(), level)) // can use view
+        && (ctx->canUseCollection(vocbase.name(), name(), level)) // can use
+  view
        );
   */
 }
@@ -112,13 +119,15 @@ bool LogicalView::canUse(arangodb::auth::Level const& level) {
   return category;
 }
 
-/*static*/ Result LogicalView::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                                      velocypack::Slice definition, bool isUserRequest) {
+/*static*/ Result LogicalView::create(LogicalView::ptr& view,
+                                      TRI_vocbase_t& vocbase,
+                                      velocypack::Slice definition,
+                                      bool isUserRequest) {
   if (!vocbase.server().hasFeature<ViewTypesFeature>()) {
     std::string name;
     if (definition.isObject()) {
-      name = basics::VelocyPackHelper::getStringValue(definition, StaticStrings::DataSourceName,
-                                                      "");
+      name = basics::VelocyPackHelper::getStringValue(
+          definition, StaticStrings::DataSourceName, "");
     }
     events::CreateView(vocbase.name(), name, TRI_ERROR_INTERNAL);
     return Result(
@@ -127,9 +136,8 @@ bool LogicalView::canUse(arangodb::auth::Level const& level) {
   }
   auto& viewTypes = vocbase.server().getFeature<ViewTypesFeature>();
 
-  auto type = basics::VelocyPackHelper::getStringRef(
-    definition, StaticStrings::DataSourceType,
-    VPackStringRef(nullptr, 0));
+  auto type = basics::VelocyPackHelper::getStringView(
+      definition, StaticStrings::DataSourceType, std::string_view());
   auto& factory = viewTypes.factory(LogicalDataSource::Type::emplace(type));
 
   return factory.create(view, vocbase, definition, isUserRequest);
@@ -192,7 +200,8 @@ Result LogicalView::drop() {
   return true;
 }
 
-/*static*/ Result LogicalView::instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+/*static*/ Result LogicalView::instantiate(LogicalView::ptr& view,
+                                           TRI_vocbase_t& vocbase,
                                            velocypack::Slice definition) {
   if (!vocbase.server().hasFeature<ViewTypesFeature>()) {
     return Result(
@@ -201,9 +210,8 @@ Result LogicalView::drop() {
   }
   auto& viewTypes = vocbase.server().getFeature<ViewTypesFeature>();
 
-  auto type =
-      basics::VelocyPackHelper::getStringRef(definition, StaticStrings::DataSourceType,
-                                             velocypack::StringRef(nullptr, 0));
+  auto type = basics::VelocyPackHelper::getStringView(
+      definition, StaticStrings::DataSourceType, std::string_view());
   auto& factory = viewTypes.factory(LogicalDataSource::Type::emplace(type));
 
   return factory.instantiate(view, vocbase, definition);
@@ -235,9 +243,9 @@ Result LogicalView::rename(std::string&& newName) {
 // --SECTION--                                      LogicalViewHelperClusterInfo
 // -----------------------------------------------------------------------------
 
-/*static*/ Result LogicalViewHelperClusterInfo::construct(LogicalView::ptr& view,
-                                                          TRI_vocbase_t& vocbase,
-                                                          velocypack::Slice definition) noexcept {
+/*static*/ Result LogicalViewHelperClusterInfo::construct(
+    LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+    velocypack::Slice definition) noexcept {
   try {
     if (!vocbase.server().hasFeature<ClusterFeature>()) {
       return Result(TRI_ERROR_INTERNAL,
@@ -255,18 +263,19 @@ Result LogicalView::rename(std::string&& newName) {
     }
 
     if (!impl) {
-      return arangodb::Result(TRI_ERROR_INTERNAL,
-                              std::string(
-                                  "failure during instantiation while creating "
-                                  "arangosearch View in database '") +
-                                  vocbase.name() + "'");
+      return arangodb::Result(
+          TRI_ERROR_INTERNAL,
+          std::string("failure during instantiation while creating "
+                      "arangosearch View in database '") +
+              vocbase.name() + "'");
     }
 
     velocypack::Builder builder;
 
     builder.openObject();
     // include links so that Agency will always have a full definition
-    res = impl->properties(builder, LogicalDataSource::Serialization::Persistence);
+    res = impl->properties(builder,
+                           LogicalDataSource::Serialization::Persistence);
 
     if (!res.ok()) {
       return res;
@@ -274,15 +283,17 @@ Result LogicalView::rename(std::string&& newName) {
 
     builder.close();
     res = engine.createViewCoordinator(  // create view
-        vocbase.name(), std::to_string(impl->id().id()), builder.slice()  // args
+        vocbase.name(), std::to_string(impl->id().id()),
+        builder.slice()  // args
     );
 
     if (!res.ok()) {
       return res;
     }
 
-    view = engine.getView(vocbase.name(),
-                          std::to_string(impl->id().id()));  // refresh view from Agency
+    view = engine.getView(
+        vocbase.name(),
+        std::to_string(impl->id().id()));  // refresh view from Agency
 
     if (view) {
       view->open();  // open view to match the behavior in
@@ -300,7 +311,8 @@ Result LogicalView::rename(std::string&& newName) {
   return Result(TRI_ERROR_INTERNAL);  // noexcept constructor
 }
 
-/*static*/ Result LogicalViewHelperClusterInfo::drop(LogicalView const& view) noexcept {
+/*static*/ Result LogicalViewHelperClusterInfo::drop(
+    LogicalView const& view) noexcept {
   try {
     if (!view.vocbase().server().hasFeature<ClusterFeature>()) {
       return Result(
@@ -308,7 +320,8 @@ Result LogicalView::rename(std::string&& newName) {
           std::string("failure to find storage engine while dropping view '") +
               view.name() + "' from database '" + view.vocbase().name() + "'");
     }
-    auto& engine = view.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+    auto& engine =
+        view.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
     return engine.dropViewCoordinator(                         // drop view
         view.vocbase().name(), std::to_string(view.id().id())  // args
@@ -322,12 +335,13 @@ Result LogicalView::rename(std::string&& newName) {
   return Result(TRI_ERROR_INTERNAL);  // noexcept constructor
 }
 
-/*static*/ Result LogicalViewHelperClusterInfo::properties(velocypack::Builder& builder,
-                                                           LogicalView const& view) noexcept {
+/*static*/ Result LogicalViewHelperClusterInfo::properties(
+    velocypack::Builder& builder, LogicalView const& view) noexcept {
   return Result();  // NOOP
 }
 
-/*static*/ Result LogicalViewHelperClusterInfo::properties(LogicalView const& view) noexcept {
+/*static*/ Result LogicalViewHelperClusterInfo::properties(
+    LogicalView const& view) noexcept {
   try {
     if (!view.vocbase().server().hasFeature<ClusterFeature>()) {
       return Result(TRI_ERROR_INTERNAL,
@@ -336,13 +350,15 @@ Result LogicalView::rename(std::string&& newName) {
                         view.name() + "' from database '" +
                         view.vocbase().name() + "'");
     }
-    auto& engine = view.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+    auto& engine =
+        view.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
     velocypack::Builder builder;
 
     builder.openObject();
 
-    auto res = view.properties(builder, LogicalDataSource::Serialization::Persistence);
+    auto res =
+        view.properties(builder, LogicalDataSource::Serialization::Persistence);
 
     if (!res.ok()) {
       return res;
@@ -350,9 +366,8 @@ Result LogicalView::rename(std::string&& newName) {
 
     builder.close();
 
-    return engine.setViewPropertiesCoordinator(view.vocbase().name(),
-                                               std::to_string(view.id().id()),
-                                               builder.slice());
+    return engine.setViewPropertiesCoordinator(
+        view.vocbase().name(), std::to_string(view.id().id()), builder.slice());
   } catch (basics::Exception const& e) {
     return Result(e.code());  // noexcept constructor
   } catch (...) {
@@ -363,8 +378,7 @@ Result LogicalView::rename(std::string&& newName) {
 }
 
 /*static*/ Result LogicalViewHelperClusterInfo::rename(
-    LogicalView const& /*view*/,
-    std::string const& /*oldName*/) noexcept {
+    LogicalView const& /*view*/, std::string const& /*oldName*/) noexcept {
   return Result(TRI_ERROR_CLUSTER_UNSUPPORTED);  // renaming a view in a cluster
                                                  // is not supported
 }
@@ -374,18 +388,18 @@ Result LogicalView::rename(std::string&& newName) {
 // -----------------------------------------------------------------------------
 
 /*static*/ Result LogicalViewHelperStorageEngine::construct(
-    LogicalView::ptr& view,
-    TRI_vocbase_t& vocbase,
+    LogicalView::ptr& view, TRI_vocbase_t& vocbase,
     velocypack::Slice definition) noexcept {
   try {
     TRI_set_errno(TRI_ERROR_NO_ERROR);  // reset before calling createView(...)
     auto impl = vocbase.createView(definition);
 
     if (!impl) {
-      return Result(TRI_ERROR_NO_ERROR == TRI_errno() ? TRI_ERROR_INTERNAL : TRI_errno(),
-                    std::string("failure during instantiation while creating "
-                                "arangosearch View in database '") +
-                        vocbase.name() + "'");
+      return Result(
+          TRI_ERROR_NO_ERROR == TRI_errno() ? TRI_ERROR_INTERNAL : TRI_errno(),
+          std::string("failure during instantiation while creating "
+                      "arangosearch View in database '") +
+              vocbase.name() + "'");
     }
 
     view = impl;
@@ -409,9 +423,11 @@ Result LogicalView::rename(std::string&& newName) {
   return Result();
 }
 
-/*static*/ Result LogicalViewHelperStorageEngine::drop(LogicalView const& view) noexcept {
+/*static*/ Result LogicalViewHelperStorageEngine::drop(
+    LogicalView const& view) noexcept {
   try {
-    return view.vocbase().dropView(view.id(), true);  // true since caller should have checked for 'system'
+    return view.vocbase().dropView(
+        view.id(), true);  // true since caller should have checked for 'system'
   } catch (basics::Exception const& e) {
     return Result(e.code());  // noexcept constructor
   } catch (...) {
@@ -421,13 +437,13 @@ Result LogicalView::rename(std::string&& newName) {
   return Result(TRI_ERROR_INTERNAL);  // noexcept constructor
 }
 
-/*static*/ Result LogicalViewHelperStorageEngine::properties(velocypack::Builder& builder,
-                                                             LogicalView const& view) noexcept {
+/*static*/ Result LogicalViewHelperStorageEngine::properties(
+    velocypack::Builder& builder, LogicalView const& view) noexcept {
   try {
     if (!builder.isOpenObject()) {
-      return Result(TRI_ERROR_BAD_PARAMETER,
-                    std::string(
-                        "invalid builder provided for LogicalView definition"));
+      return Result(
+          TRI_ERROR_BAD_PARAMETER,
+          std::string("invalid builder provided for LogicalView definition"));
     }
 
     auto& server = view.vocbase().server();
@@ -450,7 +466,8 @@ Result LogicalView::rename(std::string&& newName) {
   return Result(TRI_ERROR_INTERNAL);  // noexcept constructor
 }
 
-/*static*/ Result LogicalViewHelperStorageEngine::properties(LogicalView const& view) noexcept {
+/*static*/ Result LogicalViewHelperStorageEngine::properties(
+    LogicalView const& view) noexcept {
   try {
     if (!view.vocbase().server().hasFeature<DatabaseFeature>()) {
       return Result(TRI_ERROR_INTERNAL,
@@ -459,17 +476,22 @@ Result LogicalView::rename(std::string&& newName) {
                         view.name() + "' in database '" +
                         view.vocbase().name() + "'");
     }
-    auto& databaseFeature = view.vocbase().server().getFeature<DatabaseFeature>();
+    auto& databaseFeature =
+        view.vocbase().server().getFeature<DatabaseFeature>();
 
     if (!view.vocbase().server().hasFeature<EngineSelectorFeature>() ||
-        !view.vocbase().server().getFeature<EngineSelectorFeature>().selected()) {
+        !view.vocbase()
+             .server()
+             .getFeature<EngineSelectorFeature>()
+             .selected()) {
       return Result(TRI_ERROR_INTERNAL,
                     std::string("failed to find a storage engine while "
                                 "updating definition of view '") +
                         view.name() + "' in database '" +
                         view.vocbase().name() + "'");
     }
-    auto& engine = view.vocbase().server().getFeature<EngineSelectorFeature>().engine();
+    auto& engine =
+        view.vocbase().server().getFeature<EngineSelectorFeature>().engine();
 
     auto doSync = databaseFeature.forceSyncProperties();
 
@@ -487,8 +509,8 @@ Result LogicalView::rename(std::string&& newName) {
   return Result(TRI_ERROR_INTERNAL);  // noexcept constructor
 }
 
-/*static*/ Result LogicalViewHelperStorageEngine::rename(LogicalView const& view,
-                                                         std::string const& oldName) noexcept {
+/*static*/ Result LogicalViewHelperStorageEngine::rename(
+    LogicalView const& view, std::string const& oldName) noexcept {
   try {
     return view.vocbase().renameView(view.id(), oldName);
   } catch (basics::Exception const& e) {

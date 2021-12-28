@@ -24,19 +24,28 @@
 #include "RocksDBMetricsListener.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "RestServer/MetricsFeature.h"
+#include "Logger/LogMacros.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/MetricsFeature.h"
 
-DECLARE_COUNTER(arangodb_rocksdb_write_stalls_total, "Number of times RocksDB has entered a stalled (slowed) write state");
-DECLARE_COUNTER(arangodb_rocksdb_write_stops_total, "Number of times RocksDB has entered a stopped write state");
+DECLARE_COUNTER(
+    arangodb_rocksdb_write_stalls_total,
+    "Number of times RocksDB has entered a stalled (slowed) write state");
+DECLARE_COUNTER(arangodb_rocksdb_write_stops_total,
+                "Number of times RocksDB has entered a stopped write state");
 
 namespace arangodb {
 
 /// @brief Setup the object, clearing variables, but do no real work
-RocksDBMetricsListener::RocksDBMetricsListener(application_features::ApplicationServer& server)
-    : _writeStalls(server.getFeature<arangodb::MetricsFeature>().add(arangodb_rocksdb_write_stalls_total{})),
-      _writeStops(server.getFeature<arangodb::MetricsFeature>().add(arangodb_rocksdb_write_stops_total{})) {}
+RocksDBMetricsListener::RocksDBMetricsListener(
+    application_features::ApplicationServer& server)
+    : _writeStalls(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_rocksdb_write_stalls_total{})),
+      _writeStops(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_rocksdb_write_stops_total{})) {}
 
-void RocksDBMetricsListener::OnStallConditionsChanged(const rocksdb::WriteStallInfo& info) {
+void RocksDBMetricsListener::OnStallConditionsChanged(
+    const rocksdb::WriteStallInfo& info) {
   // we should only get here if there's an actual change
   TRI_ASSERT(info.condition.cur != info.condition.prev);
 

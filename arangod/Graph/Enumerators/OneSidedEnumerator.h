@@ -48,7 +48,7 @@ namespace graph {
 struct OneSidedEnumeratorOptions;
 class PathValidatorOptions;
 
-template <class Configuration>
+template<class Configuration>
 class OneSidedEnumerator : public TraversalEnumerator {
  public:
   using Step = typename Configuration::Step;  // public due to tracer access
@@ -86,12 +86,13 @@ class OneSidedEnumerator : public TraversalEnumerator {
    * @brief Reset to new source vertex.
    * This API uses string references, this class will not take responsibility
    * for the referenced data. It is caller's responsibility to retain the
-   * underlying data and make sure the StringRefs stay valid until next
+   * underlying data and make sure the strings stay valid until next
    * call of reset.
    *
    * @param source The source vertex to start the paths
    * @param depth The depth we're starting the search at
-   * @param weight The vertex ist starting to search at, only relevant for weighted searches
+   * @param weight The vertex ist starting to search at, only relevant for
+   * weighted searches
    * @param keepPathStore flag to determine that we should keep internas of last
    * run in memory. should be used if the last result is not processed yet, as
    * we will create invalid memory access in the handed out Paths.
@@ -146,6 +147,7 @@ class OneSidedEnumerator : public TraversalEnumerator {
   // Ensure that we have more valid paths in the _result stock.
   // May be a noop if _result is not empty.
   auto searchMoreResults() -> void;
+  void clearProvider();
 
  private:
   GraphOptions _options;

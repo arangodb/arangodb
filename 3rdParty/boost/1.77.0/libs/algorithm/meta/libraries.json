@@ -1,0 +1,50 @@
+[
+    {
+        "key": "algorithm",
+        "name": "Algorithm",
+        "authors": [
+            "Marshall Clow"
+        ],
+        "description": "A collection of useful generic algorithms.",
+        "category": [
+            "Algorithms"
+        ],
+        "maintainers": [
+            "Marshall Clow <marshall -at- idio.com>"
+        ],
+        "cxxstd": "03"
+    },
+    {
+        "key": "algorithm/minmax",
+        "name": "Min-Max",
+        "authors": [
+            "Hervé Brönnimann"
+        ],
+        "description": "Standard library extensions for simultaneous min/max and min/max element computations.",
+        "documentation": "minmax/",
+        "category": [
+            "Algorithms"
+        ],
+        "maintainers": [
+            "Marshall Clow <marshall -at- idio.com>"
+        ],
+        "cxxstd": "03"
+    },
+    {
+        "key": "algorithm/string",
+        "name": "String Algo",
+        "authors": [
+            "Pavol Droba"
+        ],
+        "description": "String algorithms library.",
+        "documentation": "string/",
+        "category": [
+            "Algorithms",
+            "String"
+        ],
+        "maintainers": [
+            "Marshall Clow <marshall -at- idio.com>"
+        ],
+        "cxxstd": "03"
+    }
+]

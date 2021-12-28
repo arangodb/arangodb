@@ -1,0 +1,48 @@
+[/
+  Copyright (c) Vladimir Batov 2009-2020
+  Distributed under the Boost Software License, Version 1.0.
+  See copy at http://www.boost.org/LICENSE_1_0.txt.
+]
+
+[section:error_detection Better Error Detection]
+
+[:[*['"Detection is, or ought to be, an exact science, ..." Sir Arthur Conan Doyle]]]
+
+[import ../example/getting_serious.cpp]
+
+[getting_serious_example1]
+
+The code above is straightforward and self-explanatory but, strictly speaking, is not entirely correct as -1 might be the result of a conversion failure or the successful conversion of the "-1" string. Still, in reality "spare" values (outside the valid\/sensible range) are often available to indicate conversion failures. If so, such straightorward deployment might be adequate. Alternatively, it might be not that uncommon to ignore conversion failures altogether and to simply log the event and to proceed with the supplied fallback value.
+
+Applications outside these mentioned categories still require conversion failure reliably detected and processed accordingly. The `boost::lexical_cast`'s (only) answer is to throw on failure and ['Boost.Convert] supports that behavior as well:
+
+[getting_serious_example2]
+
+However, to cater for a wider range of program-flow variations, ['Boost.Convert] adds the flexibility of
+
+* delaying the moment when the conversion-failure exception is actually thrown or
+* avoiding the exception altogether.
+
+[getting_serious_example3]
+
+Here [@boost:/libs/optional/index.html `boost::optional`] steps forward as the actual type returned by `boost::convert()` which until now we avoided by immediately calling its value-accessor methods:
+
+ int i1 = boost::convert<int>(str1, cnv).value();
+ int i2 = boost::convert<int>(str2, cnv).value_or(fallback_value);
+ int i3 = boost::convert<int>(str3, cnv).value_or_eval(fallback_function);
+
+[note One notable advantage of `value_or_eval()` over `value_or()` is that the actual calculation of the `fallback_value` is potentially delayed and conditional on the success or failure of the conversion.]
+
+From the user perspective, `boost::lexical_cast` processes failure in a somewhat one-dimensional non-negotiable manner. `boost::convert` takes a more flexible approach. It provides choice and leaves the decision to the user. It is not unimaginable that, on the library level, propagating the conversion-failure exception might be the only available option. On the application level though, in my personal experience, the choice has overwhelmingly been to handle conversion failures ['locally], i.e. avoiding conversion-failure exception propagation or, better still, avoiding exceptions altogether with program flows similar to:
+
+[getting_serious_example4]
+
+and
+
+[getting_serious_example5]
+[getting_serious_example6]
+
+[endsect] [/section:error_detection Better Error Detection]
+
+
+

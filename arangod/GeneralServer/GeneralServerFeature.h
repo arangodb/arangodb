@@ -27,14 +27,18 @@
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
-#include "RestServer/Metrics.h"
+#include "Metrics/Counter.h"
+#include "Metrics/LogScale.h"
+#include "Metrics/Histogram.h"
 
 namespace arangodb {
 class RestServerThread;
 
-class GeneralServerFeature final : public application_features::ApplicationFeature {
+class GeneralServerFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit GeneralServerFeature(application_features::ApplicationServer& server);
+  explicit GeneralServerFeature(
+      application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -46,7 +50,7 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   void unprepare() override final;
 
   double keepAliveTimeout() const noexcept;
-  bool proxyCheck() const noexcept ;
+  bool proxyCheck() const noexcept;
   bool returnQueueTimeHeader() const noexcept;
   std::vector<std::string> trustedProxies() const;
   bool allowMethodOverride() const noexcept;
@@ -71,16 +75,11 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
     _requestBodySizeVst.count(bodySize);
   }
 
-  void countHttp2Connection() {
-    _http2Connections.count();
-  }
+  void countHttp2Connection() { _http2Connections.count(); }
 
-  void countVstConnection() {
-    _vstConnections.count();
-  }
+  void countVstConnection() { _vstConnections.count(); }
 
  private:
-
   void buildServers();
   void defineHandlers();
 
@@ -100,12 +99,11 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   uint64_t _numIoThreads;
 
   // Some metrics about
-  Histogram<log_scale_t<uint64_t>>& _requestBodySizeHttp1;
-  Histogram<log_scale_t<uint64_t>>& _requestBodySizeHttp2;
-  Histogram<log_scale_t<uint64_t>>& _requestBodySizeVst;
-  Counter& _http2Connections;
-  Counter& _vstConnections;
+  metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp1;
+  metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp2;
+  metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeVst;
+  metrics::Counter& _http2Connections;
+  metrics::Counter& _vstConnections;
 };
 
 }  // namespace arangodb
-

@@ -30,7 +30,7 @@
 #include <thread>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 
@@ -45,12 +45,12 @@ using namespace arangodb;
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_non_overlapping) {
   application_features::ApplicationServer server{nullptr, nullptr};
-  server.addFeature<MetricsFeature>();
+  server.addFeature<metrics::MetricsFeature>();
   transaction::ManagerFeature feature(server);
   transaction::Manager tm(feature);
 
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
-  EXPECT_TRUE(tm.holdTransactions(500) );
+  EXPECT_TRUE(tm.holdTransactions(500));
   tm.releaseTransactions();
 
   tm.registerTransaction(static_cast<TransactionId>(1), false, false);
@@ -58,14 +58,14 @@ TEST(RocksDBTransactionManager, test_non_overlapping) {
   tm.unregisterTransaction(static_cast<TransactionId>(1), false, false);
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
 
-  EXPECT_TRUE(tm.holdTransactions(500) );
+  EXPECT_TRUE(tm.holdTransactions(500));
   tm.releaseTransactions();
 }
 
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_overlapping) {
   application_features::ApplicationServer server{nullptr, nullptr};
-  server.addFeature<MetricsFeature>();
+  server.addFeature<metrics::MetricsFeature>();
   transaction::ManagerFeature feature(server);
   transaction::Manager tm(feature);
 
@@ -74,11 +74,11 @@ TEST(RocksDBTransactionManager, test_overlapping) {
   std::condition_variable cv;
 
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
-  EXPECT_TRUE(tm.holdTransactions(500) );
+  EXPECT_TRUE(tm.holdTransactions(500));
 
   std::unique_lock<std::mutex> lock(mu);
 
-  auto getReadLock = [&] () -> void {
+  auto getReadLock = [&]() -> void {
     {
       std::unique_lock<std::mutex> innerLock(mu);
       cv.notify_all();

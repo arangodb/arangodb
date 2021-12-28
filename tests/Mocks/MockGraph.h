@@ -20,8 +20,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TESTS_MOCK_GRAPH_H
-#define TESTS_MOCK_GRAPH_H
+#pragma once
 
 #include "Basics/operating-system.h"
 
@@ -111,25 +110,30 @@ class MockGraph {
     return _edgeCollectionName + "/" + std::to_string(edge);
   }
 
-  template <class ServerType>
+  template<class ServerType>
   void prepareServer(ServerType& server) const;
 
-  template <class ServerType>
-  std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> simulateApi(
+  template<class ServerType>
+  std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t>
+  simulateApi(
       ServerType& server,
-      std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const& expectedVerticesEdgesBundleToFetch,
+      std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const&
+          expectedVerticesEdgesBundleToFetch,
       arangodb::graph::BaseOptions& opts) const;
 
-  void storeData(TRI_vocbase_t& vocbase, std::string const& vertexCollectionName,
+  void storeData(TRI_vocbase_t& vocbase,
+                 std::string const& vertexCollectionName,
                  std::string const& edgeCollectionName,
                  std::string const& edgeCollectionSecondName = "",
                  std::vector<EdgeDef> const& secondEdges = {}) const;
 
  protected:
-  std::vector<std::pair<std::string, std::string>> const& getVertexShardNameServerPairs() const {
+  std::vector<std::pair<std::string, std::string>> const&
+  getVertexShardNameServerPairs() const {
     return _vertexShards;
   }
-  std::vector<std::pair<std::string, std::string>> const& getEdgeShardNameServerPairs() const {
+  std::vector<std::pair<std::string, std::string>> const&
+  getEdgeShardNameServerPairs() const {
     return _edgeShards;
   }
 
@@ -148,5 +152,3 @@ class MockGraph {
 }  // namespace graph
 }  // namespace tests
 }  // namespace arangodb
-
-#endif
