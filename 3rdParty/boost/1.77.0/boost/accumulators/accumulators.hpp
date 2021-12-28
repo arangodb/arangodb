@@ -7,7 +7,7 @@
 //  LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
 int main(int argc, char const *argv[])
-{/* code */ return 0;}
+{/* code */ return 0; // test}
 
 #ifndef BOOST_ACCUMULATORS_ACCUMULATORS_HPP_EAN_28_10_2005
 #define BOOST_ACCUMULATORS_ACCUMULATORS_HPP_EAN_28_10_2005
