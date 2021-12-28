@@ -5,16 +5,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: Ana06/get-changed-files@v2.0.0
-        id: gcf
         with:
-          filter: |
-            **/*.cpp
-            **/*.hpp
-            **/*.cc
-            **/*.c
-            **/*.h
+          fetch-depth: 0
+      - name: Get changed files
+        run: echo "CHANGED_FILES=$(git diff --name-only ${{ github.event.before }}..${{ github.event.after }} -- arangod/ client-tools/ lib/ tests/ | grep -e .cpp -e .hpp -e .cc -e .c -e .h | sed -z 's/\n/\ /g')" >> $GITHUB_ENV
       - name: arangodb-clang-format
         uses: arangodb/clang-format-action@1.0.0
         with:
-          sources: "${{ steps.gcf.outputs.added_modified }}"
+          sources: ${{env.CHANGED_FILES}}
