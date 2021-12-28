@@ -70,7 +70,7 @@ struct LimitFullCountChecker final
   bool seenFullCount{false};
   bool seenFullCountLimitWithoutSort{false};
 
-LimitFullCountChecker() = default;
+  LimitFullCountChecker() = default;
 
   void after(ExecutionNode* en) override {
     switch (en->getType()) {
@@ -81,7 +81,7 @@ LimitFullCountChecker() = default;
           TRI_ASSERT(0 == subqueryRecursionCounter);  // rule 2
           auto const* dependency = en->getFirstDependency();
           seenFullCountLimitWithoutSort =
-                !dependency || dependency->getType() != ExecutionNode::SORT;
+              !dependency || dependency->getType() != ExecutionNode::SORT;
           seenFullCount = true;
         } else {
           if (0 == subqueryRecursionCounter) {
@@ -104,12 +104,14 @@ LimitFullCountChecker() = default;
   }
 
   /// @brief return true to enter subqueries, false otherwise
-  bool enterSubquery(ExecutionNode* /*super*/, ExecutionNode* /*sub*/) override {
+  bool enterSubquery(ExecutionNode* /*super*/,
+                     ExecutionNode* /*sub*/) override {
     ++subqueryRecursionCounter;
     return true;
   }
 
-  virtual void leaveSubquery(ExecutionNode* /*super*/, ExecutionNode* /*sub*/) override {
+  virtual void leaveSubquery(ExecutionNode* /*super*/,
+                             ExecutionNode* /*sub*/) override {
     TRI_ASSERT(subqueryRecursionCounter > 0);
     --subqueryRecursionCounter;
   }
