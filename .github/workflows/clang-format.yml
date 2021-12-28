@@ -12,6 +12,6 @@ jobs:
       - name: Echo changed files
         run: echo $CHANGED_FILES
       - name: arangodb-clang-format
-        uses: arangodb/clang-format-action@1.0.0
+        uses: arangodb/clang-format-action@1.0.1
         with:
           sources: ${{env.CHANGED_FILES}}
