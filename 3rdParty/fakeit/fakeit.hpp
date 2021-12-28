@@ -266,7 +266,8 @@ namespace fakeit {
 		static std::string format(C const &val)
 		{
 			std::ostringstream os;
-			os << val; return os.str();
+			os << val;
+			return os.str();
 		}
 	};
 
