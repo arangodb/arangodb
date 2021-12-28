@@ -1,6 +1,8 @@
 v3.8.5 (XXXX-XX-XX)
 -------------------
 
+* Added new AQL function SHARD_ID.
+
 * Updated arangosync to 2.7.0.
 
 * Fixed PRESUPP-439: In arangoimport, for CSV and TSV files, it could happen
