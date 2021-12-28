@@ -1,6 +1,8 @@
 v3.7.17 (XXXX-XX-XX)
 --------------------
 
+* Updated OpenSSL to 1.1.1m and OpenLDAP to 2.6.0.
+
 * Set the limit for ArangoSearch segment size to 256MB during recovery to avoid
   OOM kill in rare cases.
 
