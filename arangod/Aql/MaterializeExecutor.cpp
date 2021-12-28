@@ -105,11 +105,8 @@ arangodb::aql::MaterializeExecutor<T>::produceRows(
     TRI_IF_FAILURE("MaterializeExecutor::all_fail") { continue; }
 
     TRI_IF_FAILURE("MaterializeExecutor::only_one") {
-      static bool skipMe{false};
-      if (skipMe) {
+      if (output.numRowsWritten() > 0) {
         continue;
-      } else {
-        skipMe = true;
       }
     }
 
