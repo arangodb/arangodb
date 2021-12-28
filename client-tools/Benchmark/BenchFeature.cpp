@@ -283,8 +283,7 @@ void BenchFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void BenchFeature::status(std::string const& value) {
-  if (!_quiet) {
-    LOG_TOPIC("a6905", INFO, arangodb::Logger::BENCH) << value;
+  if (!_quiet) { LOG_TOPIC("a6905", INFO, arangodb::Logger::BENCH) << value;
   }
 }
 

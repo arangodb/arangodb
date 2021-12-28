@@ -72,8 +72,7 @@ namespace boost { namespace algorithm {
   BOOST_CXX14_CONSTEXPR T const& clamp ( const T& val, 
     typename boost::mpl::identity<T>::type const & lo, 
     typename boost::mpl::identity<T>::type const & hi )
-  {
-    return boost::algorithm::clamp ( val, lo, hi, std::less<T>());
+  { return boost::algorithm::clamp ( val, lo, hi, std::less<T>());
   } 
 
 /// \fn clamp_range ( InputIterator first, InputIterator last, OutputIterator out, 
