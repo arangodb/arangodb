@@ -2,7 +2,7 @@ name: clang-format
 on:
   workflow_dispatch:
   pull_request:
-    branches: [ devel ]
+    branches: [ devel, "3.9" ]
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -17,4 +17,4 @@ jobs:
       - name: arangodb-clang-format
         uses: arangodb/clang-format-action@1.0.1
         with:
-          sources: ${{env.CHANGED_FILES}} 
+          sources: ${{env.CHANGED_FILES}}
