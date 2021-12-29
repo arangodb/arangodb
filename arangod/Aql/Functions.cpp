@@ -8746,11 +8746,12 @@ AqlValue Functions::ShardId(ExpressionContext* expressionContext,
   std::shared_ptr<LogicalCollection> collection;
   auto const colName = col.copyString();
   auto const dbName = vocbase.name();
+  auto const cluster = role == ServerState::ROLE_COORDINATOR || role == ServerState::ROLE_DBSERVER;
 
-  if (role == ServerState::ROLE_COORDINATOR || role == ServerState::ROLE_DBSERVER) {
+  if (cluster) {
     auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
     collection = ci.getCollection(dbName, colName);
-  } else {
+  } else { // single server, agents, active failover try to not break cluster ready code
     methods::Collections::lookup(vocbase, colName, collection);
   }
 
@@ -8760,7 +8761,7 @@ AqlValue Functions::ShardId(ExpressionContext* expressionContext,
   }
 
   std::string shardId;
-  if (role == ServerState::ROLE_COORDINATOR || role == ServerState::ROLE_DBSERVER) {
+  if (cluster) {
     auto const errorCode = collection->getResponsibleShard(keys, true, shardId);
     if(errorCode != TRI_ERROR_NO_ERROR) {
       LOG_DEVEL << collection->name();
