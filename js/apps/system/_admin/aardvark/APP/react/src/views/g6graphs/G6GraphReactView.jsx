@@ -16,6 +16,7 @@ import DataGraph from './DataGraph.js';
 import 'antd/dist/antd.css';
 import iconLoader from '@antv/graphin-icons';
 import '@antv/graphin-icons/dist/index.css';
+import G6JsGraph from './G6JsGraph';
 
 import "@antv/graphin/dist/index.css";
 //import "@antv/graphin-components/dist/index.css";
