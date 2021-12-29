@@ -26,7 +26,10 @@ auto to_string(LeaderElectionCampaign::Reason reason) -> std::string_view {
       return "TermNotConfirmed";
     } break;
   }
+  return "this-value-is-here-to-shut-up-the-compiler-if-this-is-reached-that-"
+         "is-a-bug";
 }
+
 auto operator<<(std::ostream& os, LeaderElectionCampaign::Reason reason)
     -> std::ostream& {
   return os << to_string(reason);
@@ -79,6 +82,8 @@ auto to_string(Action::ActionType action) -> std::string_view {
       return "ImpossibleCampaignAction";
     } break;
   }
+  return "this-value-is-here-to-shut-up-the-compiler-if-this-is-reached-that-"
+         "is-a-bug";
 }
 
 auto operator<<(std::ostream& os, Action::ActionType const& action)
@@ -143,8 +148,7 @@ auto replicatedLogAction(Log const& log, ParticipantsHealth const& health)
     // There aren't enough participants to reach a quorum
     if (log.plan.participants.set.size() + 1 <
         log.plan.termSpec.config.writeConcern) {
-
-        LOG_TOPIC("banana", WARN, Logger::REPLICATION2)
+      LOG_TOPIC("banana", WARN, Logger::REPLICATION2)
           << "replicated log not enough participants available for leader "
              "election campaign "
           << log.plan.participants.set.size() + 1 << " < "
@@ -193,8 +197,10 @@ auto replicatedLogAction(Log const& log, ParticipantsHealth const& health)
       action->_campaign = campaign;
       action->_newTerm = Log::Plan::TermSpecification{
           .term = LogTerm{log.plan.termSpec.term.value + 1},
-          .leader = Log::Plan::TermSpecification::Leader{
-              .serverId = newLeader, .rebootId = newLeaderRebootId}};
+          .leader =
+              Log::Plan::TermSpecification::Leader{
+                  .serverId = newLeader, .rebootId = newLeaderRebootId},
+          .config = log.plan.termSpec.config};
       action->_newLeader = newLeader;
 
       return action;
