@@ -8759,7 +8759,6 @@ AqlValue Functions::ShardId(ExpressionContext* expressionContext,
   if (cluster) {
     auto const errorCode = collection->getResponsibleShard(keys, true, shardId);
     if(errorCode != TRI_ERROR_NO_ERROR) {
-      LOG_DEVEL << collection->name();
       THROW_ARANGO_EXCEPTION_MESSAGE(
         errorCode, "could not find shard for document by shard keys " + keys.toJson() + " in " + colName);
     }
