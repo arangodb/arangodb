@@ -234,3 +234,31 @@ auto LogStatus::toVelocyPack(velocypack::Builder& builder) const -> void {
 auto LogStatus::asLeaderStatus() const noexcept -> LeaderStatus const* {
   return std::get_if<LeaderStatus>(&_variant);
 }
+
+namespace {
+inline constexpr std::string_view kSupervision = "supervision";
+inline constexpr std::string_view kLogStatus = "logStatus";
+}  // namespace
+
+auto GlobalStatus::toVelocyPack(velocypack::Builder& builder) const -> void {
+  VPackObjectBuilder ob(&builder);
+  builder.add(VPackValue(kSupervision));
+  supervision.toVelocyPack(builder);
+  if (logStatus.has_value()) {
+    builder.add(VPackValue(kLogStatus));
+    logStatus->toVelocyPack(builder);
+  }
+}
+
+auto GlobalStatus::fromVelocyPack(VPackSlice slice) -> GlobalStatus {
+  GlobalStatus status;
+  auto sup = slice.get(kSupervision);
+  TRI_ASSERT(!sup.isNone())
+      << "expected " << kSupervision << " key in GlobalStatus";
+  status.supervision =
+      agency::LogCurrentSupervision{agency::from_velocypack, sup};
+  if (auto logStatus = slice.get(kLogStatus); !logStatus.isNone()) {
+    status.logStatus = LogStatus::fromVelocyPack(logStatus);
+  }
+  return status;
+}

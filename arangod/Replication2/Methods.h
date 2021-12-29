@@ -22,6 +22,7 @@
 #pragma once
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/LogStatus.h"
 
 namespace arangodb {
 class Result;
@@ -62,7 +63,7 @@ struct ReplicatedLogMethods {
       -> futures::Future<std::unordered_map<arangodb::replication2::LogId,
                                             replicated_log::LogStatus>> = 0;
   virtual auto getLogStatus(LogId) const
-      -> futures::Future<replication2::replicated_log::LogStatus> = 0;
+      -> futures::Future<replication2::replicated_log::GlobalStatus> = 0;
 
   virtual auto getLogEntryByIndex(LogId, LogIndex) const
       -> futures::Future<std::optional<PersistingLogEntry>> = 0;

@@ -30,6 +30,7 @@
 #include <velocypack/Slice.h>
 
 #include "Replication2/ReplicatedLog/types.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
 namespace arangodb::replication2::replicated_log {
 
@@ -129,6 +130,20 @@ struct LogStatus {
 
  private:
   VariantType _variant;
+};
+
+/**
+ * @brief Provides a more general view of what's currently going on, without
+ * completely relying on the leader.
+ */
+struct GlobalStatus {
+  // TODO
+  // There's a few ways to go about this: both optional, only logStatus
+  // optional, or keep only one using a variant
+  agency::LogCurrentSupervision supervision;
+  std::optional<LogStatus> logStatus;
+  static auto fromVelocyPack(velocypack::Slice slice) -> GlobalStatus;
+  void toVelocyPack(velocypack::Builder& builder) const;
 };
 
 }  // namespace arangodb::replication2::replicated_log

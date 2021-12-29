@@ -24,6 +24,7 @@
 #include <Basics/voc-errors.h>
 #include <Futures/Future.h>
 
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -38,7 +39,21 @@
 
 using namespace arangodb;
 using namespace arangodb::replication2;
+using namespace arangodb::replication2::agency;
 using namespace arangodb::replication2::replicated_log;
+
+namespace {
+auto getAgencyCurrentSupervision(TRI_vocbase_t& vocbase, LogId id)
+    -> LogCurrentSupervision {
+  auto& agencyCache =
+      vocbase.server().getFeature<ClusterFeature>().agencyCache();
+  VPackBuilder builder;
+  agencyCache.get(builder, basics::StringUtils::concatT(
+                               "Current/ReplicatedLogs/", vocbase.name(), "/",
+                               id, "/supervision"));
+  return LogCurrentSupervision{from_velocypack, builder.slice()};
+}
+}  // namespace
 
 struct ReplicatedLogMethodsDBServer final
     : ReplicatedLogMethods,
@@ -61,8 +76,11 @@ struct ReplicatedLogMethodsDBServer final
   }
 
   auto getLogStatus(LogId id) const
-      -> futures::Future<replication2::replicated_log::LogStatus> override {
-    return vocbase.getReplicatedLogById(id)->getParticipant()->getStatus();
+      -> futures::Future<replication2::replicated_log::GlobalStatus> override {
+    return GlobalStatus{
+        .supervision = getAgencyCurrentSupervision(vocbase, id),
+        .logStatus =
+            vocbase.getReplicatedLogById(id)->getParticipant()->getStatus()};
   }
 
   auto getLogEntryByIndex(LogId id, LogIndex index) const
@@ -201,18 +219,30 @@ struct ReplicatedLogMethodsCoordinator final
   }
 
   auto getLogStatus(LogId id) const
-      -> futures::Future<replication2::replicated_log::LogStatus> override {
+      -> futures::Future<replication2::replicated_log::GlobalStatus> override {
     auto path = basics::StringUtils::joinT("/", "_api/log", id);
     network::RequestOptions opts;
     opts.database = vocbase.name();
-    return network::sendRequest(pool, "server:" + getLogLeader(id),
+    ServerID leaderId;
+
+    try {
+      leaderId = getLogLeader(id);
+    } catch (basics::Exception const& ex) {
+      if (ex.code() == TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED) {
+        return GlobalStatus{getAgencyCurrentSupervision(vocbase, id),
+                            std::nullopt};
+      }
+      throw;
+    }
+
+    return network::sendRequest(pool, "server:" + leaderId,
                                 fuerte::RestVerb::Get, path)
         .thenValue([](network::Response&& resp) {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());
           }
 
-          return replication2::replicated_log::LogStatus::fromVelocyPack(
+          return replication2::replicated_log::GlobalStatus::fromVelocyPack(
               resp.slice().get("result"));
         });
   }
@@ -419,7 +449,6 @@ struct ReplicatedLogMethodsCoordinator final
     if (leader.fail()) {
       THROW_ARANGO_EXCEPTION(leader.result());
     }
-
     return *leader;
   }
 
