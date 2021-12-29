@@ -251,3 +251,42 @@ TEST(LogStatusTest, follower_status) {
       << "expected " << followerSlice.toJson() << " found "
       << builderSlice.toJson();
 }
+
+TEST(LogStatusTest, global_status) {
+  auto election = agency::LogCurrentSupervisionElection{};
+  election.term = LogTerm{1};
+  election.participantsRequired = 2;
+  election.participantsAvailable = 0;
+
+  auto supervision = agency::LogCurrentSupervision{};
+  supervision.election = std::move(election);
+
+  auto status = GlobalStatus{supervision, LogStatus{UnconfiguredStatus{}}};
+
+  VPackBuilder builder;
+  status.toVelocyPack(builder);
+  auto slice = builder.slice();
+
+  auto jsonBuffer = R"({
+    "supervision": {
+      "election": {
+        "term": 1,
+        "participantsRequired": 2,
+        "participantsAvailable": 0,
+        "details": {}
+      }
+    },
+    "logStatus": {
+      "role": "unconfigured"
+    }
+  })"_vpack;
+  auto statusSlice = velocypack::Slice(jsonBuffer->data());
+  EXPECT_TRUE(VelocyPackHelper::equal(slice, statusSlice, true))
+      << "expected " << slice.toJson() << " found " << statusSlice.toJson();
+
+  builder.clear();
+  status.logStatus = std::nullopt;
+  status.toVelocyPack(builder);
+  status = GlobalStatus::fromVelocyPack(builder.slice());
+  EXPECT_EQ(status.logStatus, std::nullopt);
+}
