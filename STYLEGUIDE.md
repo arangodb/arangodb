@@ -10,14 +10,15 @@ You are expected to format your local changes via clang-format. Here are your op
         * Git 2.9+
     * how-to (one-time setup)
         * `cd arangodb`
-        * `git config core.hooksPath .git/hooks`
         * `cp .githooks/pre-commit-[linux, macos, windows] .git/hooks/pre-commit`
+        * `git config core.hooksPath .git/hooks`
         * `cd enterprise`
-        * `git config core.hooksPath .git/hooks`
         * `cp .githooks/pre-commit-[linux, macos, windows] .git/hooks/pre-commit`
+        * `git config core.hooksPath .git/hooks`
 2. Lint with a **local shell script** (OS dependant)
     * pre-requisites
         * Docker
+        * Your local changes have been added with `git add`
     * how-to (must run manually)
         * `cd arangodb`
         * `./scripts/clang-format-[linux, macos, windows].sh`
