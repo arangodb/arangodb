@@ -1,5 +1,7 @@
 devel
 -----
+* Fixed BTS-693: Sort-limit rule now always ensures proper LIMIT node placement
+  to avoid possible invalid results in the fullCount data.
 
 * Added new AQL function SHARD_ID.
 
