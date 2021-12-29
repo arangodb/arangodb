@@ -102,10 +102,16 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
         _uniqueVertices.emplace(step.getVertexIdentifier());
 
     if (!step.isFirst()) {
-      auto const& [unusedE, addedEdge] =
-          _uniqueEdges.emplace(step.getEdgeIdentifier());
+      bool edgeSuccess = _store.visitReversePath(
+          step, [&](typename PathStore::Step const& step) -> bool {
+            auto const& [unusedE, addedEdge] =
+                _uniqueEdges.emplace(step.getEdgeIdentifier());
+            // If this add fails, we need to exclude this path
+            return addedEdge;
+          });
+
       // If this add fails, we need to exclude this path
-      if (!addedVertex || !addedEdge) {
+      if (!addedVertex || !edgeSuccess) {
         res.combine(ValidationResult::Type::FILTER_AND_PRUNE);
       }
     } else {
@@ -117,15 +123,19 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   }
   if constexpr (vertexUniqueness == VertexUniquenessLevel::NONE &&
                 edgeUniqueness == EdgeUniquenessLevel::PATH) {
-    LOG_DEVEL << "Step is first: " << step.isFirst();
-
     _uniqueEdges.clear();
 
     if (!step.isFirst()) {
-      auto const& [unusedE, addedEdge] =
-          _uniqueEdges.emplace(step.getEdgeIdentifier());
+      bool edgeSuccess = _store.visitReversePath(
+          step, [&](typename PathStore::Step const& step) -> bool {
+            auto const& [unusedE, addedEdge] =
+                _uniqueEdges.emplace(step.getEdgeIdentifier());
+            // If this add fails, we need to exclude this path
+            return addedEdge;
+          });
+
       // If this add fails, we need to exclude this path
-      if (!addedEdge) {
+      if (!edgeSuccess) {
         res.combine(ValidationResult::Type::FILTER_AND_PRUNE);
       }
     }
