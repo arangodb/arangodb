@@ -11,6 +11,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <memory>
 
 namespace arangodb::replication2::replicated_state {
 
@@ -126,99 +127,104 @@ auto runElectionCampaign(Log::Current::LocalStates const& states,
   return campaign;
 }
 
+auto checkLeaderHealth(Log const& log, ParticipantsHealth const& health)
+    -> std::unique_ptr<Action> {
+  if (health.isHealthy(log.plan.termSpec.leader->serverId) &&
+      health.validRebootId(log.plan.termSpec.leader->serverId,
+                           log.plan.termSpec.leader->rebootId)) {
+    // Current leader is all healthy so nothing to do.
+    return nullptr;
+  } else {
+    // Leader is not healthy; start a new term
+    auto newTerm = Log::Plan::TermSpecification{};
+
+    newTerm.leader.reset();
+    newTerm.term = LogTerm{log.plan.termSpec.term.value + 1};
+
+    return std::make_unique<UpdateTermAction>(newTerm);
+  }
+}
+
+auto tryLeadershipElection(Log const& log, ParticipantsHealth const& health)
+    -> std::unique_ptr<Action> {
+  // Check whether there are enough participants to reach a quorum
+  if (log.plan.participants.set.size() + 1 <
+      log.plan.termSpec.config.writeConcern) {
+    return std::make_unique<ImpossibleCampaignAction>(
+        /* TODO: should we have an error message? */);
+  }
+
+  TRI_ASSERT(log.plan.participants.set.size() + 1 >=
+             log.plan.termSpec.config.writeConcern);
+
+  auto const requiredNumberOfOKParticipants =
+      log.plan.participants.set.size() - log.plan.termSpec.config.writeConcern +
+      1;
+
+  // Find the participants that are healthy and that have the best LogTerm
+  auto const campaign = runElectionCampaign(log.current.localStates, health,
+                                            log.plan.termSpec.term);
+
+  auto const numElectible = campaign.electibleLeaderSet.size();
+
+  // Something went really wrong: we have enough ok participants, but none
+  // of them is electible, or too many of them are (we only support
+  // uint16_t::max participants at the moment)
+  //
+  // TODO: should this really be throwing or just erroring?
+  if (ADB_UNLIKELY(numElectible == 0 ||
+                   numElectible > std::numeric_limits<uint16_t>::max())) {
+    abortOrThrow(TRI_ERROR_NUMERIC_OVERFLOW,
+                 basics::StringUtils::concatT(
+                     "Number of participants electible for leadership out "
+                     "of range, should be between ",
+                     1, " and ", std::numeric_limits<uint16_t>::max(),
+                     ", but is ", numElectible),
+                 ADB_HERE);
+  }
+
+  if (campaign.numberOKParticipants >= requiredNumberOfOKParticipants) {
+    // We randomly elect on of the electible leaders
+    auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
+    auto const& newLeader =
+        campaign.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
+    auto const& newLeaderRebootId = health._health.at(newLeader).rebootId;
+
+    auto action = std::make_unique<SuccessfulLeaderElectionAction>();
+
+    action->_campaign = campaign;
+    action->_newTerm = Log::Plan::TermSpecification{
+        .term = LogTerm{log.plan.termSpec.term.value + 1},
+        .leader =
+            Log::Plan::TermSpecification::Leader{.serverId = newLeader,
+                                                 .rebootId = newLeaderRebootId},
+        .config = log.plan.termSpec.config};
+    action->_newLeader = newLeader;
+
+    return action;
+  } else {
+    // Not enough participants were available to form a quorum, so
+    // we can't elect a leader
+    auto action = std::make_unique<FailedLeaderElectionAction>();
+    action->_campaign = campaign;
+    return action;
+  }
+}
+
 auto replicatedLogAction(Log const& log, ParticipantsHealth const& health)
     -> std::unique_ptr<Action> {
   if (log.plan.termSpec.leader) {
-    if (health.isHealthy(log.plan.termSpec.leader->serverId) &&
-        health.validRebootId(log.plan.termSpec.leader->serverId,
-                             log.plan.termSpec.leader->rebootId)) {
-      // Current leader is all healthy so nothing to do.
-      return nullptr;
-    } else {
-      auto newTerm = Log::Plan::TermSpecification{};
-
-      newTerm.leader.reset();
-      newTerm.term = LogTerm{log.plan.termSpec.term.value + 1};
-
-      return std::make_unique<UpdateTermAction>(newTerm);
-    }
+    // We have a leader; we check that the leader is
+    // healthy; if it is, there is nothing to do,
+    // if it isn't we
+    return checkLeaderHealth(log, health);
   } else {
     // New leader required; we try running an election
-
-    // There aren't enough participants to reach a quorum
-    if (log.plan.participants.set.size() + 1 <
-        log.plan.termSpec.config.writeConcern) {
-      LOG_TOPIC("banana", WARN, Logger::REPLICATION2)
-          << "replicated log not enough participants available for leader "
-             "election campaign "
-          << log.plan.participants.set.size() + 1 << " < "
-          << log.plan.termSpec.config.writeConcern;
-
-      return std::make_unique<ImpossibleCampaignAction>();
-    }
-
-    auto const& termSpec = log.plan.termSpec;
-    auto const& campaign =
-        runElectionCampaign(log.current.localStates, health, termSpec.term);
-
-    // This should be taken care of by a test above
-    TRI_ASSERT(log.plan.participants.set.size() + 1 >=
-               log.plan.termSpec.config.writeConcern);
-    auto const requiredNumberOfOKParticipants =
-        log.plan.participants.set.size() -
-        log.plan.termSpec.config.writeConcern + 1;
-
-    if (campaign.numberOKParticipants >= requiredNumberOfOKParticipants) {
-      auto const numElectible = campaign.electibleLeaderSet.size();
-
-      // Something went really wrong: we have enough ok participants, but none
-      // of them is electible, or too many of them are (we only support
-      // uint16_t::max participants at the moment)
-      if (ADB_UNLIKELY(numElectible == 0 ||
-                       numElectible > std::numeric_limits<uint16_t>::max())) {
-        abortOrThrow(TRI_ERROR_NUMERIC_OVERFLOW,
-                     basics::StringUtils::concatT(
-                         "Number of participants electible for leadership out "
-                         "of range, should be between ",
-                         1, " and ", std::numeric_limits<uint16_t>::max(),
-                         ", but is ", numElectible),
-                     ADB_HERE);
-      }
-
-      // We randomly elect on of the electible leaders
-      // TODO this can be straightened out a bit
-      auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
-
-      auto const& newLeader =
-          campaign.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
-      auto const& newLeaderRebootId = health._health.at(newLeader).rebootId;
-
-      auto action = std::make_unique<SuccessfulLeaderElectionAction>();
-      action->_campaign = campaign;
-      action->_newTerm = Log::Plan::TermSpecification{
-          .term = LogTerm{log.plan.termSpec.term.value + 1},
-          .leader =
-              Log::Plan::TermSpecification::Leader{
-                  .serverId = newLeader, .rebootId = newLeaderRebootId},
-          .config = log.plan.termSpec.config};
-      action->_newLeader = newLeader;
-
-      return action;
-    } else {
-      // Not enough participants were available to form a quorum, so
-      // we can't elect a leader
-
-      LOG_TOPIC("banana", WARN, Logger::REPLICATION2)
-          << "replicated log not enough participants available for leader "
-             "election "
-          << campaign.numberOKParticipants << " < "
-          << requiredNumberOfOKParticipants;
-
-      auto action = std::make_unique<FailedLeaderElectionAction>();
-      action->_campaign = campaign;
-      return action;
-    }
+    return tryLeadershipElection(log, health);
   }
+
+  // This is only here to make the compiler happy; we should never end up here;
+  TRI_ASSERT(false);
   return nullptr;
 }
 
