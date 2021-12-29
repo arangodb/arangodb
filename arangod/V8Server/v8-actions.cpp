@@ -1911,12 +1911,14 @@ static void JS_IsFoxxStoreDisabled(
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_FoxxAllowInstallFromRemote(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_FoxxAllowInstallFromRemote(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
   TRI_GET_GLOBALS();
-  ServerSecurityFeature& security = v8g->_server.getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security =
+      v8g->_server.getFeature<ServerSecurityFeature>();
   TRI_V8_RETURN_BOOL(security.foxxAllowInstallFromRemote());
 
   TRI_V8_TRY_CATCH_END
@@ -2009,7 +2011,9 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_STORE_DISABLED"),
       JS_IsFoxxStoreDisabled, true);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_FOXX_ALLOW_INSTALL_FROM_REMOTE"),
+  TRI_AddGlobalFunctionVocbase(
+      isolate,
+      TRI_V8_ASCII_STRING(isolate, "SYS_FOXX_ALLOW_INSTALL_FROM_REMOTE"),
       JS_FoxxAllowInstallFromRemote, true);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_RUN_IN_RESTRICTED_CONTEXT"),
