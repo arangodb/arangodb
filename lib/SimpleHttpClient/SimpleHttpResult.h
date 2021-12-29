@@ -246,7 +246,7 @@ class SimpleHttpResult final {
   // flag which indicates whether or not the complete request has already be
   // sent (to the operating system):
   bool _haveSentRequestFully;
-  
+
   // request result type
   enum resultTypes _requestResultType;
 

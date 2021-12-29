@@ -37,7 +37,8 @@
 
 using namespace arangodb;
 
-static void JS_UnregisterAQLUserFunction(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_UnregisterAQLUserFunction(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -57,7 +58,8 @@ static void JS_UnregisterAQLUserFunction(v8::FunctionCallbackInfo<v8::Value> con
   TRI_V8_TRY_CATCH_END;
 }
 
-static void JS_UnregisterAQLUserFunctionsGroup(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_UnregisterAQLUserFunctionsGroup(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -69,7 +71,8 @@ static void JS_UnregisterAQLUserFunctionsGroup(v8::FunctionCallbackInfo<v8::Valu
   int deleteCount;
   auto& vocbase = GetContextVocBase(isolate);
   std::string functionFilterPrefix = TRI_ObjectToString(isolate, args[0]);
-  Result rv = unregisterUserFunctionsGroup(vocbase, functionFilterPrefix, deleteCount);
+  Result rv =
+      unregisterUserFunctionsGroup(vocbase, functionFilterPrefix, deleteCount);
 
   if (rv.fail()) {
     TRI_V8_THROW_EXCEPTION(rv);
@@ -79,7 +82,8 @@ static void JS_UnregisterAQLUserFunctionsGroup(v8::FunctionCallbackInfo<v8::Valu
   TRI_V8_TRY_CATCH_END;
 }
 
-static void JS_RegisterAqlUserFunction(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_RegisterAqlUserFunction(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -107,7 +111,8 @@ static void JS_RegisterAqlUserFunction(v8::FunctionCallbackInfo<v8::Value> const
   TRI_V8_TRY_CATCH_END;
 }
 
-static void JS_GetAqlUserFunctions(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_GetAqlUserFunctions(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -150,8 +155,7 @@ void TRI_InitV8UserFunctions(v8::Isolate* isolate, v8::Handle<v8::Context>) {
       isolate, TRI_V8_ASCII_STRING(isolate, "REGISTER_AQL_USER_FUNCTION"),
       JS_RegisterAqlUserFunction, true);
 
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "GET_AQL_USER_FUNCTIONS"),
-                               JS_GetAqlUserFunctions, true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "GET_AQL_USER_FUNCTIONS"),
+      JS_GetAqlUserFunctions, true);
 }

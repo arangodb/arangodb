@@ -50,12 +50,13 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id, std::string const& database,
-                               std::string const& user, std::string&& queryString,
-                               std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
-                               std::vector<std::string> dataSources, double started,
-                               double runTime, QueryExecutionState::ValueType state,
-                               bool stream, std::optional<ErrorCode> resultCode)
+QueryEntryCopy::QueryEntryCopy(
+    TRI_voc_tick_t id, std::string const& database, std::string const& user,
+    std::string&& queryString,
+    std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
+    std::vector<std::string> dataSources, double started, double runTime,
+    QueryExecutionState::ValueType state, bool stream,
+    std::optional<ErrorCode> resultCode)
     : id(id),
       database(database),
       user(user),
@@ -155,7 +156,7 @@ void QueryList::remove(Query* query) {
   {
     // acquire the query list's write lock only for a short amount of
     // time. if we need to insert a slow query later, we will re-acquire
-    // the lock. but the hope is that for the majority of queries this is 
+    // the lock. but the hope is that for the majority of queries this is
     // not required
     WRITE_LOCKER(writeLocker, _lock);
 
@@ -175,9 +176,9 @@ void QueryList::remove(Query* query) {
   }
 
   bool const isStreaming = query->queryOptions().stream;
-  double threshold = isStreaming ? 
-      _slowStreamingQueryThreshold.load(std::memory_order_relaxed) : 
-      _slowQueryThreshold.load(std::memory_order_relaxed);
+  double threshold =
+      isStreaming ? _slowStreamingQueryThreshold.load(std::memory_order_relaxed)
+                  : _slowQueryThreshold.load(std::memory_order_relaxed);
 
   // check if we need to push the query into the list of slow queries
   if (elapsed >= threshold && threshold >= 0.0) {
@@ -186,15 +187,16 @@ void QueryList::remove(Query* query) {
       TRI_IF_FAILURE("QueryList::remove") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
-  
+
       _queryRegistryFeature.trackSlowQuery(elapsed);
-      
+
       // we calculate the query start timestamp as the current time minus
       // the elapsed time since query start. this is not 100% accurrate, but
-      // best effort, and saves us from bookkeeping the start timestamp of the 
+      // best effort, and saves us from bookkeeping the start timestamp of the
       // query inside the Query object.
       double const now = TRI_microtime();
-      size_t const maxQueryStringLength = _maxQueryStringLength.load(std::memory_order_relaxed);
+      size_t const maxQueryStringLength =
+          _maxQueryStringLength.load(std::memory_order_relaxed);
 
       std::string q = extractQueryString(*query, maxQueryStringLength);
       std::string bindParameters;
@@ -210,7 +212,7 @@ void QueryList::remove(Query* query) {
           }
         }
       }
-      
+
       std::string dataSources;
       if (_trackDataSources) {
         auto const d = query->collectionNames();
@@ -229,32 +231,33 @@ void QueryList::remove(Query* query) {
           dataSources.push_back(']');
         }
       }
-          
+
       auto resultCode = query->resultCode();
 
       LOG_TOPIC("8bcee", WARN, Logger::QUERIES)
-          << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q << "'"
-          << bindParameters << dataSources << ", database: " << query->vocbase().name()
+          << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q
+          << "'" << bindParameters << dataSources
+          << ", database: " << query->vocbase().name()
           << ", user: " << query->user() << ", id: " << query->id()
-          << ", token: QRY" << query->id() 
-          << ", exit code: " << resultCode
+          << ", token: QRY" << query->id() << ", exit code: " << resultCode
           << ", took: " << Logger::FIXED(elapsed) << " s";
 
-   
       // acquire the query list lock again
       WRITE_LOCKER(writeLocker, _lock);
-      
-      _slow.emplace_back(query->id(), query->vocbase().name(), query->user(), std::move(q),
-                         _trackBindVars ? query->bindParameters() : nullptr,
-                         _trackDataSources ? query->collectionNames() : std::vector<std::string>(),
-                         now - elapsed, /* start timestamp */ 
-                         elapsed /* run time */,
-                         query->killed() ? QueryExecutionState::ValueType::KILLED
-                                         : QueryExecutionState::ValueType::FINISHED,
-                         isStreaming, resultCode);
 
-      // _slow is an std::list, but since c++11 the size() method of all standard
-      // containers is O(1), so this is ok
+      _slow.emplace_back(
+          query->id(), query->vocbase().name(), query->user(), std::move(q),
+          _trackBindVars ? query->bindParameters() : nullptr,
+          _trackDataSources ? query->collectionNames()
+                            : std::vector<std::string>(),
+          now - elapsed, /* start timestamp */
+          elapsed /* run time */,
+          query->killed() ? QueryExecutionState::ValueType::KILLED
+                          : QueryExecutionState::ValueType::FINISHED,
+          isStreaming, resultCode);
+
+      // _slow is an std::list, but since c++11 the size() method of all
+      // standard containers is O(1), so this is ok
       if (_slow.size() > _maxSlowQueries) {
         // free first element
         _slow.pop_front();
@@ -266,7 +269,8 @@ void QueryList::remove(Query* query) {
 
 /// @brief kills a query
 Result QueryList::kill(TRI_voc_tick_t id) {
-  size_t const maxLength = _maxQueryStringLength.load(std::memory_order_relaxed);
+  size_t const maxLength =
+      _maxQueryStringLength.load(std::memory_order_relaxed);
 
   READ_LOCKER(writeLocker, _lock);
 
@@ -277,16 +281,18 @@ Result QueryList::kill(TRI_voc_tick_t id) {
   }
 
   Query* query = (*it).second;
-  killQuery(*query,  maxLength, false);
+  killQuery(*query, maxLength, false);
 
   return Result();
 }
 
 /// @brief kills all currently running queries that match the filter function
 /// (i.e. the filter should return true for a queries to be killed)
-uint64_t QueryList::kill(std::function<bool(Query&)> const& filter, bool silent) {
+uint64_t QueryList::kill(std::function<bool(Query&)> const& filter,
+                         bool silent) {
   uint64_t killed = 0;
-  size_t const maxLength = _maxQueryStringLength.load(std::memory_order_relaxed);
+  size_t const maxLength =
+      _maxQueryStringLength.load(std::memory_order_relaxed);
 
   READ_LOCKER(readLocker, _lock);
 
@@ -297,7 +303,7 @@ uint64_t QueryList::kill(std::function<bool(Query&)> const& filter, bool silent)
       continue;
     }
 
-    killQuery(query,  maxLength, silent);
+    killQuery(query, maxLength, silent);
     ++killed;
   }
 
@@ -311,8 +317,9 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
   // so we reduce the possibility of having to reserve more room
   // later
   result.reserve(16);
-      
-  size_t const maxLength = _maxQueryStringLength.load(std::memory_order_relaxed);
+
+  size_t const maxLength =
+      _maxQueryStringLength.load(std::memory_order_relaxed);
   double const now = TRI_microtime();
 
   {
@@ -330,18 +337,19 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
 
       // we calculate the query start timestamp as the current time minus
       // the elapsed time since query start. this is not 100% accurrate, but
-      // best effort, and saves us from bookkeeping the start timestamp of the 
+      // best effort, and saves us from bookkeeping the start timestamp of the
       // query inside the Query object.
-      result.emplace_back(query->id(), query->vocbase().name(), query->user(),
-                          extractQueryString(*query, maxLength),
-                          _trackBindVars ? query->bindParameters() : nullptr,
-                          _trackDataSources ? query->collectionNames() : std::vector<std::string>(),
-                          now - elapsed /* start timestamp */, 
-                          elapsed /* run time */,
-                          query->killed() ? QueryExecutionState::ValueType::KILLED
-                                          : query->state(),
-                          query->queryOptions().stream,
-                          /*resultCode*/ std::nullopt /*not set yet*/);
+      result.emplace_back(
+          query->id(), query->vocbase().name(), query->user(),
+          extractQueryString(*query, maxLength),
+          _trackBindVars ? query->bindParameters() : nullptr,
+          _trackDataSources ? query->collectionNames()
+                            : std::vector<std::string>(),
+          now - elapsed /* start timestamp */, elapsed /* run time */,
+          query->killed() ? QueryExecutionState::ValueType::KILLED
+                          : query->state(),
+          query->queryOptions().stream,
+          /*resultCode*/ std::nullopt /*not set yet*/);
     }
   }
 
@@ -380,19 +388,19 @@ size_t QueryList::count() {
   return _current.size();
 }
 
-std::string QueryList::extractQueryString(Query const& query, size_t maxLength) const {
+std::string QueryList::extractQueryString(Query const& query,
+                                          size_t maxLength) const {
   if (trackQueryString()) {
     return query.queryString().extract(maxLength);
   }
   return "<hidden>";
 }
 
-void QueryList::killQuery(Query& query, size_t maxLength, bool silent) { 
-  std::string msg = 
-      "killing AQL query '" +  
-      extractQueryString(query, maxLength) + "', id: " + 
-      std::to_string(query.id()) +
-      ", token: QRY" + std::to_string(query.id()); 
+void QueryList::killQuery(Query& query, size_t maxLength, bool silent) {
+  std::string msg = "killing AQL query '" +
+                    extractQueryString(query, maxLength) +
+                    "', id: " + std::to_string(query.id()) + ", token: QRY" +
+                    std::to_string(query.id());
 
   if (silent) {
     LOG_TOPIC("f7722", TRACE, arangodb::Logger::QUERIES) << msg;

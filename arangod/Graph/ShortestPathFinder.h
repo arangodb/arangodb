@@ -72,4 +72,3 @@ class ShortestPathFinder {
 
 }  // namespace graph
 }  // namespace arangodb
-

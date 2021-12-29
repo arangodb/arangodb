@@ -45,10 +45,11 @@ using namespace arangodb::containers;
 
 namespace {
 
-AqlValue callFn(AstNode const& node, char const* input1, char const* input2 = nullptr, char const* input3 = nullptr) {
+AqlValue callFn(AstNode const& node, char const* input1,
+                char const* input2 = nullptr, char const* input3 = nullptr) {
   SmallVector<AqlValue>::allocator_type::arena_type arena;
   SmallVector<AqlValue> params{arena};
-  
+
   auto add = [&](char const* input) {
     if (input != nullptr) {
       auto b = arangodb::velocypack::Parser::fromJson(input);
@@ -62,13 +63,17 @@ AqlValue callFn(AstNode const& node, char const* input1, char const* input2 = nu
 
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
-  fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([](ErrorCode, char const*){ });
-  
+  fakeit::When(Method(expressionContextMock, registerWarning))
+      .AlwaysDo([](ErrorCode, char const*) {});
+
   VPackOptions options;
   fakeit::Mock<transaction::Context> trxCtxMock;
   fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysReturn(&options);
-  fakeit::When(Method(trxCtxMock, leaseBuilder)).AlwaysDo([]() { return new arangodb::velocypack::Builder(); });
-  fakeit::When(Method(trxCtxMock, returnBuilder)).AlwaysDo([](arangodb::velocypack::Builder* b) { delete b; });
+  fakeit::When(Method(trxCtxMock, leaseBuilder)).AlwaysDo([]() {
+    return new arangodb::velocypack::Builder();
+  });
+  fakeit::When(Method(trxCtxMock, returnBuilder))
+      .AlwaysDo([](arangodb::velocypack::Builder* b) { delete b; });
   fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysReturn(&options);
   transaction::Context& trxCtx = trxCtxMock.get();
 
@@ -77,36 +82,36 @@ AqlValue callFn(AstNode const& node, char const* input1, char const* input2 = nu
   fakeit::When(Method(trxMock, vpackOptions)).AlwaysReturn(options);
 
   transaction::Methods& trx = trxMock.get();
-  
-  fakeit::When(Method(expressionContextMock, trx)).AlwaysDo([&trx]() -> transaction::Methods& {
-    return trx;
-  });
+
+  fakeit::When(Method(expressionContextMock, trx))
+      .AlwaysDo([&trx]() -> transaction::Methods& { return trx; });
 
   auto f = static_cast<arangodb::aql::Function const*>(node.getData());
   AqlValue a = f->implementation(&expressionContext, node, params);
-  
+
   for (auto& p : params) {
     p.destroy();
   }
   return a;
 }
 
-template <typename T>
-T evaluate(AstNode const& node, char const* input1, char const* input2 = nullptr, char const* input3 = nullptr) {
+template<typename T>
+T evaluate(AstNode const& node, char const* input1,
+           char const* input2 = nullptr, char const* input3 = nullptr) {
   AqlValue actual = callFn(node, input1, input2, input3);
   AqlValueGuard guard(actual, true);
   if constexpr (std::is_same<T, int64_t>::value) {
     EXPECT_TRUE(actual.isNumber());
     return actual.toInt64();
-  } 
+  }
   if constexpr (std::is_same<T, bool>::value) {
     EXPECT_TRUE(actual.isBoolean());
     return actual.toBoolean();
-  } 
+  }
   if constexpr (std::is_same<T, std::string>::value) {
     EXPECT_TRUE(actual.isString());
     return actual.slice().copyString();
-  } 
+  }
   if constexpr (std::is_same<T, std::vector<int64_t>>::value) {
     EXPECT_TRUE(actual.isArray());
     std::vector<int64_t> out;
@@ -114,22 +119,24 @@ T evaluate(AstNode const& node, char const* input1, char const* input2 = nullptr
       out.push_back(it.getNumber<int64_t>());
     }
     return out;
-  } 
+  }
   EXPECT_TRUE(false);
   return {};
 }
 
-void expectFailed(AstNode const& node, char const* input1, char const* input2 = nullptr, char const* input3 = nullptr) {
+void expectFailed(AstNode const& node, char const* input1,
+                  char const* input2 = nullptr, char const* input3 = nullptr) {
   AqlValue actual = callFn(node, input1, input2, input3);
   EXPECT_TRUE(actual.isNull(false));
 }
 
-void expectNull(AstNode const& node, char const* input1, char const* input2 = nullptr, char const* input3 = nullptr) {
+void expectNull(AstNode const& node, char const* input1,
+                char const* input2 = nullptr, char const* input3 = nullptr) {
   AqlValue actual = callFn(node, input1, input2, input3);
   EXPECT_TRUE(actual.isNull(false));
 }
 
-} // namespace
+}  // namespace
 
 TEST(BitFunctionsTest, BitAnd) {
   arangodb::aql::Function f("BIT_AND", &Functions::BitAnd);
@@ -178,7 +185,7 @@ TEST(BitFunctionsTest, BitAnd) {
   expectFailed(node, "4294967295", "4294967296");
   expectFailed(node, "4294967296", "4294967296");
   expectFailed(node, "4294967296", "4294967295");
-  
+
   expectNull(node, "[]");
   expectNull(node, "[null]");
   expectNull(node, "[null, null, null, null]");
@@ -196,11 +203,16 @@ TEST(BitFunctionsTest, BitAnd) {
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[0, 1, 0, 1, 0, 1]"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5, 6, 7]"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[1, 2, 4, 8, 16, 32]"));
-  ASSERT_EQ(int64_t(15), evaluate<int64_t>(node, "[255, 15, 255, 15, 255, 15]"));
-  ASSERT_EQ(int64_t(15), evaluate<int64_t>(node, "[15, 255, 15, 255, 15, 255]"));
-  ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "[15, 255, 15, 255, 15, 255, 1]"));
-  ASSERT_EQ(int64_t(2), evaluate<int64_t>(node, "[15, 255, 15, 255, 15, 255, 2]"));
-  ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[15, 255, 15, 255, 15, 255, 16]"));
+  ASSERT_EQ(int64_t(15),
+            evaluate<int64_t>(node, "[255, 15, 255, 15, 255, 15]"));
+  ASSERT_EQ(int64_t(15),
+            evaluate<int64_t>(node, "[15, 255, 15, 255, 15, 255]"));
+  ASSERT_EQ(int64_t(1),
+            evaluate<int64_t>(node, "[15, 255, 15, 255, 15, 255, 1]"));
+  ASSERT_EQ(int64_t(2),
+            evaluate<int64_t>(node, "[15, 255, 15, 255, 15, 255, 2]"));
+  ASSERT_EQ(int64_t(0),
+            evaluate<int64_t>(node, "[15, 255, 15, 255, 15, 255, 16]"));
   ASSERT_EQ(int64_t(65), evaluate<int64_t>(node, "[65]"));
   ASSERT_EQ(int64_t(65), evaluate<int64_t>(node, "[65, null]"));
   ASSERT_EQ(int64_t(256), evaluate<int64_t>(node, "[256]"));
@@ -237,26 +249,31 @@ TEST(BitFunctionsTest, BitAnd) {
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[2147483650, 1, 2]"));
   ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "[4294967295]"));
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "[4294967295, 1]"));
-  ASSERT_EQ(int64_t(254), evaluate<int64_t>(node, "[255, 4294967294, 4294967295]"));
-  ASSERT_EQ(int64_t(4294967294), evaluate<int64_t>(node, "[4294967294, 4294967295]"));
-  ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "[4294967295, 4294967295]"));
-  ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "[4294967295, 4294967295, null, null]"));
+  ASSERT_EQ(int64_t(254),
+            evaluate<int64_t>(node, "[255, 4294967294, 4294967295]"));
+  ASSERT_EQ(int64_t(4294967294),
+            evaluate<int64_t>(node, "[4294967294, 4294967295]"));
+  ASSERT_EQ(int64_t(4294967295),
+            evaluate<int64_t>(node, "[4294967295, 4294967295]"));
+  ASSERT_EQ(int64_t(4294967295),
+            evaluate<int64_t>(node, "[4294967295, 4294967295, null, null]"));
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "[4294967295, 1, null, null]"));
-  
+
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "0", "0"));
   ASSERT_EQ(int64_t(127), evaluate<int64_t>(node, "127", "255"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "65535", "65536"));
   ASSERT_EQ(int64_t(65536), evaluate<int64_t>(node, "65536", "65536"));
   ASSERT_EQ(int64_t(2), evaluate<int64_t>(node, "2147483650", "2"));
   ASSERT_EQ(int64_t(254), evaluate<int64_t>(node, "255", "4294967294"));
-  ASSERT_EQ(int64_t(4294967294), evaluate<int64_t>(node, "4294967294", "4294967295"));
+  ASSERT_EQ(int64_t(4294967294),
+            evaluate<int64_t>(node, "4294967294", "4294967295"));
 }
 
 TEST(BitFunctionsTest, BitOr) {
   arangodb::aql::Function f("BIT_OR", &Functions::BitOr);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
-  
+
   expectFailed(node, "null");
   expectFailed(node, "false");
   expectFailed(node, "true");
@@ -297,7 +314,7 @@ TEST(BitFunctionsTest, BitOr) {
   expectFailed(node, "4294967295", "4294967296");
   expectFailed(node, "4294967296", "4294967296");
   expectFailed(node, "4294967296", "4294967295");
-  
+
   expectNull(node, "[]");
   expectNull(node, "[null]");
   expectNull(node, "[null, null, null, null]");
@@ -314,14 +331,24 @@ TEST(BitFunctionsTest, BitOr) {
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "[1, 1, 1]"));
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "[0, 1, 0, 1, 0, 1]"));
   ASSERT_EQ(int64_t(7), evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5, 6, 7]"));
-  ASSERT_EQ(int64_t(7), evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7]"));
+  ASSERT_EQ(
+      int64_t(7),
+      evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7]"));
   ASSERT_EQ(int64_t(63), evaluate<int64_t>(node, "[1, 2, 4, 8, 16, 32]"));
-  ASSERT_EQ(int64_t(65535), evaluate<int64_t>(node, "[1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768]"));
-  ASSERT_EQ(int64_t(255), evaluate<int64_t>(node, "[255, 15, 255, 15, 255, 15]"));
-  ASSERT_EQ(int64_t(255), evaluate<int64_t>(node, "[15, 255, 15, 255, 15, 255]"));
-  ASSERT_EQ(int64_t(255), evaluate<int64_t>(node, "[15, 255, 15, 255, 15, 255, 1]"));
-  ASSERT_EQ(int64_t(255), evaluate<int64_t>(node, "[15, 255, 15, 255, 15, 255, 2]"));
-  ASSERT_EQ(int64_t(255), evaluate<int64_t>(node, "[15, 255, 15, 255, 15, 255, 16]"));
+  ASSERT_EQ(int64_t(65535),
+            evaluate<int64_t>(node,
+                              "[1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, "
+                              "2048, 4096, 8192, 16384, 32768]"));
+  ASSERT_EQ(int64_t(255),
+            evaluate<int64_t>(node, "[255, 15, 255, 15, 255, 15]"));
+  ASSERT_EQ(int64_t(255),
+            evaluate<int64_t>(node, "[15, 255, 15, 255, 15, 255]"));
+  ASSERT_EQ(int64_t(255),
+            evaluate<int64_t>(node, "[15, 255, 15, 255, 15, 255, 1]"));
+  ASSERT_EQ(int64_t(255),
+            evaluate<int64_t>(node, "[15, 255, 15, 255, 15, 255, 2]"));
+  ASSERT_EQ(int64_t(255),
+            evaluate<int64_t>(node, "[15, 255, 15, 255, 15, 255, 16]"));
   ASSERT_EQ(int64_t(65), evaluate<int64_t>(node, "[65]"));
   ASSERT_EQ(int64_t(65), evaluate<int64_t>(node, "[65, null]"));
   ASSERT_EQ(int64_t(256), evaluate<int64_t>(node, "[256]"));
@@ -352,12 +379,17 @@ TEST(BitFunctionsTest, BitOr) {
   ASSERT_EQ(int64_t(2147483651), evaluate<int64_t>(node, "[2147483648, 1, 2]"));
   ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "[4294967295]"));
   ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "[4294967295, 1]"));
-  ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "[255, 4294967294, 4294967295]"));
-  ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "[4294967294, 4294967295]"));
-  ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "[4294967295, 4294967295]"));
-  ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "[4294967295, 4294967295, null, null]"));
-  ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "[4294967295, 1, null, null]"));
-  
+  ASSERT_EQ(int64_t(4294967295),
+            evaluate<int64_t>(node, "[255, 4294967294, 4294967295]"));
+  ASSERT_EQ(int64_t(4294967295),
+            evaluate<int64_t>(node, "[4294967294, 4294967295]"));
+  ASSERT_EQ(int64_t(4294967295),
+            evaluate<int64_t>(node, "[4294967295, 4294967295]"));
+  ASSERT_EQ(int64_t(4294967295),
+            evaluate<int64_t>(node, "[4294967295, 4294967295, null, null]"));
+  ASSERT_EQ(int64_t(4294967295),
+            evaluate<int64_t>(node, "[4294967295, 1, null, null]"));
+
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "0", "0"));
   ASSERT_EQ(int64_t(255), evaluate<int64_t>(node, "127", "255"));
   ASSERT_EQ(int64_t(255), evaluate<int64_t>(node, "254", "255"));
@@ -367,7 +399,8 @@ TEST(BitFunctionsTest, BitOr) {
   ASSERT_EQ(int64_t(2147483650), evaluate<int64_t>(node, "2147483650", "2"));
   ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "255", "4294967294"));
   ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "1", "4294967294"));
-  ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "4294967294", "4294967295"));
+  ASSERT_EQ(int64_t(4294967295),
+            evaluate<int64_t>(node, "4294967294", "4294967295"));
   ASSERT_EQ(int64_t(4294967294), evaluate<int64_t>(node, "4294967294", "0"));
   ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "4294967294", "1"));
   ASSERT_EQ(int64_t(4294967294), evaluate<int64_t>(node, "4294967294", "2"));
@@ -378,7 +411,7 @@ TEST(BitFunctionsTest, BitXOr) {
   arangodb::aql::Function f("BIT_XOR", &Functions::BitXOr);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
-  
+
   expectFailed(node, "null");
   expectFailed(node, "false");
   expectFailed(node, "true");
@@ -421,7 +454,7 @@ TEST(BitFunctionsTest, BitXOr) {
   expectFailed(node, "4294967295", "4294967296");
   expectFailed(node, "4294967296", "4294967296");
   expectFailed(node, "4294967296", "4294967295");
-  
+
   expectNull(node, "[]");
   expectNull(node, "[null]");
   expectNull(node, "[null, null, null, null]");
@@ -447,11 +480,19 @@ TEST(BitFunctionsTest, BitXOr) {
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5]"));
   ASSERT_EQ(int64_t(7), evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5, 6]"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5, 6, 7]"));
-  ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3]"));
-  ASSERT_EQ(int64_t(7), evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6]"));
-  ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7]"));
+  ASSERT_EQ(int64_t(0),
+            evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3]"));
+  ASSERT_EQ(
+      int64_t(7),
+      evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6]"));
+  ASSERT_EQ(
+      int64_t(0),
+      evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7]"));
   ASSERT_EQ(int64_t(63), evaluate<int64_t>(node, "[1, 2, 4, 8, 16, 32]"));
-  ASSERT_EQ(int64_t(65535), evaluate<int64_t>(node, "[1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768]"));
+  ASSERT_EQ(int64_t(65535),
+            evaluate<int64_t>(node,
+                              "[1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, "
+                              "2048, 4096, 8192, 16384, 32768]"));
   ASSERT_EQ(int64_t(240), evaluate<int64_t>(node, "[255, 15]"));
   ASSERT_EQ(int64_t(15), evaluate<int64_t>(node, "[255, 15, 255]"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[255, 15, 255, 15]"));
@@ -488,13 +529,17 @@ TEST(BitFunctionsTest, BitXOr) {
   ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "[4294967295]"));
   ASSERT_EQ(int64_t(4294967294), evaluate<int64_t>(node, "[4294967295, 1]"));
   ASSERT_EQ(int64_t(4294967040), evaluate<int64_t>(node, "[255, 4294967295]"));
-  ASSERT_EQ(int64_t(254), evaluate<int64_t>(node, "[255, 4294967294, 4294967295]"));
+  ASSERT_EQ(int64_t(254),
+            evaluate<int64_t>(node, "[255, 4294967294, 4294967295]"));
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "[4294967294, 4294967295]"));
-  ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "[4294967294, 4294967295, 4294967294]"));
+  ASSERT_EQ(int64_t(4294967295),
+            evaluate<int64_t>(node, "[4294967294, 4294967295, 4294967294]"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[4294967295, 4294967295]"));
-  ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "[4294967295, 4294967295, null, null]"));
-  ASSERT_EQ(int64_t(4294967294), evaluate<int64_t>(node, "[4294967295, 1, null, null]"));
-  
+  ASSERT_EQ(int64_t(0),
+            evaluate<int64_t>(node, "[4294967295, 4294967295, null, null]"));
+  ASSERT_EQ(int64_t(4294967294),
+            evaluate<int64_t>(node, "[4294967295, 1, null, null]"));
+
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "0", "0"));
   ASSERT_EQ(int64_t(128), evaluate<int64_t>(node, "127", "255"));
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "254", "255"));
@@ -513,7 +558,7 @@ TEST(BitFunctionsTest, BitPopcount) {
   arangodb::aql::Function f("BIT_POPCOUNT", &Functions::BitPopcount);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
-  
+
   expectFailed(node, "null");
   expectFailed(node, "false");
   expectFailed(node, "true");
@@ -562,7 +607,7 @@ TEST(BitFunctionsTest, BitNegate) {
   arangodb::aql::Function f("BIT_NEGATE", &Functions::BitNegate);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
-  
+
   expectFailed(node, "null", "32");
   expectFailed(node, "false", "32");
   expectFailed(node, "true", "32");
@@ -579,7 +624,7 @@ TEST(BitFunctionsTest, BitNegate) {
   expectFailed(node, "\"foo\"", "32");
   expectFailed(node, "[]", "32");
   expectFailed(node, "{}", "32");
-  
+
   expectFailed(node, "0", "33");
   expectFailed(node, "0", "64");
   expectFailed(node, "0", "null");
@@ -671,7 +716,7 @@ TEST(BitFunctionsTest, BitTest) {
   arangodb::aql::Function f("BIT_TEST", &Functions::BitTest);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
-  
+
   expectFailed(node, "null", "0");
   expectFailed(node, "false", "0");
   expectFailed(node, "true", "0");
@@ -688,7 +733,7 @@ TEST(BitFunctionsTest, BitTest) {
   expectFailed(node, "\"foo\"", "0");
   expectFailed(node, "[]", "0");
   expectFailed(node, "{}", "0");
-  
+
   expectFailed(node, "0", "32");
   expectFailed(node, "0", "64");
   expectFailed(node, "0", "null");
@@ -699,7 +744,7 @@ TEST(BitFunctionsTest, BitTest) {
   expectFailed(node, "0", "\"abc\"");
   expectFailed(node, "0", "[]");
   expectFailed(node, "0", "{}");
-  
+
   ASSERT_FALSE(evaluate<bool>(node, "0", "0"));
   ASSERT_FALSE(evaluate<bool>(node, "0", "1"));
   ASSERT_FALSE(evaluate<bool>(node, "0", "2"));
@@ -777,7 +822,7 @@ TEST(BitFunctionsTest, BitShiftLeft) {
   arangodb::aql::Function f("BIT_SHIFT_LEFT", &Functions::BitShiftLeft);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
-  
+
   expectFailed(node, "null", "0", "0");
   expectFailed(node, "false", "0", "0");
   expectFailed(node, "true", "0", "0");
@@ -810,7 +855,7 @@ TEST(BitFunctionsTest, BitShiftLeft) {
   expectFailed(node, "0", "0", "\"abc\"");
   expectFailed(node, "0", "0", "[]");
   expectFailed(node, "0", "0", "{}");
-  
+
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "0", "0", "0"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "0", "0", "1"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "0", "0", "2"));
@@ -826,7 +871,7 @@ TEST(BitFunctionsTest, BitShiftLeft) {
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "0", "5", "31"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "0", "5", "31"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "0", "5", "31"));
-  
+
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "1", "0", "0"));
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "1", "0", "1"));
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "1", "0", "32"));
@@ -851,7 +896,7 @@ TEST(BitFunctionsTest, BitShiftLeft) {
   ASSERT_EQ(int64_t(1073741824), evaluate<int64_t>(node, "1", "30", "32"));
   ASSERT_EQ(int64_t(2147483648), evaluate<int64_t>(node, "1", "31", "32"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "1", "32", "32"));
-  
+
   ASSERT_EQ(int64_t(2), evaluate<int64_t>(node, "2", "0", "32"));
   ASSERT_EQ(int64_t(4), evaluate<int64_t>(node, "2", "1", "32"));
   ASSERT_EQ(int64_t(8), evaluate<int64_t>(node, "2", "2", "32"));
@@ -866,7 +911,7 @@ TEST(BitFunctionsTest, BitShiftLeft) {
   ASSERT_EQ(int64_t(2147483648), evaluate<int64_t>(node, "2", "30", "32"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "2", "31", "32"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "2", "32", "32"));
-  
+
   ASSERT_EQ(int64_t(3), evaluate<int64_t>(node, "3", "0", "32"));
   ASSERT_EQ(int64_t(6), evaluate<int64_t>(node, "3", "1", "32"));
   ASSERT_EQ(int64_t(12), evaluate<int64_t>(node, "3", "2", "32"));
@@ -882,7 +927,7 @@ TEST(BitFunctionsTest, BitShiftLeft) {
   ASSERT_EQ(int64_t(3221225472), evaluate<int64_t>(node, "3", "30", "32"));
   ASSERT_EQ(int64_t(2147483648), evaluate<int64_t>(node, "3", "31", "32"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "3", "32", "32"));
-  
+
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "127", "0", "0"));
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "127", "0", "1"));
   ASSERT_EQ(int64_t(3), evaluate<int64_t>(node, "127", "0", "2"));
@@ -901,35 +946,53 @@ TEST(BitFunctionsTest, BitShiftLeft) {
   ASSERT_EQ(int64_t(3221225472), evaluate<int64_t>(node, "127", "30", "32"));
   ASSERT_EQ(int64_t(2147483648), evaluate<int64_t>(node, "127", "31", "32"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "127", "32", "32"));
-  
+
   ASSERT_EQ(int64_t(98782592), evaluate<int64_t>(node, "98782592", "0", "32"));
   ASSERT_EQ(int64_t(197565184), evaluate<int64_t>(node, "98782592", "1", "32"));
   ASSERT_EQ(int64_t(395130368), evaluate<int64_t>(node, "98782592", "2", "32"));
   ASSERT_EQ(int64_t(790260736), evaluate<int64_t>(node, "98782592", "3", "32"));
-  ASSERT_EQ(int64_t(1580521472), evaluate<int64_t>(node, "98782592", "4", "32"));
+  ASSERT_EQ(int64_t(1580521472),
+            evaluate<int64_t>(node, "98782592", "4", "32"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "98782592", "20", "10"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "98782592", "20", "27"));
-  ASSERT_EQ(int64_t(134217728), evaluate<int64_t>(node, "98782592", "20", "28"));
-  ASSERT_EQ(int64_t(402653184), evaluate<int64_t>(node, "98782592", "20", "29"));
-  ASSERT_EQ(int64_t(402653184), evaluate<int64_t>(node, "98782592", "20", "30"));
-  ASSERT_EQ(int64_t(1476395008), evaluate<int64_t>(node, "98782592", "20", "31"));
-  ASSERT_EQ(int64_t(3623878656), evaluate<int64_t>(node, "98782592", "20", "32"));
-  ASSERT_EQ(int64_t(2952790016), evaluate<int64_t>(node, "98782592", "21", "32"));
-  ASSERT_EQ(int64_t(1610612736), evaluate<int64_t>(node, "98782592", "22", "32"));
-  ASSERT_EQ(int64_t(3221225472), evaluate<int64_t>(node, "98782592", "23", "32"));
-  ASSERT_EQ(int64_t(2147483648), evaluate<int64_t>(node, "98782592", "24", "32"));
+  ASSERT_EQ(int64_t(134217728),
+            evaluate<int64_t>(node, "98782592", "20", "28"));
+  ASSERT_EQ(int64_t(402653184),
+            evaluate<int64_t>(node, "98782592", "20", "29"));
+  ASSERT_EQ(int64_t(402653184),
+            evaluate<int64_t>(node, "98782592", "20", "30"));
+  ASSERT_EQ(int64_t(1476395008),
+            evaluate<int64_t>(node, "98782592", "20", "31"));
+  ASSERT_EQ(int64_t(3623878656),
+            evaluate<int64_t>(node, "98782592", "20", "32"));
+  ASSERT_EQ(int64_t(2952790016),
+            evaluate<int64_t>(node, "98782592", "21", "32"));
+  ASSERT_EQ(int64_t(1610612736),
+            evaluate<int64_t>(node, "98782592", "22", "32"));
+  ASSERT_EQ(int64_t(3221225472),
+            evaluate<int64_t>(node, "98782592", "23", "32"));
+  ASSERT_EQ(int64_t(2147483648),
+            evaluate<int64_t>(node, "98782592", "24", "32"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "98782592", "25", "32"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "98782592", "30", "32"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "98782592", "31", "32"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "98782592", "32", "32"));
-  ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "4294967295", "0", "32"));
-  ASSERT_EQ(int64_t(4294967294), evaluate<int64_t>(node, "4294967295", "1", "32"));
-  ASSERT_EQ(int64_t(4294967292), evaluate<int64_t>(node, "4294967295", "2", "32"));
-  ASSERT_EQ(int64_t(4294967288), evaluate<int64_t>(node, "4294967295", "3", "32"));
-  ASSERT_EQ(int64_t(4294966272), evaluate<int64_t>(node, "4294967295", "10", "32"));
-  ASSERT_EQ(int64_t(4293918720), evaluate<int64_t>(node, "4294967295", "20", "32"));
-  ASSERT_EQ(int64_t(3221225472), evaluate<int64_t>(node, "4294967295", "30", "32"));
-  ASSERT_EQ(int64_t(2147483648), evaluate<int64_t>(node, "4294967295", "31", "32"));
+  ASSERT_EQ(int64_t(4294967295),
+            evaluate<int64_t>(node, "4294967295", "0", "32"));
+  ASSERT_EQ(int64_t(4294967294),
+            evaluate<int64_t>(node, "4294967295", "1", "32"));
+  ASSERT_EQ(int64_t(4294967292),
+            evaluate<int64_t>(node, "4294967295", "2", "32"));
+  ASSERT_EQ(int64_t(4294967288),
+            evaluate<int64_t>(node, "4294967295", "3", "32"));
+  ASSERT_EQ(int64_t(4294966272),
+            evaluate<int64_t>(node, "4294967295", "10", "32"));
+  ASSERT_EQ(int64_t(4293918720),
+            evaluate<int64_t>(node, "4294967295", "20", "32"));
+  ASSERT_EQ(int64_t(3221225472),
+            evaluate<int64_t>(node, "4294967295", "30", "32"));
+  ASSERT_EQ(int64_t(2147483648),
+            evaluate<int64_t>(node, "4294967295", "31", "32"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "4294967295", "32", "32"));
 }
 
@@ -937,7 +1000,7 @@ TEST(BitFunctionsTest, BitShiftRight) {
   arangodb::aql::Function f("BIT_SHIFT_RIGHT", &Functions::BitShiftRight);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
-  
+
   expectFailed(node, "null", "0", "0");
   expectFailed(node, "false", "0", "0");
   expectFailed(node, "true", "0", "0");
@@ -970,7 +1033,7 @@ TEST(BitFunctionsTest, BitShiftRight) {
   expectFailed(node, "0", "0", "\"abc\"");
   expectFailed(node, "0", "0", "[]");
   expectFailed(node, "0", "0", "{}");
-  
+
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "0", "0", "0"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "0", "0", "1"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "0", "0", "2"));
@@ -986,7 +1049,7 @@ TEST(BitFunctionsTest, BitShiftRight) {
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "0", "5", "31"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "0", "5", "31"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "0", "5", "31"));
-  
+
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "1", "0", "0"));
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "1", "0", "1"));
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "1", "0", "32"));
@@ -1008,13 +1071,13 @@ TEST(BitFunctionsTest, BitShiftRight) {
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "1", "7", "32"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "1", "8", "32"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "1", "32", "32"));
-  
+
   ASSERT_EQ(int64_t(2), evaluate<int64_t>(node, "2", "0", "32"));
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "2", "1", "32"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "2", "2", "32"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "2", "3", "32"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "2", "32", "32"));
-  
+
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "3", "0", "0"));
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "3", "0", "1"));
   ASSERT_EQ(int64_t(3), evaluate<int64_t>(node, "3", "0", "2"));
@@ -1023,7 +1086,7 @@ TEST(BitFunctionsTest, BitShiftRight) {
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "3", "2", "32"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "3", "3", "32"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "3", "32", "32"));
-  
+
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "127", "0", "0"));
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "127", "0", "1"));
   ASSERT_EQ(int64_t(3), evaluate<int64_t>(node, "127", "0", "2"));
@@ -1042,7 +1105,7 @@ TEST(BitFunctionsTest, BitShiftRight) {
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "127", "7", "32"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "127", "8", "32"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "127", "32", "32"));
-  
+
   ASSERT_EQ(int64_t(98782592), evaluate<int64_t>(node, "98782592", "0", "32"));
   ASSERT_EQ(int64_t(49391296), evaluate<int64_t>(node, "98782592", "1", "32"));
   ASSERT_EQ(int64_t(24695648), evaluate<int64_t>(node, "98782592", "2", "32"));
@@ -1071,11 +1134,15 @@ TEST(BitFunctionsTest, BitShiftRight) {
   ASSERT_EQ(int64_t(2), evaluate<int64_t>(node, "98782592", "25", "32"));
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "98782592", "26", "32"));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "98782592", "27", "32"));
-  
-  ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "4294967295", "0", "32"));
-  ASSERT_EQ(int64_t(2147483647), evaluate<int64_t>(node, "4294967295", "1", "32"));
-  ASSERT_EQ(int64_t(134217727), evaluate<int64_t>(node, "4294967295", "5", "32"));
-  ASSERT_EQ(int64_t(2097151), evaluate<int64_t>(node, "4294967295", "11", "32"));
+
+  ASSERT_EQ(int64_t(4294967295),
+            evaluate<int64_t>(node, "4294967295", "0", "32"));
+  ASSERT_EQ(int64_t(2147483647),
+            evaluate<int64_t>(node, "4294967295", "1", "32"));
+  ASSERT_EQ(int64_t(134217727),
+            evaluate<int64_t>(node, "4294967295", "5", "32"));
+  ASSERT_EQ(int64_t(2097151),
+            evaluate<int64_t>(node, "4294967295", "11", "32"));
   ASSERT_EQ(int64_t(8191), evaluate<int64_t>(node, "4294967295", "19", "32"));
   ASSERT_EQ(int64_t(7), evaluate<int64_t>(node, "4294967295", "29", "32"));
   ASSERT_EQ(int64_t(3), evaluate<int64_t>(node, "4294967295", "30", "32"));
@@ -1087,7 +1154,7 @@ TEST(BitFunctionsTest, BitConstruct) {
   arangodb::aql::Function f("BIT_CONSTRUCT", &Functions::BitConstruct);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
-  
+
   expectFailed(node, "null");
   expectFailed(node, "false");
   expectFailed(node, "true");
@@ -1148,7 +1215,8 @@ TEST(BitFunctionsTest, BitConstruct) {
   ASSERT_EQ(int64_t(7), evaluate<int64_t>(node, "[0, 1, 2, 2, 1]"));
   ASSERT_EQ(int64_t(191), evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5, 7]"));
   ASSERT_EQ(int64_t(255), evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5, 6, 7]"));
-  ASSERT_EQ(int64_t(511), evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5, 6, 7, 8]"));
+  ASSERT_EQ(int64_t(511),
+            evaluate<int64_t>(node, "[0, 1, 2, 3, 4, 5, 6, 7, 8]"));
   ASSERT_EQ(int64_t(1024), evaluate<int64_t>(node, "[10]"));
   ASSERT_EQ(int64_t(65536), evaluate<int64_t>(node, "[16]"));
   ASSERT_EQ(int64_t(65812), evaluate<int64_t>(node, "[16, 8, 4, 2]"));
@@ -1159,17 +1227,33 @@ TEST(BitFunctionsTest, BitConstruct) {
   ASSERT_EQ(int64_t(1073741824), evaluate<int64_t>(node, "[30]"));
   ASSERT_EQ(int64_t(2147483648), evaluate<int64_t>(node, "[31]"));
   ASSERT_EQ(int64_t(2147483648), evaluate<int64_t>(node, "[31]"));
-  ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "[31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]"));
-  ASSERT_EQ(int64_t(4294967294), evaluate<int64_t>(node, "[31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]"));
-  ASSERT_EQ(int64_t(4294967292), evaluate<int64_t>(node, "[31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2]"));
-  ASSERT_EQ(int64_t(4294967288), evaluate<int64_t>(node, "[31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3]"));
+  ASSERT_EQ(int64_t(4294967295),
+            evaluate<int64_t>(
+                node,
+                "[31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, "
+                "16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]"));
+  ASSERT_EQ(int64_t(4294967294),
+            evaluate<int64_t>(
+                node,
+                "[31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, "
+                "16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]"));
+  ASSERT_EQ(int64_t(4294967292),
+            evaluate<int64_t>(
+                node,
+                "[31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, "
+                "16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2]"));
+  ASSERT_EQ(int64_t(4294967288),
+            evaluate<int64_t>(
+                node,
+                "[31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, "
+                "16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3]"));
 }
 
 TEST(BitFunctionsTest, BitDeconstruct) {
   arangodb::aql::Function f("BIT_DECONSTRUCT", &Functions::BitDeconstruct);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
-  
+
   expectFailed(node, "null");
   expectFailed(node, "false");
   expectFailed(node, "true");
@@ -1183,27 +1267,40 @@ TEST(BitFunctionsTest, BitDeconstruct) {
   expectFailed(node, "\" \"");
   expectFailed(node, "\"foo\"");
   expectFailed(node, "{}");
-  
-  ASSERT_EQ(std::vector<int64_t>({}), evaluate<std::vector<int64_t>>(node, "0"));
-  ASSERT_EQ(std::vector<int64_t>({0}), evaluate<std::vector<int64_t>>(node, "1"));
-  ASSERT_EQ(std::vector<int64_t>({1}), evaluate<std::vector<int64_t>>(node, "2"));
-  ASSERT_EQ(std::vector<int64_t>({0, 1}), evaluate<std::vector<int64_t>>(node, "3"));
-  ASSERT_EQ(std::vector<int64_t>({2}), evaluate<std::vector<int64_t>>(node, "4"));
-  ASSERT_EQ(std::vector<int64_t>({0, 1, 2}), evaluate<std::vector<int64_t>>(node, "7"));
-  ASSERT_EQ(std::vector<int64_t>({3}), evaluate<std::vector<int64_t>>(node, "8"));
-  ASSERT_EQ(std::vector<int64_t>({1, 3}), evaluate<std::vector<int64_t>>(node, "10"));
-  ASSERT_EQ(std::vector<int64_t>({0, 1, 2, 3, 4, 5, 7}), evaluate<std::vector<int64_t>>(node, "191"));
-  ASSERT_EQ(std::vector<int64_t>({0, 1, 2, 3, 4, 5, 6, 7}), evaluate<std::vector<int64_t>>(node, "255"));
-  ASSERT_EQ(std::vector<int64_t>({0, 1, 2, 3, 4, 5, 6, 7, 8}), evaluate<std::vector<int64_t>>(node, "511"));
-  ASSERT_EQ(std::vector<int64_t>({10}), evaluate<std::vector<int64_t>>(node, "1024"));
-  ASSERT_EQ(std::vector<int64_t>({30}), evaluate<std::vector<int64_t>>(node, "1073741824"));
+
+  ASSERT_EQ(std::vector<int64_t>({}),
+            evaluate<std::vector<int64_t>>(node, "0"));
+  ASSERT_EQ(std::vector<int64_t>({0}),
+            evaluate<std::vector<int64_t>>(node, "1"));
+  ASSERT_EQ(std::vector<int64_t>({1}),
+            evaluate<std::vector<int64_t>>(node, "2"));
+  ASSERT_EQ(std::vector<int64_t>({0, 1}),
+            evaluate<std::vector<int64_t>>(node, "3"));
+  ASSERT_EQ(std::vector<int64_t>({2}),
+            evaluate<std::vector<int64_t>>(node, "4"));
+  ASSERT_EQ(std::vector<int64_t>({0, 1, 2}),
+            evaluate<std::vector<int64_t>>(node, "7"));
+  ASSERT_EQ(std::vector<int64_t>({3}),
+            evaluate<std::vector<int64_t>>(node, "8"));
+  ASSERT_EQ(std::vector<int64_t>({1, 3}),
+            evaluate<std::vector<int64_t>>(node, "10"));
+  ASSERT_EQ(std::vector<int64_t>({0, 1, 2, 3, 4, 5, 7}),
+            evaluate<std::vector<int64_t>>(node, "191"));
+  ASSERT_EQ(std::vector<int64_t>({0, 1, 2, 3, 4, 5, 6, 7}),
+            evaluate<std::vector<int64_t>>(node, "255"));
+  ASSERT_EQ(std::vector<int64_t>({0, 1, 2, 3, 4, 5, 6, 7, 8}),
+            evaluate<std::vector<int64_t>>(node, "511"));
+  ASSERT_EQ(std::vector<int64_t>({10}),
+            evaluate<std::vector<int64_t>>(node, "1024"));
+  ASSERT_EQ(std::vector<int64_t>({30}),
+            evaluate<std::vector<int64_t>>(node, "1073741824"));
 }
 
 TEST(BitFunctionsTest, BitToString) {
   arangodb::aql::Function f("BIT_TO_STRING", &Functions::BitToString);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
-  
+
   expectFailed(node, "null", "0");
   expectFailed(node, "false", "0");
   expectFailed(node, "true", "0");
@@ -1229,7 +1326,7 @@ TEST(BitFunctionsTest, BitToString) {
   expectFailed(node, "0", "\"abc\"");
   expectFailed(node, "0", "[]");
   expectFailed(node, "0", "{}");
-  
+
   ASSERT_EQ("", evaluate<std::string>(node, "0", "0"));
   ASSERT_EQ("0", evaluate<std::string>(node, "0", "1"));
   ASSERT_EQ("00", evaluate<std::string>(node, "0", "2"));
@@ -1255,33 +1352,44 @@ TEST(BitFunctionsTest, BitToString) {
   ASSERT_EQ("0000000000000000000000", evaluate<std::string>(node, "0", "22"));
   ASSERT_EQ("00000000000000000000000", evaluate<std::string>(node, "0", "23"));
   ASSERT_EQ("000000000000000000000000", evaluate<std::string>(node, "0", "24"));
-  ASSERT_EQ("0000000000000000000000000", evaluate<std::string>(node, "0", "25"));
-  ASSERT_EQ("00000000000000000000000000", evaluate<std::string>(node, "0", "26"));
-  ASSERT_EQ("000000000000000000000000000", evaluate<std::string>(node, "0", "27"));
-  ASSERT_EQ("0000000000000000000000000000", evaluate<std::string>(node, "0", "28"));
-  ASSERT_EQ("00000000000000000000000000000", evaluate<std::string>(node, "0", "29"));
-  ASSERT_EQ("000000000000000000000000000000", evaluate<std::string>(node, "0", "30"));
-  ASSERT_EQ("0000000000000000000000000000000", evaluate<std::string>(node, "0", "31"));
-  ASSERT_EQ("00000000000000000000000000000000", evaluate<std::string>(node, "0", "32"));
+  ASSERT_EQ("0000000000000000000000000",
+            evaluate<std::string>(node, "0", "25"));
+  ASSERT_EQ("00000000000000000000000000",
+            evaluate<std::string>(node, "0", "26"));
+  ASSERT_EQ("000000000000000000000000000",
+            evaluate<std::string>(node, "0", "27"));
+  ASSERT_EQ("0000000000000000000000000000",
+            evaluate<std::string>(node, "0", "28"));
+  ASSERT_EQ("00000000000000000000000000000",
+            evaluate<std::string>(node, "0", "29"));
+  ASSERT_EQ("000000000000000000000000000000",
+            evaluate<std::string>(node, "0", "30"));
+  ASSERT_EQ("0000000000000000000000000000000",
+            evaluate<std::string>(node, "0", "31"));
+  ASSERT_EQ("00000000000000000000000000000000",
+            evaluate<std::string>(node, "0", "32"));
   ASSERT_EQ("", evaluate<std::string>(node, "1", "0"));
   ASSERT_EQ("1", evaluate<std::string>(node, "1", "1"));
   ASSERT_EQ("01", evaluate<std::string>(node, "1", "2"));
   ASSERT_EQ("0000000001", evaluate<std::string>(node, "1", "10"));
-  ASSERT_EQ("00000000000000000000000000000001", evaluate<std::string>(node, "1", "32"));
+  ASSERT_EQ("00000000000000000000000000000001",
+            evaluate<std::string>(node, "1", "32"));
   ASSERT_EQ("", evaluate<std::string>(node, "15", "0"));
   ASSERT_EQ("1", evaluate<std::string>(node, "15", "1"));
   ASSERT_EQ("11", evaluate<std::string>(node, "15", "2"));
   ASSERT_EQ("111", evaluate<std::string>(node, "15", "3"));
   ASSERT_EQ("1111", evaluate<std::string>(node, "15", "4"));
   ASSERT_EQ("01111", evaluate<std::string>(node, "15", "5"));
-  ASSERT_EQ("00000000000000000000000000001111", evaluate<std::string>(node, "15", "32"));
+  ASSERT_EQ("00000000000000000000000000001111",
+            evaluate<std::string>(node, "15", "32"));
   ASSERT_EQ("", evaluate<std::string>(node, "16", "0"));
   ASSERT_EQ("0", evaluate<std::string>(node, "16", "1"));
   ASSERT_EQ("00", evaluate<std::string>(node, "16", "2"));
   ASSERT_EQ("000", evaluate<std::string>(node, "16", "3"));
   ASSERT_EQ("0000", evaluate<std::string>(node, "16", "4"));
   ASSERT_EQ("10000", evaluate<std::string>(node, "16", "5"));
-  ASSERT_EQ("00000000000000000000000000010000", evaluate<std::string>(node, "16", "32"));
+  ASSERT_EQ("00000000000000000000000000010000",
+            evaluate<std::string>(node, "16", "32"));
   ASSERT_EQ("", evaluate<std::string>(node, "1365", "0"));
   ASSERT_EQ("1", evaluate<std::string>(node, "1365", "1"));
   ASSERT_EQ("01", evaluate<std::string>(node, "1365", "2"));
@@ -1296,25 +1404,30 @@ TEST(BitFunctionsTest, BitToString) {
   ASSERT_EQ("10101010101", evaluate<std::string>(node, "1365", "11"));
   ASSERT_EQ("010101010101", evaluate<std::string>(node, "1365", "12"));
   ASSERT_EQ("0010101010101", evaluate<std::string>(node, "1365", "13"));
-  ASSERT_EQ("00000000000000000000010101010101", evaluate<std::string>(node, "1365", "32"));
+  ASSERT_EQ("00000000000000000000010101010101",
+            evaluate<std::string>(node, "1365", "32"));
   ASSERT_EQ("", evaluate<std::string>(node, "4294967295", "0"));
   ASSERT_EQ("1", evaluate<std::string>(node, "4294967295", "1"));
   ASSERT_EQ("1111111111", evaluate<std::string>(node, "4294967295", "10"));
-  ASSERT_EQ("1111111111111111111111111111111", evaluate<std::string>(node, "4294967295", "31"));
-  ASSERT_EQ("11111111111111111111111111111111", evaluate<std::string>(node, "4294967295", "32"));
+  ASSERT_EQ("1111111111111111111111111111111",
+            evaluate<std::string>(node, "4294967295", "31"));
+  ASSERT_EQ("11111111111111111111111111111111",
+            evaluate<std::string>(node, "4294967295", "32"));
   ASSERT_EQ("0000000", evaluate<std::string>(node, "4294967040", "7"));
   ASSERT_EQ("00000000", evaluate<std::string>(node, "4294967040", "8"));
   ASSERT_EQ("100000000", evaluate<std::string>(node, "4294967040", "9"));
   ASSERT_EQ("1100000000", evaluate<std::string>(node, "4294967040", "10"));
-  ASSERT_EQ("1111111111111111111111100000000", evaluate<std::string>(node, "4294967040", "31"));
-  ASSERT_EQ("11111111111111111111111100000000", evaluate<std::string>(node, "4294967040", "32"));
+  ASSERT_EQ("1111111111111111111111100000000",
+            evaluate<std::string>(node, "4294967040", "31"));
+  ASSERT_EQ("11111111111111111111111100000000",
+            evaluate<std::string>(node, "4294967040", "32"));
 }
 
 TEST(BitFunctionsTest, BitFromString) {
   arangodb::aql::Function f("BIT_FROM_STRING", &Functions::BitFromString);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
-  
+
   expectFailed(node, "null");
   expectFailed(node, "false");
   expectFailed(node, "true");
@@ -1343,20 +1456,26 @@ TEST(BitFunctionsTest, BitFromString) {
   expectFailed(node, "\"01 \"");
   expectFailed(node, "\" 01 \"");
   expectFailed(node, "\"111120 114\"");
-  expectFailed(node, "\"0000000000000000000000000000000000000000000000000000000000000000000000000000000000\"");
-  expectFailed(node, "\"00000000000000000000000000000000000000000000000000000000000001\"");
+  expectFailed(node,
+               "\"0000000000000000000000000000000000000000000000000000000000000"
+               "000000000000000000000\"");
+  expectFailed(
+      node,
+      "\"00000000000000000000000000000000000000000000000000000000000001\"");
   expectFailed(node, "\"0000000010000000000000000000000000000000\"");
   expectFailed(node, "\"0000000000000000000000000000000100000000\"");
-  
+
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "\"\""));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "\"0\""));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "\"00\""));
   ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "\"000\""));
-  ASSERT_EQ(int64_t(0), evaluate<int64_t>(node, "\"00000000000000000000000000000000\""));
+  ASSERT_EQ(int64_t(0),
+            evaluate<int64_t>(node, "\"00000000000000000000000000000000\""));
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "\"1\""));
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "\"01\""));
   ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "\"000001\""));
-  ASSERT_EQ(int64_t(1), evaluate<int64_t>(node, "\"00000000000000000000000000000001\""));
+  ASSERT_EQ(int64_t(1),
+            evaluate<int64_t>(node, "\"00000000000000000000000000000001\""));
   ASSERT_EQ(int64_t(2), evaluate<int64_t>(node, "\"10\""));
   ASSERT_EQ(int64_t(2), evaluate<int64_t>(node, "\"010\""));
   ASSERT_EQ(int64_t(3), evaluate<int64_t>(node, "\"11\""));
@@ -1366,7 +1485,8 @@ TEST(BitFunctionsTest, BitFromString) {
   ASSERT_EQ(int64_t(4), evaluate<int64_t>(node, "\"0100\""));
   ASSERT_EQ(int64_t(7), evaluate<int64_t>(node, "\"111\""));
   ASSERT_EQ(int64_t(7), evaluate<int64_t>(node, "\"000000000111\""));
-  ASSERT_EQ(int64_t(7), evaluate<int64_t>(node, "\"00000000000000000000000000000111\""));
+  ASSERT_EQ(int64_t(7),
+            evaluate<int64_t>(node, "\"00000000000000000000000000000111\""));
   ASSERT_EQ(int64_t(21), evaluate<int64_t>(node, "\"10101\""));
   ASSERT_EQ(int64_t(16), evaluate<int64_t>(node, "\"10000\""));
   ASSERT_EQ(int64_t(32), evaluate<int64_t>(node, "\"100000\""));
@@ -1378,10 +1498,16 @@ TEST(BitFunctionsTest, BitFromString) {
   ASSERT_EQ(int64_t(256), evaluate<int64_t>(node, "\"100000000\""));
   ASSERT_EQ(int64_t(65791), evaluate<int64_t>(node, "\"10000000011111111\""));
   ASSERT_EQ(int64_t(196863), evaluate<int64_t>(node, "\"110000000011111111\""));
-  ASSERT_EQ(int64_t(1245439), evaluate<int64_t>(node, "\"100110000000011111111\""));
-  ASSERT_EQ(int64_t(2147483648), evaluate<int64_t>(node, "\"10000000000000000000000000000000\""));
-  ASSERT_EQ(int64_t(3221225472), evaluate<int64_t>(node, "\"11000000000000000000000000000000\""));
-  ASSERT_EQ(int64_t(3221225472), evaluate<int64_t>(node, "\"11000000000000000000000000000000\""));
-  ASSERT_EQ(int64_t(4294967294), evaluate<int64_t>(node, "\"11111111111111111111111111111110\""));
-  ASSERT_EQ(int64_t(4294967295), evaluate<int64_t>(node, "\"11111111111111111111111111111111\""));
+  ASSERT_EQ(int64_t(1245439),
+            evaluate<int64_t>(node, "\"100110000000011111111\""));
+  ASSERT_EQ(int64_t(2147483648),
+            evaluate<int64_t>(node, "\"10000000000000000000000000000000\""));
+  ASSERT_EQ(int64_t(3221225472),
+            evaluate<int64_t>(node, "\"11000000000000000000000000000000\""));
+  ASSERT_EQ(int64_t(3221225472),
+            evaluate<int64_t>(node, "\"11000000000000000000000000000000\""));
+  ASSERT_EQ(int64_t(4294967294),
+            evaluate<int64_t>(node, "\"11111111111111111111111111111110\""));
+  ASSERT_EQ(int64_t(4294967295),
+            evaluate<int64_t>(node, "\"11111111111111111111111111111111\""));
 }

@@ -36,11 +36,12 @@ TEST_F(AppendEntriesBatchTest, test_with_two_batches) {
   auto leaderLog = std::invoke([&] {
     auto persistedLog = makePersistedLog(LogId{1});
     for (size_t i = 1; i <= 2000; i++) {
-      persistedLog->setEntry(LogIndex{i}, LogTerm{4}, LogPayload::createFromString("log entry"));
+      persistedLog->setEntry(LogIndex{i}, LogTerm{4},
+                             LogPayload::createFromString("log entry"));
     }
-    return std::make_shared<TestReplicatedLog>(std::make_unique<LogCore>(persistedLog),
-                                               _logMetricsMock,
-                                               LoggerContext(Logger::REPLICATION2));
+    return std::make_shared<TestReplicatedLog>(
+        std::make_unique<LogCore>(persistedLog), _logMetricsMock,
+        LoggerContext(Logger::REPLICATION2));
   });
 
   auto followerLog = makeReplicatedLog(LogId{1});

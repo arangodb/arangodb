@@ -38,7 +38,8 @@ ExecutorExpressionContext::ExecutorExpressionContext(
       _inputRow(inputRow),
       _varsToRegister(varsToRegister) {}
 
-AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
+AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable,
+                                                     bool doCopy,
                                                      bool& mustDestroy) const {
   mustDestroy = false;
   auto const searchId = variable->id;

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Configure this hook by running the following:
+#    1. cd arangodb
+#    2. cp .githooks/pre-commit-linux .git/hooks/pre-commit
+#    3. git config core.hooksPath .git/hooks
+# pre-requisite: Docker
+# pre-requisite: Git 2.9+
+
+adb_path="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )/../.." &> /dev/null && pwd )"
+
+echo "ArangoDB directory: $adb_path"
+cd "$adb_path"
+
+community_diff=$(git diff HEAD --diff-filter=ACMR --name-only -- '*.cpp' '*.hpp' '*.cc' '*.c' '*.h')
+if ! [[ -z "${community_diff// }" ]]; then
+  docker run --rm -u "$(id -u):$(id -g)" --mount type=bind,source="$adb_path",target=/usr/src/arangodb arangodb/clang-format:1.0 "$community_diff"
+fi
+
+echo "(done)"

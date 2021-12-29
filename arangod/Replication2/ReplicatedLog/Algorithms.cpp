@@ -38,9 +38,11 @@ using namespace arangodb::replication2::agency;
 using namespace arangodb::replication2::algorithms;
 
 namespace {
-auto createFirstTerm(DatabaseID const& database, LogPlanSpecification const& spec,
-                     std::unordered_map<ParticipantId, ParticipantRecord> const& info)
-    -> std::variant<std::monostate, LogPlanTermSpecification, LogCurrentSupervisionElection> {
+auto createFirstTerm(
+    DatabaseID const& database, LogPlanSpecification const& spec,
+    std::unordered_map<ParticipantId, ParticipantRecord> const& info)
+    -> std::variant<std::monostate, LogPlanTermSpecification,
+                    LogCurrentSupervisionElection> {
   // There is no term. Randomly select a set of participants and copy the
   // targetConfig to create the first term.
   std::vector<std::string_view> participants;
@@ -76,12 +78,14 @@ auto createFirstTerm(DatabaseID const& database, LogPlanSpecification const& spe
   return newTermSpec;
 }
 
-auto checkCurrentTerm(DatabaseID const& database,
-                      LogPlanSpecification const& spec, LogCurrent const& current,
-                      std::unordered_map<ParticipantId, ParticipantRecord> const& info)
-    -> std::variant<std::monostate, agency::LogPlanTermSpecification, agency::LogCurrentSupervisionElection> {
-
-  auto const verifyServerRebootId = [&](ParticipantId const& id, RebootId rebootId) -> bool {
+auto checkCurrentTerm(
+    DatabaseID const& database, LogPlanSpecification const& spec,
+    LogCurrent const& current,
+    std::unordered_map<ParticipantId, ParticipantRecord> const& info)
+    -> std::variant<std::monostate, agency::LogPlanTermSpecification,
+                    agency::LogCurrentSupervisionElection> {
+  auto const verifyServerRebootId = [&](ParticipantId const& id,
+                                        RebootId rebootId) -> bool {
     if (auto it = info.find(id); it != std::end(info)) {
       return it->second.rebootId == rebootId;
     }
@@ -96,7 +100,6 @@ auto checkCurrentTerm(DatabaseID const& database,
 
     return false;
   };
-
 
   auto const& term = spec.currentTerm;
   if (auto const& leader = term->leader; leader) {
@@ -128,16 +131,19 @@ auto checkCurrentTerm(DatabaseID const& database,
     auto numberOfAvailableParticipants = std::size_t{0};
 
     for (auto const& [participant, status] : current.localState) {
-      auto error = std::invoke([&, &status = status, &participant = participant]{
-        bool const isHealthy = isServerHealthy(participant);
-        if (!isHealthy) {
-          return agency::LogCurrentSupervisionElection::ErrorCode::SERVER_NOT_GOOD;
-        } else if (status.term != spec.currentTerm->term) {
-          return agency::LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED;
-        } else {
-          return agency::LogCurrentSupervisionElection::ErrorCode::OK;
-        }
-      });
+      auto error =
+          std::invoke([&, &status = status, &participant = participant] {
+            bool const isHealthy = isServerHealthy(participant);
+            if (!isHealthy) {
+              return agency::LogCurrentSupervisionElection::ErrorCode::
+                  SERVER_NOT_GOOD;
+            } else if (status.term != spec.currentTerm->term) {
+              return agency::LogCurrentSupervisionElection::ErrorCode::
+                  TERM_NOT_CONFIRMED;
+            } else {
+              return agency::LogCurrentSupervisionElection::ErrorCode::OK;
+            }
+          });
 
       election.detail.emplace(participant, error);
       if (error != agency::LogCurrentSupervisionElection::ErrorCode::OK) {
@@ -154,43 +160,50 @@ auto checkCurrentTerm(DatabaseID const& database,
       }
     }
 
-    auto const requiredNumberOfAvailableParticipants = std::invoke([&spec = spec.currentTerm] {
-      return spec->participants.size() - spec->config.writeConcern + 1;
-    });
+    auto const requiredNumberOfAvailableParticipants =
+        std::invoke([&spec = spec.currentTerm] {
+          return spec->participants.size() - spec->config.writeConcern + 1;
+        });
 
     LOG_TOPIC("8a53d", TRACE, Logger::REPLICATION2)
         << "participant size = " << spec.currentTerm->participants.size()
         << " writeConcern = " << spec.currentTerm->config.writeConcern
-        << " requiredNumberOfAvailableParticipants = " << requiredNumberOfAvailableParticipants;
+        << " requiredNumberOfAvailableParticipants = "
+        << requiredNumberOfAvailableParticipants;
 
     TRI_ASSERT(requiredNumberOfAvailableParticipants > 0);
 
     election.participantsRequired = requiredNumberOfAvailableParticipants;
     election.participantsAvailable = numberOfAvailableParticipants;
 
-    if (numberOfAvailableParticipants >= requiredNumberOfAvailableParticipants) {
+    if (numberOfAvailableParticipants >=
+        requiredNumberOfAvailableParticipants) {
       auto const numParticipants = newLeaderSet.size();
       if (ADB_UNLIKELY(numParticipants == 0 ||
-                       numParticipants > std::numeric_limits<uint16_t>::max())) {
+                       numParticipants >
+                           std::numeric_limits<uint16_t>::max())) {
         abortOrThrow(
             TRI_ERROR_NUMERIC_OVERFLOW,
             basics::StringUtils::concatT(
                 "Number of participants out of range, should be between ", 1,
-                " and ", std::numeric_limits<uint16_t>::max(), ", but is ", numParticipants),
+                " and ", std::numeric_limits<uint16_t>::max(), ", but is ",
+                numParticipants),
             ADB_HERE);
       }
       auto const maxIdx = static_cast<uint16_t>(numParticipants - 1);
       // Randomly select one of the best participants
-      auto const& newLeader = newLeaderSet.at(RandomGenerator::interval(maxIdx));
+      auto const& newLeader =
+          newLeaderSet.at(RandomGenerator::interval(maxIdx));
       auto const& record = info.at(newLeader);
 
       // we can elect a new leader
       LogPlanTermSpecification newTermSpec = *spec.currentTerm;
       newTermSpec.term.value += 1;
-      newTermSpec.leader = LogPlanTermSpecification::Leader{newLeader, record.rebootId};
+      newTermSpec.leader =
+          LogPlanTermSpecification::Leader{newLeader, record.rebootId};
       LOG_TOPIC("458ad", INFO, Logger::REPLICATION2)
-          << "declaring " << newLeader << " as new leader for log "
-          << database << "/" << spec.id;
+          << "declaring " << newLeader << " as new leader for log " << database
+          << "/" << spec.id;
       return newTermSpec;
 
     } else {
@@ -212,12 +225,12 @@ auto checkCurrentTerm(DatabaseID const& database,
 
 }  // namespace
 
-auto algorithms::checkReplicatedLog(DatabaseID const& database,
-                                    LogPlanSpecification const& spec,
-                                    LogCurrent const& current,
-                                    std::unordered_map<ParticipantId, ParticipantRecord> const& info)
-    -> std::variant<std::monostate, agency::LogPlanTermSpecification, agency::LogCurrentSupervisionElection> {
-
+auto algorithms::checkReplicatedLog(
+    DatabaseID const& database, LogPlanSpecification const& spec,
+    LogCurrent const& current,
+    std::unordered_map<ParticipantId, ParticipantRecord> const& info)
+    -> std::variant<std::monostate, agency::LogPlanTermSpecification,
+                    agency::LogCurrentSupervisionElection> {
   if (spec.currentTerm.has_value()) {
     return checkCurrentTerm(database, spec, current, info);
   } else {
@@ -242,7 +255,8 @@ auto algorithms::to_string(ConflictReason r) noexcept -> std::string_view {
   FATAL_ERROR_ABORT();
 }
 
-auto algorithms::detectConflict(replicated_log::InMemoryLog const& log, TermIndexPair prevLog) noexcept
+auto algorithms::detectConflict(replicated_log::InMemoryLog const& log,
+                                TermIndexPair prevLog) noexcept
     -> std::optional<std::pair<ConflictReason, TermIndexPair>> {
   /*
    * There are three situations to handle here:
@@ -256,7 +270,8 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log, TermInde
     // check if the term matches
     if (entry->entry().logTerm() != prevLog.term) {
       auto conflict = std::invoke([&] {
-        if (auto idx = log.getFirstIndexOfTerm(entry->entry().logTerm()); idx.has_value()) {
+        if (auto idx = log.getFirstIndexOfTerm(entry->entry().logTerm());
+            idx.has_value()) {
           return TermIndexPair{entry->entry().logTerm(), *idx};
         }
         return TermIndexPair{};
@@ -281,14 +296,15 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log, TermInde
       TRI_ASSERT(prevLog.index < lastEntry->entry().logIndex());
       TRI_ASSERT(prevLog.index < log.getFirstEntry()->entry().logIndex());
       // the given index too old, reset to (0, 0)
-      return std::make_pair(ConflictReason::LOG_ENTRY_BEFORE_BEGIN, TermIndexPair{});
+      return std::make_pair(ConflictReason::LOG_ENTRY_BEFORE_BEGIN,
+                            TermIndexPair{});
     }
   }
 }
 
-auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serverId,
-                                     RebootId rebootId, LogId logId,
-                                     agency::LogPlanSpecification const* spec) noexcept
+auto algorithms::updateReplicatedLog(
+    LogActionContext& ctx, ServerID const& serverId, RebootId rebootId,
+    LogId logId, agency::LogPlanSpecification const* spec) noexcept
     -> arangodb::Result {
   return basics::catchToResult([&]() -> Result {
     if (spec == nullptr) {
@@ -300,25 +316,29 @@ auto algorithms::updateReplicatedLog(LogActionContext& ctx, ServerID const& serv
     auto& leader = spec->currentTerm->leader;
     auto log = ctx.ensureReplicatedLog(logId);
 
-    if (leader.has_value() && leader->serverId == serverId && leader->rebootId == rebootId) {
-      auto followers =
-          std::vector<std::shared_ptr<replication2::replicated_log::AbstractFollower>>{};
+    if (leader.has_value() && leader->serverId == serverId &&
+        leader->rebootId == rebootId) {
+      auto followers = std::vector<
+          std::shared_ptr<replication2::replicated_log::AbstractFollower>>{};
       for (auto const& [participant, data] : spec->currentTerm->participants) {
         if (participant != serverId) {
-          followers.emplace_back(ctx.buildAbstractFollowerImpl(logId, participant));
+          followers.emplace_back(
+              ctx.buildAbstractFollowerImpl(logId, participant));
         }
       }
 
       auto newLeader = log->becomeLeader(spec->currentTerm->config, serverId,
                                          spec->currentTerm->term, followers);
-      newLeader->triggerAsyncReplication(); // TODO move this call into becomeLeader?
+      newLeader->triggerAsyncReplication();  // TODO move this call into
+                                             // becomeLeader?
     } else {
       auto leaderString = std::optional<ParticipantId>{};
       if (spec->currentTerm->leader) {
         leaderString = spec->currentTerm->leader->serverId;
       }
 
-      std::ignore = log->becomeFollower(serverId, spec->currentTerm->term, leaderString);
+      std::ignore =
+          log->becomeFollower(serverId, spec->currentTerm->term, leaderString);
     }
 
     return Result();

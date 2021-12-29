@@ -73,8 +73,8 @@ void VstResponse::addPayload(VPackSlice const& slice,
       VPackBuffer<uint8_t> tmpBuffer;
       tmpBuffer.reserve(slice.byteSize());  // reserve space already
       VPackBuilder builder(tmpBuffer, options);
-      VelocyPackHelper::sanitizeNonClientTypes(slice, VPackSlice::noneSlice(),
-                                               builder, options, true, true, true);
+      VelocyPackHelper::sanitizeNonClientTypes(
+          slice, VPackSlice::noneSlice(), builder, options, true, true, true);
       if (_contentType == rest::ContentType::VPACK) {
         if (_payload.empty()) {
           _payload = std::move(tmpBuffer);
@@ -111,7 +111,8 @@ void VstResponse::addPayload(VPackSlice const& slice,
 }
 
 void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
-                             velocypack::Options const* options, bool resolveExternals) {
+                             velocypack::Options const* options,
+                             bool resolveExternals) {
   if (_contentType == rest::ContentType::VPACK &&
       _contentTypeRequested == rest::ContentType::JSON) {
     // content type was set by a handler to VPACK but the client wants JSON
@@ -121,7 +122,7 @@ void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
   if (!options) {
     options = &VPackOptions::Options::Defaults;
   }
-  
+
   auto handleBuffer = [this, options](VPackBuffer<uint8_t>&& buff) {
     if (ADB_UNLIKELY(_contentType == rest::ContentType::JSON)) {
       // simon: usually we escape unicode char sequences,
@@ -146,8 +147,8 @@ void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
       VPackBuffer<uint8_t> tmpBuffer;
       tmpBuffer.reserve(buffer.length());  // reserve space already
       VPackBuilder builder(tmpBuffer, options);
-      VelocyPackHelper::sanitizeNonClientTypes(input, VPackSlice::noneSlice(),
-                                               builder, options, true, true, true);
+      VelocyPackHelper::sanitizeNonClientTypes(
+          input, VPackSlice::noneSlice(), builder, options, true, true, true);
       handleBuffer(std::move(tmpBuffer));
       return;
     }
@@ -162,11 +163,12 @@ void VstResponse::addRawPayload(VPackStringRef payload) {
 
 void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
   VPackBuilder builder(buffer);
-  VPackArrayBuilder array(&builder, /*unindexed*/true);
+  VPackArrayBuilder array(&builder, /*unindexed*/ true);
   builder.add(VPackValue(int(1)));  // 1 == version
   builder.add(VPackValue(int(2)));  // 2 == response
-  builder.add(VPackValue(static_cast<int>(meta::underlyingValue(_responseCode))));  // 3 == request - return code
-  
+  builder.add(VPackValue(static_cast<int>(
+      meta::underlyingValue(_responseCode))));  // 3 == request - return code
+
   auto fixCase = [](std::string& tmp) {
     int capState = 1;
     for (auto& it : tmp) {
@@ -185,11 +187,10 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
       }
     }
   };
-  
-  std::string currentHeader;
-  VPackObjectBuilder meta(&builder, /*unindexed*/true);  // 4 == meta
-  for (auto& item : _headers) {
 
+  std::string currentHeader;
+  VPackObjectBuilder meta(&builder, /*unindexed*/ true);  // 4 == meta
+  for (auto& item : _headers) {
     if (_contentType != ContentType::CUSTOM &&
         item.first.compare(0, StaticStrings::ContentTypeHeader.size(),
                            StaticStrings::ContentTypeHeader) == 0) {
@@ -204,9 +205,10 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
     builder.add(StaticStrings::ContentLength, VPackValue(len));
   }
   if (_contentType != ContentType::VPACK &&
-      _contentType != ContentType::CUSTOM) { // fuerte uses VPack as default
+      _contentType != ContentType::CUSTOM) {  // fuerte uses VPack as default
     currentHeader = StaticStrings::ContentTypeHeader;
     fixCase(currentHeader);
-    builder.add(currentHeader, VPackValue(rest::contentTypeToString(_contentType)));
+    builder.add(currentHeader,
+                VPackValue(rest::contentTypeToString(_contentType)));
   }
 }

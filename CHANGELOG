@@ -5,6 +5,61 @@ v3.9.0 (XXXX-XX-XX)
   allow installing Foxx apps from remote URLs other than Github. The option is
   turned off by default.
 
+* Fixed BTS-693: Sort-limit rule now always ensures proper LIMIT node placement
+  to avoid possible invalid results in the fullCount data
+
+* Updated OpenSSL to 1.1.1m and OpenLDAP to 2.6.0.
+
+* Updated arangosync to 2.7.0.
+
+* Fixed PRESUPP-439: In arangoimport, for CSV and TSV files, it could happen
+  that a buffer containing only the header would be sent to the server, and also
+  batches would contain the documents equivalent to the csv rows in them, but
+  not the header, which should be sent together with the documents.
+
+* Changed various default values for RocksDB to tune operations for different
+  typical scenarios like gp2 type volumes and gp3 type volumes and locally
+  attached SSDs with RAID0:
+  - `--rocksdb.level0-slowdown-trigger` has been decreased from 20 to 16
+  - `--rocksdb.level0-stop-trigger` has been increased from 36 to 256
+  - `--rocksdb.max-background-jobs` has been increased to the number of cores
+    and is no longer limited to 8
+  - `--rocksdb.enabled-pipelined-write` is now `true` by default instead of
+    `false`
+  - `--rocksdb.throttle-frequency` has been decreased from 60000ms down to
+    1000ms per iteration, which makes the RocksDB throttle react much quicker
+  - `--rocksdb.pending-compactions-slowdown-trigger` has been decreased from 64
+    GB down to 8 GB
+  - `--rocksdb.pending-compactions-stop-trigger` has been decreased from 256 GB
+    down to 16 GB
+  - `--rocksdb.throttle-slots` has been increased from 63 to 120
+  - `--rocksdb.encryption-hardware-acceleration` is now `true` by default,
+    which helps performance and should not create any problems, since we
+    require sandybridge anyway.
+  Combined, these changes help ArangoDB/RocksDB to react quicker to a backlog of
+  background jobs and thus to prevent catastrophic stops which abort data
+  ingestion or lead to cluster internal timeouts.
+
+* Adjust default value for startup option `--rocksdb.max-subcompactions` from 1
+  to 2. This allows compactions jobs to be broken up into disjoint ranges which
+  can be processed in parallel.
+
+* Added startup options to adjust previously hard-coded parameters for RocksDB's
+  behavior:
+
+  - `--rocksdb.pending-compactions-bytes-slowdown-trigger` controls RocksDB's
+    setting `soft_pending_compaction_bytes_limit`, which controls how many
+    pending compaction bytes RocksDB tolerates before it slows down writes.
+  - `--rocksdb.pending-compactions-bytes-stop-trigger` controls RocksDB's
+    setting `hard_pending_compaction_bytes_limit`, which controls how many
+    pending compaction bytes RocksDB tolerates before it stops writes entirely.
+  - `--rocksdb.throttle-lower-bound-bps`, which controls a lower bound for the
+    bandwidth restriction on RocksDB writes the throttle imposes.
+
+* Allow initial, full dump shard synchronization to abort prematurely if it
+  turns out that the follower was removed from the plan as a follower (e.g. if
+  there are enough other in-sync followers).
+
 * Set the limit for ArangoSearch segment size to 256MB during recovery to avoid
   OOM kill in rare cases.
 
@@ -205,8 +260,6 @@ v3.9.0-alpha.1 (2021-11-30)
   There was a short window of time in which an already freed Table could be used
   by concurrently running edge lookups.
 
-* Upgrade bundled version of RocksDB to 6.26.
-  
 * BTS-623: The audit log messages, when written, were not showing the log level
   of the message, as in the example:
     `2021-10-21T02:28:42Z | hostname | audit-authentication | n/a | _system |

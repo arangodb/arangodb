@@ -43,7 +43,8 @@ struct BenchRunResult {
   uint64_t _incomplete;
   double _requestTime;
 
-  void update(double time, uint64_t failures, uint64_t incomplete, double requestTime) {
+  void update(double time, uint64_t failures, uint64_t incomplete,
+              double requestTime) {
     _time = time;
     _failures = failures;
     _incomplete = incomplete;
@@ -77,17 +78,23 @@ class BenchFeature final : public application_features::ApplicationFeature {
   bool waitForSync() const { return _waitForSync; }
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
-  
   std::string const& customQuery() const { return _customQuery; }
   std::string const& customQueryFile() const { return _customQueryFile; }
 
  private:
   void status(std::string const& value);
-  void report(ClientFeature& client, std::vector<BenchRunResult> const& results, arangobench::BenchmarkStats const& stats, std::string const& histogram, VPackBuilder& builder);
+  void report(ClientFeature& client, std::vector<BenchRunResult> const& results,
+              arangobench::BenchmarkStats const& stats,
+              std::string const& histogram, VPackBuilder& builder);
   void printResult(BenchRunResult const& result, VPackBuilder& builder);
   bool writeJunitReport(BenchRunResult const& result);
   void setupHistogram(std::stringstream& pp);
-  void updateStatsValues(std::stringstream& pp, VPackBuilder& builder, std::vector<std::unique_ptr<arangodb::arangobench::BenchmarkThread>> const&  threads, arangodb::arangobench::BenchmarkStats& totalStats);
+  void updateStatsValues(
+      std::stringstream& pp, VPackBuilder& builder,
+      std::vector<
+          std::unique_ptr<arangodb::arangobench::BenchmarkThread>> const&
+          threads,
+      arangodb::arangobench::BenchmarkStats& totalStats);
 
   uint64_t _concurrency;
   uint64_t _operations;
@@ -105,13 +112,13 @@ class BenchFeature final : public application_features::ApplicationFeature {
   bool _verbose;
   bool _quiet;
   bool _waitForSync;
-  bool _generateHistogram; // don't generate histogram by default
+  bool _generateHistogram;  // don't generate histogram by default
   uint64_t _runs;
   std::string _junitReportFile;
   std::string _jsonReportFile;
   uint64_t _replicationFactor;
   uint64_t _numberOfShards;
-  
+
   std::string _customQuery;
   std::string _customQueryFile;
 
@@ -120,7 +127,7 @@ class BenchFeature final : public application_features::ApplicationFeature {
   uint64_t _histogramNumIntervals;
   double _histogramIntervalSize;
   std::vector<double> _percentiles;
-  
+
   static void updateStartCounter();
   static int getStartCounter();
 
@@ -128,4 +135,3 @@ class BenchFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-
