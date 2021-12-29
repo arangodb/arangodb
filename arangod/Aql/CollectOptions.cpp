@@ -59,7 +59,8 @@ void CollectOptions::toVelocyPack(VPackBuilder& builder) const {
 }
 
 /// @brief get the aggregation method from a string
-CollectOptions::CollectMethod CollectOptions::methodFromString(std::string_view method) {
+CollectOptions::CollectMethod CollectOptions::methodFromString(
+    std::string_view method) {
   if (method == "hash") {
     return CollectMethod::HASH;
   }
@@ -77,7 +78,8 @@ CollectOptions::CollectMethod CollectOptions::methodFromString(std::string_view 
 }
 
 /// @brief stringify the aggregation method
-std::string_view CollectOptions::methodToString(CollectOptions::CollectMethod method) {
+std::string_view CollectOptions::methodToString(
+    CollectOptions::CollectMethod method) {
   if (method == CollectMethod::HASH) {
     return "hash";
   }

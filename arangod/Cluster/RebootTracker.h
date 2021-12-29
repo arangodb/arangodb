@@ -40,7 +40,7 @@ class SupervisedScheduler;
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace cluster {
 
@@ -93,11 +93,16 @@ class RebootTracker {
   void scheduleCallbacksFor(ServerID const& serverId, RebootId rebootId);
 
   static Callback createSchedulerCallback(
-      std::vector<std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>> callbacks);
+      std::vector<
+          std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>>
+          callbacks);
 
-  void queueCallbacks(std::vector<std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>> callbacks);
+  void queueCallbacks(
+      std::vector<
+          std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>>
+          callbacks);
   void queueCallback(DescriptedCallback callback);
- 
+
  private:
   mutable Mutex _mutex;
 
@@ -112,14 +117,20 @@ class RebootTracker {
   /// @brief List of registered callbacks per server.
   /// Maps (serverId, rebootId) to a set of callbacks (indexed by a CallbackId).
   /// Needs to fulfill the following:
-  ///  - A callback with a given ID may never be moved to another (serverId, rebootId) entry,
+  ///  - A callback with a given ID may never be moved to another (serverId,
+  ///  rebootId) entry,
   ///    to allow CallbackGuard to find a callback.
   ///  - All ServerIDs in this map must always exist in _rebootIds (though not
   ///    necessarily the other way round).
   ///  - The shared_ptr in the RebootId-indexed map must never be nullptr
-  ///  - The unordered_map pointed to by the aforementioned shared_ptr must never be empty
-  ///  - The RebootIds used as index in the inner map are expected to not be smaller than the corresponding ones in _rebootIds
-  std::unordered_map<ServerID, std::map<RebootId, std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>>> _callbacks;
+  ///  - The unordered_map pointed to by the aforementioned shared_ptr must
+  ///  never be empty
+  ///  - The RebootIds used as index in the inner map are expected to not be
+  ///  smaller than the corresponding ones in _rebootIds
+  std::unordered_map<ServerID,
+                     std::map<RebootId, std::shared_ptr<std::unordered_map<
+                                            CallbackId, DescriptedCallback>>>>
+      _callbacks;
 
   /// @brief Save a pointer to the scheduler for easier testing
   SchedulerPointer _scheduler;
@@ -127,4 +138,3 @@ class RebootTracker {
 
 }  // namespace cluster
 }  // namespace arangodb
-

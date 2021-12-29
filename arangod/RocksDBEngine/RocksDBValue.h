@@ -45,7 +45,7 @@ class LogId;
 struct LogIndex;
 struct LogTerm;
 struct LogPayload;
-}
+}  // namespace replication2
 
 class RocksDBValue {
  public:
@@ -58,7 +58,8 @@ class RocksDBValue {
   static RocksDBValue Database(VPackSlice data);
   static RocksDBValue Collection(VPackSlice data);
   static RocksDBValue ReplicatedLog(VPackSlice data);
-  static RocksDBValue PrimaryIndexValue(LocalDocumentId const& docId, RevisionId revision);
+  static RocksDBValue PrimaryIndexValue(LocalDocumentId const& docId,
+                                        RevisionId revision);
   static RocksDBValue EdgeIndexValue(std::string_view vertexId);
   static RocksDBValue VPackIndexValue();
   static RocksDBValue ZkdIndexValue();
@@ -158,7 +159,8 @@ class RocksDBValue {
  private:
   RocksDBValue();
   explicit RocksDBValue(RocksDBEntryType type);
-  RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId, RevisionId revision);
+  RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
+               RevisionId revision);
   RocksDBValue(RocksDBEntryType type, VPackSlice data);
   RocksDBValue(RocksDBEntryType type, std::string_view data);
   RocksDBValue(RocksDBEntryType type, replication2::PersistingLogEntry const&);
@@ -174,4 +176,3 @@ class RocksDBValue {
 };
 
 }  // namespace arangodb
-

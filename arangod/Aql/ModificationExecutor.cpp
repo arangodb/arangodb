@@ -58,7 +58,8 @@ ModifierOutput::ModifierOutput(InputAqlItemRow&& inputRow, Type type)
     : _inputRow(std::move(inputRow)), _type(type), _oldValue(), _newValue() {}
 
 ModifierOutput::ModifierOutput(InputAqlItemRow const& inputRow, Type type,
-                               AqlValue const& oldValue, AqlValue const& newValue)
+                               AqlValue const& oldValue,
+                               AqlValue const& newValue)
     : _inputRow(inputRow),
       _type(type),
       _oldValue(oldValue),
@@ -67,7 +68,8 @@ ModifierOutput::ModifierOutput(InputAqlItemRow const& inputRow, Type type,
       _newValueGuard(std::in_place, _newValue.value(), true) {}
 
 ModifierOutput::ModifierOutput(InputAqlItemRow&& inputRow, Type type,
-                               AqlValue const& oldValue, AqlValue const& newValue)
+                               AqlValue const& oldValue,
+                               AqlValue const& newValue)
     : _inputRow(std::move(inputRow)),
       _type(type),
       _oldValue(oldValue),
@@ -88,17 +90,19 @@ AqlValue const& ModifierOutput::getNewValue() const {
   return _newValue.value();
 }
 
-template <typename FetcherType, typename ModifierType>
-ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& fetcher,
-                                                                      Infos& infos)
+template<typename FetcherType, typename ModifierType>
+ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(
+    Fetcher& fetcher, Infos& infos)
     : _trx(infos._query.newTrxContext()),
       _infos(infos),
       _modifier(std::make_shared<ModifierType>(infos)) {}
 
-template <typename FetcherType, typename ModifierType>
-template <typename ProduceOrSkipData>
-[[nodiscard]] auto ModificationExecutor<FetcherType, ModifierType>::produceOrSkip(
-    typename FetcherType::DataRange& input, ProduceOrSkipData& produceOrSkipData)
+template<typename FetcherType, typename ModifierType>
+template<typename ProduceOrSkipData>
+[[nodiscard]] auto
+ModificationExecutor<FetcherType, ModifierType>::produceOrSkip(
+    typename FetcherType::DataRange& input,
+    ProduceOrSkipData& produceOrSkipData)
     -> std::tuple<ExecutionState, Stats, AqlCall> {
   TRI_IF_FAILURE("ModificationBlock::getSome") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -119,21 +123,24 @@ template <typename ProduceOrSkipData>
 
   auto const maxRows = std::invoke([&] {
     if constexpr (std::is_same_v<ModifierType, UpsertModifier>) {
-      return std::min(produceOrSkipData.maxOutputRows(), _modifier->getBatchSize());
+      return std::min(produceOrSkipData.maxOutputRows(),
+                      _modifier->getBatchSize());
     } else {
       return produceOrSkipData.maxOutputRows();
     }
   });
 
   // Read as much input as possible
-  while (_rangeHandler.hasDataRow(input) && _modifier->nrOfOperations() < maxRows) {
+  while (_rangeHandler.hasDataRow(input) &&
+         _modifier->nrOfOperations() < maxRows) {
     auto row = _rangeHandler.nextDataRow(input);
 
     TRI_ASSERT(row.isInitialized());
     _modifier->accumulate(row);
   }
 
-  bool const inputDone = _rangeHandler.upstreamState(input) == ExecutorState::DONE;
+  bool const inputDone =
+      _rangeHandler.upstreamState(input) == ExecutorState::DONE;
   bool const enoughOutputAvailable = maxRows == _modifier->nrOfOperations();
   bool const hasAtLeastOneModification = _modifier->nrOfOperations() > 0;
 
@@ -171,10 +178,11 @@ template <typename ProduceOrSkipData>
 
   TRI_ASSERT(_modifier->hasNeitherResultNorOperationPending());
 
-  return {translateReturnType(_rangeHandler.upstreamState(input)), stats, upstreamCall};
+  return {translateReturnType(_rangeHandler.upstreamState(input)), stats,
+          upstreamCall};
 }
 
-template <typename FetcherType, typename ModifierType>
+template<typename FetcherType, typename ModifierType>
 [[nodiscard]] auto ModificationExecutor<FetcherType, ModifierType>::produceRows(
     typename FetcherType::DataRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutionState, Stats, AqlCall> {
@@ -185,7 +193,8 @@ template <typename FetcherType, typename ModifierType>
     bool _first = true;
 
     ~ProduceData() final = default;
-    ProduceData(OutputAqlItemRow& output, ModificationExecutorInfos& infos, ModifierType& modifier)
+    ProduceData(OutputAqlItemRow& output, ModificationExecutorInfos& infos,
+                ModifierType& modifier)
         : _output(output), _infos(infos), _modifier(modifier) {}
 
     void doOutput() final {
@@ -241,8 +250,9 @@ template <typename FetcherType, typename ModifierType>
   return {state, stats, upstreamCall};
 }
 
-template <typename FetcherType, typename ModifierType>
-[[nodiscard]] auto ModificationExecutor<FetcherType, ModifierType>::skipRowsRange(
+template<typename FetcherType, typename ModifierType>
+[[nodiscard]] auto
+ModificationExecutor<FetcherType, ModifierType>::skipRowsRange(
     typename FetcherType::DataRange& input, AqlCall& call)
     -> std::tuple<ExecutionState, Stats, size_t, AqlCall> {
   struct SkipData final : public IProduceOrSkipData {
@@ -306,7 +316,7 @@ template <typename FetcherType, typename ModifierType>
   return {state, stats, call.getSkipCount(), upstreamCall};
 }
 
-template <typename FetcherType, typename ModifierType>
+template<typename FetcherType, typename ModifierType>
 auto ModificationExecutor<FetcherType, ModifierType>::RangeHandler::nextDataRow(
     typename FetcherType::DataRange& input) -> arangodb::aql::InputAqlItemRow {
   if constexpr (inputIsMatrix) {
@@ -331,7 +341,7 @@ auto ModificationExecutor<FetcherType, ModifierType>::RangeHandler::nextDataRow(
   }
 }
 
-template <typename FetcherType, typename ModifierType>
+template<typename FetcherType, typename ModifierType>
 auto ModificationExecutor<FetcherType, ModifierType>::RangeHandler::hasDataRow(
     typename FetcherType::DataRange& input) const noexcept -> bool {
   if constexpr (inputIsMatrix) {
@@ -344,7 +354,7 @@ auto ModificationExecutor<FetcherType, ModifierType>::RangeHandler::hasDataRow(
   }
 }
 
-template <typename FetcherType, typename ModifierType>
+template<typename FetcherType, typename ModifierType>
 bool ModificationExecutor<FetcherType, ModifierType>::RangeHandler::init(
     typename FetcherType::DataRange& input) {
   if constexpr (inputIsMatrix) {
@@ -372,9 +382,10 @@ bool ModificationExecutor<FetcherType, ModifierType>::RangeHandler::init(
   }
 }
 
-template <typename FetcherType, typename ModifierType>
-auto ModificationExecutor<FetcherType, ModifierType>::RangeHandler::upstreamState(
-    typename FetcherType::DataRange& input) const noexcept -> ExecutorState {
+template<typename FetcherType, typename ModifierType>
+auto ModificationExecutor<FetcherType, ModifierType>::RangeHandler::
+    upstreamState(typename FetcherType::DataRange& input) const noexcept
+    -> ExecutorState {
   if constexpr (inputIsMatrix) {
     if (ADB_UNLIKELY(!_iterator.isInitialized())) {
       // As long as the iterator isn't initialized, we need to pass the upstream
@@ -391,11 +402,16 @@ auto ModificationExecutor<FetcherType, ModifierType>::RangeHandler::upstreamStat
   }
 }
 
-using NoPassthroughSingleRowFetcher = SingleRowFetcher<BlockPassthrough::Disable>;
+using NoPassthroughSingleRowFetcher =
+    SingleRowFetcher<BlockPassthrough::Disable>;
 
-template class ::arangodb::aql::ModificationExecutor<NoPassthroughSingleRowFetcher, InsertModifier>;
-template class ::arangodb::aql::ModificationExecutor<NoPassthroughSingleRowFetcher, RemoveModifier>;
-template class ::arangodb::aql::ModificationExecutor<NoPassthroughSingleRowFetcher, UpdateReplaceModifier>;
-template class ::arangodb::aql::ModificationExecutor<NoPassthroughSingleRowFetcher, UpsertModifier>;
+template class ::arangodb::aql::ModificationExecutor<
+    NoPassthroughSingleRowFetcher, InsertModifier>;
+template class ::arangodb::aql::ModificationExecutor<
+    NoPassthroughSingleRowFetcher, RemoveModifier>;
+template class ::arangodb::aql::ModificationExecutor<
+    NoPassthroughSingleRowFetcher, UpdateReplaceModifier>;
+template class ::arangodb::aql::ModificationExecutor<
+    NoPassthroughSingleRowFetcher, UpsertModifier>;
 
 }  // namespace arangodb::aql

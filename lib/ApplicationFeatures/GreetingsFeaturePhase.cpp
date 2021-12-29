@@ -33,7 +33,8 @@
 namespace arangodb {
 namespace application_features {
 
-GreetingsFeaturePhase::GreetingsFeaturePhase(ApplicationServer& server, bool isClient)
+GreetingsFeaturePhase::GreetingsFeaturePhase(ApplicationServer& server,
+                                             bool isClient)
     : ApplicationFeaturePhase(server, "GreetingsPhase") {
   setOptional(false);
 

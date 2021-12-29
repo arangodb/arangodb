@@ -38,22 +38,24 @@
 
 using namespace arangodb;
 
-ReplicatedRocksDBTransactionState::ReplicatedRocksDBTransactionState(TRI_vocbase_t& vocbase,
-                                                             TransactionId tid,
-                                                             transaction::Options const& options)
+ReplicatedRocksDBTransactionState::ReplicatedRocksDBTransactionState(
+    TRI_vocbase_t& vocbase, TransactionId tid,
+    transaction::Options const& options)
     : RocksDBTransactionState(vocbase, tid, options) {}
 
 ReplicatedRocksDBTransactionState::~ReplicatedRocksDBTransactionState() {}
 
-Result ReplicatedRocksDBTransactionState::beginTransaction(transaction::Hints hints) {
+Result ReplicatedRocksDBTransactionState::beginTransaction(
+    transaction::Hints hints) {
   TRI_ASSERT(!_hasActiveTrx);
   auto res = RocksDBTransactionState::beginTransaction(hints);
   if (!res.ok()) {
     return res;
   }
-  
+
   for (auto& col : _collections) {
-    res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col).beginTransaction();
+    res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
+              .beginTransaction();
     if (!res.ok()) {
       return res;
     }
@@ -66,7 +68,8 @@ Result ReplicatedRocksDBTransactionState::beginTransaction(transaction::Hints hi
 Result ReplicatedRocksDBTransactionState::doCommit() {
   Result res;
   for (auto& col : _collections) {
-    res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col).commitTransaction();
+    res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
+              .commitTransaction();
     if (!res.ok()) {
       break;
     }
@@ -79,7 +82,8 @@ Result ReplicatedRocksDBTransactionState::doCommit() {
 Result ReplicatedRocksDBTransactionState::doAbort() {
   Result res;
   for (auto& col : _collections) {
-    res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col).abortTransaction();
+    res = static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
+              .abortTransaction();
     if (!res.ok()) {
       break;
     }
@@ -88,8 +92,10 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
   return res;
 }
 
-RocksDBTransactionMethods* ReplicatedRocksDBTransactionState::rocksdbMethods(DataSourceId collectionId) const {
-  auto* coll = static_cast<ReplicatedRocksDBTransactionCollection*>(findCollection(collectionId));
+RocksDBTransactionMethods* ReplicatedRocksDBTransactionState::rocksdbMethods(
+    DataSourceId collectionId) const {
+  auto* coll = static_cast<ReplicatedRocksDBTransactionCollection*>(
+      findCollection(collectionId));
   if (coll == nullptr) {
     std::string message = "collection '" + std::to_string(collectionId.id()) +
                           "' not found in transaction state";
@@ -102,53 +108,73 @@ RocksDBTransactionMethods* ReplicatedRocksDBTransactionState::rocksdbMethods(Dat
 
 void ReplicatedRocksDBTransactionState::beginQuery(bool isModificationQuery) {
   for (auto& col : _collections) {
-    static_cast<ReplicatedRocksDBTransactionCollection&>(*col).beginQuery(isModificationQuery);
+    static_cast<ReplicatedRocksDBTransactionCollection&>(*col).beginQuery(
+        isModificationQuery);
   }
 }
 
-void ReplicatedRocksDBTransactionState::endQuery(bool isModificationQuery) noexcept {
+void ReplicatedRocksDBTransactionState::endQuery(
+    bool isModificationQuery) noexcept {
   for (auto& col : _collections) {
-    static_cast<ReplicatedRocksDBTransactionCollection&>(*col).endQuery(isModificationQuery);
+    static_cast<ReplicatedRocksDBTransactionCollection&>(*col).endQuery(
+        isModificationQuery);
   }
 }
 
-TRI_voc_tick_t ReplicatedRocksDBTransactionState::lastOperationTick() const noexcept {
-  return std::accumulate(_collections.begin(), _collections.end(), (TRI_voc_tick_t)0, [](auto maxTick, auto& col) {
-    return std::max(maxTick,
-                    static_cast<ReplicatedRocksDBTransactionCollection&>(*col).lastOperationTick());
-  });
+TRI_voc_tick_t ReplicatedRocksDBTransactionState::lastOperationTick()
+    const noexcept {
+  return std::accumulate(
+      _collections.begin(), _collections.end(), (TRI_voc_tick_t)0,
+      [](auto maxTick, auto& col) {
+        return std::max(
+            maxTick, static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
+                         .lastOperationTick());
+      });
 }
 
 uint64_t ReplicatedRocksDBTransactionState::numCommits() const {
   // TODO
-  return std::accumulate(_collections.begin(), _collections.end(), (uint64_t)0, [](auto sum, auto& col) {
-    return sum + static_cast<ReplicatedRocksDBTransactionCollection const&>(*col).numCommits();
-  });
+  return std::accumulate(
+      _collections.begin(), _collections.end(), (uint64_t)0,
+      [](auto sum, auto& col) {
+        return sum +
+               static_cast<ReplicatedRocksDBTransactionCollection const&>(*col)
+                   .numCommits();
+      });
 }
 
 bool ReplicatedRocksDBTransactionState::hasOperations() const noexcept {
-  return std::any_of(_collections.begin(), _collections.end(), [](auto const& col) {
-    return static_cast<ReplicatedRocksDBTransactionCollection const&>(*col).hasOperations();
-  });
+  return std::any_of(
+      _collections.begin(), _collections.end(), [](auto const& col) {
+        return static_cast<ReplicatedRocksDBTransactionCollection const&>(*col)
+            .hasOperations();
+      });
 }
 
 uint64_t ReplicatedRocksDBTransactionState::numOperations() const noexcept {
-  return std::accumulate(_collections.begin(), _collections.end(), (uint64_t)0, [](auto ops, auto& col) {
-    return ops + static_cast<ReplicatedRocksDBTransactionCollection const&>(*col).numOperations();
-  });
+  return std::accumulate(
+      _collections.begin(), _collections.end(), (uint64_t)0,
+      [](auto ops, auto& col) {
+        return ops +
+               static_cast<ReplicatedRocksDBTransactionCollection const&>(*col)
+                   .numOperations();
+      });
 }
 
 bool ReplicatedRocksDBTransactionState::ensureSnapshot() {
   return std::any_of(_collections.begin(), _collections.end(), [](auto& col) {
-    return static_cast<ReplicatedRocksDBTransactionCollection&>(*col).ensureSnapshot();
+    return static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
+        .ensureSnapshot();
   });
 }
 
-std::unique_ptr<TransactionCollection> ReplicatedRocksDBTransactionState::createTransactionCollection(
+std::unique_ptr<TransactionCollection>
+ReplicatedRocksDBTransactionState::createTransactionCollection(
     DataSourceId cid, AccessMode::Type accessType) {
-  auto result = std::make_unique<ReplicatedRocksDBTransactionCollection>(this, cid, accessType);
+  auto result = std::make_unique<ReplicatedRocksDBTransactionCollection>(
+      this, cid, accessType);
   if (_hasActiveTrx) {
-    result->beginTransaction(); // TODO - find a better solution!
+    result->beginTransaction();  // TODO - find a better solution!
   }
   return result;
 }
@@ -156,9 +182,13 @@ std::unique_ptr<TransactionCollection> ReplicatedRocksDBTransactionState::create
 rocksdb::SequenceNumber ReplicatedRocksDBTransactionState::beginSeq() const {
   auto seq = std::accumulate(
       _collections.begin(), _collections.end(),
-      std::numeric_limits<rocksdb::SequenceNumber>::max(), [](auto seq, auto& col) {
-        return std::min(seq, static_cast<ReplicatedRocksDBTransactionCollection const&>(*col)
-                                 .rocksdbMethods()->GetSequenceNumber());
+      std::numeric_limits<rocksdb::SequenceNumber>::max(),
+      [](auto seq, auto& col) {
+        return std::min(
+            seq,
+            static_cast<ReplicatedRocksDBTransactionCollection const&>(*col)
+                .rocksdbMethods()
+                ->GetSequenceNumber());
       });
   TRI_ASSERT(seq != std::numeric_limits<rocksdb::SequenceNumber>::max());
   return seq;

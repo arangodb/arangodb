@@ -31,7 +31,7 @@ namespace arangodb::velocypack {
 class Value;
 template<typename, typename>
 struct Extractor;
-}
+}  // namespace arangodb::velocypack
 namespace arangodb {
 namespace replication2::replicated_state {
 
@@ -41,9 +41,11 @@ struct StateGeneration {
       : value{value} {}
   std::uint64_t value;
 
-  [[nodiscard]] auto saturatedDecrement(uint64_t delta = 1) const noexcept -> StateGeneration;
+  [[nodiscard]] auto saturatedDecrement(uint64_t delta = 1) const noexcept
+      -> StateGeneration;
 
-  friend auto operator<=>(StateGeneration const&, StateGeneration const&) = default;
+  friend auto operator<=>(StateGeneration const&,
+                          StateGeneration const&) = default;
 
   [[nodiscard]] auto operator+(std::uint64_t delta) const -> StateGeneration;
 
@@ -55,9 +57,11 @@ struct StateGeneration {
 auto operator<<(std::ostream&, StateGeneration) -> std::ostream&;
 }  // namespace replication2::replicated_state
 
-template <>
-struct arangodb::velocypack::Extractor<replication2::replicated_state::StateGeneration> {
-  static auto extract(velocypack::Slice slice) -> replication2::replicated_state::StateGeneration {
+template<>
+struct arangodb::velocypack::Extractor<
+    replication2::replicated_state::StateGeneration> {
+  static auto extract(velocypack::Slice slice)
+      -> replication2::replicated_state::StateGeneration {
     return replication2::replicated_state::StateGeneration{
         slice.getNumericValue<std::uint64_t>()};
   }
