@@ -715,11 +715,12 @@ function ahuacatlMiscFunctionsTestSuite () {
 
       try {
         cl = db._create("cl");
-        sid = db._query('RETURN SHARD_ID("cl", {})');
+        sid = db._query('RETURN SHARD_ID("cl", {})').toArray();
+        assertEqual(sid.length, 1);
         if (!isCluster) {
-          assertEqual(sid._documents[0], "cl");
+          assertEqual(sid[0], "cl");
         } else {
-          assertEqual(sid._documents[0], db.cl.shards()[0]);
+          assertEqual(sid[0], db.cl.shards()[0]);
         }
       } finally {
         db.cl.drop();
@@ -728,12 +729,13 @@ function ahuacatlMiscFunctionsTestSuite () {
       try {
         cl = db._create("cl", {numberOfShards:3, shardKeys:["a"]});
         d = db.cl.insert({});
-        sid = db._query('RETURN SHARD_ID("cl", {"_key":@val})', {val: d._key});
+        sid = db._query('RETURN SHARD_ID("cl", {"_key":@val})', {val: d._key}).toArray();
+        assertEqual(sid.length, 1);
         if (!isCluster) {
-          assertEqual(sid._documents[0], "cl");
+          assertEqual(sid[0], "cl");
         } else {
           counts = db.cl.count(true);
-          assertEqual(counts[sid._documents[0]], 1);
+          assertEqual(counts[sid[0]], 1);
         }
       } finally {
         db.cl.drop();
@@ -742,12 +744,13 @@ function ahuacatlMiscFunctionsTestSuite () {
       try {
         cl = db._create("cl", {numberOfShards:3, shardKeys:["a"]});
         d = db.cl.insert({});
-        sid = db._query('RETURN SHARD_ID("cl", {})');
+        sid = db._query('RETURN SHARD_ID("cl", {})').toArray();
+        assertEqual(sid.length, 1);
         if (!isCluster) {
-          assertEqual(sid._documents[0], "cl");
+          assertEqual(sid[0], "cl");
         } else {
           counts = db.cl.count(true);
-          assertEqual(counts[sid._documents[0]], 1);
+          assertEqual(counts[sid[0]], 1);
         }
       } finally {
         db.cl.drop();
@@ -756,12 +759,13 @@ function ahuacatlMiscFunctionsTestSuite () {
       try {
         cl = db._create("cl", {numberOfShards:3, shardKeys:["a"]});
         d = db.cl.insert({});
-        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val:null});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val:null}).toArray();
+        assertEqual(sid.length, 1);
         if (!isCluster) {
-          assertEqual(sid._documents[0], "cl");
+          assertEqual(sid[0], "cl");
         } else {
           counts = db.cl.count(true);
-          assertEqual(counts[sid._documents[0]], 1);
+          assertEqual(counts[sid[0]], 1);
         }
       } finally {
         db.cl.drop();
@@ -770,12 +774,13 @@ function ahuacatlMiscFunctionsTestSuite () {
       try {
         cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
         d = db.cl.insert({});
-        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val:null});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val:null}).toArray();
+        assertEqual(sid.length, 1);
         if (!isCluster) {
-          assertEqual(sid._documents[0], "cl");
+          assertEqual(sid[0], "cl");
         } else {
           counts = db.cl.count(true);
-          assertEqual(counts[sid._documents[0]], 1);
+          assertEqual(counts[sid[0]], 1);
         }
       } finally {
         db.cl.drop();
@@ -784,12 +789,13 @@ function ahuacatlMiscFunctionsTestSuite () {
       try {
         cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
         d = db.cl.insert({});
-        sid = db._query('RETURN SHARD_ID("cl", {"b":@val})', {val:null});
+        sid = db._query('RETURN SHARD_ID("cl", {"b":@val})', {val:null}).toArray();
+        assertEqual(sid.length, 1);
         if (!isCluster) {
-          assertEqual(sid._documents[0], "cl");
+          assertEqual(sid[0], "cl");
         } else {
           counts = db.cl.count(true);
-          assertEqual(counts[sid._documents[0]], 1);
+          assertEqual(counts[sid[0]], 1);
         }
       } finally {
         db.cl.drop();
@@ -798,12 +804,13 @@ function ahuacatlMiscFunctionsTestSuite () {
       try {
         cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
         d = db.cl.insert({});
-        sid = db._query('RETURN SHARD_ID("cl", {"a":@vala,"b":@valb})', {vala:null, valb:null});
+        sid = db._query('RETURN SHARD_ID("cl", {"a":@vala,"b":@valb})', {vala:null, valb:null}).toArray();
+        assertEqual(sid.length, 1);
         if (!isCluster) {
-          assertEqual(sid._documents[0], "cl");
+          assertEqual(sid[0], "cl");
         } else {
           counts = db.cl.count(true);
-          assertEqual(counts[sid._documents[0]], 1);
+          assertEqual(counts[sid[0]], 1);
         }
       } finally {
         db.cl.drop();
@@ -813,12 +820,13 @@ function ahuacatlMiscFunctionsTestSuite () {
         cl = db._create("cl", {numberOfShards:3, shardKeys:["a"]});
         val = 3;
         d = db.cl.insert({"a":val});
-        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val}).toArray();
+        assertEqual(sid.length, 1);
         if (!isCluster) {
-          assertEqual(sid._documents[0], "cl");
+          assertEqual(sid[0], "cl");
         } else {
           counts = db.cl.count(true);
-          assertEqual(counts[sid._documents[0]], 1);
+          assertEqual(counts[sid[0]], 1);
         }
       } finally {
         db.cl.drop();
@@ -828,12 +836,13 @@ function ahuacatlMiscFunctionsTestSuite () {
         cl = db._create("cl", {numberOfShards:3, shardKeys:["a"]});
         val = "Pi";
         d = db.cl.insert({"a":val});
-        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val}).toArray();
+        assertEqual(sid.length, 1);
         if (!isCluster) {
-          assertEqual(sid._documents[0], "cl");
+          assertEqual(sid[0], "cl");
         } else {
           counts = db.cl.count(true);
-          assertEqual(counts[sid._documents[0]], 1);
+          assertEqual(counts[sid[0]], 1);
         }
       } finally {
         db.cl.drop();
@@ -844,12 +853,13 @@ function ahuacatlMiscFunctionsTestSuite () {
         // I know, this is way beyond double precision. But honestly who cares?
         val = 3.1415926535897932384626433832795028841971693993751058209749445923078164062;
         d = db.cl.insert({"a":val});
-        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val}).toArray();
+        assertEqual(sid.length, 1);
         if (!isCluster) {
-          assertEqual(sid._documents[0], "cl");
+          assertEqual(sid[0], "cl");
         } else {
           counts = db.cl.count(true);
-          assertEqual(counts[sid._documents[0]], 1);
+          assertEqual(counts[sid[0]], 1);
         }
       } finally {
         db.cl.drop();
@@ -859,12 +869,13 @@ function ahuacatlMiscFunctionsTestSuite () {
         cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
         val = 3;
         d = db.cl.insert({"a":val});
-        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val}).toArray();
+        assertEqual(sid.length, 1);
         if (!isCluster) {
-          assertEqual(sid._documents[0], "cl");
+          assertEqual(sid[0], "cl");
         } else {
           counts = db.cl.count(true);
-          assertEqual(counts[sid._documents[0]], 1);
+          assertEqual(counts[sid[0]], 1);
         }
       } finally {
         db.cl.drop();
@@ -874,12 +885,13 @@ function ahuacatlMiscFunctionsTestSuite () {
         cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
         val = "Pi";
         d = db.cl.insert({"a":val});
-        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val}).toArray();
+        assertEqual(sid.length, 1);
         if (!isCluster) {
-          assertEqual(sid._documents[0], "cl");
+          assertEqual(sid[0], "cl");
         } else {
           counts = db.cl.count(true);
-          assertEqual(counts[sid._documents[0]], 1);
+          assertEqual(counts[sid[0]], 1);
         }
       } finally {
         db.cl.drop();
@@ -889,12 +901,13 @@ function ahuacatlMiscFunctionsTestSuite () {
         cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
         val = 3.1415926535897932384626433832795028841971693993751058209749445923078164062;
         d = db.cl.insert({"a":val});
-        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val}).toArray();
+        assertEqual(sid.length, 1);
         if (!isCluster) {
-          assertEqual(sid._documents[0], "cl");
+          assertEqual(sid[0], "cl");
         } else {
           counts = db.cl.count(true);
-          assertEqual(counts[sid._documents[0]], 1);
+          assertEqual(counts[sid[0]], 1);
         }
       } finally {
         db.cl.drop();
@@ -905,12 +918,13 @@ function ahuacatlMiscFunctionsTestSuite () {
         vala = 3;
         valb = "Pi";
         d = db.cl.insert({"a":vala,"b":valb});
-        sid = db._query('RETURN SHARD_ID("cl", {a:@vala, b:@valb})', {vala, valb});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@vala, b:@valb})', {vala, valb}).toArray();
+        assertEqual(sid.length, 1);
         if (!isCluster) {
-          assertEqual(sid._documents[0], "cl");
+          assertEqual(sid[0], "cl");
         } else {
           counts = db.cl.count(true);
-          assertEqual(counts[sid._documents[0]], 1);
+          assertEqual(counts[sid[0]], 1);
         }
       } finally {
         db.cl.drop();
@@ -921,12 +935,13 @@ function ahuacatlMiscFunctionsTestSuite () {
         vala = "Pi";
         valb = 3.1415926535897932384626433832795028841971693993751058209749445923078164062;
         d = db.cl.insert({"a":vala,"b":valb});
-        sid = db._query('RETURN SHARD_ID("cl", {a:@vala, b:@valb})', {vala, valb});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@vala, b:@valb})', {vala, valb}).toArray();
+        assertEqual(sid.length, 1);
         if (!isCluster) {
-          assertEqual(sid._documents[0], "cl");
+          assertEqual(sid[0], "cl");
         } else {
           counts = db.cl.count(true);
-          assertEqual(counts[sid._documents[0]], 1);
+          assertEqual(counts[sid[0]], 1);
         }
       } finally {
         db.cl.drop();
@@ -937,12 +952,13 @@ function ahuacatlMiscFunctionsTestSuite () {
         vala = 3.1415926535897932384626433832795028841971693993751058209749445923078164062;
         valb = 3;
         d = db.cl.insert({"a":vala,"b":valb});
-        sid = db._query('RETURN SHARD_ID("cl", {a:@vala, b:@valb})', {vala, valb});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@vala, b:@valb})', {vala, valb}).toArray();
+        assertEqual(sid.length, 1);
         if (!isCluster) {
-          assertEqual(sid._documents[0], "cl");
+          assertEqual(sid[0], "cl");
         } else {
           counts = db.cl.count(true);
-          assertEqual(counts[sid._documents[0]], 1);
+          assertEqual(counts[sid[0]], 1);
         }
       } finally {
         db.cl.drop();
@@ -958,9 +974,10 @@ function ahuacatlMiscFunctionsTestSuite () {
         }
         i = 0;
         docs.forEach(function (d) {
-          sid = db._query('RETURN SHARD_ID("cl", {a:@a, b:@b})', {a:i,b:"foo"+i});
+          sid = db._query('RETURN SHARD_ID("cl", {a:@a, b:@b})', {a:i,b:"foo"+i}).toArray();
+          assertEqual(sid.length, 1);
           d = db._query('FOR i in cl FILTER i._key == @d.doc._key RETURN i', {d},
-                        {shard: sid._documents[0]}).toArray();
+                        {shard: sid[0]}).toArray();
           assertEqual(d.length, 1);
         });
       } finally {
