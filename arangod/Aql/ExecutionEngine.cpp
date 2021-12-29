@@ -65,7 +65,7 @@ using namespace arangodb::aql;
 //    Node) and the LIMIT with fullCount:true no other LIMIT is allowed
 //    (exception the ContrainedSort case now)
 struct LimitFullCountChecker final
-    : public WalkerWorker<ExecutionNode, WalkerUniqueness::Unique> {
+    : public UniqueWalkerWorker<ExecutionNode> {
   size_t subqueryRecursionCounter{0};
   bool seenFullCount{false};
   bool seenFullCountLimitWithoutSort{false};
