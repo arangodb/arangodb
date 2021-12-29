@@ -33,7 +33,7 @@ const waitForLeader = function (id) {
   while (true) {
     try {
       let status = db._replicatedLog(id).status();
-      if (status.role === "leader") {
+      if ("logStatus" in status && status.logStatus.role === "leader") {
         break;
       }
     } catch (err) {
@@ -109,7 +109,7 @@ function ReplicatedLogsWriteSuite () {
         index = next;
       }
       let status = log.status();
-      assertTrue(status.local.commitIndex >= index);
+      assertTrue(status.logStatus.local.commitIndex >= index);
     },
 
     testMultiInsert : function() {
@@ -128,7 +128,7 @@ function ReplicatedLogsWriteSuite () {
         index = indexes[indexes.length - 1];
       }
       let status = log.status();
-      assertTrue(status.local.commitIndex >= index);
+      assertTrue(status.logStatus.local.commitIndex >= index);
     },
 
     testHeadTail : function() {
@@ -190,10 +190,10 @@ function ReplicatedLogsWriteSuite () {
         log.insert({foo: i});
       }
       const s1 = log.status();
-      assertEqual(s1.local.firstIndex, 1);
+      assertEqual(s1.logStatus.local.firstIndex, 1);
       log.release(1500);
       let s2 = log.status();
-      assertEqual(s2.local.firstIndex, 1501);
+      assertEqual(s2.logStatus.local.firstIndex, 1501);
     },
 
     testPoll : function() {
