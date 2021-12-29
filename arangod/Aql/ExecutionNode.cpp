@@ -1703,9 +1703,6 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  // Fullcount must only be enabled on the last limit node on the main level
-  TRI_ASSERT(!_fullCount || !isInSubquery());
-
   auto registerInfos = createRegisterInfos({}, {});
 
   auto executorInfos = LimitExecutorInfos(_offset, _limit, _fullCount);
@@ -1767,7 +1764,7 @@ ExecutionNode* LimitNode::clone(ExecutionPlan* plan, bool withDependencies,
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-void LimitNode::setFullCount() { _fullCount = true; }
+void LimitNode::setFullCount(bool enable) { _fullCount = enable; }
 
 bool LimitNode::fullCount() const noexcept { return _fullCount; }
 
