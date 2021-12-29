@@ -3,6 +3,8 @@ devel
 
 * Added new AQL function SHARD_ID.
 
+* Updated OpenSSL to 1.1.1m and OpenLDAP to 2.6.0.
+
 * Improved performance in replication dump protocol by inserting arrays of 
   documents instead of one document at a time and also not retrieving the
   document revision field when not needed.
