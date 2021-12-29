@@ -8,6 +8,7 @@ import { ContextMenu, MiniMap, Toolbar } from '@antv/graphin-components';
 import { useFetch } from './useFetch';
 import { Cell, Grid } from "../../components/pure-css/grid";
 import AqlEditor from './AqlEditor';
+import CollectionLoader from './CollectionLoader';
 import {
   TagFilled,
   DeleteFilled,
@@ -48,6 +49,7 @@ const GraphDataInfo = (graphData) => {
 const DataGraph = () => {
   let [queryString, setQueryString] = useState("/_admin/aardvark/g6graph/routeplanner");
   let [aqlQueryString, setAqlQueryString] = useState("");
+  let [graphName, setGraphName] = useState("routeplanner");
   let [graphData, setGraphData] = useState(null);
   let [graphDataNodes, setGraphDataNodes] = useState([]);
   let [graphNodes, setGraphNodes] = useState([]);
@@ -616,11 +618,16 @@ const DataGraph = () => {
     return (
       <div>
         <Card
-          title="G6 Graph Viewer (DataGraph component)"
+          title={ `G6 Graph Viewer (loaded graph: ${graphName})` }
           extra={
             <>
               <Grid>
                 <Cell size={'1-4'}>
+                  <CollectionLoader onLoadCollection={(graphName) => {
+                    changeCollection(graphName);
+                    setGraphName(graphName);}}
+                  />
+                  <hr style={{width: '90%'}} />
                   <AqlEditor
                     queryString={queryString}
                     onNewSearch={(myString) => {setQueryString(myString)}}

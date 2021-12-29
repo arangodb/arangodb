@@ -13,22 +13,6 @@ const AqlEditor = ({
 
   return (
     <>
-      <div className='graph-list'>
-        <input ref={textInput} list="graphlist" id="graphcollections" name="graphcollections" placeholder="Choose graph..." style={{width: '90%'}} />
-        <datalist id="graphlist">
-          <option value="routeplanner" />
-          <option value="social" />
-        </datalist>
-      </div>
-      <button
-        className="button-primary"
-        onClick={
-          () => {
-            onOnclickHandler(textInput.current.value)}
-        }>
-          Load graph
-      </button>
-      <hr />
       <input
         type="text"
         onChange={(event) => { setFormData({ ...formData, limit: event.target.value})}}
