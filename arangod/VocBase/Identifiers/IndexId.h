@@ -65,4 +65,3 @@ static_assert(sizeof(IndexId) == sizeof(IndexId::BaseType),
 }  // namespace arangodb
 
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::IndexId)
-

@@ -45,8 +45,9 @@ class IResearchViewStoredValues {
 
   struct StoredColumn {
     std::string name;
-    std::vector<std::pair<std::string, std::vector<basics::AttributeName>>> fields;
-    irs::type_info::type_id compression{ getDefaultCompression() };
+    std::vector<std::pair<std::string, std::vector<basics::AttributeName>>>
+        fields;
+    irs::type_info::type_id compression{getDefaultCompression()};
 
     bool operator==(StoredColumn const& rhs) const noexcept {
       return name == rhs.name;
@@ -75,9 +76,7 @@ class IResearchViewStoredValues {
 
   size_t memory() const noexcept;
 
-  bool empty() const noexcept {
-    return _storedColumns.empty();
-  }
+  bool empty() const noexcept { return _storedColumns.empty(); }
 
   bool toVelocyPack(velocypack::Builder& builder) const;
   bool fromVelocyPack(velocypack::Slice, std::string& error);
@@ -89,13 +88,10 @@ class IResearchViewStoredValues {
       std::vector<irs::string_ref>& fieldNames,
       irs::type_info::type_id compression);
 
-  void clear() noexcept {
-    _storedColumns.clear();
-  }
+  void clear() noexcept { _storedColumns.clear(); }
 
   std::vector<StoredColumn> _storedColumns;
-}; // IResearchViewStoredValues
+};  // IResearchViewStoredValues
 
-} // iresearch
-} // arangodb
-
+}  // namespace iresearch
+}  // namespace arangodb

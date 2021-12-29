@@ -60,13 +60,12 @@ struct ConnectionInfo {
   std::string serverAddress;
   std::string clientAddress;
   std::string endpoint;
-  
+
   int serverPort;
   int clientPort;
-  
+
   Endpoint::DomainType endpointType;
   Endpoint::EncryptionType encryptionType;
 };
 
 }  // namespace arangodb
-

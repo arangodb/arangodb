@@ -26,4 +26,4 @@
 namespace arangodb::futures {
 /// Make a complete void future
 Future<Unit> makeFuture() { return {unit}; }
-}  // namespace arangodb
+}  // namespace arangodb::futures

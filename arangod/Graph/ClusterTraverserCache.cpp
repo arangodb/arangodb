@@ -45,7 +45,7 @@ ClusterTraverserCache::ClusterTraverserCache(
     aql::QueryContext& query,
     std::unordered_map<ServerID, aql::EngineId> const* engines,
     BaseOptions* options)
-    : TraverserCache(query, options), 
+    : TraverserCache(query, options),
       _datalake(options->resourceMonitor()),
       _engines(engines) {}
 
@@ -53,7 +53,8 @@ VPackSlice ClusterTraverserCache::lookupToken(EdgeDocumentToken const& token) {
   return VPackSlice(token.vpack());
 }
 
-aql::AqlValue ClusterTraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const& token) {
+aql::AqlValue ClusterTraverserCache::fetchEdgeAqlResult(
+    EdgeDocumentToken const& token) {
   // FIXME: the ClusterTraverserCache lifetime is shorter than the query
   // lifetime therefore we cannot get away here without copying the result
   return aql::AqlValue(VPackSlice(token.vpack()));  // will copy slice
@@ -64,10 +65,11 @@ void ClusterTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& token,
   result.add(VPackSlice(token.vpack()));
 }
 
-bool ClusterTraverserCache::appendVertex(std::string_view id, VPackBuilder& result) {
+bool ClusterTraverserCache::appendVertex(std::string_view id,
+                                         VPackBuilder& result) {
   // There will be no idString of length above uint32_t
-  auto it = _cache.find(
-      arangodb::velocypack::HashedStringRef(id.data(), static_cast<uint32_t>(id.length())));
+  auto it = _cache.find(arangodb::velocypack::HashedStringRef(
+      id.data(), static_cast<uint32_t>(id.length())));
 
   if (it != _cache.end()) {
     // FIXME: fix TraverserCache lifetime and use addExternal
@@ -76,17 +78,19 @@ bool ClusterTraverserCache::appendVertex(std::string_view id, VPackBuilder& resu
   }
   // Register a warning. It is okay though but helps the user
   std::string msg = "vertex '" + std::string(id) + "' not found";
-  _query.warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
+  _query.warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+                                    msg.c_str());
 
   // Document not found append NULL
   result.add(arangodb::velocypack::Slice::nullSlice());
   return false;
 }
 
-bool ClusterTraverserCache::appendVertex(std::string_view id, arangodb::aql::AqlValue& result) {
+bool ClusterTraverserCache::appendVertex(std::string_view id,
+                                         arangodb::aql::AqlValue& result) {
   // There will be no idString of length above uint32_t
-  auto it = _cache.find(
-      arangodb::velocypack::HashedStringRef(id.data(), static_cast<uint32_t>(id.length())));
+  auto it = _cache.find(arangodb::velocypack::HashedStringRef(
+      id.data(), static_cast<uint32_t>(id.length())));
 
   if (it != _cache.end()) {
     // FIXME: fix TraverserCache lifetime and use addExternal
@@ -95,7 +99,8 @@ bool ClusterTraverserCache::appendVertex(std::string_view id, arangodb::aql::Aql
   }
   // Register a warning. It is okay though but helps the user
   std::string msg = "vertex '" + std::string(id) + "' not found";
-  _query.warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
+  _query.warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+                                    msg.c_str());
 
   // Document not found append NULL
   result = arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull());

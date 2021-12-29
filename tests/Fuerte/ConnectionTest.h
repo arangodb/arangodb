@@ -20,7 +20,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once 
+#pragma once
 
 #include <algorithm>
 #include <stdlib.h>
@@ -37,19 +37,20 @@ namespace fu = ::arangodb::fuerte;
 
 struct ConnectionTestParams {
   const fu::ProtocolType _protocol;
-  const size_t _threads;  // #Threads to use for the EventLoopService 
+  const size_t _threads;  // #Threads to use for the EventLoopService
   const size_t _repeat;   // Number of times to repeat repeatable tests.
 };
 
-/*::std::ostream& operator<<(::std::ostream& os, const ConnectionTestParams& p) {
-  return os << "url=" << p._url << " threads=" << p._threads;
+/*::std::ostream& operator<<(::std::ostream& os, const ConnectionTestParams& p)
+{ return os << "url=" << p._url << " threads=" << p._threads;
 }*/
 
-// ConnectionTestF is a test fixture that can be used for all kinds of connection 
-// tests. You can configure it using the ConnectionTestParams struct.
+// ConnectionTestF is a test fixture that can be used for all kinds of
+// connection tests. You can configure it using the ConnectionTestParams struct.
 class ConnectionTestF : public ::testing::TestWithParam<ConnectionTestParams> {
  public:
   const char _major_arango_version = '3';
+
  protected:
   ConnectionTestF() {}
   virtual ~ConnectionTestF() noexcept {}
@@ -58,7 +59,7 @@ class ConnectionTestF : public ::testing::TestWithParam<ConnectionTestParams> {
     try {
       // make connection
       _connection = createConnection();
-    } catch(std::exception const& ex) {
+    } catch (std::exception const& ex) {
       std::cout << "SETUP OF FIXTURE FAILED" << std::endl;
       throw ex;
     }
@@ -72,10 +73,8 @@ class ConnectionTestF : public ::testing::TestWithParam<ConnectionTestParams> {
     setupAuthenticationFromEnv(cbuilder);
     return cbuilder.connect(_eventLoopService);
   }
-  
-  virtual void TearDown() override {
-    _connection.reset();
-  }
+
+  virtual void TearDown() override { _connection.reset(); }
 
   inline size_t threads() const {
     return std::max(GetParam()._threads, size_t(1));
@@ -84,7 +83,7 @@ class ConnectionTestF : public ::testing::TestWithParam<ConnectionTestParams> {
   inline size_t repeat() const {
     return std::max(GetParam()._repeat, size_t(1));
   }
-  
+
   fu::StatusCode createCollection(std::string const& name) {
     // create the collection
     VPackBuilder builder;
@@ -96,9 +95,10 @@ class ConnectionTestF : public ::testing::TestWithParam<ConnectionTestParams> {
     auto response = _connection->sendRequest(std::move(request));
     return response->statusCode();
   }
-  
+
   fu::StatusCode dropCollection(std::string const& name) {
-    auto request = fu::createRequest(fu::RestVerb::Delete, "/_api/collection/" + name);
+    auto request =
+        fu::createRequest(fu::RestVerb::Delete, "/_api/collection/" + name);
     auto response = _connection->sendRequest(std::move(request));
     return response->statusCode();
   }
@@ -108,4 +108,3 @@ class ConnectionTestF : public ::testing::TestWithParam<ConnectionTestParams> {
  private:
   fu::EventLoopService _eventLoopService;
 };
-

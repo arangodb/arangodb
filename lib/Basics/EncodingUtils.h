@@ -31,17 +31,18 @@
 namespace arangodb {
 namespace encoding {
 
-template <typename T>
-[[nodiscard]] ErrorCode gzipUncompress(uint8_t const* compressed, size_t compressedLength,
+template<typename T>
+[[nodiscard]] ErrorCode gzipUncompress(uint8_t const* compressed,
+                                       size_t compressedLength,
                                        T& uncompressed);
 
-template <typename T>
-[[nodiscard]] ErrorCode gzipInflate(uint8_t const* compressed, size_t compressedLength,
-                                    T& uncompressed);
+template<typename T>
+[[nodiscard]] ErrorCode gzipInflate(uint8_t const* compressed,
+                                    size_t compressedLength, T& uncompressed);
 
-template <typename T>
-[[nodiscard]] ErrorCode gzipDeflate(uint8_t const* uncompressed, size_t uncompressedLength,
-                                    T& compressed);
+template<typename T>
+[[nodiscard]] ErrorCode gzipDeflate(uint8_t const* uncompressed,
+                                    size_t uncompressedLength, T& compressed);
 
 }  // namespace encoding
 }  // namespace arangodb

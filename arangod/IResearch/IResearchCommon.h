@@ -46,7 +46,7 @@ ADB_IGNORE_UNUSED extern std::string_view const IRESEARCH_INVERTED_INDEX_TYPE;
 ////////////////////////////////////////////////////////////////////////////////
 enum class ViewVersion : uint32_t {
   MIN = 1,
-  MAX = 1 // the latest
+  MAX = 1  // the latest
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,7 +55,7 @@ enum class ViewVersion : uint32_t {
 ////////////////////////////////////////////////////////////////////////////////
 enum class LinkVersion : uint32_t {
   MIN = 0,
-  MAX = 1 // the latest
+  MAX = 1  // the latest
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,9 +69,9 @@ constexpr LinkVersion getDefaultVersion(bool isUserRequest) noexcept {
 /// @return format identifier according to a specified link version
 ////////////////////////////////////////////////////////////////////////////////
 constexpr std::string_view getFormat(LinkVersion version) noexcept {
-  constexpr std::array<std::string_view, 2> IRESEARCH_FORMATS {
-    "1_3simd", // the old storage format used with IResearch index
-    "1_4simd"  // the current storage format used with IResearch index
+  constexpr std::array<std::string_view, 2> IRESEARCH_FORMATS{
+      "1_3simd",  // the old storage format used with IResearch index
+      "1_4simd"   // the current storage format used with IResearch index
   };
 
   return IRESEARCH_FORMATS[static_cast<uint32_t>(version)];
@@ -191,4 +191,3 @@ struct StaticStrings {
 
 }  // namespace iresearch
 }  // namespace arangodb
-

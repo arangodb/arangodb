@@ -43,34 +43,38 @@ struct WorkerContext : public ::arangodb::pregel::WorkerContext {
   void postGlobalSuperstep(uint64_t gss) override;
   void postGlobalSuperstepMasterMessage(VPackBuilder& msg) override;
 
-  [[nodiscard]] greenspun::EvalResult sendToGlobalAccumulator(std::string accumId, VPackSlice message) const;
+  [[nodiscard]] greenspun::EvalResult sendToGlobalAccumulator(
+      std::string accumId, VPackSlice message) const;
 
-private:
-
+ private:
   struct MutexAccumPair {
     std::unique_ptr<AccumulatorBase> accum;
     mutable std::mutex mutex;
 
-    explicit MutexAccumPair(std::unique_ptr<AccumulatorBase> accum) : accum(std::move(accum)) {}
+    explicit MutexAccumPair(std::unique_ptr<AccumulatorBase> accum)
+        : accum(std::move(accum)) {}
   };
 
-  [[nodiscard]] std::unordered_map<std::string, MutexAccumPair> const& globalAccumulatorsUpdates() const;
-  [[nodiscard]] std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>> const& globalAccumulators() const;
+  [[nodiscard]] std::unordered_map<std::string, MutexAccumPair> const&
+  globalAccumulatorsUpdates() const;
+  [[nodiscard]] std::unordered_map<std::string,
+                                   std::unique_ptr<AccumulatorBase>> const&
+  globalAccumulators() const;
 
   ProgrammablePregelAlgorithm const* _algo;
 
   // This map contains the values of the global accumulators
   // from the last GSS
-  std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>> _globalAccumulators;
-
+  std::unordered_map<std::string, std::unique_ptr<AccumulatorBase>>
+      _globalAccumulators;
 
   // This only holds the *deltas* for the global accumulators, i.e.
   // these accumulators are reset before every GSS, and their contents
   // are sent back to the conductor at the end of every GSS
 
-  // This unordered_map is never changed during a superstep. Only the accumulators
-  // are accessed by multiple different threads. They are guarded using an individual mutex.
-  // See MutexAccumPair::mutex.
+  // This unordered_map is never changed during a superstep. Only the
+  // accumulators are accessed by multiple different threads. They are guarded
+  // using an individual mutex. See MutexAccumPair::mutex.
   std::unordered_map<std::string, MutexAccumPair> _globalAccumulatorsUpdates;
 };
 

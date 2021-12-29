@@ -49,7 +49,8 @@ constexpr std::string_view kArangoDbConnection = "arangodb_connection_";
 constexpr std::string_view kPoolAgencyComm = "pool=\"AgencyComm\"";
 constexpr std::string_view kPoolClusterComm = "pool=\"ClusterComm\"";
 
-constexpr auto kNameVersionTable = frozen::make_unordered_map<frozen::string, frozen::string>({
+constexpr auto kNameVersionTable = frozen::make_unordered_map<frozen::string,
+                                                              frozen::string>({
     {
         "arangodb_agency_cache_callback_number",
         "arangodb_agency_cache_callback_count",
@@ -505,27 +506,32 @@ constexpr auto kSuppressionsV1 = frozen::make_unordered_set<frozen::string>({
 }  // namespace
 
 MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature{server, "Metrics"}, _export{true}, _exportReadWriteMetrics{false} {
+    : ApplicationFeature{server, "Metrics"},
+      _export{true},
+      _exportReadWriteMetrics{false} {
   setOptional(false);
   startsAfter<LoggerFeature>();
   startsBefore<application_features::GreetingsFeaturePhase>();
 }
 
-void MetricsFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
+void MetricsFeature::collectOptions(
+    std::shared_ptr<options::ProgramOptions> options) {
   _serverStatistics =
       std::make_unique<ServerStatistics>(*this, StatisticsFeature::time());
 
   options
-      ->addOption("--server.export-metrics-api", "turn metrics API on or off",
-                  new options::BooleanParameter(&_export),
-                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption(
+          "--server.export-metrics-api", "turn metrics API on or off",
+          new options::BooleanParameter(&_export),
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setIntroducedIn(30600);
 
   options
-      ->addOption("--server.export-read-write-metrics",
-                  "turn metrics for document read/write metrics on or off",
-                  new options::BooleanParameter(&_exportReadWriteMetrics),
-                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption(
+          "--server.export-read-write-metrics",
+          "turn metrics for document read/write metrics on or off",
+          new options::BooleanParameter(&_exportReadWriteMetrics),
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setIntroducedIn(30707);
 }
 
@@ -538,9 +544,10 @@ std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
     success = _registry.try_emplace(key, metric).second;
   }
   if (!success) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string{builder.type()} +
-                                                           std::string{builder.name()} +
-                                                           " already exists");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   std::string{builder.type()} +
+                                       std::string{builder.name()} +
+                                       " already exists");
   }
   return metric;
 }
@@ -596,8 +603,9 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
     }
     if (!_globalLabels.contains("role") && ServerState::instance() != nullptr &&
         ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED) {
-      _globalLabels.try_emplace("role", ServerState::roleToString(
-                                            ServerState::instance()->getRole()));
+      _globalLabels.try_emplace(
+          "role",
+          ServerState::roleToString(ServerState::instance()->getRole()));
       changed = true;
     }
     if (changed) {

@@ -34,22 +34,21 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-template <SocketType T>
-GeneralCommTask<T>::GeneralCommTask(GeneralServer& server,
-                                    ConnectionInfo info,
+template<SocketType T>
+GeneralCommTask<T>::GeneralCommTask(GeneralServer& server, ConnectionInfo info,
                                     std::unique_ptr<AsioSocket<T>> socket)
-: CommTask(server, std::move(info)),
-  _protocol(std::move(socket)),
-  _generalServerFeature(server.server().getFeature<GeneralServerFeature>()),
-  _reading(false),
-  _writing(false),
-  _stopped(false) {
+    : CommTask(server, std::move(info)),
+      _protocol(std::move(socket)),
+      _generalServerFeature(server.server().getFeature<GeneralServerFeature>()),
+      _reading(false),
+      _writing(false),
+      _stopped(false) {
   if (AsioSocket<T>::supportsMixedIO()) {
     _protocol->setNonBlocking(true);
   }
 }
 
-template <SocketType T>
+template<SocketType T>
 void GeneralCommTask<T>::stop() {
   _stopped.store(true, std::memory_order_release);
   if (!_protocol) {
@@ -60,29 +59,30 @@ void GeneralCommTask<T>::stop() {
   });
 }
 
-template <SocketType T>
+template<SocketType T>
 void GeneralCommTask<T>::close(asio_ns::error_code const& ec) {
   _stopped.store(true, std::memory_order_release);
   if (ec && ec != asio_ns::error::misc_errors::eof) {
     LOG_TOPIC("2b6b3", WARN, arangodb::Logger::REQUESTS)
-    << "asio IO error: '" << ec.message() << "'";
+        << "asio IO error: '" << ec.message() << "'";
   }
-  
+
   if (_protocol) {
     _protocol->timer.cancel();
-    _protocol->shutdown([this, self(shared_from_this())](asio_ns::error_code ec) {
-      if (ec) {
-        LOG_TOPIC("2c6b4", INFO, arangodb::Logger::REQUESTS)
-            << "error shutting down asio socket: '" << ec.message() << "'";
-      }
-      _server.unregisterTask(this);
-    });
+    _protocol->shutdown(
+        [this, self(shared_from_this())](asio_ns::error_code ec) {
+          if (ec) {
+            LOG_TOPIC("2c6b4", INFO, arangodb::Logger::REQUESTS)
+                << "error shutting down asio socket: '" << ec.message() << "'";
+          }
+          _server.unregisterTask(this);
+        });
   } else {
     _server.unregisterTask(this);  // will delete us
   }
 }
 
-template <SocketType T>
+template<SocketType T>
 void GeneralCommTask<T>::asyncReadSome() try {
   asio_ns::error_code ec;
   // first try a sync read for performance
@@ -111,13 +111,15 @@ void GeneralCommTask<T>::asyncReadSome() try {
   if (_protocol->buffer.size() > 0 && !readCallback(ec)) {
     return;
   }
-  
+
   auto mutableBuff = _protocol->buffer.prepare(ReadBlockSize);
-  
+
   _reading = true;
   setIOTimeout();
   _protocol->socket.async_read_some(
-      mutableBuff, withLogContext([self = shared_from_this()](asio_ns::error_code const& ec, size_t nread) {
+      mutableBuff,
+      withLogContext([self = shared_from_this()](asio_ns::error_code const& ec,
+                                                 size_t nread) {
         auto& me = static_cast<GeneralCommTask<T>&>(*self);
         me._reading = false;
         me._protocol->buffer.commit(nread);

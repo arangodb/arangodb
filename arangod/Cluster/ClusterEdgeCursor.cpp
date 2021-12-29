@@ -67,11 +67,14 @@ void ClusterEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
   }
 }
 
-ClusterTraverserEdgeCursor::ClusterTraverserEdgeCursor(traverser::TraverserOptions const* opts)
+ClusterTraverserEdgeCursor::ClusterTraverserEdgeCursor(
+    traverser::TraverserOptions const* opts)
     : ClusterEdgeCursor(opts) {}
 
-traverser::TraverserOptions const* ClusterTraverserEdgeCursor::traverserOptions() const {
-  TRI_ASSERT(dynamic_cast<traverser::TraverserOptions const*>(_opts) != nullptr);
+traverser::TraverserOptions const*
+ClusterTraverserEdgeCursor::traverserOptions() const {
+  TRI_ASSERT(dynamic_cast<traverser::TraverserOptions const*>(_opts) !=
+             nullptr);
   return dynamic_cast<traverser::TraverserOptions const*>(_opts);
 }
 
@@ -84,7 +87,8 @@ void ClusterTraverserEdgeCursor::rearm(std::string_view vertexId,
   TRI_ASSERT(trx != nullptr);
   TRI_ASSERT(_cache != nullptr);
 
-  Result res = fetchEdgesFromEngines(*trx, *_cache, traverserOptions()->getExpressionCtx(),
+  Result res = fetchEdgesFromEngines(*trx, *_cache,
+                                     traverserOptions()->getExpressionCtx(),
                                      vertexId, depth, _edgeList);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -92,8 +96,8 @@ void ClusterTraverserEdgeCursor::rearm(std::string_view vertexId,
   _httpRequests += _cache->engines()->size();
 }
 
-ClusterShortestPathEdgeCursor::ClusterShortestPathEdgeCursor(graph::BaseOptions const* opts,
-                                                             bool backward)
+ClusterShortestPathEdgeCursor::ClusterShortestPathEdgeCursor(
+    graph::BaseOptions const* opts, bool backward)
     : ClusterEdgeCursor(opts), _backward(backward) {}
 
 void ClusterShortestPathEdgeCursor::rearm(std::string_view vertexId,
@@ -104,7 +108,8 @@ void ClusterShortestPathEdgeCursor::rearm(std::string_view vertexId,
   auto trx = _opts->trx();
   transaction::BuilderLeaser b(trx);
 
-  b->add(VPackValuePair(vertexId.data(), vertexId.length(), VPackValueType::String));
+  b->add(VPackValuePair(vertexId.data(), vertexId.length(),
+                        VPackValueType::String));
   Result res = fetchEdgesFromEngines(*trx, *_cache, b->slice(), _backward,
                                      _edgeList, _cache->insertedDocuments());
   if (res.fail()) {

@@ -36,17 +36,25 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-auto replicated_log::LogUnconfiguredParticipant::getStatus() const -> LogStatus {
+auto replicated_log::LogUnconfiguredParticipant::getStatus() const
+    -> LogStatus {
   return LogStatus{UnconfiguredStatus{}};
 }
 
+auto replicated_log::LogUnconfiguredParticipant::getQuickStatus() const
+    -> QuickLogStatus {
+  return QuickLogStatus{.role = ParticipantRole::kUnconfigured};
+}
+
 replicated_log::LogUnconfiguredParticipant::LogUnconfiguredParticipant(
-    std::unique_ptr<LogCore> logCore, std::shared_ptr<ReplicatedLogMetrics> logMetrics)
+    std::unique_ptr<LogCore> logCore,
+    std::shared_ptr<ReplicatedLogMetrics> logMetrics)
     : _logCore(std::move(logCore)), _logMetrics(std::move(logMetrics)) {
   _logMetrics->replicatedLogInactiveNumber->fetch_add(1);
 }
 
-auto replicated_log::LogUnconfiguredParticipant::resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> {
+auto replicated_log::LogUnconfiguredParticipant::resign() && -> std::tuple<
+    std::unique_ptr<LogCore>, DeferredAction> {
   auto nop = DeferredAction{};
   return std::make_tuple(std::move(_logCore), std::move(nop));
 }
@@ -65,23 +73,27 @@ auto replicated_log::LogUnconfiguredParticipant::waitForIterator(LogIndex index)
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-auto replicated_log::ILogParticipant::getTerm() const noexcept -> std::optional<LogTerm> {
-  return getStatus().getCurrentTerm();
+auto replicated_log::ILogParticipant::getTerm() const noexcept
+    -> std::optional<LogTerm> {
+  return getQuickStatus().getCurrentTerm();
 }
 
-auto replicated_log::LogUnconfiguredParticipant::release(LogIndex doneWithIdx) -> Result {
+auto replicated_log::LogUnconfiguredParticipant::release(LogIndex doneWithIdx)
+    -> Result {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-auto replicated_log::LogUnconfiguredParticipant::getCommitIndex() const noexcept -> LogIndex {
-  return LogIndex{0}; // index 0 is always committed.
+auto replicated_log::LogUnconfiguredParticipant::getCommitIndex() const noexcept
+    -> LogIndex {
+  return LogIndex{0};  // index 0 is always committed.
 }
 
-replicated_log::WaitForResult::WaitForResult(LogIndex index,
-                                             std::shared_ptr<QuorumData const> quorum)
+replicated_log::WaitForResult::WaitForResult(
+    LogIndex index, std::shared_ptr<QuorumData const> quorum)
     : currentCommitIndex(index), quorum(std::move(quorum)) {}
 
-void replicated_log::WaitForResult::toVelocyPack(velocypack::Builder& builder) const {
+void replicated_log::WaitForResult::toVelocyPack(
+    velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::CommitIndex, VPackValue(currentCommitIndex));
   builder.add(VPackValue("quorum"));

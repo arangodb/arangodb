@@ -60,7 +60,8 @@ struct PlanMiniMock {
 };
 
 struct ExecutionNodeMock {
-  ExecutionNodeMock(ExecutionNode::NodeType type, std::vector<Variable const*> input,
+  ExecutionNodeMock(ExecutionNode::NodeType type,
+                    std::vector<Variable const*> input,
                     std::vector<Variable const*> output,
                     std::vector<ExecutionNodeMock>* subquery = nullptr)
       : _type(type), _input(), _output(), _plan(type), _subquery(subquery) {
@@ -140,7 +141,9 @@ struct ExecutionNodeMock {
 
   auto getRegsToKeep() -> RegIdSetStack const& { return _regsToKeep; }
 
-  auto walk(WalkerWorker<ExecutionNodeMock, WalkerUniqueness::NonUnique>& worker) -> bool {
+  auto walk(
+      WalkerWorker<ExecutionNodeMock, WalkerUniqueness::NonUnique>& worker)
+      -> bool {
     if (worker.before(this)) {
       return true;
     }
@@ -217,7 +220,7 @@ class RegisterPlanTest : public ::testing::Test {
     return registerPlan;
   }
 
-  template <size_t amount>
+  template<size_t amount>
   auto generateVars()
       -> std::pair<std::vector<Variable>, std::array<Variable*, amount>> {
     std::vector<Variable> vars;
@@ -232,15 +235,17 @@ class RegisterPlanTest : public ::testing::Test {
     return {std::move(vars), ptrs};
   }
 
-  auto assertVariableInRegister(std::shared_ptr<RegisterPlanT<ExecutionNodeMock>> plan,
-                                Variable const& v, RegisterId r) {
+  auto assertVariableInRegister(
+      std::shared_ptr<RegisterPlanT<ExecutionNodeMock>> plan, Variable const& v,
+      RegisterId r) {
     auto it = plan->varInfo.find(v.id);
     ASSERT_NE(it, plan->varInfo.end());
     EXPECT_EQ(it->second.registerId, r);
   }
 
-  auto assertPlanKeepsAllVariables(std::shared_ptr<RegisterPlanT<ExecutionNodeMock>> plan,
-                                   std::vector<ExecutionNodeMock>& nodes) {
+  auto assertPlanKeepsAllVariables(
+      std::shared_ptr<RegisterPlanT<ExecutionNodeMock>> plan,
+      std::vector<ExecutionNodeMock>& nodes) {
     if (nodes.empty()) {
       // Empty plan is valid.
       return;
@@ -277,13 +282,14 @@ class RegisterPlanTest : public ::testing::Test {
     auto checkProducedVariables = [&](ExecutionNodeMock const& n) {
       for (auto const& v : n.getVariablesSetHere()) {
         auto info = plan->varInfo.find(v->id);
-        ASSERT_NE(info, plan->varInfo.end()) << "variable " << v->name << " of node "
-                                             << n.getTypeString() << " not planned ";
+        ASSERT_NE(info, plan->varInfo.end())
+            << "variable " << v->name << " of node " << n.getTypeString()
+            << " not planned ";
         auto regId = info->second.registerId;
         ASSERT_LT(regId, total) << "Planned Register out of bounds";
         ASSERT_TRUE(varsRequiredHere.at(regId.value()).has_value())
-            << "Writing variable " << v->name << " to register " << regId.value()
-            << " where it is not expected";
+            << "Writing variable " << v->name << " to register "
+            << regId.value() << " where it is not expected";
         auto expected = varsRequiredHere.at(regId.value()).value();
         ASSERT_EQ(v, expected)
             << "register " << regId.value() << " used twice, content of "
@@ -341,8 +347,9 @@ class RegisterPlanTest : public ::testing::Test {
     }
   }
 
-  template <class Walker>
-  auto applyWalkerToNodes(std::vector<ExecutionNodeMock>& nodes, Walker& worker) -> void {
+  template<class Walker>
+  auto applyWalkerToNodes(std::vector<ExecutionNodeMock>& nodes, Walker& worker)
+      -> void {
     // fix dependencies
     fixDependencies(nodes);
     nodes.back().walk(worker);
@@ -360,7 +367,8 @@ TEST_F(RegisterPlanTest, walker_should_plan_registers) {
   assertPlanKeepsAllVariables(plan, myList);
 }
 
-TEST_F(RegisterPlanTest, planRegisters_should_append_variables_if_all_are_needed) {
+TEST_F(RegisterPlanTest,
+       planRegisters_should_append_variables_if_all_are_needed) {
   auto&& [vars, ptrs] = generateVars<2>();
   std::vector<ExecutionNodeMock> myList{
       ExecutionNodeMock{ExecutionNode::SINGLETON, {}, {}},
@@ -390,7 +398,8 @@ TEST_F(RegisterPlanTest, planRegisters_should_reuse_register_if_possible) {
   assertPlanKeepsAllVariables(plan, myList);
 }
 
-TEST_F(RegisterPlanTest, planRegisters_should_not_reuse_register_if_block_is_passthrough) {
+TEST_F(RegisterPlanTest,
+       planRegisters_should_not_reuse_register_if_block_is_passthrough) {
   auto&& [vars, ptrs] = generateVars<2>();
   std::vector<ExecutionNodeMock> myList{
       ExecutionNodeMock{ExecutionNode::SINGLETON, {}, {}},
@@ -405,7 +414,8 @@ TEST_F(RegisterPlanTest, planRegisters_should_not_reuse_register_if_block_is_pas
   assertPlanKeepsAllVariables(plan, myList);
 }
 
-TEST_F(RegisterPlanTest, planRegisters_should_reuse_register_after_passthrough) {
+TEST_F(RegisterPlanTest,
+       planRegisters_should_reuse_register_after_passthrough) {
   auto&& [vars, ptrs] = generateVars<5>();
   std::vector<ExecutionNodeMock> myList{
       ExecutionNodeMock{ExecutionNode::SINGLETON, {}, {}},
@@ -441,7 +451,8 @@ TEST_F(RegisterPlanTest, variable_usage) {
 
   {  // Check varsUsedLater
 
-    EXPECT_TRUE((VarSetStack{VarSet{nicole, doris, shawn, ronald, maria}}) == nodes[0].getVarsUsedLaterStack());
+    EXPECT_TRUE((VarSetStack{VarSet{nicole, doris, shawn, ronald, maria}}) ==
+                nodes[0].getVarsUsedLaterStack());
 
     // SINGLETON
     EXPECT_EQ((VarSetStack{VarSet{nicole, doris, shawn, ronald, maria}}),
@@ -453,9 +464,11 @@ TEST_F(RegisterPlanTest, variable_usage) {
     EXPECT_EQ((VarSetStack{VarSet{doris, shawn, ronald, maria}}),
               nodes[2].getVarsUsedLaterStack());
     // CALCULATION
-    EXPECT_EQ((VarSetStack{VarSet{shawn, ronald, maria}}), nodes[3].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{shawn, ronald, maria}}),
+              nodes[3].getVarsUsedLaterStack());
     // INDEX
-    EXPECT_EQ((VarSetStack{VarSet{ronald, maria}}), nodes[4].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{ronald, maria}}),
+              nodes[4].getVarsUsedLaterStack());
     // CALCULATION
     EXPECT_EQ((VarSetStack{VarSet{maria}}), nodes[5].getVarsUsedLaterStack());
     // RETURN
@@ -469,11 +482,14 @@ TEST_F(RegisterPlanTest, variable_usage) {
     // ENUMERATE_COLLECTION
     EXPECT_EQ((VarSetStack{VarSet{nicole}}), nodes[1].getVarsValidStack());
     // CALCULATION
-    EXPECT_EQ((VarSetStack{VarSet{nicole, doris}}), nodes[2].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{nicole, doris}}),
+              nodes[2].getVarsValidStack());
     // CALCULATION
-    EXPECT_EQ((VarSetStack{VarSet{nicole, doris, shawn}}), nodes[3].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{nicole, doris, shawn}}),
+              nodes[3].getVarsValidStack());
     // INDEX
-    EXPECT_EQ((VarSetStack{VarSet{nicole, doris, shawn, ronald}}), nodes[4].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{nicole, doris, shawn, ronald}}),
+              nodes[4].getVarsValidStack());
     // CALCULATION
     EXPECT_EQ((VarSetStack{VarSet{nicole, doris, shawn, ronald, maria}}),
               nodes[5].getVarsValidStack());
@@ -512,9 +528,11 @@ TEST_F(RegisterPlanTest, variable_usage_with_spliced_subquery) {
     EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark}, VarSet{tina, debra}}),
               nodes[3].getVarsUsedLaterStack());
     // CALCULATION
-    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark}, VarSet{tina}}), nodes[4].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark}, VarSet{tina}}),
+              nodes[4].getVarsUsedLaterStack());
     // SUBQUERY_END
-    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark}}), nodes[5].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark}}),
+              nodes[5].getVarsUsedLaterStack());
     // CALCULATION
     EXPECT_EQ((VarSetStack{VarSet{jesse}}), nodes[6].getVarsUsedLaterStack());
     // RETURN
@@ -529,16 +547,20 @@ TEST_F(RegisterPlanTest, variable_usage_with_spliced_subquery) {
     // CALCULATION
     EXPECT_EQ((VarSetStack{VarSet{mark, debra}}), nodes[2].getVarsValidStack());
     // SUBQUERY_START
-    EXPECT_EQ((VarSetStack{VarSet{mark, debra}, VarSet{mark, debra}}), nodes[3].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra}, VarSet{mark, debra}}),
+              nodes[3].getVarsValidStack());
     // CALCULATION
     EXPECT_EQ((VarSetStack{VarSet{mark, debra}, VarSet{mark, debra, tina}}),
               nodes[4].getVarsValidStack());
     // SUBQUERY_END
-    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary}}), nodes[5].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary}}),
+              nodes[5].getVarsValidStack());
     // CALCULATION
-    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary, jesse}}), nodes[6].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary, jesse}}),
+              nodes[6].getVarsValidStack());
     // RETURN
-    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary, jesse}}), nodes[7].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary, jesse}}),
+              nodes[7].getVarsValidStack());
   }
 }
 
@@ -571,9 +593,11 @@ TEST_F(RegisterPlanTest, variable_usage_with_spliced_subquery2) {
     EXPECT_EQ((VarSetStack{VarSet{jesse, mary, debra}, VarSet{mark, tina}}),
               nodes[3].getVarsUsedLaterStack());
     // CALCULATION
-    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, debra}, VarSet{tina}}), nodes[4].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, debra}, VarSet{tina}}),
+              nodes[4].getVarsUsedLaterStack());
     // SUBQUERY_END
-    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, debra}}), nodes[5].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, debra}}),
+              nodes[5].getVarsUsedLaterStack());
     // CALCULATION
     EXPECT_EQ((VarSetStack{VarSet{jesse}}), nodes[6].getVarsUsedLaterStack());
     // RETURN
@@ -588,16 +612,20 @@ TEST_F(RegisterPlanTest, variable_usage_with_spliced_subquery2) {
     // CALCULATION
     EXPECT_EQ((VarSetStack{VarSet{mark, debra}}), nodes[2].getVarsValidStack());
     // SUBQUERY_START
-    EXPECT_EQ((VarSetStack{VarSet{mark, debra}, VarSet{mark, debra}}), nodes[3].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra}, VarSet{mark, debra}}),
+              nodes[3].getVarsValidStack());
     // CALCULATION
     EXPECT_EQ((VarSetStack{VarSet{mark, debra}, VarSet{mark, debra, tina}}),
               nodes[4].getVarsValidStack());
     // SUBQUERY_END
-    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary}}), nodes[5].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary}}),
+              nodes[5].getVarsValidStack());
     // CALCULATION
-    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary, jesse}}), nodes[6].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary, jesse}}),
+              nodes[6].getVarsValidStack());
     // RETURN
-    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary, jesse}}), nodes[7].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary, jesse}}),
+              nodes[7].getVarsValidStack());
   }
 }
 
@@ -624,22 +652,28 @@ TEST_F(RegisterPlanTest, variable_usage_with_subquery) {
     // Check varsUsedLater
 
     // SINGLETON
-    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark, debra}}), nodes[0].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark, debra}}),
+              nodes[0].getVarsUsedLaterStack());
     // ENUMERATE_COLLECTION
-    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark, debra}}), nodes[1].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark, debra}}),
+              nodes[1].getVarsUsedLaterStack());
     // CALCULATION
-    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark, debra}}), nodes[2].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark, debra}}),
+              nodes[2].getVarsUsedLaterStack());
     // SUBQUERY
-    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark}}), nodes[3].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark}}),
+              nodes[3].getVarsUsedLaterStack());
     // CALCULATION
     EXPECT_EQ((VarSetStack{VarSet{jesse}}), nodes[4].getVarsUsedLaterStack());
     // RETURN
     EXPECT_EQ((VarSetStack{VarSet{}}), nodes[5].getVarsUsedLaterStack());
 
     // SINGLETON
-    EXPECT_EQ((VarSetStack{VarSet{tobias, debra, paul}}), subquery[0].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{tobias, debra, paul}}),
+              subquery[0].getVarsUsedLaterStack());
     // ENUMERATE_COLLECTION
-    EXPECT_EQ((VarSetStack{VarSet{tobias, debra, paul}}), subquery[1].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{tobias, debra, paul}}),
+              subquery[1].getVarsUsedLaterStack());
     // CALCULATION
     EXPECT_EQ((VarSetStack{VarSet{paul}}), subquery[2].getVarsUsedLaterStack());
     // RETURN
@@ -655,20 +689,27 @@ TEST_F(RegisterPlanTest, variable_usage_with_subquery) {
     // CALCULATION
     EXPECT_EQ((VarSetStack{VarSet{mark, debra}}), nodes[2].getVarsValidStack());
     // SUBQUERY
-    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary}}), nodes[3].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary}}),
+              nodes[3].getVarsValidStack());
     // CALCULATION
-    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary, jesse}}), nodes[4].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary, jesse}}),
+              nodes[4].getVarsValidStack());
     // RETURN
-    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary, jesse}}), nodes[5].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary, jesse}}),
+              nodes[5].getVarsValidStack());
 
     // SINGLETON
-    EXPECT_EQ((VarSetStack{VarSet{mark, debra}}), subquery[0].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra}}),
+              subquery[0].getVarsValidStack());
     // ENUMERATE_COLLECTION
-    EXPECT_EQ((VarSetStack{VarSet{mark, debra, tobias}}), subquery[1].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, tobias}}),
+              subquery[1].getVarsValidStack());
     // CALCULATION
-    EXPECT_EQ((VarSetStack{VarSet{mark, debra, tobias, paul}}), subquery[2].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, tobias, paul}}),
+              subquery[2].getVarsValidStack());
     // RETURN
-    EXPECT_EQ((VarSetStack{VarSet{mark, debra, tobias, paul}}), subquery[3].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, tobias, paul}}),
+              subquery[3].getVarsValidStack());
   }
 }
 
@@ -725,7 +766,8 @@ TEST_F(RegisterPlanTest, DISABLED_multiple_spliced_subqueries) {
 
       ExecutionNodeMock{ExecutionNode::SUBQUERY_START, {}, {}},
       ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {douglas}},
-      ExecutionNodeMock{ExecutionNode::CALCULATION, {douglas, andrew}, {christopher}},
+      ExecutionNodeMock{
+          ExecutionNode::CALCULATION, {douglas, andrew}, {christopher}},
       ExecutionNodeMock{ExecutionNode::SUBQUERY_END, {christopher}, {patricia}},
 
       ExecutionNodeMock{ExecutionNode::CALCULATION, {maria, patricia}, {betty}},

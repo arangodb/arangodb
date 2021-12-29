@@ -38,7 +38,7 @@
 namespace arangodb::aql {
 
 class AqlItemBlock;
-template <BlockPassthrough>
+template<BlockPassthrough>
 class DependencyProxy;
 class SkipResult;
 
@@ -46,7 +46,7 @@ class SkipResult;
  * @brief Interface for all AqlExecutors that do only need one
  *        row at a time in order to make progress.
  */
-template <BlockPassthrough blockPassthrough>
+template<BlockPassthrough blockPassthrough>
 class SingleRowFetcher {
  public:
   explicit SingleRowFetcher(DependencyProxy<blockPassthrough>& executionBlock);
@@ -62,22 +62,23 @@ class SingleRowFetcher {
   /**
    * @brief Execute the given call stack
    *
-   * @param stack Call stack, on top of stack there is current subquery, bottom is the main query.
+   * @param stack Call stack, on top of stack there is current subquery, bottom
+   * is the main query.
    * @return std::tuple<ExecutionState, size_t, DataRange>
    *   ExecutionState => DONE, all queries are done, there will be no more
-   *   ExecutionState => HASMORE, there are more results for queries, might be on other subqueries
-   *   ExecutionState => WAITING, we need to do I/O to solve the request, save local state and return WAITING to caller immediately
+   *   ExecutionState => HASMORE, there are more results for queries, might be
+   * on other subqueries ExecutionState => WAITING, we need to do I/O to solve
+   * the request, save local state and return WAITING to caller immediately
    *
    *   size_t => Amount of documents skipped
    *   DataRange => Resulting data
    */
-  std::tuple<ExecutionState, SkipResult, DataRange> execute(AqlCallStack& stack);
+  std::tuple<ExecutionState, SkipResult, DataRange> execute(
+      AqlCallStack& stack);
 
   void setDistributeId(std::string const& id);
 
  private:
   DependencyProxy<blockPassthrough>* _dependencyProxy;
-
 };
 }  // namespace arangodb::aql
-

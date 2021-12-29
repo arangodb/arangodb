@@ -55,7 +55,8 @@ void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "random number generator to use (1 = MERSENNE, 2 = RANDOM, "
       "3 = URANDOM, 4 = COMBINED (not for Windows), 5 = WinCrypt (Windows "
       "only)",
-      new DiscreteValuesParameter<UInt32Parameter>(&_randomGenerator, generators),
+      new DiscreteValuesParameter<UInt32Parameter>(&_randomGenerator,
+                                                   generators),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 

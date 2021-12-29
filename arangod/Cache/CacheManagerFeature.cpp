@@ -49,14 +49,17 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-CacheManagerFeature::CacheManagerFeature(application_features::ApplicationServer& server)
+CacheManagerFeature::CacheManagerFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, "CacheManager"),
       _manager(nullptr),
       _rebalancer(nullptr),
       _cacheSize(
           (PhysicalMemory::getValue() >= (static_cast<std::uint64_t>(4) << 30))
               ? static_cast<std::uint64_t>(
-                    (PhysicalMemory::getValue() - (static_cast<std::uint64_t>(2) << 30)) * 0.25)
+                    (PhysicalMemory::getValue() -
+                     (static_cast<std::uint64_t>(2) << 30)) *
+                    0.25)
               : (256 << 20)),
       _rebalancingInterval(static_cast<std::uint64_t>(2 * 1000 * 1000)) {
   setOptional(true);
@@ -65,22 +68,26 @@ CacheManagerFeature::CacheManagerFeature(application_features::ApplicationServer
 
 CacheManagerFeature::~CacheManagerFeature() = default;
 
-void CacheManagerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
+void CacheManagerFeature::collectOptions(
+    std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("cache", "in-memory hash cache");
 
-  options->addOption("--cache.size", "size of cache in bytes",
-                     new UInt64Parameter(&_cacheSize),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
+  options->addOption(
+      "--cache.size", "size of cache in bytes",
+      new UInt64Parameter(&_cacheSize),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--cache.rebalancing-interval",
                      "microseconds between rebalancing attempts",
                      new UInt64Parameter(&_rebalancingInterval));
 }
 
-void CacheManagerFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
+void CacheManagerFeature::validateOptions(
+    std::shared_ptr<options::ProgramOptions>) {
   if (_cacheSize < Manager::minSize) {
     LOG_TOPIC("75778", FATAL, arangodb::Logger::FIXME)
-        << "invalid value for `--cache.size', need at least " << Manager::minSize;
+        << "invalid value for `--cache.size', need at least "
+        << Manager::minSize;
     FATAL_ERROR_EXIT();
   }
 
@@ -110,9 +117,11 @@ void CacheManagerFeature::start() {
   };
 
   SharedPRNGFeature& sharedPRNG = server().getFeature<SharedPRNGFeature>();
-  _manager = std::make_unique<Manager>(sharedPRNG, std::move(postFn), _cacheSize);
+  _manager =
+      std::make_unique<Manager>(sharedPRNG, std::move(postFn), _cacheSize);
 
-  _rebalancer = std::make_unique<CacheRebalancerThread>(server(), _manager.get(), _rebalancingInterval);
+  _rebalancer = std::make_unique<CacheRebalancerThread>(
+      server(), _manager.get(), _rebalancingInterval);
   _rebalancer->start();
   LOG_TOPIC("13894", DEBUG, Logger::STARTUP) << "cache manager has started";
 }
