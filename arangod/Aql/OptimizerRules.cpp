@@ -7334,6 +7334,8 @@ void arangodb::aql::sortLimitRule(Optimizer* opt,
 
   plan->findNodesOfType(limitNodes, EN::LIMIT, true);
   for (ExecutionNode* node : limitNodes) {
+    bool hasRemoteBeforeSort{false};
+    bool firstSortNode{true};
     auto limitNode = ExecutionNode::castTo<LimitNode*>(node);
     for (ExecutionNode* current = limitNode->getFirstDependency();
          current != nullptr; current = current->getFirstDependency()) {
@@ -7342,6 +7344,40 @@ void arangodb::aql::sortLimitRule(Optimizer* opt,
         auto sortNode = ExecutionNode::castTo<SortNode*>(current);
         if (shouldApplyHeapOptimization(*sortNode, *limitNode)) {
           sortNode->setLimit(limitNode->offset() + limitNode->limit());
+          // Make sure LIMIT is always after the SORT
+          // this, makes sense only for the closest to LIMIT node.
+          // All nodes higher will be protected by the limit set before
+          // the first sort node.
+          if (firstSortNode) {
+            auto& mainLimitNode = *ExecutionNode::castTo<LimitNode*>(limitNode);
+            // if we don't have remote breaker we could just replace the limit
+            // node otherwise we must have new node to constrain accesss to the
+            // sort node with only offset+limit documents
+            if (!hasRemoteBeforeSort) {
+              plan->unlinkNode(limitNode);
+            }
+            auto* auxLimitNode =
+                hasRemoteBeforeSort
+                    ? plan->registerNode(std::make_unique<LimitNode>(
+                          plan.get(), plan->nextId(), 0,
+                          limitNode->offset() + limitNode->limit()))
+                    : limitNode;
+            TRI_ASSERT(auxLimitNode);
+            if (hasRemoteBeforeSort && mainLimitNode.fullCount()) {
+              TRI_ASSERT(limitNode != auxLimitNode);
+              auto& tmp = *ExecutionNode::castTo<LimitNode*>(auxLimitNode);
+              tmp.setFullCount();
+              mainLimitNode.setFullCount(false);
+            }
+            auto* sortParent = sortNode->getFirstParent();
+            TRI_ASSERT(sortParent);
+            if (sortParent != auxLimitNode) {
+              sortParent->replaceDependency(sortNode,
+                                          auxLimitNode);
+              sortNode->addParent(auxLimitNode);
+            }
+          }
+          firstSortNode = false;
           mod = true;
         }
       } else if (current->getType() == EN::GATHER) {
@@ -7353,6 +7389,8 @@ void arangodb::aql::sortLimitRule(Optimizer* opt,
                                               limitNode->limit());
           mod = true;
         }
+      } else if (current->getType() == EN::REMOTE) {
+        hasRemoteBeforeSort = true;
       }
 
       // Stop on nodes that may not be between sort & limit (or between
