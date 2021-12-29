@@ -978,7 +978,7 @@ function ahuacatlMiscFunctionsTestSuite () {
       try {
         cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
         var docs = [];
-        var i, d;
+        var i;
         for (i = 0; i < 1000; ++i) {
           docs.push({i, doc: db.cl.insert({a:i,b:"foo"+i})});;
         }
