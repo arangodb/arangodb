@@ -1,5 +1,9 @@
 devel
 -----
+* Fixed BTS-693: Sort-limit rule now always ensures proper LIMIT node placement
+  to avoid possible invalid results in the fullCount data.
+
+* Updated OpenSSL to 1.1.1m and OpenLDAP to 2.6.0.
 
 * Improved performance in replication dump protocol by inserting arrays of 
   documents instead of one document at a time and also not retrieving the
