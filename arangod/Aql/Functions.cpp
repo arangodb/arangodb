@@ -8721,8 +8721,6 @@ AqlValue Functions::ShardId(ExpressionContext* expressionContext,
   // Expecting 2 parameters
   // 0 : collection name or id
   // 1 : {shardKey1 : k1, shardKey2: k2, ..., shardKeyn: kn}
-  // Shard keys, shardKey1 and shardKey2, ... shardKeyn must match shard keys
-  // of collection
   auto const col = extractFunctionParameterValue(parameters, 0).slice();
   auto const keys = extractFunctionParameterValue(parameters, 1).slice();
 
