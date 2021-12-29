@@ -1571,7 +1571,8 @@ AqlValue Functions::ToFixed(ExpressionContext* ctx, AstNode const&,
   int64_t prec = precision.toInt64();
   if (prec < 0 || prec > 20) {
     // invalid precision
-    aql::registerWarning(ctx, AFN, Result(TRI_ERROR_BAD_PARAMETER, "invalid precision value"));
+    aql::registerWarning(
+        ctx, AFN, Result(TRI_ERROR_BAD_PARAMETER, "invalid precision value"));
     return AqlValue(AqlValueHintNull());
   }
 
@@ -1579,7 +1580,7 @@ AqlValue Functions::ToFixed(ExpressionContext* ctx, AstNode const&,
   std::stringstream ss;
   if (prec == 0) {
     input = std::round(input);
-  } 
+  }
   if (std::isnan(input) || !std::isfinite(input)) {
     return AqlValue(AqlValueHintNull());
   }
@@ -1603,7 +1604,7 @@ AqlValue Functions::ToFixed(ExpressionContext* ctx, AstNode const&,
   if (std::isnan(tmpValue) || !std::isfinite(tmpValue)) {
     return AqlValue(AqlValueHintNull());
   }
-  // stringify number 
+  // stringify number
   char buffer[128];
   size_t length = static_cast<size_t>(fpconv_dtoa(tmpValue, buffer));
   char const* p = static_cast<char const*>(memchr(&buffer[0], '.', length));
