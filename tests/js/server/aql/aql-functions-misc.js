@@ -968,16 +968,17 @@ function ahuacatlMiscFunctionsTestSuite () {
       try {
         cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
         var docs = [];
-        var i;
+        var i, a, b, doc;
         for (i = 0; i < 1000; ++i) {
-          docs.push({i, doc: db.cl.insert({a:i,b:"foo"+i})});;
+          a = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 5)+i;
+          b = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 5)+i;
+          doc = {a, b, i, d: db.cl.insert({a,i,b})};
+          docs.push(doc);
         }
-        i = 0;
-        docs.forEach(function (d) {
-          sid = db._query('RETURN SHARD_ID("cl", {a:@a, b:@b})', {a:i,b:"foo"+i}).toArray();
+        docs.forEach(function (doc) {
+          sid = db._query('RETURN SHARD_ID("cl", {a:@va, b:@vb})', {va:doc.a,vb:doc.b}).toArray();
           assertEqual(sid.length, 1);
-          d = db._query('FOR i in cl FILTER i._key == @d.doc._key RETURN i', {d},
-                        {shard: sid[0]}).toArray();
+          d = db._query('FOR j in cl FILTER j.i == @val RETURN j', {val:doc.i}, {shardIds: sid}).toArray();
           assertEqual(d.length, 1);
         });
       } finally {
