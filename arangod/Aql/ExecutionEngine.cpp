@@ -49,6 +49,71 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+using namespace arangodb;
+using namespace arangodb::aql;
+
+// Validating fullCount usage.
+// For fullCount the following applies:
+// 1. There can at most be one LIMIT that has fullCount: true
+// 2. Limit with fullCount:true cannot be within a subquery.
+// 3. Between the “root()” of the Plan (which in most cases is the RETURN
+//    Node) and the LIMIT with fullCount:true no other LIMIT is allowed
+//    (exception the ContrainedSort case now)
+struct LimitFullCountChecker final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::Unique> {
+  size_t subqueryRecursionCounter{0};
+  bool seenFullCount{false};
+  bool seenFullCountLimitWithoutSort{false};
+
+  LimitFullCountChecker() = default;
+
+  void after(ExecutionNode* en) override {
+    switch (en->getType()) {
+      case ExecutionNode::LIMIT: {
+        auto const* limitNode = ExecutionNode::castTo<LimitNode const*>(en);
+        if (limitNode->fullCount()) {
+          TRI_ASSERT(!seenFullCount);                 // rule 1
+          TRI_ASSERT(0 == subqueryRecursionCounter);  // rule 2
+          auto const* dependency = en->getFirstDependency();
+          seenFullCountLimitWithoutSort =
+              !dependency || dependency->getType() != ExecutionNode::SORT;
+          seenFullCount = true;
+        } else {
+          if (0 == subqueryRecursionCounter) {
+            TRI_ASSERT(!seenFullCountLimitWithoutSort);  // rule 3
+          }
+        }
+
+      } break;
+      case ExecutionNode::SUBQUERY_START:
+        ++subqueryRecursionCounter;
+        break;
+      case ExecutionNode::SUBQUERY_END:
+        TRI_ASSERT(subqueryRecursionCounter > 0);
+        --subqueryRecursionCounter;
+        break;
+      default:
+        // noop
+        break;
+    }
+  }
+
+  /// @brief return true to enter subqueries, false otherwise
+  bool enterSubquery(ExecutionNode* /*super*/,
+                     ExecutionNode* /*sub*/) override {
+    ++subqueryRecursionCounter;
+    return true;
+  }
+
+  virtual void leaveSubquery(ExecutionNode* /*super*/,
+                             ExecutionNode* /*sub*/) override {
+    TRI_ASSERT(subqueryRecursionCounter > 0);
+    --subqueryRecursionCounter;
+  }
+};
+#endif
+
 RegisterId findVariableRegister(RegisterPlan& plan, VariableId varId) {
   RegisterId reg = plan.variableToOptionalRegisterId(varId);
   if (reg.value() == RegisterId::maxRegisterId) {
@@ -637,7 +702,14 @@ void ExecutionEngine::instantiateFromPlan(Query& query,
                                           bool planRegisters,
                                           SerializationFormat format) {
   auto const role = arangodb::ServerState::instance()->getRole();
-  
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (ServerState::instance()->isCoordinator() ||
+      ServerState::instance()->isSingleServer()) {
+    LimitFullCountChecker limitChecker;
+    plan.root()->walkSubqueriesFirst(limitChecker);
+  }
+#endif
   plan.findVarUsage();
   if (planRegisters) {
     plan.planRegisters();
