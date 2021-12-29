@@ -125,7 +125,7 @@
       var indexType = $('#newIndexType').val();
       var postParameter = {};
       var fields;
-      var extraFields;
+      var storedValues;
       var unique;
       var sparse;
       var deduplicate;
@@ -176,9 +176,9 @@
           break;
         case 'Persistent':
           fields = $('#newPersistentFields').val();
-          extraFields = self.stringToArray($('#newPersistentExtraFields').val());
-          if (!extraFields.length) {
-            extraFields = undefined;
+          storedValues = self.stringToArray($('#newPersistentStoredValues').val());
+          if (!storedValues.length) {
+            storedValues = undefined;
           }
           unique = self.checkboxToValue('#newPersistentUnique');
           sparse = self.checkboxToValue('#newPersistentSparse');
@@ -189,7 +189,7 @@
           postParameter = {
             type: 'persistent',
             fields: self.stringToArray(fields),
-            extraFields: extraFields,
+            storedValues: storedValues,
             unique: unique,
             sparse: sparse,
             deduplicate: deduplicate,
@@ -433,7 +433,7 @@
       var cssClass = 'collectionInfoTh modal-text';
       if (this.index) {
         var fieldsString = '';
-        var extraFieldsString = '';
+        var storedValuesString = '';
         var actionString = '';
 
         if (rerender) {
@@ -455,10 +455,10 @@
             fieldsString = '';
           }
           
-          if (v.extraFields !== undefined) {
-            extraFieldsString = v.extraFields.join(', ');
+          if (v.storedValues !== undefined) {
+            storedValuesString = v.storedValues.join(', ');
           } else {
-            extraFieldsString = '';
+            storedValuesString = '';
           }
 
           // cut index id
@@ -486,7 +486,7 @@
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(extras.join(", ")) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(selectivity) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(fieldsString) + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(extraFieldsString) + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(storedValuesString) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(v.name) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + actionString + '</th>' +
             '</tr>'

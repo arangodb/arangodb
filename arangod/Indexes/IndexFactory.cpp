@@ -457,23 +457,23 @@ Result IndexFactory::processIndexFields(VPackSlice definition,
   return res;
 }
 
-/// @brief process the extra fields list, deduplicate it, and add it to the json
-Result IndexFactory::processIndexExtraFields(VPackSlice definition,
-                                             VPackBuilder& builder,
-                                             size_t minFields, size_t maxFields,
-                                             bool create,
-                                             bool allowSubAttributes) {
+/// @brief process the stored values list, deduplicate it, and add it to the json
+Result IndexFactory::processIndexStoredValues(VPackSlice definition,
+                                              VPackBuilder& builder,
+                                              size_t minFields, size_t maxFields,
+                                              bool create,
+                                              bool allowSubAttributes) {
   TRI_ASSERT(builder.isOpenObject());
 
   Result res;
 
-  auto fieldsSlice = definition.get(StaticStrings::IndexExtraFields);
+  auto fieldsSlice = definition.get(StaticStrings::IndexStoredValues);
 
-  // extraFields are fully optional
+  // storedValues are fully optional
   if (!fieldsSlice.isNone()) {
     if (fieldsSlice.isArray()) {
       res =
-          validateFieldsDefinition(definition, StaticStrings::IndexExtraFields,
+          validateFieldsDefinition(definition, StaticStrings::IndexStoredValues,
                                    minFields, maxFields, allowSubAttributes);
       if (res.ok() && fieldsSlice.length() > 0) {
         std::unordered_set<std::string_view> fields;
@@ -485,12 +485,12 @@ Result IndexFactory::processIndexExtraFields(VPackSlice definition,
         for (VPackSlice it : VPackArrayIterator(normalFields)) {
           if (!fields.insert(it.stringView()).second) {
             res.reset(TRI_ERROR_BAD_PARAMETER,
-                      "duplicate attribute name in index fields and index "
-                      "extra fields list");
+                      "duplicate attribute name (overlap between index fields and index "
+                      "stored values list)");
           }
         }
 
-        builder.add(velocypack::Value(StaticStrings::IndexExtraFields));
+        builder.add(velocypack::Value(StaticStrings::IndexStoredValues));
         builder.openArray();
 
         for (VPackSlice it : VPackArrayIterator(fieldsSlice)) {
@@ -504,7 +504,7 @@ Result IndexFactory::processIndexExtraFields(VPackSlice definition,
         builder.close();
       }
     } else {
-      res.reset(TRI_ERROR_BAD_PARAMETER, "extraFields must be an array");
+      res.reset(TRI_ERROR_BAD_PARAMETER, "storedValues must be an array");
     }
   }
 
@@ -574,8 +574,8 @@ Result IndexFactory::enhanceJsonIndexGeneric(VPackSlice definition,
                          /*allowExpansion*/ true, /*allowSubAttributes*/ true);
 
   if (res.ok()) {
-    res = processIndexExtraFields(definition, builder, 1, INT_MAX, create,
-                                  /*allowSubAttributes*/ true);
+    res = processIndexStoredValues(definition, builder, 1, INT_MAX, create,
+                                   /*allowSubAttributes*/ true);
   }
 
   if (res.ok()) {

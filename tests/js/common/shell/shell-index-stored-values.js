@@ -31,7 +31,7 @@ const errors = internal.errors;
   
 const cn = "UnitTestsCollectionIdx";
 
-function indexExtraFieldsCreateSuite() {
+function indexStoredValuesCreateSuite() {
   'use strict';
   let c;
 
@@ -50,12 +50,12 @@ function indexExtraFieldsCreateSuite() {
       let indexes = c.indexes();
       assertEqual(1, indexes.length);
       assertEqual("primary", indexes[0].type);
-      assertUndefined(indexes[0].extraFields);
+      assertUndefined(indexes[0].storedValues);
     },
     
     testCreateOnId: function () {
       try {
-        c.ensureIndex({ type: "persistent", fields: ["value"], extraFields: ["_id"] });
+        c.ensureIndex({ type: "persistent", fields: ["value"], storedValues: ["_id"] });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
@@ -64,7 +64,7 @@ function indexExtraFieldsCreateSuite() {
     
     testCreateOnString: function () {
       try {
-        c.ensureIndex({ type: "persistent", fields: ["value"], extraFields: "piff" });
+        c.ensureIndex({ type: "persistent", fields: ["value"], storedValues: "piff" });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
@@ -73,7 +73,7 @@ function indexExtraFieldsCreateSuite() {
     
     testCreateOnEmptyArray: function () {
       try {
-        c.ensureIndex({ type: "persistent", fields: ["value"], extraFields: [] });
+        c.ensureIndex({ type: "persistent", fields: ["value"], storedValues: [] });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
@@ -87,7 +87,7 @@ function indexExtraFieldsCreateSuite() {
         ["value2", "value1", "value3", "value2"],
       ].forEach((fields) => {
         try {
-          c.ensureIndex({ type: "persistent", fields: ["value"], extraFields: fields });
+          c.ensureIndex({ type: "persistent", fields: ["value"], storedValues: fields });
           fail();
         } catch (err) {
           assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
@@ -102,7 +102,7 @@ function indexExtraFieldsCreateSuite() {
         ["value1", "value2", "value"],
       ].forEach((fields) => {
         try {
-          c.ensureIndex({ type: "persistent", fields: ["value"], extraFields: fields });
+          c.ensureIndex({ type: "persistent", fields: ["value"], storedValues: fields });
           fail();
         } catch (err) {
           assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
@@ -115,7 +115,7 @@ function indexExtraFieldsCreateSuite() {
       let indexes = c.indexes();
       assertEqual(2, indexes.length);
       assertEqual("persistent", indexes[1].type);
-      assertUndefined(indexes[1].extraFields);
+      assertUndefined(indexes[1].storedValues);
     },
     
     testCreateTtl: function () {
@@ -123,52 +123,52 @@ function indexExtraFieldsCreateSuite() {
         undefined,
         ["value"],
       ].forEach((fields) => {
-        c.ensureIndex({ type: "ttl", fields: ["value"], expireAfter: 33, extraFields: fields });
+        c.ensureIndex({ type: "ttl", fields: ["value"], expireAfter: 33, storedValues: fields });
         let indexes = c.indexes();
         assertEqual(2, indexes.length);
         assertEqual("ttl", indexes[1].type);
-        assertUndefined(indexes[1].extraFields);
+        assertUndefined(indexes[1].storedValues);
       });
     },
    
     testCreateOneAttributeNonUnique: function () {
-      c.ensureIndex({ type: "persistent", fields: ["value1"], extraFields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       let indexes = c.indexes();
       assertEqual(2, indexes.length);
       assertEqual("persistent", indexes[1].type);
       assertFalse(indexes[1].unique);
       assertEqual(["value1"], indexes[1].fields);
-      assertEqual(["value2"], indexes[1].extraFields);
+      assertEqual(["value2"], indexes[1].storedValues);
     },
     
     testCreateOneAttributeUnique: function () {
-      c.ensureIndex({ type: "persistent", fields: ["value1"], extraFields: ["value2"], unique: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"], unique: true });
       let indexes = c.indexes();
       assertEqual(2, indexes.length);
       assertEqual("persistent", indexes[1].type);
       assertTrue(indexes[1].unique);
       assertEqual(["value1"], indexes[1].fields);
-      assertEqual(["value2"], indexes[1].extraFields);
+      assertEqual(["value2"], indexes[1].storedValues);
     },
     
     testCreateTwoAttributesNonUnique: function () {
-      c.ensureIndex({ type: "persistent", fields: ["value1"], extraFields: ["value2", "value3"] });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2", "value3"] });
       let indexes = c.indexes();
       assertEqual(2, indexes.length);
       assertEqual("persistent", indexes[1].type);
       assertFalse(indexes[1].unique);
       assertEqual(["value1"], indexes[1].fields);
-      assertEqual(["value2", "value3"], indexes[1].extraFields);
+      assertEqual(["value2", "value3"], indexes[1].storedValues);
     },
     
     testCreateTwoAttributesUnique: function () {
-      c.ensureIndex({ type: "persistent", fields: ["value1"], extraFields: ["value2", "value3"], unique: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2", "value3"], unique: true });
       let indexes = c.indexes();
       assertEqual(2, indexes.length);
       assertEqual("persistent", indexes[1].type);
       assertTrue(indexes[1].unique);
       assertEqual(["value1"], indexes[1].fields);
-      assertEqual(["value2", "value3"], indexes[1].extraFields);
+      assertEqual(["value2", "value3"], indexes[1].storedValues);
     },
     
     testCreateManyAttributesNonUnique: function () {
@@ -176,13 +176,13 @@ function indexExtraFieldsCreateSuite() {
       for (let i = 0; i < 20; ++i) {
         attributes.push("testi" + i);
       }
-      c.ensureIndex({ type: "persistent", fields: ["value"], extraFields: attributes });
+      c.ensureIndex({ type: "persistent", fields: ["value"], storedValues: attributes });
       let indexes = c.indexes();
       assertEqual(2, indexes.length);
       assertEqual("persistent", indexes[1].type);
       assertFalse(indexes[1].unique);
       assertEqual(["value"], indexes[1].fields);
-      assertEqual(attributes, indexes[1].extraFields);
+      assertEqual(attributes, indexes[1].storedValues);
     },
     
     testCreateManyAttributesUnique: function () {
@@ -190,19 +190,19 @@ function indexExtraFieldsCreateSuite() {
       for (let i = 0; i < 20; ++i) {
         attributes.push("testi" + i);
       }
-      c.ensureIndex({ type: "persistent", fields: ["value"], extraFields: attributes, unique: true });
+      c.ensureIndex({ type: "persistent", fields: ["value"], storedValues: attributes, unique: true });
       let indexes = c.indexes();
       assertEqual(2, indexes.length);
       assertEqual("persistent", indexes[1].type);
       assertTrue(indexes[1].unique);
       assertEqual(["value"], indexes[1].fields);
-      assertEqual(attributes, indexes[1].extraFields);
+      assertEqual(attributes, indexes[1].storedValues);
     },
   
   };
 }
 
-function indexExtraFieldsPlanSuite() {
+function indexStoredValuesPlanSuite() {
   'use strict';
   let c;
 
@@ -219,7 +219,7 @@ function indexExtraFieldsPlanSuite() {
 
     
     testExecutionPlanNotUsedForLookup: function () {
-      c.ensureIndex({ type: "persistent", fields: ["value1"], extraFields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       const query =" FOR doc IN " + cn + " FILTER doc.value2 == 123 RETURN doc"; 
       let nodes = AQL_EXPLAIN(query).plan.nodes;
       // query cannot use the index for filtering
@@ -227,7 +227,7 @@ function indexExtraFieldsPlanSuite() {
     },
     
     testExecutionPlanNotUsedForUniqueLookup: function () {
-      c.ensureIndex({ type: "persistent", fields: ["value1"], extraFields: ["value2"], unique: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"], unique: true });
       const query =" FOR doc IN " + cn + " FILTER doc.value2 == 123 RETURN doc"; 
       let nodes = AQL_EXPLAIN(query).plan.nodes;
       // query cannot use the index for filtering
@@ -236,7 +236,7 @@ function indexExtraFieldsPlanSuite() {
     },
     
     testExecutionPlanNotUsedForSort: function () {
-      c.ensureIndex({ type: "persistent", fields: ["value1"], extraFields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       const query =" FOR doc IN " + cn + " SORT doc.value2 RETURN doc"; 
       let nodes = AQL_EXPLAIN(query).plan.nodes;
       // query cannot use the index for filtering
@@ -247,7 +247,7 @@ function indexExtraFieldsPlanSuite() {
     },
     
     testExecutionPlanNotUsedForSortUnique: function () {
-      c.ensureIndex({ type: "persistent", fields: ["value1"], extraFields: ["value2"], unique: true });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"], unique: true });
       const query =" FOR doc IN " + cn + " SORT doc.value2 RETURN doc"; 
       let nodes = AQL_EXPLAIN(query).plan.nodes;
       // query cannot use the index for filtering
@@ -258,7 +258,7 @@ function indexExtraFieldsPlanSuite() {
     },
     
     testExecutionPlanUsedForProjections1: function () {
-      c.ensureIndex({ type: "persistent", fields: ["value1"], extraFields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       const query =" FOR doc IN " + cn + " RETURN doc.value2"; 
       let nodes = AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -267,7 +267,7 @@ function indexExtraFieldsPlanSuite() {
     },
     
     testExecutionPlanUsedForProjections2: function () {
-      c.ensureIndex({ type: "persistent", fields: ["value1"], extraFields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       const query =" FOR doc IN " + cn + " RETURN [doc.value1, doc.value2]"; 
       let nodes = AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -276,7 +276,7 @@ function indexExtraFieldsPlanSuite() {
     },
     
     testExecutionPlanUsedForProjections3: function () {
-      c.ensureIndex({ type: "persistent", fields: ["value1"], extraFields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       const query =" FOR doc IN " + cn + " RETURN [doc.value1, doc.value2]"; 
       let nodes = AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -286,9 +286,9 @@ function indexExtraFieldsPlanSuite() {
   };
 }
 
-jsunity.run(indexExtraFieldsCreateSuite);
+jsunity.run(indexStoredValuesCreateSuite);
 if (require("@arangodb").isServer) {
-  jsunity.run(indexExtraFieldsPlanSuite);
+  jsunity.run(indexStoredValuesPlanSuite);
 }
 
 return jsunity.done();

@@ -135,7 +135,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
                 LocalDocumentId const& newDocumentId, velocypack::Slice newDoc,
                 OperationOptions const& options, bool performChecks) override;
 
-  bool hasExtraFields() const noexcept { return !_extraFields.empty(); }
+  bool hasStoredValues() const noexcept { return !_storedValues.empty(); }
 
  private:
   /// @brief returns whether the document can be inserted into the index
@@ -202,8 +202,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
  private:
   /// @brief the attribute paths (for regular fields)
   std::vector<std::vector<std::string>> _paths;
-  /// @brief the attribute paths (for extra fields)
-  std::vector<std::vector<std::string>> _extraFieldsPaths;
+  /// @brief the attribute paths (for stored values)
+  std::vector<std::vector<std::string>> _storedValuesPaths;
   ;
 
   /// @brief ... and which of them expands
@@ -225,7 +225,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// On removal we have to remove it in the estimator as well.
   std::unique_ptr<RocksDBCuckooIndexEstimatorType> _estimator;
 
-  std::vector<std::vector<arangodb::basics::AttributeName>> const _extraFields;
+  std::vector<std::vector<arangodb::basics::AttributeName>> const _storedValues;
 
   std::vector<std::vector<arangodb::basics::AttributeName>> const
       _coveredFields;

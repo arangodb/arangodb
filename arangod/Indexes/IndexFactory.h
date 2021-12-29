@@ -127,12 +127,12 @@ class IndexFactory {
                                    bool create, bool allowExpansion,
                                    bool allowSubAttributes);
 
-  /// @brief process the extra fields list, deduplicate it, and add it to the
+  /// @brief process the stored values list, deduplicate it, and add it to the
   /// json
-  static Result processIndexExtraFields(velocypack::Slice definition,
-                                        velocypack::Builder& builder,
-                                        size_t minFields, size_t maxFields,
-                                        bool create, bool allowSubAttributes);
+  static Result processIndexStoredValues(velocypack::Slice definition,
+                                         velocypack::Builder& builder,
+                                         size_t minFields, size_t maxFields,
+                                         bool create, bool allowSubAttributes);
 
   static void processIndexInBackground(velocypack::Slice definition,
                                        velocypack::Builder& builder);

@@ -161,13 +161,13 @@ VPackSlice RocksDBValue::data(std::string_view s) {
   return data(s.data(), s.size());
 }
 
-VPackSlice RocksDBValue::indexExtraFields(rocksdb::Slice const& slice) {
+VPackSlice RocksDBValue::indexStoredValues(rocksdb::Slice const& slice) {
   TRI_ASSERT(
       VPackSlice(reinterpret_cast<uint8_t const*>(slice.data())).isArray());
   return data(slice.data(), slice.size());
 }
 
-VPackSlice RocksDBValue::uniqueIndexExtraFields(rocksdb::Slice const& slice) {
+VPackSlice RocksDBValue::uniqueIndexStoredValues(rocksdb::Slice const& slice) {
   TRI_ASSERT(VPackSlice(reinterpret_cast<uint8_t const*>(slice.data() +
                                                          sizeof(uint64_t)))
                  .isArray());

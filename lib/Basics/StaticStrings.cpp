@@ -129,13 +129,13 @@ std::string const StaticStrings::DataSourceParameters("parameters");
 
 // Index definition fields
 std::string const StaticStrings::IndexExpireAfter("expireAfter");
-std::string const StaticStrings::IndexExtraFields("extraFields");
 std::string const StaticStrings::IndexFields("fields");
 std::string const StaticStrings::IndexId("id");
 std::string const StaticStrings::IndexInBackground("inBackground");
 std::string const StaticStrings::IndexIsBuilding("isBuilding");
 std::string const StaticStrings::IndexName("name");
 std::string const StaticStrings::IndexSparse("sparse");
+std::string const StaticStrings::IndexStoredValues("storedValues");
 std::string const StaticStrings::IndexType("type");
 std::string const StaticStrings::IndexUnique("unique");
 std::string const StaticStrings::IndexEstimates("estimates");

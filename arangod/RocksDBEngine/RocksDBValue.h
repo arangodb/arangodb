@@ -116,8 +116,8 @@ class RocksDBValue {
   static VPackSlice data(rocksdb::Slice const&);
   static VPackSlice data(std::string_view);
 
-  static VPackSlice uniqueIndexExtraFields(rocksdb::Slice const&);
-  static VPackSlice indexExtraFields(rocksdb::Slice const&);
+  static VPackSlice uniqueIndexStoredValues(rocksdb::Slice const&);
+  static VPackSlice indexStoredValues(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Centroid of shape or point on the sphere surface in degrees

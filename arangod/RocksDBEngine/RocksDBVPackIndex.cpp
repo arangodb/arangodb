@@ -270,22 +270,22 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       rocksdb::Slice key = _iterator->key();
       TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(key));
 
-      VPackSlice extraFields = VPackSlice::emptyArraySlice();
+      VPackSlice storedValues = VPackSlice::emptyArraySlice();
 
       if constexpr (unique) {
         LocalDocumentId const documentId(
             RocksDBValue::documentId(_iterator->value()));
-        if (_index->hasExtraFields()) {
-          extraFields =
-              RocksDBValue::uniqueIndexExtraFields(_iterator->value());
+        if (_index->hasStoredValues()) {
+          storedValues =
+              RocksDBValue::uniqueIndexStoredValues(_iterator->value());
         }
-        cb(documentId, RocksDBKey::indexedVPack(key), extraFields);
+        cb(documentId, RocksDBKey::indexedVPack(key), storedValues);
       } else {
         LocalDocumentId const documentId(RocksDBKey::indexDocumentId(key));
-        if (_index->hasExtraFields()) {
-          extraFields = RocksDBValue::indexExtraFields(_iterator->value());
+        if (_index->hasStoredValues()) {
+          storedValues = RocksDBValue::indexStoredValues(_iterator->value());
         }
-        cb(documentId, RocksDBKey::indexedVPack(key), extraFields);
+        cb(documentId, RocksDBKey::indexedVPack(key), storedValues);
       }
 
       if (!advance()) {
@@ -434,10 +434,10 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid,
       _allowPartialIndex(true),
       _estimates(true),
       _estimator(nullptr),
-      _extraFields(Index::parseFields(
-          info.get(arangodb::StaticStrings::IndexExtraFields),
+      _storedValues(Index::parseFields(
+          info.get(arangodb::StaticStrings::IndexStoredValues),
           /*allowEmpty*/ true, /*allowExpansion*/ false)),
-      _coveredFields(Index::mergeFields(fields(), _extraFields)) {
+      _coveredFields(Index::mergeFields(fields(), _storedValues)) {
   TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(
                         RocksDBColumnFamilyManager::Family::VPackIndex));
 
@@ -463,7 +463,7 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid,
   TRI_ASSERT(iid.isSet());
 
   fillPaths(_fields, _paths, &_expanding);
-  fillPaths(_extraFields, _extraFieldsPaths, nullptr);
+  fillPaths(_storedValues, _storedValuesPaths, nullptr);
 }
 
 /// @brief destroy the index
@@ -499,13 +499,13 @@ void RocksDBVPackIndex::toVelocyPack(
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
 
-  // serialize extraFields, if they exist
-  if (!_extraFields.empty()) {
+  // serialize storedValues, if they exist
+  if (!_storedValues.empty()) {
     builder.add(
-        arangodb::velocypack::Value(arangodb::StaticStrings::IndexExtraFields));
+        arangodb::velocypack::Value(arangodb::StaticStrings::IndexStoredValues));
     builder.openArray();
 
-    for (auto const& field : _extraFields) {
+    for (auto const& field : _storedValues) {
       std::string fieldString;
       TRI_AttributeNamesToString(field, fieldString);
       builder.add(VPackValue(fieldString));
@@ -918,13 +918,13 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
 
   // now we are going to construct the value to insert into rocksdb
   if (_unique) {
-    // build index value (extraFields array will be stored in value if
-    // extraFields are used)
+    // build index value (storedValues array will be stored in value if
+    // storedValues are used)
     RocksDBValue value = RocksDBValue::UniqueVPackIndexValue(documentId);
-    if (!_extraFieldsPaths.empty()) {
+    if (!_storedValuesPaths.empty()) {
       transaction::BuilderLeaser leased(&trx);
       leased->openArray(true);
-      for (auto const it : _extraFieldsPaths) {
+      for (auto const it : _storedValuesPaths) {
         VPackSlice s = doc.get(it);
         if (s.isNone()) {
           s = VPackSlice::nullSlice();
@@ -999,13 +999,13 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
         trx.state()->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL) &&
             options.canDisableIndexing);
 
-    // build index value (extraFields array will be stored in value if
-    // extraFields are used)
+    // build index value (storedValues array will be stored in value if
+    // storedValues are used)
     RocksDBValue value = RocksDBValue::VPackIndexValue();
-    if (!_extraFieldsPaths.empty()) {
+    if (!_storedValuesPaths.empty()) {
       transaction::BuilderLeaser leased(&trx);
       leased->openArray(true);
-      for (auto const it : _extraFieldsPaths) {
+      for (auto const it : _storedValuesPaths) {
         VPackSlice s = doc.get(it);
         if (s.isNone()) {
           s = VPackSlice::nullSlice();
