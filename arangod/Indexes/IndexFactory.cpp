@@ -457,11 +457,12 @@ Result IndexFactory::processIndexFields(VPackSlice definition,
   return res;
 }
 
-/// @brief process the stored values list, deduplicate it, and add it to the json
+/// process the stored values list, deduplicate it, and add it to the
+/// json
 Result IndexFactory::processIndexStoredValues(VPackSlice definition,
                                               VPackBuilder& builder,
-                                              size_t minFields, size_t maxFields,
-                                              bool create,
+                                              size_t minFields,
+                                              size_t maxFields, bool create,
                                               bool allowSubAttributes) {
   TRI_ASSERT(builder.isOpenObject());
 
@@ -485,7 +486,8 @@ Result IndexFactory::processIndexStoredValues(VPackSlice definition,
         for (VPackSlice it : VPackArrayIterator(normalFields)) {
           if (!fields.insert(it.stringView()).second) {
             res.reset(TRI_ERROR_BAD_PARAMETER,
-                      "duplicate attribute name (overlap between index fields and index "
+                      "duplicate attribute name (overlap between index fields "
+                      "and index "
                       "stored values list)");
           }
         }

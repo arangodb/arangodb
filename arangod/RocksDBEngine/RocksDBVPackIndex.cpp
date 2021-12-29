@@ -166,7 +166,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     _done = false;
   }
 
-  /// @brief we provide a method to provide the index attribute values
+  /// we provide a method to provide the index attribute values
   /// while scanning the index
   bool hasCovering() const override {
     return _index->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX;
@@ -501,8 +501,8 @@ void RocksDBVPackIndex::toVelocyPack(
 
   // serialize storedValues, if they exist
   if (!_storedValues.empty()) {
-    builder.add(
-        arangodb::velocypack::Value(arangodb::StaticStrings::IndexStoredValues));
+    builder.add(arangodb::velocypack::Value(
+        arangodb::StaticStrings::IndexStoredValues));
     builder.openArray();
 
     for (auto const& field : _storedValues) {
