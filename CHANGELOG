@@ -1,5 +1,30 @@
 devel
 -----
+
+* Add optional "storedValues" attribute for persistent indexes.
+
+  This will add the specified extra fields to the index, so that they can be
+  used for projections, but not for lookups or sorting.
+
+  Example:
+
+      db.<collection>.ensureIndex({ 
+        type: "persistent", 
+        fields: ["value1"], 
+        storedValues: ["value2"] 
+      });
+
+  This will index `value1` in the traditional sense, so the index can be
+  used for looking up by `value1` or for sorting by `value1`. The index also
+  supports projections on `value1` as usual.
+  In addition, due to `storedValues` being used here, the index can now also 
+  supply the values for the `value2` attribute for projections.
+
+  This allows covering index scans in more cases and helps to avoid making
+  extra document lookups in the documents column family. This can have a
+  great positive effect on index scan performance if the number of scanned 
+  index entries is large.
+
 * Fixed BTS-693: Sort-limit rule now always ensures proper LIMIT node placement
   to avoid possible invalid results in the fullCount data.
 
