@@ -360,6 +360,13 @@ struct OptimizerRule {
 
   static_assert(scatterInClusterRule < parallelizeGatherRule);
 
+  static_assert(moveCalculationsUpRule < applySortLimitRule,
+                "sort-limit adds/moves limit nodes. And calculations should "
+                "not be moved up after that.");
+  static_assert(moveCalculationsUpRule2 < applySortLimitRule,
+                "sort-limit adds/moves limit nodes. And calculations should "
+                "not be moved up after that.");
+
   velocypack::StringRef name;
   RuleFunction func;
   RuleLevel level;

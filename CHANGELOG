@@ -1,6 +1,9 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* Fixed BTS-693: Sort-limit rule now always ensures proper LIMIT node placement
+  to avoid possible invalid results in the fullCount data
+
 * Updated OpenSSL to 1.1.1m and OpenLDAP to 2.6.0.
 
 * Updated arangosync to 2.7.0.
