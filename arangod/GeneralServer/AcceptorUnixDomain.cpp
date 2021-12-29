@@ -50,7 +50,8 @@ void AcceptorUnixDomain::open() {
           << "deleted previously existing socket file '" << path << "'";
     } else {
       LOG_TOPIC("f6012", ERR, arangodb::Logger::FIXME)
-          << "unable to delete previously existing socket file '" << path << "'";
+          << "unable to delete previously existing socket file '" << path
+          << "'";
     }
   }
 
@@ -58,7 +59,7 @@ void AcceptorUnixDomain::open() {
   _acceptor.open(endpoint.protocol());
   _acceptor.bind(endpoint);
   _acceptor.listen();
-  
+
   _open = true;
   asyncAccept();
 }
@@ -69,7 +70,8 @@ void AcceptorUnixDomain::asyncAccept() {
   auto asioSocket = std::make_unique<AsioSocket<SocketType::Unix>>(context);
   auto& socket = asioSocket->socket;
   auto& peer = asioSocket->peer;
-  auto handler = [this, asioSocket = std::move(asioSocket)](asio_ns::error_code const& ec) mutable {
+  auto handler = [this, asioSocket = std::move(asioSocket)](
+                     asio_ns::error_code const& ec) mutable {
     if (ec) {
       handleError(ec);
       return;
@@ -85,16 +87,14 @@ void AcceptorUnixDomain::asyncAccept() {
     info.clientAddress = "local";
     info.clientPort = 0;
 
-    auto commTask =
-        std::make_shared<HttpCommTask<SocketType::Unix>>(_server,
-                                                         std::move(info),
-                                                         std::move(asioSocket));
+    auto commTask = std::make_shared<HttpCommTask<SocketType::Unix>>(
+        _server, std::move(info), std::move(asioSocket));
     _server.registerTask(std::move(commTask));
     this->asyncAccept();
   };
 
   // cppcheck-suppress accessMoved
-  _acceptor.async_accept(socket, peer, std::move(handler));
+  _acceptor.async_accept(socket, peer, withLogContext(std::move(handler)));
 }
 
 void AcceptorUnixDomain::close() {
@@ -112,7 +112,4 @@ void AcceptorUnixDomain::close() {
   }
 }
 
-void AcceptorUnixDomain::cancel() {
-  _acceptor.cancel();
-}
-
+void AcceptorUnixDomain::cancel() { _acceptor.cancel(); }

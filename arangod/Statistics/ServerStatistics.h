@@ -28,18 +28,15 @@
 #include <functional>
 
 #include "Metrics/Fwd.h"
-#include "Metrics/Counter.h"    // TODO(MBkkt) remove
-#include "Metrics/Histogram.h"  // TODO(MBkkt) remove
-#include "Metrics/LogScale.h"   // TODO(MBkkt) remove
 
 namespace arangodb {
 
 struct TransactionStatistics {
   explicit TransactionStatistics(metrics::MetricsFeature&);
   TransactionStatistics(TransactionStatistics const&) = delete;
-  TransactionStatistics(TransactionStatistics &&) = delete;
+  TransactionStatistics(TransactionStatistics&&) = delete;
   TransactionStatistics& operator=(TransactionStatistics const&) = delete;
-  TransactionStatistics& operator=(TransactionStatistics &&) = delete;
+  TransactionStatistics& operator=(TransactionStatistics&&) = delete;
 
   void setupDocumentMetrics();
 
@@ -62,37 +59,39 @@ struct TransactionStatistics {
   // Total number of times we used a fallback to sequential locking
   metrics::Counter& _sequentialLocks;
 
-  // Total number of write operations in storage engine (excl. sync replication)
-  std::optional<std::reference_wrapper<metrics::Counter>> _numWrites;
-  // Total number of write operations in storage engine by sync replication
-  std::optional<std::reference_wrapper<metrics::Counter>> _numWritesReplication;
-  // Total number of truncate operations (not number of documents truncated!) (excl. sync replication)
-  std::optional<std::reference_wrapper<metrics::Counter>> _numTruncates;
-  // Total number of truncate operations (not number of documents truncated!) by sync replication
-  std::optional<std::reference_wrapper<metrics::Counter>> _numTruncatesReplication;
+  struct ReadWriteMetrics {
+    // Total number of write operations in storage engine (excl. sync
+    // replication)
+    metrics::Counter& numWrites;
+    // Total number of write operations in storage engine by sync replication
+    metrics::Counter& numWritesReplication;
+    // Total number of truncate operations (not number of documents truncated!)
+    // (excl. sync replication)
+    metrics::Counter& numTruncates;
+    // Total number of truncate operations (not number of documents truncated!)
+    // by sync replication
+    metrics::Counter& numTruncatesReplication;
 
-  /// @brief the following metrics are conditional and only initialized if
-  /// startup option `--server.export-read-write-metrics` is set
-  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<float>>>> _rocksdb_read_sec;
-  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<float>>>> _rocksdb_insert_sec;
-  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<float>>>> _rocksdb_replace_sec;
-  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<float>>>> _rocksdb_remove_sec;
-  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<float>>>> _rocksdb_update_sec;
-  std::optional<std::reference_wrapper<metrics::Histogram<metrics::LogScale<float>>>> _rocksdb_truncate_sec;
+    /// @brief the following metrics are conditional and only initialized if
+    /// startup option `--server.export-read-write-metrics` is set
+    metrics::Histogram<metrics::LogScale<float>>& rocksdb_read_sec;
+    metrics::Histogram<metrics::LogScale<float>>& rocksdb_insert_sec;
+    metrics::Histogram<metrics::LogScale<float>>& rocksdb_replace_sec;
+    metrics::Histogram<metrics::LogScale<float>>& rocksdb_remove_sec;
+    metrics::Histogram<metrics::LogScale<float>>& rocksdb_update_sec;
+    metrics::Histogram<metrics::LogScale<float>>& rocksdb_truncate_sec;
+  };
 
-  bool _exportReadWriteMetrics;
-
+  std::optional<ReadWriteMetrics> _readWriteMetrics;
 };
 
 struct ServerStatistics {
   ServerStatistics(ServerStatistics const&) = delete;
-  ServerStatistics(ServerStatistics &&) = delete;
+  ServerStatistics(ServerStatistics&&) = delete;
   ServerStatistics& operator=(ServerStatistics const&) = delete;
-  ServerStatistics& operator=(ServerStatistics &&) = delete;
+  ServerStatistics& operator=(ServerStatistics&&) = delete;
 
   void setupDocumentMetrics();
-
-  ServerStatistics& statistics();
 
   TransactionStatistics _transactionsStatistics;
   double const _startTime;
@@ -103,4 +102,4 @@ struct ServerStatistics {
       : _transactionsStatistics(metrics), _startTime(start) {}
 };
 
-} // namespace
+}  // namespace arangodb

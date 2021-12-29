@@ -41,9 +41,7 @@ class MaintenanceRestHandler : public RestBaseHandler {
  public:
   char const* name() const override { return "MaintenanceRestHandler"; }
 
-  RequestLane lane() const override final {
-    return RequestLane::CLIENT_FAST;
-  }
+  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
 
   /// @brief Performs routing of request to appropriate subroutines
   RestStatus execute() override;
@@ -84,4 +82,3 @@ class MaintenanceRestHandler : public RestBaseHandler {
   std::shared_ptr<maintenance::ActionDescription> _actionDesc;
 };
 }  // namespace arangodb
-

@@ -34,15 +34,14 @@ namespace {
 
 /// @brief helper class for thread-safe creation of PRNG seed value
 class PRNGSeeder {
- public: 
-  PRNGSeeder()
-      : _seeder(0xdeadbeefdeadbeefULL) {}
+ public:
+  PRNGSeeder() : _seeder(0xdeadbeefdeadbeefULL) {}
 
   uint64_t next() noexcept {
     std::lock_guard<std::mutex> guard(_mutex);
     return _seeder.next();
   }
- 
+
  private:
   std::mutex _mutex;
   splitmix64 _seeder;
@@ -62,26 +61,23 @@ struct SeededPRNG {
 
   arangodb::basics::xoroshiro128plus prng;
 };
-  
+
 static thread_local SeededPRNG threadLocalPRNG;
 
-} // namespace
-
+}  // namespace
 
 namespace arangodb {
 
-SharedPRNGFeature::SharedPRNGFeature(application_features::ApplicationServer& server)
+SharedPRNGFeature::SharedPRNGFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, "SharedPRNG") {
   setOptional(true);
 }
 
 SharedPRNGFeature::~SharedPRNGFeature() = default;
 
-void SharedPRNGFeature::prepare() {
-}
+void SharedPRNGFeature::prepare() {}
 
-uint64_t SharedPRNGFeature::rand() noexcept {
-  return ::threadLocalPRNG.next();
-}
-  
+uint64_t SharedPRNGFeature::rand() noexcept { return ::threadLocalPRNG.next(); }
+
 }  // namespace arangodb

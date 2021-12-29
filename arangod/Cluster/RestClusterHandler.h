@@ -50,4 +50,3 @@ class RestClusterHandler : public arangodb::RestBaseHandler {
   void handleClusterInfo();
 };
 }  // namespace arangodb
-

@@ -40,9 +40,9 @@ struct RocksDBOptimizerRules {
 
   // simplify an EnumerationCollectionNode that fetches an entire document to a
   // projection of this document
-  static void reduceExtractionToProjectionRule(aql::Optimizer* opt,
-                                               std::unique_ptr<aql::ExecutionPlan> plan,
-                                               aql::OptimizerRule const& rule);
+  static void reduceExtractionToProjectionRule(
+      aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan,
+      aql::OptimizerRule const& rule);
   // remove SORT RAND() LIMIT 1 if appropriate
   static void removeSortRandRule(aql::Optimizer* opt,
                                  std::unique_ptr<aql::ExecutionPlan> plan,
@@ -50,4 +50,3 @@ struct RocksDBOptimizerRules {
 };
 
 }  // namespace arangodb
-

@@ -55,8 +55,6 @@ struct Plan {
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Plan;
 };
 
-
-
 struct Current {
   LogId id;
 
@@ -79,13 +77,15 @@ struct Current {
         void toVelocyPack(velocypack::Builder& builder) const;
         [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Error;
 
-        friend auto operator==(Error const&, Error const&) noexcept -> bool = default;
+        friend auto operator==(Error const&, Error const&) noexcept
+            -> bool = default;
       };
 
       void toVelocyPack(velocypack::Builder& builder) const;
       [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Snapshot;
 
-      friend auto operator==(Snapshot const&, Snapshot const&) noexcept -> bool = default;
+      friend auto operator==(Snapshot const&, Snapshot const&) noexcept
+          -> bool = default;
 
       Status status{Status::kInProgress};
       clock::time_point timestamp;
@@ -95,20 +95,24 @@ struct Current {
     // TODO might become an array later?
     Snapshot snapshot;
 
-    friend auto operator==(ParticipantStatus const&, ParticipantStatus const&) noexcept
-        -> bool = default;
+    friend auto operator==(ParticipantStatus const&,
+                           ParticipantStatus const&) noexcept -> bool = default;
     void toVelocyPack(velocypack::Builder& builder) const;
-    [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> ParticipantStatus;
+    [[nodiscard]] static auto fromVelocyPack(velocypack::Slice)
+        -> ParticipantStatus;
   };
 
   std::unordered_map<ParticipantId, ParticipantStatus> participants;
 
-  friend auto operator==(Current const&, Current const&) noexcept -> bool = default;
+  friend auto operator==(Current const&, Current const&) noexcept
+      -> bool = default;
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Current;
 };
 
-auto to_string(Current::ParticipantStatus::Snapshot::Status status) -> std::string_view;
-auto from_string(std::string_view string) -> Current::ParticipantStatus::Snapshot::Status;
+auto to_string(Current::ParticipantStatus::Snapshot::Status status)
+    -> std::string_view;
+auto from_string(std::string_view string)
+    -> Current::ParticipantStatus::Snapshot::Status;
 
 }  // namespace arangodb::replication2::replicated_state::agency

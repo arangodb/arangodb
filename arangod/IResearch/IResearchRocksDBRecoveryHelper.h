@@ -57,25 +57,23 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
 
     bool operator<(IndexId const& rhs) const noexcept {
       return (db < rhs.db) ||
-               (db == rhs.db &&
-                  (cid < rhs.cid ||
-                    (cid == rhs.cid &&  iid < rhs.iid)));
+             (db == rhs.db &&
+              (cid < rhs.cid || (cid == rhs.cid && iid < rhs.iid)));
     }
   };
 
-  explicit IResearchRocksDBRecoveryHelper(application_features::ApplicationServer&);
+  explicit IResearchRocksDBRecoveryHelper(
+      application_features::ApplicationServer&);
 
   virtual ~IResearchRocksDBRecoveryHelper() override = default;
 
   virtual void prepare() override;
 
-  virtual void PutCF(uint32_t column_family_id,
-                     const rocksdb::Slice& key,
+  virtual void PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
                      const rocksdb::Slice& value,
                      rocksdb::SequenceNumber tick) override;
 
-  virtual void DeleteCF(uint32_t column_family_id,
-                        const rocksdb::Slice& key,
+  virtual void DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key,
                         rocksdb::SequenceNumber tick) override {
     handleDeleteCF(column_family_id, key, tick);
   }
@@ -90,8 +88,7 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
                        rocksdb::SequenceNumber tick) override;
 
  private:
-  void handleDeleteCF(uint32_t column_family_id,
-                      const rocksdb::Slice& key,
+  void handleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key,
                       rocksdb::SequenceNumber tick);
 
   application_features::ApplicationServer& _server;
@@ -103,4 +100,3 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
 
 }  // end namespace iresearch
 }  // end namespace arangodb
-

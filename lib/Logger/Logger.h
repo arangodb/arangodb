@@ -83,9 +83,9 @@ struct LogMessage {
   LogMessage(LogMessage const&) = delete;
   LogMessage& operator=(LogMessage const&) = delete;
 
-  LogMessage(char const* function, char const* file, int line,
-             LogLevel level, size_t topicId, std::string&& message, 
-             uint32_t offset, bool shrunk) noexcept;
+  LogMessage(char const* function, char const* file, int line, LogLevel level,
+             size_t topicId, std::string&& message, uint32_t offset,
+             bool shrunk) noexcept;
 
   /// @brief whether or no the message was already shrunk
   bool shrunk() const noexcept { return _shrunk; }
@@ -211,49 +211,44 @@ class Logger {
   };
 
   struct CHARS {
-    CHARS(char const* data, size_t size) noexcept 
-         : data(data), size(size) {}
+    CHARS(char const* data, size_t size) noexcept : data(data), size(size) {}
     char const* data;
     size_t size;
   };
 
   struct BINARY {
-    BINARY(void const* baseAddress, size_t size) noexcept
-        : baseAddress(baseAddress), size(size) {}
-    explicit BINARY(std::string const& data) noexcept 
+    BINARY(void const* baseAddress, size_t size)
+    noexcept : baseAddress(baseAddress), size(size) {}
+    explicit BINARY(std::string const& data) noexcept
         : BINARY(data.data(), data.size()) {}
     void const* baseAddress;
     size_t size;
   };
 
   struct RANGE {
-    RANGE(void const* baseAddress, size_t size) noexcept
-        : baseAddress(baseAddress), size(size) {}
+    RANGE(void const* baseAddress, size_t size)
+    noexcept : baseAddress(baseAddress), size(size) {}
     void const* baseAddress;
     size_t size;
   };
 
   struct LINE {
-    explicit LINE(int line) noexcept 
-        : _line(line) {}
+    explicit LINE(int line) noexcept : _line(line) {}
     int _line;
   };
 
   struct FILE {
-    explicit FILE(char const* file) noexcept 
-        : _file(file) {}
+    explicit FILE(char const* file) noexcept : _file(file) {}
     char const* _file;
   };
 
   struct FUNCTION {
-    explicit FUNCTION(char const* function) noexcept 
-        : _function(function) {}
+    explicit FUNCTION(char const* function) noexcept : _function(function) {}
     char const* _function;
   };
 
   struct LOGID {
-    explicit LOGID(char const* logid) noexcept 
-        : _logid(logid) {}
+    explicit LOGID(char const* logid) noexcept : _logid(logid) {}
     char const* _logid;
   };
 
@@ -283,7 +278,9 @@ class Logger {
   static void setUseUnicodeEscaped(bool);
   static bool getUseControlEscaped() { return _useControlEscaped; };
   static bool getUseUnicodeEscaped() { return _useUnicodeEscaped; };
-  static bool getUseLocalTime() { return LogTimeFormats::isLocalFormat(_timeFormat); }
+  static bool getUseLocalTime() {
+    return LogTimeFormats::isLocalFormat(_timeFormat);
+  }
   static void setTimeFormat(LogTimeFormats::TimeFormat);
   static void setKeepLogrotate(bool);
   static void setLogRequestParameters(bool);
@@ -294,17 +291,19 @@ class Logger {
   // can be called after fork()
   static void clearCachedPid() { _cachedPid = 0; }
 
-  static bool translateLogLevel(std::string const& l, bool isGeneral, LogLevel& level) noexcept;
+  static bool translateLogLevel(std::string const& l, bool isGeneral,
+                                LogLevel& level) noexcept;
 
   static std::string const& translateLogLevel(LogLevel) noexcept;
 
-  static void log(char const* logid, char const* function, char const* file, int line,
-                  LogLevel level, size_t topicId, std::string const& message);
+  static void log(char const* logid, char const* function, char const* file,
+                  int line, LogLevel level, size_t topicId,
+                  std::string const& message);
 
-  static void append(LogGroup&, std::unique_ptr<LogMessage>& msg,
-                     bool forceDirect,
-                     std::function<void(std::unique_ptr<LogMessage>&)> const& inactive =
-                         [](std::unique_ptr<LogMessage>&) -> void {});
+  static void append(
+      LogGroup&, std::unique_ptr<LogMessage>& msg, bool forceDirect,
+      std::function<void(std::unique_ptr<LogMessage>&)> const& inactive =
+          [](std::unique_ptr<LogMessage>&) -> void {});
 
   static bool isEnabled(LogLevel level) {
     return (int)level <= (int)_level.load(std::memory_order_relaxed);
@@ -348,18 +347,19 @@ class Logger {
   struct ThreadRef {
     ThreadRef();
     ~ThreadRef();
-    
+
     ThreadRef(const ThreadRef&) = delete;
     ThreadRef(ThreadRef&&) = delete;
     ThreadRef& operator=(const ThreadRef&) = delete;
     ThreadRef& operator=(ThreadRef&&) = delete;
-    
+
     LogThread* operator->() const noexcept { return _thread; }
     operator bool() const noexcept { return _thread != nullptr; }
+
    private:
     LogThread* _thread;
   };
-  
+
   // logger thread. only populated when threaded logging is selected.
   // the pointer must only be used with atomic accessors after the ref counter
   // has been increased. Best to usethe ThreadRef class for this!

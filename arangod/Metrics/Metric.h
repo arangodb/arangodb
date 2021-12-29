@@ -31,7 +31,8 @@ namespace arangodb::metrics {
 
 class Metric {
  public:
-  Metric(std::string_view name, std::string_view help, std::string_view labels) noexcept;
+  Metric(std::string_view name, std::string_view help,
+         std::string_view labels) noexcept;
 
   [[nodiscard]] std::string_view help() const noexcept;
   [[nodiscard]] std::string_view name() const noexcept;
@@ -40,7 +41,8 @@ class Metric {
   virtual std::string_view type() const noexcept = 0;
   virtual void toPrometheus(std::string& result, std::string_view globals,
                             std::string_view alternativeName) const = 0;
-  virtual void toPrometheusBegin(std::string& result, std::string_view name) const;
+  virtual void toPrometheusBegin(std::string& result,
+                                 std::string_view name) const;
   virtual ~Metric();
 
  private:
@@ -49,10 +51,12 @@ class Metric {
   std::string _labels;
 };
 
-using CounterType = gcl::counter::simplex<uint64_t, gcl::counter::atomicity::full>;
-using HistType = gcl::counter::simplex_array<uint64_t, gcl::counter::atomicity::full>;
-using BufferType =
-    gcl::counter::buffer<uint64_t, gcl::counter::atomicity::full, gcl::counter::atomicity::full>;
+using CounterType =
+    gcl::counter::simplex<uint64_t, gcl::counter::atomicity::full>;
+using HistType =
+    gcl::counter::simplex_array<uint64_t, gcl::counter::atomicity::full>;
+using BufferType = gcl::counter::buffer<uint64_t, gcl::counter::atomicity::full,
+                                        gcl::counter::atomicity::full>;
 
 std::ostream& operator<<(std::ostream& output, CounterType const& s);
 std::ostream& operator<<(std::ostream& output, HistType const& v);

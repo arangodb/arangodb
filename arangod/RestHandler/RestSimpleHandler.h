@@ -81,4 +81,3 @@ class RestSimpleHandler : public RestCursorHandler {
   bool _silent;
 };
 }  // namespace arangodb
-

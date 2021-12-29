@@ -126,21 +126,22 @@ namespace arangodb {
 static uint64_t const _maxIoThreads = 64;
 
 struct RequestBodySizeScale {
-  static metrics::LogScale<uint64_t> scale() { return { 2, 64, 65536, 10 }; }
+  static metrics::LogScale<uint64_t> scale() { return {2, 64, 65536, 10}; }
 };
 
 DECLARE_HISTOGRAM(arangodb_request_body_size_http1, RequestBodySizeScale,
-    "Body size of HTTP/1.1 requests");
+                  "Body size of HTTP/1.1 requests");
 DECLARE_HISTOGRAM(arangodb_request_body_size_http2, RequestBodySizeScale,
-    "Body size of HTTP/2 requests");
+                  "Body size of HTTP/2 requests");
 DECLARE_HISTOGRAM(arangodb_request_body_size_vst, RequestBodySizeScale,
-    "Body size of VST requests");
+                  "Body size of VST requests");
 DECLARE_COUNTER(arangodb_http2_connections_total,
-    "Total number of HTTP/2 connections");
+                "Total number of HTTP/2 connections");
 DECLARE_COUNTER(arangodb_vst_connections_total,
-    "Total number of VST connections");
+                "Total number of VST connections");
 
-GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServer& server)
+GeneralServerFeature::GeneralServerFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, "GeneralServer"),
       _allowMethodOverride(false),
       _proxyCheck(true),
@@ -149,16 +150,16 @@ GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServ
       _redirectRootTo("/_admin/aardvark/index.html"),
       _supportInfoApiPolicy("hardened"),
       _numIoThreads(0),
-      _requestBodySizeHttp1(
-          server.getFeature<metrics::MetricsFeature>().add(arangodb_request_body_size_http1{})),
-      _requestBodySizeHttp2(
-          server.getFeature<metrics::MetricsFeature>().add(arangodb_request_body_size_http2{})),
-      _requestBodySizeVst(
-          server.getFeature<metrics::MetricsFeature>().add(arangodb_request_body_size_vst{})),
-      _http2Connections(
-          server.getFeature<metrics::MetricsFeature>().add(arangodb_http2_connections_total{})),
-      _vstConnections(
-          server.getFeature<metrics::MetricsFeature>().add(arangodb_vst_connections_total{})) {
+      _requestBodySizeHttp1(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_request_body_size_http1{})),
+      _requestBodySizeHttp2(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_request_body_size_http2{})),
+      _requestBodySizeVst(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_request_body_size_vst{})),
+      _http2Connections(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_http2_connections_total{})),
+      _vstConnections(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_vst_connections_total{})) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 
@@ -166,14 +167,16 @@ GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServ
   startsAfter<SslServerFeature>();
   startsAfter<UpgradeFeature>();
 
-  _numIoThreads = (std::max)(static_cast<uint64_t>(1),
-                             static_cast<uint64_t>(NumberOfCores::getValue() / 4));
+  _numIoThreads =
+      (std::max)(static_cast<uint64_t>(1),
+                 static_cast<uint64_t>(NumberOfCores::getValue() / 4));
   if (_numIoThreads > _maxIoThreads) {
     _numIoThreads = _maxIoThreads;
   }
 }
 
-void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void GeneralServerFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("server.allow-method-override",
                         "http.allow-method-override");
   options->addOldOption("server.hide-product-header",
@@ -181,71 +184,80 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
   options->addOldOption("no-server", "server.rest-server");
 
-  options->addOption("--server.io-threads",
-                     "number of threads used to handle IO",
-                     new UInt64Parameter(&_numIoThreads),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
+  options->addOption(
+      "--server.io-threads", "number of threads used to handle IO",
+      new UInt64Parameter(&_numIoThreads),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
-  options->addOption("--server.support-info-api",
-                     "policy for exposing support info API",
-                     new DiscreteValuesParameter<StringParameter>(
-                         &_supportInfoApiPolicy,
-                         std::unordered_set<std::string>{"disabled", "jwt", "hardened", "public"}))
-                     .setIntroducedIn(30900);
+  options
+      ->addOption("--server.support-info-api",
+                  "policy for exposing support info API",
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_supportInfoApiPolicy,
+                      std::unordered_set<std::string>{"disabled", "jwt",
+                                                      "hardened", "public"}))
+      .setIntroducedIn(30900);
 
   options->addSection("http", "HTTP server features");
 
-  options->addOption("--http.allow-method-override",
-                     "allow HTTP method override using special headers",
-                     new BooleanParameter(&_allowMethodOverride),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-                     .setDeprecatedIn(30800);
+  options
+      ->addOption(
+          "--http.allow-method-override",
+          "allow HTTP method override using special headers",
+          new BooleanParameter(&_allowMethodOverride),
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setDeprecatedIn(30800);
 
   options->addOption("--http.keep-alive-timeout",
                      "keep-alive timeout in seconds",
                      new DoubleParameter(&_keepAliveTimeout));
 
-  options->addOption(
-      "--http.hide-product-header",
-      "do not expose \"Server: ArangoDB\" header in HTTP responses",
-      new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER))
+  options
+      ->addOption("--http.hide-product-header",
+                  "do not expose \"Server: ArangoDB\" header in HTTP responses",
+                  new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER))
       .setDeprecatedIn(30800);
 
-  options->addOption("--http.trusted-origin",
-                     "trusted origin URLs for CORS requests with credentials",
-                     new VectorParameter<StringParameter>(&_accessControlAllowOrigins));
+  options->addOption(
+      "--http.trusted-origin",
+      "trusted origin URLs for CORS requests with credentials",
+      new VectorParameter<StringParameter>(&_accessControlAllowOrigins));
 
-  options->addOption("--http.redirect-root-to",
-                    "redirect of root URL",
-                    new StringParameter(&_redirectRootTo))
-                    .setIntroducedIn(30712);
+  options
+      ->addOption("--http.redirect-root-to", "redirect of root URL",
+                  new StringParameter(&_redirectRootTo))
+      .setIntroducedIn(30712);
 
-  options->addOption("--http.permanently-redirect-root",
-                    "if true, use a permanent redirect. If false, use a temporary",
-                    new BooleanParameter(&_permanentRootRedirect))
-                    .setIntroducedIn(30712);
+  options
+      ->addOption(
+          "--http.permanently-redirect-root",
+          "if true, use a permanent redirect. If false, use a temporary",
+          new BooleanParameter(&_permanentRootRedirect))
+      .setIntroducedIn(30712);
 
-  options->addOption("--http.return-queue-time-header",
-                    "if true, return the 'x-arango-queue-time-seconds' response header",
-                    new BooleanParameter(&_returnQueueTimeHeader))
-                    .setIntroducedIn(30900);
+  options
+      ->addOption(
+          "--http.return-queue-time-header",
+          "if true, return the 'x-arango-queue-time-seconds' response header",
+          new BooleanParameter(&_returnQueueTimeHeader))
+      .setIntroducedIn(30900);
 
   options->addOption("--frontend.proxy-request-check",
                      "enable proxy request checking",
                      new BooleanParameter(&_proxyCheck),
                      arangodb::options::makeFlags(
-                     arangodb::options::Flags::DefaultNoComponents,
-                     arangodb::options::Flags::OnCoordinator,
-                     arangodb::options::Flags::OnSingle));
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnCoordinator,
+                         arangodb::options::Flags::OnSingle));
 
   options->addOption("--frontend.trusted-proxy",
                      "list of proxies to trust (may be IP or network). Make "
                      "sure --frontend.proxy-request-check is enabled",
                      new VectorParameter<StringParameter>(&_trustedProxies),
                      arangodb::options::makeFlags(
-                     arangodb::options::Flags::DefaultNoComponents,
-                     arangodb::options::Flags::OnCoordinator,
-                     arangodb::options::Flags::OnSingle));
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnCoordinator,
+                         arangodb::options::Flags::OnSingle));
 }
 
 void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
@@ -279,10 +291,12 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 
   // we need at least one io thread and context
   if (_numIoThreads == 0) {
-    LOG_TOPIC("1ade3", WARN, Logger::FIXME) << "Need at least one io-context thread.";
+    LOG_TOPIC("1ade3", WARN, Logger::FIXME)
+        << "Need at least one io-context thread.";
     _numIoThreads = 1;
   } else if (_numIoThreads > _maxIoThreads) {
-    LOG_TOPIC("80dcf", WARN, Logger::FIXME) << "IO-contexts are limited to " << _maxIoThreads;
+    LOG_TOPIC("80dcf", WARN, Logger::FIXME)
+        << "IO-contexts are limited to " << _maxIoThreads;
     _numIoThreads = _maxIoThreads;
   }
 }
@@ -336,7 +350,9 @@ double GeneralServerFeature::keepAliveTimeout() const noexcept {
 
 bool GeneralServerFeature::proxyCheck() const noexcept { return _proxyCheck; }
 
-bool GeneralServerFeature::returnQueueTimeHeader() const noexcept { return _returnQueueTimeHeader; }
+bool GeneralServerFeature::returnQueueTimeHeader() const noexcept {
+  return _returnQueueTimeHeader;
+}
 
 std::vector<std::string> GeneralServerFeature::trustedProxies() const {
   return _trustedProxies;
@@ -346,7 +362,8 @@ bool GeneralServerFeature::allowMethodOverride() const noexcept {
   return _allowMethodOverride;
 }
 
-std::vector<std::string> const& GeneralServerFeature::accessControlAllowOrigins() const {
+std::vector<std::string> const&
+GeneralServerFeature::accessControlAllowOrigins() const {
   return _accessControlAllowOrigins;
 }
 
@@ -410,7 +427,8 @@ void GeneralServerFeature::defineHandlers() {
 
   AgencyFeature& agency = server().getFeature<AgencyFeature>();
   ClusterFeature& cluster = server().getFeature<ClusterFeature>();
-  AuthenticationFeature& authentication = server().getFeature<AuthenticationFeature>();
+  AuthenticationFeature& authentication =
+      server().getFeature<AuthenticationFeature>();
 #ifdef USE_ENTERPRISE
   HotBackupFeature& backup = server().getFeature<HotBackupFeature>();
 #endif
@@ -419,90 +437,112 @@ void GeneralServerFeature::defineHandlers() {
   // /_api
   // ...........................................................................
 
-  _handlerFactory->addPrefixHandler( // add handler
-    RestVocbaseBaseHandler::ANALYZER_PATH, // base URL
-    RestHandlerCreator<iresearch::RestAnalyzerHandler>::createNoData // handler
+  _handlerFactory->addPrefixHandler(          // add handler
+      RestVocbaseBaseHandler::ANALYZER_PATH,  // base URL
+      RestHandlerCreator<
+          iresearch::RestAnalyzerHandler>::createNoData  // handler
   );
 
-  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
-                                    RestHandlerCreator<RestBatchHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::BATCH_PATH,
+      RestHandlerCreator<RestBatchHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::CONTROL_PREGEL_PATH,
-                                    RestHandlerCreator<RestControlPregelHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::CONTROL_PREGEL_PATH,
+      RestHandlerCreator<RestControlPregelHandler>::createNoData);
 
   auto queryRegistry = QueryRegistryFeature::registry();
-  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::CURSOR_PATH,
-                                    RestHandlerCreator<RestCursorHandler>::createData<aql::QueryRegistry*>,
-                                    queryRegistry);
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::CURSOR_PATH,
+      RestHandlerCreator<RestCursorHandler>::createData<aql::QueryRegistry*>,
+      queryRegistry);
 
-  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::DATABASE_PATH,
-                                    RestHandlerCreator<RestDatabaseHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::DATABASE_PATH,
+      RestHandlerCreator<RestDatabaseHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH,
-                                    RestHandlerCreator<RestDocumentHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::DOCUMENT_PATH,
+      RestHandlerCreator<RestDocumentHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::EDGES_PATH,
-                                    RestHandlerCreator<RestEdgesHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::EDGES_PATH,
+      RestHandlerCreator<RestEdgesHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::GHARIAL_PATH,
-                                    RestHandlerCreator<RestGraphHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::GHARIAL_PATH,
+      RestHandlerCreator<RestGraphHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::ENDPOINT_PATH,
-                                    RestHandlerCreator<RestEndpointHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::ENDPOINT_PATH,
+      RestHandlerCreator<RestEndpointHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::IMPORT_PATH,
-                                    RestHandlerCreator<RestImportHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::IMPORT_PATH,
+      RestHandlerCreator<RestImportHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::INDEX_PATH,
-                                    RestHandlerCreator<RestIndexHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::INDEX_PATH,
+      RestHandlerCreator<RestIndexHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH,
-      RestHandlerCreator<RestSimpleQueryHandler>::createData<aql::QueryRegistry*>,
+      RestHandlerCreator<RestSimpleQueryHandler>::createData<
+          aql::QueryRegistry*>,
       queryRegistry);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH,
-      RestHandlerCreator<RestSimpleQueryHandler>::createData<aql::QueryRegistry*>,
+      RestHandlerCreator<RestSimpleQueryHandler>::createData<
+          aql::QueryRegistry*>,
       queryRegistry);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE,
-      RestHandlerCreator<RestSimpleQueryHandler>::createData<aql::QueryRegistry*>,
+      RestHandlerCreator<RestSimpleQueryHandler>::createData<
+          aql::QueryRegistry*>,
       queryRegistry);
 
-  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,
-                                    RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
-                                    queryRegistry);
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,
+      RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
+      queryRegistry);
 
-  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH,
-                                    RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
-                                    queryRegistry);
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH,
+      RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
+      queryRegistry);
 
   if (server().isEnabled<V8DealerFeature>()) {
     // the tasks feature depends on V8. only enable it if JavaScript is enabled
-    _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::TASKS_PATH,
-                                      RestHandlerCreator<RestTasksHandler>::createNoData);
+    _handlerFactory->addPrefixHandler(
+        RestVocbaseBaseHandler::TASKS_PATH,
+        RestHandlerCreator<RestTasksHandler>::createNoData);
   }
 
-  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
-                                    RestHandlerCreator<RestUploadHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::UPLOAD_PATH,
+      RestHandlerCreator<RestUploadHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::USERS_PATH,
-                                    RestHandlerCreator<RestUsersHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::USERS_PATH,
+      RestHandlerCreator<RestUsersHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::VIEW_PATH,
-                                    RestHandlerCreator<RestViewHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::VIEW_PATH,
+      RestHandlerCreator<RestViewHandler>::createNoData);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (cluster.isEnabled()) {
-    _handlerFactory->addPrefixHandler("/_api/log", RestHandlerCreator<RestLogHandler>::createNoData);
+    _handlerFactory->addPrefixHandler(
+        "/_api/log", RestHandlerCreator<RestLogHandler>::createNoData);
   }
 #endif
 
   if (cluster.isEnabled()) {
-    _handlerFactory->addPrefixHandler(std::string{StaticStrings::ApiLogInternal},
-                                      RestHandlerCreator<RestLogInternalHandler>::createNoData);
+    _handlerFactory->addPrefixHandler(
+        std::string{StaticStrings::ApiLogInternal},
+        RestHandlerCreator<RestLogInternalHandler>::createNoData);
   }
 
   // This is the only handler were we need to inject
@@ -510,186 +550,221 @@ void GeneralServerFeature::defineHandlers() {
   // for it.
   _handlerFactory->addPrefixHandler(
       "/_api/aql",
-      RestHandlerCreator<aql::RestAqlHandler>::createData<aql::QueryRegistry*>, queryRegistry);
+      RestHandlerCreator<aql::RestAqlHandler>::createData<aql::QueryRegistry*>,
+      queryRegistry);
 
-  _handlerFactory->addPrefixHandler("/_api/aql-builtin",
-                                    RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      "/_api/aql-builtin",
+      RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
 
   if (server().isEnabled<V8DealerFeature>()) {
-    // the AQL UDfs feature depends on V8. only enable it if JavaScript is enabled
-    _handlerFactory->addPrefixHandler("/_api/aqlfunction",
-                                      RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData);
+    // the AQL UDfs feature depends on V8. only enable it if JavaScript is
+    // enabled
+    _handlerFactory->addPrefixHandler(
+        "/_api/aqlfunction",
+        RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData);
   }
 
-  _handlerFactory->addPrefixHandler("/_api/explain",
-                                    RestHandlerCreator<RestExplainHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      "/_api/explain", RestHandlerCreator<RestExplainHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler("/_api/query",
-                                    RestHandlerCreator<RestQueryHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      "/_api/query", RestHandlerCreator<RestQueryHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler("/_api/query-cache",
-                                    RestHandlerCreator<RestQueryCacheHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      "/_api/query-cache",
+      RestHandlerCreator<RestQueryCacheHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler("/_api/pregel",
-                                    RestHandlerCreator<RestPregelHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      "/_api/pregel", RestHandlerCreator<RestPregelHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler("/_api/wal",
-                                    RestHandlerCreator<RestWalAccessHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      "/_api/wal", RestHandlerCreator<RestWalAccessHandler>::createNoData);
 
   if (agency.isEnabled()) {
-    _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::AGENCY_PATH,
-                                      RestHandlerCreator<RestAgencyHandler>::createData<consensus::Agent*>,
-                                      agency.agent());
+    _handlerFactory->addPrefixHandler(
+        RestVocbaseBaseHandler::AGENCY_PATH,
+        RestHandlerCreator<RestAgencyHandler>::createData<consensus::Agent*>,
+        agency.agent());
 
     _handlerFactory->addPrefixHandler(
         RestVocbaseBaseHandler::AGENCY_PRIV_PATH,
-        RestHandlerCreator<RestAgencyPrivHandler>::createData<consensus::Agent*>,
+        RestHandlerCreator<RestAgencyPrivHandler>::createData<
+            consensus::Agent*>,
         agency.agent());
   }
-
 
   if (cluster.isEnabled()) {
     // add "/agency-callbacks" handler
     _handlerFactory->addPrefixHandler(
         cluster.agencyCallbacksPath(),
-        RestHandlerCreator<RestAgencyCallbacksHandler>::createData<AgencyCallbackRegistry*>,
+        RestHandlerCreator<RestAgencyCallbacksHandler>::createData<
+            AgencyCallbackRegistry*>,
         cluster.agencyCallbackRegistry());
     // add "_api/cluster" handler
-    _handlerFactory->addPrefixHandler(cluster.clusterRestPath(),
-                                      RestHandlerCreator<RestClusterHandler>::createNoData);
+    _handlerFactory->addPrefixHandler(
+        cluster.clusterRestPath(),
+        RestHandlerCreator<RestClusterHandler>::createNoData);
   }
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH,
-      RestHandlerCreator<InternalRestTraverserHandler>::createData<aql::QueryRegistry*>,
-       queryRegistry);
+      RestHandlerCreator<InternalRestTraverserHandler>::createData<
+          aql::QueryRegistry*>,
+      queryRegistry);
 
   // And now some handlers which are registered in both /_api and /_admin
-  _handlerFactory->addHandler("/_admin/actions",
-                              RestHandlerCreator<MaintenanceRestHandler>::createNoData);
+  _handlerFactory->addHandler(
+      "/_admin/actions",
+      RestHandlerCreator<MaintenanceRestHandler>::createNoData);
 
-  _handlerFactory->addHandler("/_admin/auth/reload",
-                              RestHandlerCreator<RestAuthReloadHandler>::createNoData);
+  _handlerFactory->addHandler(
+      "/_admin/auth/reload",
+      RestHandlerCreator<RestAuthReloadHandler>::createNoData);
 
   if (server().hasFeature<V8DealerFeature>() &&
       server().getFeature<V8DealerFeature>().allowAdminExecute()) {
-    // the /_admin/execute API depends on V8. only enable it if JavaScript is enabled
-    _handlerFactory->addHandler("/_admin/execute",
-                                RestHandlerCreator<RestAdminExecuteHandler>::createNoData);
+    // the /_admin/execute API depends on V8. only enable it if JavaScript is
+    // enabled
+    _handlerFactory->addHandler(
+        "/_admin/execute",
+        RestHandlerCreator<RestAdminExecuteHandler>::createNoData);
   }
 
-  _handlerFactory->addHandler("/_admin/time",
-                              RestHandlerCreator<RestTimeHandler>::createNoData);
+  _handlerFactory->addHandler(
+      "/_admin/time", RestHandlerCreator<RestTimeHandler>::createNoData);
 
-  _handlerFactory->addHandler("/_admin/compact",
-                              RestHandlerCreator<RestCompactHandler>::createNoData);
+  _handlerFactory->addHandler(
+      "/_admin/compact", RestHandlerCreator<RestCompactHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler("/_api/job",
-                                    RestHandlerCreator<arangodb::RestJobHandler>::createData<AsyncJobManager*>,
-                                    _jobManager.get());
+  _handlerFactory->addPrefixHandler(
+      "/_api/job",
+      RestHandlerCreator<arangodb::RestJobHandler>::createData<
+          AsyncJobManager*>,
+      _jobManager.get());
 
-  _handlerFactory->addPrefixHandler("/_api/engine",
-                                    RestHandlerCreator<RestEngineHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      "/_api/engine", RestHandlerCreator<RestEngineHandler>::createNoData);
 
-  _handlerFactory->addHandler("/_api/version",
-                              RestHandlerCreator<RestVersionHandler>::createNoData);
+  _handlerFactory->addHandler(
+      "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler("/_api/transaction",
-                                    RestHandlerCreator<RestTransactionHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      "/_api/transaction",
+      RestHandlerCreator<RestTransactionHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler("/_api/ttl",
-                                    RestHandlerCreator<RestTtlHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      "/_api/ttl", RestHandlerCreator<RestTtlHandler>::createNoData);
 
   // ...........................................................................
   // /_admin
   // ...........................................................................
 
-  _handlerFactory->addPrefixHandler("/_admin/cluster",
-                                    RestHandlerCreator<arangodb::RestAdminClusterHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      "/_admin/cluster",
+      RestHandlerCreator<arangodb::RestAdminClusterHandler>::createNoData);
 
-  _handlerFactory->addHandler("/_admin/status",
-                              RestHandlerCreator<RestStatusHandler>::createNoData);
+  _handlerFactory->addHandler(
+      "/_admin/status", RestHandlerCreator<RestStatusHandler>::createNoData);
 
   if (_supportInfoApiPolicy != "disabled") {
-    _handlerFactory->addHandler("/_admin/support-info",
-                                RestHandlerCreator<RestSupportInfoHandler>::createNoData);
+    _handlerFactory->addHandler(
+        "/_admin/support-info",
+        RestHandlerCreator<RestSupportInfoHandler>::createNoData);
   }
 
-  _handlerFactory->addHandler("/_admin/system-report",
-                              RestHandlerCreator<RestSystemReportHandler>::createNoData);
+  _handlerFactory->addHandler(
+      "/_admin/system-report",
+      RestHandlerCreator<RestSystemReportHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler("/_admin/job",
-                                    RestHandlerCreator<arangodb::RestJobHandler>::createData<AsyncJobManager*>,
-                                    _jobManager.get());
+  _handlerFactory->addPrefixHandler(
+      "/_admin/job",
+      RestHandlerCreator<arangodb::RestJobHandler>::createData<
+          AsyncJobManager*>,
+      _jobManager.get());
 
-  _handlerFactory->addHandler("/_admin/version",
-                              RestHandlerCreator<RestVersionHandler>::createNoData);
+  _handlerFactory->addHandler(
+      "/_admin/version", RestHandlerCreator<RestVersionHandler>::createNoData);
 
   // further admin handlers
-  _handlerFactory->addPrefixHandler("/_admin/database/target-version",
-                                    RestHandlerCreator<arangodb::RestAdminDatabaseHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      "/_admin/database/target-version",
+      RestHandlerCreator<arangodb::RestAdminDatabaseHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler("/_admin/log",
-                                    RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      "/_admin/log",
+      RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
 
   if (server().isEnabled<V8DealerFeature>()) {
-    // the routing feature depends on V8. only enable it if JavaScript is enabled
-    _handlerFactory->addPrefixHandler("/_admin/routing",
-                                      RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
+    // the routing feature depends on V8. only enable it if JavaScript is
+    // enabled
+    _handlerFactory->addPrefixHandler(
+        "/_admin/routing",
+        RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
   }
 
-  _handlerFactory->addHandler("/_admin/supervisionState",
-                              RestHandlerCreator<arangodb::RestSupervisionStateHandler>::createNoData);
+  _handlerFactory->addHandler(
+      "/_admin/supervisionState",
+      RestHandlerCreator<arangodb::RestSupervisionStateHandler>::createNoData);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // This handler is to activate SYS_DEBUG_FAILAT on DB servers
-  _handlerFactory->addPrefixHandler("/_admin/debug",
-                                    RestHandlerCreator<arangodb::RestDebugHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      "/_admin/debug",
+      RestHandlerCreator<arangodb::RestDebugHandler>::createNoData);
 #endif
 
-  _handlerFactory->addPrefixHandler("/_admin/shutdown",
-                                    RestHandlerCreator<arangodb::RestShutdownHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      "/_admin/shutdown",
+      RestHandlerCreator<arangodb::RestShutdownHandler>::createNoData);
 
   if (authentication.isActive()) {
-    _handlerFactory->addPrefixHandler("/_open/auth",
-                                      RestHandlerCreator<arangodb::RestAuthHandler>::createNoData);
+    _handlerFactory->addPrefixHandler(
+        "/_open/auth",
+        RestHandlerCreator<arangodb::RestAuthHandler>::createNoData);
   }
 
-  _handlerFactory->addPrefixHandler("/_admin/server",
-                                    RestHandlerCreator<arangodb::RestAdminServerHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      "/_admin/server",
+      RestHandlerCreator<arangodb::RestAdminServerHandler>::createNoData);
 
-  _handlerFactory->addHandler("/_admin/statistics",
-                              RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
+  _handlerFactory->addHandler(
+      "/_admin/statistics",
+      RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler("/_admin/metrics",
-                              RestHandlerCreator<arangodb::RestMetricsHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      "/_admin/metrics",
+      RestHandlerCreator<arangodb::RestMetricsHandler>::createNoData);
 
-  _handlerFactory->addHandler("/_admin/statistics-description",
-                              RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
+  _handlerFactory->addHandler(
+      "/_admin/statistics-description",
+      RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler("/_admin/license",
-                                    RestHandlerCreator<arangodb::RestLicenseHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      "/_admin/license",
+      RestHandlerCreator<arangodb::RestLicenseHandler>::createNoData);
 
 #ifdef USE_ENTERPRISE
   if (backup.isAPIEnabled()) {
-    _handlerFactory->addPrefixHandler("/_admin/backup",
-                                      RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
+    _handlerFactory->addPrefixHandler(
+        "/_admin/backup",
+        RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
   }
 #endif
-
 
   // ...........................................................................
   // test handler
   // ...........................................................................
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _handlerFactory->addPrefixHandler("/_api/test",
-                                    RestHandlerCreator<RestTestHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      "/_api/test", RestHandlerCreator<RestTestHandler>::createNoData);
 #endif
 
   // ...........................................................................
   // actions defined in v8
   // ...........................................................................
 
-  _handlerFactory->addPrefixHandler("/", RestHandlerCreator<RestActionHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      "/", RestHandlerCreator<RestActionHandler>::createNoData);
 
   // engine specific handlers
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
