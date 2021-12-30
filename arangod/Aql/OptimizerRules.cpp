@@ -7384,8 +7384,7 @@ void arangodb::aql::sortLimitRule(Optimizer* opt,
             auto* sortParent = sortNode->getFirstParent();
             TRI_ASSERT(sortParent);
             if (sortParent != auxLimitNode) {
-              sortParent->replaceDependency(sortNode,
-                                          auxLimitNode);
+              sortParent->replaceDependency(sortNode, auxLimitNode);
               sortNode->addParent(auxLimitNode);
             }
           }
