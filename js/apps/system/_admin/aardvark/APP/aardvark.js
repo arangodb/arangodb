@@ -93,6 +93,7 @@ router.get('/config.js', function (req, res) {
       statisticsInAllDatabases: internal.enabledStatisticsInAllDatabases(),
       foxxStoreEnabled: !internal.isFoxxStoreDisabled(),
       foxxApiEnabled: !internal.isFoxxApiDisabled(),
+      foxxAllowInstallFromRemote: internal.foxxAllowInstallFromRemote(),
       clusterApiJwtPolicy: internal.clusterApiJwtPolicy(),
       minReplicationFactor: internal.minReplicationFactor,
       maxReplicationFactor: internal.maxReplicationFactor,

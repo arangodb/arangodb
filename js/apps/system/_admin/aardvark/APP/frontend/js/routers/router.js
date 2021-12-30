@@ -1188,6 +1188,10 @@
         this.navigate('#dashboard', {trigger: true});
         return;
       }
+      if (!frontendConfig.foxxAllowInstallFromRemote) {
+        this.navigate('#services/install/upload', { trigger: true });
+        return;
+      }
       window.modalView.clearValidators();
       if (this.serviceUrlView) {
         this.serviceUrlView.remove();
