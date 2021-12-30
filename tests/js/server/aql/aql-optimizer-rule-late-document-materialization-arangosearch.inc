@@ -32,13 +32,16 @@
 (function() {
   var db = require("@arangodb").db;
   const analyzers = require("@arangodb/analyzers");
+  const internal = require('internal');
 
   return function (isCluster, newDbName, dbArgs) {
     const ruleName = "late-document-materialization-arangosearch";
     const cn = "UnitTestsCollection";
     const cn1 = "UnitTestsCollection1";
+    const cn2 = "UnitTestsCollection2";
     const vn = "UnitTestsView";
     const svn = "SortedTestsView";
+    const lvn = "LimitTestView";
     return {
       setUpAll : function () {
         db._useDatabase("_system");
@@ -48,6 +51,7 @@
         
         let c = db._create(cn, { numberOfShards: 3 });
         let c2 = db._create(cn1, { numberOfShards: 3 });
+        let c3 = db._create(cn2, { numberOfShards: 3 });
         
         db._createView(vn, "arangosearch", { 
           links: { 
@@ -63,6 +67,12 @@
             [cn] : { includeAllFields: true }, 
             [cn1] : { includeAllFields: true } 
           }});
+          
+        db._createView(lvn, "arangosearch", {
+          consolidationIntervalMsec: 5000, 
+          links: { 
+            [cn2] : { includeAllFields: true } 
+          }});
 
         c.save({ _key: 'c0',  str: 'cat cat cat cat cat cat cat cat dog', value: 0 });
         c2.save({_key: 'c_0', str: 'cat cat cat cat cat cat cat rat dog', value: 10 });
@@ -73,9 +83,16 @@
         c.save({ _key: 'c3',  str: 'cat cat map fat dot pot pig rat dog', value: 3 });
         c2.save({_key: 'c_3', str: 'cat ant map fat dot pot pig rat dog', value: 13 });
         
+        let c3data = [];
+        for (let i = 0 ; i < 1000; i++) {
+          c3data.push({value: i, text: "value" + i});
+        }
+        c3.insert(c3data);
+        
         // trigger view sync
         db._query("FOR d IN " + vn + " OPTIONS { waitForSync: true } RETURN d");
         db._query("FOR d IN " + svn + " OPTIONS { waitForSync: true } RETURN d");
+        db._query("FOR d IN " + lvn + " OPTIONS { waitForSync: true } RETURN d");
       },
 
       tearDownAll : function () {
@@ -256,7 +273,7 @@
         let result = AQL_EXECUTE(query);
         assertEqual(0, result.json.length);
       },
-      testQueryResultsInSubquery() {
+      testQueryResultsInInnerLoop() {
         let query = "FOR c IN " + svn + " SEARCH c.value == 1 " +
                       " FOR d IN " + vn  + " SEARCH d.value IN [c.value, c.value + 1] SORT BM25(d) LIMIT 10 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
@@ -270,7 +287,7 @@
         });
         assertEqual(0, expected.size);
       },
-      testQueryResultsInOuterSubquery() {
+      testQueryResultsInOuterLoop() {
         let query = "FOR c IN " + svn + " SEARCH c.value == 1 SORT BM25(c) LIMIT 10 " +
                       " FOR d IN " + vn  + " SEARCH d.value IN [c.value, c.value + 1] RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
@@ -380,6 +397,60 @@
         });
         assertEqual(0, expected.size);
       },
+      // fullCount was too low
+      testRegressionBts611() {
+        try {
+          let query = "FOR d IN " + lvn  + " SEARCH d.value >= 500 SORT BM25(d) LIMIT @limit RETURN d";
+          const options = { fullCount: true };
+          let result;
+
+          result = AQL_EXECUTE(query, {limit: 1000}, options);
+          assertEqual(500, result.json.length);
+          assertEqual(500, result.stats.fullCount);
+
+          result = AQL_EXECUTE(query, {limit: 1}, options);
+          assertEqual(1, result.json.length);
+          assertEqual(500, result.stats.fullCount);
+        
+          let plan = AQL_EXPLAIN(query, {limit: 1}, options).plan;
+          assertNotEqual(-1, plan.rules.indexOf(ruleName));
+          let materializeNodeFound = false;
+          let nodeDependency = null;
+          plan.nodes.forEach(function(node) {
+            if( node.type === "MaterializeNode") {
+              assertFalse(materializeNodeFound);
+              assertTrue(nodeDependency.type === "LimitNode");
+              materializeNodeFound = true;
+           }
+           nodeDependency = node;
+          });
+          assertTrue(materializeNodeFound);
+        
+          if (!internal.debugCanUseFailAt()) {
+            return;
+          }
+          internal.debugClearFailAt();
+          internal.debugSetFailAt('MaterializeExecutor::all_fail');
+          result = AQL_EXECUTE(query, {limit: 100}, options);
+          assertEqual(0, result.json.length);
+          assertEqual(500, result.stats.fullCount);
+        
+          internal.debugClearFailAt();
+          internal.debugSetFailAt('MaterializeExecutor::only_one');
+          result = AQL_EXECUTE(query, {limit: 100}, options);
+          if (isCluster) {
+            // for cluster it depends on db servers number as each materializer will issue only one document
+            // to not bother with accurate number  - let's check it is not all 100
+            // we anyway want to check it just not breaks in case of materialization failure
+            assertTrue(result.json.length < 100);
+          } else {
+            assertEqual(1, result.json.length);
+          }
+          assertEqual(500, result.stats.fullCount);
+        } finally {
+          internal.debugClearFailAt();
+        }
+      }
     };
   };
 }());
