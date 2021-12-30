@@ -26,8 +26,13 @@ You are expected to format your local changes via clang-format. Here are your op
 3. Lint with a **codebase-wide format script** (not recommended unless absolutely necessary)
     * pre-requisites
         * Docker
-    * how-to
-        * See [pull/15417#comment](https://github.com/arangodb/arangodb/pull/15417#issuecomment-1001211838) 
+    * how-to (MacOS / Linux)
+        * `cd arangodb`
+        * `files=$(find arangod client-tools arangosh lib tests enterprise/Enterprise enterprise/tests -type f -name "*.cpp" -o -name "*.hpp" -o -name "*.cc" -o -name "*.c" -o -name "*.h")`
+        * `docker run --rm -u "$(id -u):$(id -g)" --mount type=bind,source="$(pwd)",target=/usr/src/arangodb arangodb/clang-format:1.0 "$files"`
+    * how-to (Windows)
+        * The [dir](https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/dir) command should be able to replace the `find` logic seen above. Please use the same file extension matches.
+        * `docker run --rm --mount type=bind,source="YOUR/PATH/TO/ARANGODB",target=/usr/src/arangodb arangodb/clang-format:1.0 "YOUR LIST OF FILES"`
 
 4. Lint with your **custom clang-format setup**
     * This would be up to you to configure, if you do not want to rely on Docker and/or already have a way of automatically linting your changes via clang-format. We still highly encourage that you use `clang-format 12` or higher.
