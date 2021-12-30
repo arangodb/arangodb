@@ -552,6 +552,16 @@ void lateDocumentMaterializationArangoSearchRule(
               stickToSortNode = true;
             }
             break;
+          case ExecutionNode::LIMIT:
+            // After sort-limit rule was modified we could encounter additional
+            // limit nodes before Sort. Break search on them if still no sort
+            // found. As we need the closest LIMIT to the Sort. If we encounter
+            // additional LIMITs after we found a Sort node that is ok as it
+            // makes no harm for the late materialization.
+            if (sortNode == nullptr) {
+              stopSearch = true;
+            }
+            break;
           default:  // make clang happy
             break;
         }

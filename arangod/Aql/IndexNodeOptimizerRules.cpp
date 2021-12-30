@@ -178,6 +178,18 @@ void arangodb::aql::lateDocumentMaterializationRule(
             // calls across cluster!
             if (sortNode != nullptr) {
               stopSearch = true;
+            } else {
+              stickToSortNode = true;
+            }
+            break;
+          case ExecutionNode::LIMIT:
+            // After sort-limit rule was modified we could encounter additional
+            // limit nodes before Sort. Break search on them if still no sort
+            // found. As we need the closest LIMIT to the Sort. If we encounter
+            // additional LIMITs after we found a Sort node that is ok as it
+            // makes no harm for the late materialization.
+            if (sortNode == nullptr) {
+              stopSearch = true;
             }
             break;
           default:  // make clang happy
@@ -333,10 +345,7 @@ void arangodb::aql::lateDocumentMaterializationRule(
         // server (to avoid network hop for materialization calls) however on
         // single server we move it to limit node to make materialization as
         // lazy as possible
-        auto* materializeDependency =
-            ServerState::instance()->isCoordinator() || stickToSortNode
-                ? sortNode
-                : limitNode;
+        auto* materializeDependency = stickToSortNode ? sortNode : limitNode;
         TRI_ASSERT(materializeDependency);
         auto* dependencyParent = materializeDependency->getFirstParent();
         TRI_ASSERT(dependencyParent);
