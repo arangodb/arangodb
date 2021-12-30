@@ -32,7 +32,7 @@ You are expected to format your local changes via clang-format. Here are your op
         * `docker run --rm -u "$(id -u):$(id -g)" --mount type=bind,source="$(pwd)",target=/usr/src/arangodb arangodb/clang-format:1.0 "$files"`
     * how-to (Windows)
         * The [dir](https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/dir) command should be able to replace the `find` logic seen above. Please use the same file extension matches.
-        * `docker run --rm --mount type=bind,source="YOUR/PATH/TO/ARANGODB",target=/usr/src/arangodb arangodb/clang-format:1.0 "YOUR LIST OF FILES"`
+        * `docker run --rm --mount type=bind,source=${pwd},target=/usr/src/arangodb arangodb/clang-format:1.0 "YOUR LIST OF FILES"`
 
 4. Lint with your **custom clang-format setup**
     * This would be up to you to configure, if you do not want to rely on Docker and/or already have a way of automatically linting your changes via clang-format. We still highly encourage that you use `clang-format 12` or higher.
