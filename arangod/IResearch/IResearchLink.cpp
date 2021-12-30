@@ -64,7 +64,6 @@ using namespace std::literals;
 
 namespace {
 
-
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
@@ -88,10 +87,10 @@ DECLARE_GAUGE(arangosearch_cleanup_time, uint64_t,
 DECLARE_GAUGE(arangosearch_consolidation_time, uint64_t,
               "Average time of few last consolidations");
 
+constexpr std::string_view arangosearch_link_stats_name =
+    "arangosearch_link_stats";
 
-constexpr std::string_view arangosearch_link_stats_name  = "arangosearch_link_stats";
-
-template <typename T>
+template<typename T>
 T getMetric(const IResearchLink& link) {
   T metric;
   metric.addLabel("view", link.getViewId());
@@ -101,7 +100,7 @@ T getMetric(const IResearchLink& link) {
   return metric;
 }
 
-} // namespace
+}  // namespace
 
 namespace arangodb::iresearch {
 
@@ -110,9 +109,7 @@ namespace arangodb::iresearch {
 // -----------------------------------------------------------------------------
 
 IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
-  : IResearchDataStore(iid, collection),
-    _linkStats{nullptr} {}
-
+    : IResearchDataStore(iid, collection), _linkStats{nullptr} {}
 
 IResearchLink::~IResearchLink() {
   Result res;
@@ -137,31 +134,36 @@ bool IResearchLink::operator==(IResearchLinkMeta const& meta) const noexcept {
 }
 
 Result IResearchLink::drop() {
-  // the lookup and unlink is valid for single-server only (that is the only scenario where links are persisted)
-  // on coordinator and db-server the IResearchView is immutable and lives in ClusterInfo
-  // therefore on coordinator and db-server a new plan will already have an IResearchView without the link
-  // this avoids deadlocks with ClusterInfo::loadPlan() during lookup in ClusterInfo
+  // the lookup and unlink is valid for single-server only (that is the only
+  // scenario where links are persisted) on coordinator and db-server the
+  // IResearchView is immutable and lives in ClusterInfo therefore on
+  // coordinator and db-server a new plan will already have an IResearchView
+  // without the link this avoids deadlocks with ClusterInfo::loadPlan() during
+  // lookup in ClusterInfo
   if (ServerState::instance()->isSingleServer()) {
     auto logicalView = collection().vocbase().lookupView(_viewGuid);
     auto* view = LogicalView::cast<IResearchView>(logicalView.get());
 
-    // may occur if the link was already unlinked from the view via another instance
-    // this behavior was seen user-access-right-drop-view-arangosearch-spec.js
-    // where the collection drop was called through REST,
-    // the link was dropped as a result of the collection drop call
-    // then the view was dropped via a separate REST call
+    // may occur if the link was already unlinked from the view via another
+    // instance this behavior was seen
+    // user-access-right-drop-view-arangosearch-spec.js where the collection
+    // drop was called through REST, the link was dropped as a result of the
+    // collection drop call then the view was dropped via a separate REST call
     // then the vocbase was destroyed calling
-    // collection close()-> link unload() -> link drop() due to collection marked as dropped
-    // thus returning an error here will cause ~TRI_vocbase_t() on RocksDB to
-    // receive an exception which is not handled in the destructor
-    // the reverse happens during drop of a collection with MMFiles
-    // i.e. collection drop() -> collection close()-> link unload(), then link drop()
+    // collection close()-> link unload() -> link drop() due to collection
+    // marked as dropped thus returning an error here will cause
+    // ~TRI_vocbase_t() on RocksDB to receive an exception which is not handled
+    // in the destructor the reverse happens during drop of a collection with
+    // MMFiles i.e. collection drop() -> collection close()-> link unload(),
+    // then link drop()
     if (!view) {
       LOG_TOPIC("f4e2c", WARN, iresearch::TOPIC)
           << "unable to find arangosearch view '" << _viewGuid
           << "' while dropping arangosearch link '" << id().id() << "'";
     } else {
-      view->unlink(collection().id());  // unlink before reset() to release lock in view (if any)
+      view->unlink(
+          collection()
+              .id());  // unlink before reset() to release lock in view (if any)
     }
   }
 
@@ -218,7 +220,8 @@ Result IResearchLink::init(velocypack::Slice const& definition,
                     std::to_string(_id.id()) + "' : no such view"};
       }
 
-      auto* view = LogicalView::cast<IResearchViewCoordinator>(logicalView.get());
+      auto* view =
+          LogicalView::cast<IResearchViewCoordinator>(logicalView.get());
 
       if (!view) {
         return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -226,9 +229,11 @@ Result IResearchLink::init(velocypack::Slice const& definition,
                     std::to_string(_id.id()) + "'"};
       }
 
-      viewId = view->guid();  // ensue that this is a GUID (required by operator==(IResearchView))
+      viewId = view->guid();  // ensue that this is a GUID (required by
+                              // operator==(IResearchView))
 
-      // required for IResearchViewCoordinator which calls IResearchLink::properties(...)
+      // required for IResearchViewCoordinator which calls
+      // IResearchLink::properties(...)
       std::swap(const_cast<IResearchLinkMeta&>(_meta), meta);
       auto revert = irs::make_finally([this, &meta] {
         std::swap(const_cast<IResearchLinkMeta&>(_meta), meta);
@@ -250,12 +255,13 @@ Result IResearchLink::init(velocypack::Slice const& definition,
     if (vocbase.server().getFeature<ClusterFeature>().isEnabled()) {
       auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
-      clusterWideLink = _collection.id() == _collection.planId() && _collection.isAStub();
+      clusterWideLink =
+          _collection.id() == _collection.planId() && _collection.isAStub();
 
       // upgrade step for old link definition without collection name
-      // this could be received from  agency while shard of the collection was moved (or added)
-      // to the server.
-      // New links already has collection name set, but here we must get this name on our own
+      // this could be received from  agency while shard of the collection was
+      // moved (or added) to the server. New links already has collection name
+      // set, but here we must get this name on our own
       if (meta._collectionName.empty()) {
         if (clusterWideLink) {  // could set directly
           LOG_TOPIC("86ecd", TRACE, iresearch::TOPIC)
@@ -263,7 +269,8 @@ Result IResearchLink::init(velocypack::Slice const& definition,
               << "' for new link '" << this->id().id() << "'";
           meta._collectionName = _collection.name();
         } else {
-          meta._collectionName = ci.getCollectionNameForShard(_collection.name());
+          meta._collectionName =
+              ci.getCollectionNameForShard(_collection.name());
           LOG_TOPIC("86ece", TRACE, iresearch::TOPIC)
               << "Setting collection name '" << meta._collectionName
               << "' for new link '" << this->id().id() << "'";
@@ -271,7 +278,9 @@ Result IResearchLink::init(velocypack::Slice const& definition,
         if (ADB_UNLIKELY(meta._collectionName.empty())) {
           LOG_TOPIC("67da6", WARN, iresearch::TOPIC)
               << "Failed to init collection name for the link '"
-              << this->id().id() << "'. Link will not index '_id' attribute. Please recreate the link if this is necessary!";
+              << this->id().id()
+              << "'. Link will not index '_id' attribute. Please recreate the "
+                 "link if this is necessary!";
         }
 
 #ifdef USE_ENTERPRISE
@@ -293,7 +302,8 @@ Result IResearchLink::init(velocypack::Slice const& definition,
         }
       }
 
-      // valid to call ClusterInfo (initialized in ClusterFeature::prepare()) even from DatabaseFeature::start()
+      // valid to call ClusterInfo (initialized in ClusterFeature::prepare())
+      // even from DatabaseFeature::start()
       auto logicalView = ci.getView(vocbase.name(), viewId);
 
       // if there is no logicalView present yet then skip this step
@@ -314,7 +324,8 @@ Result IResearchLink::init(velocypack::Slice const& definition,
                       std::to_string(_id.id()) + "'"};
         }
 
-        viewId = view->guid();  // ensue that this is a GUID (required by operator==(IResearchView))
+        viewId = view->guid();  // ensue that this is a GUID (required by
+                                // operator==(IResearchView))
 
         if (clusterWideLink) {  // cluster cluster-wide link
           auto shardIds = _collection.shardIds();
@@ -325,10 +336,12 @@ Result IResearchLink::init(velocypack::Slice const& definition,
           if (shardIds) {
             for (auto& entry : *shardIds) {
               auto collection = vocbase.lookupCollection(
-                  entry.first);  // per-shard collections are always in 'vocbase'
+                  entry
+                      .first);  // per-shard collections are always in 'vocbase'
 
               if (!collection) {
-                continue;  // missing collection should be created after Plan becomes Current
+                continue;  // missing collection should be created after Plan
+                           // becomes Current
               }
 
               auto link = IResearchLinkHelper::find(*collection, *view);
@@ -354,7 +367,8 @@ Result IResearchLink::init(velocypack::Slice const& definition,
       }
     } else {
       LOG_TOPIC("67dd6", DEBUG, iresearch::TOPIC)
-          << "Skipped link '" << this->id().id() << "' due to disabled cluster features.";
+          << "Skipped link '" << this->id().id()
+          << "' due to disabled cluster features.";
     }
   } else if (ServerState::instance()->isSingleServer()) {  // single-server link
     // prepare data-store which can then update options
@@ -388,7 +402,8 @@ Result IResearchLink::init(velocypack::Slice const& definition,
                     std::to_string(_id.id()) + "'"};
       }
 
-      viewId = view->guid();  // ensue that this is a GUID (required by operator==(IResearchView))
+      viewId = view->guid();  // ensue that this is a GUID (required by
+                              // operator==(IResearchView))
 
       auto linkRes = view->link(_asyncSelf);
 
@@ -414,12 +429,15 @@ Result IResearchLink::init(velocypack::Slice const& definition,
 }
 
 Result IResearchLink::insert(transaction::Methods& trx,
-                             LocalDocumentId const documentId, velocypack::Slice const doc) {
-  return IResearchDataStore::insert<FieldIterator, IResearchLinkMeta>(trx, documentId, doc, _meta);
+                             LocalDocumentId const documentId,
+                             velocypack::Slice const doc) {
+  return IResearchDataStore::insert<FieldIterator, IResearchLinkMeta>(
+      trx, documentId, doc, _meta);
 }
 
 bool IResearchLink::isHidden() {
-  return !ServerState::instance()->isDBServer();  // hide links unless we are on a DBServer
+  return !ServerState::instance()
+              ->isDBServer();  // hide links unless we are on a DBServer
 }
 
 bool IResearchLink::isSorted() {
@@ -440,18 +458,23 @@ bool IResearchLink::matchesDefinition(velocypack::Slice slice) const {
   // NOTE: below will not match if 'viewId' is 'id' or 'name',
   //       but ViewIdField should always contain GUID
   if (!viewId.isString() || !viewId.isEqualString(_viewGuid)) {
-    return false;  // IResearch View identifiers of current object and slice do not match
+    return false;  // IResearch View identifiers of current object and slice do
+                   // not match
   }
 
   IResearchLinkMeta other;
   std::string errorField;
 
   return other.init(_collection.vocbase().server(), slice, true, errorField,
-                    _collection.vocbase().name())  // for db-server analyzer validation should have already passed on coordinator (missing analyzer == no match)
+                    _collection.vocbase()
+                        .name())  // for db-server analyzer validation should
+                                  // have already passed on coordinator (missing
+                                  // analyzer == no match)
          && _meta == other;
 }
 
-Result IResearchLink::properties(velocypack::Builder& builder, bool forPersistence) const {
+Result IResearchLink::properties(velocypack::Builder& builder,
+                                 bool forPersistence) const {
   if (!builder.isOpenObject()  // not an open object
       || !_meta.json(_collection.vocbase().server(), builder, forPersistence,
                      nullptr, &(_collection.vocbase()))) {
@@ -482,7 +505,8 @@ Result IResearchLink::properties(IResearchViewMeta const& meta) {
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
 
   {
-    WRITE_LOCKER(writeLock, _dataStore._mutex);  // '_meta' can be asynchronously modified
+    WRITE_LOCKER(writeLock,
+                 _dataStore._mutex);  // '_meta' can be asynchronously modified
     _dataStore._meta = meta;
   }
 
@@ -492,7 +516,8 @@ Result IResearchLink::properties(IResearchViewMeta const& meta) {
     }
 
     if (meta._consolidationIntervalMsec && meta._consolidationPolicy.policy()) {
-      scheduleConsolidation(std::chrono::milliseconds(meta._consolidationIntervalMsec));
+      scheduleConsolidation(
+          std::chrono::milliseconds(meta._consolidationIntervalMsec));
     }
   }
 
@@ -524,22 +549,28 @@ bool IResearchLink::setCollectionName(irs::string_ref name) noexcept {
   }
   LOG_TOPIC_IF("5573c", ERR, iresearch::TOPIC, name != _meta._collectionName)
       << "Collection name mismatch for arangosearch link '" << id() << "'."
-      << " Meta name '" << _meta._collectionName << "' setting name '" << name << "'";
+      << " Meta name '" << _meta._collectionName << "' setting name '" << name
+      << "'";
   TRI_ASSERT(name == _meta._collectionName);
   return false;
 }
 
 Result IResearchLink::unload() {
   // this code is used by the MMFilesEngine
-  // if the collection is in the process of being removed then drop it from the view
-  // FIXME TODO remove once LogicalCollection::drop(...) will drop its indexes explicitly
+  // if the collection is in the process of being removed then drop it from the
+  // view
+  // FIXME TODO remove once LogicalCollection::drop(...) will drop its indexes
+  // explicitly
   if (_collection.deleted()  // collection deleted
-      || TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED == _collection.status()) {
+      || TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED ==
+             _collection.status()) {
     return drop();
   }
 
-  std::atomic_store(&_flushSubscription, {});  // reset together with '_asyncSelf'
-  _asyncSelf->reset();  // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
+  std::atomic_store(&_flushSubscription,
+                    {});  // reset together with '_asyncSelf'
+  _asyncSelf->reset();    // the data-store is being deallocated, link use is no
+                        // longer valid (wait for all the view users to finish)
 
   if (!_dataStore) {
     return {};
@@ -567,8 +598,10 @@ Result IResearchLink::unload() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup referenced analyzer
 ////////////////////////////////////////////////////////////////////////////////
-AnalyzerPool::ptr IResearchLink::findAnalyzer(AnalyzerPool const& analyzer) const {
-  auto const it = _meta._analyzerDefinitions.find(irs::string_ref(analyzer.name()));
+AnalyzerPool::ptr IResearchLink::findAnalyzer(
+    AnalyzerPool const& analyzer) const {
+  auto const it =
+      _meta._analyzerDefinitions.find(irs::string_ref(analyzer.name()));
 
   if (it == _meta._analyzerDefinitions.end()) {
     return nullptr;
@@ -626,18 +659,21 @@ void IResearchLink::updateStats(IResearchDataStore::Stats const& stats) {
 }
 
 void IResearchLink::insertStats() {
-  auto& metric = _collection.vocbase().server().getFeature<metrics::MetricsFeature>();
+  auto& metric =
+      _collection.vocbase().server().getFeature<metrics::MetricsFeature>();
   auto builder = getMetric<metrics::BatchBuilder<LinkStats>>(*this);
   builder.setName(arangosearch_link_stats_name);
   _linkStats = &metric.add(std::move(builder));
-  _numFailedCommits = &metric.add(getMetric<arangosearch_num_failed_commits>(*this));
-  _numFailedCleanups = &metric.add(getMetric<arangosearch_num_failed_cleanups>(*this));
+  _numFailedCommits =
+      &metric.add(getMetric<arangosearch_num_failed_commits>(*this));
+  _numFailedCleanups =
+      &metric.add(getMetric<arangosearch_num_failed_cleanups>(*this));
   _numFailedConsolidations =
-    &metric.add(getMetric<arangosearch_num_failed_consolidations>(*this));
+      &metric.add(getMetric<arangosearch_num_failed_consolidations>(*this));
   _avgCommitTimeMs = &metric.add(getMetric<arangosearch_commit_time>(*this));
   _avgCleanupTimeMs = &metric.add(getMetric<arangosearch_cleanup_time>(*this));
   _avgConsolidationTimeMs =
-    &metric.add(getMetric<arangosearch_consolidation_time>(*this));
+      &metric.add(getMetric<arangosearch_consolidation_time>(*this));
 }
 
 void IResearchLink::removeStats() {
@@ -659,7 +695,8 @@ void IResearchLink::removeStats() {
   }
   if (_numFailedConsolidations) {
     _numFailedConsolidations = nullptr;
-    metricFeature.remove(getMetric<arangosearch_num_failed_consolidations>(*this));
+    metricFeature.remove(
+        getMetric<arangosearch_num_failed_consolidations>(*this));
   }
   if (_avgCommitTimeMs) {
     _avgCommitTimeMs = nullptr;
@@ -676,7 +713,7 @@ void IResearchLink::removeStats() {
 }
 
 void IResearchLink::invalidateQueryCache(TRI_vocbase_t* vocbase) {
-  aql::QueryCache::instance()->invalidate(vocbase , _viewGuid);
+  aql::QueryCache::instance()->invalidate(vocbase, _viewGuid);
 }
 
 void IResearchLink::LinkStats::needName() const { _needName = true; }
@@ -695,7 +732,8 @@ void IResearchLink::LinkStats::toPrometheus(std::string& result,       //
     }
     result.push_back('}');
   };
-  auto writeMetric = [&](std::string_view name, std::string_view help, size_t value) {
+  auto writeMetric = [&](std::string_view name, std::string_view help,
+                         size_t value) {
     if (_needName) {
       result.append("# HELP ");
       result.append(name);
@@ -714,10 +752,13 @@ void IResearchLink::LinkStats::toPrometheus(std::string& result,       //
   writeMetric(arangosearch_num_buffered_docs::kName,
               "Number of buffered documents", numBufferedDocs);
   writeMetric(arangosearch_num_docs::kName, "Number of documents", numDocs);
-  writeMetric(arangosearch_num_live_docs::kName, "Number of live documents", numLiveDocs);
-  writeMetric(arangosearch_num_segments::kName, "Number of segments", numSegments);
+  writeMetric(arangosearch_num_live_docs::kName, "Number of live documents",
+              numLiveDocs);
+  writeMetric(arangosearch_num_segments::kName, "Number of segments",
+              numSegments);
   writeMetric(arangosearch_num_files::kName, "Number of files", numFiles);
-  writeMetric(arangosearch_index_size::kName, "Size of the index in bytes", indexSize);
+  writeMetric(arangosearch_index_size::kName, "Size of the index in bytes",
+              indexSize);
   _needName = false;
 }
 

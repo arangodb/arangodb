@@ -63,8 +63,8 @@ class IndexNode : public ExecutionNode,
   IndexNode(ExecutionPlan* plan, ExecutionNodeId id,
             aql::Collection const* collection, Variable const* outVariable,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
-            bool allCoveredByOneIndex,
-            std::unique_ptr<Condition> condition, IndexIteratorOptions const&);
+            bool allCoveredByOneIndex, std::unique_ptr<Condition> condition,
+            IndexIteratorOptions const&);
 
   IndexNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -127,9 +127,7 @@ class IndexNode : public ExecutionNode,
     return canReadOwnWrites() == ReadOwnWrites::no;
   }
 
-  bool isAllCoveredByOneIndex() const noexcept {
-    return _allCoveredByOneIndex;
-  }
+  bool isAllCoveredByOneIndex() const noexcept { return _allCoveredByOneIndex; }
 
   struct IndexVariable {
     size_t indexFieldNum;

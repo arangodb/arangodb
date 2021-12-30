@@ -129,8 +129,8 @@ bool ConditionFinder::before(ExecutionNode* en) {
       }
 
       std::vector<transaction::Methods::IndexHandle> usedIndexes;
-      auto [filtering, sorting] =
-          condition->findIndexes(node, usedIndexes, sortCondition.get(), oneIndexCondition);
+      auto [filtering, sorting] = condition->findIndexes(
+          node, usedIndexes, sortCondition.get(), oneIndexCondition);
 
       if (filtering || sorting) {
         bool descending = false;
@@ -159,9 +159,10 @@ bool ConditionFinder::before(ExecutionNode* en) {
         // We keep this node's change
         _changes.try_emplace(
             node->id(), arangodb::lazyConstruct([&] {
-              IndexNode* idx = new IndexNode(
-                  _plan, _plan->nextId(), node->collection(),
-                  node->outVariable(), usedIndexes, oneIndexCondition, std::move(condition), opts);
+              IndexNode* idx =
+                  new IndexNode(_plan, _plan->nextId(), node->collection(),
+                                node->outVariable(), usedIndexes,
+                                oneIndexCondition, std::move(condition), opts);
               // if the enumerate collection node had the counting flag
               // set, we can copy it over to the index node as well
               idx->copyCountFlag(node);

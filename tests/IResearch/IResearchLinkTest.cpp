@@ -2477,7 +2477,7 @@ TEST_F(IResearchLinkMetricsTest, CleanupWhenEmptyCommit) {
   }
   ASSERT_TRUE(irs::file_utils::exists(exist, dataPath.c_str()));
   int tryCount{1000};
-  while(exist && (--tryCount) > 0) {
+  while (exist && (--tryCount) > 0) {
     std::this_thread::sleep_for(10ms);
     ASSERT_TRUE(irs::file_utils::exists(exist, dataPath.c_str()));
   }

@@ -75,22 +75,22 @@
 namespace {
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 using AssertFieldFunc = void(arangodb::tests::mocks::MockAqlServer&,
                              arangodb::iresearch::FieldIterator const&);
 
-
-using AssertInvertedIndexFieldFunc = void(arangodb::tests::mocks::MockAqlServer&,
-                                          arangodb::iresearch::InvertedIndexFieldIterator const&);
+using AssertInvertedIndexFieldFunc =
+    void(arangodb::tests::mocks::MockAqlServer&,
+         arangodb::iresearch::InvertedIndexFieldIterator const&);
 
 using IdentityAnalyzer = arangodb::iresearch::IdentityAnalyzer;
 
 template<typename Analyzer, bool inverted = false>
-void assertField(
-    arangodb::tests::mocks::MockAqlServer& server,
-    arangodb::iresearch::Field const& value,
-    std::string const& expectedName, irs::string_ref explicitAnalyzerName = irs::string_ref::NIL) {
+void assertField(arangodb::tests::mocks::MockAqlServer& server,
+                 arangodb::iresearch::Field const& value,
+                 std::string const& expectedName,
+                 irs::string_ref explicitAnalyzerName = irs::string_ref::NIL) {
   SCOPED_TRACE(testing::Message("Expected name: ") << expectedName);
 
   auto* analyzer = dynamic_cast<Analyzer*>(&value.get_tokens());
@@ -109,27 +109,29 @@ void assertField(
     } else {
       ASSERT_EQ(mangleString(expectedName, analyzerName), value.name());
     }
-    auto& analyzers = server.template getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers = server.template getFeature<
+        arangodb::iresearch::IResearchAnalyzerFeature>();
     const auto expectedAnalyzerPtr = irs::analysis::analyzers::get(
-      irs::type<Analyzer>::name(),
-      irs::type<irs::text_format::vpack>::get(),
-      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+        irs::type<Analyzer>::name(), irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     ASSERT_NE(nullptr, expectedAnalyzerPtr);
 
-    const auto prefix = !std::is_same_v<arangodb::iresearch::IdentityAnalyzer, Analyzer>
-      ? arangodb::StaticStrings::SystemDatabase + "::"
-      : "";
+    const auto prefix =
+        !std::is_same_v<arangodb::iresearch::IdentityAnalyzer, Analyzer>
+            ? arangodb::StaticStrings::SystemDatabase + "::"
+            : "";
 
-    auto const expectedArangoSearchAnalyzerPtr = analyzers.get(
-      prefix + analyzerName,
-      arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
-      true);
+    auto const expectedArangoSearchAnalyzerPtr =
+        analyzers.get(prefix + analyzerName,
+                      arangodb::QueryAnalyzerRevisions::QUERY_LATEST, true);
     ASSERT_NE(nullptr, expectedArangoSearchAnalyzerPtr);
 
     ASSERT_EQ(expectedAnalyzerPtr->type(), analyzer->type());
-    ASSERT_EQ(expectedArangoSearchAnalyzerPtr->features().fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+    ASSERT_EQ(expectedArangoSearchAnalyzerPtr->features().fieldFeatures(
+                  arangodb::iresearch::LinkVersion::MIN),
               value.features());
-    ASSERT_EQ(expectedArangoSearchAnalyzerPtr->features().indexFeatures(), value.index_features());
+    ASSERT_EQ(expectedArangoSearchAnalyzerPtr->features().indexFeatures(),
+              value.index_features());
   } else if constexpr (std::is_base_of_v<irs::token_stream, Analyzer>) {
     ASSERT_EQ(expectedName, value.name());
   }
@@ -156,8 +158,9 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  EmptyAnalyzer() : irs::analysis::analyzer(irs::type<EmptyAnalyzer>::get()) { }
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  EmptyAnalyzer() : irs::analysis::analyzer(irs::type<EmptyAnalyzer>::get()) {}
+  virtual irs::attribute* get_mutable(
+      irs::type_info::type_id type) noexcept override {
     if (type == irs::type<irs::frequency>::id()) {
       return &_attr;
     }
@@ -170,9 +173,10 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
   irs::frequency _attr;
 };
 
-REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make,
+                        EmptyAnalyzer::normalize);
 
-class VPackAnalyzer: public irs::analysis::analyzer {
+class VPackAnalyzer : public irs::analysis::analyzer {
  public:
   static constexpr irs::string_ref type_name() noexcept {
     return "iresearch-vpack-analyzer";
@@ -187,8 +191,9 @@ class VPackAnalyzer: public irs::analysis::analyzer {
     return true;
   }
 
-  VPackAnalyzer() : irs::analysis::analyzer(irs::type<VPackAnalyzer>::get()) { }
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  VPackAnalyzer() : irs::analysis::analyzer(irs::type<VPackAnalyzer>::get()) {}
+  virtual irs::attribute* get_mutable(
+      irs::type_info::type_id type) noexcept override {
     if (type == irs::type<irs::term_attribute>::id()) {
       return &_term;
     }
@@ -216,7 +221,8 @@ class VPackAnalyzer: public irs::analysis::analyzer {
   irs::increment _inc;
 };
 
-REGISTER_ANALYZER_VPACK(VPackAnalyzer, VPackAnalyzer::make, VPackAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(VPackAnalyzer, VPackAnalyzer::make,
+                        VPackAnalyzer::normalize);
 
 class InvalidAnalyzer : public irs::analysis::analyzer {
  public:
@@ -242,8 +248,10 @@ class InvalidAnalyzer : public irs::analysis::analyzer {
     return !returnFalseFromToString;
   }
 
-  InvalidAnalyzer() : irs::analysis::analyzer(irs::type<InvalidAnalyzer>::get()) { }
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  InvalidAnalyzer()
+      : irs::analysis::analyzer(irs::type<InvalidAnalyzer>::get()) {}
+  virtual irs::attribute* get_mutable(
+      irs::type_info::type_id type) noexcept override {
     if (type == irs::type<TestAttribute>::id()) {
       return &_attr;
     }
@@ -259,9 +267,8 @@ class InvalidAnalyzer : public irs::analysis::analyzer {
 bool InvalidAnalyzer::returnNullFromMake = false;
 bool InvalidAnalyzer::returnFalseFromToString = false;
 
-REGISTER_ANALYZER_VPACK(InvalidAnalyzer, InvalidAnalyzer::make, InvalidAnalyzer::normalize);
-
-
+REGISTER_ANALYZER_VPACK(InvalidAnalyzer, InvalidAnalyzer::make,
+                        InvalidAnalyzer::normalize);
 
 class TypedAnalyzer : public irs::analysis::analyzer {
  public:
@@ -279,21 +286,24 @@ class TypedAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  explicit TypedAnalyzer(irs::string_ref const& args) : irs::analysis::analyzer(irs::type<TypedAnalyzer>::get()) {
+  explicit TypedAnalyzer(irs::string_ref const& args)
+      : irs::analysis::analyzer(irs::type<TypedAnalyzer>::get()) {
     VPackSlice slice(irs::ref_cast<irs::byte_type>(args).c_str());
     if (slice.hasKey("type")) {
       auto type = slice.get("type").stringView();
       if (type == "number") {
         _returnType.value = arangodb::iresearch::AnalyzerValueType::Number;
-        _typedValue = arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(1));
+        _typedValue =
+            arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(1));
         _vpackTerm.value = _typedValue.slice();
       } else if (type == "bool") {
-         _returnType.value = arangodb::iresearch::AnalyzerValueType::Bool;
-         _typedValue = arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(true));
+        _returnType.value = arangodb::iresearch::AnalyzerValueType::Bool;
+        _typedValue =
+            arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(true));
         _vpackTerm.value = _typedValue.slice();
       } else if (type == "string") {
-         _returnType.value = arangodb::iresearch::AnalyzerValueType::String;
-         _term.value = irs::ref_cast<irs::byte_type>(_strVal);
+        _returnType.value = arangodb::iresearch::AnalyzerValueType::String;
+        _term.value = irs::ref_cast<irs::byte_type>(_strVal);
       } else {
         // Failure here means we have unexpected type
         EXPECT_TRUE(false);
@@ -315,14 +325,16 @@ class TypedAnalyzer : public irs::analysis::analyzer {
     }
   }
 
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  virtual irs::attribute* get_mutable(
+      irs::type_info::type_id type) noexcept override {
     if (type == irs::type<irs::term_attribute>::id()) {
       return &_term;
     }
     if (type == irs::type<irs::increment>::id()) {
       return &_inc;
     }
-    if (type == irs::type<arangodb::iresearch::AnalyzerValueTypeAttribute>::id()) {
+    if (type ==
+        irs::type<arangodb::iresearch::AnalyzerValueTypeAttribute>::id()) {
       return &_returnType;
     }
     if (type == irs::type<arangodb::iresearch::VPackTermAttribute>::id()) {
@@ -341,7 +353,8 @@ class TypedAnalyzer : public irs::analysis::analyzer {
   arangodb::aql::AqlValue _typedValue;
 };
 
-REGISTER_ANALYZER_VPACK(TypedAnalyzer, TypedAnalyzer::make, TypedAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(TypedAnalyzer, TypedAnalyzer::make,
+                        TypedAnalyzer::normalize);
 
 class TypedArrayAnalyzer : public irs::analysis::analyzer {
  public:
@@ -359,7 +372,8 @@ class TypedArrayAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  explicit TypedArrayAnalyzer(irs::string_ref const&) : irs::analysis::analyzer(irs::type<TypedArrayAnalyzer>::get()) {
+  explicit TypedArrayAnalyzer(irs::string_ref const&)
+      : irs::analysis::analyzer(irs::type<TypedArrayAnalyzer>::get()) {
     _returnType.value = arangodb::iresearch::AnalyzerValueType::Number;
   }
 
@@ -376,7 +390,7 @@ class TypedArrayAnalyzer : public irs::analysis::analyzer {
   virtual bool next() override {
     if (_current < _values.size()) {
       _typedValue = arangodb::aql::AqlValue(
-         arangodb::aql::AqlValueHintDouble(_values[_current++]));
+          arangodb::aql::AqlValueHintDouble(_values[_current++]));
       _vpackTerm.value = _typedValue.slice();
       return true;
     } else {
@@ -384,11 +398,13 @@ class TypedArrayAnalyzer : public irs::analysis::analyzer {
     }
   }
 
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  virtual irs::attribute* get_mutable(
+      irs::type_info::type_id type) noexcept override {
     if (type == irs::type<irs::increment>::id()) {
       return &_inc;
     }
-    if (type == irs::type<arangodb::iresearch::AnalyzerValueTypeAttribute>::id()) {
+    if (type ==
+        irs::type<arangodb::iresearch::AnalyzerValueTypeAttribute>::id()) {
       return &_returnType;
     }
     if (type == irs::type<arangodb::iresearch::VPackTermAttribute>::id()) {
@@ -406,32 +422,34 @@ class TypedArrayAnalyzer : public irs::analysis::analyzer {
   arangodb::aql::AqlValue _typedValue;
 };
 
-REGISTER_ANALYZER_VPACK(TypedArrayAnalyzer, TypedArrayAnalyzer::make, TypedArrayAnalyzer::normalize);
-
+REGISTER_ANALYZER_VPACK(TypedArrayAnalyzer, TypedArrayAnalyzer::make,
+                        TypedArrayAnalyzer::normalize);
 
 }  // namespace
 
 namespace std {
 // helper for checking features transfer from analyzer to the field
-bool operator==(std::vector<irs::type_info::type_id> const& analyzer, irs::features_t const& field) {
+bool operator==(std::vector<irs::type_info::type_id> const& analyzer,
+                irs::features_t const& field) {
   if (field.size() != analyzer.size()) {
     return false;
   }
   for (auto t : field) {
     if (find(analyzer.begin(), analyzer.end(), t().id()) == analyzer.end()) {
-        return false;
+      return false;
     }
   }
   return true;
 }
-}
+}  // namespace std
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
 class IResearchDocumentTest
     : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+                                            arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
 
@@ -443,12 +461,13 @@ class IResearchDocumentTest
       auto vocbase = sysDatabase.use();
       std::shared_ptr<arangodb::LogicalCollection> unused;
       arangodb::OperationOptions options(arangodb::ExecContext::current());
-      arangodb::methods::Collections::createSystem(*vocbase, options,
-                                                   arangodb::tests::AnalyzerCollectionName,
-                                                   false, unused);
+      arangodb::methods::Collections::createSystem(
+          *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
+          unused);
     }
 
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
     // ensure that there will be no exception on 'emplace'
@@ -475,8 +494,7 @@ class IResearchDocumentTest
     res = analyzers.emplace(
         result,
         arangodb::StaticStrings::SystemDatabase + "::iresearch-vpack-analyzer",
-        "iresearch-vpack-analyzer",
-        VPackSlice::emptyObjectSlice(),
+        "iresearch-vpack-analyzer", VPackSlice::emptyObjectSlice(),
         arangodb::iresearch::Features{});
     EXPECT_TRUE(res.ok());
 
@@ -484,37 +502,41 @@ class IResearchDocumentTest
         result,
         arangodb::StaticStrings::SystemDatabase + "::iresearch-document-number",
         "iresearch-document-typed",
-        arangodb::velocypack::Parser::fromJson("{ \"type\": \"number\" }")->slice(),
+        arangodb::velocypack::Parser::fromJson("{ \"type\": \"number\" }")
+            ->slice(),
         arangodb::iresearch::Features{});
     EXPECT_TRUE(res.ok());
     res = analyzers.emplace(
         result,
         arangodb::StaticStrings::SystemDatabase + "::iresearch-document-bool",
         "iresearch-document-typed",
-        arangodb::velocypack::Parser::fromJson("{ \"type\": \"bool\" }")->slice(),
+        arangodb::velocypack::Parser::fromJson("{ \"type\": \"bool\" }")
+            ->slice(),
         arangodb::iresearch::Features{});
     EXPECT_TRUE(res.ok());
     res = analyzers.emplace(
         result,
         arangodb::StaticStrings::SystemDatabase + "::iresearch-document-string",
         "iresearch-document-typed",
-        arangodb::velocypack::Parser::fromJson("{ \"type\": \"string\" }")->slice(),
+        arangodb::velocypack::Parser::fromJson("{ \"type\": \"string\" }")
+            ->slice(),
         arangodb::iresearch::Features{});
     EXPECT_TRUE(res.ok());
 
     res = analyzers.emplace(
         result,
-        arangodb::StaticStrings::SystemDatabase + "::iresearch-document-number-array",
+        arangodb::StaticStrings::SystemDatabase +
+            "::iresearch-document-number-array",
         "iresearch-document-typed-array",
-        arangodb::velocypack::Parser::fromJson("{ \"type\": \"number\" }")->slice(),
+        arangodb::velocypack::Parser::fromJson("{ \"type\": \"number\" }")
+            ->slice(),
         arangodb::iresearch::Features{});
     EXPECT_TRUE(res.ok());
 
     res = analyzers.emplace(
-        result,
-        arangodb::StaticStrings::SystemDatabase + "::my_geo",
-        "geojson",
-        arangodb::velocypack::Parser::fromJson("{\"type\": \"point\"}")->slice(),
+        result, arangodb::StaticStrings::SystemDatabase + "::my_geo", "geojson",
+        arangodb::velocypack::Parser::fromJson("{\"type\": \"point\"}")
+            ->slice(),
         arangodb::iresearch::Features{});
     EXPECT_TRUE(res.ok());
   }
@@ -529,11 +551,12 @@ TEST_F(IResearchDocumentTest, FieldIterator_construct) {
   auto sysVocbase = sysDatabase.use();
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
-  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY,
+                                        arangodb::IndexId(0));
   EXPECT_FALSE(it.valid());
 }
 
@@ -542,20 +565,21 @@ TEST_F(IResearchDocumentTest, FieldIterator_empty_object) {
   auto sysVocbase = sysDatabase.use();
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
-
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   linkMeta._includeAllFields = true;  // include all fields
 
-  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY,
+                                        arangodb::IndexId(0));
   it.reset(VPackSlice::emptyObjectSlice(), linkMeta);
   EXPECT_FALSE(it.valid());
 }
 
-TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_custom_nested_delimiter) {
+TEST_F(IResearchDocumentTest,
+       FieldIterator_traverse_complex_object_custom_nested_delimiter) {
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
@@ -597,19 +621,23 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_custom_neste
   linkMeta._includeAllFields = true;  // include all fields
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
-  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY,
+                                        arangodb::IndexId(0));
   it.reset(slice, linkMeta);
 
   // default analyzer
-  auto const expected_analyzer =
-      irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(),
-                                     arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-  auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
+  auto const expected_analyzer = irs::analysis::analyzers::get(
+      "identity", irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+  auto& analyzers =
+      server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto const expected_features =
+      analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+          ->features();
 
   while (it.valid()) {
     auto& field = *it;
@@ -624,8 +652,9 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_custom_neste
 
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
     SCOPED_TRACE(field._name);
-    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
-              field.features());
+    EXPECT_EQ(
+        expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+        field.features());
     EXPECT_EQ(expected_features.indexFeatures(), field.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
 
@@ -635,7 +664,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_custom_neste
   EXPECT_TRUE(expectedValues.empty());
 }
 
-TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_all_fields) {
+TEST_F(IResearchDocumentTest,
+       FieldIterator_traverse_complex_object_all_fields) {
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
@@ -676,19 +706,23 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_all_fields) 
   linkMeta._includeAllFields = true;
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
-  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY,
+                                        arangodb::IndexId(0));
   it.reset(slice, linkMeta);
 
   // default analyzer
-  auto const expected_analyzer =
-      irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(), 
-                                    arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-  auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
+  auto const expected_analyzer = irs::analysis::analyzers::get(
+      "identity", irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+  auto& analyzers =
+      server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto const expected_features =
+      analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+          ->features();
 
   while (it.valid()) {
     auto& field = *it;
@@ -702,8 +736,9 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_all_fields) 
     }
 
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
-    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
-              field.features());
+    EXPECT_EQ(
+        expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+        field.features());
     EXPECT_EQ(expected_features.indexFeatures(), field.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
 
@@ -713,7 +748,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_all_fields) 
   EXPECT_TRUE(expectedValues.empty());
 }
 
-TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_all_fields) {
+TEST_F(IResearchDocumentTest,
+       FieldIterator_traverse_complex_object_ordered_all_fields) {
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
@@ -772,18 +808,22 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_all_
   linkMeta._trackListPositions = true;  // allow indexes in field names
 
   // default analyzer
-  auto const expected_analyzer =
-      irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(), 
-                                     arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-  auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
+  auto const expected_analyzer = irs::analysis::analyzers::get(
+      "identity", irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+  auto& analyzers =
+      server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto const expected_features =
+      analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+          ->features();
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
-  arangodb::iresearch::FieldIterator doc(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  arangodb::iresearch::FieldIterator doc(trx, irs::string_ref::EMPTY,
+                                         arangodb::IndexId(0));
   doc.reset(slice, linkMeta);
   for (; doc.valid(); ++doc) {
     auto& field = *doc;
@@ -791,8 +831,9 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_all_
     EXPECT_EQ(1, expectedValues.erase(actualName));
 
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
-    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
-              field.features());
+    EXPECT_EQ(
+        expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+        field.features());
     EXPECT_EQ(expected_features.indexFeatures(), field.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
   }
@@ -800,7 +841,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_all_
   EXPECT_TRUE(expectedValues.empty());
 }
 
-TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_filtered) {
+TEST_F(IResearchDocumentTest,
+       FieldIterator_traverse_complex_object_ordered_filtered) {
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
@@ -834,27 +876,33 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_filt
   arangodb::iresearch::IResearchLinkMeta linkMeta;
 
   std::string error;
-  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), false, error));
+  ASSERT_TRUE(
+      linkMeta.init(server.server(), linkMetaJson->slice(), false, error));
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
-  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY,
+                                        arangodb::IndexId(0));
   it.reset(slice, linkMeta);
   ASSERT_TRUE(it.valid());
 
   auto& value = *it;
   EXPECT_EQ(mangleStringIdentity("boost"), value.name());
-  const auto expected_analyzer =
-      irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(), 
-                                    arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-  auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
+  const auto expected_analyzer = irs::analysis::analyzers::get(
+      "identity", irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+  auto& analyzers =
+      server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto const expected_features =
+      analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+          ->features();
   auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-  EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
-            value.features());
+  EXPECT_EQ(
+      expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+      value.features());
   EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
   EXPECT_EQ(expected_analyzer->type(), analyzer.type());
 
@@ -862,7 +910,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_filt
   EXPECT_FALSE(it.valid());
 }
 
-TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_filtered_2) {
+TEST_F(IResearchDocumentTest,
+       FieldIterator_traverse_complex_object_ordered_filtered_2) {
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
@@ -890,16 +939,18 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_filt
   linkMeta._trackListPositions = true;  // allow indexes in field names
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
-  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY,
+                                        arangodb::IndexId(0));
   it.reset(slice, linkMeta);
   EXPECT_FALSE(it.valid());
 }
 
-TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_empty_analyzers) {
+TEST_F(IResearchDocumentTest,
+       FieldIterator_traverse_complex_object_ordered_empty_analyzers) {
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
@@ -923,22 +974,25 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_empt
   auto const slice = json->slice();
 
   arangodb::iresearch::IResearchLinkMeta linkMeta;
-  linkMeta._analyzers.clear();        // clear all analyzers
+  linkMeta._analyzers.clear();  // clear all analyzers
   linkMeta._primitiveOffset = 0;
   linkMeta._includeAllFields = true;  // include all fields
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
-  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY,
+                                        arangodb::IndexId(0));
   it.reset(slice, linkMeta);
   EXPECT_FALSE(it.valid());
 }
 
-TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_check_value_types) {
-  auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+TEST_F(IResearchDocumentTest,
+       FieldIterator_traverse_complex_object_ordered_check_value_types) {
+  auto& analyzers =
+      server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
@@ -963,32 +1017,39 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   linkMeta._analyzers.emplace_back(arangodb::iresearch::FieldMeta::Analyzer(
       analyzers.get(arangodb::StaticStrings::SystemDatabase +
-                    "::iresearch-document-empty", arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
+                        "::iresearch-document-empty",
+                    arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
       "iresearch-document-empty"));   // add analyzer
   linkMeta._includeAllFields = true;  // include all fields
   linkMeta._primitiveOffset = linkMeta._analyzers.size();
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
-  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY,
+                                        arangodb::IndexId(0));
   it.reset(slice, linkMeta);
 
   // stringValue (with IdentityAnalyzer)
   {
     auto& field = *it;
     EXPECT_EQ(mangleStringIdentity("stringValue"), field.name());
-    auto const expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(), 
-                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
+    auto const expected_analyzer = irs::analysis::analyzers::get(
+        "identity", irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto const expected_features =
+        analyzers
+            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+            ->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
-    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
-              field.features());
+    EXPECT_EQ(
+        expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+        field.features());
     EXPECT_EQ(expected_features.indexFeatures(), field.index_features());
   }
 
@@ -998,15 +1059,18 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
   // stringValue (with EmptyAnalyzer)
   {
     auto& field = *it;
-    EXPECT_EQ(mangleString("stringValue", "iresearch-document-empty"), field.name());
+    EXPECT_EQ(mangleString("stringValue", "iresearch-document-empty"),
+              field.name());
     auto const expected_analyzer = irs::analysis::analyzers::get(
         "iresearch-document-empty", irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto& analyzer = dynamic_cast<EmptyAnalyzer&>(field.get_tokens());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
-    auto expectedFeatures = arangodb::iresearch::Features(irs::IndexFeatures::FREQ);
-    EXPECT_EQ(expectedFeatures.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
-              field.features());
+    auto expectedFeatures =
+        arangodb::iresearch::Features(irs::IndexFeatures::FREQ);
+    EXPECT_EQ(
+        expectedFeatures.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+        field.features());
     EXPECT_EQ(expectedFeatures.indexFeatures(), field.index_features());
   }
 
@@ -1018,10 +1082,11 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
     auto& field = *it;
     EXPECT_EQ(mangleNull("nullValue"), field.name());
     auto& analyzer = dynamic_cast<irs::null_token_stream&>(field.get_tokens());
-    auto expectedFeatures = arangodb::iresearch::Features(
-      {}, irs::IndexFeatures::NONE);
-    EXPECT_EQ(expectedFeatures.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
-              field.features());
+    auto expectedFeatures =
+        arangodb::iresearch::Features({}, irs::IndexFeatures::NONE);
+    EXPECT_EQ(
+        expectedFeatures.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+        field.features());
     EXPECT_EQ(expectedFeatures.indexFeatures(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
@@ -1033,11 +1098,13 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
   {
     auto& field = *it;
     EXPECT_EQ(mangleBool("trueValue"), field.name());
-    auto& analyzer = dynamic_cast<irs::boolean_token_stream&>(field.get_tokens());
-    auto expectedFeatures = arangodb::iresearch::Features(
-      {}, irs::IndexFeatures::NONE);
-    EXPECT_EQ(expectedFeatures.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
-              field.features());
+    auto& analyzer =
+        dynamic_cast<irs::boolean_token_stream&>(field.get_tokens());
+    auto expectedFeatures =
+        arangodb::iresearch::Features({}, irs::IndexFeatures::NONE);
+    EXPECT_EQ(
+        expectedFeatures.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+        field.features());
     EXPECT_EQ(expectedFeatures.indexFeatures(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
@@ -1049,11 +1116,13 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
   {
     auto& field = *it;
     EXPECT_EQ(mangleBool("falseValue"), field.name());
-    auto& analyzer = dynamic_cast<irs::boolean_token_stream&>(field.get_tokens());
-    auto expectedFeatures = arangodb::iresearch::Features(
-      {}, irs::IndexFeatures::NONE);
-    EXPECT_EQ(expectedFeatures.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
-              field.features());
+    auto& analyzer =
+        dynamic_cast<irs::boolean_token_stream&>(field.get_tokens());
+    auto expectedFeatures =
+        arangodb::iresearch::Features({}, irs::IndexFeatures::NONE);
+    EXPECT_EQ(
+        expectedFeatures.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+        field.features());
     EXPECT_EQ(expectedFeatures.indexFeatures(), field.index_features());
     EXPECT_TRUE(analyzer.next());
   }
@@ -1061,13 +1130,14 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
   ++it;
   ASSERT_TRUE(it.valid());
 
-
   // smallIntValue
   {
     auto& field = *it;
     EXPECT_EQ(mangleNumeric("smallIntValue"), field.name());
-    auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
-    irs::type_info::type_id const fieldFeatures[] { irs::type<irs::granularity_prefix>::id() };
+    auto& analyzer =
+        dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
+    irs::type_info::type_id const fieldFeatures[]{
+        irs::type<irs::granularity_prefix>::id()};
     EXPECT_EQ((irs::features_t{fieldFeatures, 1}), field.features());
     EXPECT_EQ(irs::IndexFeatures::NONE, field.index_features());
     EXPECT_TRUE(analyzer.next());
@@ -1080,8 +1150,10 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
   {
     auto& field = *it;
     EXPECT_EQ(mangleNumeric("smallNegativeIntValue"), field.name());
-    auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
-    irs::type_info::type_id const fieldFeatures[] { irs::type<irs::granularity_prefix>::id() };
+    auto& analyzer =
+        dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
+    irs::type_info::type_id const fieldFeatures[]{
+        irs::type<irs::granularity_prefix>::id()};
     EXPECT_EQ((irs::features_t{fieldFeatures, 1}), field.features());
     EXPECT_EQ(irs::IndexFeatures::NONE, field.index_features());
     EXPECT_TRUE(analyzer.next());
@@ -1094,8 +1166,10 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
   {
     auto& field = *it;
     EXPECT_EQ(mangleNumeric("bigIntValue"), field.name());
-    auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
-    irs::type_info::type_id const fieldFeatures[] { irs::type<irs::granularity_prefix>::id() };
+    auto& analyzer =
+        dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
+    irs::type_info::type_id const fieldFeatures[]{
+        irs::type<irs::granularity_prefix>::id()};
     EXPECT_EQ((irs::features_t{fieldFeatures, 1}), field.features());
     EXPECT_EQ(irs::IndexFeatures::NONE, field.index_features());
     EXPECT_TRUE(analyzer.next());
@@ -1108,8 +1182,10 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
   {
     auto& field = *it;
     EXPECT_EQ(mangleNumeric("bigNegativeIntValue"), field.name());
-    auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
-    irs::type_info::type_id const fieldFeatures[] { irs::type<irs::granularity_prefix>::id() };
+    auto& analyzer =
+        dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
+    irs::type_info::type_id const fieldFeatures[]{
+        irs::type<irs::granularity_prefix>::id()};
     EXPECT_EQ((irs::features_t{fieldFeatures, 1}), field.features());
     EXPECT_EQ(irs::IndexFeatures::NONE, field.index_features());
     EXPECT_TRUE(analyzer.next());
@@ -1122,8 +1198,10 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
   {
     auto& field = *it;
     EXPECT_EQ(mangleNumeric("smallDoubleValue"), field.name());
-    auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
-    irs::type_info::type_id const fieldFeatures[] { irs::type<irs::granularity_prefix>::id() };
+    auto& analyzer =
+        dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
+    irs::type_info::type_id const fieldFeatures[]{
+        irs::type<irs::granularity_prefix>::id()};
     EXPECT_EQ((irs::features_t{fieldFeatures, 1}), field.features());
     EXPECT_EQ(irs::IndexFeatures::NONE, field.index_features());
     EXPECT_TRUE(analyzer.next());
@@ -1136,8 +1214,10 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
   {
     auto& field = *it;
     EXPECT_EQ(mangleNumeric("bigDoubleValue"), field.name());
-    auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
-    irs::type_info::type_id const fieldFeatures[] { irs::type<irs::granularity_prefix>::id() };
+    auto& analyzer =
+        dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
+    irs::type_info::type_id const fieldFeatures[]{
+        irs::type<irs::granularity_prefix>::id()};
     EXPECT_EQ((irs::features_t{fieldFeatures, 1}), field.features());
     EXPECT_EQ(irs::IndexFeatures::NONE, field.index_features());
     EXPECT_TRUE(analyzer.next());
@@ -1150,8 +1230,10 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
   {
     auto& field = *it;
     EXPECT_EQ(mangleNumeric("bigNegativeDoubleValue"), field.name());
-    auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
-    irs::type_info::type_id const fieldFeatures[] { irs::type<irs::granularity_prefix>::id() };
+    auto& analyzer =
+        dynamic_cast<irs::numeric_token_stream&>(field.get_tokens());
+    irs::type_info::type_id const fieldFeatures[]{
+        irs::type<irs::granularity_prefix>::id()};
     EXPECT_EQ((irs::features_t{fieldFeatures, 1}), field.features());
     EXPECT_EQ(irs::IndexFeatures::NONE, field.index_features());
     EXPECT_TRUE(analyzer.next());
@@ -1180,25 +1262,31 @@ TEST_F(IResearchDocumentTest, FieldIterator_reset) {
   linkMeta._includeAllFields = true;  // include all fields
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
-  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY,
+                                        arangodb::IndexId(0));
   it.reset(json0->slice(), linkMeta);
   ASSERT_TRUE(it.valid());
 
   {
     auto& value = *it;
     EXPECT_EQ(mangleStringIdentity("boost"), value.name());
-    const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(), 
-                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
+    const auto expected_analyzer = irs::analysis::analyzers::get(
+        "identity", irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto const expected_features =
+        analyzers
+            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+            ->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
-              value.features());
+    EXPECT_EQ(
+        expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+        value.features());
     EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
   }
@@ -1210,14 +1298,19 @@ TEST_F(IResearchDocumentTest, FieldIterator_reset) {
   {
     auto& value = *it;
     EXPECT_EQ(mangleStringIdentity("depth"), value.name());
-    const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(), 
-                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
+    const auto expected_analyzer = irs::analysis::analyzers::get(
+        "identity", irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto const expected_features =
+        analyzers
+            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+            ->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
-              value.features());
+    EXPECT_EQ(
+        expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+        value.features());
     EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
   }
@@ -1231,14 +1324,19 @@ TEST_F(IResearchDocumentTest, FieldIterator_reset) {
   {
     auto& value = *it;
     EXPECT_EQ(mangleStringIdentity("name"), value.name());
-    const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(), 
-                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
+    const auto expected_analyzer = irs::analysis::analyzers::get(
+        "identity", irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto const expected_features =
+        analyzers
+            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+            ->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
-              value.features());
+    EXPECT_EQ(
+        expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+        value.features());
     EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
   }
@@ -1247,8 +1345,9 @@ TEST_F(IResearchDocumentTest, FieldIterator_reset) {
   ASSERT_FALSE(it.valid());
 }
 
-TEST_F(IResearchDocumentTest,
-     FieldIterator_traverse_complex_object_ordered_all_fields_custom_list_offset_prefix_suffix) {
+TEST_F(
+    IResearchDocumentTest,
+    FieldIterator_traverse_complex_object_ordered_all_fields_custom_list_offset_prefix_suffix) {
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
@@ -1307,28 +1406,33 @@ TEST_F(IResearchDocumentTest,
   linkMeta._trackListPositions = true;  // allow indexes in field names
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
-  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY,
+                                        arangodb::IndexId(0));
   it.reset(slice, linkMeta);
 
   // default analyzer
-  auto const expected_analyzer =
-      irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(), 
-                                    arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-  auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
+  auto const expected_analyzer = irs::analysis::analyzers::get(
+      "identity", irs::type<irs::text_format::vpack>::get(),
+      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+  auto& analyzers =
+      server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto const expected_features =
+      analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+          ->features();
 
-  for (; it.valid() ; ++it) {
+  for (; it.valid(); ++it) {
     auto& field = *it;
     std::string const actualName = std::string(field.name());
     EXPECT_EQ(1, expectedValues.erase(actualName));
 
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
-    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
-              field.features());
+    EXPECT_EQ(
+        expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+        field.features());
     EXPECT_EQ(expected_features.indexFeatures(), field.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
   }
@@ -1336,7 +1440,8 @@ TEST_F(IResearchDocumentTest,
   EXPECT_TRUE(expectedValues.empty());
 }
 
-TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_inheritance) {
+TEST_F(IResearchDocumentTest,
+       FieldIterator_traverse_complex_object_check_meta_inheritance) {
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
@@ -1383,11 +1488,12 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
                             error, sysVocbase.get()->name()));
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
-  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY,
+                                        arangodb::IndexId(0));
   it.reset(slice, linkMeta);
   ASSERT_TRUE(it.valid());
 
@@ -1395,15 +1501,19 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   {
     auto& value = *it;
     EXPECT_EQ(mangleStringIdentity("nested.foo"), value.name());
-    const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(
-                                          VPackSlice::emptyObjectSlice()));
+    const auto expected_analyzer = irs::analysis::analyzers::get(
+        "identity", irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
-    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
-              value.features());
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto const expected_features =
+        analyzers
+            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+            ->features();
+    EXPECT_EQ(
+        expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+        value.features());
     EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
   }
@@ -1414,7 +1524,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   // nested.foo (with EmptyAnalyzer)
   {
     auto& value = *it;
-    EXPECT_EQ(mangleString("nested.foo", "iresearch-document-empty"), value.name());
+    EXPECT_EQ(mangleString("nested.foo", "iresearch-document-empty"),
+              value.name());
     auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
     EXPECT_FALSE(analyzer.next());
   }
@@ -1426,14 +1537,19 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
 
     auto& value = *it;
     EXPECT_EQ(mangleStringIdentity("keys"), value.name());
-    const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
+    const auto expected_analyzer = irs::analysis::analyzers::get(
+        "identity", irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto const expected_features =
+        analyzers
+            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+            ->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
-              value.features());
+    EXPECT_EQ(
+        expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+        value.features());
     EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
   }
@@ -1445,14 +1561,19 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   {
     auto& value = *it;
     EXPECT_EQ(mangleStringIdentity("boost"), value.name());
-    const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(), 
-                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
+    const auto expected_analyzer = irs::analysis::analyzers::get(
+        "identity", irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto const expected_features =
+        analyzers
+            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+            ->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
-              value.features());
+    EXPECT_EQ(
+        expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+        value.features());
     EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
   }
@@ -1464,7 +1585,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   {
     auto& value = *it;
     EXPECT_EQ(mangleNumeric("depth"), value.name());
-    auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(value.get_tokens());
+    auto& analyzer =
+        dynamic_cast<irs::numeric_token_stream&>(value.get_tokens());
     EXPECT_TRUE(analyzer.next());
   }
 
@@ -1475,14 +1597,19 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   {
     auto& value = *it;
     EXPECT_EQ(mangleStringIdentity("fields.fieldA.name"), value.name());
-    const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(), 
-                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
+    const auto expected_analyzer = irs::analysis::analyzers::get(
+        "identity", irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto const expected_features =
+        analyzers
+            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+            ->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
-              value.features());
+    EXPECT_EQ(
+        expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+        value.features());
     EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
   }
@@ -1506,14 +1633,19 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   {
     auto& value = *it;
     EXPECT_EQ(mangleStringIdentity("listValuation"), value.name());
-    const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
+    const auto expected_analyzer = irs::analysis::analyzers::get(
+        "identity", irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto const expected_features =
+        analyzers
+            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+            ->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
-              value.features());
+    EXPECT_EQ(
+        expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+        value.features());
     EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
   }
@@ -1548,7 +1680,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   {
     auto& value = *it;
     EXPECT_EQ(mangleNumeric("array[0].id"), value.name());
-    auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(value.get_tokens());
+    auto& analyzer =
+        dynamic_cast<irs::numeric_token_stream&>(value.get_tokens());
     EXPECT_TRUE(analyzer.next());
   }
 
@@ -1561,16 +1694,21 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     {
       auto& value = *it;
       EXPECT_EQ(mangleStringIdentity("array[0].subarr"), value.name());
-      const auto expected_analyzer =
-          irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(), 
-                                        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+      const auto expected_analyzer = irs::analysis::analyzers::get(
+          "identity", irs::type<irs::text_format::vpack>::get(),
+          arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
       auto& analyzers =
           server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-      auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
-      auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
-              value.features());
-    EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
+      auto const expected_features =
+          analyzers
+              .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+              ->features();
+      auto& analyzer =
+          dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
+      EXPECT_EQ(expected_features.fieldFeatures(
+                    arangodb::iresearch::LinkVersion::MIN),
+                value.features());
+      EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
       EXPECT_EQ(expected_analyzer->type(), analyzer.type());
     }
 
@@ -1596,14 +1734,19 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     {
       auto& value = *it;
       EXPECT_EQ(mangleStringIdentity("array[1].subarr"), value.name());
-      const auto expected_analyzer =
-          irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(),
-                                        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+      const auto expected_analyzer = irs::analysis::analyzers::get(
+          "identity", irs::type<irs::text_format::vpack>::get(),
+          arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
       auto& analyzers =
           server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-      auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
-      auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-      EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+      auto const expected_features =
+          analyzers
+              .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+              ->features();
+      auto& analyzer =
+          dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
+      EXPECT_EQ(expected_features.fieldFeatures(
+                    arangodb::iresearch::LinkVersion::MIN),
                 value.features());
       EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
       EXPECT_EQ(expected_analyzer->type(), analyzer.type());
@@ -1629,14 +1772,19 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   {
     auto& value = *it;
     EXPECT_EQ(mangleStringIdentity("array[1].id"), value.name());
-    const auto expected_analyzer =
-        irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(), 
-                                      arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
-    auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
+    const auto expected_analyzer = irs::analysis::analyzers::get(
+        "identity", irs::type<irs::text_format::vpack>::get(),
+        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+    auto& analyzers =
+        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto const expected_features =
+        analyzers
+            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+            ->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
-              value.features());
+    EXPECT_EQ(
+        expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+        value.features());
     EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
     EXPECT_EQ(expected_analyzer->type(), analyzer.type());
   }
@@ -1647,7 +1795,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   // array[1].id (EmptyAnalyzer)
   {
     auto& value = *it;
-    EXPECT_EQ(mangleString("array[1].id", "iresearch-document-empty"), value.name());
+    EXPECT_EQ(mangleString("array[1].id", "iresearch-document-empty"),
+              value.name());
     auto& analyzer = dynamic_cast<EmptyAnalyzer&>(value.get_tokens());
     EXPECT_FALSE(analyzer.next());
   }
@@ -1659,7 +1808,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   {
     auto& value = *it;
     EXPECT_EQ(mangleNumeric("array[2].id"), value.name());
-    auto& analyzer = dynamic_cast<irs::numeric_token_stream&>(value.get_tokens());
+    auto& analyzer =
+        dynamic_cast<irs::numeric_token_stream&>(value.get_tokens());
     EXPECT_TRUE(analyzer.next());
   }
 
@@ -1672,14 +1822,19 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
     {
       auto& value = *it;
       EXPECT_EQ(mangleStringIdentity("array[2].subarr"), value.name());
-      const auto expected_analyzer =
-          irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(),
-                                        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+      const auto expected_analyzer = irs::analysis::analyzers::get(
+          "identity", irs::type<irs::text_format::vpack>::get(),
+          arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
       auto& analyzers =
           server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-      auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
-      auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-      EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+      auto const expected_features =
+          analyzers
+              .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+              ->features();
+      auto& analyzer =
+          dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
+      EXPECT_EQ(expected_features.fieldFeatures(
+                    arangodb::iresearch::LinkVersion::MIN),
                 value.features());
       EXPECT_EQ(expected_features.indexFeatures(), value.index_features());
       EXPECT_EQ(expected_analyzer->type(), analyzer.type());
@@ -1702,12 +1857,14 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   EXPECT_FALSE(it.valid());
 }
 
-TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_inheritance_object_analyzer) {
+TEST_F(
+    IResearchDocumentTest,
+    FieldIterator_traverse_complex_object_check_meta_inheritance_object_analyzer) {
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
   auto const json = arangodb::velocypack::Parser::fromJson(
-  "{ \
+      "{ \
     \"nested\": { \"foo\": \"str\" }, \
     \"keys\": [ \"1\",\"2\",\"3\",\"4\" ], \
     \"analyzers\": [], \
@@ -1746,64 +1903,168 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
                             error, sysVocbase.get()->name()));
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
   std::function<AssertFieldFunc> const assertFields[] = {
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "nested"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "nested.foo"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "nested.foo"); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "keys"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "keys"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "keys"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "keys"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "keys"); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "analyzers"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "boost"); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("depth")); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "fields"); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "fields.fieldA"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "fields.fieldA.name"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "fields.fieldA.name"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "listValuation"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "listValuation"); },
-    [](auto& server, auto const& it) { assertField<irs::null_token_stream>(server, *it, mangleNull("locale")); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array"); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[0]"); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[0].id")); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[0].subarr"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[0].subarr"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[0].subarr"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[0].subarr"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[0].subarr"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[0].subarr"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[0].subarr"); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[0].subobj"); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[1]"); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[1].subarr"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[1].subarr"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[1].subarr"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[1].subarr"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[1].subarr"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[1].subarr"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[1].subarr"); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[1].subobj"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[1].id"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[1].id"); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[2]"); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[2].id")); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[2].subarr"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[2].subarr"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[2].subarr"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[2].subarr"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[2].subarr"); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "array[2].subarr"); },
-    [](auto& server, auto const& it) { assertField<EmptyAnalyzer>(server, *it, "array[2].subarr"); },
-    [](auto& server, auto const& it) { assertField<VPackAnalyzer>(server, *it, "array[2].subobj"); },
+      [](auto& server, auto const& it) {
+        assertField<VPackAnalyzer>(server, *it, "nested");
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer>(server, *it, "nested.foo");
+      },
+      [](auto& server, auto const& it) {
+        assertField<EmptyAnalyzer>(server, *it, "nested.foo");
+      },
+      [](auto& server, auto const& it) {
+        assertField<VPackAnalyzer>(server, *it, "keys");
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer>(server, *it, "keys");
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer>(server, *it, "keys");
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer>(server, *it, "keys");
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer>(server, *it, "keys");
+      },
+      [](auto& server, auto const& it) {
+        assertField<VPackAnalyzer>(server, *it, "analyzers");
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer>(server, *it, "boost");
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream>(server, *it,
+                                               mangleNumeric("depth"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<VPackAnalyzer>(server, *it, "fields");
+      },
+      [](auto& server, auto const& it) {
+        assertField<VPackAnalyzer>(server, *it, "fields.fieldA");
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer>(server, *it, "fields.fieldA.name");
+      },
+      [](auto& server, auto const& it) {
+        assertField<EmptyAnalyzer>(server, *it, "fields.fieldA.name");
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer>(server, *it, "listValuation");
+      },
+      [](auto& server, auto const& it) {
+        assertField<EmptyAnalyzer>(server, *it, "listValuation");
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::null_token_stream>(server, *it, mangleNull("locale"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<VPackAnalyzer>(server, *it, "array");
+      },
+      [](auto& server, auto const& it) {
+        assertField<VPackAnalyzer>(server, *it, "array[0]");
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream>(server, *it,
+                                               mangleNumeric("array[0].id"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<VPackAnalyzer>(server, *it, "array[0].subarr");
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer>(server, *it, "array[0].subarr");
+      },
+      [](auto& server, auto const& it) {
+        assertField<EmptyAnalyzer>(server, *it, "array[0].subarr");
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer>(server, *it, "array[0].subarr");
+      },
+      [](auto& server, auto const& it) {
+        assertField<EmptyAnalyzer>(server, *it, "array[0].subarr");
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer>(server, *it, "array[0].subarr");
+      },
+      [](auto& server, auto const& it) {
+        assertField<EmptyAnalyzer>(server, *it, "array[0].subarr");
+      },
+      [](auto& server, auto const& it) {
+        assertField<VPackAnalyzer>(server, *it, "array[0].subobj");
+      },
+      [](auto& server, auto const& it) {
+        assertField<VPackAnalyzer>(server, *it, "array[1]");
+      },
+      [](auto& server, auto const& it) {
+        assertField<VPackAnalyzer>(server, *it, "array[1].subarr");
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer>(server, *it, "array[1].subarr");
+      },
+      [](auto& server, auto const& it) {
+        assertField<EmptyAnalyzer>(server, *it, "array[1].subarr");
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer>(server, *it, "array[1].subarr");
+      },
+      [](auto& server, auto const& it) {
+        assertField<EmptyAnalyzer>(server, *it, "array[1].subarr");
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer>(server, *it, "array[1].subarr");
+      },
+      [](auto& server, auto const& it) {
+        assertField<EmptyAnalyzer>(server, *it, "array[1].subarr");
+      },
+      [](auto& server, auto const& it) {
+        assertField<VPackAnalyzer>(server, *it, "array[1].subobj");
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer>(server, *it, "array[1].id");
+      },
+      [](auto& server, auto const& it) {
+        assertField<EmptyAnalyzer>(server, *it, "array[1].id");
+      },
+      [](auto& server, auto const& it) {
+        assertField<VPackAnalyzer>(server, *it, "array[2]");
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream>(server, *it,
+                                               mangleNumeric("array[2].id"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<VPackAnalyzer>(server, *it, "array[2].subarr");
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer>(server, *it, "array[2].subarr");
+      },
+      [](auto& server, auto const& it) {
+        assertField<EmptyAnalyzer>(server, *it, "array[2].subarr");
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer>(server, *it, "array[2].subarr");
+      },
+      [](auto& server, auto const& it) {
+        assertField<EmptyAnalyzer>(server, *it, "array[2].subarr");
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer>(server, *it, "array[2].subarr");
+      },
+      [](auto& server, auto const& it) {
+        assertField<EmptyAnalyzer>(server, *it, "array[2].subarr");
+      },
+      [](auto& server, auto const& it) {
+        assertField<VPackAnalyzer>(server, *it, "array[2].subobj");
+      },
   };
 
-  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY,
+                                        arangodb::IndexId(0));
   it.reset(json->slice(), linkMeta);
 
   for (auto& assertField : assertFields) {
@@ -1828,7 +2089,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
 
   // register analizers with feature
   {
-     // ensure there will be no exception on 'start'
+    // ensure there will be no exception on 'start'
     InvalidAnalyzer::returnNullFromMake = false;
     InvalidAnalyzer::returnFalseFromToString = false;
     analyzers.start();
@@ -1841,8 +2102,9 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
         analyzers
             .emplace(
                 result, arangodb::StaticStrings::SystemDatabase + "::empty",
-                  "iresearch-document-empty",
-                  arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
+                "iresearch-document-empty",
+                arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")
+                    ->slice(),
                 arangodb::iresearch::Features(irs::IndexFeatures::FREQ))
             .ok());
 
@@ -1851,8 +2113,9 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
         analyzers
             .emplace(
                 result, arangodb::StaticStrings::SystemDatabase + "::empty",
-                  "iresearch-document-empty",
-                  arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
+                "iresearch-document-empty",
+                arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")
+                    ->slice(),
                 arangodb::iresearch::Features(irs::IndexFeatures::FREQ))
             .ok());
 
@@ -1862,8 +2125,9 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
         analyzers
             .emplace(
                 result, arangodb::StaticStrings::SystemDatabase + "::invalid",
-                 "iresearch-document-invalid",
-                 arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
+                "iresearch-document-invalid",
+                arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")
+                    ->slice(),
                 arangodb::iresearch::Features(irs::IndexFeatures::FREQ))
             .ok());
     InvalidAnalyzer::returnFalseFromToString = false;
@@ -1874,8 +2138,9 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
         analyzers
             .emplace(
                 result, arangodb::StaticStrings::SystemDatabase + "::invalid",
-                 "iresearch-document-invalid",
-                 arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
+                "iresearch-document-invalid",
+                arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")
+                    ->slice(),
                 arangodb::iresearch::Features(irs::IndexFeatures::FREQ))
             .ok());
     InvalidAnalyzer::returnNullFromMake = false;
@@ -1884,8 +2149,9 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
         analyzers
             .emplace(
                 result, arangodb::StaticStrings::SystemDatabase + "::invalid",
-                 "iresearch-document-invalid",
-                 arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
+                "iresearch-document-invalid",
+                arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")
+                    ->slice(),
                 arangodb::iresearch::Features(irs::IndexFeatures::FREQ))
             .ok());
   }
@@ -1894,27 +2160,32 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
   {
     arangodb::iresearch::IResearchLinkMeta linkMeta;
     linkMeta._analyzers.emplace_back(arangodb::iresearch::FieldMeta::Analyzer(
-        analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty", arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
+        analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty",
+                      arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
         "empty"));  // add analyzer
 
     InvalidAnalyzer::returnNullFromMake = false;
     linkMeta._analyzers.emplace_back(arangodb::iresearch::FieldMeta::Analyzer(
-        analyzers.get(arangodb::StaticStrings::SystemDatabase + "::invalid", arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
+        analyzers.get(arangodb::StaticStrings::SystemDatabase + "::invalid",
+                      arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
         "invalid"));                    // add analyzer
     linkMeta._includeAllFields = true;  // include all fields
     linkMeta._primitiveOffset = linkMeta._analyzers.size();
 
     // acquire analyzer, another one should be created
-    auto analyzer = linkMeta._analyzers.back()._pool->get();  // cached instance should have been acquired
+    auto analyzer =
+        linkMeta._analyzers.back()
+            ._pool->get();  // cached instance should have been acquired
 
     InvalidAnalyzer::returnNullFromMake = true;
 
     std::vector<std::string> EMPTY;
-    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                       EMPTY, EMPTY, EMPTY,
-                                       arangodb::transaction::Options());
+    arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+        EMPTY, EMPTY, arangodb::transaction::Options());
 
-    arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+    arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY,
+                                          arangodb::IndexId(0));
     it.reset(slice, linkMeta);
     ASSERT_TRUE(it.valid());
 
@@ -1922,15 +2193,20 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
     {
       auto& field = *it;
       EXPECT_EQ(mangleStringIdentity("stringValue"), field.name());
-      auto const expected_analyzer =
-          irs::analysis::analyzers::get("identity", irs::type<irs::text_format::vpack>::get(), 
-                                        arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+      auto const expected_analyzer = irs::analysis::analyzers::get(
+          "identity", irs::type<irs::text_format::vpack>::get(),
+          arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
       auto& analyzers =
           server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-      auto const expected_features = analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)->features();
-      auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
+      auto const expected_features =
+          analyzers
+              .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+              ->features();
+      auto& analyzer =
+          dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
       EXPECT_EQ(expected_analyzer->type(), analyzer.type());
-      EXPECT_EQ(expected_features.fieldFeatures(arangodb::iresearch::LinkVersion::MIN),
+      EXPECT_EQ(expected_features.fieldFeatures(
+                    arangodb::iresearch::LinkVersion::MIN),
                 field.features());
       EXPECT_EQ(expected_features.indexFeatures(), field.index_features());
     }
@@ -1944,7 +2220,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
       EXPECT_EQ(mangleString("stringValue", "empty"), field.name());
       auto const expected_analyzer = irs::analysis::analyzers::get(
           "iresearch-document-empty", irs::type<irs::text_format::vpack>::get(),
-              arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+          arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
       auto& analyzer = dynamic_cast<EmptyAnalyzer&>(field.get_tokens());
       EXPECT_EQ(expected_analyzer->type(), analyzer.type());
     }
@@ -1952,7 +2228,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
     ++it;
     ASSERT_FALSE(it.valid());
 
-    analyzer->reset(irs::string_ref::NIL);  // ensure that acquired 'analyzer' will not be optimized out
+    analyzer->reset(irs::string_ref::NIL);  // ensure that acquired 'analyzer'
+                                            // will not be optimized out
   }
 
   // first analyzer is invalid
@@ -1962,24 +2239,29 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
 
     InvalidAnalyzer::returnNullFromMake = false;
     linkMeta._analyzers.emplace_back(arangodb::iresearch::FieldMeta::Analyzer(
-        analyzers.get(arangodb::StaticStrings::SystemDatabase + "::invalid", arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
+        analyzers.get(arangodb::StaticStrings::SystemDatabase + "::invalid",
+                      arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
         "invalid"));  // add analyzer
     linkMeta._analyzers.emplace_back(arangodb::iresearch::FieldMeta::Analyzer(
-        analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty", arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
+        analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty",
+                      arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
         "empty"));                      // add analyzer
     linkMeta._includeAllFields = true;  // include all fields
     linkMeta._primitiveOffset = linkMeta._analyzers.size();
 
     // acquire analyzer, another one should be created
-    auto analyzer = linkMeta._analyzers.front()._pool->get();  // cached instance should have been acquired
+    auto analyzer =
+        linkMeta._analyzers.front()
+            ._pool->get();  // cached instance should have been acquired
     InvalidAnalyzer::returnNullFromMake = true;
 
     std::vector<std::string> EMPTY;
-    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                       EMPTY, EMPTY, EMPTY,
-                                       arangodb::transaction::Options());
+    arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+        EMPTY, EMPTY, arangodb::transaction::Options());
 
-    arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+    arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY,
+                                          arangodb::IndexId(0));
     it.reset(slice, linkMeta);
     ASSERT_TRUE(it.valid());
 
@@ -1989,7 +2271,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
       EXPECT_EQ(mangleString("stringValue", "empty"), field.name());
       auto const expected_analyzer = irs::analysis::analyzers::get(
           "iresearch-document-empty", irs::type<irs::text_format::vpack>::get(),
-            arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
+          arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
       auto& analyzer = dynamic_cast<EmptyAnalyzer&>(field.get_tokens());
       EXPECT_EQ(expected_analyzer->type(), analyzer.type());
     }
@@ -1997,13 +2279,15 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
     ++it;
     ASSERT_FALSE(it.valid());
 
-    analyzer->reset(irs::string_ref::NIL);  // ensure that acquired 'analyzer' will not be optimized out
+    analyzer->reset(irs::string_ref::NIL);  // ensure that acquired 'analyzer'
+                                            // will not be optimized out
   }
 }
 
-TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_primitive_type_sub_analyzers) {
+TEST_F(IResearchDocumentTest,
+       FieldIterator_traverse_complex_object_primitive_type_sub_analyzers) {
   auto const linkMetaJson = arangodb::velocypack::Parser::fromJson(
-  "{ \
+      "{ \
     \"includeAllFields\" : true, \
     \"trackListPositions\" : true, \
     \"fields\" : { \
@@ -2031,12 +2315,12 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_primitive_ty
                             error, sysVocbase.get()->name()));
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
   auto json = arangodb::velocypack::Parser::fromJson(
-  "{ \
+      "{ \
     \"nested\": { \"foo\": \"str\" }, \
     \"keys\": [ \"1\",\"2\"], \
     \"analyzers\": [], \
@@ -2052,47 +2336,158 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_primitive_ty
   }");
 
   std::function<AssertFieldFunc> const assertFields[] = {
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "nested.foo"); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("keys")); },
-    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("keys")); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("keys")); },
-    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("keys")); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("boost")); },
-    [](auto& server, auto const& it) { assertField<TypedAnalyzer>(server, *it, "depth", "iresearch-document-string"); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("fields.fieldA.name")); },
-    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("fields.fieldA.name")); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer>(server, *it, "listValuation"); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[0].id")); },
-    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[0].id")); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[0].subarr")); },
-    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[0].subarr")); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[0].subarr")); },
-    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[0].subarr")); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[0].subarr")); },
-    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[0].subarr")); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[0].subobj.id")); },
-    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[0].subobj.id")); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[1].subarr")); },
-    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[1].subarr")); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[1].subarr")); },
-    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[1].subarr")); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[1].subarr")); },
-    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[1].subarr")); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[1].id")); },
-    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[1].id")); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[2].id")); },
-    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[2].id")); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[2].subarr")); },
-    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[2].subarr")); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[2].subarr")); },
-    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[2].subarr")); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[2].subarr")); },
-    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[2].subarr")); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream>(server, *it, mangleNumeric("array[2].subobj.id")); },
-    [](auto& server, auto const& it) { assertField<irs::boolean_token_stream>(server, *it, mangleBool("array[2].subobj.id")); },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer>(server, *it, "nested.foo");
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream>(server, *it,
+                                               mangleNumeric("keys"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::boolean_token_stream>(server, *it, mangleBool("keys"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream>(server, *it,
+                                               mangleNumeric("keys"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::boolean_token_stream>(server, *it, mangleBool("keys"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream>(server, *it,
+                                               mangleNumeric("boost"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<TypedAnalyzer>(server, *it, "depth",
+                                   "iresearch-document-string");
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream>(
+            server, *it, mangleNumeric("fields.fieldA.name"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::boolean_token_stream>(
+            server, *it, mangleBool("fields.fieldA.name"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer>(server, *it, "listValuation");
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream>(server, *it,
+                                               mangleNumeric("array[0].id"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::boolean_token_stream>(server, *it,
+                                               mangleBool("array[0].id"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream>(
+            server, *it, mangleNumeric("array[0].subarr"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::boolean_token_stream>(server, *it,
+                                               mangleBool("array[0].subarr"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream>(
+            server, *it, mangleNumeric("array[0].subarr"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::boolean_token_stream>(server, *it,
+                                               mangleBool("array[0].subarr"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream>(
+            server, *it, mangleNumeric("array[0].subarr"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::boolean_token_stream>(server, *it,
+                                               mangleBool("array[0].subarr"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream>(
+            server, *it, mangleNumeric("array[0].subobj.id"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::boolean_token_stream>(
+            server, *it, mangleBool("array[0].subobj.id"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream>(
+            server, *it, mangleNumeric("array[1].subarr"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::boolean_token_stream>(server, *it,
+                                               mangleBool("array[1].subarr"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream>(
+            server, *it, mangleNumeric("array[1].subarr"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::boolean_token_stream>(server, *it,
+                                               mangleBool("array[1].subarr"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream>(
+            server, *it, mangleNumeric("array[1].subarr"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::boolean_token_stream>(server, *it,
+                                               mangleBool("array[1].subarr"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream>(server, *it,
+                                               mangleNumeric("array[1].id"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::boolean_token_stream>(server, *it,
+                                               mangleBool("array[1].id"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream>(server, *it,
+                                               mangleNumeric("array[2].id"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::boolean_token_stream>(server, *it,
+                                               mangleBool("array[2].id"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream>(
+            server, *it, mangleNumeric("array[2].subarr"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::boolean_token_stream>(server, *it,
+                                               mangleBool("array[2].subarr"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream>(
+            server, *it, mangleNumeric("array[2].subarr"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::boolean_token_stream>(server, *it,
+                                               mangleBool("array[2].subarr"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream>(
+            server, *it, mangleNumeric("array[2].subarr"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::boolean_token_stream>(server, *it,
+                                               mangleBool("array[2].subarr"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream>(
+            server, *it, mangleNumeric("array[2].subobj.id"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::boolean_token_stream>(
+            server, *it, mangleBool("array[2].subobj.id"));
+      },
   };
 
-  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  arangodb::iresearch::FieldIterator it(trx, irs::string_ref::EMPTY,
+                                        arangodb::IndexId(0));
   it.reset(json->slice(), linkMeta);
 
   for (auto& assertField : assertFields) {
@@ -2150,7 +2545,8 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
     irs::index_writer::ptr writer;
 
     DataStore() {
-      writer = irs::index_writer::make(dir, irs::formats::get("1_0"), irs::OM_CREATE);
+      writer = irs::index_writer::make(dir, irs::formats::get("1_0"),
+                                       irs::OM_CREATE);
       EXPECT_TRUE(writer);
       writer->commit();
 
@@ -2172,7 +2568,8 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
 
     rid = ridSlice.getNumber<uint64_t>();
 
-    auto pk = arangodb::iresearch::DocumentPrimaryKey::encode(arangodb::LocalDocumentId(rid));
+    auto pk = arangodb::iresearch::DocumentPrimaryKey::encode(
+        arangodb::LocalDocumentId(rid));
     auto& writer = store0.writer;
 
     // insert document
@@ -2210,14 +2607,16 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
 
     auto& segment = (*reader)[0];
 
-    auto* pkField = segment.field(arangodb::iresearch::DocumentPrimaryKey::PK());
+    auto* pkField =
+        segment.field(arangodb::iresearch::DocumentPrimaryKey::PK());
     EXPECT_TRUE(pkField);
     EXPECT_EQ(size, pkField->docs_count());
 
     arangodb::iresearch::PrimaryKeyFilterContainer filters;
     EXPECT_TRUE(filters.empty());
     auto& filter = filters.emplace(engine, arangodb::LocalDocumentId(rid));
-    ASSERT_EQ(filter.type(engine), arangodb::iresearch::PrimaryKeyFilter::type(engine));
+    ASSERT_EQ(filter.type(engine),
+              arangodb::iresearch::PrimaryKeyFilter::type(engine));
     EXPECT_FALSE(filters.empty());
 
     // first execution
@@ -2225,14 +2624,17 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
       auto prepared = filter.prepare(*reader);
       ASSERT_TRUE(prepared);
       EXPECT_EQ(prepared, filter.prepare(*reader));  // same object
-      EXPECT_TRUE(&filter == dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(
-                                 prepared.get()));  // same object
+      EXPECT_TRUE(&filter ==
+                  dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(
+                      prepared.get()));  // same object
 
       for (auto& segment : *reader) {
         auto docs = prepared->execute(segment);
         ASSERT_TRUE(docs);
-        // EXPECT_EQ(nullptr, prepared->execute(segment)); // unusable filter TRI_ASSERT(...) check
-        EXPECT_EQ(irs::filter::prepared::empty(), filter.prepare(*reader));  // unusable filter (after execute)
+        // EXPECT_EQ(nullptr, prepared->execute(segment)); // unusable filter
+        // TRI_ASSERT(...) check
+        EXPECT_EQ(irs::filter::prepared::empty(),
+                  filter.prepare(*reader));  // unusable filter (after execute)
 
         EXPECT_TRUE(docs->next());
         auto const id = docs->value();
@@ -2242,8 +2644,8 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
         EXPECT_FALSE(docs->next());
         EXPECT_TRUE(irs::doc_limits::eof(docs->value()));
 
-        auto column =
-            segment.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
+        auto column = segment.column_reader(
+            arangodb::iresearch::DocumentPrimaryKey::PK());
         ASSERT_TRUE(column);
 
         auto values = column->values();
@@ -2326,7 +2728,8 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     irs::index_writer::ptr writer;
 
     DataStore() {
-      writer = irs::index_writer::make(dir, irs::formats::get("1_0"), irs::OM_CREATE);
+      writer = irs::index_writer::make(dir, irs::formats::get("1_0"),
+                                       irs::OM_CREATE);
       EXPECT_TRUE(writer);
       writer->commit();
 
@@ -2346,7 +2749,8 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
 
     auto rid = ridSlice.getNumber<uint64_t>();
     arangodb::iresearch::Field field;
-    auto pk = arangodb::iresearch::DocumentPrimaryKey::encode(arangodb::LocalDocumentId(rid));
+    auto pk = arangodb::iresearch::DocumentPrimaryKey::encode(
+        arangodb::LocalDocumentId(rid));
 
     // insert document
     {
@@ -2363,7 +2767,8 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
   // add extra doc to hold segment after others are removed
   {
     arangodb::iresearch::Field field;
-    auto pk = arangodb::iresearch::DocumentPrimaryKey::encode(arangodb::LocalDocumentId(12345));
+    auto pk = arangodb::iresearch::DocumentPrimaryKey::encode(
+        arangodb::LocalDocumentId(12345));
     auto ctx = store.writer->documents();
     auto doc = ctx.insert();
     arangodb::iresearch::Field::setPkValue(field, pk);
@@ -2374,8 +2779,10 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
   store.writer->commit();
   store.reader = store.reader->reopen();
   EXPECT_EQ(1, store.reader->size());
-  EXPECT_EQ(expectedDocs + 1, store.reader->docs_count());  // +1 for keep-alive doc
-  EXPECT_EQ(expectedLiveDocs + 1, store.reader->live_docs_count());  // +1 for keep-alive doc
+  EXPECT_EQ(expectedDocs + 1,
+            store.reader->docs_count());  // +1 for keep-alive doc
+  EXPECT_EQ(expectedLiveDocs + 1,
+            store.reader->live_docs_count());  // +1 for keep-alive doc
 
   auto& engine = server.getFeature<arangodb::EngineSelectorFeature>().engine();
 
@@ -2391,20 +2798,25 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       arangodb::iresearch::PrimaryKeyFilterContainer filters;
       EXPECT_TRUE(filters.empty());
       auto& filter = filters.emplace(engine, arangodb::LocalDocumentId(rid));
-      ASSERT_EQ(filter.type(engine), arangodb::iresearch::PrimaryKeyFilter::type(engine));
+      ASSERT_EQ(filter.type(engine),
+                arangodb::iresearch::PrimaryKeyFilter::type(engine));
       EXPECT_FALSE(filters.empty());
 
       auto prepared = filter.prepare(*store.reader);
       ASSERT_TRUE(prepared);
       EXPECT_EQ(prepared, filter.prepare(*store.reader));  // same object
-      EXPECT_TRUE((&filter == dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(
-                                  prepared.get())));  // same object
+      EXPECT_TRUE((&filter ==
+                   dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(
+                       prepared.get())));  // same object
 
       for (auto& segment : *store.reader) {
         auto docs = prepared->execute(segment);
         ASSERT_TRUE(docs);
-        // EXPECT_EQ(nullptr, prepared->execute(segment)); // unusable filter TRI_ASSERT(...) check
-        EXPECT_EQ(irs::filter::prepared::empty(), filter.prepare(*store.reader));  // unusable filter (after execute)
+        // EXPECT_EQ(nullptr, prepared->execute(segment)); // unusable filter
+        // TRI_ASSERT(...) check
+        EXPECT_EQ(
+            irs::filter::prepared::empty(),
+            filter.prepare(*store.reader));  // unusable filter (after execute)
 
         EXPECT_TRUE(docs->next());
         auto const id = docs->value();
@@ -2414,8 +2826,8 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
         EXPECT_FALSE(docs->next());
         EXPECT_TRUE(irs::doc_limits::eof(docs->value()));
 
-        auto column =
-            segment.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
+        auto column = segment.column_reader(
+            arangodb::iresearch::DocumentPrimaryKey::PK());
         ASSERT_TRUE(column);
 
         auto values = column->values();
@@ -2440,7 +2852,8 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
 
     auto rid = ridSlice.getNumber<uint64_t>();
     arangodb::iresearch::Field field;
-    auto pk = arangodb::iresearch::DocumentPrimaryKey::encode(arangodb::LocalDocumentId(rid));
+    auto pk = arangodb::iresearch::DocumentPrimaryKey::encode(
+        arangodb::LocalDocumentId(rid));
 
     // remove + insert document
     {
@@ -2470,15 +2883,18 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
   store.writer->commit();
   store.reader = store.reader->reopen();
   EXPECT_EQ(2, store.reader->size());
-  EXPECT_EQ(expectedDocs + 2, store.reader->docs_count());  // +2 for keep-alive doc
-  EXPECT_EQ(expectedLiveDocs + 2, store.reader->live_docs_count());  // +2 for keep-alive doc
+  EXPECT_EQ(expectedDocs + 2,
+            store.reader->docs_count());  // +2 for keep-alive doc
+  EXPECT_EQ(expectedLiveDocs + 2,
+            store.reader->live_docs_count());  // +2 for keep-alive doc
 
   // check 1st recovery case
   {
     size_t actualDocs = 0;
 
     auto beforeRecovery = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult =
+        arangodb::RecoveryState::IN_PROGRESS;
     auto restoreRecovery = irs::make_finally([&beforeRecovery]() -> void {
       StorageEngineMock::recoveryStateResult = beforeRecovery;
     });
@@ -2491,20 +2907,24 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       arangodb::iresearch::PrimaryKeyFilterContainer filters;
       EXPECT_TRUE(filters.empty());
       auto& filter = filters.emplace(engine, arangodb::LocalDocumentId(rid));
-      ASSERT_EQ(filter.type(engine), arangodb::iresearch::PrimaryKeyFilter::type(engine));
+      ASSERT_EQ(filter.type(engine),
+                arangodb::iresearch::PrimaryKeyFilter::type(engine));
       EXPECT_FALSE(filters.empty());
 
       auto prepared = filter.prepare(*store.reader);
       ASSERT_TRUE(prepared);
       EXPECT_EQ(prepared, filter.prepare(*store.reader));  // same object
-      EXPECT_TRUE((&filter == dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(
-                                  prepared.get())));  // same object
+      EXPECT_TRUE((&filter ==
+                   dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(
+                       prepared.get())));  // same object
 
       for (auto& segment : *store.reader) {
         auto docs = prepared->execute(segment);
         ASSERT_TRUE(docs);
         EXPECT_NE(nullptr, prepared->execute(segment));  // usable filter
-        EXPECT_NE(nullptr, filter.prepare(*store.reader));  // usable filter (after execute)
+        EXPECT_NE(
+            nullptr,
+            filter.prepare(*store.reader));  // usable filter (after execute)
 
         if (docs->next()) {  // old segments will not have any matching docs
           auto const id = docs->value();
@@ -2514,8 +2934,8 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
           EXPECT_FALSE(docs->next());
           EXPECT_TRUE(irs::doc_limits::eof(docs->value()));
 
-          auto column =
-              segment.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
+          auto column = segment.column_reader(
+              arangodb::iresearch::DocumentPrimaryKey::PK());
           ASSERT_TRUE(column);
 
           auto values = column->values();
@@ -2525,7 +2945,8 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
           EXPECT_TRUE(values(id, pkValue));
 
           arangodb::LocalDocumentId pk;
-          EXPECT_TRUE(arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue));
+          EXPECT_TRUE(
+              arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue));
           EXPECT_EQ(rid, pk.id());
         }
       }
@@ -2541,7 +2962,8 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
 
     auto rid = ridSlice.getNumber<uint64_t>();
     arangodb::iresearch::Field field;
-    auto pk = arangodb::iresearch::DocumentPrimaryKey::encode(arangodb::LocalDocumentId(rid));
+    auto pk = arangodb::iresearch::DocumentPrimaryKey::encode(
+        arangodb::LocalDocumentId(rid));
 
     // remove + insert document
     {
@@ -2571,15 +2993,18 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
   store.writer->commit();
   store.reader = store.reader->reopen();
   EXPECT_EQ(3, store.reader->size());
-  EXPECT_EQ(expectedDocs + 3, store.reader->docs_count());  // +3 for keep-alive doc
-  EXPECT_EQ(expectedLiveDocs + 3, store.reader->live_docs_count());  // +3 for keep-alive doc
+  EXPECT_EQ(expectedDocs + 3,
+            store.reader->docs_count());  // +3 for keep-alive doc
+  EXPECT_EQ(expectedLiveDocs + 3,
+            store.reader->live_docs_count());  // +3 for keep-alive doc
 
   // check 2nd recovery case
   {
     size_t actualDocs = 0;
 
     auto beforeRecovery = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    StorageEngineMock::recoveryStateResult =
+        arangodb::RecoveryState::IN_PROGRESS;
     auto restoreRecovery = irs::make_finally([&beforeRecovery]() -> void {
       StorageEngineMock::recoveryStateResult = beforeRecovery;
     });
@@ -2592,20 +3017,24 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       arangodb::iresearch::PrimaryKeyFilterContainer filters;
       EXPECT_TRUE(filters.empty());
       auto& filter = filters.emplace(engine, arangodb::LocalDocumentId(rid));
-      ASSERT_EQ(filter.type(engine), arangodb::iresearch::PrimaryKeyFilter::type(engine));
+      ASSERT_EQ(filter.type(engine),
+                arangodb::iresearch::PrimaryKeyFilter::type(engine));
       EXPECT_FALSE(filters.empty());
 
       auto prepared = filter.prepare(*store.reader);
       ASSERT_TRUE(prepared);
       EXPECT_EQ(prepared, filter.prepare(*store.reader));  // same object
-      EXPECT_TRUE((&filter == dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(
-                                  prepared.get())));  // same object
+      EXPECT_TRUE((&filter ==
+                   dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(
+                       prepared.get())));  // same object
 
       for (auto& segment : *store.reader) {
         auto docs = prepared->execute(segment);
         ASSERT_TRUE(docs);
         EXPECT_NE(nullptr, prepared->execute(segment));  // usable filter
-        EXPECT_NE(nullptr, filter.prepare(*store.reader));  // usable filter (after execute)
+        EXPECT_NE(
+            nullptr,
+            filter.prepare(*store.reader));  // usable filter (after execute)
 
         if (docs->next()) {  // old segments will not have any matching docs
           auto const id = docs->value();
@@ -2615,8 +3044,8 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
           EXPECT_FALSE(docs->next());
           EXPECT_TRUE(irs::doc_limits::eof(docs->value()));
 
-          auto column =
-              segment.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
+          auto column = segment.column_reader(
+              arangodb::iresearch::DocumentPrimaryKey::PK());
           ASSERT_TRUE(column);
 
           auto values = column->values();
@@ -2626,7 +3055,8 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
           EXPECT_TRUE(values(id, pkValue));
 
           arangodb::LocalDocumentId pk;
-          EXPECT_TRUE(arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue));
+          EXPECT_TRUE(
+              arangodb::iresearch::DocumentPrimaryKey::read(pk, pkValue));
           EXPECT_EQ(rid, pk.id());
         }
       }
@@ -2641,10 +3071,9 @@ TEST_F(IResearchDocumentTest, FieldIterator_index_id_attr) {
   auto sysVocbase = sysDatabase.use();
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
-
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   linkMeta._includeAllFields = true;  // include all fields
@@ -2652,20 +3081,24 @@ TEST_F(IResearchDocumentTest, FieldIterator_index_id_attr) {
   arangodb::RevisionId rev;
   VPackBuilder document;
   {
-    auto analyzersCollection = sysVocbase->useCollection(arangodb::StaticStrings::AnalyzersCollection, false);
+    auto analyzersCollection = sysVocbase->useCollection(
+        arangodb::StaticStrings::AnalyzersCollection, false);
     ASSERT_TRUE(analyzersCollection);
     VPackBuilder builder;
     builder.openObject();
     builder.add(arangodb::StaticStrings::KeyString, VPackValue("test"));
     builder.close();
-    ASSERT_TRUE(analyzersCollection->getPhysical()->newObjectForInsert(
-        &trx, builder.slice(), false, document, false, rev).ok());
+    ASSERT_TRUE(analyzersCollection->getPhysical()
+                    ->newObjectForInsert(&trx, builder.slice(), false, document,
+                                         false, rev)
+                    .ok());
     sysVocbase->releaseCollection(analyzersCollection.get());
   }
 
   auto mangledId = mangleStringIdentity(arangodb::StaticStrings::IdString);
   {
-    arangodb::iresearch::FieldIterator it_no_name(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+    arangodb::iresearch::FieldIterator it_no_name(trx, irs::string_ref::EMPTY,
+                                                  arangodb::IndexId(0));
     EXPECT_FALSE(it_no_name.valid());
     it_no_name.reset(document.slice(), linkMeta);
     ASSERT_TRUE(it_no_name.valid());
@@ -2679,10 +3112,12 @@ TEST_F(IResearchDocumentTest, FieldIterator_index_id_attr) {
       }
       ++it_no_name;
     }
-    ASSERT_TRUE(id_indexed); // for single server collection name is not necessary
+    ASSERT_TRUE(
+        id_indexed);  // for single server collection name is not necessary
   }
   {
-    arangodb::iresearch::FieldIterator it_name(trx, "test", arangodb::IndexId(1));
+    arangodb::iresearch::FieldIterator it_name(trx, "test",
+                                               arangodb::IndexId(1));
     EXPECT_FALSE(it_name.valid());
     it_name.reset(document.slice(), linkMeta);
     ASSERT_TRUE(it_name.valid());
@@ -2700,21 +3135,19 @@ TEST_F(IResearchDocumentTest, FieldIterator_index_id_attr) {
   }
 }
 
-
 TEST_F(IResearchDocumentTest, FieldIterator_dbServer_index_id_attr) {
   auto oldRole = arangodb::ServerState::instance()->getRole();
-  arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
-  auto roleRestorer = irs::make_finally([oldRole]() {
-    arangodb::ServerState::instance()->setRole(oldRole);
-  });
+  arangodb::ServerState::instance()->setRole(
+      arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
+  auto roleRestorer = irs::make_finally(
+      [oldRole]() { arangodb::ServerState::instance()->setRole(oldRole); });
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
-
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   linkMeta._includeAllFields = true;  // include all fields
@@ -2722,20 +3155,24 @@ TEST_F(IResearchDocumentTest, FieldIterator_dbServer_index_id_attr) {
   arangodb::RevisionId rev;
   VPackBuilder document;
   {
-    auto analyzersCollection = sysVocbase->useCollection(arangodb::StaticStrings::AnalyzersCollection, false);
+    auto analyzersCollection = sysVocbase->useCollection(
+        arangodb::StaticStrings::AnalyzersCollection, false);
     ASSERT_TRUE(analyzersCollection);
     VPackBuilder builder;
     builder.openObject();
     builder.add(arangodb::StaticStrings::KeyString, VPackValue("test"));
     builder.close();
-    ASSERT_TRUE(analyzersCollection->getPhysical()->newObjectForInsert(
-        &trx, builder.slice(), false, document, false, rev).ok());
+    ASSERT_TRUE(analyzersCollection->getPhysical()
+                    ->newObjectForInsert(&trx, builder.slice(), false, document,
+                                         false, rev)
+                    .ok());
     sysVocbase->releaseCollection(analyzersCollection.get());
   }
 
   auto mangledId = mangleStringIdentity(arangodb::StaticStrings::IdString);
   {
-    arangodb::iresearch::FieldIterator it_no_name(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+    arangodb::iresearch::FieldIterator it_no_name(trx, irs::string_ref::EMPTY,
+                                                  arangodb::IndexId(0));
     EXPECT_FALSE(it_no_name.valid());
     it_no_name.reset(document.slice(), linkMeta);
     ASSERT_TRUE(it_no_name.valid());
@@ -2752,7 +3189,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_dbServer_index_id_attr) {
     ASSERT_FALSE(id_indexed);
   }
   {
-    arangodb::iresearch::FieldIterator it_name(trx, "test", arangodb::IndexId(1));
+    arangodb::iresearch::FieldIterator it_name(trx, "test",
+                                               arangodb::IndexId(1));
     EXPECT_FALSE(it_name.valid());
     it_name.reset(document.slice(), linkMeta);
     ASSERT_TRUE(it_name.valid());
@@ -2773,37 +3211,43 @@ TEST_F(IResearchDocumentTest, FieldIterator_dbServer_index_id_attr) {
 TEST_F(IResearchDocumentTest, FieldIterator_concurrent_use_typed_analyzer) {
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
-  auto& analyzers = server.template getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto& analyzers =
+      server
+          .template getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   linkMeta._analyzers.clear();
   linkMeta._analyzers.emplace_back(arangodb::iresearch::FieldMeta::Analyzer(
-        analyzers.get(arangodb::StaticStrings::SystemDatabase + "::iresearch-document-number-array",
-                      arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
-        "iresearch-document-number-array"));  // add analyzer
+      analyzers.get(arangodb::StaticStrings::SystemDatabase +
+                        "::iresearch-document-number-array",
+                    arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
+      "iresearch-document-number-array"));  // add analyzer
   ASSERT_TRUE(linkMeta._analyzers.front()._pool);
   linkMeta._includeAllFields = true;  // include all fields
   linkMeta._primitiveOffset = linkMeta._analyzers.size();
   std::string error;
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
-  arangodb::iresearch::FieldIterator it1(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
+  arangodb::iresearch::FieldIterator it1(trx, irs::string_ref::EMPTY,
+                                         arangodb::IndexId(0));
 
   auto json = arangodb::velocypack::Parser::fromJson("{\"value\":\"3\"}");
   auto json2 = arangodb::velocypack::Parser::fromJson("{\"value\":\"4\"}");
 
   it1.reset(json->slice(), linkMeta);
   ASSERT_TRUE(it1.valid());
- 
-  arangodb::iresearch::FieldIterator it2(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+
+  arangodb::iresearch::FieldIterator it2(trx, irs::string_ref::EMPTY,
+                                         arangodb::IndexId(0));
   it2.reset(json2->slice(), linkMeta);
   ASSERT_TRUE(it2.valid());
 
   // exhaust first array member (1) of it1
   {
-    irs::numeric_token_stream expected_tokens; expected_tokens.reset(1.);
-    auto& actual_tokens =  (*it1).get_tokens();
+    irs::numeric_token_stream expected_tokens;
+    expected_tokens.reset(1.);
+    auto& actual_tokens = (*it1).get_tokens();
     auto actual_value = irs::get<irs::term_attribute>(actual_tokens);
     auto expected_value = irs::get<irs::term_attribute>(expected_tokens);
     while (actual_tokens.next()) {
@@ -2814,8 +3258,9 @@ TEST_F(IResearchDocumentTest, FieldIterator_concurrent_use_typed_analyzer) {
   }
   // exhaust first array member (1) of it2
   {
-    irs::numeric_token_stream expected_tokens; expected_tokens.reset(1.);
-    auto& actual_tokens =  (*it2).get_tokens();
+    irs::numeric_token_stream expected_tokens;
+    expected_tokens.reset(1.);
+    auto& actual_tokens = (*it2).get_tokens();
     auto actual_value = irs::get<irs::term_attribute>(actual_tokens);
     auto expected_value = irs::get<irs::term_attribute>(expected_tokens);
     while (actual_tokens.next()) {
@@ -2824,12 +3269,13 @@ TEST_F(IResearchDocumentTest, FieldIterator_concurrent_use_typed_analyzer) {
     }
     ASSERT_FALSE(expected_tokens.next());
   }
-  ++it1; // now it1 should have it`s typed iterator pointing to 2
-  ++it2; // now it2 should have it`s typed iterator pointing to 2  (not to 3!)
+  ++it1;  // now it1 should have it`s typed iterator pointing to 2
+  ++it2;  // now it2 should have it`s typed iterator pointing to 2  (not to 3!)
   ASSERT_TRUE(it1.valid());
   {
-    irs::numeric_token_stream expected_tokens; expected_tokens.reset(2.);
-    auto& actual_tokens =  (*it1).get_tokens();
+    irs::numeric_token_stream expected_tokens;
+    expected_tokens.reset(2.);
+    auto& actual_tokens = (*it1).get_tokens();
     auto actual_value = irs::get<irs::term_attribute>(actual_tokens);
     auto expected_value = irs::get<irs::term_attribute>(expected_tokens);
     while (actual_tokens.next()) {
@@ -2840,8 +3286,9 @@ TEST_F(IResearchDocumentTest, FieldIterator_concurrent_use_typed_analyzer) {
   }
   ASSERT_TRUE(it2.valid());
   {
-    irs::numeric_token_stream expected_tokens; expected_tokens.reset(2.);
-    auto& actual_tokens =  (*it2).get_tokens();
+    irs::numeric_token_stream expected_tokens;
+    expected_tokens.reset(2.);
+    auto& actual_tokens = (*it2).get_tokens();
     auto actual_value = irs::get<irs::term_attribute>(actual_tokens);
     auto expected_value = irs::get<irs::term_attribute>(expected_tokens);
     while (actual_tokens.next()) {
@@ -2852,9 +3299,11 @@ TEST_F(IResearchDocumentTest, FieldIterator_concurrent_use_typed_analyzer) {
   }
 }
 
-TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_simple_object_primitive_type_sub_analyzers) {
+TEST_F(
+    IResearchDocumentTest,
+    InvertedFieldIterator_traverse_simple_object_primitive_type_sub_analyzers) {
   auto const indexMetaJson = arangodb::velocypack::Parser::fromJson(
-  R"({"fields" : [{"name": "boost"},
+      R"({"fields" : [{"name": "boost"},
                   {"name": "keys"},
                   {"name": "keys2", "analyzer": "iresearch-document-number"}]})");
 
@@ -2863,15 +3312,15 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_simple_object_primi
   arangodb::iresearch::InvertedIndexFieldMeta indexMeta;
   std::string error;
   ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
-                            error, sysVocbase.get()->name()));
+                             error, sysVocbase.get()->name()));
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
   auto json = arangodb::velocypack::Parser::fromJson(
-  R"({
+      R"({
     "nested": {"foo": "str"},
     "keys": "1",
     "keys2": "2",
@@ -2886,12 +3335,22 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_simple_object_primi
     "last_not_present": "ignored"})");
 
   std::function<AssertInvertedIndexFieldFunc> const assertFields[] = {
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("boost")); },
-    [](auto& server, auto const& it) { assertField<IdentityAnalyzer, true>(server, *it,  mangleInvertedIndexStringIdentity("keys")); },
-    [](auto& server, auto const& it) { assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("keys2")); },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream, true>(server, *it,
+                                                     mangleNumeric("boost"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer, true>(
+            server, *it, mangleInvertedIndexStringIdentity("keys"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream, true>(server, *it,
+                                                     mangleNumeric("keys2"));
+      },
   };
 
-  arangodb::iresearch::InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  arangodb::iresearch::InvertedIndexFieldIterator it(
+      trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
   it.reset(json->slice(), indexMeta);
 
   for (auto& assertField : assertFields) {
@@ -2903,10 +3362,11 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_simple_object_primi
   ASSERT_FALSE(it.valid());
 }
 
-
-TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_object_primitive_type_sub_analyzers) {
+TEST_F(
+    IResearchDocumentTest,
+    InvertedFieldIterator_traverse_complex_object_primitive_type_sub_analyzers) {
   auto const indexMetaJson = arangodb::velocypack::Parser::fromJson(
-  R"({"fields" : [{"name": "boost"},
+      R"({"fields" : [{"name": "boost"},
                   {"name": "never_present"},
                   {"name": "keys[*]"},
                   {"name": "keys2[*]", "analyzer": "iresearch-document-number"},
@@ -2920,15 +3380,15 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_object_prim
   arangodb::iresearch::InvertedIndexFieldMeta indexMeta;
   std::string error;
   ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
-                            error, sysVocbase.get()->name()));
+                             error, sysVocbase.get()->name()));
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
   auto json = arangodb::velocypack::Parser::fromJson(
-  R"({
+      R"({
     "nested": {"foo": "str"},
     "keys": ["1", "2"],
     "keys2": ["1", "2"],
@@ -2945,66 +3405,77 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_object_prim
 
   std::function<AssertInvertedIndexFieldFunc> const assertFields[] = {
       [](auto& server, auto const& it) {
-        assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("boost"));
+        assertField<irs::numeric_token_stream, true>(server, *it,
+                                                     mangleNumeric("boost"));
       },
       [](auto& server, auto const& it) {
-        assertField<IdentityAnalyzer, true>(server, *it,
-                                            mangleInvertedIndexStringIdentity("keys"));
+        assertField<IdentityAnalyzer, true>(
+            server, *it, mangleInvertedIndexStringIdentity("keys"));
       },
       [](auto& server, auto const& it) {
-        assertField<IdentityAnalyzer, true>(server, *it,
-                                            mangleInvertedIndexStringIdentity("keys"));
+        assertField<IdentityAnalyzer, true>(
+            server, *it, mangleInvertedIndexStringIdentity("keys"));
       },
       [](auto& server, auto const& it) {
         assertField<irs::numeric_token_stream, true>(server, *it,
-                                            mangleNumeric("keys2"));
+                                                     mangleNumeric("keys2"));
       },
       [](auto& server, auto const& it) {
         assertField<irs::numeric_token_stream, true>(server, *it,
-                                            mangleNumeric("keys2"));
-      },
-      [](auto& server, auto const& it) {
-        assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("depth"));
-      },
-      [](auto& server, auto const& it) {
-        assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("depth"));
-      },
-      [](auto& server, auto const& it) {
-        assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("depth"));
-      },
-      [](auto& server, auto const& it) {
-        assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("fields.fieldA.name"));
-      },
-      [](auto& server, auto const& it) {
-        assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("array.id"));
-      },
-      [](auto& server, auto const& it) {
-        assertField<IdentityAnalyzer, true>(server, *it, mangleInvertedIndexStringIdentity("array.id"));
-      },
-      [](auto& server, auto const& it) {
-        assertField<IdentityAnalyzer, true>(server, *it, mangleInvertedIndexStringIdentity("array.id"));
-      },
-      [](auto& server, auto const& it) {
-        assertField<irs::null_token_stream>(server, *it, mangleNull("array.id"));
-      },
-      [](auto& server, auto const& it) {
-        assertField<IdentityAnalyzer, true>(server, *it,
-                                            mangleInvertedIndexStringIdentity("array.subobj.id"));
-      },
-      [](auto& server, auto const& it) {
-        assertField<irs::null_token_stream>(server, *it, mangleNull("array.subobj.id"));
-      },
-      [](auto& server, auto const& it) {
-        assertField<IdentityAnalyzer, true>(server, *it,
-                                            mangleInvertedIndexStringIdentity("array.subobj.id"));
+                                                     mangleNumeric("keys2"));
       },
       [](auto& server, auto const& it) {
         assertField<irs::numeric_token_stream, true>(server, *it,
-                                            mangleNumeric("array.subobj.id"));
+                                                     mangleNumeric("depth"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream, true>(server, *it,
+                                                     mangleNumeric("depth"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream, true>(server, *it,
+                                                     mangleNumeric("depth"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream, true>(
+            server, *it, mangleNumeric("fields.fieldA.name"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream, true>(server, *it,
+                                                     mangleNumeric("array.id"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer, true>(
+            server, *it, mangleInvertedIndexStringIdentity("array.id"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer, true>(
+            server, *it, mangleInvertedIndexStringIdentity("array.id"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::null_token_stream>(server, *it,
+                                            mangleNull("array.id"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer, true>(
+            server, *it, mangleInvertedIndexStringIdentity("array.subobj.id"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::null_token_stream>(server, *it,
+                                            mangleNull("array.subobj.id"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<IdentityAnalyzer, true>(
+            server, *it, mangleInvertedIndexStringIdentity("array.subobj.id"));
+      },
+      [](auto& server, auto const& it) {
+        assertField<irs::numeric_token_stream, true>(
+            server, *it, mangleNumeric("array.subobj.id"));
       },
   };
 
-  arangodb::iresearch::InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  arangodb::iresearch::InvertedIndexFieldIterator it(
+      trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
   it.reset(json->slice(), indexMeta);
 
   size_t fieldIdx{};
@@ -3038,9 +3509,9 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
                              error, sysVocbase.get()->name()));
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({
@@ -3062,15 +3533,16 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
 
   std::function<AssertInvertedIndexFieldFunc> const assertFields[] = {
       [](auto& server, auto const& it) {
-        assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("boost"));
+        assertField<irs::numeric_token_stream, true>(server, *it,
+                                                     mangleNumeric("boost"));
       },
       [](auto& server, auto const& it) {
-        assertField<IdentityAnalyzer, true>(server, *it,
-                                            mangleInvertedIndexStringIdentity("keys"));
+        assertField<IdentityAnalyzer, true>(
+            server, *it, mangleInvertedIndexStringIdentity("keys"));
       },
       [](auto& server, auto const& it) {
-        assertField<IdentityAnalyzer, true>(server, *it,
-                                            mangleInvertedIndexStringIdentity("keys"));
+        assertField<IdentityAnalyzer, true>(
+            server, *it, mangleInvertedIndexStringIdentity("keys"));
       },
       [](auto& server, auto const& it) {
         assertField<arangodb::iresearch::GeoJSONAnalyzer, false>(
@@ -3085,53 +3557,57 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
             server, *it, "keys2", "my_geo");
       },
       [](auto& server, auto const& it) {
-        assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("depth"));
+        assertField<irs::numeric_token_stream, true>(server, *it,
+                                                     mangleNumeric("depth"));
       },
       [](auto& server, auto const& it) {
-        assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("depth"));
+        assertField<irs::numeric_token_stream, true>(server, *it,
+                                                     mangleNumeric("depth"));
       },
       [](auto& server, auto const& it) {
-        assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("depth"));
+        assertField<irs::numeric_token_stream, true>(server, *it,
+                                                     mangleNumeric("depth"));
       },
       [](auto& server, auto const& it) {
-        assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("fields.fieldA.name"));
+        assertField<irs::numeric_token_stream, true>(
+            server, *it, mangleNumeric("fields.fieldA.name"));
       },
       [](auto& server, auto const& it) {
-        assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("array.id"));
+        assertField<irs::numeric_token_stream, true>(server, *it,
+                                                     mangleNumeric("array.id"));
       },
       [](auto& server, auto const& it) {
-        assertField<IdentityAnalyzer, true>(server, *it,
-                                            mangleInvertedIndexStringIdentity("array.id"));
+        assertField<IdentityAnalyzer, true>(
+            server, *it, mangleInvertedIndexStringIdentity("array.id"));
       },
       [](auto& server, auto const& it) {
-        assertField<IdentityAnalyzer, true>(server, *it,
-                                            mangleInvertedIndexStringIdentity("array.id"));
+        assertField<IdentityAnalyzer, true>(
+            server, *it, mangleInvertedIndexStringIdentity("array.id"));
       },
       [](auto& server, auto const& it) {
-        assertField<irs::null_token_stream>(server, *it, mangleNull("array.id"));
+        assertField<irs::null_token_stream>(server, *it,
+                                            mangleNull("array.id"));
       },
       [](auto& server, auto const& it) {
-        assertField<arangodb::iresearch::GeoJSONAnalyzer>(server, *it,
-                                                          "array.subobj.id",
-                                                          "my_geo");
+        assertField<arangodb::iresearch::GeoJSONAnalyzer>(
+            server, *it, "array.subobj.id", "my_geo");
       },
       [](auto& server, auto const& it) {
-        assertField<irs::null_token_stream>(server, *it, mangleNull("array.subobj.id"));
+        assertField<irs::null_token_stream>(server, *it,
+                                            mangleNull("array.subobj.id"));
       },
       [](auto& server, auto const& it) {
-        assertField<arangodb::iresearch::GeoJSONAnalyzer>(server, *it,
-                                                          "array.subobj.id",
-                                                          "my_geo");
+        assertField<arangodb::iresearch::GeoJSONAnalyzer>(
+            server, *it, "array.subobj.id", "my_geo");
       },
       [](auto& server, auto const& it) {
-        assertField<arangodb::iresearch::GeoJSONAnalyzer>(server, *it,
-                                                          "array.subobj.id",
-                                                          "my_geo");
+        assertField<arangodb::iresearch::GeoJSONAnalyzer>(
+            server, *it, "array.subobj.id", "my_geo");
       },
   };
 
-  arangodb::iresearch::InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
-                                                     arangodb::IndexId(0));
+  arangodb::iresearch::InvertedIndexFieldIterator it(
+      trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
   it.reset(json->slice(), indexMeta);
 
   size_t fieldIdx{};
@@ -3158,20 +3634,21 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_not_array_expansion) {
                              error, sysVocbase.get()->name()));
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({"keys": "not_an_array", "boost": 10})");
 
-  arangodb::iresearch::InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
-                                                     arangodb::IndexId(0));
+  arangodb::iresearch::InvertedIndexFieldIterator it(
+      trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
   it.reset(json->slice(), indexMeta);
   size_t fieldIdx{};
   ASSERT_TRUE(it.valid());
-  assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("boost"));
-  ++it; // "keys" is just ignored
+  assertField<irs::numeric_token_stream, true>(server, *it,
+                                               mangleNumeric("boost"));
+  ++it;  // "keys" is just ignored
   ASSERT_FALSE(it.valid());
 }
 
@@ -3188,19 +3665,20 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_array_no_expansion) {
                              error, sysVocbase.get()->name()));
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({"keys": [1,2,3], "boost": 10})");
 
-  arangodb::iresearch::InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
-                                                     arangodb::IndexId(0));
+  arangodb::iresearch::InvertedIndexFieldIterator it(
+      trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
   it.reset(json->slice(), indexMeta);
   size_t fieldIdx{};
   ASSERT_TRUE(it.valid());
-  assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("boost"));
+  assertField<irs::numeric_token_stream, true>(server, *it,
+                                               mangleNumeric("boost"));
   ASSERT_THROW(++it, arangodb::basics::Exception);
 }
 
@@ -3217,22 +3695,22 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_object) {
                              error, sysVocbase.get()->name()));
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({"keys": { "a":1, "b":2, "c":3}, "boost": 10})");
 
-  arangodb::iresearch::InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
-                                                     arangodb::IndexId(0));
+  arangodb::iresearch::InvertedIndexFieldIterator it(
+      trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
   it.reset(json->slice(), indexMeta);
   size_t fieldIdx{};
   ASSERT_TRUE(it.valid());
-  assertField<irs::numeric_token_stream, true>(server, *it, mangleNumeric("boost"));
+  assertField<irs::numeric_token_stream, true>(server, *it,
+                                               mangleNumeric("boost"));
   ASSERT_THROW(++it, arangodb::basics::Exception);
 }
-
 
 TEST_F(IResearchDocumentTest, InvertedFieldIterator_empty) {
   auto const indexMetaJson = arangodb::velocypack::Parser::fromJson(
@@ -3247,17 +3725,16 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_empty) {
                              error, sysVocbase.get()->name()));
 
   std::vector<std::string> EMPTY;
-  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
-                                     EMPTY, EMPTY, EMPTY,
-                                     arangodb::transaction::Options());
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
 
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({"not_keys": { "a":1, "b":2, "c":3}, "some_boost": 10})");
 
-  arangodb::iresearch::InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
-                                                     arangodb::IndexId(0));
+  arangodb::iresearch::InvertedIndexFieldIterator it(
+      trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
   it.reset(json->slice(), indexMeta);
   size_t fieldIdx{};
   ASSERT_FALSE(it.valid());
 }
-

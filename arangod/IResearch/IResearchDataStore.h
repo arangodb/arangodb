@@ -76,20 +76,21 @@ class AsyncLinkHandle final {
   void reset();
 
   AsyncValue<IResearchDataStore> _link;
-  std::atomic_bool _asyncTerminate{false};  // trigger termination of long-running async jobs
+  std::atomic_bool _asyncTerminate{
+      false};  // trigger termination of long-running async jobs
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container storing the index state for a given TransactionState
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchTrxState final : public TransactionState::Cookie {
   irs::index_writer::documents_context _ctx;
-  AsyncValue<IResearchDataStore>::Value _linkLock; // prevent data-store deallocation (lock @ AsyncSelf)
+  AsyncValue<IResearchDataStore>::Value
+      _linkLock;  // prevent data-store deallocation (lock @ AsyncSelf)
   PrimaryKeyFilterContainer _removals;  // list of document removals
 
   IResearchTrxState(AsyncValue<IResearchDataStore>::Value&& linkLock,
-               irs::index_writer& writer) noexcept
+                    irs::index_writer& writer) noexcept
       : _ctx(writer.documents()), _linkLock(std::move(linkLock)) {
     TRI_ASSERT(_linkLock.ownsLock());
   }
@@ -101,11 +102,13 @@ struct IResearchTrxState final : public TransactionState::Cookie {
 
     try {
       // hold references even after transaction
-      auto filter = std::make_unique<PrimaryKeyFilterContainer>(std::move(_removals));
+      auto filter =
+          std::make_unique<PrimaryKeyFilterContainer>(std::move(_removals));
       _ctx.remove(std::unique_ptr<irs::filter>(std::move(filter)));
     } catch (std::exception const& e) {
       LOG_TOPIC("eb463", ERR, arangodb::iresearch::TOPIC)
-          << "caught exception while applying accumulated removals: " << e.what();
+          << "caught exception while applying accumulated removals: "
+          << e.what();
     } catch (...) {
       LOG_TOPIC("14917", ERR, arangodb::iresearch::TOPIC)
           << "caught exception while applying accumulated removals";
@@ -140,7 +143,8 @@ class IResearchDataStore {
     Snapshot& operator=(Snapshot const&) = delete;
     Snapshot() = default;
     ~Snapshot() = default;
-    Snapshot(AsyncValue<IResearchDataStore>::Value&& lock, irs::directory_reader&& reader) noexcept
+    Snapshot(AsyncValue<IResearchDataStore>::Value&& lock,
+             irs::directory_reader&& reader) noexcept
         : _lock{std::move(lock)}, _reader{std::move(reader)} {
       TRI_ASSERT(_lock.ownsLock());
     }
@@ -162,7 +166,8 @@ class IResearchDataStore {
     }
 
    private:
-    AsyncValue<IResearchDataStore>::Value _lock;  // lock preventing data store deallocation
+    AsyncValue<IResearchDataStore>::Value
+        _lock;  // lock preventing data store deallocation
     irs::directory_reader _reader;
   };
 
@@ -190,15 +195,12 @@ class IResearchDataStore {
   /// @return the associated collection
   /// @note arangodb::Index override
   //////////////////////////////////////////////////////////////////////////////
-  LogicalCollection& collection() const noexcept {
-    return _collection;
-  }
+  LogicalCollection& collection() const noexcept { return _collection; }
 
   static bool hasSelectivityEstimate();  // arangodb::Index override
 
-  
   void afterTruncate(TRI_voc_tick_t tick,
-                     transaction::Methods* trx); // arangodb::Index override
+                     transaction::Methods* trx);  // arangodb::Index override
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief give derived class chance to fine-tune iresearch storage
@@ -220,36 +222,34 @@ class IResearchDataStore {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief lookup referenced analyzer
   ////////////////////////////////////////////////////////////////////////////////
-  virtual AnalyzerPool::ptr findAnalyzer(AnalyzerPool const& analyzer) const = 0;
+  virtual AnalyzerPool::ptr findAnalyzer(
+      AnalyzerPool const& analyzer) const = 0;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an ArangoDB document from an iResearch View
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
-  Result remove(transaction::Methods& trx,
-                LocalDocumentId const& documentId,
+  Result remove(transaction::Methods& trx, LocalDocumentId const& documentId,
                 velocypack::Slice const doc);
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief insert an ArangoDB document into an iResearch View using '_meta' params
+  /// @brief insert an ArangoDB document into an iResearch View using '_meta'
+  /// params
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
   template<typename FieldIteratorType, typename MetaType>
-  Result insert(transaction::Methods& trx,
-                LocalDocumentId const& documentId,
-                velocypack::Slice const doc,
-                MetaType const& meta);
+  Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
+                velocypack::Slice const doc, MetaType const& meta);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update runtine data processing properties
   /// @return success
   //////////////////////////////////////////////////////////////////////////////
   Result properties(IResearchViewMeta const& meta);
- 
+
  protected:
   friend struct CommitTask;
   friend struct ConsolidationTask;
-
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief index stats
@@ -286,7 +286,7 @@ class IResearchDataStore {
     /// @brief commit is done
     ////////////////////////////////////////////////////////////////////////////
     DONE
-  }; // CommitResult
+  };  // CommitResult
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying iresearch data store
@@ -298,11 +298,13 @@ class IResearchDataStore {
     irs::utf8_path _path;
     irs::directory_reader _reader;
     irs::index_writer::ptr _writer;
-    TRI_voc_tick_t _recoveryTick{0};  // the tick at which data store was recovered
+    TRI_voc_tick_t _recoveryTick{
+        0};  // the tick at which data store was recovered
     std::atomic_bool _inRecovery{false};  // data store is in recovery
     explicit operator bool() const noexcept { return _directory && _writer; }
 
-    void resetDataStore() noexcept {  // reset all underlying readers to release file handles
+    void resetDataStore() noexcept {  // reset all underlying readers to release
+                                      // file handles
       _reader.reset();
       _writer.reset();
       _directory.reset();
@@ -314,7 +316,6 @@ class IResearchDataStore {
     uint64_t timeMs;
   };
 
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run filesystem cleanup on the data store
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
@@ -332,9 +333,10 @@ class IResearchDataStore {
   /// @brief run segment consolidation on the data store
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  UnsafeOpResult consolidateUnsafe(IResearchViewMeta::ConsolidationPolicy const& policy,
-                                   irs::merge_writer::flush_progress_t const& progress,
-                                   bool& emptyConsolidation);
+  UnsafeOpResult consolidateUnsafe(
+      IResearchViewMeta::ConsolidationPolicy const& policy,
+      irs::merge_writer::flush_progress_t const& progress,
+      bool& emptyConsolidation);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run filesystem cleanup on the data store
@@ -353,16 +355,18 @@ class IResearchDataStore {
   /// @brief run segment consolidation on the data store
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  Result consolidateUnsafeImpl(IResearchViewMeta::ConsolidationPolicy const& policy,
-                               irs::merge_writer::flush_progress_t const& progress,
-                               bool& emptyConsolidation);
+  Result consolidateUnsafeImpl(
+      IResearchViewMeta::ConsolidationPolicy const& policy,
+      irs::merge_writer::flush_progress_t const& progress,
+      bool& emptyConsolidation);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the data store with a new or from an existing directory
   //////////////////////////////////////////////////////////////////////////////
-  Result initDataStore(InitCallback const& initCallback, uint32_t version, bool sorted,
-                       std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-                       irs::type_info::type_id primarySortCompression);
+  Result initDataStore(
+      InitCallback const& initCallback, uint32_t version, bool sorted,
+      std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
+      irs::type_info::type_id primarySortCompression);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief schedule a commit job
@@ -375,17 +379,18 @@ class IResearchDataStore {
   void scheduleConsolidation(std::chrono::milliseconds delay);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief wait for all outstanding commit/consolidate operations and closes data store
+  /// @brief wait for all outstanding commit/consolidate operations and closes
+  /// data store
   //////////////////////////////////////////////////////////////////////////////
   Result shutdownDataStore();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief wait for all outstanding commit/consolidate operations and remove data store
+  /// @brief wait for all outstanding commit/consolidate operations and remove
+  /// data store
   //////////////////////////////////////////////////////////////////////////////
   Result deleteDataStore();
 
  public:  // TODO public only for tests, make protected
-  
   // TODO: Generalize for Link/Index
   struct LinkStats : Stats {
     void needName() const;
@@ -408,7 +413,6 @@ class IResearchDataStore {
   std::tuple<uint64_t, uint64_t, uint64_t> avgTime() const;
 
  protected:
-
   Stats statsSynced() const;
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get index stats for current snapshot
@@ -419,34 +423,39 @@ class IResearchDataStore {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief insert statistic to MetricsFeature
   //////////////////////////////////////////////////////////////////////////////
-  virtual void insertStats() {};
+  virtual void insertStats(){};
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove statistic from MetricsFeature
   //////////////////////////////////////////////////////////////////////////////
-  virtual void removeStats() {};
+  virtual void removeStats(){};
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update store statistics in MetricsFeature
   //////////////////////////////////////////////////////////////////////////////
-  virtual void updateStats(Stats const&) {};
+  virtual void updateStats(Stats const&){};
 
   virtual void invalidateQueryCache(TRI_vocbase_t*) = 0;
 
   StorageEngine* _engine;
   VPackComparer _comparer;
-  IResearchFeature* _asyncFeature;  // the feature where async jobs were registered (nullptr == no jobs registered)
-  AsyncLinkPtr _asyncSelf;  // 'this' for the lifetime of the link (for use with asynchronous calls)
+  IResearchFeature*
+      _asyncFeature;  // the feature where async jobs were registered (nullptr
+                      // == no jobs registered)
+  AsyncLinkPtr _asyncSelf;  // 'this' for the lifetime of the link (for use with
+                            // asynchronous calls)
   LogicalCollection& _collection;  // the linked collection
-  DataStore _dataStore;  // the iresearch data store, protected by _asyncSelf->mutex()
+  DataStore
+      _dataStore;  // the iresearch data store, protected by _asyncSelf->mutex()
   std::shared_ptr<FlushSubscription> _flushSubscription;
   std::shared_ptr<MaintenanceState> _maintenanceState;
   IndexId const _id;                  // the index identifier
   TRI_voc_tick_t _lastCommittedTick;  // protected by _commitMutex
   size_t _cleanupIntervalCount;
   std::mutex _commitMutex;  // prevents data store sequential commits
-  std::function<void(transaction::Methods& trx, transaction::Status status)> _trxCallback;  // for insert(...)/remove(...)
-  
+  std::function<void(transaction::Methods& trx, transaction::Status status)>
+      _trxCallback;  // for insert(...)/remove(...)
+
   metrics::Gauge<uint64_t>* _numFailedCommits;
   metrics::Gauge<uint64_t>* _numFailedCleanups;
   metrics::Gauge<uint64_t>* _numFailedConsolidations;
@@ -463,5 +472,5 @@ class IResearchDataStore {
 
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
                                 IResearchDataStore const& link);
-} // namespace iresearch
-} // namespace arangodb
+}  // namespace iresearch
+}  // namespace arangodb

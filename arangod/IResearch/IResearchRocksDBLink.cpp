@@ -37,13 +37,16 @@
 #include "IResearchRocksDBLink.h"
 #include "IResearchRocksDBEncryption.h"
 
-
 namespace arangodb {
 namespace iresearch {
 
-IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid, LogicalCollection& collection, uint64_t objectId)
-    : RocksDBIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice(objectId).slice(),
-                   RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Invalid),
+IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid,
+                                           LogicalCollection& collection,
+                                           uint64_t objectId)
+    : RocksDBIndex(iid, collection,
+                   IResearchLinkHelper::emptyIndexSlice(objectId).slice(),
+                   RocksDBColumnFamilyManager::get(
+                       RocksDBColumnFamilyManager::Family::Invalid),
                    false),
       IResearchLink(iid, collection) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -56,7 +59,7 @@ void IResearchRocksDBLink::toVelocyPack(
     std::underlying_type<Index::Serialize>::type flags) const {
   if (builder.isOpenObject()) {
     THROW_ARANGO_EXCEPTION(Result(  // result
-        TRI_ERROR_BAD_PARAMETER,              // code
+        TRI_ERROR_BAD_PARAMETER,    // code
         std::string("failed to generate link definition for arangosearch view "
                     "RocksDB link '") +
             std::to_string(Index::id().id()) + "'"));
@@ -88,33 +91,35 @@ void IResearchRocksDBLink::toVelocyPack(
   builder.close();
 }
 
-IResearchRocksDBLink::IndexFactory::IndexFactory(application_features::ApplicationServer& server)
+IResearchRocksDBLink::IndexFactory::IndexFactory(
+    application_features::ApplicationServer& server)
     : IndexTypeFactory(server) {}
 
 bool IResearchRocksDBLink::IndexFactory::equal(
-    VPackSlice lhs,
-    VPackSlice rhs,
-    std::string const& dbname) const {
+    VPackSlice lhs, VPackSlice rhs, std::string const& dbname) const {
   return IResearchLinkHelper::equal(_server, lhs, rhs, dbname);
 }
 
 std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
-    LogicalCollection& collection, VPackSlice definition,
-    IndexId id, bool /*isClusterConstructor*/) const {
-  uint64_t objectId = basics::VelocyPackHelper::stringUInt64(definition, arangodb::StaticStrings::ObjectId);
+    LogicalCollection& collection, VPackSlice definition, IndexId id,
+    bool /*isClusterConstructor*/) const {
+  uint64_t objectId = basics::VelocyPackHelper::stringUInt64(
+      definition, arangodb::StaticStrings::ObjectId);
   auto link = std::make_shared<IResearchRocksDBLink>(id, collection, objectId);
 
-  auto const res = link->init(definition, [this]() -> irs::directory_attributes {
-    auto& selector = _server.getFeature<EngineSelectorFeature>();
-    TRI_ASSERT(selector.isRocksDB());
-    auto& engine = selector.engine<RocksDBEngine>();
-    auto* encryption = engine.encryptionProvider();
-    if (encryption) {
-      return irs::directory_attributes{0, std::make_unique<RocksDBEncryptionProvider>(*encryption,
-                                                          engine.rocksDBOptions())};
-    }
-    return irs::directory_attributes{};
-  });
+  auto const res =
+      link->init(definition, [this]() -> irs::directory_attributes {
+        auto& selector = _server.getFeature<EngineSelectorFeature>();
+        TRI_ASSERT(selector.isRocksDB());
+        auto& engine = selector.engine<RocksDBEngine>();
+        auto* encryption = engine.encryptionProvider();
+        if (encryption) {
+          return irs::directory_attributes{
+              0, std::make_unique<RocksDBEncryptionProvider>(
+                     *encryption, engine.rocksDBOptions())};
+        }
+        return irs::directory_attributes{};
+      });
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -124,18 +129,17 @@ std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
 }
 
 Result IResearchRocksDBLink::IndexFactory::normalize(
-    VPackBuilder& normalized,
-    VPackSlice definition,
-    bool isCreation,
+    VPackBuilder& normalized, VPackSlice definition, bool isCreation,
     TRI_vocbase_t const& vocbase) const {
   // no attribute set in a definition -> old version
   constexpr LinkVersion defaultVersion = LinkVersion::MIN;
 
-  return IResearchLinkHelper::normalize(
-      normalized, definition, isCreation, vocbase, defaultVersion);
+  return IResearchLinkHelper::normalize(normalized, definition, isCreation,
+                                        vocbase, defaultVersion);
 }
 
-std::shared_ptr<IResearchRocksDBLink::IndexFactory> IResearchRocksDBLink::createFactory(
+std::shared_ptr<IResearchRocksDBLink::IndexFactory>
+IResearchRocksDBLink::createFactory(
     application_features::ApplicationServer& server) {
   return std::shared_ptr<IResearchRocksDBLink::IndexFactory>(
       new IResearchRocksDBLink::IndexFactory(server));

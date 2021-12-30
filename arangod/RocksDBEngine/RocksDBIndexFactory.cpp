@@ -384,7 +384,8 @@ RocksDBIndexFactory::RocksDBIndexFactory(
                                                Index::TRI_IDX_TYPE_TTL_INDEX);
   static const PrimaryIndexFactory primaryIndexFactory(server);
   static const ZkdIndexFactory zkdIndexFactory(server);
-  static const iresearch::IResearchRocksDBInvertedIndexFactory iresearchInvertedIndexFactory(server);
+  static const iresearch::IResearchRocksDBInvertedIndexFactory
+      iresearchInvertedIndexFactory(server);
 
   emplace("edge", edgeIndexFactory);
   emplace("fulltext", fulltextIndexFactory);

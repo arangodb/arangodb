@@ -40,7 +40,8 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
   RocksDBGeoIndex() = delete;
 
   RocksDBGeoIndex(IndexId iid, arangodb::LogicalCollection& collection,
-                  arangodb::velocypack::Slice const& info, std::string const& typeName);
+                  arangodb::velocypack::Slice const& info,
+                  std::string const& typeName);
 
   ~RocksDBGeoIndex() = default;
 
@@ -57,12 +58,11 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   char const* typeName() const override { return _typeName.c_str(); }
 
-  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
-                                                      arangodb::aql::AstNode const* node,
-                                                      arangodb::aql::Variable const* reference,
-                                                      IndexIteratorOptions const& opts,
-                                                      ReadOwnWrites readOwnWrites,
-                                                      int) override;
+  std::unique_ptr<IndexIterator> iteratorForCondition(
+      transaction::Methods* trx, arangodb::aql::AstNode const* node,
+      arangodb::aql::Variable const* reference,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+      int) override;
 
   bool canBeDropped() const override { return true; }
 
@@ -70,8 +70,9 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   bool hasSelectivityEstimate() const override { return false; }
 
-  void toVelocyPack(velocypack::Builder&,
-                    std::underlying_type<arangodb::Index::Serialize>::type) const override;
+  void toVelocyPack(
+      velocypack::Builder&,
+      std::underlying_type<arangodb::Index::Serialize>::type) const override;
 
   bool matchesDefinition(velocypack::Slice const& info) const override;
 
@@ -83,10 +84,10 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice doc) override;
+                LocalDocumentId const& documentId,
+                velocypack::Slice doc) override;
 
  private:
   std::string const _typeName;
 };
 }  // namespace arangodb
-

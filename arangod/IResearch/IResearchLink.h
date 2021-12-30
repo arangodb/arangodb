@@ -92,7 +92,8 @@ class IResearchLink : public IResearchDataStore {
   void load();
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief index comparator, used by the coordinator to detect if the specified
+  /// @brief index comparator, used by the coordinator to detect if the
+  /// specified
   ///        definition is the same as this link
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
@@ -137,7 +138,8 @@ class IResearchLink : public IResearchDataStore {
   /// @brief initialize from the specified definition used in make(...)
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
-  Result init(velocypack::Slice const& definition, InitCallback const& initCallback = {});
+  Result init(velocypack::Slice const& definition,
+              InitCallback const& initCallback = {});
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @return arangosearch internal format identifier
@@ -149,19 +151,20 @@ class IResearchLink : public IResearchDataStore {
   ////////////////////////////////////////////////////////////////////////////////
   IResearchViewStoredValues const& storedValues() const noexcept;
 
-  /// @brief sets the _collectionName in Link meta. Used in cluster only to store
-  /// linked collection name (as shard name differs from the cluster-wide collection name)
-  /// @param name collection to set. Should match existing value of the _collectionName
-  /// if it is not empty.
-  /// @return true if name not existed in link before and was actually set by this call,
-  /// false otherwise
+  /// @brief sets the _collectionName in Link meta. Used in cluster only to
+  /// store linked collection name (as shard name differs from the cluster-wide
+  /// collection name)
+  /// @param name collection to set. Should match existing value of the
+  /// _collectionName if it is not empty.
+  /// @return true if name not existed in link before and was actually set by
+  /// this call, false otherwise
   bool setCollectionName(irs::string_ref name) noexcept;
 
-  /// @brief insert an ArangoDB document into an iResearch View using '_meta' params
+  /// @brief insert an ArangoDB document into an iResearch View using '_meta'
+  /// params
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
-  Result insert(transaction::Methods& trx,
-                LocalDocumentId const documentId,
+  Result insert(transaction::Methods& trx, LocalDocumentId const documentId,
                 velocypack::Slice const doc);
 
   std::string const& getViewId() const noexcept;
@@ -169,12 +172,10 @@ class IResearchLink : public IResearchDataStore {
   std::string const& getShardName() const noexcept;
   std::string getCollectionName() const;
 
-  
   // TODO: Generalize for Link/Index
   struct LinkStats : Stats {
     LinkStats() = default;
-    explicit LinkStats(Stats const& storeStats)
-      : Stats(storeStats) { }
+    explicit LinkStats(Stats const& storeStats) : Stats(storeStats) {}
 
     void needName() const;
     void toPrometheus(std::string& result, std::string_view globals,
@@ -183,7 +184,6 @@ class IResearchLink : public IResearchDataStore {
    private:
     mutable bool _needName{false};
   };
-  
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get index stats for current snapshot
@@ -204,11 +204,10 @@ class IResearchLink : public IResearchDataStore {
   void invalidateQueryCache(TRI_vocbase_t* vocbase) override;
 
  private:
-
-  
   metrics::Batch<LinkStats>* _linkStats;
   IResearchLinkMeta const _meta;
-  std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
+  std::string const _viewGuid;  // the identifier of the desired view
+                                // (read-only, set via init())
 };
 
 }  // namespace iresearch

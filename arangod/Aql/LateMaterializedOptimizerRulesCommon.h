@@ -25,7 +25,7 @@
 
 #include <memory>
 #include <vector>
-#include <string> 
+#include <string>
 
 namespace arangodb {
 
@@ -36,7 +36,7 @@ struct AttributeName;
 namespace iresearch {
 class IResearchViewSort;
 class IResearchViewStoredValues;
-}
+}  // namespace iresearch
 
 namespace aql {
 struct AstNode;
@@ -75,7 +75,6 @@ struct AttributeAndField {
   T afData;
 };
 
-
 template<typename T>
 struct NodeWithAttrs {
   using DataType = T;
@@ -92,38 +91,40 @@ using NodeWithAttrsColumn = NodeWithAttrs<AstAndColumnFieldData>;
 
 template<bool postfixLen>
 struct ColumnVariant {
-  using PostfixType = std::conditional_t<postfixLen, size_t,
-                                         std::vector<std::string>>;
-  using DataType = std::conditional_t<postfixLen, 
-                     IndexFieldData,
-                     AstAndColumnFieldData>;
+  using PostfixType =
+      std::conditional_t<postfixLen, size_t, std::vector<std::string>>;
+  using DataType =
+      std::conditional_t<postfixLen, IndexFieldData, AstAndColumnFieldData>;
 
   DataType* afData;
   size_t fieldNum;
   std::vector<arangodb::basics::AttributeName> const* field;
   PostfixType postfix;
 
-  ColumnVariant(DataType* afData,
-                size_t fieldNum,
+  ColumnVariant(DataType* afData, size_t fieldNum,
                 std::vector<arangodb::basics::AttributeName> const* field,
-                PostfixType&& postfix) :
-    afData(afData), fieldNum(fieldNum), field(field), postfix(std::move(postfix)) {
-  }
+                PostfixType&& postfix)
+      : afData(afData),
+        fieldNum(fieldNum),
+        field(field),
+        postfix(std::move(postfix)) {}
 };
 
 template<bool postfixLen, typename Attrs>
-bool attributesMatch(iresearch::IResearchViewSort const& primarySort,
-                     iresearch::IResearchViewStoredValues const& storedValues,
-                     Attrs& attrs,
-                     std::vector<std::vector<ColumnVariant<postfixLen>>>& usedColumnsCounter,
-                     size_t columnsCount);
+bool attributesMatch(
+    iresearch::IResearchViewSort const& primarySort,
+    iresearch::IResearchViewStoredValues const& storedValues, Attrs& attrs,
+    std::vector<std::vector<ColumnVariant<postfixLen>>>& usedColumnsCounter,
+    size_t columnsCount);
 
 template<bool postfixLen>
-void setAttributesMaxMatchedColumns(std::vector<std::vector<ColumnVariant<postfixLen>>>& usedColumnsCounter,
-                                    size_t columnsCount);
+void setAttributesMaxMatchedColumns(
+    std::vector<std::vector<ColumnVariant<postfixLen>>>& usedColumnsCounter,
+    size_t columnsCount);
 
 template<typename T>
-bool getReferencedAttributes(AstNode* node, Variable const* variable, T& nodeAttrs);
+bool getReferencedAttributes(AstNode* node, Variable const* variable,
+                             T& nodeAttrs);
 
 template<bool postfixLen>
 bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
@@ -134,4 +135,3 @@ bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
 }  // namespace latematerialized
 }  // namespace aql
 }  // namespace arangodb
-

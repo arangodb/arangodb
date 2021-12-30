@@ -557,7 +557,8 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode,
       new IndexNode(plan, plan->nextId(), aqlCollection, indexOutVariable,
                     std::vector<transaction::Methods::IndexHandle>{
                         transaction::Methods::IndexHandle{index}},
-                    false, // here we are not using inverted index so for sure no "whole" coverage
+                    false,  // here we are not using inverted index so for sure
+                            // no "whole" coverage
                     std::move(condition), IndexIteratorOptions()));
 
   //// wrap plan part into subquery

@@ -40,11 +40,13 @@ class RocksDBCipherStream final : public irs::encryption::stream {
 
   virtual size_t block_size() const override { return _stream->BlockSize(); }
 
-  virtual bool decrypt(uint64_t offset, irs::byte_type* data, size_t size) override {
+  virtual bool decrypt(uint64_t offset, irs::byte_type* data,
+                       size_t size) override {
     return _stream->Decrypt(offset, reinterpret_cast<char*>(data), size).ok();
   }
 
-  virtual bool encrypt(uint64_t offset, irs::byte_type* data, size_t size) override {
+  virtual bool encrypt(uint64_t offset, irs::byte_type* data,
+                       size_t size) override {
     return _stream->Encrypt(offset, reinterpret_cast<char*>(data), size).ok();
   }
 
@@ -54,8 +56,9 @@ class RocksDBCipherStream final : public irs::encryption::stream {
 
 class RocksDBEncryptionProvider final : public irs::encryption {
  public:
-  static std::shared_ptr<RocksDBEncryptionProvider> make(rocksdb::EncryptionProvider& encryption,
-                                                         rocksdb::Options const& options) {
+  static std::shared_ptr<RocksDBEncryptionProvider> make(
+      rocksdb::EncryptionProvider& encryption,
+      rocksdb::Options const& options) {
     return std::make_shared<RocksDBEncryptionProvider>(encryption, options);
   }
 
@@ -67,15 +70,18 @@ class RocksDBEncryptionProvider final : public irs::encryption {
     return _encryption->GetPrefixLength();
   }
 
-  virtual bool create_header(std::string const& filename, irs::byte_type* header) override {
+  virtual bool create_header(std::string const& filename,
+                             irs::byte_type* header) override {
     return _encryption
-        ->CreateNewPrefix(filename, reinterpret_cast<char*>(header), header_length())
+        ->CreateNewPrefix(filename, reinterpret_cast<char*>(header),
+                          header_length())
         .ok();
   }
 
-  virtual encryption::stream::ptr create_stream(std::string const& filename,
-                                                irs::byte_type* header) override {
-    rocksdb::Slice headerSlice(reinterpret_cast<char const*>(header), header_length());
+  virtual encryption::stream::ptr create_stream(
+      std::string const& filename, irs::byte_type* header) override {
+    rocksdb::Slice headerSlice(reinterpret_cast<char const*>(header),
+                               header_length());
 
     std::unique_ptr<rocksdb::BlockAccessCipherStream> stream;
     if (!_encryption
@@ -91,12 +97,13 @@ class RocksDBEncryptionProvider final : public irs::encryption {
   rocksdb::EncryptionProvider* _encryption;
   rocksdb::EnvOptions _options;
 };  // RocksDBEncryptionProvider
-} // namespace iresearch
-} // namespace arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 namespace iresearch {
 // use base irs::encryption type for ancestors
 template<>
-struct type<arangodb::iresearch::RocksDBEncryptionProvider> : type<irs::encryption> { };
+struct type<arangodb::iresearch::RocksDBEncryptionProvider>
+    : type<irs::encryption> {};
 
-}
+}  // namespace iresearch

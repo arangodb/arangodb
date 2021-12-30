@@ -2215,7 +2215,8 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
 
   // Now create the Iterator
   TRI_ASSERT(!idx->inProgress());
-  return idx->iteratorForCondition(this, condition, var, opts, readOwnWrites, mutableConditionIdx);
+  return idx->iteratorForCondition(this, condition, var, opts, readOwnWrites,
+                                   mutableConditionIdx);
 }
 
 /// @brief factory for IndexIterator objects

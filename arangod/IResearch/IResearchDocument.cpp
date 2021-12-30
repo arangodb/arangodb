@@ -53,7 +53,7 @@ namespace {
 
 constexpr bool const BigEndian = false;
 
-template <bool IsLittleEndian>
+template<bool IsLittleEndian>
 struct PrimaryKeyEndianness {
   static uint64_t hostToPk(uint64_t value) {
     return arangodb::basics::hostToLittle(value);
@@ -63,7 +63,7 @@ struct PrimaryKeyEndianness {
   }
 };  // PrimaryKeyEndianness
 
-template <>
+template<>
 struct PrimaryKeyEndianness<false> {
   static uint64_t hostToPk(uint64_t value) {
     return arangodb::basics::hostToBig(value);
@@ -80,7 +80,8 @@ constexpr bool const Endianness = BigEndian;  // current PK endianness
 // ----------------------------------------------------------------------------
 
 enum AttributeType : uint8_t {
-  AT_REG = arangodb::basics::VelocyPackHelper::AttributeBase,  // regular attribute
+  AT_REG =
+      arangodb::basics::VelocyPackHelper::AttributeBase,  // regular attribute
   AT_KEY = arangodb::basics::VelocyPackHelper::KeyAttribute,    // _key
   AT_REV = arangodb::basics::VelocyPackHelper::RevAttribute,    // _rev
   AT_ID = arangodb::basics::VelocyPackHelper::IdAttribute,      // _id
@@ -88,17 +89,23 @@ enum AttributeType : uint8_t {
   AT_TO = arangodb::basics::VelocyPackHelper::ToAttribute       // _to
 };                                                              // AttributeType
 
-static_assert(arangodb::iresearch::adjacencyChecker<AttributeType>::checkAdjacency<
-                  AT_TO, AT_FROM, AT_ID, AT_REV, AT_KEY, AT_REG>(),
-              "Values are not adjacent");
+static_assert(
+    arangodb::iresearch::adjacencyChecker<AttributeType>::checkAdjacency<
+        AT_TO, AT_FROM, AT_ID, AT_REV, AT_KEY, AT_REG>(),
+    "Values are not adjacent");
 
 irs::string_ref const PK_COLUMN("@_PK");
 size_t constexpr DEFAULT_POOL_SIZE = 8;  // arbitrary value
-irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder> StringStreamPool(DEFAULT_POOL_SIZE);
-irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder> NullStreamPool(DEFAULT_POOL_SIZE);
-irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder>  BoolStreamPool(DEFAULT_POOL_SIZE);
-irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder>  NumericStreamPool(DEFAULT_POOL_SIZE);
-std::initializer_list<irs::type_info::type_id> NumericStreamFeatures { irs::type<irs::granularity_prefix>::id() };
+irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder>
+    StringStreamPool(DEFAULT_POOL_SIZE);
+irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder>
+    NullStreamPool(DEFAULT_POOL_SIZE);
+irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder>
+    BoolStreamPool(DEFAULT_POOL_SIZE);
+irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder>
+    NumericStreamPool(DEFAULT_POOL_SIZE);
+std::initializer_list<irs::type_info::type_id> NumericStreamFeatures{
+    irs::type<irs::granularity_prefix>::id()};
 
 // appends the specified 'value' to 'out'
 inline void append(std::string& out, size_t value) {
@@ -148,8 +155,9 @@ inline bool keyFromSlice(VPackSlice keySlice, irs::string_ref& key) {
   }
 }
 
-inline bool canHandleValue(std::string const& key, VPackSlice const& value,
-                           arangodb::iresearch::FieldMeta const& context) noexcept {
+inline bool canHandleValue(
+    std::string const& key, VPackSlice const& value,
+    arangodb::iresearch::FieldMeta const& context) noexcept {
   switch (value.type()) {
     case VPackValueType::None:
     case VPackValueType::Illegal:
@@ -180,8 +188,8 @@ inline bool canHandleValue(std::string const& key, VPackSlice const& value,
 }
 
 // returns 'context' in case if can't find the specified 'field'
-inline arangodb::iresearch::FieldMeta const* findMeta(irs::string_ref const& key,
-                                                      arangodb::iresearch::FieldMeta const* context) {
+inline arangodb::iresearch::FieldMeta const* findMeta(
+    irs::string_ref const& key, arangodb::iresearch::FieldMeta const* context) {
   TRI_ASSERT(context);
 
   auto const* meta = context->_fields.findPtr(key);
@@ -209,7 +217,8 @@ inline bool inObjectFiltered(std::string& buffer,
   return canHandleValue(buffer, value.value, *context);
 }
 
-inline bool inObject(std::string& buffer, arangodb::iresearch::FieldMeta const*& context,
+inline bool inObject(std::string& buffer,
+                     arangodb::iresearch::FieldMeta const*& context,
                      arangodb::iresearch::IteratorValue const& value) {
   irs::string_ref key;
 
@@ -233,12 +242,14 @@ inline bool inArrayOrdered(std::string& buffer,
   return canHandleValue(buffer, value.value, *context);
 }
 
-inline bool inArray(std::string& buffer, arangodb::iresearch::FieldMeta const*& context,
+inline bool inArray(std::string& buffer,
+                    arangodb::iresearch::FieldMeta const*& context,
                     arangodb::iresearch::IteratorValue const& value) noexcept {
   return canHandleValue(buffer, value.value, *context);
 }
 
-typedef bool (*Filter)(std::string& buffer, arangodb::iresearch::FieldMeta const*& context,
+typedef bool (*Filter)(std::string& buffer,
+                       arangodb::iresearch::FieldMeta const*& context,
                        arangodb::iresearch::IteratorValue const& value);
 
 Filter const valueAcceptors[] = {
@@ -259,17 +270,20 @@ Filter const valueAcceptors[] = {
     // type == Array , nestListValues == true, includeAllValues == true
     &inArrayOrdered};
 
-inline Filter getFilter(VPackSlice value, arangodb::iresearch::FieldMeta const& meta) noexcept {
+inline Filter getFilter(VPackSlice value,
+                        arangodb::iresearch::FieldMeta const& meta) noexcept {
   TRI_ASSERT(arangodb::iresearch::isArrayOrObject(value));
 
-  return valueAcceptors[4 * value.isArray() + 2 * meta._trackListPositions + meta._includeAllFields];
+  return valueAcceptors[4 * value.isArray() + 2 * meta._trackListPositions +
+                        meta._includeAllFields];
 }
 
-std::string getDocumentId(irs::string_ref collection,
-                          VPackSlice document) {
-  std::string_view const key = arangodb::transaction::helpers::extractKeyPart(document);
+std::string getDocumentId(irs::string_ref collection, VPackSlice document) {
+  std::string_view const key =
+      arangodb::transaction::helpers::extractKeyPart(document);
   if (key.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "failed to extract key value from document");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "failed to extract key value from document");
   }
   std::string resolved;
   resolved.reserve(collection.size() + 1 + key.size());
@@ -278,8 +292,6 @@ std::string getDocumentId(irs::string_ref collection,
   resolved.append(key.data(), key.size());
   return resolved;
 }
-
-
 
 }  // namespace
 
@@ -290,7 +302,8 @@ namespace iresearch {
 // --SECTION--                                             Field implementation
 // ----------------------------------------------------------------------------
 
-/*static*/ void Field::setPkValue(Field& field, LocalDocumentId::BaseType const& pk) {
+/*static*/ void Field::setPkValue(Field& field,
+                                  LocalDocumentId::BaseType const& pk) {
   field._name = PK_COLUMN;
   field._indexFeatures = irs::IndexFeatures::NONE;
   field._fieldFeatures = {};
@@ -299,9 +312,11 @@ namespace iresearch {
       irs::bytes_ref(reinterpret_cast<irs::byte_type const*>(&pk), sizeof(pk));
   field._analyzer = StringStreamPool.emplace(AnalyzerPool::StringStreamTag());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto& sstream = dynamic_cast<irs::string_token_stream&>(*field._analyzer.get());
+  auto& sstream =
+      dynamic_cast<irs::string_token_stream&>(*field._analyzer.get());
 #else
-  auto& sstream = static_cast<irs::string_token_stream&>(*field._analyzer.get());
+  auto& sstream =
+      static_cast<irs::string_token_stream&>(*field._analyzer.get());
 #endif
   sstream.reset(field._value);
 }
@@ -310,10 +325,12 @@ namespace iresearch {
 // --SECTION--                                     FieldIterator implementation
 // ----------------------------------------------------------------------------
 
-FieldIterator::FieldIterator(arangodb::transaction::Methods& trx, irs::string_ref collection,  IndexId linkId)
-    : _trx(&trx), _collection(collection), _linkId(linkId),
+FieldIterator::FieldIterator(arangodb::transaction::Methods& trx,
+                             irs::string_ref collection, IndexId linkId)
+    : _trx(&trx),
+      _collection(collection),
+      _linkId(linkId),
       _isDBServer(ServerState::instance()->isDBServer()) {
-
   // initialize iterator's value
 }
 
@@ -357,14 +374,15 @@ void FieldIterator::setNumericValue(VPackSlice const value) {
 
   // init stream
   auto stream = NumericStreamPool.emplace(AnalyzerPool::NumericStreamTag());
-  static_cast<irs::numeric_token_stream*>(stream.get())->reset(value.getNumber<double>());
+  static_cast<irs::numeric_token_stream*>(stream.get())
+      ->reset(value.getNumber<double>());
 
   // set field properties
   _value._name = _nameBuffer;
   _value._analyzer = std::move(stream);
   _value._indexFeatures = irs::IndexFeatures::NONE;
-  _value._fieldFeatures = { NumericStreamFeatures.begin(),
-                            NumericStreamFeatures.size() };
+  _value._fieldFeatures = {NumericStreamFeatures.begin(),
+                           NumericStreamFeatures.size()};
 }
 
 void FieldIterator::setNullValue(VPackSlice const value) {
@@ -386,10 +404,10 @@ void FieldIterator::setNullValue(VPackSlice const value) {
 bool FieldIterator::setValue(VPackSlice const value,
                              FieldMeta::Analyzer const& valueAnalyzer) {
   TRI_ASSERT(  // assert
-      (value.isCustom() && _nameBuffer == arangodb::StaticStrings::IdString)  // custom string
-      || value.isObject()
-      || value.isArray()
-      || value.isString()); // verbatim string
+      (value.isCustom() &&
+       _nameBuffer == arangodb::StaticStrings::IdString)  // custom string
+      || value.isObject() || value.isArray() ||
+      value.isString());  // verbatim string
 
   auto& pool = valueAnalyzer._pool;
 
@@ -423,14 +441,16 @@ bool FieldIterator::setValue(VPackSlice const value,
           _valueBuffer = getDocumentId(_collection, _slice);
         } else {
           LOG_TOPIC("fb53c", WARN, arangodb::iresearch::TOPIC)
-            << "Value for `_id` attribute could not be indexed for document "
-            << transaction::helpers::extractKeyFromDocument(_slice).toString()
-            << ". To recover please recreate corresponding ArangoSearch link '" << _linkId << "'";
+              << "Value for `_id` attribute could not be indexed for document "
+              << transaction::helpers::extractKeyFromDocument(_slice).toString()
+              << ". To recover please recreate corresponding ArangoSearch link "
+                 "'"
+              << _linkId << "'";
           return false;
         }
       } else {
-         _valueBuffer = transaction::helpers::extractIdString(
-             _trx->resolver(), value, _slice);
+        _valueBuffer = transaction::helpers::extractIdString(_trx->resolver(),
+                                                             value, _slice);
       }
       valueRef = _valueBuffer;
       valueType = AnalyzerValueType::String;
@@ -453,52 +473,52 @@ bool FieldIterator::setValue(VPackSlice const value,
     return false;
   }
   if (!analyzer->reset(valueRef)) {
-      return false;
+    return false;
   }
   // set field properties
   switch (pool->returnType()) {
-    case AnalyzerValueType::Bool:
-      {
-        if (!analyzer->next()) {
-          return false;
-        }
-        _currentTypedAnalyzer = std::move(analyzer);
-        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*_currentTypedAnalyzer);
-        TRI_ASSERT(_currentTypedAnalyzerValue);
-        setBoolValue(_currentTypedAnalyzerValue->value);
-        _primitiveTypeResetter = [](irs::token_stream* stream, VPackSlice slice) -> void {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-          auto bool_stream = dynamic_cast<irs::boolean_token_stream*>(stream);
-          TRI_ASSERT(bool_stream);
-#else
-          auto bool_stream = static_cast<irs::boolean_token_stream*>(stream);
-#endif
-          TRI_ASSERT(slice.isBool());
-          bool_stream->reset(slice.getBool());
-        };
+    case AnalyzerValueType::Bool: {
+      if (!analyzer->next()) {
+        return false;
       }
-      break;
-    case AnalyzerValueType::Number:
-      {
-        if (!analyzer->next()) {
-          return false;
-        }
-        _currentTypedAnalyzer = std::move(analyzer);
-        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*_currentTypedAnalyzer);
-        TRI_ASSERT(_currentTypedAnalyzerValue);
-        setNumericValue(_currentTypedAnalyzerValue->value);
-        _primitiveTypeResetter = [](irs::token_stream* stream, VPackSlice slice) -> void {
+      _currentTypedAnalyzer = std::move(analyzer);
+      _currentTypedAnalyzerValue =
+          irs::get<VPackTermAttribute>(*_currentTypedAnalyzer);
+      TRI_ASSERT(_currentTypedAnalyzerValue);
+      setBoolValue(_currentTypedAnalyzerValue->value);
+      _primitiveTypeResetter = [](irs::token_stream* stream,
+                                  VPackSlice slice) -> void {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-          auto number_stream = dynamic_cast<irs::numeric_token_stream*>(stream);
-          TRI_ASSERT(number_stream);
+        auto bool_stream = dynamic_cast<irs::boolean_token_stream*>(stream);
+        TRI_ASSERT(bool_stream);
 #else
-          auto number_stream = static_cast<irs::numeric_token_stream*>(stream);
+        auto bool_stream = static_cast<irs::boolean_token_stream*>(stream);
 #endif
-          TRI_ASSERT(slice.isNumber());
-          number_stream->reset(slice.getNumber<double>());
-        };
+        TRI_ASSERT(slice.isBool());
+        bool_stream->reset(slice.getBool());
+      };
+    } break;
+    case AnalyzerValueType::Number: {
+      if (!analyzer->next()) {
+        return false;
       }
-      break;
+      _currentTypedAnalyzer = std::move(analyzer);
+      _currentTypedAnalyzerValue =
+          irs::get<VPackTermAttribute>(*_currentTypedAnalyzer);
+      TRI_ASSERT(_currentTypedAnalyzerValue);
+      setNumericValue(_currentTypedAnalyzerValue->value);
+      _primitiveTypeResetter = [](irs::token_stream* stream,
+                                  VPackSlice slice) -> void {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        auto number_stream = dynamic_cast<irs::numeric_token_stream*>(stream);
+        TRI_ASSERT(number_stream);
+#else
+        auto number_stream = static_cast<irs::numeric_token_stream*>(stream);
+#endif
+        TRI_ASSERT(slice.isNumber());
+        number_stream->reset(slice.getNumber<double>());
+      };
+    } break;
     default: {
       iresearch::kludge::mangleField(_nameBuffer, true, valueAnalyzer);
       _value._analyzer = std::move(analyzer);
@@ -509,9 +529,10 @@ bool FieldIterator::setValue(VPackSlice const value,
   }
   auto* storeFunc = pool->storeFunc();
   if (storeFunc) {
-    auto const valueSlice = storeFunc(
-      _currentTypedAnalyzer ? _currentTypedAnalyzer.get() : _value._analyzer.get(),
-      value, _buffer);
+    auto const valueSlice =
+        storeFunc(_currentTypedAnalyzer ? _currentTypedAnalyzer.get()
+                                        : _value._analyzer.get(),
+                  value, _buffer);
 
     if (!valueSlice.isNone()) {
       _value._value = iresearch::ref<irs::byte_type>(valueSlice);
@@ -526,15 +547,16 @@ void FieldIterator::next() {
   TRI_ASSERT(valid());
 
   if (_currentTypedAnalyzer) {
-     if (_currentTypedAnalyzer->next()) {
-       TRI_ASSERT(_primitiveTypeResetter);
-       TRI_ASSERT(_currentTypedAnalyzerValue);
-       TRI_ASSERT(_value._analyzer.get());
-       _primitiveTypeResetter(_value._analyzer.get(), _currentTypedAnalyzerValue->value);
-       return;
-     } else {
-       _currentTypedAnalyzer.reset();
-     }
+    if (_currentTypedAnalyzer->next()) {
+      TRI_ASSERT(_primitiveTypeResetter);
+      TRI_ASSERT(_currentTypedAnalyzerValue);
+      TRI_ASSERT(_value._analyzer.get());
+      _primitiveTypeResetter(_value._analyzer.get(),
+                             _currentTypedAnalyzerValue->value);
+      return;
+    } else {
+      _currentTypedAnalyzer.reset();
+    }
   }
 
   FieldMeta const* context = top().meta;
@@ -544,7 +566,7 @@ void FieldIterator::next() {
   _value._value = irs::bytes_ref::NIL;
 
   while (true) {
-setAnalyzers:
+  setAnalyzers:
     while (_begin != _end) {
       // remove previous suffix
       _nameBuffer.resize(_prefixLength);
@@ -604,7 +626,7 @@ setAnalyzers:
           _begin = analyzers.data() + context->_primitiveOffset;
           _end = analyzers.data() + analyzers.size();
 
-          _prefixLength = _nameBuffer.size(); // save current prefix length
+          _prefixLength = _nameBuffer.size();  // save current prefix length
           _valueSlice = valueSlice;
 
           if (_begin != _end) {
@@ -625,7 +647,7 @@ setAnalyzers:
           _begin = analyzers.data();
           _end = _begin + context->_primitiveOffset;
 
-          _prefixLength = _nameBuffer.size(); // save current prefix length
+          _prefixLength = _nameBuffer.size();  // save current prefix length
           _valueSlice = valueSlice;
           goto setAnalyzers;
         }
@@ -644,7 +666,8 @@ setAnalyzers:
   return PK_COLUMN;
 }
 
-/*static*/ LocalDocumentId::BaseType DocumentPrimaryKey::encode(LocalDocumentId value) noexcept {
+/*static*/ LocalDocumentId::BaseType DocumentPrimaryKey::encode(
+    LocalDocumentId value) noexcept {
   return PrimaryKeyEndianness<Endianness>::hostToPk(value.id());
 }
 
@@ -658,15 +681,19 @@ setAnalyzers:
 
   // PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >= alignof(uint64_t)
   value = arangodb::LocalDocumentId(PrimaryKeyEndianness<Endianness>::pkToHost(
-      *reinterpret_cast<arangodb::LocalDocumentId::BaseType const*>(in.c_str())));
+      *reinterpret_cast<arangodb::LocalDocumentId::BaseType const*>(
+          in.c_str())));
 
   return true;
 }
 
 StoredValue::StoredValue(transaction::Methods const& t, irs::string_ref cn,
-                           VPackSlice const doc, IndexId lid)
-    : trx(t), document(doc), collection(cn),
-      linkId(lid), isDBServer(ServerState::instance()->isDBServer()) {}
+                         VPackSlice const doc, IndexId lid)
+    : trx(t),
+      document(doc),
+      collection(cn),
+      linkId(lid),
+      isDBServer(ServerState::instance()->isDBServer()) {}
 
 bool StoredValue::write(irs::data_output& out) const {
   auto size = fields->size();
@@ -679,7 +706,8 @@ bool StoredValue::write(irs::data_output& out) const {
     // _id field
     if (slice.isCustom()) {
       TRI_ASSERT(1 == storedValue.second.size() &&
-                  storedValue.second[0].name == arangodb::StaticStrings::IdString);
+                 storedValue.second[0].name ==
+                     arangodb::StaticStrings::IdString);
       buffer.reset();
       VPackBuilder builder(buffer);
       if (isDBServer) {
@@ -687,14 +715,17 @@ bool StoredValue::write(irs::data_output& out) const {
           builder.add(VPackValue(getDocumentId(collection, document)));
         } else {
           LOG_TOPIC("bf98c", WARN, arangodb::iresearch::TOPIC)
-            << "Value for `_id` attribute could not be stored for document "
-            << transaction::helpers::extractKeyFromDocument(document).toString()
-            << ". To recover please recreate corresponding ArangoSearch link '" << linkId << "'";
-           return false;
+              << "Value for `_id` attribute could not be stored for document "
+              << transaction::helpers::extractKeyFromDocument(document)
+                     .toString()
+              << ". To recover please recreate corresponding ArangoSearch link "
+                 "'"
+              << linkId << "'";
+          return false;
         }
       } else {
-          builder.add(VPackValue(transaction::helpers::extractIdString(
-              trx.resolver(), slice, document)));
+        builder.add(VPackValue(transaction::helpers::extractIdString(
+            trx.resolver(), slice, document)));
       }
 
       slice = builder.slice();
@@ -705,11 +736,12 @@ bool StoredValue::write(irs::data_output& out) const {
   return true;
 }
 
-InvertedIndexFieldIterator::InvertedIndexFieldIterator(arangodb::transaction::Methods&,
-                                                       irs::string_ref collection,
-                                                       IndexId indexId)
-  : _collection(collection), _indexId(indexId) {
-  _value._storeValues = ValueStorage::ID; // we need id column for range queries
+InvertedIndexFieldIterator::InvertedIndexFieldIterator(
+    arangodb::transaction::Methods&, irs::string_ref collection,
+    IndexId indexId)
+    : _collection(collection), _indexId(indexId) {
+  _value._storeValues =
+      ValueStorage::ID;  // we need id column for range queries
 }
 
 void InvertedIndexFieldIterator::next() {
@@ -719,7 +751,8 @@ void InvertedIndexFieldIterator::next() {
       TRI_ASSERT(_primitiveTypeResetter);
       TRI_ASSERT(_currentTypedAnalyzerValue);
       TRI_ASSERT(_value._analyzer.get());
-      _primitiveTypeResetter(_value._analyzer.get(), _currentTypedAnalyzerValue->value);
+      _primitiveTypeResetter(_value._analyzer.get(),
+                             _currentTypedAnalyzerValue->value);
       return;
     }
     _currentTypedAnalyzer.reset();
@@ -731,24 +764,25 @@ void InvertedIndexFieldIterator::next() {
         if (_begin->expansion.empty()) {
           _valueSlice = *_arrayStack.back();
         } else {
-          // for array subobjects we index "null" in case of absence as declared for other indicies
+          // for array subobjects we index "null" in case of absence as declared
+          // for other indicies
           _valueSlice = get(*_arrayStack.back(), _begin->expansion,
                             arangodb::velocypack::Slice::nullSlice());
         }
         ++_arrayStack.back();
-        _nameBuffer.resize(_prefixLength); // FIXME: just clear should work!
+        _nameBuffer.resize(_prefixLength);  // FIXME: just clear should work!
         break;
       }
       _arrayStack.pop_back();
     }
     if (_arrayStack.empty()) {
-      while(_valueSlice.isNone()) {
+      while (_valueSlice.isNone()) {
         if (++_begin == _end) {
           TRI_ASSERT(!valid());
-          return; // exhausted
+          return;  // exhausted
         }
-        _valueSlice =
-            get(_slice, _begin->attribute, arangodb::velocypack::Slice::noneSlice());
+        _valueSlice = get(_slice, _begin->attribute,
+                          arangodb::velocypack::Slice::noneSlice());
         if (!_valueSlice.isNone() && !_valueSlice.isArray() &&
             _begin->attribute.back().shouldExpand) {
           _valueSlice = VPackSlice::noneSlice();
@@ -791,7 +825,7 @@ void InvertedIndexFieldIterator::next() {
               "object or exclude field '%s' "
               "from index definition",
               _nameBuffer.c_str());
-          return; // never reached
+          return;  // never reached
         case VPackValueType::Array: {
           if (_begin->attribute.back().shouldExpand && _arrayStack.empty()) {
             _arrayStack.push_back(VPackArrayIterator(_valueSlice));
@@ -848,14 +882,15 @@ void InvertedIndexFieldIterator::setNumericValue(VPackSlice const value) {
 
   // init stream
   auto stream = NumericStreamPool.emplace(AnalyzerPool::NumericStreamTag());
-  static_cast<irs::numeric_token_stream*>(stream.get())->reset(value.getNumber<double>());
+  static_cast<irs::numeric_token_stream*>(stream.get())
+      ->reset(value.getNumber<double>());
 
   // set field properties
   _value._name = _nameBuffer;
   _value._analyzer = std::move(stream);  // FIXME don't use shared_ptr
   _value._indexFeatures = irs::IndexFeatures::NONE;
-  _value._fieldFeatures = { NumericStreamFeatures.begin(),
-                            NumericStreamFeatures.size() };
+  _value._fieldFeatures = {NumericStreamFeatures.begin(),
+                           NumericStreamFeatures.size()};
 }
 
 void InvertedIndexFieldIterator::setNullValue() {
@@ -872,11 +907,9 @@ void InvertedIndexFieldIterator::setNullValue() {
   _value._fieldFeatures = {};
 }
 
-bool InvertedIndexFieldIterator::setValue(VPackSlice const value,
-                             FieldMeta::Analyzer const& valueAnalyzer) {
-  TRI_ASSERT(value.isObject()
-            || value.isArray()
-            || value.isString());
+bool InvertedIndexFieldIterator::setValue(
+    VPackSlice const value, FieldMeta::Analyzer const& valueAnalyzer) {
+  TRI_ASSERT(value.isObject() || value.isArray() || value.isString());
 
   auto& pool = valueAnalyzer._pool;
 
@@ -921,52 +954,52 @@ bool InvertedIndexFieldIterator::setValue(VPackSlice const value,
     return false;
   }
   if (!analyzer->reset(valueRef)) {
-      return false;
+    return false;
   }
   // set field properties
   switch (pool->returnType()) {
-    case AnalyzerValueType::Bool:
-      {
-        if (!analyzer->next()) {
-          return false;
-        }
-        _currentTypedAnalyzer = std::move(analyzer);
-        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*_currentTypedAnalyzer);
-        TRI_ASSERT(_currentTypedAnalyzerValue);
-        setBoolValue(_currentTypedAnalyzerValue->value);
-        _primitiveTypeResetter = [](irs::token_stream* stream, VPackSlice slice) -> void {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-          auto bool_stream = dynamic_cast<irs::boolean_token_stream*>(stream);
-          TRI_ASSERT(bool_stream);
-#else
-          auto bool_stream = static_cast<irs::boolean_token_stream*>(stream);
-#endif
-          TRI_ASSERT(slice.isBool());
-          bool_stream->reset(slice.getBool());
-        };
+    case AnalyzerValueType::Bool: {
+      if (!analyzer->next()) {
+        return false;
       }
-      break;
-    case AnalyzerValueType::Number:
-      {
-        if (!analyzer->next()) {
-          return false;
-        }
-        _currentTypedAnalyzer = std::move(analyzer);
-        _currentTypedAnalyzerValue = irs::get<VPackTermAttribute>(*_currentTypedAnalyzer);
-        TRI_ASSERT(_currentTypedAnalyzerValue);
-        setNumericValue(_currentTypedAnalyzerValue->value);
-        _primitiveTypeResetter = [](irs::token_stream* stream, VPackSlice slice) -> void {
+      _currentTypedAnalyzer = std::move(analyzer);
+      _currentTypedAnalyzerValue =
+          irs::get<VPackTermAttribute>(*_currentTypedAnalyzer);
+      TRI_ASSERT(_currentTypedAnalyzerValue);
+      setBoolValue(_currentTypedAnalyzerValue->value);
+      _primitiveTypeResetter = [](irs::token_stream* stream,
+                                  VPackSlice slice) -> void {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-          auto number_stream = dynamic_cast<irs::numeric_token_stream*>(stream);
-          TRI_ASSERT(number_stream);
+        auto bool_stream = dynamic_cast<irs::boolean_token_stream*>(stream);
+        TRI_ASSERT(bool_stream);
 #else
-          auto number_stream = static_cast<irs::numeric_token_stream*>(stream);
+        auto bool_stream = static_cast<irs::boolean_token_stream*>(stream);
 #endif
-          TRI_ASSERT(slice.isNumber());
-          number_stream->reset(slice.getNumber<double>());
-        };
+        TRI_ASSERT(slice.isBool());
+        bool_stream->reset(slice.getBool());
+      };
+    } break;
+    case AnalyzerValueType::Number: {
+      if (!analyzer->next()) {
+        return false;
       }
-      break;
+      _currentTypedAnalyzer = std::move(analyzer);
+      _currentTypedAnalyzerValue =
+          irs::get<VPackTermAttribute>(*_currentTypedAnalyzer);
+      TRI_ASSERT(_currentTypedAnalyzerValue);
+      setNumericValue(_currentTypedAnalyzerValue->value);
+      _primitiveTypeResetter = [](irs::token_stream* stream,
+                                  VPackSlice slice) -> void {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        auto number_stream = dynamic_cast<irs::numeric_token_stream*>(stream);
+        TRI_ASSERT(number_stream);
+#else
+        auto number_stream = static_cast<irs::numeric_token_stream*>(stream);
+#endif
+        TRI_ASSERT(slice.isNumber());
+        number_stream->reset(slice.getNumber<double>());
+      };
+    } break;
     default:
       iresearch::kludge::mangleField(_nameBuffer, false, valueAnalyzer);
       _value._analyzer = std::move(analyzer);
@@ -977,8 +1010,10 @@ bool InvertedIndexFieldIterator::setValue(VPackSlice const value,
   }
   auto* storeFunc = pool->storeFunc();
   if (storeFunc) {
-    auto const valueSlice = storeFunc(_currentTypedAnalyzer? _currentTypedAnalyzer.get() : _value._analyzer.get(),
-                                      value, _buffer);
+    auto const valueSlice =
+        storeFunc(_currentTypedAnalyzer ? _currentTypedAnalyzer.get()
+                                        : _value._analyzer.get(),
+                  value, _buffer);
 
     if (!valueSlice.isNone()) {
       _value._value = iresearch::ref<irs::byte_type>(valueSlice);

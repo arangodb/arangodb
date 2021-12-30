@@ -217,7 +217,8 @@ class FieldIterator {
 ////////////////////////////////////////////////////////////////////////////////
 class InvertedIndexFieldIterator {
  public:
-  // must match interface of FieldIterator to make usable template insert implementation
+  // must match interface of FieldIterator to make usable template insert
+  // implementation
   Field const& operator*() const noexcept { return _value; }
 
   InvertedIndexFieldIterator& operator++() {
@@ -226,10 +227,13 @@ class InvertedIndexFieldIterator {
   }
 
   // we don't need trx as we don't index the _id attribute.
-  // but we require it here just to match signature of "FieldIterator" in general
-  explicit InvertedIndexFieldIterator(arangodb::transaction::Methods&, irs::string_ref collection, IndexId indexId);
+  // but we require it here just to match signature of "FieldIterator" in
+  // general
+  explicit InvertedIndexFieldIterator(arangodb::transaction::Methods&,
+                                      irs::string_ref collection,
+                                      IndexId indexId);
 
-  bool valid() const noexcept { return _fieldsMeta && _begin != _end;}
+  bool valid() const noexcept { return _fieldsMeta && _begin != _end; }
 
   void reset(velocypack::Slice slice,
              InvertedIndexFieldMeta const& fieldsMeta) {
@@ -253,8 +257,8 @@ class InvertedIndexFieldIterator {
   InvertedIndexFieldMeta::FieldRecord const* _begin{nullptr};
   InvertedIndexFieldMeta::FieldRecord const* _end{nullptr};
   InvertedIndexFieldMeta const* _fieldsMeta{nullptr};
-  Field _value;  // iterator's value
-  VPackSlice _slice; // input slice
+  Field _value;       // iterator's value
+  VPackSlice _slice;  // input slice
   VPackSlice _valueSlice;
   irs::string_ref _collection;
   IndexId _indexId;
@@ -267,7 +271,7 @@ class InvertedIndexFieldIterator {
   PrimitiveTypeResetter _primitiveTypeResetter{nullptr};
   std::vector<VPackArrayIterator> _arrayStack;
   std::string _nameBuffer;
-  VPackBuffer<uint8_t> _buffer; // buffer for stored values
+  VPackBuffer<uint8_t> _buffer;  // buffer for stored values
 };
 
 ////////////////////////////////////////////////////////////////////////////////
