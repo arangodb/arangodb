@@ -1,6 +1,10 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* APM-78: Added startup security option `--foxx.allow-install-from-remote` to
+  allow installing Foxx apps from remote URLs other than Github. The option is
+  turned off by default.
+
 * Fixed BTS-693: Sort-limit rule now always ensures proper LIMIT node placement
   to avoid possible invalid results in the fullCount data
 

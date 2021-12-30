@@ -37,7 +37,8 @@ ServerSecurityFeature::ServerSecurityFeature(
     : ApplicationFeature(server, "ServerSecurity"),
       _enableFoxxApi(true),
       _enableFoxxStore(true),
-      _hardenedRestApi(false) {
+      _hardenedRestApi(false),
+      _foxxAllowInstallFromRemote(false) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
@@ -68,6 +69,16 @@ void ServerSecurityFeature::collectOptions(
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
+  options
+      ->addOption(
+          "--foxx.allow-install-from-remote",
+          "allow installing Foxx apps from remote URLs other than Github",
+          new BooleanParameter(&_foxxAllowInstallFromRemote),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30805);
 }
 
 bool ServerSecurityFeature::isFoxxApiDisabled() const {
@@ -94,4 +105,8 @@ bool ServerSecurityFeature::canAccessHardenedApi() const {
     }
   }
   return allowAccess;
+}
+
+bool ServerSecurityFeature::foxxAllowInstallFromRemote() const {
+  return _foxxAllowInstallFromRemote;
 }
