@@ -318,7 +318,10 @@ TEST_F(LeaderStateMachineTest, test_log_establish_leader) {
   EXPECT_EQ(action._newLeader, "C") << *r;
 }
 
-TEST_F(LeaderStateMachineTest, test_log_fail_to_establish_leader) {
+TEST_F(LeaderStateMachineTest, test_log_establish_leader_with_higher_term) {
+  // here we have a participant "C" with a *better* TermIndexPair than the
+  // others because it has a higher LogTerm, but a lower LogIndex
+  // so we expect "C" to be elected leader
   auto log =
       Log{.target = Log::Target{},
           .plan =
