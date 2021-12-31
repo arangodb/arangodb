@@ -69,8 +69,9 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_allElectible) {
 
   auto campaign = runElectionCampaign(localStates, health, LogTerm{1});
 
-  EXPECT_EQ(campaign.numberOKParticipants, 3);
-  EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{1}, LogIndex{1}}));
+  EXPECT_EQ(campaign.numberOKParticipants, 3) << to_string(campaign);
+  EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{1}, LogIndex{1}}))
+      << to_string(campaign);
 
   auto expectedElectible = std::set<ParticipantId>{"A", "B", "C"};
   auto electible = std::set<ParticipantId>{};
@@ -212,6 +213,10 @@ TEST_F(LeaderStateMachineTest, test_log_no_leader) {
 }
 
 TEST_F(LeaderStateMachineTest, test_log_with_dead_leader) {
+  // Here the RebootId of the leader "A" in the Plan is 42, but
+  // the health record says its RebootId is 43; this
+  // means that the leader is not acceptable anymore and we
+  // expect a new term that has the leader removed.
   auto log =
       Log{.target = Log::Target{},
           .plan =
@@ -256,6 +261,9 @@ TEST_F(LeaderStateMachineTest, test_log_with_dead_leader) {
 }
 
 TEST_F(LeaderStateMachineTest, test_log_establish_leader) {
+  // Here we have no leader, so we expect to get a leadership election;
+  // given the HealthRecord all participants are electible as leader,
+  // but we will get one of them at random.
   auto log =
       Log{.target = Log::Target{},
           .plan =
@@ -309,3 +317,66 @@ TEST_F(LeaderStateMachineTest, test_log_establish_leader) {
 
   EXPECT_EQ(action._newLeader, "C") << *r;
 }
+
+TEST_F(LeaderStateMachineTest, test_log_fail_to_establish_leader) {
+  auto log =
+      Log{.target = Log::Target{},
+          .plan =
+              Log::Plan{
+                  .termSpec =
+                      Log::Plan::TermSpecification{
+                          .term = LogTerm{1},
+                          .leader = std::nullopt,
+                          .config =
+                              Log::Plan::TermSpecification::Config{
+                                  .waitForSync = true,
+                                  .writeConcern = 3,
+                                  .softWriteConcern = 3}},
+                  .participants =
+                      Log::Plan::Participants{
+                          .generation = 1,
+                          .set = {{"A", {.forced = false, .excluded = false}},
+                                  {"B", {.forced = false, .excluded = false}},
+                                  {"C",
+                                   {.forced = false, .excluded = false}}}}},
+
+          .current = Log::Current{
+              .localStates =
+                  {{"A",
+                    {.term = LogTerm{1},
+                     .spearhead = TermIndexPair{LogTerm{1}, LogIndex{15}}}},
+                   {"B",
+                    {.term = LogTerm{1},
+                     .spearhead = TermIndexPair{LogTerm{1}, LogIndex{27}}}},
+                   {"C",
+                    {.term = LogTerm{1},
+                     .spearhead = TermIndexPair{LogTerm{4}, LogIndex{12}}}}},
+              .leader = Log::Current::Leader{},
+              .supervision = Log::Current::Supervision{}}};
+
+  auto health = ParticipantsHealth{
+      ._health = {
+          {"A", ParticipantHealth{.rebootId = RebootId{43}, .isHealthy = true}},
+          {"B", ParticipantHealth{.rebootId = RebootId{14}, .isHealthy = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .isHealthy = true}}}};
+
+  auto r = replicatedLogAction(log, health);
+
+  ASSERT_NE(r, nullptr);
+
+  EXPECT_EQ(r->type(), Action::ActionType::SuccessfulLeaderElectionAction)
+      << *r;
+
+  auto& action = dynamic_cast<SuccessfulLeaderElectionAction&>(*r);
+
+  EXPECT_EQ(action._newLeader, "C") << *r;
+}
+
+/*
+TermIndexPair{ LogTerm{1}, LogIndex{1}} < TermIndexPair{ LogTerm{1},
+LogIndex{15}}
+
+TermIndexPair{ LogTerm{1}, LogIndex{15}} < TermIndexPair{ LogTerm{2},
+LogIndex{13}}
+*/
