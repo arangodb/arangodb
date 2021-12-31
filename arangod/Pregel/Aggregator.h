@@ -29,17 +29,16 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-namespace arangodb {
-namespace pregel {
+namespace arangodb::pregel {
 
 typedef std::string AggregatorID;
 
 ///
 class IAggregator {
+ public:
   IAggregator(const IAggregator&) = delete;
   IAggregator& operator=(const IAggregator&) = delete;
 
- public:
   IAggregator() = default;
   virtual ~IAggregator() = default;
 
@@ -64,7 +63,7 @@ template<typename T>
 struct NumberAggregator : public IAggregator {
   static_assert(std::is_arithmetic<T>::value, "Type must be numeric");
 
-  NumberAggregator(T neutral, bool perm = false, bool conv = false)
+  explicit NumberAggregator(T neutral, bool perm = false, bool conv = false)
       : _value(neutral),
         _neutral(neutral),
         _permanent(perm),
@@ -153,7 +152,7 @@ struct OverwriteAggregator : public NumberAggregator<T> {
 
 /// always initializes to true.
 struct BoolOrAggregator : public IAggregator {
-  BoolOrAggregator(bool perm = false) : _permanent(perm) {}
+  explicit BoolOrAggregator(bool perm = false) : _permanent(perm) {}
 
   void aggregate(void const* valuePtr) override {
     _value = _value || *((bool*)valuePtr);
@@ -184,5 +183,4 @@ struct BoolOrAggregator : public IAggregator {
  protected:
   bool _value = false, _permanent;
 };
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel

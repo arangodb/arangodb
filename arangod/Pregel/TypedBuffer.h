@@ -24,7 +24,8 @@
 #pragma once
 
 #include <cstddef>
-#include <errno.h>
+#include <utility>
+#include <cerrno>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -54,8 +55,7 @@
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
 
-namespace arangodb {
-namespace pregel {
+namespace arangodb::pregel {
 
 /// continuous memory buffer with a fixed capacity
 template<typename T>
@@ -105,7 +105,6 @@ struct TypedBuffer {
     _end += value;
   }
 
- private:
   /// don't copy object
   TypedBuffer(TypedBuffer const&) = delete;
   /// don't copy object
@@ -166,9 +165,9 @@ class MappedFileBuffer : public TypedBuffer<T> {
   MappedFileBuffer(MappedFileBuffer const& other) = delete;
   MappedFileBuffer& operator=(MappedFileBuffer const& other) = delete;
 
-  explicit MappedFileBuffer(size_t capacity, std::string const& logPrefix)
+  explicit MappedFileBuffer(size_t capacity, std::string  logPrefix)
       : TypedBuffer<T>(),
-        _logPrefix(logPrefix),
+        _logPrefix(std::move(logPrefix)),
         _fd(-1),
         _temporary(false),
         _mmHandle(nullptr),
@@ -197,8 +196,8 @@ class MappedFileBuffer : public TypedBuffer<T> {
     // try populating the mapping already
     flags |= MAP_POPULATE;
 #endif
-    auto res = TRI_MMFile(0, _mappedSize, PROT_WRITE | PROT_READ, flags, _fd,
-                          &_mmHandle, 0, &data);
+    auto res = TRI_MMFile(nullptr, _mappedSize, PROT_WRITE | PROT_READ, flags,
+                          _fd, &_mmHandle, 0, &data);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_set_errno(res);
@@ -456,5 +455,4 @@ class MappedFileBuffer : public TypedBuffer<T> {
     return fd;
   }
 };
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel

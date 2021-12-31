@@ -25,8 +25,7 @@
 
 #include <cstdint>
 
-namespace arangodb {
-namespace pregel {
+namespace arangodb::pregel {
 
 // specify serialization, whatever
 template<class M>
@@ -38,7 +37,7 @@ struct MessageCombiner {
 template<typename M>
 struct MinCombiner : public MessageCombiner<M> {
   static_assert(std::is_arithmetic<M>::value, "Message type must be numeric");
-  MinCombiner() {}
+  MinCombiner() = default;
   void combine(M& firstValue, M const& secondValue) const override {
     if (firstValue > secondValue) {
       firstValue = secondValue;
@@ -49,10 +48,9 @@ struct MinCombiner : public MessageCombiner<M> {
 template<typename M>
 struct SumCombiner : public MessageCombiner<M> {
   static_assert(std::is_arithmetic<M>::value, "Message type must be numeric");
-  SumCombiner() {}
+  SumCombiner() = default;
   void combine(M& firstValue, M const& secondValue) const override {
     firstValue += secondValue;
   }
 };
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel

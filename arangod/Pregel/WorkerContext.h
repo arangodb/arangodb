@@ -30,8 +30,7 @@
 #include "Pregel/Utils.h"
 #include "Pregel/Reports.h"
 
-namespace arangodb {
-namespace pregel {
+namespace arangodb::pregel {
 
 class WorkerContext {
   template<typename V, typename E, typename M>
@@ -70,12 +69,13 @@ class WorkerContext {
       : _vertexCount(0),
         _edgeCount(0),
         _readAggregators(nullptr),
-        _writeAggregators(nullptr) {}
+        _writeAggregators(nullptr),
+        _reports(nullptr){}
+
   virtual ~WorkerContext() = default;
 
-  inline uint64_t vertexCount() const { return _vertexCount; }
+  [[nodiscard]] inline uint64_t vertexCount() const { return _vertexCount; }
 
   inline uint64_t edgeCount() const { return _edgeCount; }
 };
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel

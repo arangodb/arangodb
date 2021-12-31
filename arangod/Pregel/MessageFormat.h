@@ -30,8 +30,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-namespace arangodb {
-namespace pregel {
+namespace arangodb::pregel {
 
 template<typename M>
 struct MessageFormat {
@@ -42,8 +41,8 @@ struct MessageFormat {
 
 template<typename T>
 struct IntegerMessageFormat : public MessageFormat<T> {
-  static_assert(std::is_integral<T>::value, "");
-  IntegerMessageFormat() {}
+  static_assert(std::is_integral<T>::value);
+  IntegerMessageFormat() = default;
   void unwrapValue(VPackSlice s, T& value) const override {
     if constexpr (std::is_signed<T>::value) {
       value = s.getInt();
@@ -80,7 +79,7 @@ struct FloatMessageFormat : public MessageFormat<float> {
 template<typename M>
 struct NumberMessageFormat : public MessageFormat<M> {
   static_assert(std::is_arithmetic<M>::value, "Message type must be numeric");
-  NumberMessageFormat() {}
+  NumberMessageFormat() = default;
   void unwrapValue(VPackSlice s, M& value) const override {
     value = s.getNumber<M>();
   }
@@ -88,5 +87,4 @@ struct NumberMessageFormat : public MessageFormat<M> {
     arrayBuilder.add(VPackValue(val));
   }
 };
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel

@@ -35,15 +35,14 @@
 
 #include <chrono>
 
-namespace arangodb {
-namespace pregel {
+namespace arangodb::pregel {
 
 enum ExecutionState {
   DEFAULT = 0,  // before calling start
   RUNNING,      // during normal operation
   STORING,      // store results
-  DONE,         // after everyting is done
-  CANCELED,     // after an terminal error or manual canceling
+  DONE,         // after everything is done
+  CANCELED,     // after a terminal error or manual canceling
   IN_ERROR,     // after an error which should allow recovery
   RECOVERING,   // during recovery
   FATAL_ERROR,  // execution can not continue because of errors
@@ -89,7 +88,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   std::unique_ptr<AggregatorHandler> _aggregators;
   std::unique_ptr<MasterContext> _masterContext;
   /// tracks the servers which responded, only used for stages where we expect
-  /// an unique response, not necessarily during the async mode
+  /// a unique response, not necessarily during the async mode
   std::set<ServerID> _respondedServers;
   uint64_t _globalSuperstep = 0;
   /// adjustable maximum gss for some algorithms
@@ -100,7 +99,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   bool _storeResults = false;
   bool _inErrorAbort = false;
 
-  /// persistent tracking of active vertices, send messages, runtimes
+  /// persistent tracking of active vertices, sent messages, runtimes
   StatsManager _statistics;
   ReportManager _reports;
   /// Current number of vertices
@@ -164,5 +163,4 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   void cancelNoLock();
   void updateState(ExecutionState state);
 };
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel

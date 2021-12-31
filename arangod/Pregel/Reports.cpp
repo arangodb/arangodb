@@ -28,7 +28,7 @@ using namespace arangodb::pregel;
 
 ReportBuilder::~ReportBuilder() {
   try {
-    // this can not throw because we have allocate memory
+    // this can not throw because we have allocated memory
     manager.append(Report{ss.str(), level, std::move(annotations)});
   } catch (std::exception const& ex) {
     LOG_TOPIC("a6348", ERR, Logger::PREGEL)
@@ -99,7 +99,7 @@ auto ReportManager::report(ReportLevel level) -> ReportBuilder {
 
 void ReportManager::append(Report report) {
   if (report.isError()) {
-    if (_numErrors >= 20) {
+    if (_numErrors >= 20) { // todo (Roman): magic number
       return;
     }
     _numErrors += 1;

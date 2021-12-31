@@ -26,6 +26,7 @@
 #include <velocypack/Slice.h>
 #include <cstdint>
 #include <functional>
+#include <utility>
 
 #include "Basics/Common.h"
 #include "Pregel/GraphFormat.h"
@@ -74,7 +75,7 @@ struct IAlgorithm {
   std::string const& name() const { return _name; }
 
  protected:
-  explicit IAlgorithm(std::string const& name) : _name(name) {}
+  explicit IAlgorithm(std::string  name) : _name(std::move(name)) {}
 
  private:
   std::string _name;
@@ -111,7 +112,7 @@ struct Algorithm : IAlgorithm {
     return nullptr;
   }
   virtual std::set<std::string> initialActiveSet() {
-    return std::set<std::string>();
+    return {};
   }
 
   virtual uint32_t messageBatchSize(WorkerConfig const& config,
@@ -119,8 +120,8 @@ struct Algorithm : IAlgorithm {
     if (config.localSuperstep() == 0) {
       return 500;
     } else {
-      double msgsPerSec = stats.sendCount / stats.superstepRuntimeSecs;
-      msgsPerSec /= config.parallelism();  // per thread
+      double msgsPerSec = static_cast<double>(stats.sendCount) / stats.superstepRuntimeSecs;
+      msgsPerSec /= static_cast<double>(config.parallelism());  // per thread
       msgsPerSec *= 0.06;
       return msgsPerSec > 250.0 ? (uint32_t)msgsPerSec : 250;
     }

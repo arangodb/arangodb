@@ -1,3 +1,5 @@
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "modernize-use-nodiscard"
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -30,9 +32,9 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <utility>
 
-namespace arangodb {
-namespace pregel {
+namespace arangodb::pregel {
 
 typedef uint16_t PregelShard;
 const PregelShard InvalidPregelShard = -1;
@@ -41,8 +43,8 @@ struct PregelID {
   std::string key;    // std::string 24
   PregelShard shard;  // uint16_t
 
-  PregelID() : key(""), shard(InvalidPregelShard) {}
-  PregelID(PregelShard s, std::string const& k) : key(k), shard(s) {}
+  PregelID() : shard(InvalidPregelShard) {}
+  PregelID(PregelShard s, std::string  k) : key(std::move(k)), shard(s) {}
 
   bool operator==(const PregelID& rhs) const {
     return shard == rhs.shard && key == rhs.key;
@@ -78,7 +80,7 @@ class Edge {
 
  public:
   std::string_view toKey() const {
-    return std::string_view(_toKey, _toKeyLength);
+    return {_toKey, _toKeyLength};
   }
   E& data() noexcept { return _data; }
   PregelShard targetShard() const noexcept { return _targetShard; }
@@ -123,7 +125,7 @@ class Vertex {
     TRI_ASSERT(active());
 
     // make sure that Vertex has the smallest possible size, especially
-    // that the bitfield for _acitve and _keyLength takes up only 16 bits in
+    // that the bitfield for _active and _keyLength takes up only 16 bits in
     // total.
     static_assert(sizeof(Vertex<V, E>) ==
                       sizeof(char const*) + sizeof(Edge<E>*) +
@@ -141,7 +143,7 @@ class Vertex {
 
   // adds an edge for the vertex. returns the number of edges
   // after the addition. note that the caller must make sure that
-  // we don't end up with more than 4GB edges per verte.
+  // we don't end up with more than 4GB edges per vertex.
   size_t addEdge(Edge<E>* edge) noexcept {
     // must only be called during initial vertex creation
     TRI_ASSERT(active());
@@ -191,12 +193,11 @@ class Vertex {
   V& data() & { return _data; }
 
   PregelID pregelId() const {
-    return PregelID(_shard, std::string(_key, keyLength()));
+    return {_shard, std::string(_key, keyLength())};
   }
 };
 
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel
 
 namespace std {
 template<>

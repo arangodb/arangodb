@@ -33,8 +33,7 @@
 #include "Pregel/WorkerContext.h"
 #include "Reports.h"
 
-namespace arangodb {
-namespace pregel {
+namespace arangodb::pregel {
 
 template<typename V, typename E, typename M>
 class Worker;
@@ -169,5 +168,4 @@ class VertexCompensation : public VertexContext<V, E, M> {
   virtual ~VertexCompensation() = default;
   virtual void compensate(bool inLostPartition) = 0;
 };
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel

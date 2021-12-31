@@ -99,7 +99,7 @@ class OutCache {
 
 template<typename M>
 class ArrayOutCache : public OutCache<M> {
-  /// @brief two stage map: shard -> vertice -> message
+  /// @brief two stage map: shard -> vertices -> message
   std::unordered_map<PregelShard,
                      std::unordered_map<std::string, std::vector<M>>>
       _shardMap;
@@ -120,7 +120,7 @@ template<typename M>
 class CombiningOutCache : public OutCache<M> {
   MessageCombiner<M> const* _combiner;
 
-  /// @brief two stage map: shard -> vertice -> message
+  /// @brief two stage map: shard -> vertices -> message
   std::unordered_map<PregelShard, std::unordered_map<std::string_view, M>>
       _shardMap;
   void _removeContainedMessages() override;

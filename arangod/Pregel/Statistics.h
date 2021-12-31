@@ -30,8 +30,7 @@
 #include "Pregel/Utils.h"
 #include "Logger/LogMacros.h"
 
-namespace arangodb {
-namespace pregel {
+namespace arangodb::pregel {
 
 struct MessageStats {
   size_t sendCount = 0;
@@ -74,7 +73,7 @@ struct MessageStats {
     superstepRuntimeSecs = 0;
   }
 
-  bool allMessagesProcessed() { return sendCount == receivedCount; }
+  bool allMessagesProcessed() const { return sendCount == receivedCount; }
 };
 
 struct StatsManager {
@@ -147,5 +146,4 @@ struct StatsManager {
   std::map<std::string, uint64_t> _activeStats;
   std::map<std::string, MessageStats> _serverStats;
 };
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel

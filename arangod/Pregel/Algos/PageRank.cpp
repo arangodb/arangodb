@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PageRank.h"
+
+#include <cmath>
 #include "Pregel/Aggregator.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Iterators.h"
@@ -37,12 +39,13 @@ static float EPS = 0.00001f;
 static std::string const kConvergence = "convergence";
 
 struct PRWorkerContext : public WorkerContext {
-  PRWorkerContext() {}
+  PRWorkerContext() = default;
 
   float commonProb = 0;
   void preGlobalSuperstep(uint64_t gss) override {
     if (vertexCount() > 0) {
       if (gss == 0) {
+        // todo (Roman): uint64_t to float may not work
         commonProb = 1.0f / vertexCount();
       } else {
         commonProb = 0.15f / vertexCount();
@@ -73,9 +76,9 @@ GraphFormat<float, float>* PageRank::inputFormat() const {
 }
 
 struct PRComputation : public VertexComputation<float, float, float> {
-  PRComputation() {}
+  PRComputation() = default;
   void compute(MessageIterator<float> const& messages) override {
-    PRWorkerContext const* ctx = static_cast<PRWorkerContext const*>(context());
+    auto const* ctx = dynamic_cast<PRWorkerContext const*>(context());
     float* ptr = mutableVertexData();
     float copy = *ptr;
 
@@ -89,9 +92,9 @@ struct PRComputation : public VertexComputation<float, float, float> {
       for (const float* msg : messages) {
         sum += *msg;
       }
-      *ptr = 0.85f * sum + ctx->commonProb;
+      *ptr = 0.85f * sum + ctx->commonProb; // todo (Roman): magic number
     }
-    float diff = fabs(copy - *ptr);
+    float diff = std::fabs(copy - *ptr);
     aggregate<float>(kConvergence, diff);
 
     size_t numEdges = getEdgeCount();
@@ -124,7 +127,7 @@ struct PRMasterContext : public MasterContext {
   }
 
   bool postGlobalSuperstep() override {
-    float const* diff = getAggregatedValue<float>(kConvergence);
+    auto const* diff = getAggregatedValue<float>(kConvergence);
     return globalSuperstep() < 1 || *diff > _threshold;
   };
 };

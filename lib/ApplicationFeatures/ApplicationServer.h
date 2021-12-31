@@ -200,7 +200,7 @@ class ApplicationServer {
   // return the server state
   TEST_VIRTUAL State state() const { return _state; }
 
-  void addReporter(ProgressHandler reporter) {
+  void addReporter(const ProgressHandler& reporter) {
     _progressReports.emplace_back(reporter);
   }
 

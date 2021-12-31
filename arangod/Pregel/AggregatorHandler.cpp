@@ -51,7 +51,7 @@ IAggregator* AggregatorHandler::getAggregator(AggregatorID const& name) {
   if (agg) {
     WRITE_LOCKER(guard, _lock);
     auto result = _values.insert({name, agg.get()});
-    if (result.second) {
+    if (result.second) { // todo (Roman): if inserted, return nullptr?!
       return agg.release();
     }
     return result.first->second;

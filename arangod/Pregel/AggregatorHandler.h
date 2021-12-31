@@ -31,8 +31,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Pregel/Aggregator.h"
 
-namespace arangodb {
-namespace pregel {
+namespace arangodb::pregel {
 
 struct IAlgorithm;
 
@@ -69,5 +68,4 @@ class AggregatorHandler {
   bool serializeValues(VPackBuilder& b, bool onlyConverging = false) const;
   size_t size() const;
 };
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel
