@@ -114,14 +114,14 @@ auto runElectionCampaign(Log::Current::LocalStates const& states,
 
     if (reason == LeaderElectionCampaign::Reason::OK) {
       campaign.numberOKParticipants += 1;
-    }
 
-    if (status.spearhead >= campaign.bestTermIndex) {
-      if (status.spearhead != campaign.bestTermIndex) {
-        campaign.electibleLeaderSet.clear();
+      if (status.spearhead >= campaign.bestTermIndex) {
+        if (status.spearhead != campaign.bestTermIndex) {
+          campaign.electibleLeaderSet.clear();
+        }
+        campaign.electibleLeaderSet.push_back(participant);
+        campaign.bestTermIndex = status.spearhead;
       }
-      campaign.electibleLeaderSet.push_back(participant);
-      campaign.bestTermIndex = status.spearhead;
     }
   }
   return campaign;
@@ -136,7 +136,7 @@ auto checkLeaderHealth(Log const& log, ParticipantsHealth const& health)
     return nullptr;
   } else {
     // Leader is not healthy; start a new term
-    auto newTerm = Log::Plan::TermSpecification{};
+    auto newTerm = log.plan.termSpec;
 
     newTerm.leader.reset();
     newTerm.term = LogTerm{log.plan.termSpec.term.value + 1};
@@ -158,8 +158,8 @@ auto tryLeadershipElection(Log const& log, ParticipantsHealth const& health)
              log.plan.termSpec.config.writeConcern);
 
   auto const requiredNumberOfOKParticipants =
-      log.plan.participants.set.size() - log.plan.termSpec.config.writeConcern +
-      1;
+      log.plan.participants.set.size() + 1 -
+      log.plan.termSpec.config.writeConcern;
 
   // Find the participants that are healthy and that have the best LogTerm
   auto const campaign = runElectionCampaign(log.current.localStates, health,
@@ -220,6 +220,7 @@ auto replicatedLogAction(Log const& log, ParticipantsHealth const& health)
     return checkLeaderHealth(log, health);
   } else {
     // New leader required; we try running an election
+    // TODO: Why are we duplicating this in replicated state
     return tryLeadershipElection(log, health);
   }
 
