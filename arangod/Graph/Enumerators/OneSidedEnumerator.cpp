@@ -301,27 +301,31 @@ auto OneSidedEnumerator<Configuration>::validatorUsesPostFilter() const
 }
 
 template<class Configuration>
-auto OneSidedEnumerator<Configuration>::setPruneValidatorContext(
+auto OneSidedEnumerator<Configuration>::setValidatorContext(
     aql::InputAqlItemRow& inputRow) -> void {
+  _provider.prepareContext(inputRow);
+
+  if (validatorUsesPrune()) {
   _validator.setPruneContext(inputRow);
+  }
+
+  if (validatorUsesPostFilter()) {
+    _validator.setPostFilterContext(inputRow);
+  }
 }
 
 template<class Configuration>
-auto OneSidedEnumerator<Configuration>::setPostFilterValidatorContext(
-    aql::InputAqlItemRow& inputRow) -> void {
-  _validator.setPostFilterContext(inputRow);
-}
-
-template<class Configuration>
-auto OneSidedEnumerator<Configuration>::unpreparePruneValidatorContext()
+auto OneSidedEnumerator<Configuration>::unprepareValidatorContext()
     -> void {
-  _validator.unpreparePruneContext();
-}
+  _provider.unPrepareContext();
 
-template<class Configuration>
-auto OneSidedEnumerator<Configuration>::unpreparePostFilterValidatorContext()
-    -> void {
-  _validator.unpreparePostFilterContext();
+  if (validatorUsesPrune()) {
+    _validator.unpreparePruneContext();
+  }
+
+  if (validatorUsesPostFilter()) {
+    _validator.unpreparePostFilterContext();
+  }
 }
 
 /* SingleServerProvider Section */

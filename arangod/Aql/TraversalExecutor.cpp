@@ -540,12 +540,7 @@ TraversalExecutor::~TraversalExecutor() {
     }
   } else {
     _traversalEnumerator.clear(false);
-    if (_traversalEnumerator.validatorUsesPrune()) {
-      _traversalEnumerator.unpreparePruneValidatorContext();
-    }
-    if (_traversalEnumerator.validatorUsesPostFilter()) {
-      _traversalEnumerator.unpreparePostFilterValidatorContext();
-    }
+    _traversalEnumerator.unprepareValidatorContext();
   }
 }
 
@@ -850,17 +845,7 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
       std::string sourceString;
       TRI_ASSERT(_inputRow.isInitialized());
 
-      if (_traversalEnumerator.validatorUsesPrune()) {
-        // Replace by inputRow
-        _traversalEnumerator.setPruneValidatorContext(_inputRow);
-        TRI_ASSERT(_inputRow.isInitialized());
-      }
-
-      if (_traversalEnumerator.validatorUsesPostFilter()) {
-        // Replace by inputRow
-        _traversalEnumerator.setPostFilterValidatorContext(_inputRow);
-        TRI_ASSERT(_inputRow.isInitialized());
-      }
+      _traversalEnumerator.setValidatorContext(_inputRow);
 
       if (_infos.usesFixedSource()) {
         sourceString = _infos.getFixedSource();
@@ -887,14 +872,6 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
             "allowed");*/
         LOG_DEVEL << "[GraphRefactor] handle warning.";
       } else {
-        /*
-         * auto variableSlice = info.getVariables();
-if (variableSlice.isArray()) {
-  injectVariables(variableSlice);
-  _smartTraverser->prepareIndexExpressions(_query.ast());
-}
-         */
-
         // inject variables
         // for (auto const& pair : _infos.filterConditionVariables()) {
         // opts->setVariableValue(pair.first, _inputRow.getValue(pair.second));

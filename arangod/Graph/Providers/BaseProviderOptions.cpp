@@ -24,6 +24,7 @@
 #include "Graph/Providers/BaseProviderOptions.h"
 #include "Aql/NonConstExpression.h"
 #include "Aql/NonConstExpressionContainer.h"
+#include "Aql/InAndOutRowExpressionContext.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -41,7 +42,12 @@ IndexAccessor::IndexAccessor(
       _nonConstContainer(std::move(nonConstPart)) {
   if (expression != nullptr) {
     _expression = std::move(expression);
+
+    LOG_DEVEL << "Expression:";
+    _expression->node()->dump(0);
   }
+  LOG_DEVEL << "Index condition:";
+  _indexCondition->dump(0);
 }
 
 aql::AstNode* IndexAccessor::getCondition() const { return _indexCondition; }
@@ -76,11 +82,13 @@ BaseProviderOptions::BaseProviderOptions(
               std::unordered_map<uint64_t, std::vector<IndexAccessor>>>&&
         indexInfo,
     aql::FixedVarExpressionContext& expressionContext,
+    aql::InAndOutRowExpressionContext expressionContext2,
     std::unordered_map<std::string, std::vector<std::string>> const&
         collectionToShardMap)
     : _temporaryVariable(tmpVar),
       _indexInformation(std::move(indexInfo)),
       _expressionContext(expressionContext),
+      _expressionContext2(std::move(expressionContext2)),
       _collectionToShardMap(collectionToShardMap),
       _weightCallback(std::nullopt) {}
 
@@ -104,6 +112,10 @@ aql::FixedVarExpressionContext& BaseProviderOptions::expressionContext() const {
   return _expressionContext;
 }
 
+aql::InAndOutRowExpressionContext& BaseProviderOptions::expressionContext2() {
+  return _expressionContext2;
+}
+
 bool BaseProviderOptions::hasWeightMethod() const {
   return _weightCallback.has_value();
 }
@@ -119,6 +131,14 @@ double BaseProviderOptions::weightEdge(double prefixWeight,
     return prefixWeight + 1;
   }
   return _weightCallback.value()(prefixWeight, edge);
+}
+
+void BaseProviderOptions::prepareContext(aql::InputAqlItemRow input) {
+  _expressionContext2.setInputRow(std::move(input));
+}
+
+void BaseProviderOptions::unPrepareContext() {
+  _expressionContext2.invalidateInputRow();
 }
 
 ClusterBaseProviderOptions::ClusterBaseProviderOptions(

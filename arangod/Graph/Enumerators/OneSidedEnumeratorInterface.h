@@ -79,12 +79,8 @@ class TraversalEnumerator {
 
   virtual auto validatorUsesPrune() const -> bool = 0;
   virtual auto validatorUsesPostFilter() const -> bool = 0;
-  virtual auto setPruneValidatorContext(aql::InputAqlItemRow& inputRow)
-      -> void = 0;
-  virtual auto setPostFilterValidatorContext(aql::InputAqlItemRow& inputRow)
-      -> void = 0;
-  virtual auto unpreparePruneValidatorContext() -> void = 0;
-  virtual auto unpreparePostFilterValidatorContext() -> void = 0;
+  virtual auto setValidatorContext(aql::InputAqlItemRow& inputRow) -> void = 0;
+  virtual auto unprepareValidatorContext() -> void = 0;
 };
 
 }  // namespace graph

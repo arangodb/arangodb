@@ -37,6 +37,7 @@
 #include "Aql/OptimizerUtils.h"
 
 #include "Graph/Providers/TypeAliases.h"
+#include "Aql/InAndOutRowExpressionContext.h"
 
 #include <vector>
 
@@ -98,6 +99,7 @@ class RefactoredSingleServerEdgeCursor {
       std::unordered_map<uint64_t, std::vector<IndexAccessor>>&
           depthBasedIndexConditions,
       arangodb::aql::FixedVarExpressionContext& expressionContext,
+      arangodb::aql::InAndOutRowExpressionContext& expressionContext2,
       bool requiresFullDocument);
 
   ~RefactoredSingleServerEdgeCursor();
@@ -112,6 +114,7 @@ class RefactoredSingleServerEdgeCursor {
 
   transaction::Methods* _trx;
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
+  arangodb::aql::InAndOutRowExpressionContext& _expressionCtx2;
   bool _requiresFullDocument;
 
  public:

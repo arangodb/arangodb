@@ -361,12 +361,33 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
           reversedUsedIndexes{};
       reversedUsedIndexes.first = buildReverseUsedIndexes();
 
+      // TODO [GraphRefactor]: Clean this up (de-dupllicate with SmartGraphEngine)
+      aql::InAndOutRowExpressionContext expresssionContext2fwd{
+          *opts->trx(),
+          opts->query(),
+          opts->aqlFunctionsInternalCache(),
+          {},
+          {},
+          std::numeric_limits<std::size_t>::max(),
+          std::numeric_limits<std::size_t>::max(),
+          std::numeric_limits<std::size_t>::max()};
       BaseProviderOptions forwardProviderOptions(
           opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
+          std::move(expresssionContext2fwd),
           opts->collectionToShard());
+
+      aql::InAndOutRowExpressionContext expresssionContext2bck{
+          *opts->trx(),
+          opts->query(),
+          opts->aqlFunctionsInternalCache(),
+          {},
+          {},
+          std::numeric_limits<std::size_t>::max(),
+          std::numeric_limits<std::size_t>::max(),
+          std::numeric_limits<std::size_t>::max()};
       BaseProviderOptions backwardProviderOptions(
           opts->tmpVar(), std::move(reversedUsedIndexes),
-          opts->getExpressionCtx(), opts->collectionToShard());
+          opts->getExpressionCtx(), std::move(expresssionContext2bck), opts->collectionToShard());
 
       if (opts->query().queryOptions().getTraversalProfileLevel() ==
           TraversalProfileLevel::None) {

@@ -77,7 +77,7 @@ SingleServerProvider<Step>::SingleServerProvider(
       _stats{} {
   // TODO CHECK RefactoredTraverserCache (will be discussed in the future, need
   // to do benchmarks if affordable) activateCache(false);
-  _cursor = buildCursor(opts.expressionContext());
+  _cursor = buildCursor(opts.expressionContext(), opts.expressionContext2());
 }
 
 template<class Step>
@@ -196,12 +196,23 @@ void SingleServerProvider<Step>::prepareIndexExpressions(aql::Ast* ast) {
 }
 
 template<class Step>
+void SingleServerProvider<Step>::prepareContext(aql::InputAqlItemRow input) {
+  _opts.prepareContext(std::move(input));
+}
+
+template<class Step>
+void SingleServerProvider<Step>::unPrepareContext() {
+  _opts.unPrepareContext();
+}
+
+template<class Step>
 std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>>
 SingleServerProvider<Step>::buildCursor(
-    arangodb::aql::FixedVarExpressionContext& expressionContext) {
+    arangodb::aql::FixedVarExpressionContext& expressionContext,
+    arangodb::aql::InAndOutRowExpressionContext& expressionContext2) {
   return std::make_unique<RefactoredSingleServerEdgeCursor<Step>>(
       trx(), _opts.tmpVar(), _opts.indexInformations().first,
-      _opts.indexInformations().second, expressionContext,
+      _opts.indexInformations().second, expressionContext, expressionContext2,
       _opts.hasWeightMethod());
 }
 

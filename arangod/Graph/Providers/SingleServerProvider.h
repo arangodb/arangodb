@@ -101,11 +101,15 @@ class SingleServerProvider {
 
   void prepareIndexExpressions(aql::Ast* ast);
 
+  void prepareContext(aql::InputAqlItemRow input);
+  void unPrepareContext();
+
  private:
   void activateCache(bool enableDocumentCache);
 
   std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> buildCursor(
-      arangodb::aql::FixedVarExpressionContext& expressionContext);
+      arangodb::aql::FixedVarExpressionContext& expressionContext,
+      arangodb::aql::InAndOutRowExpressionContext& expressionContext2);
 
  private:
   // Unique_ptr to have this class movable, and to keep reference of trx()

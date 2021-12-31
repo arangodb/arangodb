@@ -179,7 +179,7 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::
 template<class ProviderType, class PathStoreType, class Step>
 auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::
     lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder) -> void {
-  if (_edges.empty()) {
+  if (_edges.empty() && !_step.isFirst()) {
     populatePath();
   }
 

@@ -29,6 +29,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Transaction/Methods.h"
+#include "Aql/InAndOutRowExpressionContext.h"
 
 #include <optional>
 #include <vector>
@@ -82,6 +83,7 @@ struct BaseProviderOptions {
                 std::unordered_map<uint64_t, std::vector<IndexAccessor>>>&&
           indexInfo,
       aql::FixedVarExpressionContext& expressionContext,
+      aql::InAndOutRowExpressionContext expressionContext2,
       std::unordered_map<std::string, std::vector<std::string>> const&
           collectionToShardMap);
 
@@ -97,6 +99,10 @@ struct BaseProviderOptions {
   collectionToShardMap() const;
 
   aql::FixedVarExpressionContext& expressionContext() const;
+  aql::InAndOutRowExpressionContext& expressionContext2();
+
+  void prepareContext(aql::InputAqlItemRow input);
+  void unPrepareContext();
 
   bool hasWeightMethod() const;
 
@@ -117,6 +123,8 @@ struct BaseProviderOptions {
   // The context of AQL variables. These variables are set from the outside.
   // and the caller needs to make sure the reference stays valid
   aql::FixedVarExpressionContext& _expressionContext;
+
+  aql::InAndOutRowExpressionContext _expressionContext2;
 
   // CollectionName to ShardMap, used if the Traversal is pushed down to
   // DBServer

@@ -161,10 +161,12 @@ RefactoredSingleServerEdgeCursor<Step>::RefactoredSingleServerEdgeCursor(
     std::unordered_map<uint64_t, std::vector<IndexAccessor>>&
         depthBasedIndexConditions,
     arangodb::aql::FixedVarExpressionContext& expressionContext,
+    arangodb::aql::InAndOutRowExpressionContext& expressionContext2,
     bool requiresFullDocument)
     : _tmpVar(tmpVar),
       _trx(trx),
       _expressionCtx(expressionContext),
+      _expressionCtx2(expressionContext2),
       _requiresFullDocument(requiresFullDocument) {
   // We need at least one indexCondition, otherwise nothing to serve
   TRI_ASSERT(!globalIndexConditions.empty());
@@ -373,12 +375,12 @@ template<class Step>
 void RefactoredSingleServerEdgeCursor<Step>::prepareIndexExpressions(
     aql::Ast* ast) {
   for (auto& it : _lookupInfo) {
-    it.calculateIndexExpressions(ast, _expressionCtx);
+    it.calculateIndexExpressions(ast, _expressionCtx2);
   }
 
   for (auto& [unused, infos] : _depthLookupInfo) {
     for (auto& info : infos) {
-      info.calculateIndexExpressions(ast, _expressionCtx);
+      info.calculateIndexExpressions(ast, _expressionCtx2);
     }
   }
 }
