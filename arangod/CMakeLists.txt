@@ -364,6 +364,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/OutputAqlItemRow.cpp
   Aql/ParallelUnsortedGatherExecutor.cpp
   Aql/Parser.cpp
+  Aql/PlanSnippet.cpp
   Aql/Projections.cpp
   Aql/Quantifier.cpp
   Aql/Query.cpp

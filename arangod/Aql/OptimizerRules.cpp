@@ -78,6 +78,9 @@
 
 #include <tuple>
 
+// TODO McHackiAlternative
+#include "Aql/PlanSnippet.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::containers;
@@ -874,7 +877,8 @@ bool shouldApplyHeapOptimization(arangodb::aql::SortNode& sortNode,
   return (0.25 * N * lgM + M * lgM) < (N * lgN);
 }
 
-std::tuple<Collection const*, Variable const*, bool> extractDistributeInfo(ExecutionNode const* node) {
+std::tuple<Collection const*, Variable const*, bool> extractDistributeInfo(
+    ExecutionNode const* node) {
   // TODO: this seems a bit verbose, but is at least local & simple
   //       the modification nodes are all collectionaccessing, the graph nodes
   //       are currently assumed to be disjoint, and hence smart, so all
@@ -893,9 +897,11 @@ std::tuple<Collection const*, Variable const*, bool> extractDistributeInfo(Execu
       auto const* updateReplaceNode =
           ExecutionNode::castTo<UpdateReplaceNode const*>(node);
       if (updateReplaceNode->inKeyVariable() != nullptr) {
-        return {updateReplaceNode->collection(), updateReplaceNode->inKeyVariable(), false};
+        return {updateReplaceNode->collection(),
+                updateReplaceNode->inKeyVariable(), false};
       } else {
-        return {updateReplaceNode->collection(), updateReplaceNode->inDocVariable(), false};
+        return {updateReplaceNode->collection(),
+                updateReplaceNode->inDocVariable(), false};
       }
     } break;
     case ExecutionNode::UPSERT: {
@@ -908,29 +914,31 @@ std::tuple<Collection const*, Variable const*, bool> extractDistributeInfo(Execu
       return {traversalNode->collection(), traversalNode->inVariable(), true};
     } break;
     case ExecutionNode::K_SHORTEST_PATHS: {
-      auto kShortestPathsNode = ExecutionNode::castTo<KShortestPathsNode const*>(node);
+      auto kShortestPathsNode =
+          ExecutionNode::castTo<KShortestPathsNode const*>(node);
       TRI_ASSERT(kShortestPathsNode->isDisjoint());
-      // Subtle: KShortestPathsNode uses a reference when returning startInVariable
-      return {kShortestPathsNode->collection(), &kShortestPathsNode->startInVariable(), true};
+      // Subtle: KShortestPathsNode uses a reference when returning
+      // startInVariable
+      return {kShortestPathsNode->collection(),
+              &kShortestPathsNode->startInVariable(), true};
     } break;
     case ExecutionNode::SHORTEST_PATH: {
-      auto shortestPathNode = ExecutionNode::castTo<ShortestPathNode const*>(node);
+      auto shortestPathNode =
+          ExecutionNode::castTo<ShortestPathNode const*>(node);
       TRI_ASSERT(shortestPathNode->isDisjoint());
-      return {shortestPathNode->collection(), shortestPathNode->startInVariable(), true};
+      return {shortestPathNode->collection(),
+              shortestPathNode->startInVariable(), true};
     } break;
     default: {
       TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "Cannot distribute " +
-                                         node->getTypeString() + ".");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          "Cannot distribute " + node->getTypeString() + ".");
     } break;
   }
-
-
 }
 
 }  // namespace
-
 
 namespace arangodb {
 namespace aql {
@@ -4058,7 +4066,6 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
 auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
                                             ExecutionNode* node)
     -> DistributeNode* {
-
   auto [collection, inputVariable, isGraphNode] = ::extractDistributeInfo(node);
 
   TRI_ASSERT(collection != nullptr);
@@ -5193,7 +5200,8 @@ void arangodb::aql::restrictToSingleShardRule(
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 
-bool isInputForModificationNode(ExecutionPlan const& plan, Collection const* collection,
+bool isInputForModificationNode(ExecutionPlan const& plan,
+                                Collection const* collection,
                                 Variable const* inputVariable,
                                 ExecutionNode const* otherNode) {
   // find the setter of the input variable
@@ -5213,7 +5221,8 @@ bool isInputForModificationNode(ExecutionPlan const& plan, Collection const* col
         return false;
       }
       // check that the modification node's collection is sharded over _key
-      //std::vector<std::string> shardKeys = modificationNode->collection()->shardKeys(false);
+      // std::vector<std::string> shardKeys =
+      // modificationNode->collection()->shardKeys(false);
       if (!collection->usesDefaultSharding()) {
         return false;
       }
@@ -5238,7 +5247,7 @@ bool isInputForModificationNode(ExecutionPlan const& plan, Collection const* col
       }
       // we must also know the _key value, otherwise it will not work
       toFind.emplace(StaticStrings::KeyString);
-        
+
       // go through the input object attribute by attribute
       // and look for our shard keys
       Variable const* lastVariable = nullptr;
@@ -5263,7 +5272,8 @@ bool isInputForModificationNode(ExecutionPlan const& plan, Collection const* col
             // the same FOR loop variable
             auto var = value->getMember(0);
             if (var->type == NODE_TYPE_REFERENCE) {
-              auto accessedVariable = static_cast<Variable const*>(var->getData());
+              auto accessedVariable =
+                  static_cast<Variable const*>(var->getData());
 
               if (lastVariable != nullptr && lastVariable != accessedVariable) {
                 return false;
@@ -5290,7 +5300,8 @@ bool isInputForModificationNode(ExecutionPlan const& plan, Collection const* col
     }
   }
 
-  if (setter->getType() != EN::ENUMERATE_COLLECTION && setter->getType() != EN::INDEX) {
+  if (setter->getType() != EN::ENUMERATE_COLLECTION &&
+      setter->getType() != EN::INDEX) {
     return false;
   }
 
@@ -8597,11 +8608,11 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
   if (plan.hasAppliedRule(OptimizerRule::RuleLevel::distributeQueryRule)) {
     // TODO: This is a temporary simplification to get the Tests pass.
     // This Rule is called in FINALIZE, but is supposed to be obsolete
-    // after implementation of distributeQueryRule is completed (logic done there)
-    // At this point in time we just disable this if the rule is used.
+    // after implementation of distributeQueryRule is completed (logic done
+    // there) At this point in time we just disable this if the rule is used.
     return;
   }
-  
+
   ::arangodb::containers::SmallVectorWithArena<ExecutionNode*> nodesStorage;
   auto& nodes = nodesStorage.vector();
   plan.findNodesOfType(nodes, ExecutionNode::DISTRIBUTE, true);
@@ -8663,7 +8674,7 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
           // sharding!
           allowKeyConversionToObject = true;
           setInVariable = [updateReplaceNode](Variable* var) {
-           updateReplaceNode->setInKeyVariable(var);
+            updateReplaceNode->setInKeyVariable(var);
           };
         } else {
           inputVariable = updateReplaceNode->inDocVariable();
@@ -8820,8 +8831,10 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
 }
 
 namespace {
-ExecutionNode* createDistributeInputNode(ExecutionPlan& plan, ExecutionNode* targetNode) {
-  TRI_ASSERT(targetNode->isModificationNode() || isGraphNode(targetNode->getType()));
+ExecutionNode* createDistributeInputNode(ExecutionPlan& plan,
+                                         ExecutionNode* targetNode) {
+  TRI_ASSERT(targetNode->isModificationNode() ||
+             isGraphNode(targetNode->getType()));
 
   auto collection = static_cast<Collection const*>(nullptr);
   auto inputVariable = static_cast<Variable const*>(nullptr);
@@ -8864,7 +8877,8 @@ ExecutionNode* createDistributeInputNode(ExecutionPlan& plan, ExecutionNode* tar
     } break;
     case ExecutionNode::UPDATE:
     case ExecutionNode::REPLACE: {
-      auto* updateReplaceNode = ExecutionNode::castTo<UpdateReplaceNode*>(targetNode);
+      auto* updateReplaceNode =
+          ExecutionNode::castTo<UpdateReplaceNode*>(targetNode);
       collection = updateReplaceNode->collection();
       ignoreErrors = updateReplaceNode->getOptions().ignoreErrors;
       if (updateReplaceNode->inKeyVariable() != nullptr) {
@@ -8911,10 +8925,12 @@ ExecutionNode* createDistributeInputNode(ExecutionPlan& plan, ExecutionNode* tar
       };
     } break;
     case ExecutionNode::K_SHORTEST_PATHS: {
-      auto* kShortestPathsNode = ExecutionNode::castTo<KShortestPathsNode*>(targetNode);
+      auto* kShortestPathsNode =
+          ExecutionNode::castTo<KShortestPathsNode*>(targetNode);
       TRI_ASSERT(kShortestPathsNode->isDisjoint());
       collection = kShortestPathsNode->collection();
-      // Subtle: KShortestPathsNode uses a reference when returning startInVariable
+      // Subtle: KShortestPathsNode uses a reference when returning
+      // startInVariable
       inputVariable = &kShortestPathsNode->startInVariable();
       allowKeyConversionToObject = true;
       createKeys = false;
@@ -8924,7 +8940,8 @@ ExecutionNode* createDistributeInputNode(ExecutionPlan& plan, ExecutionNode* tar
       };
     } break;
     case ExecutionNode::SHORTEST_PATH: {
-      auto* shortestPathNode = ExecutionNode::castTo<ShortestPathNode*>(targetNode);
+      auto* shortestPathNode =
+          ExecutionNode::castTo<ShortestPathNode*>(targetNode);
       TRI_ASSERT(shortestPathNode->isDisjoint());
       collection = shortestPathNode->collection();
       inputVariable = shortestPathNode->startInVariable();
@@ -8937,33 +8954,39 @@ ExecutionNode* createDistributeInputNode(ExecutionPlan& plan, ExecutionNode* tar
     } break;
     default: {
       TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "Cannot distribute " +
-                                         targetNode->getTypeString() + ".");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          "Cannot distribute " + targetNode->getTypeString() + ".");
     } break;
   }
   TRI_ASSERT(inputVariable != nullptr);
   TRI_ASSERT(collection != nullptr);
   // allowSpecifiedKeys can only be true for UPSERT
-  TRI_ASSERT(targetNode->getType() == ExecutionNode::UPSERT || !allowSpecifiedKeys);
+  TRI_ASSERT(targetNode->getType() == ExecutionNode::UPSERT ||
+             !allowSpecifiedKeys);
   // createKeys can only be true for INSERT/UPSERT
   TRI_ASSERT((targetNode->getType() == ExecutionNode::INSERT ||
               targetNode->getType() == ExecutionNode::UPSERT) ||
              !createKeys);
 
-  // TODO should $smartHandOver still be handled here, in my opinion it should be handled later
+  // TODO should $smartHandOver still be handled here, in my opinion it should
+  // be handled later
   auto setter = plan.getVarSetBy(inputVariable->id);
   if (setter == nullptr ||  // this can happen for $smartHandOver
-      setter->getType() == EN::ENUMERATE_COLLECTION || setter->getType() == EN::INDEX) {
-    // If our input variable is set by a collection/index enumeration, it is guaranteed to be an object
-    // with a _key attribute, so we don't need to do anything.
+      setter->getType() == EN::ENUMERATE_COLLECTION ||
+      setter->getType() == EN::INDEX) {
+    // If our input variable is set by a collection/index enumeration, it is
+    // guaranteed to be an object with a _key attribute, so we don't need to do
+    // anything.
     return nullptr;
   }
 
-  // We insert an additional calculation node to create the input for our distribute node.
+  // We insert an additional calculation node to create the input for our
+  // distribute node.
   Variable* variable = plan.getAst()->variables()->createTemporaryVariable();
 
-  // update the targetNode so that it uses the same input variable as our distribute node
+  // update the targetNode so that it uses the same input variable as our
+  // distribute node
   setInVariable(variable);
 
   auto* ast = plan.getAst();
@@ -8981,15 +9004,16 @@ ExecutionNode* createDistributeInputNode(ExecutionPlan& plan, ExecutionNode* tar
         args->addMember(ast->createNodeValueNull());
       }
       auto flags = ast->createNodeObject();
-      flags->addMember(ast->createNodeObjectElement("allowSpecifiedKeys", 
-                                                    ast->createNodeValueBool(allowSpecifiedKeys)));
-      flags->addMember(
-          ast->createNodeObjectElement("ignoreErrors",
-                                       ast->createNodeValueBool(ignoreErrors)));
+      flags->addMember(ast->createNodeObjectElement(
+          "allowSpecifiedKeys", ast->createNodeValueBool(allowSpecifiedKeys)));
+      flags->addMember(ast->createNodeObjectElement(
+          "ignoreErrors", ast->createNodeValueBool(ignoreErrors)));
       auto const& collectionName = collection->name();
-      flags->addMember(ast->createNodeObjectElement("collection",
-          ast->createNodeValueString(collectionName.c_str(), collectionName.length())));
-      // args->addMember(ast->createNodeValueString(collectionName.c_str(), collectionName.length()));
+      flags->addMember(ast->createNodeObjectElement(
+          "collection", ast->createNodeValueString(collectionName.c_str(),
+                                                   collectionName.length())));
+      // args->addMember(ast->createNodeValueString(collectionName.c_str(),
+      // collectionName.length()));
 
       args->addMember(flags);
     } else {
@@ -8998,22 +9022,22 @@ ExecutionNode* createDistributeInputNode(ExecutionPlan& plan, ExecutionNode* tar
       flags->addMember(ast->createNodeObjectElement(
           "allowKeyConversionToObject",
           ast->createNodeValueBool(allowKeyConversionToObject)));
-      flags->addMember(
-          ast->createNodeObjectElement("ignoreErrors",
-                                       ast->createNodeValueBool(ignoreErrors)));
-      bool canUseCustomKey = collection->getCollection()->usesDefaultShardKeys() ||
-                             allowSpecifiedKeys;
-      flags->addMember(
-          ast->createNodeObjectElement("canUseCustomKey",
-                                       ast->createNodeValueBool(canUseCustomKey)));
+      flags->addMember(ast->createNodeObjectElement(
+          "ignoreErrors", ast->createNodeValueBool(ignoreErrors)));
+      bool canUseCustomKey =
+          collection->getCollection()->usesDefaultShardKeys() ||
+          allowSpecifiedKeys;
+      flags->addMember(ast->createNodeObjectElement(
+          "canUseCustomKey", ast->createNodeValueBool(canUseCustomKey)));
 
       args->addMember(flags);
     }
   }
 
-  auto expr =
-      std::make_unique<Expression>(ast, ast->createNodeFunctionCall(function, args, true));
-  return plan.createNode<CalculationNode>(&plan, plan.nextId(), std::move(expr), variable);
+  auto expr = std::make_unique<Expression>(
+      ast, ast->createNodeFunctionCall(function, args, true));
+  return plan.createNode<CalculationNode>(&plan, plan.nextId(), std::move(expr),
+                                          variable);
 }
 }  // namespace
 
@@ -9052,31 +9076,23 @@ struct SubqueryScope {
 
 class NodeInformation {
  public:
-  NodeInformation(ExecutionNode* node) 
-      : NodeInformation(node, node) {}
+  NodeInformation(ExecutionNode* node) : NodeInformation(node, node) {}
   NodeInformation(ExecutionNode* node, ExecutionNode* shardingDefinedBy)
       : NodeInformation(node, shardingDefinedBy,
                         shardingDefinedBy->getAllowedLocation()){};
-  NodeInformation(ExecutionNode* node, ExecutionNode* shardingDefinedBy, ExecutionLocation location)
+  NodeInformation(ExecutionNode* node, ExecutionNode* shardingDefinedBy,
+                  ExecutionLocation location)
       : _node(node), _shardBy(shardingDefinedBy), _loc(location) {
     TRI_ASSERT(_node != nullptr);
     TRI_ASSERT(_shardBy != nullptr);
   }
 
-  ExecutionNode* getNode() const {
-    return _node;
-  }
-  ExecutionNode* getShardByNode() const {
-    return _shardBy;
-  }
+  ExecutionNode* getNode() const { return _node; }
+  ExecutionNode* getShardByNode() const { return _shardBy; }
 
-  ExecutionLocation getAllowedLocation() const {
-    return _loc;
-  }
+  ExecutionLocation getAllowedLocation() const { return _loc; }
 
-  void setAllowedLocation(ExecutionLocation loc) {
-    _loc = loc;
-  }
+  void setAllowedLocation(ExecutionLocation loc) { _loc = loc; }
 
  private:
   ExecutionNode* _node;
@@ -9085,624 +9101,780 @@ class NodeInformation {
 };
 
 namespace {
-  /**
-   * @brief will add a gatherNode above the "node", using the information of gatherFrom, to collect the
-   * data from it. Will also return the created GatherNode for futher adjustments, like Sorting
+/**
+ * @brief will add a gatherNode above the "node", using the information of
+ * gatherFrom, to collect the data from it. Will also return the created
+ * GatherNode for futher adjustments, like Sorting
+ */
+GatherNode* addGatherAbove(ExecutionPlan& plan, ExecutionNode* node,
+                           ExecutionNode* gatherFrom) {
+  TRI_vocbase_t* vocbase = &plan.getAst()->query().vocbase();
+  // NOTE: InsertGatherNode does NOT insert anthing, it just creates the
+  // GatherNode NOTE: No idea what subqueries should be used for. yet. (TODO)
+  SmallUnorderedMap<ExecutionNode*, ExecutionNode*>::allocator_type::arena_type
+      subqueriesArena;
+  SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{subqueriesArena};
+  auto gatherNode = insertGatherNode(plan, gatherFrom, subqueries);
+  TRI_ASSERT(gatherNode);
+
+  auto remoteNode =
+      plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
+  TRI_ASSERT(remoteNode);
+
+  // Now need to relink:
+  // dependency <- node
+  // =>
+  // dependency <- remote <- gather <- node
+  auto dependencyNode = node->getFirstDependency();
+  LOG_DEVEL << "Adding gather " << node->getTypeString() << " <- "
+            << dependencyNode->getTypeString();
+  node->removeDependencies();
+  remoteNode->addDependency(dependencyNode);
+  gatherNode->addDependency(remoteNode);
+  node->addDependency(gatherNode);
+
+  // TODO Performance, i think this is not necessary here, as the above injected
+  // nodes do not convey new variable information
+  plan.clearVarUsageComputed();
+  plan.findVarUsage();
+
+  return gatherNode;
+}
+
+ExecutionNode* createDBServerCollectVariant(ExecutionPlan& plan,
+                                            CollectNode* collectNode,
+                                            GatherNode* gatherNode) {
+  switch (collectNode->aggregationMethod()) {
+    case CollectOptions::CollectMethod::DISTINCT: {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+      break;
+    }
+    case CollectOptions::CollectMethod::COUNT: {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+      break;
+    }
+    case CollectOptions::CollectMethod::UNDEFINED:
+    case CollectOptions::CollectMethod::HASH:
+    case CollectOptions::CollectMethod::SORTED: {
+      // clone a COLLECT v1 = expr, v2 = expr ... operation from the
+      // coordinator to the DB server(s), and leave an aggregate COLLECT
+      // node on the coordinator for total aggregation
+
+      // The original optimizer rule did exclude Collects without
+      // output variables.
+      TRI_ASSERT(!collectNode->hasOutVariable());
+      std::vector<AggregateVarInfo> dbServerAggVars;
+      for (auto const& it : collectNode->aggregateVariables()) {
+        std::string_view func = Aggregator::pushToDBServerAs(it.type);
+        // Original code does not optimize here, this is not possible at this
+        // place
+        // TODO: CHECK we can never create a Collect statement triggering this
+        // assert
+        TRI_ASSERT(!func.empty());
+        auto outVariable =
+            plan.getAst()->variables()->createTemporaryVariable();
+        dbServerAggVars.emplace_back(
+            AggregateVarInfo{outVariable, it.inVar, std::string(func)});
+      }
+
+      // create new group variables
+      auto const& groupVars = collectNode->groupVariables();
+      std::vector<GroupVarInfo> outVars;
+      outVars.reserve(groupVars.size());
+      std::unordered_map<Variable const*, Variable const*> replacements;
+
+      for (auto const& it : groupVars) {
+        // create new out variables
+        auto out = plan.getAst()->variables()->createTemporaryVariable();
+        replacements.try_emplace(it.inVar, out);
+        outVars.emplace_back(GroupVarInfo{out, it.inVar});
+      }
+
+      auto dbCollectNode = plan.createNode<CollectNode>(
+          &plan, plan.nextId(), collectNode->getOptions(), outVars,
+          dbServerAggVars, nullptr, nullptr, std::vector<Variable const*>(),
+          collectNode->variableMap(), false);
+      dbCollectNode->aggregationMethod(collectNode->aggregationMethod());
+      dbCollectNode->specialized();
+
+      std::vector<GroupVarInfo> copy;
+      size_t i = 0;
+      for (GroupVarInfo const& it : collectNode->groupVariables()) {
+        // replace input variables
+        copy.emplace_back(GroupVarInfo{/*outVar*/ it.outVar,
+                                       /*inVar*/ outVars[i].outVar});
+        ++i;
+      }
+      collectNode->groupVariables(copy);
+
+      size_t j = 0;
+      for (AggregateVarInfo& it : collectNode->aggregateVariables()) {
+        it.inVar = dbServerAggVars[j].outVar;
+        it.type = Aggregator::runOnCoordinatorAs(it.type);
+        ++j;
+      }
+
+      bool removeGatherNodeSort = (dbCollectNode->aggregationMethod() !=
+                                   CollectOptions::CollectMethod::SORTED);
+
+      // in case we need to keep the sortedness of the GatherNode,
+      // we may need to replace some variable references in it due
+      // to the changes we made to the COLLECT node
+      if (gatherNode != nullptr && !removeGatherNodeSort &&
+          !replacements.empty() && !gatherNode->elements().empty()) {
+        replaceGatherNodeVariables(&plan, gatherNode, replacements);
+      }
+      return dbCollectNode;
+    }
+  }
+}
+
+void addScatterBelow(ExecutionPlan& plan, ExecutionNode* node,
+                     ExecutionNode* scatterTo) {
+  TRI_vocbase_t* vocbase = &plan.getAst()->query().vocbase();
+  /*
+   * This Lambda can be moved out as a static method.
+   * i just kept them in here for simplicity to move this rule into a seperate
+   * file there is nothing from the scope  required.
    */
-  GatherNode* addGatherAbove(ExecutionPlan& plan, ExecutionNode* node, ExecutionNode* gatherFrom) {
-    TRI_vocbase_t* vocbase = &plan.getAst()->query().vocbase();
-    // NOTE: InsertGatherNode does NOT insert anthing, it just creates the GatherNode
-    // NOTE: No idea what subqueries should be used for. yet. (TODO)
-    SmallUnorderedMap<ExecutionNode*, ExecutionNode*>::allocator_type::arena_type subqueriesArena;
-    SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{subqueriesArena};
-    auto gatherNode = insertGatherNode(plan, gatherFrom, subqueries);
+  /**
+   * @brief Helper method to create a node to control the input stream for
+   * targetNode The input stream can either be scattered (send input to all
+   * parallel branches of targetNode) or distributed (for every input line
+   * specifically select one branch of targetNode)
+   */
+  auto createScatterNode = [](ExecutionPlan& plan,
+                              ExecutionNode* targetNode) -> ExecutionNode* {
+    auto nodeType = targetNode->getType();
+    if (nodeEligibleForDistribute(nodeType)) {
+      // Use Distribute where possible
+      auto const [isSmart, isDisjoint, collection] =
+          extractSmartnessAndCollection(targetNode);
+      TRI_ASSERT(collection != nullptr);
+      bool defaultSharding = collection->usesDefaultSharding();
+      LOG_DEVEL << "sharding: " << defaultSharding
+                << " type: " << targetNode->getTypeString() << " "
+                << isModificationNode(nodeType);
+      bool allowedModifications = isModificationNode(nodeType) &&
+                                  (!(nodeType == ExecutionNode::REMOVE ||
+                                     nodeType == ExecutionNode::UPDATE) ||
+                                   defaultSharding);
+      if (allowedModifications ||
+          (isGraphNode(nodeType) && isSmart && isDisjoint)) {
+        return createDistributeNodeFor(plan, targetNode);
+      }
+    }
+
+    if (nodeType == ExecutionNode::REMOVE ||
+        nodeType == ExecutionNode::UPDATE) {
+      // Note that in the REPLACE or UPSERT case we are not getting here, they
+      // are always eligible for distribute
+      auto* modNode = ExecutionNode::castTo<ModificationNode*>(targetNode);
+      modNode->getOptions().ignoreDocumentNotFound = true;
+    }
+
+    // Fallback to Scatter if we cannot identify the correct shard
+    return plan.createNode<ScatterNode>(&plan, plan.nextId(),
+                                        ScatterNode::ScatterType::SHARD);
+  };
+
+  auto scatterNode = createScatterNode(plan, scatterTo);
+  TRI_ASSERT(scatterNode);
+
+  auto remoteNode =
+      plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
+  TRI_ASSERT(remoteNode);
+
+  // Now need to relink:
+  // node <- parent
+  // =>
+  // node <- scatter <- remote <- parent
+
+  // At this stage in the planning every Node can only have a single parent
+  TRI_ASSERT(node->hasParent());
+  TRI_ASSERT(node->getParents().size() == 1);
+  auto* parent = node->getFirstParent();
+  parent->removeDependencies();
+  LOG_DEVEL << "Adding " << scatterNode->getTypeString() << ": "
+            << node->getTypeString() << " <- " << parent->getTypeString();
+  // TODO this is not nice, maybe we can refactor this a bit
+  if (false && scatterNode->getType() == ExecutionNode::DISTRIBUTE) {
+    auto distInput = createDistributeInputNode(plan, scatterTo);
+    TRI_ASSERT(distInput);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    VarSet varsUsedHere;
+    distInput->getVariablesUsedHere(varsUsedHere);
+    // We cannot move our distribute to a point where the Input Variable is not
+    // valid anymore.
+    auto validVars = node->getVarsValid();
+    for (auto const& it : varsUsedHere) {
+      TRI_ASSERT(validVars.contains(it));
+    }
+#endif
+    distInput->addDependency(node);
+    scatterNode->addDependency(distInput);
+  } else {
+    scatterNode->addDependency(node);
+  }
+  remoteNode->addDependency(scatterNode);
+  parent->addDependency(remoteNode);
+
+  // TODO Performance, i think this is not necessary here, as the above injected
+  // nodes do not convey new variable information, unless we inserted a
+  // distribute
+  plan.clearVarUsageComputed();
+  plan.findVarUsage();
+}
+
+// Forward Declare method. The below methods need to call each other.
+NodeInformation joinSnippets(
+    ExecutionPlan& plan, NodeInformation lower, NodeInformation upper,
+    std::stack<SubqueryScope, std::vector<SubqueryScope>>& subqueryScopes,
+    std::vector<ExecutionNode*> const& additionalNodesWithContext);
+
+NodeInformation linkSubquery(
+    ExecutionPlan& plan, SubqueryScope const& scope,
+    std::optional<NodeInformation> upper,
+    std::stack<SubqueryScope, std::vector<SubqueryScope>>& subqueryScopes) {
+  // TODO, those may need to be injected, also not yet clear into which of the
+  // following statements the nodes need to be added. I think it is the first
+  // call. There may also be a need to handle a stack of those calls: one entry
+  // for each subqiery.
+  std::vector<ExecutionNode*> additionalNodesWithContext{};
+  if (!scope.hasInternalRemote) {
+    // We can push the complete subquery to the desired location
+    if (scope.shardingDefinedByNode == nullptr) {
+      // The subquery has nothing that enforces location.
+      // We can just inline it with below and above
+      TRI_ASSERT(scope.previous);
+      TRI_ASSERT(scope.firstInternalNode == nullptr);
+      if (upper.has_value()) {
+        return ::joinSnippets(plan, scope.previous, upper.value(),
+                              subqueryScopes, additionalNodesWithContext);
+      }
+      return scope.previous;
+    }
+
+    auto loc = scope.shardingDefinedByNode->getAllowedLocation();
+    if (loc.canRunOnCoordinator() ||
+        nodeEligibleForDistribute(scope.shardingDefinedByNode->getType())) {
+      // This covers two separate cases:
+      // 1  The subquery has to be executed on Coordinator, push it there in
+      // full.
+      //
+      // 2. The subquery is guaranteed to only have results on a single shard,
+      // so we can push it down to dbservers.
+      //    Handled it like it would be on the DBServer in full.
+      //
+      // The lower sharding is handled, we do not actually need to retain it.
+      std::ignore =
+          ::joinSnippets(plan, scope.previous,
+                         {scope.subqueryEnd, scope.shardingDefinedByNode, loc},
+                         subqueryScopes, additionalNodesWithContext);
+      if (upper.has_value()) {
+        return ::joinSnippets(
+            plan,
+            {scope.getExternalStartNode(), scope.shardingDefinedByNode, loc},
+            upper.value(), subqueryScopes, additionalNodesWithContext);
+      }
+      auto parent = scope.getExternalStartNode()->getFirstDependency();
+      TRI_ASSERT(parent);
+      addScatterBelow(plan, parent, scope.shardingDefinedByNode);
+      return {scope.getExternalStartNode(), scope.shardingDefinedByNode, loc};
+    }
+  }
+  // Unfortunately we cannot optimize the subquery. The SubqueryNodes themselfs
+  // need to be handled as CoordiantorOnly nodes.
+
+  // All NodePointers are required to be set here
+  TRI_ASSERT(scope.subqueryStart);
+  TRI_ASSERT(scope.firstInternalNode);
+  TRI_ASSERT(scope.lastInternalNode);
+  TRI_ASSERT(scope.shardingDefinedByNode);
+  // And then communicate with their internal pieces
+  // Link from lowest need to highest node in return -> Root ordering:
+  ExecutionLocation coordinatorLocation{
+      ExecutionLocation::LocationType::COORDINATOR};
+  std::ignore = ::joinSnippets(
+      plan, scope.previous,
+      {scope.subqueryEnd, scope.subqueryEnd, coordinatorLocation},
+      subqueryScopes, additionalNodesWithContext);
+  // Link SubqueryEnd, with the first node that is relevant internally
+  if (scope.getInternalEndNode() == scope.firstInternalNode) {
+    // This is a special case, the ROOT of the subquery is a ModificationNode,
+    // not a return. Need to gather it.
+    SmallUnorderedMap<ExecutionNode*,
+                      ExecutionNode*>::allocator_type::arena_type
+        subqueriesArena;
+    SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{
+        subqueriesArena};
+    auto gatherNode =
+        insertGatherNode(plan, scope.firstInternalNode, subqueries);
     TRI_ASSERT(gatherNode);
 
-    auto remoteNode = plan.createNode<RemoteNode>(&plan, plan.nextId(),
-                                                  vocbase, "", "", "");
-    TRI_ASSERT(remoteNode);
-
-    // Now need to relink:
-    // dependency <- node
-    // =>
-    // dependency <- remote <- gather <- node
-    auto dependencyNode = node->getFirstDependency();
-    LOG_DEVEL << "Adding gather " << node->getTypeString() << " <- " << dependencyNode->getTypeString();
-    node->removeDependencies();
-    remoteNode->addDependency(dependencyNode);
-    gatherNode->addDependency(remoteNode);
-    node->addDependency(gatherNode);
-
-    // TODO Performance, i think this is not necessary here, as the above injected nodes
-    // do not convey new variable information
-    plan.clearVarUsageComputed();
-    plan.findVarUsage();
-
-    return gatherNode;
-  }
-
-  ExecutionNode* createDBServerCollectVariant(ExecutionPlan& plan, CollectNode* collectNode, GatherNode* gatherNode) {
-    switch (collectNode->aggregationMethod()) {
-      case CollectOptions::CollectMethod::DISTINCT: {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-        break;
-      }
-      case CollectOptions::CollectMethod::COUNT: {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-        break;
-      }
-      case CollectOptions::CollectMethod::UNDEFINED:
-      case CollectOptions::CollectMethod::HASH:
-      case CollectOptions::CollectMethod::SORTED: {
-        // clone a COLLECT v1 = expr, v2 = expr ... operation from the
-        // coordinator to the DB server(s), and leave an aggregate COLLECT
-        // node on the coordinator for total aggregation
-
-        // The original optimizer rule did exclude Collects without
-        // output variables.
-        TRI_ASSERT(!collectNode->hasOutVariable());
-        std::vector<AggregateVarInfo> dbServerAggVars;
-        for (auto const& it : collectNode->aggregateVariables()) {
-          std::string_view func = Aggregator::pushToDBServerAs(it.type);
-          // Original code does not optimize here, this is not possible at this place
-          // TODO: CHECK we can never create a Collect statement triggering this assert
-          TRI_ASSERT(!func.empty());
-          auto outVariable = plan.getAst()->variables()->createTemporaryVariable();
-          dbServerAggVars.emplace_back(AggregateVarInfo{outVariable, it.inVar, std::string(func)});
-        }
-
-        // create new group variables
-        auto const& groupVars = collectNode->groupVariables();
-        std::vector<GroupVarInfo> outVars;
-        outVars.reserve(groupVars.size());
-        std::unordered_map<Variable const*, Variable const*> replacements;
-
-        for (auto const& it : groupVars) {
-          // create new out variables
-          auto out = plan.getAst()->variables()->createTemporaryVariable();
-          replacements.try_emplace(it.inVar, out);
-          outVars.emplace_back(GroupVarInfo{out, it.inVar});
-        }
-
-        auto dbCollectNode =
-            plan.createNode<CollectNode>(&plan, plan.nextId(), collectNode->getOptions(),
-                                          outVars, dbServerAggVars, nullptr,
-                                          nullptr, std::vector<Variable const*>(),
-                                          collectNode->variableMap(), false);
-        dbCollectNode->aggregationMethod(collectNode->aggregationMethod());
-        dbCollectNode->specialized();
-
-        std::vector<GroupVarInfo> copy;
-        size_t i = 0;
-        for (GroupVarInfo const& it : collectNode->groupVariables()) {
-          // replace input variables
-          copy.emplace_back(GroupVarInfo{/*outVar*/ it.outVar,
-                                         /*inVar*/ outVars[i].outVar});
-          ++i;
-        }
-        collectNode->groupVariables(copy);
-
-        size_t j = 0;
-        for (AggregateVarInfo& it : collectNode->aggregateVariables()) {
-          it.inVar = dbServerAggVars[j].outVar;
-          it.type = Aggregator::runOnCoordinatorAs(it.type);
-          ++j;
-        }
-
-        bool removeGatherNodeSort = (dbCollectNode->aggregationMethod() !=
-                                CollectOptions::CollectMethod::SORTED);
-
-        // in case we need to keep the sortedness of the GatherNode,
-        // we may need to replace some variable references in it due
-        // to the changes we made to the COLLECT node
-        if (gatherNode != nullptr && !removeGatherNodeSort &&
-            !replacements.empty() && !gatherNode->elements().empty()) {
-          replaceGatherNodeVariables(&plan, gatherNode, replacements);
-        }
-        return dbCollectNode;
-      }
-    }
-  }
-
-  void addScatterBelow(ExecutionPlan& plan, ExecutionNode* node, ExecutionNode* scatterTo) {
     TRI_vocbase_t* vocbase = &plan.getAst()->query().vocbase();
-    /*
-     * This Lambda can be moved out as a static method.
-     * i just kept them in here for simplicity to move this rule into a seperate
-     * file there is nothing from the scope  required.
-     */
-    /**
-     * @brief Helper method to create a node to control the input stream for targetNode
-     * The input stream can either be scattered (send input to all parallel branches of targetNode)
-     * or distributed (for every input line specifically select one branch of targetNode)
-     */
-    auto createScatterNode = [](ExecutionPlan& plan, ExecutionNode* targetNode) -> ExecutionNode* {
-      auto nodeType = targetNode->getType();
-      if (nodeEligibleForDistribute(nodeType)) {
-        // Use Distribute where possible
-        auto const [isSmart, isDisjoint, collection] =
-            extractSmartnessAndCollection(targetNode);
-        TRI_ASSERT(collection != nullptr);
-        bool defaultSharding = collection->usesDefaultSharding();
-        LOG_DEVEL << "sharding: " <<defaultSharding << " type: " << targetNode->getTypeString() << " " << isModificationNode(nodeType);
-        bool allowedModifications =
-            isModificationNode(nodeType) &&
-            (!(nodeType == ExecutionNode::REMOVE || nodeType == ExecutionNode::UPDATE) ||
-             defaultSharding);
-        if (allowedModifications || (isGraphNode(nodeType) && isSmart && isDisjoint)) {
-          return createDistributeNodeFor(plan, targetNode);
-        }
-      }
-
-      if (nodeType == ExecutionNode::REMOVE || nodeType == ExecutionNode::UPDATE) {
-        // Note that in the REPLACE or UPSERT case we are not getting here, they are always
-        // eligible for distribute
-        auto* modNode = ExecutionNode::castTo<ModificationNode*>(targetNode);
-        modNode->getOptions().ignoreDocumentNotFound = true;
-      }
-
-      // Fallback to Scatter if we cannot identify the correct shard
-      return plan.createNode<ScatterNode>(&plan, plan.nextId(),
-                                          ScatterNode::ScatterType::SHARD);
-    };
-
-    auto scatterNode = createScatterNode(plan, scatterTo);
-    TRI_ASSERT(scatterNode);
-
-    auto remoteNode = plan.createNode<RemoteNode>(&plan, plan.nextId(),
-                                                  vocbase, "", "", "");
+    auto remoteNode =
+        plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
     TRI_ASSERT(remoteNode);
 
     // Now need to relink:
-    // node <- parent
+    // previous (root)
     // =>
-    // node <- scatter <- remote <- parent
+    // previous <- remote <- gather (root)
+    remoteNode->addDependency(scope.firstInternalNode);
+    gatherNode->addDependency(remoteNode);
+    TRI_ASSERT(scope.subqueryEnd->getType() == ExecutionNode::SUBQUERY);
+    ExecutionNode::castTo<SubqueryNode*>(scope.subqueryEnd)
+        ->setSubquery(gatherNode, true);
+  } else {
+    std::ignore = ::joinSnippets(
+        plan,
+        {scope.getInternalEndNode(), scope.getInternalEndNode(),
+         coordinatorLocation},
+        scope.firstInternalNode, subqueryScopes, additionalNodesWithContext);
+  }
+  // Link SubqueryStart with the last node that is relevant internally
+  std::ignore = ::joinSnippets(
+      plan, scope.lastInternalNode,
+      {scope.subqueryStart, scope.subqueryStart, coordinatorLocation},
+      subqueryScopes, additionalNodesWithContext);
+  // Now link SubqueryStart with the next piece in main query
+  if (upper.has_value()) {
+    return ::joinSnippets(plan,
+                          {scope.getExternalStartNode(),
+                           scope.getExternalStartNode(), coordinatorLocation},
+                          upper.value(), subqueryScopes,
+                          additionalNodesWithContext);
+  }
+  return {scope.getExternalStartNode(), scope.getExternalStartNode(),
+          coordinatorLocation};
+}
 
-    // At this stage in the planning every Node can only have a single parent
-    TRI_ASSERT(node->hasParent());
-    TRI_ASSERT(node->getParents().size() == 1);
-    auto* parent = node->getFirstParent();
-    parent->removeDependencies();
-    LOG_DEVEL << "Adding " << scatterNode->getTypeString() <<  ": " << node->getTypeString() << " <- " << parent->getTypeString();
-    // TODO this is not nice, maybe we can refactor this a bit
-    if (false && scatterNode->getType() == ExecutionNode::DISTRIBUTE) {
-      auto distInput = createDistributeInputNode(plan, scatterTo);
-      TRI_ASSERT(distInput);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      VarSet varsUsedHere;
-      distInput->getVariablesUsedHere(varsUsedHere);
-      // We cannot move our distribute to a point where the Input Variable is not valid anymore.
-      auto validVars = node->getVarsValid();
-      for (auto const& it : varsUsedHere) {
-        TRI_ASSERT(validVars.contains(it));
-      }
-#endif
-      distInput->addDependency(node);
-      scatterNode->addDependency(distInput);
-    } else {
-      scatterNode->addDependency(node);
-    }
-    remoteNode->addDependency(scatterNode);
-    parent->addDependency(remoteNode);
+/**
+ * TODO: I think this is still a bit unclear. Reformulate
+ * @brief This method defines the logic to decide if two adjacent snippets can
+ * be merged. It will get the relevant Connected Nodes as input, and will
+ * return the node that defines the next Sharding upstream
+ */
+NodeInformation joinSnippets(
+    ExecutionPlan& plan, NodeInformation lower, NodeInformation upper,
+    std::stack<SubqueryScope, std::vector<SubqueryScope>>& subqueryScopes,
+    std::vector<ExecutionNode*> const& additionalNodesWithContext) {
+  LOG_DEVEL << "Joining snippets " << lower.getNode()->getTypeString()
+            << " with " << upper.getNode()->getTypeString();
 
-    // TODO Performance, i think this is not necessary here, as the above injected nodes
-    // do not convey new variable information, unless we inserted a distribute
-    plan.clearVarUsageComputed();
-    plan.findVarUsage();
+  // the following line does not compile with clang-12, because the lambda in
+  // std::reduce with be called with [arg1, arg2], [arg1, arg1] and [arg2,
+  // arg2]. So the types of the arguments should be the same, not different.
+  // LOG_DEVEL_IF(!additionalNodesWithContext.empty()) <<
+  // std::reduce(additionalNodesWithContext.begin(),
+  // additionalNodesWithContext.end(), std::string(""), [](std::string old,
+  // ExecutionNode* next) -> std::string {return old + ", " +
+  // next->getTypeString();});
+  TRI_ASSERT(lower.getNode() != upper.getNode());
+  auto lowerLoc = lower.getAllowedLocation();
+  auto upperLoc = upper.getAllowedLocation();
+  TRI_ASSERT(lowerLoc.isStrict());
+  TRI_ASSERT(upperLoc.isStrict());
+  if (upperLoc.isSubqueryEnd()) {
+    LOG_DEVEL << "Pushing on SubqueryScope stack";
+    // We need to handle Subquery Joining later, start a new scope and remember
+    // it in stack
+    subqueryScopes.emplace(SubqueryScope{lower.getNode(), upper.getNode()});
+    return upper;
+  }
+  if (upperLoc.isSubqueryStart()) {
+    // Nothing to do here, we handle SubqueryStart one Step later.
+    // We just need to keep the start Node Pointer for reference
+    auto& top = subqueryScopes.top();
+    top.subqueryStart = upper.getNode();
+    top.lastInternalNode = lower.getNode();
+    return upper;
+  }
+  if (lowerLoc.isSubqueryStart()) {
+    TRI_ASSERT(!subqueryScopes.empty());
+    auto top = subqueryScopes.top();
+    subqueryScopes.pop();
+    return ::linkSubquery(plan, std::move(top), upper, subqueryScopes);
   }
 
-  // Forward Declare method. The below methods need to call each other.
-  NodeInformation joinSnippets(ExecutionPlan& plan, NodeInformation lower,
-                               NodeInformation upper,
-                               std::stack<SubqueryScope, std::vector<SubqueryScope>>& subqueryScopes,
-                               std::vector<ExecutionNode*> const& additionalNodesWithContext);
-
-
-  NodeInformation linkSubquery(ExecutionPlan& plan, SubqueryScope const& scope, 
-                               std::optional<NodeInformation> upper, 
-                               std::stack<SubqueryScope, std::vector<SubqueryScope>>& subqueryScopes) {
-    // TODO, those may need to be injected, also not yet clear into which of the following statements the nodes need to be added.
-    // I think it is the first call.
-    // There may also be a need to handle a stack of those calls: one entry for each subqiery.
-    std::vector<ExecutionNode*> additionalNodesWithContext{};
-    if (!scope.hasInternalRemote) {
-      // We can push the complete subquery to the desired location
-      if (scope.shardingDefinedByNode == nullptr) {
-        // The subquery has nothing that enforces location.
-        // We can just inline it with below and above
-        TRI_ASSERT(scope.previous);
-        TRI_ASSERT(scope.firstInternalNode == nullptr);
-        if (upper.has_value()) {
-          return ::joinSnippets(plan, scope.previous, upper.value(), subqueryScopes, additionalNodesWithContext);
-        } 
-        return scope.previous;
-      }
-
-      auto loc = scope.shardingDefinedByNode->getAllowedLocation();
-      if (loc.canRunOnCoordinator() || nodeEligibleForDistribute(scope.shardingDefinedByNode->getType())) {
-        // This covers two separate cases:
-        // 1  The subquery has to be executed on Coordinator, push it there in full.
-        //
-        // 2. The subquery is guaranteed to only have results on a single shard, so we can push it down to dbservers.
-        //    Handled it like it would be on the DBServer in full.
-        //
-        // The lower sharding is handled, we do not actually need to retain it.
-        std::ignore =
-            ::joinSnippets(plan, scope.previous,
-                           {scope.subqueryEnd, scope.shardingDefinedByNode, loc},
-                           subqueryScopes, additionalNodesWithContext);
-        if (upper.has_value()) {
-          return ::joinSnippets(plan, {scope.getExternalStartNode(), scope.shardingDefinedByNode, loc},
-                                upper.value(), subqueryScopes, additionalNodesWithContext);
-        }
-        auto parent = scope.getExternalStartNode()->getFirstDependency();
-        TRI_ASSERT(parent);
-        addScatterBelow(plan, parent, scope.shardingDefinedByNode);
-        return {scope.getExternalStartNode(), scope.shardingDefinedByNode, loc};
-      } 
-    }
-    // Unfortunately we cannot optimize the subquery. The SubqueryNodes themselfs need to be handled as CoordiantorOnly nodes.
-
-    // All NodePointers are required to be set here
-    TRI_ASSERT(scope.subqueryStart);
-    TRI_ASSERT(scope.firstInternalNode);
-    TRI_ASSERT(scope.lastInternalNode);
-    TRI_ASSERT(scope.shardingDefinedByNode);
-    // And then communicate with their internal pieces
-    // Link from lowest need to highest node in return -> Root ordering:
-    ExecutionLocation coordinatorLocation{ExecutionLocation::LocationType::COORDINATOR};
-    std::ignore = ::joinSnippets(plan, scope.previous,
-                                 {scope.subqueryEnd, scope.subqueryEnd, coordinatorLocation},
-                                 subqueryScopes, additionalNodesWithContext);
-    // Link SubqueryEnd, with the first node that is relevant internally
-    if (scope.getInternalEndNode() == scope.firstInternalNode) {
-      // This is a special case, the ROOT of the subquery is a ModificationNode, not a return.
-      // Need to gather it.
-      SmallUnorderedMap<ExecutionNode*, ExecutionNode*>::allocator_type::arena_type subqueriesArena;
-      SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{subqueriesArena};
-      auto gatherNode = insertGatherNode(plan, scope.firstInternalNode, subqueries);
-      TRI_ASSERT(gatherNode);
-
-      TRI_vocbase_t* vocbase = &plan.getAst()->query().vocbase();
-      auto remoteNode = plan.createNode<RemoteNode>(&plan, plan.nextId(),
-                                                     vocbase, "", "", "");
-      TRI_ASSERT(remoteNode);
-
-      // Now need to relink:
-      // previous (root)
-      // =>
-      // previous <- remote <- gather (root)
-      remoteNode->addDependency(scope.firstInternalNode);
-      gatherNode->addDependency(remoteNode);
-      TRI_ASSERT(scope.subqueryEnd->getType() == ExecutionNode::SUBQUERY);
-      ExecutionNode::castTo<SubqueryNode*>(scope.subqueryEnd)->setSubquery(gatherNode, true);
-    } else {
-      std::ignore = ::joinSnippets(plan, {scope.getInternalEndNode(), scope.getInternalEndNode(), coordinatorLocation},
-                                   scope.firstInternalNode, subqueryScopes, additionalNodesWithContext);
-    }
-    // Link SubqueryStart with the last node that is relevant internally
-    std::ignore = ::joinSnippets(plan, scope.lastInternalNode,
-                                 {scope.subqueryStart, scope.subqueryStart, coordinatorLocation},
-                                 subqueryScopes, additionalNodesWithContext);
-    // Now link SubqueryStart with the next piece in main query
-    if (upper.has_value()) {
-      return ::joinSnippets(plan, {scope.getExternalStartNode(), scope.getExternalStartNode(), coordinatorLocation},
-                            upper.value(), subqueryScopes, additionalNodesWithContext);
-    } 
-    return {scope.getExternalStartNode(), scope.getExternalStartNode(), coordinatorLocation};
-  }
-
-  /**
-   * TODO: I think this is still a bit unclear. Reformulate
-   * @brief This method defines the logic to decide if two adjacent snippets can
-   * be merged. It will get the relevant Connected Nodes as input, and will
-   * return the node that defines the next Sharding upstream
-   */
-  NodeInformation joinSnippets(ExecutionPlan& plan, NodeInformation lower,
-                               NodeInformation upper,
-                               std::stack<SubqueryScope, std::vector<SubqueryScope>>& subqueryScopes,
-                               std::vector<ExecutionNode*> const& additionalNodesWithContext) {
-    LOG_DEVEL << "Joining snippets " << lower.getNode()->getTypeString()
-              << " with " << upper.getNode()->getTypeString();
-
-    // the following line does not compile with clang-12, because the lambda in std::reduce with be called
-    // with [arg1, arg2], [arg1, arg1] and [arg2, arg2]. So the types of the arguments should be the same,
-    // not different.
-    // LOG_DEVEL_IF(!additionalNodesWithContext.empty()) << std::reduce(additionalNodesWithContext.begin(), additionalNodesWithContext.end(), std::string(""), [](std::string old, ExecutionNode* next) -> std::string {return old + ", " + next->getTypeString();});
-    TRI_ASSERT(lower.getNode() != upper.getNode());
-    auto lowerLoc = lower.getAllowedLocation();
-    auto upperLoc = upper.getAllowedLocation();
-    TRI_ASSERT(lowerLoc.isStrict());
-    TRI_ASSERT(upperLoc.isStrict());
-    if (upperLoc.isSubqueryEnd()) {
-      LOG_DEVEL << "Pushing on SubqueryScope stack";
-      // We need to handle Subquery Joining later, start a new scope and remember it in stack
-      subqueryScopes.emplace(SubqueryScope{lower.getNode(), upper.getNode()});
-      return upper;
-    }
-    if (upperLoc.isSubqueryStart()) {
-      // Nothing to do here, we handle SubqueryStart one Step later.
-      // We just need to keep the start Node Pointer for reference
-      auto& top = subqueryScopes.top();
-      top.subqueryStart = upper.getNode();
-      top.lastInternalNode = lower.getNode();
-      return upper;
-    }
-    if (lowerLoc.isSubqueryStart()) {
-      TRI_ASSERT(!subqueryScopes.empty());
-      auto top = subqueryScopes.top();
-      subqueryScopes.pop();
-      return ::linkSubquery(plan, std::move(top), upper, subqueryScopes);
-    }
-
-    if (lowerLoc.isSubqueryEnd()) {
-      LOG_DEVEL << "Setting first internal";
-      TRI_ASSERT(!subqueryScopes.empty());
-      auto& top = subqueryScopes.top();
-      top.firstInternalNode = upper.getNode();
-      top.shardingDefinedByNode = upper.getShardByNode();
-      // We cannot join
-      return upper;
-    }
-
-    if (lowerLoc.canRunOnCoordinator() && upperLoc.canRunOnCoordinator()) {
-      // Both on Coordinator, already joined in between nothing to do
-      return upper;
-    }
-
-    if (lowerLoc.canRunOnCoordinator() && upperLoc.canRunOnDBServer()) {
-      // Lower is on Coordinator
-      // Add GATHER REMOTE right above the lowerNode to keep most computations on DBServer, take sharding from upperNode
-      // TODO: We may need to get more clever with the GATHER node here, regarding parallelism
-      // TODO: We may need to improve the gather / even omit the gather, if we figure out Upper
-      // only has a single Shard
-      if (!additionalNodesWithContext.empty()) {
-        // We have additional context to take into account.
-        // We need to check for some patterns of nodes.
-        auto firstContext = additionalNodesWithContext[0];
-        if (firstContext->getType() == ExecutionNode::SORT) {
-          bool handledAsCollect = false;
-          if (additionalNodesWithContext.size() > 1) {
-            auto collect = additionalNodesWithContext[1];
-            if (collect->getType() == ExecutionNode::COLLECT) {
-              // FOUND: COLLECT SORT (classical collect)
-              // Needs to transate to COLLECT(DB) GATHER COLLECT(COOR) SORT
-              LOG_DEVEL << "Hitting Sort/Collect Node";
-              // TODO Do we need to validate that SORT and COLLECT are related?
-              // TODO Do we need to validate that SORT and COLLECT have effect on Gather?
-              auto gatherNode = addGatherAbove(plan, collect, upper.getShardByNode());
-              auto dbServerCollect = createDBServerCollectVariant(
-                  plan, ExecutionNode::castTo<CollectNode*>(collect), gatherNode);
-              plan.insertBefore(gatherNode, dbServerCollect);
-              handledAsCollect = true;
-            }
-          }
-          if (!handledAsCollect) {
-            // FOUND: SORT
-            // Needs to translate to SORT GATHER(sorted)
-            LOG_DEVEL << "Hitting Sort Node";
-            auto gatherNode =
-                addGatherAbove(plan, lower.getNode(), upper.getShardByNode());
-            gatherNode->elements(ExecutionNode::castTo<SortNode*>(firstContext)->elements());
-          }
-        } else if (firstContext->getType() == ExecutionNode::COLLECT) {
-          // FOUND: COLLECT
-          // TODO: Implement me
-          LOG_DEVEL << "Hitting Collect Node";
-          TRI_ASSERT(false);
-          // plan.insertBefore(gatherNode, ExecutionNode *newNode)
-        } else {
-          // Unhandled Pattern
-          // TODO: Implement me
-          TRI_ASSERT(false);
-        }
-      } else {
-        // TODO Do we need to validate that SORT and COLLECT have effect on Gather?
-        // No further context we can just add our gatherNode
-        addGatherAbove(plan, lower.getNode(), upper.getShardByNode());
-      }
-      if (!subqueryScopes.empty()) {
-        auto& top = subqueryScopes.top();
-        top.hasInternalRemote = true;
-        top.shardingDefinedByNode = upper.getShardByNode();
-      }
-      return upper;
-    }
-
-    if (lowerLoc.canRunOnDBServer() && upperLoc.canRunOnCoordinator()) {
-      // Lower is on DBServer
-      // We need to add SCATTER REMOTE or DISTRIBUTE REMOTE right below the coordinator piece on upper.
-      // We continue with the "sharding" from upperNode, which is Coordinator.
-
-      addScatterBelow(plan, upper.getNode(), lower.getShardByNode());
-      if (!subqueryScopes.empty()) {
-        auto& top = subqueryScopes.top();
-        top.hasInternalRemote = true;
-        top.shardingDefinedByNode = upper.getShardByNode();
-      }
-      return upper;
-    }
-
-    if (lowerLoc.canRunOnDBServer() && upperLoc.canRunOnDBServer()) {
-      // TODO: actually check here if we need to insert a Scatter/Gather.
-      // we don't need to do this for collections with the same sharding
-      // and satellite collections.
-
-      // Optimize Case:
-      // We distribute on LOWER, by the output of upper. There is no need
-      // to return to coordinator in between
-      // This handles cases like:
-      //   FOR x IN col REMOVE x IN col
-
-      if (nodeEligibleForDistribute(lower.getShardByNode()->getType())) {
-        auto [collection, inputVariable, isGraphNode] = ::extractDistributeInfo(lower.getShardByNode());
-        auto up = upper.getShardByNode();
-        // TEMPORARY hack to figure out that this still works:
-        TRI_ASSERT(inputVariable != nullptr);
-        ExecutionNode* setter = plan.getVarSetBy(inputVariable->id);
-        TRI_ASSERT(setter != nullptr);
-        bool rewiredToDistributeInput = false;
-
-        // To get rid of this hack, we test if this pointer is inside the list of Context Nodes
-        if (setter->getType() == EN::CALCULATION) {
-          auto it = std::find(additionalNodesWithContext.begin(), additionalNodesWithContext.end(), setter);
-          if (it != additionalNodesWithContext.end()) {
-            // We try to rewire the input variable to be the input of MAKE_DISTRIBUTE_INPUT
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-            // Assert that we only hit the expected node, which is MAKE_DISTRIBUTE
-            auto cn = ExecutionNode::castTo<CalculationNode const*>(setter);
-            auto expr = cn->expression();
-            AstNode const* n = expr->node();
-            TRI_ASSERT(n != nullptr);
-            if (n->type == NODE_TYPE_FCALL) {
-              auto func = static_cast<Function const*>(n->getData());
-              TRI_ASSERT(func->name == "MAKE_DISTRIBUTE_INPUT" || func->name == "MAKE_DISTRIBUTE_GRAPH_INPUT");
-            }
-#endif
-            VarSet usedVars{};
-            setter->getVariablesUsedHere(usedVars);
-            TRI_ASSERT(usedVars.size() == 1);
-            inputVariable = *usedVars.begin();
-            rewiredToDistributeInput = true;
-          }
-        }
-
-        if (isInputForModificationNode(plan, collection, inputVariable, up)) {
-          LOG_DEVEL << "Distribute by attached producer, " << inputVariable->name
-                    << " produced by " << up->getTypeString();
-          if (rewiredToDistributeInput) {
-            LOG_DEVEL << "Removing MAKE_DISTRIBUTE_INPUT again";
-            plan.unlinkNode(setter);
-            switch (lower.getShardByNode()->getType()) {
-              case ExecutionNode::INSERT: {
-                auto* specificNode =
-                    ExecutionNode::castTo<InsertNode*>(lower.getShardByNode());
-                specificNode->setInVariable(inputVariable);
-                break;
-              }
-              case ExecutionNode::REMOVE: {
-                auto* specificNode =
-                    ExecutionNode::castTo<RemoveNode*>(lower.getShardByNode());
-                specificNode->setInVariable(inputVariable);
-                break;
-              }
-              case ExecutionNode::UPDATE:
-              case ExecutionNode::REPLACE: {
-                auto* updateReplaceNode =
-                    ExecutionNode::castTo<UpdateReplaceNode*>(lower.getShardByNode());
-                if (updateReplaceNode->inKeyVariable() != nullptr) {
-                  updateReplaceNode->setInKeyVariable(inputVariable);
-                } else {
-                  updateReplaceNode->setInDocVariable(inputVariable);
-                }
-                break;
-              }
-              case ExecutionNode::UPSERT: {
-                auto* upsertNode =
-                    ExecutionNode::castTo<UpsertNode*>(lower.getShardByNode());
-                upsertNode->setInsertVariable(inputVariable);
-                break;
-              }
-              case ExecutionNode::TRAVERSAL: {
-                auto* traversalNode =
-                    ExecutionNode::castTo<TraversalNode*>(lower.getShardByNode());
-                traversalNode->setInVariable(inputVariable);
-                break;
-              }
-              case ExecutionNode::K_SHORTEST_PATHS: {
-                auto* kShortestPathsNode =
-                    ExecutionNode::castTo<KShortestPathsNode*>(lower.getShardByNode());
-                kShortestPathsNode->setStartInVariable(inputVariable);
-                break;
-              }
-              case ExecutionNode::SHORTEST_PATH: {
-                auto* shortestPathNode =
-                    ExecutionNode::castTo<ShortestPathNode*>(lower.getShardByNode());
-                shortestPathNode->setStartInVariable(inputVariable);
-                break;
-              }
-              default:
-                // The above logic should never let any nonhandled not through here.
-                TRI_ASSERT(false);
-            }
-          }
-          return upper;
-        }
-      }
-      addGatherAbove(plan, lower.getNode(), upper.getShardByNode());
-      auto dependencyNode = lower.getNode()->getFirstDependency();
-      addScatterBelow(plan, dependencyNode, lower.getShardByNode());
-      if (!subqueryScopes.empty()) {
-        auto& top = subqueryScopes.top();
-        top.hasInternalRemote = true;
-        top.shardingDefinedByNode = upper.getShardByNode();
-      }
-    }
-
+  if (lowerLoc.isSubqueryEnd()) {
+    LOG_DEVEL << "Setting first internal";
+    TRI_ASSERT(!subqueryScopes.empty());
+    auto& top = subqueryScopes.top();
+    top.firstInternalNode = upper.getNode();
+    top.shardingDefinedByNode = upper.getShardByNode();
+    // We cannot join
     return upper;
   }
 
-  // NOTE this is almost copy paste of insertDistributeInputCalculation rule.
-  // The difference is, that we do nost search for DISTRIBUTE, but for the target nodes
-  // directly. In combination with distributeQueryRule this rule replaces
-  // insertDistributeInputCalculation. For simplicity it is moved into it's own namespace.
-  void insertDistributeInputCalculationNextGen(ExecutionPlan& plan) {
-    ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-    ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
-    plan.findNodesOfType(nodes, {
-        ExecutionNode::INSERT,
-        ExecutionNode::REMOVE,
-        ExecutionNode::UPDATE,
-        ExecutionNode::REPLACE,
-        ExecutionNode::UPSERT,
-        ExecutionNode::TRAVERSAL,
-        ExecutionNode::K_SHORTEST_PATHS,
-        ExecutionNode::SHORTEST_PATH
-    }, true);
+  if (lowerLoc.canRunOnCoordinator() && upperLoc.canRunOnCoordinator()) {
+    // Both on Coordinator, already joined in between nothing to do
+    return upper;
+  }
 
-    for (auto const& targetNode : nodes) {
-      TRI_ASSERT(targetNode != nullptr);
-      auto calcNode = createDistributeInputNode(plan, targetNode);
-      if (calcNode != nullptr) {
-        plan.insertBefore(targetNode, calcNode);
-        plan.clearVarUsageComputed();
-        plan.findVarUsage();
+  if (lowerLoc.canRunOnCoordinator() && upperLoc.canRunOnDBServer()) {
+    // Lower is on Coordinator
+    // Add GATHER REMOTE right above the lowerNode to keep most computations on
+    // DBServer, take sharding from upperNode
+    // TODO: We may need to get more clever with the GATHER node here, regarding
+    // parallelism
+    // TODO: We may need to improve the gather / even omit the gather, if we
+    // figure out Upper only has a single Shard
+    if (!additionalNodesWithContext.empty()) {
+      // We have additional context to take into account.
+      // We need to check for some patterns of nodes.
+      auto firstContext = additionalNodesWithContext[0];
+      if (firstContext->getType() == ExecutionNode::SORT) {
+        bool handledAsCollect = false;
+        if (additionalNodesWithContext.size() > 1) {
+          auto collect = additionalNodesWithContext[1];
+          if (collect->getType() == ExecutionNode::COLLECT) {
+            // FOUND: COLLECT SORT (classical collect)
+            // Needs to transate to COLLECT(DB) GATHER COLLECT(COOR) SORT
+            LOG_DEVEL << "Hitting Sort/Collect Node";
+            // TODO Do we need to validate that SORT and COLLECT are related?
+            // TODO Do we need to validate that SORT and COLLECT have effect on
+            // Gather?
+            auto gatherNode =
+                addGatherAbove(plan, collect, upper.getShardByNode());
+            auto dbServerCollect = createDBServerCollectVariant(
+                plan, ExecutionNode::castTo<CollectNode*>(collect), gatherNode);
+            plan.insertBefore(gatherNode, dbServerCollect);
+            handledAsCollect = true;
+          }
+        }
+        if (!handledAsCollect) {
+          // FOUND: SORT
+          // Needs to translate to SORT GATHER(sorted)
+          LOG_DEVEL << "Hitting Sort Node";
+          auto gatherNode =
+              addGatherAbove(plan, lower.getNode(), upper.getShardByNode());
+          gatherNode->elements(
+              ExecutionNode::castTo<SortNode*>(firstContext)->elements());
+        }
+      } else if (firstContext->getType() == ExecutionNode::COLLECT) {
+        // FOUND: COLLECT
+        LOG_DEVEL << "Hitting Collect Node";
+        TRI_ASSERT(false);
+        /* TODO Implement, this ordering does not really work yet
+        auto dbServerCollect = createDBServerCollectVariant(
+            plan, ExecutionNode::castTo<CollectNode*>(firstContext),
+            gatherNode);
+        plan.insertBefore(firstContext, dbServerCollect);
+        auto gatherNode =
+            addGatherAbove(plan, firstContext, upper.getShardByNode());
+        */
+      } else {
+        // Unhandled Pattern
+        // TODO: Implement me
+        TRI_ASSERT(false);
+      }
+    } else {
+      // TODO Do we need to validate that SORT and COLLECT have effect on
+      // Gather? No further context we can just add our gatherNode
+      addGatherAbove(plan, lower.getNode(), upper.getShardByNode());
+    }
+    if (!subqueryScopes.empty()) {
+      auto& top = subqueryScopes.top();
+      top.hasInternalRemote = true;
+      top.shardingDefinedByNode = upper.getShardByNode();
+    }
+    return upper;
+  }
+
+  if (lowerLoc.canRunOnDBServer() && upperLoc.canRunOnCoordinator()) {
+    // Lower is on DBServer
+    // We need to add SCATTER REMOTE or DISTRIBUTE REMOTE right below the
+    // coordinator piece on upper. We continue with the "sharding" from
+    // upperNode, which is Coordinator.
+
+    addScatterBelow(plan, upper.getNode(), lower.getShardByNode());
+    if (!subqueryScopes.empty()) {
+      auto& top = subqueryScopes.top();
+      top.hasInternalRemote = true;
+      top.shardingDefinedByNode = upper.getShardByNode();
+    }
+    return upper;
+  }
+
+  if (lowerLoc.canRunOnDBServer() && upperLoc.canRunOnDBServer()) {
+    // TODO: actually check here if we need to insert a Scatter/Gather.
+    // we don't need to do this for collections with the same sharding
+    // and satellite collections.
+
+    // Optimize Case:
+    // We distribute on LOWER, by the output of upper. There is no need
+    // to return to coordinator in between
+    // This handles cases like:
+    //   FOR x IN col REMOVE x IN col
+
+    if (nodeEligibleForDistribute(lower.getShardByNode()->getType())) {
+      auto [collection, inputVariable, isGraphNode] =
+          ::extractDistributeInfo(lower.getShardByNode());
+      auto up = upper.getShardByNode();
+      // TEMPORARY hack to figure out that this still works:
+      TRI_ASSERT(inputVariable != nullptr);
+      ExecutionNode* setter = plan.getVarSetBy(inputVariable->id);
+      TRI_ASSERT(setter != nullptr);
+      bool rewiredToDistributeInput = false;
+
+      // To get rid of this hack, we test if this pointer is inside the list of
+      // Context Nodes
+      if (setter->getType() == EN::CALCULATION) {
+        auto it = std::find(additionalNodesWithContext.begin(),
+                            additionalNodesWithContext.end(), setter);
+        if (it != additionalNodesWithContext.end()) {
+          // We try to rewire the input variable to be the input of
+          // MAKE_DISTRIBUTE_INPUT
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          // Assert that we only hit the expected node, which is MAKE_DISTRIBUTE
+          auto cn = ExecutionNode::castTo<CalculationNode const*>(setter);
+          auto expr = cn->expression();
+          AstNode const* n = expr->node();
+          TRI_ASSERT(n != nullptr);
+          if (n->type == NODE_TYPE_FCALL) {
+            auto func = static_cast<Function const*>(n->getData());
+            TRI_ASSERT(func->name == "MAKE_DISTRIBUTE_INPUT" ||
+                       func->name == "MAKE_DISTRIBUTE_GRAPH_INPUT");
+          }
+#endif
+          VarSet usedVars{};
+          setter->getVariablesUsedHere(usedVars);
+          TRI_ASSERT(usedVars.size() == 1);
+          inputVariable = *usedVars.begin();
+          rewiredToDistributeInput = true;
+        }
+      }
+
+      if (isInputForModificationNode(plan, collection, inputVariable, up)) {
+        LOG_DEVEL << "Distribute by attached producer, " << inputVariable->name
+                  << " produced by " << up->getTypeString();
+        if (rewiredToDistributeInput) {
+          LOG_DEVEL << "Removing MAKE_DISTRIBUTE_INPUT again";
+          plan.unlinkNode(setter);
+          switch (lower.getShardByNode()->getType()) {
+            case ExecutionNode::INSERT: {
+              auto* specificNode =
+                  ExecutionNode::castTo<InsertNode*>(lower.getShardByNode());
+              specificNode->setInVariable(inputVariable);
+              break;
+            }
+            case ExecutionNode::REMOVE: {
+              auto* specificNode =
+                  ExecutionNode::castTo<RemoveNode*>(lower.getShardByNode());
+              specificNode->setInVariable(inputVariable);
+              break;
+            }
+            case ExecutionNode::UPDATE:
+            case ExecutionNode::REPLACE: {
+              auto* updateReplaceNode =
+                  ExecutionNode::castTo<UpdateReplaceNode*>(
+                      lower.getShardByNode());
+              if (updateReplaceNode->inKeyVariable() != nullptr) {
+                updateReplaceNode->setInKeyVariable(inputVariable);
+              } else {
+                updateReplaceNode->setInDocVariable(inputVariable);
+              }
+              break;
+            }
+            case ExecutionNode::UPSERT: {
+              auto* upsertNode =
+                  ExecutionNode::castTo<UpsertNode*>(lower.getShardByNode());
+              upsertNode->setInsertVariable(inputVariable);
+              break;
+            }
+            case ExecutionNode::TRAVERSAL: {
+              auto* traversalNode =
+                  ExecutionNode::castTo<TraversalNode*>(lower.getShardByNode());
+              traversalNode->setInVariable(inputVariable);
+              break;
+            }
+            case ExecutionNode::K_SHORTEST_PATHS: {
+              auto* kShortestPathsNode =
+                  ExecutionNode::castTo<KShortestPathsNode*>(
+                      lower.getShardByNode());
+              kShortestPathsNode->setStartInVariable(inputVariable);
+              break;
+            }
+            case ExecutionNode::SHORTEST_PATH: {
+              auto* shortestPathNode = ExecutionNode::castTo<ShortestPathNode*>(
+                  lower.getShardByNode());
+              shortestPathNode->setStartInVariable(inputVariable);
+              break;
+            }
+            default:
+              // The above logic should never let any nonhandled not through
+              // here.
+              TRI_ASSERT(false);
+          }
+        }
+        return upper;
       }
     }
+    addGatherAbove(plan, lower.getNode(), upper.getShardByNode());
+    auto dependencyNode = lower.getNode()->getFirstDependency();
+    addScatterBelow(plan, dependencyNode, lower.getShardByNode());
+    if (!subqueryScopes.empty()) {
+      auto& top = subqueryScopes.top();
+      top.hasInternalRemote = true;
+      top.shardingDefinedByNode = upper.getShardByNode();
+    }
   }
-}  // namespace
 
-void arangodb::aql::insertDistributeCalculationsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-                                                     OptimizerRule const& rule) {
-  ::insertDistributeInputCalculationNextGen(*plan);
-  bool modified = true;
-  opt->addPlan(std::move(plan), rule, modified);
+  return upper;
 }
 
-void arangodb::aql::distributeQueryRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+// NOTE this is almost copy paste of insertDistributeInputCalculation rule.
+// The difference is, that we do nost search for DISTRIBUTE, but for the target
+// nodes directly. In combination with distributeQueryRule this rule replaces
+// insertDistributeInputCalculation. For simplicity it is moved into it's own
+// namespace.
+void insertDistributeInputCalculationNextGen(ExecutionPlan& plan) {
+  ::arangodb::containers::SmallVector<
+      ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  plan.findNodesOfType(
+      nodes,
+      {ExecutionNode::INSERT, ExecutionNode::REMOVE, ExecutionNode::UPDATE,
+       ExecutionNode::REPLACE, ExecutionNode::UPSERT, ExecutionNode::TRAVERSAL,
+       ExecutionNode::K_SHORTEST_PATHS, ExecutionNode::SHORTEST_PATH},
+      true);
+
+  for (auto const& targetNode : nodes) {
+    TRI_ASSERT(targetNode != nullptr);
+    auto calcNode = createDistributeInputNode(plan, targetNode);
+    if (calcNode != nullptr) {
+      plan.insertBefore(targetNode, calcNode);
+      plan.clearVarUsageComputed();
+      plan.findVarUsage();
+    }
+  }
+}
+}  // namespace
+
+void arangodb::aql::insertDistributeCalculationsRule(
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+    OptimizerRule const& rule) {
+  if (false) {
+    ::insertDistributeInputCalculationNextGen(*plan);
+    bool modified = true;
+    opt->addPlan(std::move(plan), rule, modified);
+  } else {
+    bool modified = false;
+    opt->addPlan(std::move(plan), rule, modified);
+  }
+}
+
+void arangodb::aql::distributeQueryRule(Optimizer* opt,
+                                        std::unique_ptr<ExecutionPlan> plan,
                                         OptimizerRule const& rule) {
-  // goal: make all other cluster distribution optimizer rules, including "cluster-one-shard"
-  // obsolete. The only extra cluster rules that should run are:
+  // goal: make all other cluster distribution optimizer rules, including
+  // "cluster-one-shard" obsolete. The only extra cluster rules that should run
+  // are:
   // - optimize-cluster-single-document-operations
   // - insert-distribute-calculations
-  // the first rule will, when applied turn off all other cluster specific rules,
-  // because the query can be answered with a single request to a DB server.
-  // the second rule is necessary to insert the calculations for the inputs required
-  // by DistributeNodes.
-  // "cluster-one-shard" will be covered by the transformations below, and should not
-  // require any special treatment
+  // the first rule will, when applied turn off all other cluster specific
+  // rules, because the query can be answered with a single request to a DB
+  // server. the second rule is necessary to insert the calculations for the
+  // inputs required by DistributeNodes. "cluster-one-shard" will be covered by
+  // the transformations below, and should not require any special treatment
+
+  {
+    struct McHackiAlternative
+        : arangodb::aql::WalkerWorkerBase<arangodb::aql::ExecutionNode> {
+      bool before(arangodb::aql::ExecutionNode* n) override {
+        // TODO: If we stick with this variant we may want to add the
+        // selectedSnippet on each node.
+        if (_snippets.empty()) {
+          // Initial Snippet
+          _snippets.emplace_back(std::make_shared<PlanSnippet>(n));
+        } else {
+          // Try to enlarage last snippet upwards.
+          auto const& top = _snippets.back();
+          if (!top->tryJoinAbove(n)) {
+            // Cannot join upwards. Need to create new snippet
+            _snippets.emplace_back(std::make_shared<PlanSnippet>(n));
+          }
+        }
+        // Always continue walking
+        return false;
+      }
+
+      bool enterSubquery(arangodb::aql::ExecutionNode* /*super*/,
+                         arangodb::aql::ExecutionNode* /*sub*/) override {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_NOT_IMPLEMENTED,
+            "Subqueries not yet handled in distributeRule");
+        return false;
+      }
+
+      void after(arangodb::aql::ExecutionNode* n) override {}
+
+      void log() {
+        for (auto const& it : _snippets) {
+          LOG_DEVEL << *it;
+        }
+      }
+
+      void insertCommunicationNodes() {
+        for (auto& it : _snippets) {
+          it->insertCommunicationNodes();
+        }
+        if (!_snippets.front()->isOnCoordinator()) {
+          auto newRoot = _snippets.front()->getLowestNode();
+          auto plan = newRoot->plan();
+
+          // We need to rewire the root of the Plan.
+          // There are new communication nodes now.
+          plan->root(newRoot, true);
+        }
+      }
+
+      void optimizeAdjacentSnippets() {
+        if (_snippets.size() < 2) {
+          // We will always have one.
+          TRI_ASSERT(_snippets.size() == 1);
+          return;
+        }
+        // Reverse iterate through snippets
+        for (size_t currentIndex = _snippets.size() - 1; currentIndex > 0;
+             --currentIndex) {
+          auto upperSnippet = _snippets[currentIndex];
+          // Protect against invalid access.
+          TRI_ASSERT(currentIndex > 0);
+          auto lowerSnippet = _snippets[currentIndex - 1];
+          PlanSnippet::optimizeAdjacentSnippets(upperSnippet, lowerSnippet);
+        }
+      }
+
+     private:
+      std::vector<std::shared_ptr<PlanSnippet>> _snippets{};
+
+    } mcHackiWalker{};
+
+    plan->root()->walk(mcHackiWalker);
+    mcHackiWalker.log();
+    mcHackiWalker.optimizeAdjacentSnippets();
+    mcHackiWalker.log();
+    mcHackiWalker.insertCommunicationNodes();
+
+    bool modified = true;
+    opt->addPlan(std::move(plan), rule, modified);
+    return;
+  }
 
   /*
-   * The RelevantNodesFinder will build a list of "relevant" nodes for making decisions 
-   * about ExecutionNode positioning (coordinator or DB server). For that, it collects 
-   * all nodes for which a change in position _could_ be useful or even required.
-   * ExecutionNodes are traversed bottom-up (in explain output order), with depth-first
-   * subquery entering.
-   * This struct can be moved out of this method.
-   * i just kept them in here for simplicity to move this rule into a seperate
-   * file. there is nothing from the scope required.
+   * The RelevantNodesFinder will build a list of "relevant" nodes for making
+   * decisions about ExecutionNode positioning (coordinator or DB server). For
+   * that, it collects all nodes for which a change in position _could_ be
+   * useful or even required. ExecutionNodes are traversed bottom-up (in explain
+   * output order), with depth-first subquery entering. This struct can be moved
+   * out of this method. i just kept them in here for simplicity to move this
+   * rule into a seperate file. there is nothing from the scope required.
    */
-  struct RelevantNodesFinder : arangodb::aql::WalkerWorkerBase<arangodb::aql::ExecutionNode> {
+  struct RelevantNodesFinder
+      : arangodb::aql::WalkerWorkerBase<arangodb::aql::ExecutionNode> {
     bool before(arangodb::aql::ExecutionNode* n) override {
       auto loc = n->getAllowedLocation();
       if (loc.isStrict() || loc.requiresContext()) {
@@ -9711,10 +9883,11 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt, std::unique_ptr<Executio
       // Always continue walking
       return false;
     }
-  
+
     // we want to enter subqueries
-    bool enterSubquery(arangodb::aql::ExecutionNode* /*super*/, arangodb::aql::ExecutionNode* /*sub*/) override { 
-      return true; 
+    bool enterSubquery(arangodb::aql::ExecutionNode* /*super*/,
+                       arangodb::aql::ExecutionNode* /*sub*/) override {
+      return true;
     }
 
     void after(arangodb::aql::ExecutionNode* n) override {}
@@ -9735,8 +9908,11 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt, std::unique_ptr<Executio
     if (firstLocation.isStrict() && firstLocation.canRunOnDBServer()) {
       // Special case, the final node of the query is located on DBServer.
       // Need to gather it.
-      SmallUnorderedMap<ExecutionNode*, ExecutionNode*>::allocator_type::arena_type subqueriesArena;
-      SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{subqueriesArena};
+      SmallUnorderedMap<ExecutionNode*,
+                        ExecutionNode*>::allocator_type::arena_type
+          subqueriesArena;
+      SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{
+          subqueriesArena};
       auto gatherNode = insertGatherNode(*plan, previous.getNode(), subqueries);
       TRI_ASSERT(gatherNode);
 
@@ -9756,7 +9932,8 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt, std::unique_ptr<Executio
   }
 
   std::stack<SubqueryScope, std::vector<SubqueryScope>> subqueryScopes;
-  // TODO: Maybe we need to retain those context nodes across subqueries and move them into the subquery scope.
+  // TODO: Maybe we need to retain those context nodes across subqueries and
+  // move them into the subquery scope.
   std::vector<ExecutionNode*> additionalNodesWithContext{};
 
   // We start on purpose at i = 1, to guarantee that we have a previous node
@@ -9765,20 +9942,25 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt, std::unique_ptr<Executio
     TRI_ASSERT(previous.getNode());
     TRI_ASSERT(node);
     if (node->getAllowedLocation().requiresContext()) {
-      LOG_DEVEL << "Need to handle context for " << node->getTypeString() << " After " << previous.getNode()->getTypeString();
+      LOG_DEVEL << "Need to handle context for " << node->getTypeString()
+                << " After " << previous.getNode()->getTypeString();
       additionalNodesWithContext.emplace_back(node);
     } else {
-      previous = ::joinSnippets(*plan, previous, node, subqueryScopes, additionalNodesWithContext);
+      previous = ::joinSnippets(*plan, previous, node, subqueryScopes,
+                                additionalNodesWithContext);
       additionalNodesWithContext.clear();
     }
   }
   {
-    // If the last relevantNode is Remove or Update, we will have an implicit Scatter to this node.
-    // Therefore we need to make sure to ignoreDocumentNodeFound on the incorrect nodes.
-    // If the Modification is somewhere in between, the ignoreDocumentNotFound flag should be set before.
+    // If the last relevantNode is Remove or Update, we will have an implicit
+    // Scatter to this node. Therefore we need to make sure to
+    // ignoreDocumentNodeFound on the incorrect nodes. If the Modification is
+    // somewhere in between, the ignoreDocumentNotFound flag should be set
+    // before.
     auto lastNode = relevantNodes.back();
     auto nodeType = lastNode->getType();
-    if (nodeType == ExecutionNode::REMOVE || nodeType == ExecutionNode::UPDATE) {
+    if (nodeType == ExecutionNode::REMOVE ||
+        nodeType == ExecutionNode::UPDATE) {
       auto* modNode = ExecutionNode::castTo<ModificationNode*>(lastNode);
       modNode->getOptions().ignoreDocumentNotFound = true;
     }
@@ -9791,7 +9973,8 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt, std::unique_ptr<Executio
     // Need to link all relevant pieces
     auto top = subqueryScopes.top();
     subqueryScopes.pop();
-    std::ignore = ::linkSubquery(*plan, std::move(top), std::nullopt, subqueryScopes);
+    std::ignore =
+        ::linkSubquery(*plan, std::move(top), std::nullopt, subqueryScopes);
   }
 
   bool modified = true;
