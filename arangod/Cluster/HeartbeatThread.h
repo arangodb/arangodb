@@ -58,8 +58,9 @@ class HeartbeatBackgroundJobThread;
 class HeartbeatThread : public Thread,
                         public std::enable_shared_from_this<HeartbeatThread> {
  public:
-  HeartbeatThread(application_features::ApplicationServer&, AgencyCallbackRegistry*,
-                  std::chrono::microseconds, uint64_t maxFailsBeforeWarning);
+  HeartbeatThread(application_features::ApplicationServer&,
+                  AgencyCallbackRegistry*, std::chrono::microseconds,
+                  uint64_t maxFailsBeforeWarning);
   ~HeartbeatThread();
 
  public:
@@ -328,4 +329,3 @@ class HeartbeatThread : public Thread,
   Counter& _heartbeat_failure_counter;
 };
 }  // namespace arangodb
-

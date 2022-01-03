@@ -79,4 +79,3 @@ class LogTopic {
   std::atomic<LogLevel> _level;
 };
 }  // namespace arangodb
-

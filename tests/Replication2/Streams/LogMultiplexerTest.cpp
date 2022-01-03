@@ -46,8 +46,8 @@ TEST_F(LogMultiplexerTest, leader_follower_test) {
   auto followerLog = createReplicatedLog();
 
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-  auto leader =
-      leaderLog->becomeLeader(LogConfig(2, 2, false), "leader", LogTerm{1}, {follower});
+  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, false), "leader",
+                                        LogTerm{1}, {follower});
 
   auto mux = LogMultiplexer<MyTestSpecification>::construct(leader);
   auto demux = LogDemultiplexer<MyTestSpecification>::construct(follower);
@@ -106,8 +106,8 @@ TEST_F(LogMultiplexerTest, leader_wait_for) {
   auto followerLog = createFakeReplicatedLog();
 
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-  auto leader =
-      leaderLog->becomeLeader(LogConfig(2, 2, false), "leader", LogTerm{1}, {follower});
+  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, false), "leader",
+                                        LogTerm{1}, {follower});
   auto mux = LogMultiplexer<MyTestSpecification>::construct(leader);
 
   auto stream = mux->getStreamById<my_int_stream_id>();
@@ -133,8 +133,8 @@ TEST_F(LogMultiplexerTest, leader_wait_for_multiple) {
   auto followerLog = createFakeReplicatedLog();
 
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-  auto leader =
-      leaderLog->becomeLeader(LogConfig(2, 2, false), "leader", LogTerm{1}, {follower});
+  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, false), "leader",
+                                        LogTerm{1}, {follower});
   auto mux = LogMultiplexer<MyTestSpecification>::construct(leader);
 
   auto streamA = mux->getStreamById<my_int_stream_id>();
@@ -174,8 +174,8 @@ TEST_F(LogMultiplexerTest, follower_wait_for) {
   auto followerLog = createFakeReplicatedLog(LogId{2});
 
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-  auto leader =
-      leaderLog->becomeLeader(LogConfig(2, 2, false), "leader", LogTerm{1}, {follower});
+  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, false), "leader",
+                                        LogTerm{1}, {follower});
   // handle first leader log entry (empty)
   leader->triggerAsyncReplication();
   while (follower->hasPendingAppendEntries()) {

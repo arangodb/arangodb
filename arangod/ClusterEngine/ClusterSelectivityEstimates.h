@@ -35,7 +35,7 @@ class ClusterSelectivityEstimates {
  public:
   explicit ClusterSelectivityEstimates(LogicalCollection& collection);
   void flush();
-  
+
   /// @brief fetch estimates from cache or server
   /// @param allowUpdate allow cluster communication
   /// @param tid specify ongoing transaction this is a part of
@@ -46,8 +46,8 @@ class ClusterSelectivityEstimates {
   struct InternalData {
     IndexEstMap estimates;
     double expireStamp;
-    
-    InternalData(IndexEstMap const& estimates, double expireStamp) 
+
+    InternalData(IndexEstMap const& estimates, double expireStamp)
         : estimates(estimates), expireStamp(expireStamp) {}
   };
 
@@ -62,4 +62,3 @@ class ClusterSelectivityEstimates {
 };
 
 }  // namespace arangodb
-

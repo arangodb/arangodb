@@ -44,25 +44,36 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
     bool waitForSync = false;
   };
 
-  auto persist(std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
-               std::unique_ptr<arangodb::replication2::replicated_log::PersistedLogIterator> iter,
-               WriteOptions const& options) -> futures::Future<Result>;
+  auto persist(
+      std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
+      std::unique_ptr<
+          arangodb::replication2::replicated_log::PersistedLogIterator>
+          iter,
+      WriteOptions const& options) -> futures::Future<Result>;
 
   struct PersistRequest {
-    PersistRequest(std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
-                   std::unique_ptr<arangodb::replication2::replicated_log::PersistedLogIterator> iter,
-                   futures::Promise<Result> promise)
-        : log(std::move(log)), iter(std::move(iter)), promise(std::move(promise)) {}
+    PersistRequest(
+        std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>
+            log,
+        std::unique_ptr<
+            arangodb::replication2::replicated_log::PersistedLogIterator>
+            iter,
+        futures::Promise<Result> promise)
+        : log(std::move(log)),
+          iter(std::move(iter)),
+          promise(std::move(promise)) {}
     std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log;
-    std::unique_ptr<arangodb::replication2::replicated_log::PersistedLogIterator> iter;
+    std::unique_ptr<
+        arangodb::replication2::replicated_log::PersistedLogIterator>
+        iter;
     futures::Promise<Result> promise;
   };
 
   struct Lane {
     Lane() = delete;
 
-    struct WaitForSync{};
-    struct DontWaitForSync{};
+    struct WaitForSync {};
+    struct DontWaitForSync {};
     explicit Lane(WaitForSync) : _waitForSync(true) {}
     explicit Lane(DontWaitForSync) : _waitForSync(false) {}
 
@@ -74,31 +85,36 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
 
   void runPersistorWorker(Lane& lane) noexcept;
 
-  std::array<Lane, 2> _lanes = {Lane{Lane::WaitForSync{}}, Lane{Lane::DontWaitForSync{}}};
+  std::array<Lane, 2> _lanes = {Lane{Lane::WaitForSync{}},
+                                Lane{Lane::DontWaitForSync{}}};
 
   rocksdb::ColumnFamilyHandle* const _cf;
   rocksdb::DB* const _db;
   std::shared_ptr<Executor> _executor;
 };
 
-class RocksDBPersistedLog : public replication2::replicated_log::PersistedLog,
-                            public std::enable_shared_from_this<RocksDBPersistedLog> {
+class RocksDBPersistedLog
+    : public replication2::replicated_log::PersistedLog,
+      public std::enable_shared_from_this<RocksDBPersistedLog> {
  public:
   ~RocksDBPersistedLog() override = default;
   RocksDBPersistedLog(replication2::LogId id, uint64_t objectId,
                       std::shared_ptr<RocksDBLogPersistor> persistor);
 
-  auto insert(replication2::replicated_log::PersistedLogIterator& iter, WriteOptions const&) -> Result override;
-  auto insertAsync(std::unique_ptr<replication2::replicated_log::PersistedLogIterator> iter,
-                   WriteOptions const&) -> futures::Future<Result> override;
-  auto read(replication2::LogIndex start)
-      -> std::unique_ptr<replication2::replicated_log::PersistedLogIterator> override;
+  auto insert(replication2::replicated_log::PersistedLogIterator& iter,
+              WriteOptions const&) -> Result override;
+  auto insertAsync(
+      std::unique_ptr<replication2::replicated_log::PersistedLogIterator> iter,
+      WriteOptions const&) -> futures::Future<Result> override;
+  auto read(replication2::LogIndex start) -> std::unique_ptr<
+      replication2::replicated_log::PersistedLogIterator> override;
   auto removeFront(replication2::LogIndex stop) -> Result override;
   auto removeBack(replication2::LogIndex start) -> Result override;
 
   // On success, iter will be completely consumed and written to wb.
-  auto prepareWriteBatch(replication2::replicated_log::PersistedLogIterator& iter,
-                         rocksdb::WriteBatch& wb) -> Result;
+  auto prepareWriteBatch(
+      replication2::replicated_log::PersistedLogIterator& iter,
+      rocksdb::WriteBatch& wb) -> Result;
 
   uint64_t objectId() const { return _objectId; }
 

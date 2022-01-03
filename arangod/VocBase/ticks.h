@@ -52,4 +52,3 @@ TRI_voc_tick_t TRI_NewServerSpecificTickMod4();
 
 /// @brief extracts the server id from a server-specific tick
 uint32_t TRI_ExtractServerIdFromTick(TRI_voc_tick_t);
-

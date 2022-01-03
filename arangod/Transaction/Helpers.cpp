@@ -64,7 +64,8 @@ VPackSlice transaction::helpers::extractKeyFromDocument(VPackSlice slice) {
 }
 
 /// @brief extract the _key attribute from a slice
-arangodb::velocypack::StringRef transaction::helpers::extractKeyPart(VPackSlice slice) {
+arangodb::velocypack::StringRef transaction::helpers::extractKeyPart(
+    VPackSlice slice) {
   slice = slice.resolveExternal();
 
   // extract _key
@@ -87,7 +88,8 @@ arangodb::velocypack::StringRef transaction::helpers::extractKeyPart(VPackSlice 
 }
 
 /// @brief extract the _key attribute from a StringRef
-arangodb::velocypack::StringRef transaction::helpers::extractKeyPart(velocypack::StringRef key) {
+arangodb::velocypack::StringRef transaction::helpers::extractKeyPart(
+    velocypack::StringRef key) {
   size_t pos = key.find('/');
   if (pos == std::string::npos) {
     return key;
@@ -97,9 +99,9 @@ arangodb::velocypack::StringRef transaction::helpers::extractKeyPart(velocypack:
 
 /// @brief extract the _id attribute from a slice, and convert it into a
 /// string, static method
-std::string transaction::helpers::extractIdString(CollectionNameResolver const* resolver,
-                                                  VPackSlice slice,
-                                                  VPackSlice const& base) {
+std::string transaction::helpers::extractIdString(
+    CollectionNameResolver const* resolver, VPackSlice slice,
+    VPackSlice const& base) {
   VPackSlice id;
 
   slice = slice.resolveExternal();
@@ -264,8 +266,8 @@ VPackSlice transaction::helpers::extractToFromDocument(VPackSlice slice) {
 /// @brief extract _key and _rev from a document, in one go
 /// this is an optimized version used when loading collections, WAL
 /// collection and compaction
-void transaction::helpers::extractKeyAndRevFromDocument(VPackSlice slice, VPackSlice& keySlice,
-                                                        RevisionId& revisionId) {
+void transaction::helpers::extractKeyAndRevFromDocument(
+    VPackSlice slice, VPackSlice& keySlice, RevisionId& revisionId) {
   slice = slice.resolveExternal();
   TRI_ASSERT(slice.isObject());
   TRI_ASSERT(slice.length() >= 2);
@@ -349,7 +351,8 @@ VPackSlice transaction::helpers::extractRevSliceFromDocument(VPackSlice slice) {
   return slice.get(StaticStrings::RevString);
 }
 
-velocypack::StringRef transaction::helpers::extractCollectionFromId(velocypack::StringRef id) {
+velocypack::StringRef transaction::helpers::extractCollectionFromId(
+    velocypack::StringRef id) {
   std::size_t index = id.find('/');
   if (index == std::string::npos) {
     // can't find the '/' to split, bail out with only logical response
@@ -384,20 +387,21 @@ OperationResult transaction::helpers::buildCountResult(
 }
 
 /// @brief creates an id string from a custom _id value and the _key string
-std::string transaction::helpers::makeIdFromCustom(CollectionNameResolver const* resolver,
-                                                   VPackSlice const& id,
-                                                   VPackSlice const& key) {
+std::string transaction::helpers::makeIdFromCustom(
+    CollectionNameResolver const* resolver, VPackSlice const& id,
+    VPackSlice const& key) {
   TRI_ASSERT(id.isCustom() && id.head() == 0xf3);
   TRI_ASSERT(key.isString());
 
-  DataSourceId cid{encoding::readNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t))};
+  DataSourceId cid{
+      encoding::readNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t))};
   return makeIdFromParts(resolver, cid, key);
 }
 
 /// @brief creates an id string from a collection name and the _key string
-std::string transaction::helpers::makeIdFromParts(CollectionNameResolver const* resolver,
-                                                  DataSourceId const& cid,
-                                                  VPackSlice const& key) {
+std::string transaction::helpers::makeIdFromParts(
+    CollectionNameResolver const* resolver, DataSourceId const& cid,
+    VPackSlice const& key) {
   TRI_ASSERT(key.isString());
 
   std::string resolved = resolver->getCollectionNameCluster(cid);
@@ -429,7 +433,8 @@ transaction::StringBufferLeaser::StringBufferLeaser(transaction::Methods* trx)
       _stringBuffer(_transactionContext->leaseStringBuffer(32)) {}
 
 /// @brief constructor, leases a StringBuffer
-transaction::StringBufferLeaser::StringBufferLeaser(transaction::Context* transactionContext)
+transaction::StringBufferLeaser::StringBufferLeaser(
+    transaction::Context* transactionContext)
     : _transactionContext(transactionContext),
       _stringBuffer(_transactionContext->leaseStringBuffer(32)) {}
 
@@ -446,7 +451,8 @@ transaction::StringLeaser::StringLeaser(transaction::Methods* trx)
       _string(_transactionContext->leaseString()) {}
 
 /// @brief constructor, leases a StringBuffer
-transaction::StringLeaser::StringLeaser(transaction::Context* transactionContext)
+transaction::StringLeaser::StringLeaser(
+    transaction::Context* transactionContext)
     : _transactionContext(transactionContext),
       _string(_transactionContext->leaseString()) {}
 
@@ -465,7 +471,8 @@ transaction::BuilderLeaser::BuilderLeaser(transaction::Methods* trx)
 }
 
 /// @brief constructor, leases a builder
-transaction::BuilderLeaser::BuilderLeaser(transaction::Context* transactionContext)
+transaction::BuilderLeaser::BuilderLeaser(
+    transaction::Context* transactionContext)
     : _transactionContext(transactionContext),
       _builder(_transactionContext->leaseBuilder()) {
   TRI_ASSERT(_builder != nullptr);

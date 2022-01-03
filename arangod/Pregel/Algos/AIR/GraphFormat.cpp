@@ -42,7 +42,8 @@ namespace algos {
 namespace accumulators {
 
 // Graph Format
-GraphFormat::GraphFormat(application_features::ApplicationServer& server, std::string resultField,
+GraphFormat::GraphFormat(application_features::ApplicationServer& server,
+                         std::string resultField,
                          AccumulatorsDeclaration globalAccumulatorDeclarations,
                          AccumulatorsDeclaration vertexAccumulatorDeclarations,
                          CustomAccumulatorDefinitions customDefinitions,
@@ -64,74 +65,77 @@ void filterDocumentData(VPackBuilder& finalBuilder, PathList paths,
   finalBuilder.close();
 
   for (auto&& path : paths) {
-    std::visit(overload{[&](std::string const& key) {
-                          VPackBuilder tmp;
-                          VPackBuilder innerBuilder;
-                          innerBuilder.openObject();
-                          innerBuilder.add(key, document.get(key));
-                          innerBuilder.close();
+    std::visit(
+        overload{[&](std::string const& key) {
+                   VPackBuilder tmp;
+                   VPackBuilder innerBuilder;
+                   innerBuilder.openObject();
+                   innerBuilder.add(key, document.get(key));
+                   innerBuilder.close();
 
-                          VPackCollection::merge(tmp, finalBuilder.slice(),
-                                                 innerBuilder.slice(), true, false);
-                          finalBuilder.clear();
-                          finalBuilder.add(tmp.slice());
-                        },
-                        [&](KeyPath const& path) {
-                          TRI_ASSERT(!path.empty());  // deserializer ensures this
-                          size_t pathLength = path.size();
-                          size_t iterationStep = 0;
+                   VPackCollection::merge(tmp, finalBuilder.slice(),
+                                          innerBuilder.slice(), true, false);
+                   finalBuilder.clear();
+                   finalBuilder.add(tmp.slice());
+                 },
+                 [&](KeyPath const& path) {
+                   TRI_ASSERT(!path.empty());  // deserializer ensures this
+                   size_t pathLength = path.size();
+                   size_t iterationStep = 0;
 
-                          std::vector<VPackStringRef> pathInner;
+                   std::vector<VPackStringRef> pathInner;
 
-                          VPackBuilder innerArrayBuilder;
-                          innerArrayBuilder.openObject();  // open outer object
+                   VPackBuilder innerArrayBuilder;
+                   innerArrayBuilder.openObject();  // open outer object
 
-                          for (auto&& innerKey : path) {
-                            // build up path - will change in every iteration step
-                            pathInner.emplace_back(innerKey);
+                   for (auto&& innerKey : path) {
+                     // build up path - will change in every iteration step
+                     pathInner.emplace_back(innerKey);
 
-                            if (iterationStep < (pathLength - 1)) {
-                              innerArrayBuilder.add(VPackValue(innerKey));
-                              innerArrayBuilder.openObject();
-                            } else {
-                              innerArrayBuilder.add(innerKey, document.get(path));
-                            }
+                     if (iterationStep < (pathLength - 1)) {
+                       innerArrayBuilder.add(VPackValue(innerKey));
+                       innerArrayBuilder.openObject();
+                     } else {
+                       innerArrayBuilder.add(innerKey, document.get(path));
+                     }
 
-                            // get slice of each document depth
-                            iterationStep++;
-                          }
+                     // get slice of each document depth
+                     iterationStep++;
+                   }
 
-                          // now close all inner opened objects
-                          for (size_t step = 0; step < (pathLength - 1); step++) {
-                            innerArrayBuilder.close();
-                          }
+                   // now close all inner opened objects
+                   for (size_t step = 0; step < (pathLength - 1); step++) {
+                     innerArrayBuilder.close();
+                   }
 
-                          innerArrayBuilder.close();  // close outer object
-                          VPackBuilder tmp;
-                          VPackCollection::merge(tmp, finalBuilder.slice(),
-                                                 innerArrayBuilder.slice(), true, false);
-                          finalBuilder.clear();
-                          finalBuilder.add(tmp.slice());
-                        }},
-               path);
+                   innerArrayBuilder.close();  // close outer object
+                   VPackBuilder tmp;
+                   VPackCollection::merge(tmp, finalBuilder.slice(),
+                                          innerArrayBuilder.slice(), true,
+                                          false);
+                   finalBuilder.clear();
+                   finalBuilder.add(tmp.slice());
+                 }},
+        path);
   }
 }
 
 // Extract vertex data from vertex rawDocument into target
-void GraphFormat::copyVertexData(arangodb::velocypack::Options const& vpackOptions,
-                                 std::string const& documentId,
-                                 arangodb::velocypack::Slice rawDocument,
-                                 ProgrammablePregelAlgorithm::vertex_type& targetPtr,
-                                 uint64_t& vertexIdRange) {
+void GraphFormat::copyVertexData(
+    arangodb::velocypack::Options const& vpackOptions,
+    std::string const& documentId, arangodb::velocypack::Slice rawDocument,
+    ProgrammablePregelAlgorithm::vertex_type& targetPtr,
+    uint64_t& vertexIdRange) {
   // Eliminate all custom types
   VPackBuilder sanitizedDocument;
-  basics::VelocyPackHelper::sanitizeNonClientTypes(rawDocument, rawDocument, sanitizedDocument,
-                                                   &vpackOptions, false, true);
+  basics::VelocyPackHelper::sanitizeNonClientTypes(
+      rawDocument, rawDocument, sanitizedDocument, &vpackOptions, false, true);
 
   if (_dataAccess.readVertex) {
     // copy only specified keys/key-paths to rawDocument
     VPackBuilder tmpBuilder;
-    filterDocumentData(tmpBuilder, *_dataAccess.readVertex, sanitizedDocument.slice());
+    filterDocumentData(tmpBuilder, *_dataAccess.readVertex,
+                       sanitizedDocument.slice());
     targetPtr.reset(_vertexAccumulatorDeclarations, _customDefinitions,
                     documentId, tmpBuilder.slice(), _vertexIdRange++);
   } else {
@@ -141,18 +145,20 @@ void GraphFormat::copyVertexData(arangodb::velocypack::Options const& vpackOptio
   }
 }
 
-void GraphFormat::copyEdgeData(arangodb::velocypack::Options const& vpackOptions,
-                               arangodb::velocypack::Slice rawDocument,
-                               ProgrammablePregelAlgorithm::edge_type& targetPtr) {
+void GraphFormat::copyEdgeData(
+    arangodb::velocypack::Options const& vpackOptions,
+    arangodb::velocypack::Slice rawDocument,
+    ProgrammablePregelAlgorithm::edge_type& targetPtr) {
   // Eliminate all custom types
   VPackBuilder sanitizedDocument;
-  basics::VelocyPackHelper::sanitizeNonClientTypes(rawDocument, rawDocument, sanitizedDocument,
-                                                   &vpackOptions, false, true);
+  basics::VelocyPackHelper::sanitizeNonClientTypes(
+      rawDocument, rawDocument, sanitizedDocument, &vpackOptions, false, true);
 
   if (_dataAccess.readEdge) {
     // copy only specified keys/key-paths to rawDocument
     VPackBuilder tmpBuilder;
-    filterDocumentData(tmpBuilder, *_dataAccess.readEdge, sanitizedDocument.slice());
+    filterDocumentData(tmpBuilder, *_dataAccess.readEdge,
+                       sanitizedDocument.slice());
     targetPtr.reset(tmpBuilder.slice());
   } else {
     // copy all
@@ -170,7 +176,8 @@ greenspun::EvalResult GraphFormat::buildVertexDocumentWithResult(
       m.setFunction("accum-ref",
                     [ptr](greenspun::Machine& ctx, VPackSlice const params,
                           VPackBuilder& tmpBuilder) -> greenspun::EvalResult {
-                      return VertexComputation::air_accumRef_helper(params, tmpBuilder, ptr);
+                      return VertexComputation::air_accumRef_helper(
+                          params, tmpBuilder, ptr);
                     });
 
       VPackBuilder tmpBuilder;
@@ -186,7 +193,8 @@ greenspun::EvalResult GraphFormat::buildVertexDocumentWithResult(
           b.add(entry.value);
         }
       } else {
-        return {};  // will not write as tmpBuilder is not a valid (object) result
+        return {};  // will not write as tmpBuilder is not a valid (object)
+                    // result
       }
     } else {
       return greenspun::EvalError(
