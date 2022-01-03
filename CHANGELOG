@@ -1,11 +1,10 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
-<<<<<<< HEAD
 * Improved performance in replication dump protocol by inserting arrays of 
   documents instead of one document at a time and also not retrieving the
   document revision field when not needed.
-=======
+
 * APM-78: Added startup security option `--foxx.allow-install-from-remote` to
   allow installing Foxx apps from remote URLs other than Github. The option is
   turned off by default.
@@ -44,7 +43,6 @@ v3.9.0 (XXXX-XX-XX)
   Combined, these changes help ArangoDB/RocksDB to react quicker to a backlog of
   background jobs and thus to prevent catastrophic stops which abort data
   ingestion or lead to cluster internal timeouts.
->>>>>>> e449d8f3730802cc8b1d190abcd65994331f7f60
 
 * Adjust default value for startup option `--rocksdb.max-subcompactions` from 1
   to 2. This allows compactions jobs to be broken up into disjoint ranges which
