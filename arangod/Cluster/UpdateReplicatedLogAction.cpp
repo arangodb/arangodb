@@ -42,7 +42,8 @@ using namespace arangodb::replication2;
 
 namespace {
 struct LogActionContextMaintenance : algorithms::LogActionContext {
-  LogActionContextMaintenance(TRI_vocbase_t& vocbase, network::ConnectionPool* pool)
+  LogActionContextMaintenance(TRI_vocbase_t& vocbase,
+                              network::ConnectionPool* pool)
       : vocbase(vocbase), pool(pool) {}
 
   auto dropReplicatedLog(LogId id) -> arangodb::Result override {
@@ -61,12 +62,12 @@ struct LogActionContextMaintenance : algorithms::LogActionContext {
   TRI_vocbase_t& vocbase;
   network::ConnectionPool* pool;
 };
-}
+}  // namespace
 
 bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
-
   auto spec = std::invoke([&]() -> std::optional<agency::LogPlanSpecification> {
-    auto buffer = StringUtils::decodeBase64(_description.get(REPLICATED_LOG_SPEC));
+    auto buffer =
+        StringUtils::decodeBase64(_description.get(REPLICATED_LOG_SPEC));
     auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(buffer.c_str()));
     if (!slice.isNone()) {
       return agency::LogPlanSpecification(agency::from_velocypack, slice);
@@ -79,7 +80,8 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   auto serverId = ServerState::instance()->getId();
   auto rebootId = ServerState::instance()->getRebootId();
 
-  network::ConnectionPool* pool = _feature.server().getFeature<NetworkFeature>().pool();
+  network::ConnectionPool* pool =
+      _feature.server().getFeature<NetworkFeature>().pool();
 
   auto const& database = _description.get(DATABASE);
   auto& df = _feature.server().getFeature<DatabaseFeature>();
@@ -109,5 +111,6 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
 }
 
 arangodb::maintenance::UpdateReplicatedLogAction::UpdateReplicatedLogAction(
-    arangodb::MaintenanceFeature& mf, arangodb::maintenance::ActionDescription const& desc)
+    arangodb::MaintenanceFeature& mf,
+    arangodb::maintenance::ActionDescription const& desc)
     : ActionBase(mf, desc) {}

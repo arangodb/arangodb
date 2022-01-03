@@ -25,9 +25,11 @@
 #if (_MSC_VER >= 1)
 // suppress warnings:
 #pragma warning(push)
-// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of data
+// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of
+// data
 #pragma warning(disable : 4267)
-// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
+// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift
+// intended?)
 #pragma warning(disable : 4334)
 #endif
 #include <immer/heap/cpp_heap.hpp>
@@ -44,20 +46,24 @@ namespace arangodb::immer {
 // argument.
 // We're using this because the free_list_heap is currently *not* thread safe,
 // see https://github.com/arximboldi/immer/issues/182 for details.
-template <typename Heap, std::size_t Limit = ::immer::default_free_list_size>
+template<typename Heap, std::size_t Limit = ::immer::default_free_list_size>
 struct thread_local_free_list_heap_policy {
   using type = ::immer::debug_size_heap<Heap>;
 
-  template <std::size_t Size>
+  template<std::size_t Size>
   struct optimized {
-    using type =
-        ::immer::split_heap<Size, ::immer::with_free_list_node<::immer::thread_local_free_list_heap<Size, Limit, ::immer::debug_size_heap<Heap>>>,
-                            ::immer::debug_size_heap<Heap>>;
+    using type = ::immer::split_heap<
+        Size,
+        ::immer::with_free_list_node<::immer::thread_local_free_list_heap<
+            Size, Limit, ::immer::debug_size_heap<Heap>>>,
+        ::immer::debug_size_heap<Heap>>;
   };
 };
 
-using arango_heap_policy = thread_local_free_list_heap_policy<::immer::cpp_heap>;
+using arango_heap_policy =
+    thread_local_free_list_heap_policy<::immer::cpp_heap>;
 using arango_memory_policy =
-    ::immer::memory_policy<arango_heap_policy, ::immer::default_refcount_policy, ::immer::default_lock_policy>;
+    ::immer::memory_policy<arango_heap_policy, ::immer::default_refcount_policy,
+                           ::immer::default_lock_policy>;
 
 }  // namespace arangodb::immer

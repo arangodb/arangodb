@@ -31,7 +31,8 @@ namespace arangodb {
 namespace maskings {
 class RandomStringMask : public MaskingFunction {
  public:
-  static ParseResult<AttributeMasking> create(Path, Maskings*, VPackSlice const& def);
+  static ParseResult<AttributeMasking> create(Path, Maskings*,
+                                              VPackSlice const& def);
 
  public:
   VPackValue mask(bool, std::string& buffer) const override;
@@ -44,4 +45,3 @@ class RandomStringMask : public MaskingFunction {
 };
 }  // namespace maskings
 }  // namespace arangodb
-

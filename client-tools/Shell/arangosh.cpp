@@ -65,8 +65,9 @@ int main(int argc, char* argv[]) {
 
     std::string name = context.binaryName();
     std::shared_ptr<options::ProgramOptions> options(
-        new options::ProgramOptions(argv[0], "Usage: " + name + " [<options>]",
-                                    "For more information use:", BIN_DIRECTORY));
+        new options::ProgramOptions(
+            argv[0], "Usage: " + name + " [<options>]",
+            "For more information use:", BIN_DIRECTORY));
     ApplicationServer server(options, BIN_DIRECTORY);
     int ret = EXIT_SUCCESS;
 
@@ -104,7 +105,8 @@ int main(int argc, char* argv[]) {
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("da777", ERR, arangodb::Logger::FIXME)
-          << "arangosh terminated because of an unhandled exception: " << ex.what();
+          << "arangosh terminated because of an unhandled exception: "
+          << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
       LOG_TOPIC("ed049", ERR, arangodb::Logger::FIXME)

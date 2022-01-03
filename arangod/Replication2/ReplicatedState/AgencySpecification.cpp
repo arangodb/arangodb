@@ -44,18 +44,20 @@ auto const String_Completed = std::string_view{"Completed"};
 auto const String_Failed = std::string_view{"Failed"};
 }  // namespace
 
-void Current::ParticipantStatus::Snapshot::Error::toVelocyPack(velocypack::Builder& builder) const {
+void Current::ParticipantStatus::Snapshot::Error::toVelocyPack(
+    velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   ob->add(StaticStrings::Error, velocypack::Value(error));
-  ob->add(StaticStrings::ErrorMessage, velocypack::Value(TRI_errno_string(error)));
+  ob->add(StaticStrings::ErrorMessage,
+          velocypack::Value(TRI_errno_string(error)));
   if (message) {
     ob->add(StringMessage, velocypack::Value(*message));
   }
   // TODO timestamp
 }
 
-auto Current::ParticipantStatus::Snapshot::Error::fromVelocyPack(velocypack::Slice slice)
-    -> Error {
+auto Current::ParticipantStatus::Snapshot::Error::fromVelocyPack(
+    velocypack::Slice slice) -> Error {
   auto errorCode = ErrorCode{slice.get(StaticStrings::Error).extract<int>()};
   std::optional<std::string> message;
   if (auto message_slice = slice.get(StringMessage); !message_slice.isNone()) {
@@ -91,7 +93,8 @@ auto agency::from_string(std::string_view string) -> Status {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
 }
 
-void Current::ParticipantStatus::Snapshot::toVelocyPack(velocypack::Builder& builder) const {
+void Current::ParticipantStatus::Snapshot::toVelocyPack(
+    velocypack::Builder& builder) const {
   // TODO add timestamp
   VPackObjectBuilder ob(&builder);
   if (error) {
@@ -101,26 +104,31 @@ void Current::ParticipantStatus::Snapshot::toVelocyPack(velocypack::Builder& bui
   ob->add(String_Status, velocypack::Value(to_string(status)));
 }
 
-auto Current::ParticipantStatus::Snapshot::fromVelocyPack(velocypack::Slice slice) -> Snapshot {
+auto Current::ParticipantStatus::Snapshot::fromVelocyPack(
+    velocypack::Slice slice) -> Snapshot {
   std::optional<Error> error;
-  if (auto error_slice = slice.get(StaticStrings::Error); !error_slice.isNone()) {
+  if (auto error_slice = slice.get(StaticStrings::Error);
+      !error_slice.isNone()) {
     error = Error::fromVelocyPack(error_slice);
   }
   Status status = agency::from_string(slice.get(String_Status).stringView());
   return Snapshot{.status = status, .timestamp = {}, .error = std::move(error)};
 }
 
-void Current::ParticipantStatus::toVelocyPack(velocypack::Builder& builder) const {
+void Current::ParticipantStatus::toVelocyPack(
+    velocypack::Builder& builder) const {
   VPackObjectBuilder ob(&builder);
   builder.add(String_Generation, velocypack::Value(generation));
   builder.add(velocypack::Value(String_Snapshot));
   snapshot.toVelocyPack(builder);
 }
 
-auto Current::ParticipantStatus::fromVelocyPack(velocypack::Slice slice) -> ParticipantStatus {
+auto Current::ParticipantStatus::fromVelocyPack(velocypack::Slice slice)
+    -> ParticipantStatus {
   auto generation = slice.get(String_Generation).extract<StateGeneration>();
   auto snapshot = Snapshot::fromVelocyPack(slice.get(String_Snapshot));
-  return ParticipantStatus{.generation = generation, .snapshot = std::move(snapshot)};
+  return ParticipantStatus{.generation = generation,
+                           .snapshot = std::move(snapshot)};
 }
 
 void Current::toVelocyPack(velocypack::Builder& builder) const {
@@ -147,7 +155,8 @@ auto Current::fromVelocyPack(velocypack::Slice slice) -> Current {
 }
 
 auto Plan::Participant::fromVelocyPack(velocypack::Slice slice) -> Participant {
-  return Participant{.generation = slice.get(String_Generation).extract<StateGeneration>()};
+  return Participant{
+      .generation = slice.get(String_Generation).extract<StateGeneration>()};
 }
 
 void Plan::Participant::toVelocyPack(velocypack::Builder& builder) const {
@@ -178,5 +187,7 @@ auto Plan::fromVelocyPack(velocypack::Slice slice) -> Plan {
     participants.emplace(key.copyString(), status);
   }
 
-  return Plan{.id = id, .generation = generation, .participants = std::move(participants)};
+  return Plan{.id = id,
+              .generation = generation,
+              .participants = std::move(participants)};
 }

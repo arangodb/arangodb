@@ -46,13 +46,13 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
  private:
   struct PathSnippet {
     PathSnippet() noexcept;
-    PathSnippet(std::string_view pred, graph::EdgeDocumentToken&& path) noexcept;
+    PathSnippet(std::string_view pred,
+                graph::EdgeDocumentToken&& path) noexcept;
     PathSnippet(PathSnippet&& other) noexcept = default;
-    PathSnippet& operator=(PathSnippet&& other) ARANGODB_NOEXCEPT_ASSIGN_OP = default;
-    
-    bool empty() const noexcept {
-      return _pred.empty();
-    }
+    PathSnippet& operator=(PathSnippet&& other)
+        ARANGODB_NOEXCEPT_ASSIGN_OP = default;
+
+    bool empty() const noexcept { return _pred.empty(); }
 
     std::string_view _pred;
     graph::EdgeDocumentToken _path;
@@ -78,8 +78,9 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
 
   void clearVisited();
 
-  bool expandClosure(Closure& sourceClosure, Snippets& sourceSnippets, Snippets const& targetSnippets,
-                     bool direction, std::string_view& result);
+  bool expandClosure(Closure& sourceClosure, Snippets& sourceSnippets,
+                     Snippets const& targetSnippets, bool direction,
+                     std::string_view& result);
 
   void fillResult(std::string_view n,
                   arangodb::graph::ShortestPathResult& result);
@@ -94,7 +95,7 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
 
   Snippets _rightFound;
   Closure _rightClosure;
-  
+
   std::unique_ptr<EdgeCursor> _forwardCursor;
   std::unique_ptr<EdgeCursor> _backwardCursor;
 
@@ -106,13 +107,13 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
     graph::EdgeDocumentToken edge;
 
     Neighbor(std::string_view v, graph::EdgeDocumentToken e) noexcept
-      : vertex(v), edge(e) {}
-    
+        : vertex(v), edge(e) {}
+
     static constexpr size_t itemMemoryUsage() {
       return sizeof(decltype(vertex)) + sizeof(decltype(edge));
     }
   };
-    
+
   std::vector<Neighbor> _neighbors;
 };
 

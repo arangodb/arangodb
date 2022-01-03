@@ -54,4 +54,3 @@ class EndpointList {
   std::map<std::string, Endpoint*> _endpoints;
 };
 }  // namespace arangodb
-

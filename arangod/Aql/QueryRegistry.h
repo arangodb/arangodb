@@ -39,17 +39,14 @@ class ClusterQuery;
 /// manages cluster queries and engines
 class QueryRegistry {
  public:
-  explicit QueryRegistry(double defTTL) : _defaultTTL(defTTL), _disallowInserts(false) {}
+  explicit QueryRegistry(double defTTL)
+      : _defaultTTL(defTTL), _disallowInserts(false) {}
 
   TEST_VIRTUAL ~QueryRegistry();
 
  public:
-  
-  enum class EngineType : uint8_t {
-    Execution = 1,
-    Graph = 2
-  };
-  
+  enum class EngineType : uint8_t { Execution = 1, Graph = 2 };
+
   /// @brief insert, this inserts the query <query> for the vocbase <vocbase>
   /// and the id <id> into the registry. It is in error if there is already
   /// a query for this <vocbase> and <id> combination and an exception will
@@ -61,7 +58,8 @@ class QueryRegistry {
   /// The callback guard needs to be stored with the query to prevent it from
   /// firing. This is used for the RebootTracker to destroy the query when
   /// the coordinator which created it restarts or fails.
-  TEST_VIRTUAL void insertQuery(std::shared_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard);
+  TEST_VIRTUAL void insertQuery(std::shared_ptr<ClusterQuery> query, double ttl,
+                                cluster::CallbackGuard guard);
 
   /// @brief open, find a engine in the registry, if none is found, a nullptr
   /// is returned, otherwise, ownership of the query is transferred to the
@@ -74,11 +72,13 @@ class QueryRegistry {
   /// is thrown.
   void* openEngine(EngineId eid, EngineType type);
   ExecutionEngine* openExecutionEngine(EngineId eid) {
-    return static_cast<ExecutionEngine*>(openEngine(eid, EngineType::Execution));
+    return static_cast<ExecutionEngine*>(
+        openEngine(eid, EngineType::Execution));
   }
 
   traverser::BaseEngine* openGraphEngine(EngineId eid) {
-    return static_cast<traverser::BaseEngine*>(openEngine(eid, EngineType::Graph));
+    return static_cast<traverser::BaseEngine*>(
+        openEngine(eid, EngineType::Graph));
   }
 
   /// @brief close, return a query to the registry, if the query is not found,
@@ -96,13 +96,14 @@ class QueryRegistry {
   /// and removed regardless if it is in use by anything else. this is only
   /// safe to call if the current thread is currently using the query itself
   // cppcheck-suppress virtualCallInConstructor
-  std::shared_ptr<ClusterQuery> destroyQuery(std::string const& vocbase, QueryId id, ErrorCode errorCode);
-  
+  std::shared_ptr<ClusterQuery> destroyQuery(std::string const& vocbase,
+                                             QueryId id, ErrorCode errorCode);
+
   /// used for a legacy shutdown
   bool destroyEngine(EngineId engineId, ErrorCode errorCode);
 
   /// @brief destroy all queries for the specified database. this can be used
-  /// when the database gets dropped  
+  /// when the database gets dropped
   void destroy(std::string const& vocbase);
 
   /// @brief expireQueries, this deletes all expired queries from the registry
@@ -116,7 +117,7 @@ class QueryRegistry {
 
   /// @brief from here on, disallow entering new queries into the registry
   void disallowInserts();
-  
+
   /// use on coordinator to register snippets
   void registerSnippets(SnippetList const&);
   void unregisterSnippets(SnippetList const&) noexcept;
@@ -129,21 +130,21 @@ class QueryRegistry {
 #endif
 
  private:
-  
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo final {
     /// @brief constructor for a regular query entry
-    QueryInfo(std::shared_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard);
-    
+    QueryInfo(std::shared_ptr<ClusterQuery> query, double ttl,
+              cluster::CallbackGuard guard);
+
     /// @brief constructor for a tombstone entry
     explicit QueryInfo(ErrorCode errorCode, double ttl);
     ~QueryInfo();
 
     std::shared_ptr<ClusterQuery> _query;  // the actual query pointer
-    
+
     const double _timeToLive;  // in seconds
-    double _expires;     // UNIX UTC timestamp of expiration
-    size_t _numEngines; // used for legacy shutdown
+    double _expires;           // UNIX UTC timestamp of expiration
+    size_t _numEngines;        // used for legacy shutdown
     size_t _numOpen;
 
     ErrorCode _errorCode;
@@ -155,31 +156,37 @@ class QueryRegistry {
   struct EngineInfo final {
     EngineInfo(EngineInfo const&) = delete;
     EngineInfo& operator=(EngineInfo const&) = delete;
-    
+
     EngineInfo(EngineInfo&& other)
-      : _engine(std::move(other._engine)),
-        _queryInfo(std::move(other._queryInfo)),
-        _type(other._type),
-        _isOpen(other._isOpen) {}
+        : _engine(std::move(other._engine)),
+          _queryInfo(std::move(other._queryInfo)),
+          _type(other._type),
+          _isOpen(other._isOpen) {}
     EngineInfo& operator=(EngineInfo&& other) = delete;
-    
+
     EngineInfo(ExecutionEngine* en, QueryInfo* qi)
-      : _engine(en), _queryInfo(qi),
-        _type(EngineType::Execution), _isOpen(false) {}
+        : _engine(en),
+          _queryInfo(qi),
+          _type(EngineType::Execution),
+          _isOpen(false) {}
     EngineInfo(traverser::BaseEngine* en, QueryInfo* qi)
-      : _engine(en), _queryInfo(qi),
-        _type(EngineType::Graph), _isOpen(false) {}
+        : _engine(en),
+          _queryInfo(qi),
+          _type(EngineType::Graph),
+          _isOpen(false) {}
 
     void* _engine;
     QueryInfo* _queryInfo;
     const EngineType _type;
     bool _isOpen;
   };
-  
+
   /// @brief _queries, the actual map of maps for the registry
   /// maps from vocbase name to list queries
-  std::unordered_map<std::string, std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>> _queries;
-  
+  std::unordered_map<std::string,
+                     std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>>
+      _queries;
+
   std::unordered_map<EngineId, EngineInfo> _engines;
 
   /// @brief _lock, the read/write lock for access
@@ -193,4 +200,3 @@ class QueryRegistry {
 
 }  // namespace aql
 }  // namespace arangodb
-

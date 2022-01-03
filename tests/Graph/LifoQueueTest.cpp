@@ -59,7 +59,8 @@ class Step : public arangodb::graph::BaseStep<Step> {
   bool isProcessable() const { return _isLooseEnd ? false : true; }
   size_t id() const { return _id; }
   std::string toString() {
-    return "<Step> _id: " + basics::StringUtils::itoa(static_cast<int32_t>(_id)) +
+    return "<Step> _id: " +
+           basics::StringUtils::itoa(static_cast<int32_t>(_id)) +
            ", _weight: " + basics::StringUtils::ftoa(_weight);
   }
 };
@@ -175,6 +176,6 @@ TEST_F(LifoQueueTest, it_should_pop_all_loose_ends) {
   ASSERT_FALSE(queue.hasProcessableElement());
 }
 
-}  // namespace queue_graph_cache_test
+}  // namespace lifo_queue_graph_cache_test
 }  // namespace tests
 }  // namespace arangodb

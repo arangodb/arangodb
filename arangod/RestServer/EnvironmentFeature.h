@@ -30,17 +30,19 @@ namespace application_features {
 class ApplicationServer;
 }
 
-class EnvironmentFeature final : public application_features::ApplicationFeature {
+class EnvironmentFeature final
+    : public application_features::ApplicationFeature {
  public:
   explicit EnvironmentFeature(application_features::ApplicationServer& server);
 
   void prepare() override final;
 
-  std::string const& operatingSystem() const noexcept { return _operatingSystem; }
+  std::string const& operatingSystem() const noexcept {
+    return _operatingSystem;
+  }
 
  private:
   std::string _operatingSystem;
 };
 
 }  // namespace arangodb
-

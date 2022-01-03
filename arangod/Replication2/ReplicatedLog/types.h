@@ -32,7 +32,7 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
 namespace arangodb::futures {
-template <typename T>
+template<typename T>
 class Future;
 }
 
@@ -44,7 +44,6 @@ class Slice;
 namespace arangodb::replication2::replicated_log {
 
 struct FollowerState {
-
   struct UpToDate {};
   struct ErrorBackoff {
     std::chrono::duration<double, std::milli> durationMS;
@@ -58,16 +57,19 @@ struct FollowerState {
 
   static auto withUpToDate() noexcept -> FollowerState;
   static auto withErrorBackoff(std::chrono::duration<double, std::milli>,
-                               std::size_t retryCount) noexcept -> FollowerState;
-  static auto withRequestInFlight(std::chrono::duration<double, std::milli>) noexcept
+                               std::size_t retryCount) noexcept
       -> FollowerState;
+  static auto withRequestInFlight(
+      std::chrono::duration<double, std::milli>) noexcept -> FollowerState;
   static auto fromVelocyPack(velocypack::Slice) -> FollowerState;
   void toVelocyPack(velocypack::Builder&) const;
 
   FollowerState() = default;
+
  private:
   template<typename... Args>
-  explicit FollowerState(std::in_place_t, Args&&... args) : value(std::forward<Args>(args)...) {}
+  explicit FollowerState(std::in_place_t, Args&&... args)
+      : value(std::forward<Args>(args)...) {}
 };
 
 auto to_string(FollowerState const&) -> std::string_view;
@@ -92,11 +94,13 @@ struct AppendEntriesErrorReason {
 
   [[nodiscard]] auto getErrorMessage() const noexcept -> std::string_view;
   void toVelocyPack(velocypack::Builder& builder) const;
-  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesErrorReason;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice slice)
+      -> AppendEntriesErrorReason;
   static auto errorTypeFromString(std::string_view str) -> ErrorType;
 
   friend auto operator==(AppendEntriesErrorReason const& left,
-                         AppendEntriesErrorReason const& right) noexcept -> bool = default;
+                         AppendEntriesErrorReason const& right) noexcept
+      -> bool = default;
 };
 
 [[nodiscard]] auto to_string(AppendEntriesErrorReason::ErrorType error) noexcept
@@ -108,18 +112,24 @@ struct LogStatistics {
   LogIndex firstIndex{};
 
   void toVelocyPack(velocypack::Builder& builder) const;
-  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice slice) -> LogStatistics;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice slice)
+      -> LogStatistics;
 
-  friend auto operator==(LogStatistics const& left, LogStatistics const& right) noexcept -> bool;
-  friend auto operator!=(LogStatistics const& left, LogStatistics const& right) noexcept -> bool;
+  friend auto operator==(LogStatistics const& left,
+                         LogStatistics const& right) noexcept -> bool;
+  friend auto operator!=(LogStatistics const& left,
+                         LogStatistics const& right) noexcept -> bool;
 };
 
-[[nodiscard]] auto operator==(LogStatistics const& left, LogStatistics const& right) noexcept -> bool;
-[[nodiscard]] auto operator!=(LogStatistics const& left, LogStatistics const& right) noexcept -> bool;
+[[nodiscard]] auto operator==(LogStatistics const& left,
+                              LogStatistics const& right) noexcept -> bool;
+[[nodiscard]] auto operator!=(LogStatistics const& left,
+                              LogStatistics const& right) noexcept -> bool;
 
 struct AbstractFollower {
   virtual ~AbstractFollower() = default;
-  [[nodiscard]] virtual auto getParticipantId() const noexcept -> ParticipantId const& = 0;
+  [[nodiscard]] virtual auto getParticipantId() const noexcept
+      -> ParticipantId const& = 0;
   [[nodiscard]] virtual auto appendEntries(AppendEntriesRequest)
       -> futures::Future<AppendEntriesResult> = 0;
 };

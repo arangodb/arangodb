@@ -32,21 +32,24 @@ namespace iresearch {
 enum class AnalyzerValueType : uint64_t {
   Undefined = 0,
   // Primitive types
-  String    = 1,
-  Number    = 1 << 1,
-  Bool      = 1 << 2,
-  Null      = 1 << 3,
+  String = 1,
+  Number = 1 << 1,
+  Bool = 1 << 2,
+  Null = 1 << 3,
   // Complex types
-  Array     = 1 << 4,
-  Object    = 1 << 5,
+  Array = 1 << 4,
+  Object = 1 << 5,
 };
 
 ENABLE_BITMASK_ENUM(AnalyzerValueType);
 
 struct AnalyzerValueTypeAttribute final : irs::attribute {
-  static constexpr irs::string_ref type_name() noexcept { return "value_type_attribute"; }
-  explicit AnalyzerValueTypeAttribute(AnalyzerValueType t = AnalyzerValueType::Undefined)
-    : value(t) {}
+  static constexpr irs::string_ref type_name() noexcept {
+    return "value_type_attribute";
+  }
+  explicit AnalyzerValueTypeAttribute(
+      AnalyzerValueType t = AnalyzerValueType::Undefined)
+      : value(t) {}
   AnalyzerValueType value;
 };
 
@@ -57,27 +60,33 @@ constexpr const char ANALYZER_VALUE_TYPE_NULL[] = "null";
 constexpr const char ANALYZER_VALUE_TYPE_ARRAY[] = "array";
 constexpr const char ANALYZER_VALUE_TYPE_OBJECT[] = "object";
 
-using AnalyzerValueTypeEnumDeserializer = arangodb::velocypack::deserializer::enum_deserializer<
-  AnalyzerValueType,
-  arangodb::velocypack::deserializer::enum_member<
-      AnalyzerValueType::String,
-      arangodb::velocypack::deserializer::values::string_value<ANALYZER_VALUE_TYPE_STRING>>,
-  arangodb::velocypack::deserializer::enum_member<
-      AnalyzerValueType::Number,
-      arangodb::velocypack::deserializer::values::string_value<ANALYZER_VALUE_TYPE_NUMBER>>,
-  arangodb::velocypack::deserializer::enum_member<
-      AnalyzerValueType::Bool,
-      arangodb::velocypack::deserializer::values::string_value<ANALYZER_VALUE_TYPE_BOOL>>,
-  arangodb::velocypack::deserializer::enum_member<
-      AnalyzerValueType::Null,
-      arangodb::velocypack::deserializer::values::string_value<ANALYZER_VALUE_TYPE_NULL>>,
-  arangodb::velocypack::deserializer::enum_member<
-      AnalyzerValueType::Array,
-      arangodb::velocypack::deserializer::values::string_value<ANALYZER_VALUE_TYPE_ARRAY>>,
-  arangodb::velocypack::deserializer::enum_member<
-      AnalyzerValueType::Object,
-      arangodb::velocypack::deserializer::values::string_value<ANALYZER_VALUE_TYPE_OBJECT>>
->;
+using AnalyzerValueTypeEnumDeserializer =
+    arangodb::velocypack::deserializer::enum_deserializer<
+        AnalyzerValueType,
+        arangodb::velocypack::deserializer::enum_member<
+            AnalyzerValueType::String,
+            arangodb::velocypack::deserializer::values::string_value<
+                ANALYZER_VALUE_TYPE_STRING>>,
+        arangodb::velocypack::deserializer::enum_member<
+            AnalyzerValueType::Number,
+            arangodb::velocypack::deserializer::values::string_value<
+                ANALYZER_VALUE_TYPE_NUMBER>>,
+        arangodb::velocypack::deserializer::enum_member<
+            AnalyzerValueType::Bool,
+            arangodb::velocypack::deserializer::values::string_value<
+                ANALYZER_VALUE_TYPE_BOOL>>,
+        arangodb::velocypack::deserializer::enum_member<
+            AnalyzerValueType::Null,
+            arangodb::velocypack::deserializer::values::string_value<
+                ANALYZER_VALUE_TYPE_NULL>>,
+        arangodb::velocypack::deserializer::enum_member<
+            AnalyzerValueType::Array,
+            arangodb::velocypack::deserializer::values::string_value<
+                ANALYZER_VALUE_TYPE_ARRAY>>,
+        arangodb::velocypack::deserializer::enum_member<
+            AnalyzerValueType::Object,
+            arangodb::velocypack::deserializer::values::string_value<
+                ANALYZER_VALUE_TYPE_OBJECT>>>;
 
-} // namespace iresearch
-} // namespace arangodb
+}  // namespace iresearch
+}  // namespace arangodb

@@ -48,13 +48,15 @@ QueryRegistry::~QueryRegistry() {
 }
 
 /// @brief insert
-void QueryRegistry::insertQuery(std::shared_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard) {
+void QueryRegistry::insertQuery(std::shared_ptr<ClusterQuery> query, double ttl,
+                                cluster::CallbackGuard guard) {
   TRI_ASSERT(!ServerState::instance()->isSingleServer());
 
   TRI_ASSERT(query != nullptr);
   TRI_ASSERT(query->state() != QueryExecutionState::ValueType::INITIALIZATION);
   LOG_TOPIC("77778", DEBUG, arangodb::Logger::AQL)
-      << "Register query with id " << query->id() << " : " << query->queryString();
+      << "Register query with id " << query->id() << " : "
+      << query->queryString();
   auto& vocbase = query->vocbase();
 
   if (vocbase.isDropped()) {
@@ -64,7 +66,7 @@ void QueryRegistry::insertQuery(std::shared_ptr<ClusterQuery> query, double ttl,
 
   QueryId qId = query->id();
 
-  TRI_IF_FAILURE("QueryRegistryInsertException1") { 
+  TRI_IF_FAILURE("QueryRegistryInsertException1") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -72,7 +74,7 @@ void QueryRegistry::insertQuery(std::shared_ptr<ClusterQuery> query, double ttl,
   auto p = std::make_unique<QueryInfo>(std::move(query), ttl, std::move(guard));
   TRI_ASSERT(p->_expires != 0);
 
-  TRI_IF_FAILURE("QueryRegistryInsertException2") { 
+  TRI_IF_FAILURE("QueryRegistryInsertException2") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -84,15 +86,17 @@ void QueryRegistry::insertQuery(std::shared_ptr<ClusterQuery> query, double ttl,
 
   try {
     for (auto& engine : p->_query->snippets()) {
-      if (engine->engineId() != 0) { // skip the root snippet
-        auto result = _engines.try_emplace(engine->engineId(), EngineInfo(engine.get(), p.get()));
+      if (engine->engineId() != 0) {  // skip the root snippet
+        auto result = _engines.try_emplace(engine->engineId(),
+                                           EngineInfo(engine.get(), p.get()));
         TRI_ASSERT(result.second);
         TRI_ASSERT(result.first->second._type == EngineType::Execution);
         p->_numEngines++;
       }
     }
     for (auto& engine : p->_query->traversers()) {
-      auto result = _engines.try_emplace(engine->engineId(), EngineInfo(engine.get(), p.get()));
+      auto result = _engines.try_emplace(engine->engineId(),
+                                         EngineInfo(engine.get(), p.get()));
       TRI_ASSERT(result.second);
       TRI_ASSERT(result.first->second._type == EngineType::Graph);
       p->_numEngines++;
@@ -102,17 +106,19 @@ void QueryRegistry::insertQuery(std::shared_ptr<ClusterQuery> query, double ttl,
     if (!result.second) {
       if (result.first->second->_isTombstone) {
         // found a tombstone entry for the query id!
-        // that means a concurrent thread has overtaken us and already aborted the query!
-        LOG_TOPIC("580c1", DEBUG, arangodb::Logger::AQL) 
-          << "unable to insert query " << qId << " into query registry because of existing tombstone";
+        // that means a concurrent thread has overtaken us and already aborted
+        // the query!
+        LOG_TOPIC("580c1", DEBUG, arangodb::Logger::AQL)
+            << "unable to insert query " << qId
+            << " into query registry because of existing tombstone";
 
         THROW_ARANGO_EXCEPTION_MESSAGE(result.first->second->_errorCode,
-            "query was already aborted before");
+                                       "query was already aborted before");
       }
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL, "query with given vocbase and id already there");
     }
-  
+
   } catch (...) {
     // revert engine registration
     for (auto& engine : p->_query->snippets()) {
@@ -128,47 +134,52 @@ void QueryRegistry::insertQuery(std::shared_ptr<ClusterQuery> query, double ttl,
 
 /// @brief open
 void* QueryRegistry::openEngine(EngineId id, EngineType type) {
-  LOG_TOPIC("8c204", DEBUG, arangodb::Logger::AQL) << "trying to open engine with id " << id;
+  LOG_TOPIC("8c204", DEBUG, arangodb::Logger::AQL)
+      << "trying to open engine with id " << id;
   // std::cout << "Taking out query with ID " << id << std::endl;
   WRITE_LOCKER(writeLocker, _lock);
-  
+
   auto it = _engines.find(id);
   if (it == _engines.end()) {
     LOG_TOPIC("c3ae4", DEBUG, arangodb::Logger::AQL)
-      << "Found no engine with id " << id;
+        << "Found no engine with id " << id;
     return nullptr;
   }
-  
+
   EngineInfo& ei = it->second;
-  
+
   if (ei._type != type) {
     LOG_TOPIC("c3af5", DEBUG, arangodb::Logger::AQL)
-      << "Engine with id " << id << " has other type";
+        << "Engine with id " << id << " has other type";
     return nullptr;
   }
-  
+
   if (ei._isOpen) {
     LOG_TOPIC("7c2a3", DEBUG, arangodb::Logger::AQL)
         << "Engine with id " << id << " is already open";
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_LOCKED, "query with given vocbase and id is already open");
   }
-  
+
   ei._isOpen = true;
   if (ei._queryInfo) {
     ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
     ei._queryInfo->_numOpen++;
 
     // #warning the "isModificationQuery()" is probably too coarse-grained here.
-    // previously the "isModificationQuery()" always returned false on a DB server.
-    // now that we made it return the true value, the assertion is triggered.
+    // previously the "isModificationQuery()" always returned false on a DB
+    // server. now that we made it return the true value, the assertion is
+    // triggered.
     // TODO: need to sort this out.
-    // TRI_ASSERT(ei._queryInfo->_numOpen == 1 || !ei._queryInfo->_query->isModificationQuery());
-    LOG_TOPIC("b1cfd", TRACE, arangodb::Logger::AQL) 
-      << "opening engine " << id << ", query id: " << ei._queryInfo->_query->id() << ", numOpen: " << ei._queryInfo->_numOpen;
+    // TRI_ASSERT(ei._queryInfo->_numOpen == 1 ||
+    // !ei._queryInfo->_query->isModificationQuery());
+    LOG_TOPIC("b1cfd", TRACE, arangodb::Logger::AQL)
+        << "opening engine " << id
+        << ", query id: " << ei._queryInfo->_query->id()
+        << ", numOpen: " << ei._queryInfo->_numOpen;
   } else {
-    LOG_TOPIC("50eff", TRACE, arangodb::Logger::AQL) 
-      << "opening engine " << id << ", no query";
+    LOG_TOPIC("50eff", TRACE, arangodb::Logger::AQL)
+        << "opening engine " << id << ", no query";
   }
 
   return ei._engine;
@@ -176,41 +187,47 @@ void* QueryRegistry::openEngine(EngineId id, EngineType type) {
 
 /// @brief close
 void QueryRegistry::closeEngine(EngineId engineId) {
-  LOG_TOPIC("3f0c9", DEBUG, arangodb::Logger::AQL) << "returning engine with id " << engineId;
+  LOG_TOPIC("3f0c9", DEBUG, arangodb::Logger::AQL)
+      << "returning engine with id " << engineId;
   WRITE_LOCKER(writeLocker, _lock);
-  
+
   auto it = _engines.find(engineId);
   if (it == _engines.end()) {
     LOG_TOPIC("97351", DEBUG, arangodb::Logger::AQL)
-    << "Found no engine with id " << engineId;
+        << "Found no engine with id " << engineId;
     return;
   }
-  
+
   EngineInfo& ei = it->second;
   if (!ei._isOpen) {
-    LOG_TOPIC("45b8e", DEBUG, arangodb::Logger::AQL) << "engine id " << engineId << " was not open.";
+    LOG_TOPIC("45b8e", DEBUG, arangodb::Logger::AQL)
+        << "engine id " << engineId << " was not open.";
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "engine with given vocbase and id is not open");
   }
-  
+
   ei._isOpen = false;
-  
+
   if (ei._queryInfo) {
     TRI_ASSERT(ei._queryInfo->_numOpen > 0);
     ei._queryInfo->_numOpen--;
     if (!ei._queryInfo->_query->killed() && ei._queryInfo->_expires != 0) {
       ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
     }
-    LOG_TOPIC("5ecdc", TRACE, arangodb::Logger::AQL) << "closing engine " << engineId << ", query id: " << ei._queryInfo->_query->id() << ", numOpen: " << ei._queryInfo->_numOpen;
+    LOG_TOPIC("5ecdc", TRACE, arangodb::Logger::AQL)
+        << "closing engine " << engineId
+        << ", query id: " << ei._queryInfo->_query->id()
+        << ", numOpen: " << ei._queryInfo->_numOpen;
   } else {
-    LOG_TOPIC("ae981", TRACE, arangodb::Logger::AQL) << "closing engine " << engineId << ", no query";
+    LOG_TOPIC("ae981", TRACE, arangodb::Logger::AQL)
+        << "closing engine " << engineId << ", no query";
   }
 }
 
 /// @brief destroy
 // cppcheck-suppress virtualCallInConstructor
-std::shared_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& vocbase,
-                                                          QueryId id, ErrorCode errorCode) {
+std::shared_ptr<ClusterQuery> QueryRegistry::destroyQuery(
+    std::string const& vocbase, QueryId id, ErrorCode errorCode) {
   std::unique_ptr<QueryInfo> queryInfo;
 
   {
@@ -219,38 +236,50 @@ std::shared_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
     auto m = _queries.find(vocbase);
 
     if (m == _queries.end()) {
-      // database not found. this can happen as a consequence of a race between garbage collection
-      // and query shutdown
-      if (errorCode == TRI_ERROR_NO_ERROR || errorCode == TRI_ERROR_SHUTTING_DOWN) {
+      // database not found. this can happen as a consequence of a race between
+      // garbage collection and query shutdown
+      if (errorCode == TRI_ERROR_NO_ERROR ||
+          errorCode == TRI_ERROR_SHUTTING_DOWN) {
         return nullptr;
       }
 
       // we are about to insert a tombstone now.
       // first, insert a dummy entry for this database
-      m = _queries.emplace(vocbase, std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>()).first;
+      m = _queries
+              .emplace(
+                  vocbase,
+                  std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>())
+              .first;
     }
-    
+
     auto q = m->second.find(id);
 
     if (q == m->second.end()) {
-      if (errorCode != TRI_ERROR_NO_ERROR && errorCode != TRI_ERROR_SHUTTING_DOWN) {
+      if (errorCode != TRI_ERROR_NO_ERROR &&
+          errorCode != TRI_ERROR_SHUTTING_DOWN) {
         // insert a tombstone with a higher-than-query timeout
-        LOG_TOPIC("779f5", DEBUG, arangodb::Logger::AQL) 
-          << "inserting tombstone for query " << id << " into query registry";
-        auto inserted = m->second.emplace(id, std::make_unique<QueryInfo>(errorCode, std::max(_defaultTTL, 600.0) + 300.0)).second;
+        LOG_TOPIC("779f5", DEBUG, arangodb::Logger::AQL)
+            << "inserting tombstone for query " << id << " into query registry";
+        auto inserted =
+            m->second
+                .emplace(id,
+                         std::make_unique<QueryInfo>(
+                             errorCode, std::max(_defaultTTL, 600.0) + 300.0))
+                .second;
         TRI_ASSERT(inserted);
         return nullptr;
       }
 
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER, "query with given id not found in query registry");
+          TRI_ERROR_BAD_PARAMETER,
+          "query with given id not found in query registry");
     }
 
     if (q->second->_isTombstone) {
       m->second.erase(q);
       return nullptr;
     }
-      
+
     if (q->second->_numOpen > 0) {
       TRI_ASSERT(!q->second->_isTombstone);
 
@@ -268,13 +297,13 @@ std::shared_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
 
     // remove query from the table of running queries
     m->second.erase(q);
-    
+
     // remove engines
     for (auto const& engine : queryInfo->_query->snippets()) {
 #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
       _engines.erase(engine->engineId());
 #else
-      
+
       auto it = _engines.find(engine->engineId());
       if (it != _engines.end()) {
         TRI_ASSERT(it->second._queryInfo != nullptr);
@@ -298,7 +327,7 @@ std::shared_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
 
   LOG_TOPIC("6756c", DEBUG, arangodb::Logger::AQL)
       << "query with id " << id << " is now destroyed";
-  
+
   return std::move(queryInfo->_query);
 }
 
@@ -313,7 +342,7 @@ bool QueryRegistry::destroyEngine(EngineId engineId, ErrorCode errorCode) {
     auto it = _engines.find(engineId);
     if (it == _engines.end()) {
       LOG_TOPIC("2b5e6", DEBUG, arangodb::Logger::AQL)
-        << "Found no engine with id " << engineId;
+          << "Found no engine with id " << engineId;
       return false;
     }
 
@@ -323,7 +352,8 @@ bool QueryRegistry::destroyEngine(EngineId engineId, ErrorCode errorCode) {
         ei._queryInfo->_query->kill();
         ei._queryInfo->_expires = 0.0;
       }
-      LOG_TOPIC("b342e", DEBUG, arangodb::Logger::AQL) << "engine id " << engineId << " is open.";
+      LOG_TOPIC("b342e", DEBUG, arangodb::Logger::AQL)
+          << "engine id " << engineId << " is open.";
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL, "engine with given vocbase and id is open");
     }
@@ -331,21 +361,21 @@ bool QueryRegistry::destroyEngine(EngineId engineId, ErrorCode errorCode) {
     if (ei._queryInfo) {
       TRI_ASSERT(ei._queryInfo->_numEngines > 0);
       ei._queryInfo->_numEngines--;
-      if (ei._queryInfo->_numEngines == 0) { // shutdown Query
+      if (ei._queryInfo->_numEngines == 0) {  // shutdown Query
         qId = ei._queryInfo->_query->id();
         vocbase = ei._queryInfo->_query->vocbase().name();
       } else {
         ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
       }
     }
-    
+
     _engines.erase(it);
   }
 
   if (qId != 0 && !vocbase.empty()) {  // simon: old shutdown case
     destroyQuery(vocbase, qId, errorCode);
   }
-  
+
   return true;
 }
 
@@ -455,11 +485,12 @@ void QueryRegistry::destroyAll() try {
   size_t count = numberRegisteredQueries();
   if (count > 0) {
     LOG_TOPIC("43bf8", INFO, arangodb::Logger::AQL)
-        << "number of remaining queries in query registry at shutdown: " << count;
+        << "number of remaining queries in query registry at shutdown: "
+        << count;
   }
 } catch (std::exception const& ex) {
   LOG_TOPIC("30bdb", INFO, arangodb::Logger::AQL)
-        << "caught exception during shutdown of query registry: " << ex.what();
+      << "caught exception during shutdown of query registry: " << ex.what();
 }
 
 void QueryRegistry::disallowInserts() {
@@ -476,8 +507,9 @@ void QueryRegistry::registerSnippets(SnippetList const& snippets) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
   for (auto& engine : snippets) {
-    if (engine->engineId() != 0) { // skip the root snippet
-      auto result = _engines.try_emplace(engine->engineId(), EngineInfo(engine.get(), nullptr));
+    if (engine->engineId() != 0) {  // skip the root snippet
+      auto result = _engines.try_emplace(engine->engineId(),
+                                         EngineInfo(engine.get(), nullptr));
       TRI_ASSERT(result.second);
     }
   }
@@ -496,7 +528,7 @@ void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
         remain--;
         continue;
       }
-      if (it->second._isOpen) { // engine still in use
+      if (it->second._isOpen) {  // engine still in use
         continue;
       }
       _engines.erase(it);
@@ -520,7 +552,8 @@ void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
 }
 
 /// @brief constructor for a regular query
-QueryRegistry::QueryInfo::QueryInfo(std::shared_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard)
+QueryRegistry::QueryInfo::QueryInfo(std::shared_ptr<ClusterQuery> query,
+                                    double ttl, cluster::CallbackGuard guard)
     : _query(std::move(query)),
       _timeToLive(ttl),
       _expires(TRI_microtime() + ttl),
@@ -551,9 +584,8 @@ bool QueryRegistry::queryIsRegistered(std::string const& dbName, QueryId id) {
   if (m == _queries.end()) {
     return false;
   }
-  
+
   auto const& q = m->second.find(id);
   return q != m->second.end();
 }
 #endif
-

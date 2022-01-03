@@ -44,4 +44,3 @@ class DropDatabase : public ActionBase {
 
 }  // namespace maintenance
 }  // namespace arangodb
-
