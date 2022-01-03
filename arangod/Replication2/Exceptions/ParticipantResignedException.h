@@ -29,4 +29,4 @@ class ParticipantResignedException : public ::arangodb::basics::Exception {
  public:
   using Exception::Exception;
 };
-}
+}  // namespace arangodb::replication2::replicated_log
