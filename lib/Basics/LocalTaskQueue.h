@@ -78,7 +78,8 @@ class LocalTaskQueue {
   LocalTaskQueue(LocalTaskQueue const&) = delete;
   LocalTaskQueue& operator=(LocalTaskQueue const&) = delete;
 
-  explicit LocalTaskQueue(application_features::ApplicationServer& server, PostFn poster);
+  explicit LocalTaskQueue(application_features::ApplicationServer& server,
+                          PostFn poster);
 
   ~LocalTaskQueue();
 
@@ -181,4 +182,3 @@ class LocalTaskQueue {
 
 }  // namespace basics
 }  // namespace arangodb
-

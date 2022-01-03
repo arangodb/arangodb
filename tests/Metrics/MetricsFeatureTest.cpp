@@ -32,12 +32,12 @@
 using namespace arangodb;
 
 auto opts = std::make_shared<arangodb::options::ProgramOptions>(
-  "metrics_feature_test", std::string(), std::string(), "path");
+    "metrics_feature_test", std::string(), std::string(), "path");
 application_features::ApplicationServer server(opts, nullptr);
 metrics::MetricsFeature feature(server);
 
 class MetricsFeatureTest : public ::testing::Test {
-protected:
+ protected:
   MetricsFeatureTest() {}
 };
 
@@ -45,7 +45,6 @@ metrics::Metric* thisMetric;
 metrics::Metric* thatMetric;
 
 TEST_F(MetricsFeatureTest, test_counter) {
-
   auto& counter = feature.add(COUNTER{});
   auto& labeledCounter = feature.add(COUNTER{}.withLabel("label", "label"));
 
@@ -59,9 +58,7 @@ TEST_F(MetricsFeatureTest, test_counter) {
 
   thisMetric = &counter;
   thatMetric = &labeledCounter;
-
 }
-
 
 TEST_F(MetricsFeatureTest, fail_recreate_counter) {
   try {
@@ -73,11 +70,10 @@ TEST_F(MetricsFeatureTest, fail_recreate_counter) {
   }
 }
 
-
 TEST_F(MetricsFeatureTest, test_histogram) {
-
   auto& histogram = feature.add(HISTOGRAMLIN{});
-  auto& labeledHistogram = feature.add(HISTOGRAMLIN{}.withLabel("label", "label"));
+  auto& labeledHistogram =
+      feature.add(HISTOGRAMLIN{}.withLabel("label", "label"));
 
   std::string s;
   histogram.toPrometheus(s, "", "");
@@ -88,9 +84,7 @@ TEST_F(MetricsFeatureTest, test_histogram) {
 
   thisMetric = &histogram;
   thatMetric = &labeledHistogram;
-
 }
-
 
 TEST_F(MetricsFeatureTest, fail_recreate_histogram) {
   try {
@@ -102,9 +96,7 @@ TEST_F(MetricsFeatureTest, fail_recreate_histogram) {
   }
 }
 
-
 TEST_F(MetricsFeatureTest, test_gauge) {
-
   auto& gauge = feature.add(GAUGE{});
   auto& labeledGauge = feature.add(GAUGE{}.withLabel("label", "label"));
 
@@ -117,7 +109,4 @@ TEST_F(MetricsFeatureTest, test_gauge) {
 
   thisMetric = &gauge;
   thatMetric = &labeledGauge;
-
 }
-
-

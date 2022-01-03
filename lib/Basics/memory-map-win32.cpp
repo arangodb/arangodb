@@ -173,7 +173,8 @@ ErrorCode TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
 
   // TODO: fix the viewProtection above *result = MapViewOfFile(*mmHandle,
   // viewProtection, 0, 0, 0);
-  *result = MapViewOfFile(*mmHandle, FILE_MAP_ALL_ACCESS, 0, 0, numOfBytesToInitialize);
+  *result = MapViewOfFile(*mmHandle, FILE_MAP_ALL_ACCESS, 0, 0,
+                          numOfBytesToInitialize);
 
   // ........................................................................
   // The map view of file has failed.
@@ -196,8 +197,9 @@ ErrorCode TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
   }
 
   LOG_TOPIC("048dd", DEBUG, Logger::MMAP)
-      << "memory-mapped range " << Logger::RANGE(*result, numOfBytesToInitialize)
-      << ", file-descriptor " << fileDescriptor;
+      << "memory-mapped range "
+      << Logger::RANGE(*result, numOfBytesToInitialize) << ", file-descriptor "
+      << fileDescriptor;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -229,8 +231,9 @@ ErrorCode TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
   }
 
   LOG_TOPIC("447d8", DEBUG, Logger::MMAP)
-      << "memory-unmapped range " << Logger::RANGE(memoryAddress, numOfBytesToUnMap)
-      << ", file-descriptor " << fileDescriptor;
+      << "memory-unmapped range "
+      << Logger::RANGE(memoryAddress, numOfBytesToUnMap) << ", file-descriptor "
+      << fileDescriptor;
 
   return TRI_ERROR_NO_ERROR;
 }

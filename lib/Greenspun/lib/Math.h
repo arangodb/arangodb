@@ -30,4 +30,3 @@
 namespace arangodb::greenspun {
 void RegisterAllMathFunctions(Machine& ctx);
 }  // namespace arangodb::greenspun
-

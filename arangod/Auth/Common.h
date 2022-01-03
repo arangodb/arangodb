@@ -42,4 +42,3 @@ std::string convertFromAuthLevel(auth::Level lvl);
 
 }  // namespace auth
 }  // namespace arangodb
-

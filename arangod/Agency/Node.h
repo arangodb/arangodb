@@ -56,7 +56,6 @@ enum Operation {
 
 using namespace arangodb::velocypack;
 
-
 typedef std::chrono::system_clock::time_point TimePoint;
 typedef std::chrono::steady_clock::time_point SteadyTimePoint;
 
@@ -65,6 +64,7 @@ class Store;
 class SmallBuffer {
   uint8_t* _start;
   size_t _size;
+
  public:
   SmallBuffer() noexcept : _start(nullptr), _size(0) {}
   explicit SmallBuffer(size_t size) : SmallBuffer() {
@@ -76,8 +76,7 @@ class SmallBuffer {
   explicit SmallBuffer(uint8_t const* data, size_t size) : SmallBuffer(size) {
     memcpy(_start, data, size);
   }
-  SmallBuffer(SmallBuffer const& other) 
-      : SmallBuffer() {
+  SmallBuffer(SmallBuffer const& other) : SmallBuffer() {
     if (!other.empty()) {
       _start = new uint8_t[other._size];
       _size = other._size;
@@ -117,9 +116,7 @@ class SmallBuffer {
     }
     return *this;
   }
-  ~SmallBuffer() {
-    delete[] _start;
-  }
+  ~SmallBuffer() { delete[] _start; }
   uint8_t* data() const { return _start; }
   size_t size() const { return _size; }
   bool empty() const { return _start == nullptr || _size == 0; }
@@ -190,7 +187,8 @@ class Node final {
   Node& getOrCreate(std::vector<std::string> const& pv);
 
   /// @brief Get node specified by path vector
-  std::optional<std::reference_wrapper<Node const>> get(std::vector<std::string> const& pv) const;
+  std::optional<std::reference_wrapper<Node const>> get(
+      std::vector<std::string> const& pv) const;
 
   /// @brief Get root node
   Node const& root() const;
@@ -207,12 +205,14 @@ class Node final {
   /// @brief Apply single slice
   bool applies(arangodb::velocypack::Slice);
 
-  /// @brief Return all keys of an object node. Result will be empty for non-objects.
+  /// @brief Return all keys of an object node. Result will be empty for
+  /// non-objects.
   std::vector<std::string> keys() const;
 
   /// @brief handle "op" keys in write json
-  template <Operation Oper>
-  arangodb::ResultT<std::shared_ptr<Node>> handle(arangodb::velocypack::Slice const&);
+  template<Operation Oper>
+  arangodb::ResultT<std::shared_ptr<Node>> handle(
+      arangodb::velocypack::Slice const&);
 
   /// @brief Create Builder representing this store
   void toBuilder(Builder&, bool showHidden = false) const;
@@ -278,7 +278,8 @@ class Node final {
 
   /// @brief accessor to Node object
   /// @return  returns nullopt if not found or type doesn't match
-  std::optional<std::reference_wrapper<Node const>> hasAsNode(std::string const&) const noexcept;
+  std::optional<std::reference_wrapper<Node const>> hasAsNode(
+      std::string const&) const noexcept;
 
   /// @brief accessor to Node object
   Node& hasAsWritableNode(std::string const&);
@@ -305,11 +306,13 @@ class Node final {
 
   /// @brief accessor to Node's _children
   /// @return  returns nullopt if not found or type doesn't match
-  std::optional<std::reference_wrapper<Children const>> hasAsChildren(std::string const&) const;
+  std::optional<std::reference_wrapper<Children const>> hasAsChildren(
+      std::string const&) const;
 
   /// @brief accessor to Node then write to builder
   /// @return  returns true if url exists
-  [[nodiscard]] bool hasAsBuilder(std::string const&, Builder&, bool showHidden = false) const;
+  [[nodiscard]] bool hasAsBuilder(std::string const&, Builder&,
+                                  bool showHidden = false) const;
 
   /// @brief accessor to Node's value as a Builder object
   /// @return  returns nullopt if not found or type doesn't match
@@ -326,7 +329,8 @@ class Node final {
   Node& getOrCreate(std::string const& path);
 
   /// @brief Get node specified by path string
-  std::optional<std::reference_wrapper<Node const>> get(std::string const& path) const;
+  std::optional<std::reference_wrapper<Node const>> get(
+      std::string const& path) const;
 
   /// @brief Get string value (throws if type NODE or if conversion fails)
   std::optional<std::string> getString() const;
@@ -358,7 +362,8 @@ class Node final {
     return T{0};
   }
 
-  static auto getIntWithDefault(Slice slice, std::string_view key, std::int64_t def) -> std::int64_t;
+  static auto getIntWithDefault(Slice slice, std::string_view key,
+                                std::int64_t def) -> std::int64_t;
 
   bool isReadLockable(std::string_view by) const;
   bool isWriteLockable(std::string_view by) const;
@@ -367,15 +372,12 @@ class Node final {
   void clear();
 
   // @brief Helper function to return static instance of dummy node below
-  static Node const& dummyNode() {
-    return _dummyNode;
-  }
- 
+  static Node const& dummyNode() { return _dummyNode; }
+
  private:
-  
   bool isReadUnlockable(std::string_view by) const;
   bool isWriteUnlockable(std::string_view by) const;
-  
+
   /// @brief  Remove child by name
   /// @return shared pointer to removed child
   arangodb::ResultT<std::shared_ptr<Node>> removeChild(std::string const& key);
@@ -392,25 +394,25 @@ class Node final {
   bool lifetimeExpired() const;
 
   /// @brief Add time to live entry
-  bool addTimeToLive(std::chrono::time_point<std::chrono::system_clock> const& tp);
+  bool addTimeToLive(
+      std::chrono::time_point<std::chrono::system_clock> const& tp);
 
   /// @brief Remove time to live entry
   bool removeTimeToLive();
 
   void rebuildVecBuf() const;
 
-  std::string _nodeName;                ///< @brief my name
-  Node* _parent;                        ///< @brief parent
-  Store* _store;                        ///< @brief Store
-  mutable std::unique_ptr<Children> _children;  ///< @brief child nodes
-  TimePoint _ttl;                       ///< @brief my expiry
+  std::string _nodeName;                             ///< @brief my name
+  Node* _parent;                                     ///< @brief parent
+  Store* _store;                                     ///< @brief Store
+  mutable std::unique_ptr<Children> _children;       ///< @brief child nodes
+  TimePoint _ttl;                                    ///< @brief my expiry
   std::unique_ptr<std::vector<SmallBuffer>> _value;  ///< @brief my value
   mutable std::unique_ptr<SmallBuffer> _vecBuf;
   mutable bool _vecBufDirty;
   bool _isArray;
   static Children const dummyChildren;
   static Node const _dummyNode;
-
 };
 
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {
@@ -418,4 +420,3 @@ inline std::ostream& operator<<(std::ostream& o, Node const& n) {
 }
 
 }  // namespace arangodb::consensus
-

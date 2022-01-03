@@ -36,4 +36,3 @@ struct TRI_condition_t {
 };
 
 #endif
-
