@@ -76,4 +76,3 @@ class QueryString {
 std::ostream& operator<<(std::ostream&, QueryString const&);
 }  // namespace aql
 }  // namespace arangodb
-

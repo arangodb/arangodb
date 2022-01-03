@@ -31,7 +31,6 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::algorithms;
 
 struct CheckLogsAlgorithmTest : ::testing::Test {
-
   auto makePlanSpecification(LogId id) -> agency::LogPlanSpecification {
     auto spec = agency::LogPlanSpecification{};
     spec.id = id;
@@ -51,12 +50,13 @@ struct CheckLogsAlgorithmTest : ::testing::Test {
     auto termSpec = agency::LogPlanTermSpecification{};
     termSpec.term = term;
     termSpec.config = config;
-    std::transform(info.begin(), info.end(),
-                   std::inserter(termSpec.participants, termSpec.participants.end()),
-                   [](auto const& info) {
-                     return std::make_pair(info.first,
-                                           agency::LogPlanTermSpecification::Participant{});
-                   });
+    std::transform(
+        info.begin(), info.end(),
+        std::inserter(termSpec.participants, termSpec.participants.end()),
+        [](auto const& info) {
+          return std::make_pair(
+              info.first, agency::LogPlanTermSpecification::Participant{});
+        });
     return termSpec;
   }
 
@@ -71,17 +71,15 @@ struct CheckLogsAlgorithmTest : ::testing::Test {
     std::transform(info.begin(), info.end(),
                    std::inserter(current.localState, current.localState.end()),
                    [&](auto const& info) {
-                     auto state =
-                         agency::LogCurrentLocalState{term, TermIndexPair{spearheadTerm, spearhead}};
+                     auto state = agency::LogCurrentLocalState{
+                         term, TermIndexPair{spearheadTerm, spearhead}};
                      return std::make_pair(info.first, state);
                    });
     return current;
   }
-
 };
 
 TEST_F(CheckLogsAlgorithmTest, check_do_nothing_if_all_good) {
-
   auto const participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, true}},
       {"B", ParticipantRecord{RebootId{1}, true}},
@@ -89,8 +87,7 @@ TEST_F(CheckLogsAlgorithmTest, check_do_nothing_if_all_good) {
   };
 
   auto spec = makePlanSpecification(LogId{1});
-  spec.currentTerm =
-      makeTermSpecification(LogTerm{1}, {}, participants);
+  spec.currentTerm = makeTermSpecification(LogTerm{1}, {}, participants);
   spec.currentTerm->leader = makeLeader("A", RebootId{1});
   auto current = makeLogCurrent();
 
@@ -99,7 +96,6 @@ TEST_F(CheckLogsAlgorithmTest, check_do_nothing_if_all_good) {
 }
 
 TEST_F(CheckLogsAlgorithmTest, check_do_nothing_if_follower_fails) {
-
   auto const participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, true}},
       {"B", ParticipantRecord{RebootId{2}, false}},
@@ -107,8 +103,7 @@ TEST_F(CheckLogsAlgorithmTest, check_do_nothing_if_follower_fails) {
   };
 
   auto spec = makePlanSpecification(LogId{1});
-  spec.currentTerm =
-      makeTermSpecification(LogTerm{1}, {}, participants);
+  spec.currentTerm = makeTermSpecification(LogTerm{1}, {}, participants);
   spec.currentTerm->leader = makeLeader("A", RebootId{1});
   auto current = makeLogCurrent();
 
@@ -117,7 +112,6 @@ TEST_F(CheckLogsAlgorithmTest, check_do_nothing_if_follower_fails) {
 }
 
 TEST_F(CheckLogsAlgorithmTest, check_do_increase_term_if_leader_reboots) {
-
   auto participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{2}, false}},
       {"B", ParticipantRecord{RebootId{1}, true}},
@@ -125,8 +119,7 @@ TEST_F(CheckLogsAlgorithmTest, check_do_increase_term_if_leader_reboots) {
   };
 
   auto spec = makePlanSpecification(LogId{1});
-  spec.currentTerm =
-      makeTermSpecification(LogTerm{1}, {}, participants);
+  spec.currentTerm = makeTermSpecification(LogTerm{1}, {}, participants);
   spec.currentTerm->leader = makeLeader("A", RebootId{1});
   auto current = makeLogCurrent();
 
@@ -139,7 +132,6 @@ TEST_F(CheckLogsAlgorithmTest, check_do_increase_term_if_leader_reboots) {
 }
 
 TEST_F(CheckLogsAlgorithmTest, check_elect_leader_if_all_available) {
-
   auto participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, true}},
       {"B", ParticipantRecord{RebootId{1}, true}},
@@ -148,21 +140,22 @@ TEST_F(CheckLogsAlgorithmTest, check_elect_leader_if_all_available) {
 
   auto spec = makePlanSpecification(LogId{1});
   spec.currentTerm = makeTermSpecification(LogTerm{1}, {}, participants);
-  auto current = makeLogCurrentReportAll(participants, LogTerm{1}, LogIndex{4}, LogTerm{1});
+  auto current = makeLogCurrentReportAll(participants, LogTerm{1}, LogIndex{4},
+                                         LogTerm{1});
 
   auto v = checkReplicatedLog("db", spec, current, participants);
   ASSERT_TRUE(std::holds_alternative<agency::LogPlanTermSpecification>(v));
   auto result = std::get<agency::LogPlanTermSpecification>(v);
   EXPECT_NE(result.leader, std::nullopt);
   ASSERT_TRUE(participants.find(result.leader->serverId) != participants.end());
-  EXPECT_EQ(participants.at(result.leader->serverId).rebootId, result.leader->rebootId);
+  EXPECT_EQ(participants.at(result.leader->serverId).rebootId,
+            result.leader->rebootId);
   EXPECT_TRUE(participants.at(result.leader->serverId).isHealthy);
   EXPECT_EQ(result.term, LogTerm{2});
   EXPECT_EQ(result.config, spec.currentTerm->config);
 }
 
 TEST_F(CheckLogsAlgorithmTest, do_nothing_if_non_healthy) {
-
   auto participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, false}},
       {"B", ParticipantRecord{RebootId{1}, false}},
@@ -171,14 +164,14 @@ TEST_F(CheckLogsAlgorithmTest, do_nothing_if_non_healthy) {
 
   auto spec = makePlanSpecification(LogId{1});
   spec.currentTerm = makeTermSpecification(LogTerm{1}, {}, participants);
-  auto current = makeLogCurrentReportAll(participants, LogTerm{1}, LogIndex{4}, LogTerm{1});
+  auto current = makeLogCurrentReportAll(participants, LogTerm{1}, LogIndex{4},
+                                         LogTerm{1});
 
   auto v = checkReplicatedLog("db", spec, current, participants);
   ASSERT_TRUE(std::holds_alternative<agency::LogCurrentSupervisionElection>(v));
 }
 
 TEST_F(CheckLogsAlgorithmTest, check_elect_leader_non_reported) {
-
   auto participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, true}},
       {"B", ParticipantRecord{RebootId{1}, true}},
@@ -187,7 +180,8 @@ TEST_F(CheckLogsAlgorithmTest, check_elect_leader_non_reported) {
 
   auto spec = makePlanSpecification(LogId{1});
   spec.currentTerm = makeTermSpecification(LogTerm{2}, {}, participants);
-  auto current = makeLogCurrentReportAll(participants, LogTerm{1}, LogIndex{4}, LogTerm{1});
+  auto current = makeLogCurrentReportAll(participants, LogTerm{1}, LogIndex{4},
+                                         LogTerm{1});
 
   auto v = checkReplicatedLog("db", spec, current, participants);
   ASSERT_TRUE(std::holds_alternative<agency::LogCurrentSupervisionElection>(v));
@@ -195,13 +189,18 @@ TEST_F(CheckLogsAlgorithmTest, check_elect_leader_non_reported) {
   EXPECT_EQ(e.term, spec.currentTerm->term);
   EXPECT_EQ(e.participantsRequired, 3);
   EXPECT_EQ(e.participantsAvailable, 0);
-  EXPECT_EQ(e.detail.at("A"), agency::LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED);
-  EXPECT_EQ(e.detail.at("B"), agency::LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED);
-  EXPECT_EQ(e.detail.at("C"), agency::LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED);
+  EXPECT_EQ(
+      e.detail.at("A"),
+      agency::LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED);
+  EXPECT_EQ(
+      e.detail.at("B"),
+      agency::LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED);
+  EXPECT_EQ(
+      e.detail.at("C"),
+      agency::LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED);
 }
 
 TEST_F(CheckLogsAlgorithmTest, check_elect_leader_two_reported_wc_2) {
-
   auto participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, false}},
       {"B", ParticipantRecord{RebootId{1}, true}},
@@ -212,20 +211,21 @@ TEST_F(CheckLogsAlgorithmTest, check_elect_leader_two_reported_wc_2) {
   spec.targetConfig.writeConcern = 2;
   spec.currentTerm = makeTermSpecification(LogTerm{2}, {}, participants);
   spec.currentTerm->config.writeConcern = 2;
-  auto current = makeLogCurrentReportAll(participants, LogTerm{2}, LogIndex{4}, LogTerm{1});
+  auto current = makeLogCurrentReportAll(participants, LogTerm{2}, LogIndex{4},
+                                         LogTerm{1});
 
   auto v = checkReplicatedLog("db", spec, current, participants);
   ASSERT_TRUE(std::holds_alternative<agency::LogPlanTermSpecification>(v));
   auto result = std::get<agency::LogPlanTermSpecification>(v);
   ASSERT_TRUE(participants.find(result.leader->serverId) != participants.end());
-  EXPECT_EQ(participants.at(result.leader->serverId).rebootId, result.leader->rebootId);
+  EXPECT_EQ(participants.at(result.leader->serverId).rebootId,
+            result.leader->rebootId);
   EXPECT_TRUE(participants.at(result.leader->serverId).isHealthy);
   EXPECT_EQ(result.term, LogTerm{3});
   EXPECT_EQ(result.config, spec.currentTerm->config);
 }
 
 TEST_F(CheckLogsAlgorithmTest, check_dont_elect_leader_two_reported_wc_2) {
-
   auto participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, false}},
       {"B", ParticipantRecord{RebootId{1}, true}},
@@ -237,9 +237,12 @@ TEST_F(CheckLogsAlgorithmTest, check_dont_elect_leader_two_reported_wc_2) {
   spec.currentTerm = makeTermSpecification(LogTerm{2}, {}, participants);
   spec.currentTerm->config.writeConcern = 2;
   auto current = makeLogCurrent();
-  current.localState["A"] = agency::LogCurrentLocalState{LogTerm{2}, TermIndexPair{LogTerm{1}, LogIndex{1}}};
-  current.localState["B"] = agency::LogCurrentLocalState{LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}};
-  current.localState["C"] = agency::LogCurrentLocalState{LogTerm{2}, TermIndexPair{LogTerm{1}, LogIndex{1}}};
+  current.localState["A"] = agency::LogCurrentLocalState{
+      LogTerm{2}, TermIndexPair{LogTerm{1}, LogIndex{1}}};
+  current.localState["B"] = agency::LogCurrentLocalState{
+      LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}};
+  current.localState["C"] = agency::LogCurrentLocalState{
+      LogTerm{2}, TermIndexPair{LogTerm{1}, LogIndex{1}}};
   // only C is available, because it is healthy and it has confirmed term 2
 
   auto v = checkReplicatedLog("db", spec, current, participants);
@@ -247,13 +250,16 @@ TEST_F(CheckLogsAlgorithmTest, check_dont_elect_leader_two_reported_wc_2) {
   EXPECT_EQ(e.term, spec.currentTerm->term);
   EXPECT_EQ(e.participantsRequired, 2);
   EXPECT_EQ(e.participantsAvailable, 1);
-  EXPECT_EQ(e.detail.at("A"), agency::LogCurrentSupervisionElection::ErrorCode::SERVER_NOT_GOOD);
-  EXPECT_EQ(e.detail.at("B"), agency::LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED);
-  EXPECT_EQ(e.detail.at("C"), agency::LogCurrentSupervisionElection::ErrorCode::OK);
+  EXPECT_EQ(e.detail.at("A"),
+            agency::LogCurrentSupervisionElection::ErrorCode::SERVER_NOT_GOOD);
+  EXPECT_EQ(
+      e.detail.at("B"),
+      agency::LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED);
+  EXPECT_EQ(e.detail.at("C"),
+            agency::LogCurrentSupervisionElection::ErrorCode::OK);
 }
 
 TEST_F(CheckLogsAlgorithmTest, check_constitute_first_term) {
-
   auto participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, false}},
       {"B", ParticipantRecord{RebootId{1}, true}},
@@ -275,7 +281,6 @@ TEST_F(CheckLogsAlgorithmTest, check_constitute_first_term) {
 }
 
 TEST_F(CheckLogsAlgorithmTest, check_constitute_first_term_r3_wc2) {
-
   auto participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, true}},
       {"B", ParticipantRecord{RebootId{1}, true}},
@@ -297,7 +302,8 @@ TEST_F(CheckLogsAlgorithmTest, check_constitute_first_term_r3_wc2) {
   EXPECT_TRUE(e.participants.find("A") != e.participants.end());
 }
 
-TEST_F(CheckLogsAlgorithmTest, check_constitute_first_term_not_enough_participants) {
+TEST_F(CheckLogsAlgorithmTest,
+       check_constitute_first_term_not_enough_participants) {
   auto participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, false}},
       {"B", ParticipantRecord{RebootId{1}, false}},

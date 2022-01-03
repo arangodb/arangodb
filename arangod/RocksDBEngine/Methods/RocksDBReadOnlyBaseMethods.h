@@ -33,23 +33,25 @@ namespace arangodb {
 
 class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
  public:
-  explicit RocksDBReadOnlyBaseMethods(RocksDBTransactionState* state, rocksdb::TransactionDB* db);
+  explicit RocksDBReadOnlyBaseMethods(RocksDBTransactionState* state,
+                                      rocksdb::TransactionDB* db);
 
   ~RocksDBReadOnlyBaseMethods();
 
   bool ensureSnapshot() override;
 
   rocksdb::SequenceNumber GetSequenceNumber() const noexcept override;
-  
+
   TRI_voc_tick_t lastOperationTick() const noexcept override { return 0; }
-  
+
   uint64_t numCommits() const noexcept override { return 0; }
-  
+
   bool hasOperations() const noexcept override { return false; }
-  
+
   uint64_t numOperations() const noexcept override { return 0; }
-  
-  void prepareOperation(DataSourceId cid, RevisionId rid, TRI_voc_document_operation_e operationType) override;
+
+  void prepareOperation(DataSourceId cid, RevisionId rid,
+                        TRI_voc_document_operation_e operationType) override;
 
   void rollbackOperation(TRI_voc_document_operation_e operationType) override;
 
@@ -60,10 +62,13 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
                                rocksdb::PinnableSlice*) override;
   rocksdb::Status Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
                       rocksdb::Slice const& val, bool assume_tracked) override;
-  rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+  rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*,
+                               RocksDBKey const& key,
                                rocksdb::Slice const& val) override;
-  rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
-  rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
+  rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*,
+                         RocksDBKey const& key) override;
+  rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*,
+                               RocksDBKey const&) override;
   void PutLogData(rocksdb::Slice const&) override;
 
   void SetSavePoint() override {}
@@ -71,11 +76,12 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
     return rocksdb::Status::OK();
   }
   rocksdb::Status RollbackToWriteBatchSavePoint() override {
-    // simply relay to the general method (which in this derived class does nothing)
+    // simply relay to the general method (which in this derived class does
+    // nothing)
     return RollbackToSavePoint();
   }
   void PopSavePoint() override {}
-  
+
   bool iteratorMustCheckBounds(ReadOwnWrites) const override {
     // we never have to check the bounds for read-only iterators
     return false;
@@ -83,11 +89,10 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
 
  protected:
   void releaseSnapshot();
-  
+
   rocksdb::TransactionDB* _db;
 
   ReadOptions _readOptions;
 };
 
 }  // namespace arangodb
-

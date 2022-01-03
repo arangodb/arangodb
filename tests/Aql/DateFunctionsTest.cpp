@@ -169,7 +169,8 @@ struct TestDate {
   }
 
   std::string const testName() const {
-    return "Input: " + _argBuilder.toJson() + " => " + (_isValid ? "true" : "false");
+    return "Input: " + _argBuilder.toJson() + " => " +
+           (_isValid ? "true" : "false");
   }
 
   void buildParams(VPackFunctionParameters& input) const {
@@ -195,7 +196,7 @@ TEST(DateFunctionsTest, DATE_COMPARE) {
   std::vector<TestDate> testees = {
 #include "DATE_COMPARE.testcases"
   };
-  
+
   arangodb::aql::Function fun("DATE_COMPARE", &Functions::DateCompare);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&fun));
@@ -250,7 +251,7 @@ class DateFunctionsTestDateDiff : public ::testing::Test {
         earlierDate("2000-04-01T02:48:42.123"),
         laterDate("2001-06-13T06:53:48.246"),
         dateDiffMillis(37857906123),
-        avgDaysPerMonth(365.0/12.0),
+        avgDaysPerMonth(365.0 / 12.0),
         params(arena) {
     dateBuilder.openArray();
     dateBuilder.add(VPackValue(earlierDate));
@@ -333,7 +334,6 @@ class DateFunctionsTestDateDiff : public ::testing::Test {
         it.destroy();
       }
     }
-
   }
 };
 
@@ -392,7 +392,8 @@ TEST_F(DateFunctionsTestDateDiff, checking_weeks) {
 }
 
 TEST_F(DateFunctionsTestDateDiff, checking_months) {
-  double expectedDiff = dateDiffMillis / (1000 * 60 * 60 * 24) / avgDaysPerMonth;
+  double expectedDiff =
+      dateDiffMillis / (1000 * 60 * 60 * 24) / avgDaysPerMonth;
   auto allFlags = TestDateModifierFlagFactory::createAllFlags(
       TestDateModifierFlagFactory::FLAGS::MONTH);
   for (auto const& f : allFlags) {
@@ -456,7 +457,7 @@ TEST(DateFunctionsTest, DATE_SUBTRACT) {
   std::vector<TestDate> testees = {
 #include "DATE_SUBTRACT.testcases"
   };
-      
+
   arangodb::aql::Function fun("DATE_SUBTRACT", &Functions::DateSubtract);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&fun));

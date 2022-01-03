@@ -45,7 +45,8 @@ class AgencyCallbackRegistry {
   ~AgencyCallbackRegistry();
 
   /// @brief register a callback
-  [[nodiscard]] Result registerCallback(std::shared_ptr<AgencyCallback> cb, bool local = true);
+  [[nodiscard]] Result registerCallback(std::shared_ptr<AgencyCallback> cb,
+                                        bool local = true);
 
   /// @brief unregister a callback
   bool unregisterCallback(std::shared_ptr<AgencyCallback> cb);
@@ -66,10 +67,9 @@ class AgencyCallbackRegistry {
 
   /// @brief total number of callbacks ever registered
   metrics::Counter& _totalCallbacksRegistered;
-  
+
   /// @brief current number of callbacks registered
   metrics::Gauge<uint64_t>& _callbacksCount;
 };
 
 }  // namespace arangodb
-

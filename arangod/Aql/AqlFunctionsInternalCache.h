@@ -42,7 +42,8 @@ namespace aql {
 class AqlFunctionsInternalCache final {
  public:
   AqlFunctionsInternalCache(AqlFunctionsInternalCache const&) = delete;
-  AqlFunctionsInternalCache& operator=(AqlFunctionsInternalCache const&) = delete;
+  AqlFunctionsInternalCache& operator=(AqlFunctionsInternalCache const&) =
+      delete;
 
   AqlFunctionsInternalCache() = default;
   ~AqlFunctionsInternalCache();
@@ -51,15 +52,20 @@ class AqlFunctionsInternalCache final {
 
   void clear() noexcept;
 
-  icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length, bool caseInsensitive);
-  icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length, bool caseInsensitive);
+  icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
+                                       bool caseInsensitive);
+  icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
+                                      bool caseInsensitive);
   icu::RegexMatcher* buildSplitMatcher(AqlValue const& splitExpression,
                                        velocypack::Options const* opts,
                                        bool& isEmptyExpression);
 
-  /// @brief return validators -- This is currently only used for JSONSchema validation.
-  //                              But it is able to handle other validation types without change.
-  arangodb::ValidatorBase* buildValidator(VPackSlice const& validatorDescription);
+  /// @brief return validators -- This is currently only used for JSONSchema
+  /// validation.
+  //                              But it is able to handle other validation
+  //                              types without change.
+  arangodb::ValidatorBase* buildValidator(
+      VPackSlice const& validatorDescription);
 
   /// @brief inspect a LIKE pattern from a string, and remove all
   /// of its escape characters. will stop at the first wildcards found.
@@ -70,13 +76,16 @@ class AqlFunctionsInternalCache final {
   /// - second: true if the found wildcard is the last byte in the pattern,
   ///   false otherwise. can only be true if first is also true
   static std::pair<bool, bool> inspectLikePattern(std::string& out,
-                                                  char const* ptr, size_t length);
+                                                  char const* ptr,
+                                                  size_t length);
 
  private:
   /// @brief get matcher from cache, or insert a new matcher for the specified
   /// pattern
-  icu::RegexMatcher* fromCache(std::string const& pattern,
-                               std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>>& cache);
+  icu::RegexMatcher* fromCache(
+      std::string const& pattern,
+      std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>>&
+          cache);
 
   static void buildRegexPattern(std::string& out, char const* ptr,
                                 size_t length, bool caseInsensitive);
@@ -85,12 +94,17 @@ class AqlFunctionsInternalCache final {
 
  private:
   /// @brief cache for compiled regexes (REGEX function)
-  std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>> _regexCache;
+  std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>>
+      _regexCache;
   /// @brief cache for compiled regexes (LIKE function)
-  std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>> _likeCache;
-  /// @brief cache for validators -- This is currently only used for JSONSchema validation.
-  //                                 But it is able to handle other validation types without change.
-  std::unordered_map<std::size_t, std::unique_ptr<arangodb::ValidatorBase>> _validatorCache;
+  std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>>
+      _likeCache;
+  /// @brief cache for validators -- This is currently only used for JSONSchema
+  /// validation.
+  //                                 But it is able to handle other validation
+  //                                 types without change.
+  std::unordered_map<std::size_t, std::unique_ptr<arangodb::ValidatorBase>>
+      _validatorCache;
   /// @brief a reusable string object for pattern generation
   std::string _temp;
 };

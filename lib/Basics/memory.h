@@ -31,4 +31,3 @@ void* TRI_Reallocate(void*, size_t) noexcept;
 
 /// @brief basic memory management for deallocate
 void TRI_Free(void*) noexcept;
-

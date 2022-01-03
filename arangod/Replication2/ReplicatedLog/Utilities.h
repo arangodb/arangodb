@@ -44,4 +44,4 @@ class VPackArrayToLogPayloadIterator : public TypedLogIterator<LogPayload> {
   velocypack::ArrayIterator _iter;
 };
 
-}
+}  // namespace arangodb::replication2::replicated_log

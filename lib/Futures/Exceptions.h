@@ -65,4 +65,3 @@ struct FutureException : public std::exception {
 
 }  // namespace futures
 }  // namespace arangodb
-
