@@ -88,7 +88,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
   VarSet vars;
   std::unordered_set<arangodb::aql::AttributeNamePath> attributes;
 
-  for (auto& n : nodes) {
+  for (auto n : nodes) {
     // isDeterministic is false for EnumerateCollectionNodes when the "random"
     // flag is set.
     bool const isRandomOrder =
@@ -378,6 +378,11 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
               break;
             }
           }
+          if (forced && !picked) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+                TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
+                "could not use index hint to serve query; " + hint.toString());
+          }
         }
 
         if (!picked && !forced) {
@@ -400,9 +405,25 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           plan->replaceNode(n, inode);
           en->CollectionAccessingNode::cloneInto(*inode);
           en->DocumentProducingNode::cloneInto(plan.get(), *inode);
+
+          n = inode;
+
           modified = true;
         }
       }  // index selection
+    }
+
+    if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
+      // the node is still an EnumerateCollection... now check if we need
+      // to force an index hint
+      EnumerateCollectionNode const* en =
+          ExecutionNode::castTo<EnumerateCollectionNode const*>(n);
+      auto const& hint = en->hint();
+      if (hint.type() == aql::IndexHint::HintType::Simple && hint.isForced()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
+            "could not use index hint to serve query; " + hint.toString());
+      }
     }
   }
 
