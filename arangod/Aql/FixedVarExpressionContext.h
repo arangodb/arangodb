@@ -38,7 +38,8 @@ class AqlItemBlock;
 
 class FixedVarExpressionContext final : public QueryExpressionContext {
  public:
-  explicit FixedVarExpressionContext(transaction::Methods& trx, QueryContext& query,
+  explicit FixedVarExpressionContext(transaction::Methods& trx,
+                                     QueryContext& query,
                                      AqlFunctionsInternalCache& cache);
 
   ~FixedVarExpressionContext() override = default;

@@ -71,6 +71,7 @@ function ShellAqlRegressionSuite () {
           'EnumerateCollectionNode',
           'CalculationNode',
           'SortNode',
+          'LimitNode',
           'RemoteNode',
           'GatherNode',
           'LimitNode',
@@ -81,7 +82,7 @@ function ShellAqlRegressionSuite () {
       const sortNode = plan.nodes[3];
       assertEqual('SortNode', sortNode.type);
       assertEqual("constrained-heap", sortNode.strategy);
-      const gatherNode = plan.nodes[5];
+      const gatherNode = plan.nodes[6];
       assertEqual('GatherNode', gatherNode.type);
       assertEqual("undefined", gatherNode.parallelism);
       // It's important to check the limit, it's only in the constrained case

@@ -33,12 +33,13 @@ namespace arangodb::metrics {
 /**
  * @brief Histogram functionality
  */
-template <typename Scale>
+template<typename Scale>
 class Histogram : public Metric {
  public:
   using ValueType = typename Scale::Value;
 
-  Histogram(Scale&& scale, std::string_view name, std::string_view help, std::string_view labels)
+  Histogram(Scale&& scale, std::string_view name, std::string_view help,
+            std::string_view labels)
       : Metric(name, help, labels),
         _c(HistType(scale.n())),
         _scale(std::move(scale)),
@@ -59,13 +60,15 @@ class Histogram : public Metric {
     // in maintainer mode so they can be used when debugging.
     auto expected = _lowr.load(std::memory_order_relaxed);
     while (val < expected) {
-      if (_lowr.compare_exchange_weak(expected, val, std::memory_order_relaxed)) {
+      if (_lowr.compare_exchange_weak(expected, val,
+                                      std::memory_order_relaxed)) {
         return;
       }
     }
     expected = _highr.load(std::memory_order_relaxed);
     while (val > expected) {
-      if (_highr.compare_exchange_weak(expected, val, std::memory_order_relaxed)) {
+      if (_highr.compare_exchange_weak(expected, val,
+                                       std::memory_order_relaxed)) {
         return;
       }
     }
@@ -93,9 +96,9 @@ class Histogram : public Metric {
     } else {
       ValueType tmp = _sum.load(std::memory_order_relaxed);
       do {
-      } while (!_sum.compare_exchange_weak(tmp, tmp + static_cast<ValueType>(n) * t,
-                                           std::memory_order_relaxed,
-                                           std::memory_order_relaxed));
+      } while (!_sum.compare_exchange_weak(
+          tmp, tmp + static_cast<ValueType>(n) * t, std::memory_order_relaxed,
+          std::memory_order_relaxed));
     }
     track_extremes(t);
   }
@@ -179,7 +182,7 @@ class Histogram : public Metric {
 #endif
 };
 
-template <typename T>
+template<typename T>
 std::ostream& operator<<(std::ostream& o, Histogram<T> const& h) {
   return h.print(o);
 }

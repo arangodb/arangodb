@@ -62,7 +62,8 @@ inline const char* requestToString(RequestType requestType) {
   }
 }
 
-inline std::ostream& operator<<(std::ostream& ostream, RequestType requestType) {
+inline std::ostream& operator<<(std::ostream& ostream,
+                                RequestType requestType) {
   return ostream << std::string(requestToString(requestType));
 }
 
@@ -79,10 +80,7 @@ enum class ContentType {
 std::string contentTypeToString(ContentType type);
 ContentType stringToContentType(std::string const& input, ContentType def);
 
-enum class EncodingType {
-  DEFLATE,
-  UNSET
-};
+enum class EncodingType { DEFLATE, UNSET };
 
 enum class AuthenticationMethod : uint8_t { BASIC = 1, JWT = 2, NONE = 0 };
 
@@ -246,7 +244,8 @@ inline const char* responseToString(ResponseCode responseCode) {
   return "??? UNEXPECTED";
 }
 
-inline std::ostream& operator<<(std::ostream& ostream, ResponseCode responseCode) {
+inline std::ostream& operator<<(std::ostream& ostream,
+                                ResponseCode responseCode) {
   return ostream << std::string(responseToString(responseCode));
 }
 }  // namespace rest

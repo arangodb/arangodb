@@ -54,7 +54,8 @@ void preventUseOnSmartEdgeCollection(LogicalCollection const* collection,
   }
 }
 
-inline void parseAttributeAndPart(std::string_view attr, std::string_view& realAttr, Part& part) {
+inline void parseAttributeAndPart(std::string_view attr,
+                                  std::string_view& realAttr, Part& part) {
   if (!attr.empty() && attr.back() == ':') {
     realAttr = std::string_view(attr.data(), attr.size() - 1);
     part = Part::FRONT;
@@ -67,9 +68,10 @@ inline void parseAttributeAndPart(std::string_view attr, std::string_view& realA
   }
 }
 
-template <bool returnNullSlice>
+template<bool returnNullSlice>
 VPackSlice buildTemporarySlice(VPackSlice const sub, Part const& part,
-                               VPackBuilder& temporaryBuilder, bool splitSlash) {
+                               VPackBuilder& temporaryBuilder,
+                               bool splitSlash) {
   if (sub.isString()) {
     std::string_view key = sub.stringView();
     if (splitSlash) {
@@ -86,19 +88,21 @@ VPackSlice buildTemporarySlice(VPackSlice const sub, Part const& part,
         if (!splitSlash) {
           return sub;
         }
-        // by adding the key to the builder, we may invalidate the original key...
-        // however, this is safe here as the original key is not used after we have
-        // added to the builder
-        return VPackSlice(temporaryBuilder.add(VPackValuePair(key.data(), key.size(), VPackValueType::String)));
+        // by adding the key to the builder, we may invalidate the original
+        // key... however, this is safe here as the original key is not used
+        // after we have added to the builder
+        return VPackSlice(temporaryBuilder.add(
+            VPackValuePair(key.data(), key.size(), VPackValueType::String)));
       }
       case Part::FRONT: {
         size_t pos = key.find(':');
         if (pos != std::string::npos) {
           key = key.substr(0, pos);
-          // by adding the key to the builder, we may invalidate the original key...
-          // however, this is safe here as the original key is not used after we have
-          // added to the builder
-          return VPackSlice(temporaryBuilder.add(VPackValuePair(key.data(), key.size(), VPackValueType::String)));
+          // by adding the key to the builder, we may invalidate the original
+          // key... however, this is safe here as the original key is not used
+          // after we have added to the builder
+          return VPackSlice(temporaryBuilder.add(
+              VPackValuePair(key.data(), key.size(), VPackValueType::String)));
         }
         // fall-through to returning null or original slice
         break;
@@ -107,10 +111,11 @@ VPackSlice buildTemporarySlice(VPackSlice const sub, Part const& part,
         size_t pos = key.rfind(':');
         if (pos != std::string::npos) {
           key = key.substr(pos + 1);
-          // by adding the key to the builder, we may invalidate the original key...
-          // however, this is safe here as the original key is not used after we have
-          // added to the builder
-          return VPackSlice(temporaryBuilder.add(VPackValuePair(key.data(), key.size(), VPackValueType::String)));
+          // by adding the key to the builder, we may invalidate the original
+          // key... however, this is safe here as the original key is not used
+          // after we have added to the builder
+          return VPackSlice(temporaryBuilder.add(
+              VPackValuePair(key.data(), key.size(), VPackValueType::String)));
         }
         // fall-through to returning null or original slice
         break;
@@ -124,14 +129,15 @@ VPackSlice buildTemporarySlice(VPackSlice const sub, Part const& part,
   return sub;
 }
 
-template <bool returnNullSlice>
-uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& attributes,
+template<bool returnNullSlice>
+uint64_t hashByAttributesImpl(VPackSlice slice,
+                              std::vector<std::string> const& attributes,
                               bool docComplete, ErrorCode& error,
                               std::string_view key) {
   uint64_t hashval = TRI_FnvHashBlockInitial();
   error = TRI_ERROR_NO_ERROR;
   slice = slice.resolveExternal();
-  
+
   VPackBuffer<uint8_t> buffer;
   VPackBuilder temporaryBuilder(buffer);
 
@@ -144,7 +150,8 @@ uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& 
       if (sub.isNone()) {
         // shard key attribute not present in document
         if (realAttr == StaticStrings::KeyString && !key.empty()) {
-          temporaryBuilder.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
+          temporaryBuilder.add(
+              VPackValuePair(key.data(), key.size(), VPackValueType::String));
           sub = temporaryBuilder.slice();
         } else {
           if (!docComplete) {
@@ -154,19 +161,18 @@ uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& 
           sub = VPackSlice::nullSlice();
         }
       }
-      // buildTemporarySlice may append data to the builder, which may invalidate
-      // the original "sub" value. however, "sub" is reassigned immediately with
-      // a new value, so it does not matter in reality
+      // buildTemporarySlice may append data to the builder, which may
+      // invalidate the original "sub" value. however, "sub" is reassigned
+      // immediately with a new value, so it does not matter in reality
       sub = ::buildTemporarySlice<returnNullSlice>(sub, part, temporaryBuilder,
-                                                   /*splitSlash*/false);
+                                                   /*splitSlash*/ false);
       hashval = sub.normalizedHash(hashval);
       temporaryBuilder.clear();
     }
-    
+
     return hashval;
-    
+
   } else if (slice.isString()) {
-    
     // optimization for `_key` and `_id` with default sharding
     if (attributes.size() == 1) {
       std::string_view realAttr;
@@ -174,29 +180,29 @@ uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& 
       ::parseAttributeAndPart(attributes[0], realAttr, part);
       if (realAttr == StaticStrings::KeyString) {
         TRI_ASSERT(key.empty());
-        
+
         // We always need the _key part. Everything else should be ignored
         // beforehand.
-        VPackSlice sub =
-        ::buildTemporarySlice<returnNullSlice>(slice, part, temporaryBuilder,
-                                               /*splitSlash*/true);
+        VPackSlice sub = ::buildTemporarySlice<returnNullSlice>(
+            slice, part, temporaryBuilder,
+            /*splitSlash*/ true);
         return sub.normalizedHash(hashval);
       }
     }
-    
-    if (!docComplete) { // ok for use in update, replace and remove operation
+
+    if (!docComplete) {  // ok for use in update, replace and remove operation
       error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
       return hashval;
     }
   }
-  
+
   // we can only get here if a developer calls this wrongly.
   // allowed cases are either and object or (as an optimization)
   // `_key` or `_id` string values and default sharding
-  
+
   TRI_ASSERT(false);
   error = TRI_ERROR_BAD_PARAMETER;
-  
+
   return hashval;
 }
 
@@ -229,7 +235,8 @@ ErrorCode ShardingStrategyNone::getResponsibleShard(
 /// is only available in the Enterprise Edition of ArangoDB
 /// calling getResponsibleShard on this class will always throw an exception
 /// with an appropriate error message
-ShardingStrategyOnlyInEnterprise::ShardingStrategyOnlyInEnterprise(std::string const& name)
+ShardingStrategyOnlyInEnterprise::ShardingStrategyOnlyInEnterprise(
+    std::string const& name)
     : ShardingStrategy(), _name(name) {}
 
 /// @brief will always throw an exception telling the user the selected sharding
@@ -281,7 +288,8 @@ ErrorCode ShardingStrategyHashBase::getResponsibleShard(
   usesDefaultShardKeys = _usesDefaultShardKeys;
   // calls virtual "hashByAttributes" function
 
-  uint64_t hashval = hashByAttributes(slice, _sharding->shardKeys(), docComplete, res, key);
+  uint64_t hashval =
+      hashByAttributes(slice, _sharding->shardKeys(), docComplete, res, key);
   // To improve our hash function result:
   hashval = TRI_FnvHashBlock(hashval, magicPhrase, magicLength);
   shardID = _shards[hashval % _shards.size()];
@@ -301,9 +309,13 @@ void ShardingStrategyHashBase::determineShards() {
   }
 
   // determine all available shards (which will stay const afterwards)
-  auto& ci =
-      _sharding->collection()->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-  auto shards = ci.getShardList(std::to_string(_sharding->collection()->id().id()));
+  auto& ci = _sharding->collection()
+                 ->vocbase()
+                 .server()
+                 .getFeature<ClusterFeature>()
+                 .clusterInfo();
+  auto shards =
+      ci.getShardList(std::to_string(_sharding->collection()->id().id()));
 
   _shards = *shards;
 
@@ -316,16 +328,17 @@ void ShardingStrategyHashBase::determineShards() {
   _shardsSet = true;
 }
 
-uint64_t ShardingStrategyHashBase::hashByAttributes(VPackSlice slice,
-                                                    std::vector<std::string> const& attributes,
-                                                    bool docComplete, ErrorCode& error,
-                                                    std::string_view const& key) {
-  return ::hashByAttributesImpl<false>(slice, attributes, docComplete, error, key);
+uint64_t ShardingStrategyHashBase::hashByAttributes(
+    VPackSlice slice, std::vector<std::string> const& attributes,
+    bool docComplete, ErrorCode& error, std::string_view const& key) {
+  return ::hashByAttributesImpl<false>(slice, attributes, docComplete, error,
+                                       key);
 }
 
 /// @brief old version of the sharding used in the Community Edition
 /// this is DEPRECATED and should not be used for new collections
-ShardingStrategyCommunityCompat::ShardingStrategyCommunityCompat(ShardingInfo* sharding)
+ShardingStrategyCommunityCompat::ShardingStrategyCommunityCompat(
+    ShardingInfo* sharding)
     : ShardingStrategyHashBase(sharding) {
   // whether or not the collection uses the default shard attributes (["_key"])
   // this setting is initialized to false, and we may change it now
@@ -340,7 +353,8 @@ ShardingStrategyCommunityCompat::ShardingStrategyCommunityCompat(ShardingInfo* s
 
 /// @brief old version of the sharding used in the Enterprise Edition
 /// this is DEPRECATED and should not be used for new collections
-ShardingStrategyEnterpriseBase::ShardingStrategyEnterpriseBase(ShardingInfo* sharding)
+ShardingStrategyEnterpriseBase::ShardingStrategyEnterpriseBase(
+    ShardingInfo* sharding)
     : ShardingStrategyHashBase(sharding) {
   // whether or not the collection uses the default shard attributes (["_key"])
   // this setting is initialized to false, and we may change it now
@@ -352,9 +366,11 @@ ShardingStrategyEnterpriseBase::ShardingStrategyEnterpriseBase(ShardingInfo* sha
     _usesDefaultShardKeys =
         (shardKeys[0] == StaticStrings::KeyString ||
          (shardKeys[0][0] == ':' &&
-          shardKeys[0].compare(1, shardKeys[0].size() - 1, StaticStrings::KeyString) == 0) ||
+          shardKeys[0].compare(1, shardKeys[0].size() - 1,
+                               StaticStrings::KeyString) == 0) ||
          (shardKeys[0].back() == ':' &&
-          shardKeys[0].compare(0, shardKeys[0].size() - 1, StaticStrings::KeyString) == 0));
+          shardKeys[0].compare(0, shardKeys[0].size() - 1,
+                               StaticStrings::KeyString) == 0));
   }
 }
 
@@ -365,12 +381,14 @@ ShardingStrategyEnterpriseBase::ShardingStrategyEnterpriseBase(ShardingInfo* sha
 uint64_t ShardingStrategyEnterpriseBase::hashByAttributes(
     VPackSlice slice, std::vector<std::string> const& attributes,
     bool docComplete, ErrorCode& error, std::string_view const& key) {
-  return ::hashByAttributesImpl<true>(slice, attributes, docComplete, error, key);
+  return ::hashByAttributesImpl<true>(slice, attributes, docComplete, error,
+                                      key);
 }
 
 /// @brief old version of the sharding used in the Enterprise Edition
 /// this is DEPRECATED and should not be used for new collections
-ShardingStrategyEnterpriseCompat::ShardingStrategyEnterpriseCompat(ShardingInfo* sharding)
+ShardingStrategyEnterpriseCompat::ShardingStrategyEnterpriseCompat(
+    ShardingInfo* sharding)
     : ShardingStrategyEnterpriseBase(sharding) {
   ::preventUseOnSmartEdgeCollection(_sharding->collection(), NAME);
 }
@@ -389,9 +407,11 @@ ShardingStrategyHash::ShardingStrategyHash(ShardingInfo* sharding)
     _usesDefaultShardKeys =
         (shardKeys[0] == StaticStrings::KeyString ||
          (shardKeys[0][0] == ':' &&
-          shardKeys[0].compare(1, shardKeys[0].size() - 1, StaticStrings::KeyString) == 0) ||
+          shardKeys[0].compare(1, shardKeys[0].size() - 1,
+                               StaticStrings::KeyString) == 0) ||
          (shardKeys[0].back() == ':' &&
-          shardKeys[0].compare(0, shardKeys[0].size() - 1, StaticStrings::KeyString) == 0));
+          shardKeys[0].compare(0, shardKeys[0].size() - 1,
+                               StaticStrings::KeyString) == 0));
   }
 
   ::preventUseOnSmartEdgeCollection(_sharding->collection(), NAME);

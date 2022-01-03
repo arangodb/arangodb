@@ -30,4 +30,3 @@ namespace arangodb::aql {
 class EmptyExecutorInfos {};
 
 }  // namespace arangodb::aql
-

@@ -26,14 +26,11 @@
 namespace arangodb {
 namespace iresearch {
 
-enum class FilterOptimization : int {
-  MAX = -1,
-  NONE = 0
-};
+enum class FilterOptimization : int { MAX = -1, NONE = 0 };
 
 bool includeStartsWithInLevenshtein(irs::boolean_filter* filter,
                                     irs::string_ref name,
                                     irs::string_ref startsWith);
 
-} // namespace iresearch
-} // namespace arangodb
+}  // namespace iresearch
+}  // namespace arangodb

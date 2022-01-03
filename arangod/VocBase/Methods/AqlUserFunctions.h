@@ -42,7 +42,8 @@ class Slice;
 // @param vocbase current database to work with
 // @param functionName the case insensitive name of the function to delete
 // @return success only on exact match
-Result unregisterUserFunction(TRI_vocbase_t& vocbase, std::string const& functionName);
+Result unregisterUserFunction(TRI_vocbase_t& vocbase,
+                              std::string const& functionName);
 
 // @brief locates a group of user functions matching functionFilterPrefix and
 //        removes them from _aqlFunctions
@@ -51,7 +52,8 @@ Result unregisterUserFunction(TRI_vocbase_t& vocbase, std::string const& functio
 // delete
 // @param deleteCount return the number of deleted functions, 0 is ok.
 // @return succeeds if >= 0 functions were successfully deleted.
-Result unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase, std::string const& functionFilterPrefix,
+Result unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase,
+                                    std::string const& functionFilterPrefix,
                                     int& deleteCount);
 
 // @brief registers an aql function with the current database
@@ -66,7 +68,8 @@ Result unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase, std::string const& f
 // @param replaceExisting set to true if the function replaced a previously
 // existing one
 // @return result object
-Result registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice userFunction,
+Result registerUserFunction(TRI_vocbase_t& vocbase,
+                            velocypack::Slice userFunction,
                             bool& replacedExisting);
 
 // @brief fetches [all functions | functions matching the functionFilterPrefix]
@@ -80,8 +83,8 @@ Result registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice userFuncti
 //    isDeterministic: whether the function will return the same result on same
 //    params
 // @return result object
-Result toArrayUserFunctions(TRI_vocbase_t& vocbase, std::string const& functionFilterPrefix,
+Result toArrayUserFunctions(TRI_vocbase_t& vocbase,
+                            std::string const& functionFilterPrefix,
                             velocypack::Builder& result);
 
 }  // namespace arangodb
-

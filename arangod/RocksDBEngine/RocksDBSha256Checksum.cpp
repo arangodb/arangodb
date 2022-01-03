@@ -32,7 +32,9 @@
 
 namespace arangodb {
 
-RocksDBSha256Checksum::RocksDBSha256Checksum(std::string const& filename, std::shared_ptr<RocksDBShaFileManager> shaFileManager)
+RocksDBSha256Checksum::RocksDBSha256Checksum(
+    std::string const& filename,
+    std::shared_ptr<RocksDBShaFileManager> shaFileManager)
     : _fileName(filename),
       _shaFileManager{std::move(shaFileManager)},
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
@@ -44,7 +46,8 @@ RocksDBSha256Checksum::RocksDBSha256Checksum(std::string const& filename, std::s
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
   if (EVP_DigestInit_ex(_context, EVP_sha256(), nullptr) == 0) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to initialize SHA256 processor");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "unable to initialize SHA256 processor");
   }
 }
 
@@ -66,7 +69,8 @@ void RocksDBSha256Checksum::Finalize() {
   if (EVP_DigestFinal_ex(_context, hash, &lengthOfHash) == 0) {
     TRI_ASSERT(false);
   }
-  _checksum = basics::StringUtils::encodeHex(reinterpret_cast<char const*>(&hash[0]), lengthOfHash);
+  _checksum = basics::StringUtils::encodeHex(
+      reinterpret_cast<char const*>(&hash[0]), lengthOfHash);
   _shaFileManager->storeShaItems(_fileName, _checksum);
 }
 
@@ -74,14 +78,18 @@ std::string RocksDBSha256Checksum::GetChecksum() const {
   TRI_ASSERT(!_checksum.empty());
   return _checksum;
 }
-  
-std::unique_ptr<rocksdb::FileChecksumGenerator> RocksDBSha256ChecksumFactory::CreateFileChecksumGenerator(
+
+std::unique_ptr<rocksdb::FileChecksumGenerator>
+RocksDBSha256ChecksumFactory::CreateFileChecksumGenerator(
     rocksdb::FileChecksumGenContext const& context) {
-  // we can get away with this because rocksdb has internally other checksum calculations for the old sha files
-  return std::make_unique<RocksDBSha256Checksum>(context.file_name, _shaFileManager);
+  // we can get away with this because rocksdb has internally other checksum
+  // calculations for the old sha files
+  return std::make_unique<RocksDBSha256Checksum>(context.file_name,
+                                                 _shaFileManager);
 }
 
-bool RocksDBShaFileManager::storeShaItems(std::string const& fileName, std::string const& checksum) {
+bool RocksDBShaFileManager::storeShaItems(std::string const& fileName,
+                                          std::string const& checksum) {
   if (writeShaFile(fileName, checksum)) {
     MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
     _calculatedHashes.try_emplace(TRI_Basename(fileName), checksum);
@@ -90,7 +98,8 @@ bool RocksDBShaFileManager::storeShaItems(std::string const& fileName, std::stri
   return false;
 }
 
-bool RocksDBShaFileManager::writeShaFile(std::string const& fileName, std::string const& checksum) {
+bool RocksDBShaFileManager::writeShaFile(std::string const& fileName,
+                                         std::string const& checksum) {
   TRI_ASSERT(TRI_Basename(fileName).size() > 4);
   TRI_ASSERT(isSstFilename(fileName));
 
@@ -106,11 +115,12 @@ bool RocksDBShaFileManager::writeShaFile(std::string const& fileName, std::strin
   }
 
   LOG_TOPIC("8f7ef", WARN, arangodb::Logger::ENGINES)
-      << "shaCalcFile: TRI_WriteFile failed with " << res << " for " << newFileName;
+      << "shaCalcFile: TRI_WriteFile failed with " << res << " for "
+      << newFileName;
   return false;
 }
 
-template <typename T>
+template<typename T>
 bool RocksDBShaFileManager::isSstFilename(T const& fileName) const {
   return TRI_Basename(fileName).size() >= 4 &&
          (fileName.compare(fileName.size() - 4, 4, ".sst") == 0);
@@ -123,7 +133,8 @@ void RocksDBShaFileManager::deleteFile(std::string const& pathName) {
     auto it = _calculatedHashes.find(TRI_Basename(pathName));
     if (it != _calculatedHashes.end()) {
       TRI_ASSERT(pathName.size() >= 4);
-      fileNameBuilder.append(pathName, 0, pathName.size() - 4);  // append without .sst
+      fileNameBuilder.append(pathName, 0,
+                             pathName.size() - 4);  // append without .sst
       TRI_ASSERT(!isSstFilename(fileNameBuilder));
       fileNameBuilder.append(".sha.");
       fileNameBuilder.append((*it).second);
@@ -135,7 +146,8 @@ void RocksDBShaFileManager::deleteFile(std::string const& pathName) {
     auto res = TRI_UnlinkFile(fileNameBuilder.c_str());
     if (res == TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("e0a0d", DEBUG, arangodb::Logger::ENGINES)
-          << "deleteCalcFile:  TRI_UnlinkFile succeeded for " << fileNameBuilder;
+          << "deleteCalcFile:  TRI_UnlinkFile succeeded for "
+          << fileNameBuilder;
     } else {
       LOG_TOPIC("acb34", WARN, arangodb::Logger::ENGINES)
           << "deleteCalcFile:  TRI_UnlinkFile failed with " << res << " for "
@@ -144,7 +156,8 @@ void RocksDBShaFileManager::deleteFile(std::string const& pathName) {
   }
 }
 
-void RocksDBShaFileManager::OnTableFileDeleted(const rocksdb::TableFileDeletionInfo& info) {
+void RocksDBShaFileManager::OnTableFileDeleted(
+    const rocksdb::TableFileDeletionInfo& info) {
   deleteFile(info.file_path);
 }
 
@@ -194,10 +207,11 @@ void RocksDBShaFileManager::checkMissingShaFiles() {
                " Computing checksum for "
             << tempPath;
         RocksDBSha256Checksum checksumGenerator(tempPath, shared_from_this());
-        if (TRI_ProcessFile(tempPath.c_str(), [&checksumGenerator](char const* buffer, size_t n) {
-              checksumGenerator.Update(buffer, n);
-              return true;
-            })) {
+        if (TRI_ProcessFile(tempPath.c_str(),
+                            [&checksumGenerator](char const* buffer, size_t n) {
+                              checksumGenerator.Update(buffer, n);
+                              return true;
+                            })) {
           checksumGenerator.Finalize();
         }
       }
@@ -205,4 +219,4 @@ void RocksDBShaFileManager::checkMissingShaFiles() {
   }
 }
 
-} // namespace
+}  // namespace arangodb
