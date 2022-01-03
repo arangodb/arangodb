@@ -30,7 +30,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
-
+ 
 #include <velocypack/Iterator.h>
 
 #include "utils/string_utils.hpp"
@@ -446,8 +446,9 @@ TEST_P(IResearchQueryOrTest, test) {
         arangodb::velocypack::Slice(
             insertedDocs[20].vpack()),  // {"name":"U","seq":20,"same":"xyz",
                                         // "prefix":"abc", "duplicated":"abcd"}
-        arangodb::velocypack::Slice(insertedDocs[0].vpack()),  // {"name":"A","seq":0,"same":"xyz",
-                                                               // "value":100,
+        arangodb::velocypack::Slice(
+            insertedDocs[0].vpack()),  // {"name":"A","seq":0,"same":"xyz",
+                                       // "value":100,
         // "duplicated":"abcd", "prefix":"abcd" }
 
         // The least relevant documents (contain non-unique term 'abcy' in
@@ -501,8 +502,9 @@ TEST_P(IResearchQueryOrTest, test) {
         arangodb::velocypack::Slice(
             insertedDocs[20].vpack()),  // {"name":"U","seq":20,"same":"xyz",
                                         // "prefix":"abc", "duplicated":"abcd"}
-        arangodb::velocypack::Slice(insertedDocs[0].vpack()),  // {"name":"A","seq":0,"same":"xyz",
-                                                               // "value":100,
+        arangodb::velocypack::Slice(
+            insertedDocs[0].vpack()),  // {"name":"A","seq":0,"same":"xyz",
+                                       // "value":100,
         // "duplicated":"abcd", "prefix":"abcd" }
 
         // The least relevant documents (contain non-unique term 'abcy' in
