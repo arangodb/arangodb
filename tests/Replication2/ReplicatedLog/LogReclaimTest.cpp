@@ -34,29 +34,29 @@ using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::test;
 
 TEST_F(ReplicatedLogTest, reclaim_leader_after_term_change) {
-
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto followerLog = makeReplicatedLog(LogId{2});
 
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-  auto leader = leaderLog->becomeLeader(LogConfig{2, 2, 2, false}, "leader", LogTerm{1}, {follower});
+  auto leader = leaderLog->becomeLeader(LogConfig{2, 2, 2, false}, "leader",
+                                        LogTerm{1}, {follower});
 
   auto idx = leader->insert(LogPayload::createFromString("payload"), false,
                             LogLeader::doNotTriggerAsyncReplication);
-  auto f = leader->waitFor(idx).then(
-      [&](futures::Try<WaitForResult>&& quorum) {
-        EXPECT_TRUE(quorum.hasException());
-        try {
-          quorum.throwIfFailed();
-        } catch (ParticipantResignedException const& ex) {
-          EXPECT_EQ(ex.code(), TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
-        } catch (std::exception const& e) {
-          ADD_FAILURE() << "unexpected exception: " << e.what();
-        } catch (...) {
-          ADD_FAILURE() << "unexpected exception";
-        }
+  auto f = leader->waitFor(idx).then([&](futures::Try<WaitForResult>&& quorum) {
+    EXPECT_TRUE(quorum.hasException());
+    try {
+      quorum.throwIfFailed();
+    } catch (ParticipantResignedException const& ex) {
+      EXPECT_EQ(ex.code(),
+                TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    } catch (std::exception const& e) {
+      ADD_FAILURE() << "unexpected exception: " << e.what();
+    } catch (...) {
+      ADD_FAILURE() << "unexpected exception";
+    }
 
-        return leaderLog->getLeader();
+    return leaderLog->getLeader();
   });
 
   leaderLog->becomeLeader("leader", LogTerm{2}, {follower}, 1);
@@ -67,30 +67,31 @@ TEST_F(ReplicatedLogTest, reclaim_leader_after_term_change) {
 }
 
 TEST_F(ReplicatedLogTest, reclaim_follower_after_term_change) {
-
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto followerLog = makeReplicatedLog(LogId{2});
 
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-  auto leader = leaderLog->becomeLeader(LogConfig{2, 2, 2, false}, "leader", LogTerm{1}, {follower});
+  auto leader = leaderLog->becomeLeader(LogConfig{2, 2, 2, false}, "leader",
+                                        LogTerm{1}, {follower});
 
   auto idx = leader->insert(LogPayload::createFromString("payload"), false,
                             LogLeader::doNotTriggerAsyncReplication);
-  auto f = follower->waitFor(idx).then(
-      [&](futures::Try<WaitForResult>&& quorum) {
+  auto f =
+      follower->waitFor(idx).then([&](futures::Try<WaitForResult>&& quorum) {
         EXPECT_TRUE(quorum.hasException());
         try {
           quorum.throwIfFailed();
         } catch (ParticipantResignedException const& ex) {
-          EXPECT_EQ(ex.code(), TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+          EXPECT_EQ(ex.code(),
+                    TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
         } catch (std::exception const& e) {
           ADD_FAILURE() << "unexpected exception: " << e.what();
         } catch (...) {
           ADD_FAILURE() << "unexpected exception";
         }
 
-    return leaderLog->getLeader();
-  });
+        return leaderLog->getLeader();
+      });
 
   followerLog->becomeLeader("leader", LogTerm{2}, {follower}, 1);
   ASSERT_TRUE(f.isReady());
@@ -98,4 +99,3 @@ TEST_F(ReplicatedLogTest, reclaim_follower_after_term_change) {
 
   ASSERT_NE(newLeader, nullptr);
 }
-
