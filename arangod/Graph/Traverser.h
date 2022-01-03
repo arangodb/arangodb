@@ -227,8 +227,7 @@ class Traverser {
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
   virtual bool getSingleVertex(arangodb::velocypack::Slice edge,
-                               std::string_view sourceVertexId,
-                               uint64_t depth,
+                               std::string_view sourceVertexId, uint64_t depth,
                                std::string_view& targetVertexId) = 0;
 
   virtual bool getVertex(std::string_view vertex, size_t depth) = 0;
@@ -293,8 +292,8 @@ class Traverser {
   bool hasMore() const { return !_done; }
 
   bool edgeMatchesConditions(arangodb::velocypack::Slice edge,
-                             std::string_view vid,
-                             uint64_t depth, size_t cursorId);
+                             std::string_view vid, uint64_t depth,
+                             size_t cursorId);
 
   bool vertexMatchesConditions(std::string_view vid, uint64_t depth);
 
@@ -331,4 +330,3 @@ class Traverser {
 };
 }  // namespace traverser
 }  // namespace arangodb
-

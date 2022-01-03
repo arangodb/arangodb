@@ -27,14 +27,15 @@
 
 namespace arangodb::metrics {
 
-template <typename Derived, typename T>
+template<typename Derived, typename T>
 class GaugeBuilder : public GenericBuilder<Derived> {
  public:
   using MetricT = Gauge<T>;
 
   [[nodiscard]] std::string_view type() const noexcept final { return "gauge"; }
   [[nodiscard]] std::shared_ptr<Metric> build() const final {
-    return std::make_shared<MetricT>(T{}, this->_name, this->_help, this->_labels);
+    return std::make_shared<MetricT>(T{}, this->_name, this->_help,
+                                     this->_labels);
   }
 };
 
@@ -49,5 +50,6 @@ class GaugeBuilder : public GenericBuilder<Derived> {
     }                                                              \
   }
 
-// This macro is needed to ignore the script that checks that the metric has documentation
+// This macro is needed to ignore the script that checks that the metric has
+// documentation
 #define DECLARE_LEGACY_GAUGE(x, type, help) DECLARE_GAUGE(x, type, help)

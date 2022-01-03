@@ -48,21 +48,23 @@ class CollectNode : public ExecutionNode {
   friend class ExecutionBlock;
 
  public:
-  CollectNode(ExecutionPlan* plan, ExecutionNodeId id, CollectOptions const& options,
-              std::vector<GroupVarInfo> const& groupVariables,
-              std::vector<AggregateVarInfo> const& aggregateVariables,
-              Variable const* expressionVariable, Variable const* outVariable,
-              std::vector<Variable const*> const& keepVariables,
-              std::unordered_map<VariableId, std::string const> const& variableMap,
-              bool isDistinctCommand);
+  CollectNode(
+      ExecutionPlan* plan, ExecutionNodeId id, CollectOptions const& options,
+      std::vector<GroupVarInfo> const& groupVariables,
+      std::vector<AggregateVarInfo> const& aggregateVariables,
+      Variable const* expressionVariable, Variable const* outVariable,
+      std::vector<Variable const*> const& keepVariables,
+      std::unordered_map<VariableId, std::string const> const& variableMap,
+      bool isDistinctCommand);
 
-  CollectNode(ExecutionPlan*, arangodb::velocypack::Slice const& base,
-              Variable const* expressionVariable, Variable const* outVariable,
-              std::vector<Variable const*> const& keepVariables,
-              std::unordered_map<VariableId, std::string const> const& variableMap,
-              std::vector<GroupVarInfo> const& collectVariables,
-              std::vector<AggregateVarInfo> const& aggregateVariables,
-              bool isDistinctCommand);
+  CollectNode(
+      ExecutionPlan*, arangodb::velocypack::Slice const& base,
+      Variable const* expressionVariable, Variable const* outVariable,
+      std::vector<Variable const*> const& keepVariables,
+      std::unordered_map<VariableId, std::string const> const& variableMap,
+      std::vector<GroupVarInfo> const& collectVariables,
+      std::vector<AggregateVarInfo> const& aggregateVariables,
+      bool isDistinctCommand);
 
   ~CollectNode() override;
 
@@ -96,23 +98,28 @@ class CollectNode : public ExecutionNode {
                            RegIdSet& writeableOutputRegisters) const;
 
   /// @brief calculate the group registers
-  void calcGroupRegisters(std::vector<std::pair<RegisterId, RegisterId>>& groupRegisters,
-                          RegIdSet& readableInputRegisters,
-                          RegIdSet& writeableOutputRegisters) const;
+  void calcGroupRegisters(
+      std::vector<std::pair<RegisterId, RegisterId>>& groupRegisters,
+      RegIdSet& readableInputRegisters,
+      RegIdSet& writeableOutputRegisters) const;
 
   /// @brief calculate the aggregate registers
-  void calcAggregateRegisters(std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
-                              RegIdSet& readableInputRegisters,
-                              RegIdSet& writeableOutputRegisters) const;
+  void calcAggregateRegisters(
+      std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
+      RegIdSet& readableInputRegisters,
+      RegIdSet& writeableOutputRegisters) const;
 
-  void calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const;
+  void calcAggregateTypes(
+      std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const;
 
-  std::vector<std::pair<std::string, RegisterId>> calcInputVariableNames() const;
+  std::vector<std::pair<std::string, RegisterId>> calcInputVariableNames()
+      const;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -137,8 +144,7 @@ class CollectNode : public ExecutionNode {
       std::vector<AggregateVarInfo>&& aggregateVariables);
 
   /// @brief clear one of the aggregates
-  void clearAggregates(
-      std::function<bool(AggregateVarInfo const&)> cb);
+  void clearAggregates(std::function<bool(AggregateVarInfo const&)> cb);
 
   /// @brief whether or not the node has an expression variable (i.e. INTO ...
   /// = expr)
@@ -155,7 +161,8 @@ class CollectNode : public ExecutionNode {
 
   /// @brief restrict the KEEP variables (which may also be the auto-collected
   /// variables of an unrestricted `INTO var`) to the passed `variables`.
-  void restrictKeepVariables(containers::HashSet<Variable const*> const& variables);
+  void restrictKeepVariables(
+      containers::HashSet<Variable const*> const& variables);
 
   /// @brief return the variable map
   std::unordered_map<VariableId, std::string const> const& variableMap() const;
@@ -171,8 +178,9 @@ class CollectNode : public ExecutionNode {
 
   /// @brief get all aggregate variables (out, in)
   std::vector<AggregateVarInfo>& aggregateVariables();
-  
-  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
+
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
+                            replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -180,12 +188,13 @@ class CollectNode : public ExecutionNode {
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
 
-  static void calculateAccessibleUserVariables(ExecutionNode const& node,
-                                               std::vector<Variable const*>& userVariables);
+  static void calculateAccessibleUserVariables(
+      ExecutionNode const& node, std::vector<Variable const*>& userVariables);
 
  protected:
   /// @brief export to VelocyPack
-  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override final;
 
  private:
   /// @brief options for the aggregation
@@ -218,4 +227,3 @@ class CollectNode : public ExecutionNode {
 
 }  // namespace aql
 }  // namespace arangodb
-

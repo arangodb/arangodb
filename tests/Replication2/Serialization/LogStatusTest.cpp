@@ -73,7 +73,7 @@ TEST(LogStatusTest, commit_fail_reason) {
   })"_vpack;
   auto jsonSlice = velocypack::Slice(jsonBuffer->data());
   EXPECT_TRUE(VelocyPackHelper::equal(jsonSlice, slice, true))
-            << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
+      << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
 
   builder.clear();
   reason = CommitFailReason::withQuorumSizeNotReached("PRMR-1234");
@@ -91,7 +91,7 @@ TEST(LogStatusTest, commit_fail_reason) {
 
   jsonBuffer = R"({"xyz": "NothingToCommit", "reason": "xyz"})"_vpack;
   jsonSlice = velocypack::Slice(jsonBuffer->data());
-  EXPECT_ANY_THROW({CommitFailReason::fromVelocyPack(jsonSlice);});
+  EXPECT_ANY_THROW({ CommitFailReason::fromVelocyPack(jsonSlice); });
 }
 
 TEST(LogStatusTest, append_entries_error_reason) {
@@ -114,9 +114,7 @@ TEST(LogStatusTest, append_entries_error_reason) {
     })"_vpack;
     auto jsonSlice = velocypack::Slice(jsonBuffer->data());
     auto reason = AppendEntriesErrorReason{
-        AppendEntriesErrorReason::ErrorType::kMessageOutdated,
-        "foo bar"
-    };
+        AppendEntriesErrorReason::ErrorType::kMessageOutdated, "foo bar"};
     VPackBuilder builder;
     reason.toVelocyPack(builder);
     auto slice = builder.slice();
@@ -171,9 +169,8 @@ TEST(LogStatusTest, leader_status) {
   leaderStatus.largestCommonIndex = LogIndex{1};
   leaderStatus.activeParticipantConfig.generation = 14;
   leaderStatus.committedParticipantConfig.generation = 18;
-  std::unordered_map<ParticipantId, FollowerStatistics> follower({
-      {
-        "PRMR-45c56239-6a83-4ab0-961e-9adea5078286",
+  std::unordered_map<ParticipantId, FollowerStatistics> follower(
+      {{"PRMR-45c56239-6a83-4ab0-961e-9adea5078286",
         FollowerStatistics::fromVelocyPack(velocypack::Slice(R"({
         "commitIndex": 4,
         "spearhead": {"term": 2, "index": 4},
@@ -182,10 +179,8 @@ TEST(LogStatusTest, leader_status) {
         "state": {
           "state": "up-to-date"
         }
-        })"_vpack->data()))
-      },
-      {
-        "PRMR-13608015-4a2c-46aa-985f-73b6b8a73568",
+        })"_vpack->data()))},
+       {"PRMR-13608015-4a2c-46aa-985f-73b6b8a73568",
         FollowerStatistics::fromVelocyPack(velocypack::Slice(R"({
           "commitIndex": 3,
           "spearhead": {"term": 2, "index": 3},
@@ -195,9 +190,7 @@ TEST(LogStatusTest, leader_status) {
             "state": "request-in-flight",
             "durationMS": 4143.651874
           }
-        })"_vpack->data()))
-      }
-  });
+        })"_vpack->data()))}});
   leaderStatus.follower = std::move(follower);
   leaderStatus.lastCommitStatus = CommitFailReason::withNothingToCommit();
   leaderStatus.commitLagMS = 0.014453ms;
@@ -231,7 +224,8 @@ TEST(LogStatusTest, follower_status) {
   followerStatus.toVelocyPack(builder);
   auto builderSlice = builder.slice();
   EXPECT_TRUE(VelocyPackHelper::equal(followerSlice, builderSlice, true))
-            << "expected " << followerSlice.toJson() << " found " << builderSlice.toJson();
+      << "expected " << followerSlice.toJson() << " found "
+      << builderSlice.toJson();
 
   builder.clear();
   followerStatus.leader = std::nullopt;
@@ -254,5 +248,6 @@ TEST(LogStatusTest, follower_status) {
   auto followerStatusNoLeader = FollowerStatus::fromVelocyPack(followerSlice);
   EXPECT_FALSE(followerStatusNoLeader.leader.has_value());
   EXPECT_TRUE(VelocyPackHelper::equal(followerSlice, builderSlice, true))
-            << "expected " << followerSlice.toJson() << " found " << builderSlice.toJson();
+      << "expected " << followerSlice.toJson() << " found "
+      << builderSlice.toJson();
 }

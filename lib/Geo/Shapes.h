@@ -79,4 +79,3 @@ struct Coordinate {
 
 }  // namespace geo
 }  // namespace arangodb
-

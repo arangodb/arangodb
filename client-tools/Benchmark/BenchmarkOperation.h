@@ -53,23 +53,25 @@ struct BenchmarkOperation {
     }
   };
 
-  explicit BenchmarkOperation(BenchFeature& arangobench) 
+  explicit BenchmarkOperation(BenchFeature& arangobench)
       : _arangobench(arangobench) {}
 
   virtual ~BenchmarkOperation() = default;
 
-  /// @brief setup operation. executed once per benchmark run 
+  /// @brief setup operation. executed once per benchmark run
   virtual bool setUp(arangodb::httpclient::SimpleHttpClient*) = 0;
 
   /// @brief teardown operation. executed once per benchmark run
   virtual void tearDown() = 0;
 
-  /// @brief build the HTTP request and set it's values (url, type and payload) 
+  /// @brief build the HTTP request and set it's values (url, type and payload)
   /// inside RequestData.
   /// The caller must provide it and clean its values before the call
-  virtual void buildRequest(size_t threadNumber, size_t threadCounter, size_t globalCounter, RequestData&) const = 0;
+  virtual void buildRequest(size_t threadNumber, size_t threadCounter,
+                            size_t globalCounter, RequestData&) const = 0;
 
-  using BenchmarkFactory = std::function<std::unique_ptr<BenchmarkOperation>(BenchFeature&)>;
+  using BenchmarkFactory =
+      std::function<std::unique_ptr<BenchmarkOperation>(BenchFeature&)>;
 
   /// @brief return the the map of all available benchmarks
   static std::map<std::string, BenchmarkFactory>& allBenchmarks();
@@ -78,12 +80,13 @@ struct BenchmarkOperation {
   static void registerBenchmark(std::string name, BenchmarkFactory factory);
 
   /// @brief return the benchmark for a name
-  static std::unique_ptr<BenchmarkOperation> createBenchmark(std::string const& name, BenchFeature& arangobench);
+  static std::unique_ptr<BenchmarkOperation> createBenchmark(
+      std::string const& name, BenchFeature& arangobench);
 
   /// @brief returns the description of the testcase
   virtual char const* getDescription() const noexcept = 0;
 
-  /// @brief returns wether testcase is deprecated or not 
+  /// @brief returns wether testcase is deprecated or not
   virtual bool isDeprecated() const noexcept = 0;
 
  protected:
@@ -92,4 +95,3 @@ struct BenchmarkOperation {
 
 }  // namespace arangobench
 }  // namespace arangodb
-

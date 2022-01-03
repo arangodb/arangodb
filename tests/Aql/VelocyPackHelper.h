@@ -44,23 +44,26 @@ VPackBufferPtr vpackFromJsonString(char const* c);
 
 VPackBufferPtr operator"" _vpack(const char* json, size_t);
 
-void VPackToAqlItemBlock(velocypack::Slice data, arangodb::aql::RegisterCount nrRegs,
+void VPackToAqlItemBlock(velocypack::Slice data,
+                         arangodb::aql::RegisterCount nrRegs,
                          arangodb::aql::AqlItemBlock& block);
 
 // Convert a single VPackBuffer into an AqlItemBlock
 arangodb::aql::SharedAqlItemBlockPtr vPackBufferToAqlItemBlock(
-  arangodb::aql::AqlItemBlockManager& manager, VPackBufferPtr const& buffer);
+    arangodb::aql::AqlItemBlockManager& manager, VPackBufferPtr const& buffer);
 
 /**
  * @brief Convert a list of VPackBufferPtr to a vector of AqlItemBlocks.
  * Does no error handling but for maintainer mode assertions: It's meant for
  * tests with static input.
  */
-template <typename... Ts>
-std::vector<arangodb::aql::SharedAqlItemBlockPtr> multiVPackBufferToAqlItemBlocks(
-    arangodb::aql::AqlItemBlockManager& manager, Ts... vPackBuffers) {
+template<typename... Ts>
+std::vector<arangodb::aql::SharedAqlItemBlockPtr>
+multiVPackBufferToAqlItemBlocks(arangodb::aql::AqlItemBlockManager& manager,
+                                Ts... vPackBuffers) {
   std::vector<VPackBufferPtr> buffers({std::forward<Ts>(vPackBuffers)...});
-  arangodb::aql::RegisterCount const nrRegs = [&]() -> arangodb::aql::RegisterCount {
+  arangodb::aql::RegisterCount const nrRegs =
+      [&]() -> arangodb::aql::RegisterCount {
     if (buffers.empty()) {
       return 0;
     }

@@ -76,4 +76,3 @@ bool TRI_ExcludeCollectionReplication(std::string const& name,
                                       bool includeFoxxQueues);
 
 }  // namespace arangodb
-

@@ -49,7 +49,8 @@ class TransactionId : public basics::Identifier {
 
   uint32_t serverId() const;
 
-  /// @brief create a child transaction (coordinator -> leader; leader -> follower)
+  /// @brief create a child transaction (coordinator -> leader; leader ->
+  /// follower)
   TransactionId child();
 
  public:
@@ -77,4 +78,3 @@ static_assert(sizeof(TransactionId) == sizeof(TransactionId::BaseType),
 
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::TransactionId)
 DECLARE_EQUAL_FOR_IDENTIFIER(arangodb::TransactionId)
-
