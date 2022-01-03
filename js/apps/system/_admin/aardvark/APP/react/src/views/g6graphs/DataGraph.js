@@ -35,6 +35,7 @@ import { GraphDataChanger } from './GraphDataChanger';
 import { DeleteNodeFromGraphData } from './DeleteNodeFromGraphData';
 import { AddNodeToGraphData } from './AddNodeToGraphData';
 import { AddEdgeToGraphData } from './AddEdgeToGraphData';
+import { ResponseInfo } from './ResponseInfo';
 import './dataGraphStyles.css';
 
 const GraphDataInfo = (graphData) => {
@@ -65,6 +66,12 @@ const DataGraph = () => {
   const [deleteNodeId, setDeletNodeId] = useState("");
   const [editNode, setEditNode] = useState();
   const [showEditNodeModal, setShowEditNodeModal] = useState(false);
+  let responseTimesObject = {
+    fetchStarted: null,
+    fetchFinished: null,
+    fetchDuration: null
+  }
+  const [responseTimes, setResponseTimes] = useState(responseTimesObject);
 
   const iconMap = {
     'graphin-force': <ShareAltOutlined />,
@@ -144,14 +151,17 @@ const DataGraph = () => {
 
   // fetching data # start
   const fetchData = useCallback(() => {
+    responseTimesObject.fetchStarted = new Date();
     arangoFetch(arangoHelper.databaseUrl(queryString), {
       method: queryMethod,
     })
     .then(response => response.json())
     .then(data => {
+      responseTimesObject.fetchFinished = new Date();
+      responseTimesObject.fetchDuration = Math.abs(responseTimesObject.fetchFinished.getTime() - responseTimesObject.fetchStarted.getTime());
+      setResponseTimes(responseTimesObject);
       console.log("NEW DATA");
       console.log(data);
-      
       setGraphData(data);
     })
     .catch((err) => {
@@ -623,6 +633,9 @@ const DataGraph = () => {
             <>
               <Grid>
                 <Cell size={'1-4'}>
+                <ResponseInfo
+                  duration={responseTimes.fetchDuration}
+                />
                   <CollectionLoader onLoadCollection={(graphName) => {
                     changeCollection(graphName);
                     setGraphName(graphName);}}
