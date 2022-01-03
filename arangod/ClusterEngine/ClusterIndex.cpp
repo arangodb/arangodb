@@ -87,9 +87,10 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
       // The Primary Index on RocksDB can serve _key and _id when being asked.
       _coveredFields = ::primaryIndexAttributes;
     } else if (_indexType == TRI_IDX_TYPE_PERSISTENT_INDEX) {
-      _coveredFields = Index::mergeFields(_fields,
-          Index::parseFields(
-          info.get(arangodb::StaticStrings::IndexStoredValues), /*allowEmpty*/ true, /*allowExpansion*/ false));
+      _coveredFields = Index::mergeFields(
+          _fields, Index::parseFields(
+                       info.get(arangodb::StaticStrings::IndexStoredValues),
+                       /*allowEmpty*/ true, /*allowExpansion*/ false));
     }
 
     // check for "estimates" attribute

@@ -41,7 +41,7 @@ class ClusterIndex : public Index {
                arangodb::velocypack::Slice info);
 
   ~ClusterIndex();
-  
+
   void toVelocyPackFigures(velocypack::Builder& builder) const override;
 
   /// @brief return a VelocyPack representation of the index
