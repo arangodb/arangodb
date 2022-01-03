@@ -60,6 +60,7 @@ class Ast;
 struct AstNode;
 class ExecutionEngine;
 struct ExecutionStats;
+class Optimizer;
 struct QueryCacheResultEntry;
 struct QueryProfile;
 enum class SerializationFormat;
@@ -200,6 +201,18 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   }
   void initForTests();
   void initTrxForTests();
+
+  // Important Note: This will leave the query in an undefined
+  // state, do not make this available in non-test environments
+  // This will only run the parts of the Query necessary to produce
+  // an optimized plan (parse & optimize) and than hand this out
+  std::unique_ptr<ExecutionPlan> getOptimizedPlan();
+
+  // Important Note: This will leave the query in an undefined
+  // state, do not make this available in non-test environments
+  // This will only run the parts of the Query necessary to produce
+  // an optimized plan (parse & optimize) and than hand all possible plans out.
+  std::vector<std::unique_ptr<ExecutionPlan>> getAllPossiblePlans();
 #endif
 
   AqlItemBlockManager& itemBlockManager() { return _itemBlockManager; }
@@ -249,6 +262,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   void unregisterSnippets();
 
  private:
+  void preparePlansForExplain(aql::Optimizer&);
+
   aql::ExecutionState cleanupTrxAndEngines(ErrorCode errorCode);
 
   void finishDBServerParts(int errorCode);

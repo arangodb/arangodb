@@ -23,15 +23,16 @@
 
 #include "PlanSnippet.h"
 
+#include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/ClusterNodes.h"
-#include "Aql/TraversalNode.h"
 #include "Aql/KShortestPathsNode.h"
-#include "Aql/ShortestPathNode.h"
-#include "Aql/QueryContext.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/QueryContext.h"
+#include "Aql/SortNode.h"
+#include "Aql/ShortestPathNode.h"
+#include "Aql/TraversalNode.h"
 #include "Basics/debugging.h"
 #include "Logger/Logger.h"
 
@@ -356,78 +357,6 @@ bool PlanSnippet::DistributionInput::testAndMoveInputIfShardKeysUntouched(
   auto nextInputVariable = *varsUsed.begin();
   _variable = nextInputVariable;
   return true;
-  /*
-  } else {
-    return false
-  }
-  auto shardKeys = collection()->shardKeys(false);
-
-  // We will always have a shardKey here
-  TRI_ASSERT(!shardKeys.empty());
-
-  if (n->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    if (shardKeys.size() != 1) {
-      // Attribute access can only cover a single Attribute.
-      // But we have multiple shard keys required for our collection
-      // Cannot jump over this node
-      return false;
-    }
-    if (n->getMember(0)->type != NODE_TYPE_REFERENCE) {
-      // TODO: can we shard by nested attributes?
-      return false;
-    }
-    auto accessedAttribute = n->getStringView();
-    if (collection()->usesDefaultSharding()) {
-      // Allow _key and _id
-      if (accessedAttribute == StaticStrings::KeyString ||
-          accessedAttribute == StaticStrings::IdString) {
-        _variable = nextInputVariable;
-        return true;
-      }
-      return false;
-    } else {
-      // TODO Enterprise shard keys
-      if (accessedAttribute == shardKeys[0]) {
-        // We can move forward if we read the ShardKey here
-        _variable = nextInputVariable;
-        return true;
-      }
-      // We can not move forward if we do not access the shardKey
-      return false;
-    }
-  } else if (n->isObject()) {
-    std::unordered_set<std::string> toFind;
-    for (auto const& it : shardKeys) {
-      toFind.emplace(it);
-    }
-    Variable const* lastVariable = nullptr;
-    for (size_t i = 0; i < n->numMembers(); ++i) {
-      auto sub = n->getMember(i);
-
-      if (sub->type != NODE_TYPE_OBJECT_ELEMENT) {
-        continue;
-      }
-
-      // look up attribute name
-      auto it = toFind.find(sub->getString());
-
-      if (it != toFind.end()) {
-        // we found one of the shard keys!
-        // remove the attribute from our to-do list
-        toFind.erase(it);
-      }
-    }
-    if (toFind.empty()) {
-      // We can move forward if we read all shardKeys here
-      _variable = nextInputVariable;
-      return true;
-    }
-  }
-
-  // Cannot move on this Calculation, we cannot guarantee that sharding is
-  // retained
-  return false;
-  */
 }
 
 Variable const* PlanSnippet::DistributionInput::variable() const {
@@ -443,6 +372,37 @@ Collection const* PlanSnippet::DistributionInput::collection() const {
 
 ExecutionNodeId PlanSnippet::DistributionInput::targetId() const {
   return _distributeOnNode->id();
+}
+
+PlanSnippet::GatherOutput::GatherOutput() {}
+
+ExecutionNode* PlanSnippet::GatherOutput::createGatherNode(
+    ExecutionPlan* plan) const {
+  auto gatherNode = plan->createNode<GatherNode>(
+      plan, plan->nextId(), getGatherSortMode(), getGatherParallelism());
+  // TODO: Performance note, we copy the elements once here, we could MOVE
+  // them in and adapt gatherNode to accept a move instead of a const&
+  gatherNode->elements(_elements);
+  return gatherNode;
+}
+
+bool PlanSnippet::GatherOutput::tryAndIncludeSortNode(SortNode const* sort) {
+  // Can include the Sort
+  // TODO: Performance note, we copy the elements once here, we did not do this
+  // before
+  _elements = sort->elements();
+  return true;
+}
+
+GatherNode::SortMode PlanSnippet::GatherOutput::getGatherSortMode() const {
+  // TODO: Implement me, is somehow based on collection / number of shards.
+  return GatherNode::SortMode::MinElement;
+}
+
+GatherNode::Parallelism PlanSnippet::GatherOutput::getGatherParallelism()
+    const {
+  // TODO: Implement me, is based on Collection.
+  return GatherNode::Parallelism::Parallel;
 }
 
 bool PlanSnippet::DistributionInput::createKeys() const { return _createKeys; }
@@ -555,10 +515,18 @@ bool PlanSnippet::tryJoinAbove(ExecutionNode* node) {
     case ExecutionNode::INSERT:
     case ExecutionNode::REMOVE:
     case ExecutionNode::UPDATE:
-    case ExecutionNode::REPLACE:
+    case ExecutionNode::REPLACE: {
+      // Nodes that cannot be joined, and do have effect on Sharding
+      break;
+    }
     case ExecutionNode::SORT:
     case ExecutionNode::COLLECT: {
-      // Nodes that cannot be joined, and do have effect on Sharding
+      if (_isOnCoordinator) {
+        // On they way up the stack we can always join Sort and Collect on
+        // coordinators
+        _topMost = node;
+        didJoin = true;
+      }
       break;
     }
 
@@ -654,6 +622,15 @@ bool PlanSnippet::tryJoinBelow(ExecutionNode* node) {
       didJoin = true;
       break;
     }
+    case ExecutionNode::SORT: {
+      auto sort = ExecutionNode::castTo<SortNode*>(node);
+      if (_gatherOutput.tryAndIncludeSortNode(sort)) {
+        // We can include and adapt this sort node, so join it.
+        _last = node;
+        didJoin = true;
+        break;
+      }
+    }
 
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::INDEX:
@@ -661,7 +638,6 @@ bool PlanSnippet::tryJoinBelow(ExecutionNode* node) {
     case ExecutionNode::REMOVE:
     case ExecutionNode::UPDATE:
     case ExecutionNode::REPLACE:
-    case ExecutionNode::SORT:
     case ExecutionNode::COLLECT: {
       // Nodes that cannot be joined, and do have effect on Sharding
       break;
@@ -826,8 +802,7 @@ void PlanSnippet::addRemoteBelow() {
 
 void PlanSnippet::addGatherBelow() {
   auto* plan = _topMost->plan();
-  auto gatherNode = plan->createNode<GatherNode>(
-      plan, plan->nextId(), getGatherSortMode(), getGatherParallelism());
+  auto gatherNode = _gatherOutput.createGatherNode(plan);
   TRI_ASSERT(gatherNode);
   plan->insertAfter(_last, gatherNode);
   _last = gatherNode;
@@ -864,15 +839,6 @@ ExecutionNode* PlanSnippet::getLowestNode() const { return _last; }
 
 bool PlanSnippet::isOnCoordinator() const { return _isOnCoordinator; }
 
-GatherNode::SortMode PlanSnippet::getGatherSortMode() const {
-  // TODO: Implement me, is somehow based on collection / number of shards.
-  return GatherNode::SortMode::Default;
-}
-
-GatherNode::Parallelism PlanSnippet::getGatherParallelism() const {
-  // TODO: Implement me, is based on Collection.
-  return GatherNode::Parallelism::Undefined;
-}
 std::ostream& arangodb::aql::operator<<(std::ostream& os,
                                         PlanSnippet const& s) {
   return os << s._last->getTypeString() << "(" << s._last->id() << ") -> "

@@ -918,49 +918,80 @@ QueryResult Query::parse() {
   return result;
 }
 
+void Query::preparePlansForExplain(aql::Optimizer& opt) {
+  init(/*createProfile*/ false);
+  enterState(QueryExecutionState::ValueType::PARSING);
+
+  Parser parser(*this, *_ast, _queryString);
+  parser.parse();
+
+  // put in bind parameters
+  parser.ast()->injectBindParameters(_bindParameters, this->resolver());
+
+  // optimize and validate the ast
+  enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
+
+  // create the transaction object, but do not start it yet
+  _trx = AqlTransaction::create(_transactionContext, _collections,
+                                _queryOptions.transactionOptions);
+
+  // we have an AST
+  Result res = _trx->begin();
+
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
+  _ast->validateAndOptimize(*_trx);
+
+  enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
+  std::unique_ptr<ExecutionPlan> plan =
+      ExecutionPlan::instantiateFromAst(parser.ast(), true);
+
+  // Run the query optimizer:
+  enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
+  // get enabled/disabled rules
+  opt.createPlans(std::move(plan), _queryOptions, true);
+
+  enterState(QueryExecutionState::ValueType::FINALIZATION);
+}
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+std::unique_ptr<ExecutionPlan> Query::getOptimizedPlan() {
+  arangodb::aql::Optimizer opt(_queryOptions.maxNumberOfPlans);
+  preparePlansForExplain(opt);
+  return opt.stealBest();
+}
+#endif
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+std::vector<std::unique_ptr<ExecutionPlan>> Query::getAllPossiblePlans() {
+  arangodb::aql::Optimizer opt(_queryOptions.maxNumberOfPlans);
+  preparePlansForExplain(opt);
+  std::vector<std::unique_ptr<ExecutionPlan>> allPlans{};
+  auto& original = opt.getPlans();
+  allPlans.reserve(original.size());
+  // NOTE: We are stealing the responsibility of plans here
+  // and basically destroy contents of Optimizer.
+  // Use with care (as we only do so in tests this is all good)
+  for (auto& p : original) {
+    // Effectively steal the plans and claim ownership
+    allPlans.emplace_back(std::move(p.first));
+  }
+  // Erase the vector, it is now in a broken state.
+  original.clear();
+  return allPlans;
+}
+#endif
+
 /// @brief explain an AQL query
 QueryResult Query::explain() {
   QueryResult result;
 
   try {
-    init(/*createProfile*/ false);
-    enterState(QueryExecutionState::ValueType::PARSING);
-
-    Parser parser(*this, *_ast, _queryString);
-    parser.parse();
-
-    // put in bind parameters
-    parser.ast()->injectBindParameters(_bindParameters, this->resolver());
-
-    // optimize and validate the ast
-    enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
-
-    // create the transaction object, but do not start it yet
-    _trx = AqlTransaction::create(_transactionContext, _collections,
-                                  _queryOptions.transactionOptions);
-
-    // we have an AST
-    Result res = _trx->begin();
-
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
-    _ast->validateAndOptimize(*_trx);
-
-    enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
-    std::unique_ptr<ExecutionPlan> plan =
-        ExecutionPlan::instantiateFromAst(parser.ast(), true);
-
-    // Run the query optimizer:
-    enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
     arangodb::aql::Optimizer opt(_queryOptions.maxNumberOfPlans);
-    // get enabled/disabled rules
-    opt.createPlans(std::move(plan), _queryOptions, true);
-
-    enterState(QueryExecutionState::ValueType::FINALIZATION);
-
+    preparePlansForExplain(opt);
     auto preparePlanForSerialization =
         [&](std::unique_ptr<ExecutionPlan> const& plan) {
           plan->findVarUsage();
@@ -980,7 +1011,7 @@ QueryResult Query::explain() {
           TRI_ASSERT(pln != nullptr);
 
           preparePlanForSerialization(pln);
-          pln->toVelocyPack(*result.data.get(), parser.ast(),
+          pln->toVelocyPack(*result.data.get(), _ast.get(),
                             _queryOptions.verbosePlans,
                             _queryOptions.explainRegisters);
         }
@@ -995,7 +1026,7 @@ QueryResult Query::explain() {
 
       preparePlanForSerialization(bestPlan);
       result.data =
-          bestPlan->toVelocyPack(parser.ast(), _queryOptions.verbosePlans,
+          bestPlan->toVelocyPack(_ast.get(), _queryOptions.verbosePlans,
                                  _queryOptions.explainRegisters);
 
       // cacheability

@@ -23,6 +23,7 @@
 #include "gtest/gtest.h"
 
 #include "Aql/Query.h"
+#include "Aql/ClusterNodes.h"
 #include "Transaction/StandaloneContext.h"
 #include "Basics/VelocyPackHelper.h"
 
@@ -39,6 +40,28 @@ namespace aql {
 #define useOptimize 1
 
 namespace {
+
+struct NodeNamePrinter
+    : public arangodb::aql::WalkerWorkerBase<arangodb::aql::ExecutionNode> {
+  void after(arangodb::aql::ExecutionNode* n) override {
+    if (!_result.empty()) {
+      _result += ", ";
+    }
+    _result += n->getTypeString();
+  }
+
+  std::string result() const { return _result; }
+
+ private:
+  std::string _result{};
+};
+
+std::string nodeNames(ExecutionPlan const& plan) {
+  NodeNamePrinter walker{};
+  plan.root()->walk(walker);
+  return walker.result();
+}
+
 std::string nodeNames(std::vector<std::string> const& nodes) {
   std::string result;
   for (auto const& n : nodes) {
@@ -49,6 +72,39 @@ std::string nodeNames(std::vector<std::string> const& nodes) {
   }
   return result;
 }
+
+struct NodeTypeAsserter
+    : public arangodb::aql::WalkerWorkerBase<arangodb::aql::ExecutionNode> {
+  NodeTypeAsserter(ExecutionPlan const& plan,
+                   std::vector<std::string> const& expectedNodes)
+      : arangodb::aql::WalkerWorkerBase<arangodb::aql::ExecutionNode>(),
+        _plan(plan),
+        _expectedNodes(expectedNodes) {}
+
+  void after(arangodb::aql::ExecutionNode* n) override {
+    if (_index >= _expectedNodes.size()) {
+      ASSERT_TRUE(false) << "superflous node at position #" << _index << "\n"
+                         << "found :" << n->getTypeString()
+                         << "Actual:   " << nodeNames(_plan) << "\n"
+                         << "Expected: " << nodeNames(_expectedNodes) << "\n";
+      _index++;
+      return;
+    }
+    ASSERT_EQ(n->getTypeString(), _expectedNodes[_index])
+        << "Unequal node at position #" << _index << "\n"
+        << "Actual:   " << nodeNames(_plan) << "\n"
+        << "Expected: " << nodeNames(_expectedNodes) << "\n";
+    _index++;
+  }
+
+  size_t numberNodes() { return _index; }
+
+ private:
+  size_t _index{0};
+  ExecutionPlan const& _plan;
+  std::vector<std::string> const& _expectedNodes;
+};
+
 std::string nodeNames(VPackSlice nodes) {
   std::string result;
   for (auto n : VPackArrayIterator(nodes)) {
@@ -59,14 +115,14 @@ std::string nodeNames(VPackSlice nodes) {
   }
   return result;
 }
+
 }  // namespace
 
 class DistributeQueryRuleTest : public ::testing::Test {
  protected:
   mocks::MockCoordinator server;
 
-  std::shared_ptr<VPackBuilder> prepareQuery(
-      std::string const& queryString) const {
+  std::unique_ptr<ExecutionPlan> optimizeQuery(std::string const& queryString) {
     auto ctx = std::make_shared<StandaloneContext>(server.getSystemDatabase());
     auto const bindParamVPack = VPackParser::fromJson("{}");
 #if useOptimize
@@ -75,16 +131,43 @@ class DistributeQueryRuleTest : public ::testing::Test {
 #else
     auto const optionsVPack = VPackParser::fromJson(R"json({})json");
 #endif
-    auto query = Query::create(ctx, QueryString(queryString), bindParamVPack,
-                               QueryOptions(optionsVPack->slice()));
+    _query = Query::create(ctx, QueryString(queryString), bindParamVPack,
+                           QueryOptions(optionsVPack->slice()));
+    return _query->getOptimizedPlan();
+  }
+
+  std::shared_ptr<VPackBuilder> explainQuery(std::string const& queryString) {
+    auto ctx = std::make_shared<StandaloneContext>(server.getSystemDatabase());
+    auto const bindParamVPack = VPackParser::fromJson("{}");
+#if useOptimize
+    auto const optionsVPack = VPackParser::fromJson(
+        R"json({"optimizer": {"rules": ["insert-distribute-calculations", "distribute-query"]}})json");
+#else
+    auto const optionsVPack = VPackParser::fromJson(R"json({})json");
+#endif
+    _query = Query::create(ctx, QueryString(queryString), bindParamVPack,
+                           QueryOptions(optionsVPack->slice()));
 
     // NOTE: We can only get a VPacked Variant of the Plan, we cannot inject
     // deep enough into the query.
-    auto res = query->explain();
+    auto res = _query->explain();
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }
     return res.data;
+  }
+
+  void assertNodesMatch(ExecutionPlan const& plan,
+                        std::vector<std::string> const& expectedNodes) {
+    NodeTypeAsserter asserter{plan, expectedNodes};
+    plan.root()->walk(asserter);
+
+    ASSERT_EQ(asserter.numberNodes(), expectedNodes.size())
+        << "Unequal number of nodes.\n"
+        << "Actual:   " << asserter.numberNodes() << ": " << nodeNames(plan)
+        << "\n"
+        << "Expected: " << expectedNodes.size() << ": "
+        << nodeNames(expectedNodes) << "\n";
   }
 
   void assertNodesMatch(VPackSlice actualNodes,
@@ -101,6 +184,19 @@ class DistributeQueryRuleTest : public ::testing::Test {
           << "Unequal node at position #" << i << "\n"
           << "Actual:   " << nodeNames(actualNodes) << "\n"
           << "Expected: " << nodeNames(expectedNodes) << "\n";
+    }
+  }
+
+  template<class NodeType>
+  void matchNodesOfType(ExecutionPlan* plan, ExecutionNode::NodeType type,
+                        std::function<void(NodeType const*)> asserter) {
+    ::arangodb::containers::SmallVectorWithArena<ExecutionNode*> nodesStorage;
+    auto& nodes = nodesStorage.vector();
+    plan->findNodesOfType(nodes, type, true);
+    for (auto const& n : nodes) {
+      NodeType const* casted = ExecutionNode::castTo<NodeType const*>(n);
+      ASSERT_NE(casted, nullptr);
+      asserter(casted);
     }
   }
 
@@ -135,39 +231,29 @@ class DistributeQueryRuleTest : public ::testing::Test {
         {{"s123", "DB1"}, {"s234", "DB2"}},
         TRI_col_type_e::TRI_COL_TYPE_DOCUMENT, optionsVPack->slice());
   }
+
+ private:
+  std::shared_ptr<Query> _query{nullptr};
 };
 
 TEST_F(DistributeQueryRuleTest, single_enumerate_collection) {
   auto queryString = "FOR x IN collection RETURN x";
-  auto plan = prepareQuery(queryString);
-
-  auto planSlice = plan->slice();
-  ASSERT_TRUE(planSlice.hasKey("nodes"));
-  planSlice = planSlice.get("nodes");
-  assertNodesMatch(planSlice, {"SingletonNode", "EnumerateCollectionNode",
-                               "RemoteNode", "GatherNode", "ReturnNode"});
+  auto plan = optimizeQuery(queryString);
+  assertNodesMatch(*plan, {"SingletonNode", "EnumerateCollectionNode",
+                           "RemoteNode", "GatherNode", "ReturnNode"});
 }
 
 TEST_F(DistributeQueryRuleTest, no_collection_access) {
   auto queryString = "FOR x IN [1,2,3] RETURN x";
-  auto plan = prepareQuery(queryString);
-
-  auto planSlice = plan->slice();
-  ASSERT_TRUE(planSlice.hasKey("nodes"));
-  planSlice = planSlice.get("nodes");
-  assertNodesMatch(planSlice, {"SingletonNode", "CalculationNode",
-                               "EnumerateListNode", "ReturnNode"});
+  auto plan = optimizeQuery(queryString);
+  assertNodesMatch(*plan, {"SingletonNode", "CalculationNode",
+                           "EnumerateListNode", "ReturnNode"});
 }
 
 TEST_F(DistributeQueryRuleTest, no_collection_access_multiple) {
   auto queryString = "FOR x IN [1,2,3] FOR y IN [1,2,3] RETURN x * y";
-  auto plan = prepareQuery(queryString);
-
-  auto planSlice = plan->slice();
-  ASSERT_TRUE(planSlice.hasKey("nodes"));
-  planSlice = planSlice.get("nodes");
-  LOG_DEVEL << nodeNames(planSlice);
-  assertNodesMatch(planSlice,
+  auto plan = optimizeQuery(queryString);
+  assertNodesMatch(*plan,
                    {"SingletonNode", "CalculationNode", "EnumerateListNode",
                     "EnumerateListNode", "CalculationNode", "ReturnNode"});
 }
@@ -178,15 +264,11 @@ TEST_F(DistributeQueryRuleTest, document_then_enumerate) {
       FOR x IN collection
       FILTER x._key == doc.name
       RETURN x)aql";
-  auto plan = prepareQuery(queryString);
-
-  auto planSlice = plan->slice();
-  ASSERT_TRUE(planSlice.hasKey("nodes"));
-  planSlice = planSlice.get("nodes");
-  assertNodesMatch(planSlice,
-                   {"SingletonNode", "CalculationNode", "ScatterNode",
-                    "RemoteNode", "EnumerateCollectionNode", "CalculationNode",
-                    "FilterNode", "RemoteNode", "GatherNode", "ReturnNode"});
+  auto plan = optimizeQuery(queryString);
+  assertNodesMatch(
+      *plan, {"SingletonNode", "CalculationNode", "ScatterNode", "RemoteNode",
+              "EnumerateCollectionNode", "CalculationNode", "FilterNode",
+              "RemoteNode", "GatherNode", "ReturnNode"});
 }
 
 TEST_F(DistributeQueryRuleTest, many_enumerate_collections) {
@@ -194,7 +276,7 @@ TEST_F(DistributeQueryRuleTest, many_enumerate_collections) {
     FOR x IN collection
       FOR y IN collection
       RETURN {x,y})aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
@@ -208,7 +290,7 @@ TEST_F(DistributeQueryRuleTest, many_enumerate_collections) {
 
 TEST_F(DistributeQueryRuleTest, single_insert) {
   auto queryString = R"aql( INSERT {} INTO collection)aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
@@ -221,7 +303,7 @@ TEST_F(DistributeQueryRuleTest, multiple_inserts) {
   auto queryString = R"aql(
     FOR x IN 1..3
     INSERT {} INTO collection)aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
@@ -236,7 +318,7 @@ TEST_F(DistributeQueryRuleTest, enumerate_insert) {
   auto queryString = R"aql(
     FOR x IN collection
     INSERT {} INTO collection)aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
@@ -255,7 +337,7 @@ TEST_F(DistributeQueryRuleTest, enumerate_update) {
   auto queryString = R"aql(
     FOR x IN collection
     UPDATE x WITH {value: 1} INTO collection)aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
@@ -272,7 +354,7 @@ TEST_F(DistributeQueryRuleTest, enumerate_update_key) {
   auto queryString = R"aql(
     FOR x IN collection
     UPDATE x._key WITH {value: 1} INTO collection)aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
@@ -289,7 +371,7 @@ TEST_F(DistributeQueryRuleTest, enumerate_update_custom_shardkey_known) {
   auto queryString = R"aql(
     FOR x IN customKeysCollection
     UPDATE {_key: x._key, id: x.id} WITH {value: 1} INTO customKeysCollection)aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
@@ -307,7 +389,7 @@ TEST_F(DistributeQueryRuleTest, enumerate_update_custom_shardkey_unknown) {
   auto queryString = R"aql(
     FOR x IN customKeysCollection
     UPDATE x WITH {value: 1} INTO customKeysCollection)aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
@@ -325,7 +407,7 @@ TEST_F(DistributeQueryRuleTest, enumerate_replace) {
   auto queryString = R"aql(
     FOR x IN collection
     REPLACE x WITH {value: 1} INTO collection)aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
@@ -342,7 +424,7 @@ TEST_F(DistributeQueryRuleTest, enumerate_replace_key) {
   auto queryString = R"aql(
     FOR x IN collection
     REPLACE x._key WITH {value: 1} INTO collection)aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
@@ -359,7 +441,7 @@ TEST_F(DistributeQueryRuleTest, enumerate_replace_custom_shardkey_known) {
   auto queryString = R"aql(
     FOR x IN customKeysCollection
     REPLACE {_key: x._key, id: x.id} WITH {value: 1} INTO customKeysCollection)aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
@@ -377,7 +459,7 @@ TEST_F(DistributeQueryRuleTest, enumerate_replace_custom_shardkey_unknown) {
   auto queryString = R"aql(
     FOR x IN customKeysCollection
     REPLACE x WITH {value: 1} INTO customKeysCollection)aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
@@ -395,7 +477,7 @@ TEST_F(DistributeQueryRuleTest, enumerate_remove_custom_shardkey) {
   auto queryString = R"aql(
     FOR x IN customKeysCollection
     REMOVE x INTO customKeysCollection)aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
@@ -411,26 +493,28 @@ TEST_F(DistributeQueryRuleTest, distributed_sort) {
     FOR x IN collection
       SORT x.value DESC
       RETURN x)aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = optimizeQuery(queryString);
 
-  auto planSlice = plan->slice();
-  ASSERT_TRUE(planSlice.hasKey("nodes"));
-  planSlice = planSlice.get("nodes");
-  LOG_DEVEL << nodeNames(planSlice);
+  LOG_DEVEL << nodeNames(*plan);
   assertNodesMatch(
-      planSlice, {"SingletonNode", "EnumerateCollectionNode", "CalculationNode",
-                  "SortNode", "RemoteNode", "GatherNode", "ReturnNode"});
-  auto gatherNode = planSlice.at(5);
-  ASSERT_TRUE(gatherNode.isObject());
-  EXPECT_EQ(gatherNode.get("sortmode").copyString(), "minelement");
-  auto sortBy = gatherNode.get("elements");
-  ASSERT_TRUE(sortBy.isArray());
-  ASSERT_EQ(sortBy.length(), 1);
-  auto sortVar = sortBy.at(0);
-  // We sort by a temp variable named 1
-  EXPECT_EQ(sortVar.get("inVariable").get("name").copyString(), "1");
-  // We need to keep DESC sort
-  EXPECT_FALSE(sortVar.get("ascending").getBool());
+      *plan, {"SingletonNode", "EnumerateCollectionNode", "CalculationNode",
+              "SortNode", "RemoteNode", "GatherNode", "ReturnNode"});
+  matchNodesOfType<GatherNode>(
+      plan.get(), ExecutionNode::NodeType::GATHER,
+      [](GatherNode const* gather) {
+        EXPECT_EQ(gather->sortMode(), GatherNode::SortMode::MinElement);
+        EXPECT_EQ(gather->parallelism(), GatherNode::Parallelism::Parallel);
+        auto sortBy = gather->elements();
+        // We sort by a temp variable named 1
+        ASSERT_EQ(sortBy.size(), 1);
+        // TODO We may want to assert the pointer by getting the setter
+        EXPECT_EQ(sortBy.at(0).var->name, "1") << sortBy.at(0).toString();
+        // We need to keep DESC sort
+        EXPECT_FALSE(sortBy.at(0).ascending) << sortBy.at(0).toString();
+        // We are not sorting by any attribute here
+        EXPECT_TRUE(sortBy.at(0).attributePath.empty())
+            << sortBy.at(0).toString();
+      });
 }
 
 TEST_F(DistributeQueryRuleTest, distributed_collect) {
@@ -438,7 +522,7 @@ TEST_F(DistributeQueryRuleTest, distributed_collect) {
     FOR x IN collection
       COLLECT val = x.value
       RETURN val)aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
@@ -489,7 +573,7 @@ TEST_F(DistributeQueryRuleTest, distributed_subquery_dbserver) {
         FILTER x.value == y
         RETURN x)
      RETURN sub)aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
@@ -504,7 +588,7 @@ TEST_F(DistributeQueryRuleTest, distributed_subquery_dbserver) {
 
 TEST_F(DistributeQueryRuleTest, single_remove) {
   auto queryString = R"aql( REMOVE {_key: "test"} IN collection)aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
@@ -517,7 +601,7 @@ TEST_F(DistributeQueryRuleTest, distributed_remove) {
   auto queryString = R"aql(
     FOR y IN 1..3
     REMOVE {_key: CONCAT("test", y)} IN collection)aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
@@ -533,7 +617,7 @@ TEST_F(DistributeQueryRuleTest, distributed_insert) {
   auto queryString = R"aql(
     FOR y IN 1..3
     INSERT {value: CONCAT("test", y)} IN collection)aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
@@ -549,7 +633,7 @@ TEST_F(DistributeQueryRuleTest, distributed_insert_using_shardkey) {
   auto queryString = R"aql(
     FOR y IN 1..3
     INSERT {_key: CONCAT("test", y)} IN collection)aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
@@ -570,7 +654,7 @@ TEST_F(DistributeQueryRuleTest, distributed_subquery_remove) {
       REMOVE {_key: CONCAT("test", y)} IN collection
     )
     RETURN sub)aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
@@ -590,7 +674,7 @@ TEST_F(DistributeQueryRuleTest, subquery_as_first_node) {
       RETURN 1
     )
     RETURN LENGTH(sub))aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
@@ -607,7 +691,7 @@ TEST_F(DistributeQueryRuleTest, enumerate_remove) {
   auto queryString = R"aql(
     FOR doc IN collection
     REMOVE doc IN collection)aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));
@@ -621,7 +705,7 @@ TEST_F(DistributeQueryRuleTest, enumerate_remove_key) {
   auto queryString = R"aql(
     FOR doc IN collection
     REMOVE doc._key IN collection)aql";
-  auto plan = prepareQuery(queryString);
+  auto plan = explainQuery(queryString);
 
   auto planSlice = plan->slice();
   ASSERT_TRUE(planSlice.hasKey("nodes"));

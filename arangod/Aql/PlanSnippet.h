@@ -31,6 +31,7 @@
 namespace arangodb {
 namespace aql {
 class ExecutionNode;
+class SortNode;
 struct Variable;
 
 class PlanSnippet {
@@ -53,6 +54,21 @@ class PlanSnippet {
     ExecutionNode* _distributeOnNode;
     bool _createKeys;
     Variable const* _variable;
+  };
+
+  class GatherOutput {
+   public:
+    GatherOutput();
+
+    ExecutionNode* createGatherNode(ExecutionPlan*) const;
+
+    bool tryAndIncludeSortNode(SortNode const* sort);
+
+   private:
+    GatherNode::SortMode getGatherSortMode() const;
+    GatherNode::Parallelism getGatherParallelism() const;
+
+    arangodb::aql::SortElementVector _elements;
   };
 
  public:
@@ -93,15 +109,13 @@ class PlanSnippet {
 
   void addGatherBelow();
 
-  GatherNode::SortMode getGatherSortMode() const;
-  GatherNode::Parallelism getGatherParallelism() const;
-
  private:
   ExecutionNode* _topMost;
   ExecutionNode* _last;
 
   bool _isOnCoordinator;
   std::unique_ptr<DistributionInput> _distributeOn;
+  GatherOutput _gatherOutput;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _communicationNodesInserted{false};
