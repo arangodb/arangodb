@@ -17,7 +17,8 @@
 using namespace arangodb;
 
 greenspun::EvalResult Func_thisId(greenspun::Machine& ctx,
-                                  VPackSlice const params, VPackBuilder& result) {
+                                  VPackSlice const params,
+                                  VPackBuilder& result) {
   result.add(VPackValue("V/1"));
   return {};
 }
@@ -25,7 +26,8 @@ greenspun::EvalResult Func_thisId(greenspun::Machine& ctx,
 std::unordered_map<std::string, VPackBuilder> variableValues;
 
 greenspun::EvalResult Func_VarSet(greenspun::Machine& ctx,
-                                  VPackSlice const params, VPackBuilder& result) {
+                                  VPackSlice const params,
+                                  VPackBuilder& result) {
   if (params.length() != 2) {
     return greenspun::EvalError("expected two parameters");
   }
@@ -143,10 +145,10 @@ int main(int argc, char** argv) {
       auto program = arangodb::velocypack::Parser::fromJson(line);
 
       VPackBuilder result;
-      auto res =
-          greenspun::Evaluate(m, program->slice(), result).mapError([](greenspun::EvalError& err) {
-            err.wrapMessage("at top-level");
-          });
+      auto res = greenspun::Evaluate(m, program->slice(), result)
+                     .mapError([](greenspun::EvalError& err) {
+                       err.wrapMessage("at top-level");
+                     });
       if (res.fail()) {
         std::cerr << "error: " << res.error().toString() << std::endl;
       } else {

@@ -48,4 +48,3 @@ static int32_t const WRP_VOCBASE_VIEW_TYPE = 3;
 /// - SLOT_CLASS_TYPE
 /// - SLOT_CLASS
 static int32_t const WRP_IRESEARCH_ANALYZER_TYPE = 4;
-

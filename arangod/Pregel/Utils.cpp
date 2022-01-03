@@ -41,7 +41,8 @@ std::string const Utils::finishedStartupPath = "finishedStartup";
 std::string const Utils::prepareGSSPath = "prepareGSS";
 std::string const Utils::startGSSPath = "startGSS";
 std::string const Utils::finishedWorkerStepPath = "finishedStep";
-std::string const Utils::finishedWorkerFinalizationPath = "finishedFinalization";
+std::string const Utils::finishedWorkerFinalizationPath =
+    "finishedFinalization";
 std::string const Utils::cancelGSSPath = "cancelGSS";
 std::string const Utils::messagesPath = "messages";
 std::string const Utils::finalizeExecutionPath = "finalizeExecution";
@@ -56,7 +57,8 @@ std::string const Utils::executionNumberKey = "exn";
 std::string const Utils::algorithmKey = "algorithm";
 std::string const Utils::coordinatorIdKey = "coordinatorId";
 std::string const Utils::collectionPlanIdMapKey = "collectionPlanIdMap";
-std::string const Utils::edgeCollectionRestrictionsKey = "edgeCollectionRestrictions";
+std::string const Utils::edgeCollectionRestrictionsKey =
+    "edgeCollectionRestrictions";
 std::string const Utils::vertexShardsKey = "vertexShards";
 std::string const Utils::edgeShardsKey = "edgeShards";
 std::string const Utils::globalShardListKey = "globalShardList";
@@ -88,14 +90,14 @@ std::string const Utils::reportsKey = "reports";
 std::string const Utils::workerToMasterMessagesKey = "workerToMasterMessages";
 std::string const Utils::masterToWorkerMessagesKey = "masterToWorkerMessages";
 
-
 std::string Utils::baseUrl(std::string const& prefix) {
   return Utils::apiPrefix + prefix + "/";
 }
 
 ErrorCode Utils::resolveShard(ClusterInfo& ci, WorkerConfig const* config,
                               std::string const& collectionName,
-                              std::string const& shardKey, VPackStringRef vertexKey,
+                              std::string const& shardKey,
+                              VPackStringRef vertexKey,
                               std::string& responsibleShard) {
   if (!ServerState::instance()->isRunningInCluster()) {
     responsibleShard = collectionName;
@@ -120,8 +122,10 @@ ErrorCode Utils::resolveShard(ClusterInfo& ci, WorkerConfig const* config,
 
   VPackBuilder partial;
   partial.openObject();
-  partial.add(shardKey, VPackValuePair(vertexKey.data(), vertexKey.size(), VPackValueType::String));
+  partial.add(shardKey, VPackValuePair(vertexKey.data(), vertexKey.size(),
+                                       VPackValueType::String));
   partial.close();
-  //  LOG_TOPIC("00a5c", INFO, Logger::PREGEL) << "Partial doc: " << partial.toJson();
+  //  LOG_TOPIC("00a5c", INFO, Logger::PREGEL) << "Partial doc: " <<
+  //  partial.toJson();
   return info->getResponsibleShard(partial.slice(), false, responsibleShard);
 }

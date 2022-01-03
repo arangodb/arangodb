@@ -62,7 +62,8 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_participant) {
       },
   }};
 
-  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset, callNotify, actions);
+  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
+                     callNotify, actions);
 
   ASSERT_EQ(actions.size(), 1);
   auto const& action = actions.front();
@@ -71,7 +72,8 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_participant) {
   EXPECT_EQ(action->get(REPLICATED_LOG_ID), to_string(logId));
 }
 
-TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_not_participant) {
+TEST_F(ReplicationMaintenanceTest,
+       create_replicated_log_we_are_not_participant) {
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{};
@@ -94,12 +96,14 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_not_participant)
       },
   }};
 
-  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset, callNotify, actions);
+  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
+                     callNotify, actions);
 
   ASSERT_EQ(actions.size(), 0);
 }
 
-TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_not_participant_but_have_the_log) {
+TEST_F(ReplicationMaintenanceTest,
+       create_replicated_log_we_are_not_participant_but_have_the_log) {
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{
@@ -124,7 +128,8 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_not_participant_
       },
   }};
 
-  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset, callNotify, actions);
+  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
+                     callNotify, actions);
 
   ASSERT_EQ(actions.size(), 1);
   auto const& action = actions.front();
@@ -158,7 +163,8 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_unconfigured) {
       },
   }};
 
-  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset, callNotify, actions);
+  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
+                     callNotify, actions);
 
   ASSERT_EQ(actions.size(), 1);
   auto const& action = actions.front();
@@ -193,7 +199,8 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_term) {
       },
   }};
 
-  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset, callNotify, actions);
+  diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
+                     callNotify, actions);
 
   ASSERT_EQ(actions.size(), 1);
   auto const& action = actions.front();

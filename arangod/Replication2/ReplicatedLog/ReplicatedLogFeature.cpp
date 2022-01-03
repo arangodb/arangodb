@@ -44,13 +44,14 @@ ReplicatedLogFeature::ReplicatedLogFeature(ApplicationServer& server)
   startsAfter<DatabaseFeaturePhase>();
 }
 
-auto ReplicatedLogFeature::metrics() const noexcept
-    -> std::shared_ptr<replication2::replicated_log::ReplicatedLogMetrics> const& {
+auto ReplicatedLogFeature::metrics() const noexcept -> std::shared_ptr<
+    replication2::replicated_log::ReplicatedLogMetrics> const& {
   return _replicatedLogMetrics;
 }
 
 void ReplicatedLogFeature::prepare() {
-  if (ServerState::instance()->isCoordinator() || ServerState::instance()->isAgent()) {
+  if (ServerState::instance()->isCoordinator() ||
+      ServerState::instance()->isAgent()) {
     setEnabled(false);
     return;
   }

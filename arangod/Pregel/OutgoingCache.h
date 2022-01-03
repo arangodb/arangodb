@@ -37,20 +37,20 @@ namespace pregel {
 /* In the longer run, maybe write optimized implementations for certain use
  cases. For example threaded
  processing */
-template <typename M>
+template<typename M>
 class InCache;
 
-template <typename M>
+template<typename M>
 class CombiningInCache;
 
-template <typename M>
+template<typename M>
 class ArrayInCache;
 
 /// None of the current implementations use locking
 /// Therefore only ever use this thread locally
 /// We expect the local cache to be thread local too,
 /// next GSS cache may be a global cache
-template <typename M>
+template<typename M>
 class OutCache {
  protected:
   WorkerConfig const* _config;
@@ -92,14 +92,18 @@ class OutCache {
     _sendCountNextGSS = 0;
     _removeContainedMessages();
   }
-  virtual void appendMessage(PregelShard shard, velocypack::StringRef const& key, M const& data) = 0;
+  virtual void appendMessage(PregelShard shard,
+                             velocypack::StringRef const& key,
+                             M const& data) = 0;
   virtual void flushMessages() = 0;
 };
 
-template <typename M>
+template<typename M>
 class ArrayOutCache : public OutCache<M> {
   /// @brief two stage map: shard -> vertice -> message
-  std::unordered_map<PregelShard, std::unordered_map<std::string, std::vector<M>>> _shardMap;
+  std::unordered_map<PregelShard,
+                     std::unordered_map<std::string, std::vector<M>>>
+      _shardMap;
 
   void _removeContainedMessages() override;
 
@@ -108,16 +112,18 @@ class ArrayOutCache : public OutCache<M> {
       : OutCache<M>(state, format) {}
   ~ArrayOutCache();
 
-  void appendMessage(PregelShard shard, velocypack::StringRef const& key, M const& data) override;
+  void appendMessage(PregelShard shard, velocypack::StringRef const& key,
+                     M const& data) override;
   void flushMessages() override;
 };
 
-template <typename M>
+template<typename M>
 class CombiningOutCache : public OutCache<M> {
   MessageCombiner<M> const* _combiner;
 
   /// @brief two stage map: shard -> vertice -> message
-  std::unordered_map<PregelShard, std::unordered_map<velocypack::StringRef, M>> _shardMap;
+  std::unordered_map<PregelShard, std::unordered_map<velocypack::StringRef, M>>
+      _shardMap;
   void _removeContainedMessages() override;
 
  public:
@@ -125,7 +131,8 @@ class CombiningOutCache : public OutCache<M> {
                     MessageCombiner<M> const* combiner);
   ~CombiningOutCache();
 
-  void appendMessage(PregelShard shard, velocypack::StringRef const& key, M const& data) override;
+  void appendMessage(PregelShard shard, velocypack::StringRef const& key,
+                     M const& data) override;
   void flushMessages() override;
 };
 }  // namespace pregel

@@ -47,9 +47,12 @@ struct PersistedLog {
   };
 
   [[nodiscard]] auto id() const noexcept -> LogId { return _lid; }
-  virtual auto insert(PersistedLogIterator& iter, WriteOptions const&) -> Result = 0;
-  virtual auto insertAsync(std::unique_ptr<PersistedLogIterator> iter, WriteOptions const&) -> futures::Future<Result> = 0;
-  virtual auto read(LogIndex start) -> std::unique_ptr<PersistedLogIterator> = 0;
+  virtual auto insert(PersistedLogIterator& iter, WriteOptions const&)
+      -> Result = 0;
+  virtual auto insertAsync(std::unique_ptr<PersistedLogIterator> iter,
+                           WriteOptions const&) -> futures::Future<Result> = 0;
+  virtual auto read(LogIndex start)
+      -> std::unique_ptr<PersistedLogIterator> = 0;
   virtual auto removeFront(LogIndex stop) -> Result = 0;
   virtual auto removeBack(LogIndex start) -> Result = 0;
 
@@ -59,6 +62,6 @@ struct PersistedLog {
   LogId _lid;
 };
 
-}  // namespace arangodb::replication2
+}  // namespace arangodb::replication2::replicated_log
 
 #endif  // ARANGODB3_PERSISTEDLOG_H

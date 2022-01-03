@@ -28,7 +28,7 @@
 namespace {
 std::regex const removeComments("#.*$", std::regex::ECMAScript);
 std::regex const removeTabs("^[ \t]+|[ \t]+$", std::regex::ECMAScript);
-}
+}  // namespace
 
 namespace arangodb {
 namespace options {
@@ -40,5 +40,5 @@ std::string removeCommentsFromNumber(std::string const& value) {
   return std::regex_replace(noComment, ::removeTabs, "");
 }
 
-}
-}
+}  // namespace options
+}  // namespace arangodb

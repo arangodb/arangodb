@@ -31,18 +31,21 @@ struct ReplicatedLogMetrics;
 }
 
 namespace arangodb {
-class ReplicatedLogFeature final : public application_features::ApplicationFeature {
+class ReplicatedLogFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit ReplicatedLogFeature(application_features::ApplicationServer& server);
+  explicit ReplicatedLogFeature(
+      application_features::ApplicationServer& server);
   ~ReplicatedLogFeature() override;
 
-  auto metrics() const noexcept
-      -> std::shared_ptr<replication2::replicated_log::ReplicatedLogMetrics> const&;
+  auto metrics() const noexcept -> std::shared_ptr<
+      replication2::replicated_log::ReplicatedLogMetrics> const&;
 
   void prepare() override;
 
  private:
-  std::shared_ptr<replication2::replicated_log::ReplicatedLogMetrics> _replicatedLogMetrics;
+  std::shared_ptr<replication2::replicated_log::ReplicatedLogMetrics>
+      _replicatedLogMetrics;
 };
 
 }  // namespace arangodb

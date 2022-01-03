@@ -71,7 +71,8 @@ Also, print the block like this:
     { {10}, {11}, {12} },
   }, {{1,0},{2,1}});
 
-  would create a shadowrow on index 1 with depth 0 and a shadowrow of index 2 with depth 1
+  would create a shadowrow on index 1 with depth 0 and a shadowrow of index 2
+with depth 1
  */
 
 namespace arangodb {
@@ -82,15 +83,16 @@ struct NoneEntry {};
 
 using EntryBuilder = std::variant<NoneEntry, int, const char*>;
 
-template <::arangodb::aql::RegisterId::value_t columns>
+template<::arangodb::aql::RegisterId::value_t columns>
 using RowBuilder = std::array<EntryBuilder, columns>;
 
-template <::arangodb::aql::RegisterId::value_t columns>
+template<::arangodb::aql::RegisterId::value_t columns>
 using MatrixBuilder = std::vector<RowBuilder<columns>>;
 
-template <::arangodb::aql::RegisterId::value_t columns>
+template<::arangodb::aql::RegisterId::value_t columns>
 ::arangodb::aql::SharedAqlItemBlockPtr buildBlock(
-    ::arangodb::aql::AqlItemBlockManager& manager, MatrixBuilder<columns>&& matrix,
+    ::arangodb::aql::AqlItemBlockManager& manager,
+    MatrixBuilder<columns>&& matrix,
     std::vector<std::pair<size_t, uint64_t>> const& shadowRows = {});
 
 }  // namespace aql
@@ -103,29 +105,30 @@ namespace aql {
 
 using namespace ::arangodb::aql;
 
-template <RegisterId::value_t columns>
-SharedAqlItemBlockPtr buildBlock(AqlItemBlockManager& manager,
-                                 MatrixBuilder<columns>&& matrix,
-                                 std::vector<std::pair<size_t, uint64_t>> const& shadowRows) {
+template<RegisterId::value_t columns>
+SharedAqlItemBlockPtr buildBlock(
+    AqlItemBlockManager& manager, MatrixBuilder<columns>&& matrix,
+    std::vector<std::pair<size_t, uint64_t>> const& shadowRows) {
   if (matrix.size() == 0) {
     return nullptr;
   }
-  SharedAqlItemBlockPtr block{new AqlItemBlock(manager, matrix.size(), columns)};
+  SharedAqlItemBlockPtr block{
+      new AqlItemBlock(manager, matrix.size(), columns)};
 
   if constexpr (columns > 0) {
     for (size_t row = 0; row < matrix.size(); row++) {
       for (RegisterId::value_t col = 0; col < columns; col++) {
         auto const& entry = matrix[row][col];
-        auto value =
-            std::visit(overload{
-                           [](NoneEntry) { return AqlValue{}; },
-                           [](int i) { return AqlValue{AqlValueHintInt{i}}; },
-                           [](const char* json) {
-                             VPackBufferPtr tmpVpack = vpackFromJsonString(json);
-                             return AqlValue{AqlValueHintCopy{tmpVpack->data()}};
-                           },
-                       },
-                       entry);
+        auto value = std::visit(
+            overload{
+                [](NoneEntry) { return AqlValue{}; },
+                [](int i) { return AqlValue{AqlValueHintInt{i}}; },
+                [](const char* json) {
+                  VPackBufferPtr tmpVpack = vpackFromJsonString(json);
+                  return AqlValue{AqlValueHintCopy{tmpVpack->data()}};
+                },
+            },
+            entry);
         block->setValue(row, col, value);
       }
     }
