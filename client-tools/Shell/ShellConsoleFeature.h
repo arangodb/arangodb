@@ -29,7 +29,8 @@ namespace arangodb {
 
 class ClientFeature;
 
-class ShellConsoleFeature final : public application_features::ApplicationFeature {
+class ShellConsoleFeature final
+    : public application_features::ApplicationFeature {
  public:
   explicit ShellConsoleFeature(application_features::ApplicationServer& server);
 
@@ -114,4 +115,3 @@ class ShellConsoleFeature final : public application_features::ApplicationFeatur
 };
 
 }  // namespace arangodb
-

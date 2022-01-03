@@ -35,7 +35,8 @@ namespace arangodb::metrics {
  */
 class Counter final : public Metric {
  public:
-  Counter(uint64_t n, std::string_view name, std::string_view help, std::string_view labels);
+  Counter(uint64_t n, std::string_view name, std::string_view help,
+          std::string_view labels);
   ~Counter() final;
 
   [[nodiscard]] std::string_view type() const noexcept final;

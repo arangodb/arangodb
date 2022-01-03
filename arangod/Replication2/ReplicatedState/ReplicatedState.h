@@ -27,7 +27,7 @@
 #include "Replication2/Streams/Streams.h"
 
 namespace arangodb::futures {
-template <typename T>
+template<typename T>
 class Future;
 }
 namespace arangodb {
@@ -46,14 +46,14 @@ struct ReplicatedLeaderStateBase {
   virtual ~ReplicatedLeaderStateBase() = default;
 };
 
-template <typename S>
+template<typename S>
 struct ReplicatedLeaderState;
 
 struct ReplicatedFollowerStateBase {
   virtual ~ReplicatedFollowerStateBase() = default;
 };
 
-template <typename S>
+template<typename S>
 struct ReplicatedFollowerState;
 
 struct ReplicatedStateBase {
@@ -70,13 +70,16 @@ struct ReplicatedStateBase {
   virtual auto getStatus() -> StateStatus = 0;
 
  private:
-  virtual auto getLeaderBase() -> std::shared_ptr<ReplicatedLeaderStateBase> = 0;
-  virtual auto getFollowerBase() -> std::shared_ptr<ReplicatedFollowerStateBase> = 0;
+  virtual auto getLeaderBase()
+      -> std::shared_ptr<ReplicatedLeaderStateBase> = 0;
+  virtual auto getFollowerBase()
+      -> std::shared_ptr<ReplicatedFollowerStateBase> = 0;
 };
 
-template <typename S>
-struct ReplicatedState final : ReplicatedStateBase,
-                               std::enable_shared_from_this<ReplicatedState<S>> {
+template<typename S>
+struct ReplicatedState final
+    : ReplicatedStateBase,
+      std::enable_shared_from_this<ReplicatedState<S>> {
   using Factory = typename ReplicatedStateTraits<S>::FactoryType;
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using FollowerType = typename ReplicatedStateTraits<S>::FollowerType;
@@ -131,7 +134,7 @@ struct ReplicatedState final : ReplicatedStateBase,
   std::shared_ptr<Factory> factory;
 };
 
-template <typename S>
+template<typename S>
 struct ReplicatedLeaderState : ReplicatedLeaderStateBase {
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using Stream = streams::ProducerStream<EntryType>;
@@ -158,7 +161,7 @@ struct ReplicatedLeaderState : ReplicatedLeaderStateBase {
   std::shared_ptr<Stream> _stream;
 };
 
-template <typename S>
+template<typename S>
 struct ReplicatedFollowerState : ReplicatedFollowerStateBase {
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using Stream = streams::Stream<EntryType>;
@@ -169,11 +172,13 @@ struct ReplicatedFollowerState : ReplicatedFollowerStateBase {
  protected:
   /**
    * Called by the state machine manager if new log entries have been committed
-   * and are ready to be applied to the state machine. The implementation ensures
-   * that this function not called again until the future returned is fulfilled.
+   * and are ready to be applied to the state machine. The implementation
+   * ensures that this function not called again until the future returned is
+   * fulfilled.
    *
    * Entries are not released after they are consumed by this function. Its the
-   * state machines implementations responsibility to call release on the stream.
+   * state machines implementations responsibility to call release on the
+   * stream.
    *
    * @return Future with Result value. If the result contains an error, the
    *    operation is retried.
@@ -198,8 +203,11 @@ struct ReplicatedFollowerState : ReplicatedFollowerStateBase {
   std::shared_ptr<Stream> _stream;
 };
 
-template <typename S>
-using ReplicatedStateStreamSpec = streams::stream_descriptor_set<streams::stream_descriptor<
-    streams::StreamId{1}, typename ReplicatedStateTraits<S>::EntryType,
-    streams::tag_descriptor_set<streams::tag_descriptor<1, typename ReplicatedStateTraits<S>::Deserializer, typename ReplicatedStateTraits<S>::Serializer>>>>;
+template<typename S>
+using ReplicatedStateStreamSpec =
+    streams::stream_descriptor_set<streams::stream_descriptor<
+        streams::StreamId{1}, typename ReplicatedStateTraits<S>::EntryType,
+        streams::tag_descriptor_set<streams::tag_descriptor<
+            1, typename ReplicatedStateTraits<S>::Deserializer,
+            typename ReplicatedStateTraits<S>::Serializer>>>>;
 }  // namespace arangodb::replication2::replicated_state

@@ -34,9 +34,13 @@ class AqlFunctionsInternalCache;
 
 class QueryExpressionContext : public ExpressionContext {
  public:
-  explicit QueryExpressionContext(transaction::Methods& trx, QueryContext& query,
+  explicit QueryExpressionContext(transaction::Methods& trx,
+                                  QueryContext& query,
                                   AqlFunctionsInternalCache& cache) noexcept
-      : ExpressionContext(), _trx(trx), _query(query), _aqlFunctionsInternalCache(cache) {}
+      : ExpressionContext(),
+        _trx(trx),
+        _query(query),
+        _aqlFunctionsInternalCache(cache) {}
 
   void registerWarning(ErrorCode errorCode, char const* msg) override final;
   void registerError(ErrorCode errorCode, char const* msg) override final;
@@ -49,7 +53,8 @@ class QueryExpressionContext : public ExpressionContext {
                                        velocypack::Options const* opts,
                                        bool& isEmptyExpression) override final;
 
-  arangodb::ValidatorBase* buildValidator(arangodb::velocypack::Slice const&) override final;
+  arangodb::ValidatorBase* buildValidator(
+      arangodb::velocypack::Slice const&) override final;
 
   TRI_vocbase_t& vocbase() const override final;
   /// may be inaccessible on some platforms

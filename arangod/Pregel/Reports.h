@@ -50,13 +50,13 @@ struct Report {
 struct ReportManager;
 
 struct ReportBuilder {
-  template <typename T>
+  template<typename T>
   ReportBuilder& operator<<(T&& t) {
     ss << t;
     return *this;
   }
 
-  template <typename T>
+  template<typename T>
   ReportBuilder& with(std::string_view name, T&& value) {
     VPackBuilder builder;
     using base_type = std::decay_t<T>;
@@ -103,4 +103,3 @@ struct ReportManager {
   std::vector<Report> _reports;
 };
 }  // namespace arangodb::pregel
-

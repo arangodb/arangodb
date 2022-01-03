@@ -42,7 +42,8 @@ class UpdateReplaceModifierCompletion {
 
   ModifierOperationType accumulate(ModificationExecutorAccumulator& accu,
                                    InputAqlItemRow& row);
-  futures::Future<OperationResult> transact(transaction::Methods& trx, VPackSlice data);
+  futures::Future<OperationResult> transact(transaction::Methods& trx,
+                                            VPackSlice data);
 
  private:
   ModificationExecutorInfos& _infos;

@@ -31,27 +31,28 @@
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class VstResponseTest
-    : public ::testing::Test {
-};
+class VstResponseTest : public ::testing::Test {};
 
-auto const MAGIC_TYPE {0xf3};
+auto const MAGIC_TYPE{0xf3};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
 struct TestTypeHandler final : public arangodb::velocypack::CustomTypeHandler {
-  void dump(arangodb::velocypack::Slice const& value, arangodb::velocypack::Dumper* dumper, arangodb::velocypack::Slice const& base) override final {
+  void dump(arangodb::velocypack::Slice const& value,
+            arangodb::velocypack::Dumper* dumper,
+            arangodb::velocypack::Slice const& base) override final {
     throw std::runtime_error("Not implemented");
   }
-  std::string toString(arangodb::velocypack::Slice const& value, arangodb::velocypack::Options const* options,
+  std::string toString(arangodb::velocypack::Slice const& value,
+                       arangodb::velocypack::Options const* options,
                        arangodb::velocypack::Slice const& base) override final {
-    auto p {value.begin()};
+    auto p{value.begin()};
     if (*p++ != MAGIC_TYPE) {
       throw std::runtime_error("This is not my type");
     }
-    auto const v {arangodb::encoding::readNumber<uint64_t>(p, sizeof(uint64_t))};
+    auto const v{arangodb::encoding::readNumber<uint64_t>(p, sizeof(uint64_t))};
     return std::to_string(v);
   }
 };
@@ -67,18 +68,19 @@ TEST_F(VstResponseTest, add_payload_slice_json) {
 
   // use the builder to create the value I want
   uint8_t* p = builder.add(arangodb::StaticStrings::IdString,
-                           arangodb::velocypack::ValuePair(9ULL, arangodb::velocypack::ValueType::Custom));
+                           arangodb::velocypack::ValuePair(
+                               9ULL, arangodb::velocypack::ValueType::Custom));
 
   *p++ = MAGIC_TYPE;
   arangodb::encoding::storeNumber<uint64_t>(p, 12345, sizeof(uint64_t));
   builder.close();
 
-  auto const slice {builder.slice()};
+  auto const slice{builder.slice()};
   arangodb::velocypack::Options options;
   TestTypeHandler handler;
   options.customTypeHandler = &handler;
   resp.addPayload(slice, &options, true);
-  auto const payload {resp.payload()};
+  auto const payload{resp.payload()};
 
   EXPECT_EQ(payload.length(), 15);
   EXPECT_EQ(payload.toString(), "{\"_id\":\"12345\"}");

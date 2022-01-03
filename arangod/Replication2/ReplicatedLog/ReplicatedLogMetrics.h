@@ -34,32 +34,44 @@ struct ReplicatedLogMetrics {
   explicit ReplicatedLogMetrics(metrics::MetricsFeature& metricsFeature);
 
  private:
-  template <typename Builder, bool mock = false>
+  template<typename Builder, bool mock = false>
   static auto createMetric(metrics::MetricsFeature* metricsFeature)
       -> std::shared_ptr<typename Builder::MetricT>;
 
  protected:
-  template <typename MFP, std::enable_if_t<std::is_same_v<metrics::MetricsFeature*, MFP> || std::is_null_pointer_v<MFP>, int> = 0,
-            bool mock = std::is_null_pointer_v<MFP>>
+  template<typename MFP,
+           std::enable_if_t<std::is_same_v<metrics::MetricsFeature*, MFP> ||
+                                std::is_null_pointer_v<MFP>,
+                            int> = 0,
+           bool mock = std::is_null_pointer_v<MFP>>
   explicit ReplicatedLogMetrics(MFP metricsFeature);
 
  public:
   std::shared_ptr<metrics::Gauge<uint64_t>> const replicatedLogNumber;
-  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>> const replicatedLogAppendEntriesRttUs;
-  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>> const replicatedLogFollowerAppendEntriesRtUs;
+  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>> const
+      replicatedLogAppendEntriesRttUs;
+  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>> const
+      replicatedLogFollowerAppendEntriesRtUs;
   std::shared_ptr<metrics::Counter> const replicatedLogCreationNumber;
   std::shared_ptr<metrics::Counter> const replicatedLogDeletionNumber;
-  std::shared_ptr<metrics::Gauge<std::uint64_t>> const replicatedLogLeaderNumber;
-  std::shared_ptr<metrics::Gauge<std::uint64_t>> const replicatedLogFollowerNumber;
-  std::shared_ptr<metrics::Gauge<std::uint64_t>> const replicatedLogInactiveNumber;
+  std::shared_ptr<metrics::Gauge<std::uint64_t>> const
+      replicatedLogLeaderNumber;
+  std::shared_ptr<metrics::Gauge<std::uint64_t>> const
+      replicatedLogFollowerNumber;
+  std::shared_ptr<metrics::Gauge<std::uint64_t>> const
+      replicatedLogInactiveNumber;
   std::shared_ptr<metrics::Counter> const replicatedLogLeaderTookOverNumber;
   std::shared_ptr<metrics::Counter> const replicatedLogStartedFollowingNumber;
-  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>> const replicatedLogInsertsBytes;
-  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>> const replicatedLogInsertsRtt;
+  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>> const
+      replicatedLogInsertsBytes;
+  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>> const
+      replicatedLogInsertsRtt;
 };
 
 struct MeasureTimeGuard {
-  explicit MeasureTimeGuard(std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>> histogram) noexcept;
+  explicit MeasureTimeGuard(
+      std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>>
+          histogram) noexcept;
   MeasureTimeGuard(MeasureTimeGuard const&) = delete;
   MeasureTimeGuard(MeasureTimeGuard&&) = default;
   ~MeasureTimeGuard();
@@ -68,7 +80,8 @@ struct MeasureTimeGuard {
 
  private:
   std::chrono::steady_clock::time_point const _start;
-  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>> _histogram;
+  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>>
+      _histogram;
 };
 
 }  // namespace arangodb::replication2::replicated_log

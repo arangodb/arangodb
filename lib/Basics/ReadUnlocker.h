@@ -82,8 +82,6 @@ class ReadUnlocker {
   ////////////////////////////////////////////////////////////////////////////////
 
   ReadWriteLock* _readWriteLock;
-
 };
 }  // namespace basics
 }  // namespace arangodb
-

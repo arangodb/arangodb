@@ -31,7 +31,8 @@ using namespace arangodb::replication2::test;
 
 struct UpdateParticipantsFlagsTest : ReplicatedLogTest {
   void runAllAsyncAppendEntries() {
-    while (follower1->hasPendingAppendEntries() || follower2->hasPendingAppendEntries()) {
+    while (follower1->hasPendingAppendEntries() ||
+           follower2->hasPendingAppendEntries()) {
       follower1->runAsyncAppendEntries();
       follower2->runAsyncAppendEntries();
     }
@@ -77,7 +78,8 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_forced) {
     auto newConfig = std::make_shared<ParticipantsConfig>();
     newConfig->generation = 1;
     // make follower2 forced
-    newConfig->participants["follower2"] = replication2::ParticipantFlags{true, false};
+    newConfig->participants["follower2"] =
+        replication2::ParticipantFlags{true, false};
     leader->updateParticipantsConfig(newConfig);
   }
 
@@ -132,7 +134,8 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_excluded) {
     auto newConfig = std::make_shared<ParticipantsConfig>();
     newConfig->generation = 1;
     // make follower1 excluded
-    newConfig->participants["follower1"] = replication2::ParticipantFlags{false, true};
+    newConfig->participants["follower1"] =
+        replication2::ParticipantFlags{false, true};
     leader->updateParticipantsConfig(newConfig);
   }
 
@@ -176,7 +179,8 @@ TEST_F(UpdateParticipantsFlagsTest, multiple_updates_check) {
     auto newConfig = std::make_shared<ParticipantsConfig>();
     newConfig->generation = 1;
     // make follower2 forced
-    newConfig->participants["follower2"] = replication2::ParticipantFlags{true, false};
+    newConfig->participants["follower2"] =
+        replication2::ParticipantFlags{true, false};
     leader->updateParticipantsConfig(newConfig);
   }
 
@@ -231,7 +235,8 @@ TEST_F(UpdateParticipantsFlagsTest, update_without_additional_entry) {
     auto newConfig = std::make_shared<ParticipantsConfig>();
     newConfig->generation = 1;
     // make follower2 excluded
-    newConfig->participants["follower2"] = replication2::ParticipantFlags{true, false};
+    newConfig->participants["follower2"] =
+        replication2::ParticipantFlags{true, false};
     leader->updateParticipantsConfig(newConfig);
   }
 

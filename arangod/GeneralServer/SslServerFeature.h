@@ -63,13 +63,12 @@ class SslServerFeature : public application_features::ApplicationFeature {
   virtual Result dumpTLSData(VPackBuilder& builder) const;
 
  protected:
-
   struct SNIEntry {
     std::string serverName;      // empty for default
     std::string keyfileName;     // name of key file
     std::string keyfileContent;  // content of key file
     SNIEntry(std::string name, std::string keyfileName)
-      : serverName(std::move(name)), keyfileName(std::move(keyfileName)) {}
+        : serverName(std::move(name)), keyfileName(std::move(keyfileName)) {}
   };
 
   std::string _cafile;
@@ -77,8 +76,10 @@ class SslServerFeature : public application_features::ApplicationFeature {
   std::string _keyfile;        // name of default keyfile
   // For SNI, we have two maps, one mapping to the filename for a certain
   // server, another, to keep the actual keyfile in memory.
-  std::vector<SNIEntry> _sniEntries;   // the first entry is the default server keyfile
-  std::unordered_map<std::string, size_t> _sniServerIndex;  // map server names to indices in _sniEntries
+  std::vector<SNIEntry>
+      _sniEntries;  // the first entry is the default server keyfile
+  std::unordered_map<std::string, size_t>
+      _sniServerIndex;  // map server names to indices in _sniEntries
   std::string _cipherList;
   uint64_t _sslProtocol;
   uint64_t _sslOptions;
@@ -96,4 +97,3 @@ class SslServerFeature : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-
