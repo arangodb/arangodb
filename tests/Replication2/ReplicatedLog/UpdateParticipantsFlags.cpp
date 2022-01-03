@@ -24,6 +24,8 @@
 
 #include "Replication2/ReplicatedLog/Algorithms.h"
 
+#include <algorithm>
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::algorithms;
@@ -363,7 +365,8 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_add_new_follower) {
     EXPECT_EQ(quorumData.index, LogIndex{2});
     EXPECT_EQ(quorumData.term, startTerm);
     // follower 3 should now be part of the quorum
-    EXPECT_NE(std::ranges::find(quorumData.quorum, "follower3"),
+    EXPECT_NE(std::find(quorumData.quorum.begin(), quorumData.quorum.end(),
+                        "follower3"),
               quorumData.quorum.end());
 
     // settle remaining followers
@@ -409,7 +412,8 @@ TEST_F(UpdateParticipantsFlagsTest,
     EXPECT_EQ(quorumData.index, LogIndex{2});
     EXPECT_EQ(quorumData.term, startTerm);
     // follower 3 should now be part of the quorum
-    EXPECT_NE(std::ranges::find(quorumData.quorum, "follower3"),
+    EXPECT_NE(std::find(quorumData.quorum.begin(), quorumData.quorum.end(),
+                        "follower3"),
               quorumData.quorum.end());
 
     // settle remaining followers
@@ -466,7 +470,8 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_remove_exclude_flag) {
     EXPECT_EQ(quorumData.index, LogIndex{2});
     EXPECT_EQ(quorumData.term, startTerm);
     // follower 3 must not be part of the quorum yet
-    EXPECT_EQ(std::ranges::find(quorumData.quorum, "follower3"),
+    EXPECT_EQ(std::find(quorumData.quorum.begin(), quorumData.quorum.end(),
+                        "follower3"),
               quorumData.quorum.end());
   }
 
@@ -500,7 +505,8 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_remove_exclude_flag) {
     EXPECT_EQ(quorumData.index, LogIndex{3});
     EXPECT_EQ(quorumData.term, startTerm);
     // follower 3 should now be part of the quorum
-    EXPECT_NE(std::ranges::find(quorumData.quorum, "follower3"),
+    EXPECT_NE(std::find(quorumData.quorum.begin(), quorumData.quorum.end(),
+                        "follower3"),
               quorumData.quorum.end());
 
     // settle remaining followers
@@ -550,7 +556,8 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_remove_follower) {
     EXPECT_EQ(quorumData.index, LogIndex{2});
     EXPECT_EQ(quorumData.term, startTerm);
     // follower 1 must not be part of the quorum any more
-    EXPECT_EQ(std::ranges::find(quorumData.quorum, "follower1"),
+    EXPECT_EQ(std::find(quorumData.quorum.begin(), quorumData.quorum.end(),
+                        "follower1"),
               quorumData.quorum.end());
 
     auto const status = leader->getStatus();
@@ -605,7 +612,8 @@ TEST_F(UpdateParticipantsFlagsTest,
     EXPECT_EQ(quorumData.index, LogIndex{2});
     EXPECT_EQ(quorumData.term, startTerm);
     // follower 1 must not be part of the quorum any more
-    EXPECT_EQ(std::ranges::find(quorumData.quorum, "follower1"),
+    EXPECT_EQ(std::find(quorumData.quorum.begin(), quorumData.quorum.end(),
+                        "follower1"),
               quorumData.quorum.end());
 
     auto const status = leader->getStatus();
