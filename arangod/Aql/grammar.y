@@ -27,6 +27,7 @@
 #include "Aql/Quantifier.h"
 #include "Aql/QueryContext.h"
 #include "Aql/types.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Graph/ShortestPathType.h"
 #include "Transaction/Context.h"
@@ -1387,7 +1388,10 @@ upsert_statement:
           auto nodeMember = $10->getMember(i);
           if (nodeMember->type == NODE_TYPE_OBJECT_ELEMENT) {
             std::string_view nodeMemberName = nodeMember->getStringView();
-            if (nodeMemberName == "indexHint" || nodeMemberName == "forceIndexHint") {
+            if (nodeMemberName == arangodb::StaticStrings::IndexHintOption || 
+                nodeMemberName == arangodb::StaticStrings::IndexHintOptionForce ||
+                nodeMemberName == arangodb::StaticStrings::IndexHintMaxProjections ||
+                nodeMemberName == arangodb::StaticStrings::IndexHintDisableIndex) {
               forOptionsNode->addMember(nodeMember);
             } else {
               upsertOptionsNode->addMember(nodeMember);

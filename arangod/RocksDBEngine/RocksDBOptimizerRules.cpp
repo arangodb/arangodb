@@ -210,8 +210,14 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
 
     Projections projections(attributes);
 
-    // projections are currently limited (arbitrarily to 5 attributes)
-    if (optimize && !stop && !projections.empty() && projections.size() <= 5) {
+    // projections are currently limited to a particular number of attributes.
+    // set default limit for number of projections (arbitrarily to 5 attributes
+    // if not configured, or to the configured number if set)
+    TRI_ASSERT(e != nullptr);
+    size_t const maxProjections = e->maxProjections();
+
+    if (optimize && !stop && !projections.empty() &&
+        projections.size() <= maxProjections) {
       if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION &&
           !isRandomOrder) {
         // the node is still an EnumerateCollection... now check if we should
@@ -221,93 +227,104 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         auto const& hint = en->hint();
 
         // now check all indexes if they cover the projection
-        auto& trx = plan->getAst()->query().trxForOptimization();
-        std::shared_ptr<Index> picked;
-        std::vector<std::shared_ptr<Index>> indexes;
-        if (!trx.isInaccessibleCollection(
-                en->collection()->getCollection()->name())) {
-          indexes = en->collection()->getCollection()->getIndexes();
-        }
+        if (hint.type() != aql::IndexHint::HintType::Disabled) {
+          std::shared_ptr<Index> picked;
+          std::vector<std::shared_ptr<Index>> indexes;
 
-        auto selectIndexIfPossible =
-            [&picked, &projections](std::shared_ptr<Index> const& idx) -> bool {
-          if (!idx->hasCoveringIterator() || !idx->covers(projections)) {
-            // index doesn't cover the projection
-            return false;
-          }
-          if (idx->type() !=
-                  arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX &&
-              idx->type() !=
-                  arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX &&
-              idx->type() !=
-                  arangodb::Index::IndexType::TRI_IDX_TYPE_SKIPLIST_INDEX &&
-              idx->type() !=
-                  arangodb::Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
-            // only the above index types are supported
-            return false;
+          auto& trx = plan->getAst()->query().trxForOptimization();
+          if (!trx.isInaccessibleCollection(
+                  en->collection()->getCollection()->name())) {
+            indexes = en->collection()->getCollection()->getIndexes();
           }
 
-          if (idx->sparse()) {
-            // we cannot safely substitute a full collection scan with a sparse
-            // index scan, as the sparse index may be missing some documents
-            return false;
-          }
+          auto selectIndexIfPossible =
+              [&picked,
+               &projections](std::shared_ptr<Index> const& idx) -> bool {
+            if (!idx->hasCoveringIterator() || !idx->covers(projections)) {
+              // index doesn't cover the projection
+              return false;
+            }
+            if (idx->type() !=
+                    arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX &&
+                idx->type() !=
+                    arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX &&
+                idx->type() !=
+                    arangodb::Index::IndexType::TRI_IDX_TYPE_SKIPLIST_INDEX &&
+                idx->type() !=
+                    arangodb::Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
+              // only the above index types are supported
+              return false;
+            }
 
-          picked = idx;
-          return true;
-        };
+            if (idx->sparse()) {
+              // we cannot safely substitute a full collection scan with a
+              // sparse index scan, as the sparse index may be missing some
+              // documents
+              return false;
+            }
 
-        bool forced = false;
-        if (hint.type() == aql::IndexHint::HintType::Simple) {
-          forced = hint.isForced();
-          for (std::string const& hinted : hint.hint()) {
-            auto idx = en->collection()->getCollection()->lookupIndex(hinted);
-            if (idx && selectIndexIfPossible(idx)) {
-              break;
+            picked = idx;
+            return true;
+          };
+
+          bool forced = false;
+          if (hint.type() == aql::IndexHint::HintType::Simple) {
+            forced = hint.isForced();
+            for (std::string const& hinted : hint.hint()) {
+              auto idx = en->collection()->getCollection()->lookupIndex(hinted);
+              if (idx && selectIndexIfPossible(idx)) {
+                break;
+              }
+            }
+            if (forced && !picked) {
+              THROW_ARANGO_EXCEPTION_MESSAGE(
+                  TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
+                  "could not use index hint to serve query; " +
+                      hint.toString());
             }
           }
-        }
 
-        if (!picked && !forced) {
-          for (auto const& idx : indexes) {
-            if (selectIndexIfPossible(idx)) {
-              break;
+          if (!picked && !forced) {
+            for (auto const& idx : indexes) {
+              if (selectIndexIfPossible(idx)) {
+                break;
+              }
             }
           }
-        }
 
-        if (picked != nullptr) {
-          // turn the EnumerateCollection node into an IndexNode now
-          auto condition = std::make_unique<Condition>(plan->getAst());
-          condition->normalize(plan.get());
-          IndexIteratorOptions opts;
-          // we have already proven that we can use the covering index
-          // optimization, so force it - if we wouldn't force it here it would
-          // mean that for a FILTER-less query we would be a lot less efficient
-          // for some indexes
-          auto inode = new IndexNode(
-              plan.get(), plan->nextId(), en->collection(), en->outVariable(),
-              std::vector<transaction::Methods::IndexHandle>{picked},
-              std::move(condition), opts);
-          en->CollectionAccessingNode::cloneInto(*inode);
-          en->DocumentProducingNode::cloneInto(plan.get(), *inode);
-          plan->registerNode(inode);
-          plan->replaceNode(n, inode);
-          if (en->isRestricted()) {
-            inode->restrictToShard(en->restrictedShard());
+          if (picked != nullptr) {
+            // turn the EnumerateCollection node into an IndexNode now
+            auto condition = std::make_unique<Condition>(plan->getAst());
+            condition->normalize(plan.get());
+            IndexIteratorOptions opts;
+            // we have already proven that we can use the covering index
+            // optimization, so force it - if we wouldn't force it here it would
+            // mean that for a FILTER-less query we would be a lot less
+            // efficient for some indexes
+            auto inode = new IndexNode(
+                plan.get(), plan->nextId(), en->collection(), en->outVariable(),
+                std::vector<transaction::Methods::IndexHandle>{picked},
+                std::move(condition), opts);
+            en->CollectionAccessingNode::cloneInto(*inode);
+            en->DocumentProducingNode::cloneInto(plan.get(), *inode);
+            plan->registerNode(inode);
+            plan->replaceNode(n, inode);
+            if (en->isRestricted()) {
+              inode->restrictToShard(en->restrictedShard());
+            }
+            // copy over specialization data from smart-joins rule
+            inode->setPrototype(en->prototypeCollection(),
+                                en->prototypeOutVariable());
+            n = inode;
+            // need to update e, because it is used later
+            e = dynamic_cast<DocumentProducingNode*>(n);
+            if (e == nullptr) {
+              THROW_ARANGO_EXCEPTION_MESSAGE(
+                  TRI_ERROR_INTERNAL,
+                  "cannot convert node to DocumentProducingNode");
+            }
           }
-          // copy over specialization data from smart-joins rule
-          inode->setPrototype(en->prototypeCollection(),
-                              en->prototypeOutVariable());
-          n = inode;
-          // need to update e, because it is used later
-          e = dynamic_cast<DocumentProducingNode*>(n);
-          if (e == nullptr) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_INTERNAL,
-                "cannot convert node to DocumentProducingNode");
-          }
-        }
+        }  // index selection
       }
 
       if (n->getType() == ExecutionNode::INDEX) {
@@ -332,57 +349,60 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           ExecutionNode::castTo<EnumerateCollectionNode*>(n);
       auto const& hint = en->hint();
 
-      auto& trx = plan->getAst()->query().trxForOptimization();
-      std::shared_ptr<Index> picked;
-      std::vector<std::shared_ptr<Index>> indexes;
-      if (!trx.isInaccessibleCollection(
-              en->collection()->getCollection()->name())) {
-        indexes = en->collection()->getCollection()->getIndexes();
-      }
+      if (hint.type() != aql::IndexHint::HintType::Disabled) {
+        std::shared_ptr<Index> picked;
+        std::vector<std::shared_ptr<Index>> indexes;
 
-      auto selectIndexIfPossible =
-          [&picked](std::shared_ptr<Index> const& idx) -> bool {
-        if (idx->type() ==
-            arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
-          picked = idx;
-          return true;
+        auto& trx = plan->getAst()->query().trxForOptimization();
+        if (!trx.isInaccessibleCollection(
+                en->collection()->getCollection()->name())) {
+          indexes = en->collection()->getCollection()->getIndexes();
         }
-        return false;
-      };
 
-      bool forced = false;
-      if (hint.type() == aql::IndexHint::HintType::Simple) {
-        forced = hint.isForced();
-        for (std::string const& hinted : hint.hint()) {
-          auto idx = en->collection()->getCollection()->lookupIndex(hinted);
-          if (idx && selectIndexIfPossible(idx)) {
-            break;
+        auto selectIndexIfPossible =
+            [&picked](std::shared_ptr<Index> const& idx) -> bool {
+          if (idx->type() ==
+              arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+            picked = idx;
+            return true;
+          }
+          return false;
+        };
+
+        bool forced = false;
+        if (hint.type() == aql::IndexHint::HintType::Simple) {
+          forced = hint.isForced();
+          for (std::string const& hinted : hint.hint()) {
+            auto idx = en->collection()->getCollection()->lookupIndex(hinted);
+            if (idx && selectIndexIfPossible(idx)) {
+              break;
+            }
           }
         }
-      }
 
-      if (!picked && !forced) {
-        for (auto const& idx : indexes) {
-          if (selectIndexIfPossible(idx)) {
-            break;
+        if (!picked && !forced) {
+          for (auto const& idx : indexes) {
+            if (selectIndexIfPossible(idx)) {
+              break;
+            }
           }
         }
-      }
 
-      if (picked != nullptr) {
-        IndexIteratorOptions opts;
-        auto condition = std::make_unique<Condition>(plan->getAst());
-        condition->normalize(plan.get());
-        auto inode = new IndexNode(
-            plan.get(), plan->nextId(), en->collection(), en->outVariable(),
-            std::vector<transaction::Methods::IndexHandle>{picked},
-            std::move(condition), opts);
-        plan->registerNode(inode);
-        plan->replaceNode(n, inode);
-        en->CollectionAccessingNode::cloneInto(*inode);
-        en->DocumentProducingNode::cloneInto(plan.get(), *inode);
-        modified = true;
-      }
+        if (picked != nullptr) {
+          IndexIteratorOptions opts;
+          auto condition = std::make_unique<Condition>(plan->getAst());
+          condition->normalize(plan.get());
+          auto inode = new IndexNode(
+              plan.get(), plan->nextId(), en->collection(), en->outVariable(),
+              std::vector<transaction::Methods::IndexHandle>{picked},
+              std::move(condition), opts);
+          plan->registerNode(inode);
+          plan->replaceNode(n, inode);
+          en->CollectionAccessingNode::cloneInto(*inode);
+          en->DocumentProducingNode::cloneInto(plan.get(), *inode);
+          modified = true;
+        }
+      }  // index selection
     }
   }
 
