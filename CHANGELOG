@@ -99,9 +99,9 @@ devel
   a new deployment to provide the license. After that period, the read-only mode
   will be enforced.
 
-* Added startup security option `--foxx.allow-install-from-remote` to allow 
-  installing Foxx apps from remote URLs other than Github. The option is turned 
-  off by default.
+* APM-78: Added startup security option `--foxx.allow-install-from-remote` to
+  allow installing Foxx apps from remote URLs other than Github. The option is
+  turned off by default.
 
 * Cancel ongoing RocksDB compactions on server shutdown.
 
