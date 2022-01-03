@@ -47,7 +47,7 @@ class Builder {
   std::string _labels;  // TODO(MBkkt) const semantic
 };
 
-template <typename Derived>
+template<typename Derived>
 class GenericBuilder : public Builder {
  public:
   Derived&& self() { return static_cast<Derived&&>(std::move(*this)); }

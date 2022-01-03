@@ -32,6 +32,5 @@ namespace PhysicalMemory {
 uint64_t getValue();
 bool overridden();
 
-} 
+}  // namespace PhysicalMemory
 }  // namespace arangodb
-

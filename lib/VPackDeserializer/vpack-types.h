@@ -39,4 +39,3 @@ using builder_type = arangodb::velocypack::Builder;
 }  // namespace velocypack
 }  // namespace arangodb
 #endif  // DESERIALIZER_NO_VPACK_TYPES
-

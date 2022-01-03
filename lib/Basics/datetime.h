@@ -34,17 +34,15 @@
 
 namespace arangodb {
 
-using tp_sys_clock_ms =
-    std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds>;
+using tp_sys_clock_ms = std::chrono::time_point<std::chrono::system_clock,
+                                                std::chrono::milliseconds>;
 
-using d_sys_clock_ms =
-    std::chrono::duration<std::chrono::milliseconds>;
+using d_sys_clock_ms = std::chrono::duration<std::chrono::milliseconds>;
 
 namespace basics {
-bool parseDateTime(std::string_view dateTime,
-                   tp_sys_clock_ms& date_tp);
+bool parseDateTime(std::string_view dateTime, tp_sys_clock_ms& date_tp);
 
-bool regexIsoDuration(std::string_view isoDuration, 
+bool regexIsoDuration(std::string_view isoDuration,
                       std::match_results<char const*>& durationParts);
 
 /// @brief formats a date(time) value according to formatString
@@ -62,8 +60,6 @@ struct ParsedDuration {
   int milliseconds = 0;
 };
 
-bool parseIsoDuration(std::string_view duration,
-                      ParsedDuration& output);
+bool parseIsoDuration(std::string_view duration, ParsedDuration& output);
 }  // namespace basics
 }  // namespace arangodb
-

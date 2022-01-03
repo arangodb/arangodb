@@ -75,8 +75,6 @@ class WriteUnlocker {
   ////////////////////////////////////////////////////////////////////////////////
 
   basics::ReadWriteLock* _readWriteLock;
-
 };
 }  // namespace basics
 }  // namespace arangodb
-
