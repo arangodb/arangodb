@@ -11,7 +11,7 @@ adb_path="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )/../.." &> /dev/null && p
 echo "ArangoDB directory: $adb_path"
 cd "$adb_path"
 
-community_diff=$(git diff HEAD --diff-filter=ACMR --name-only -- '*.cpp' '*.hpp' '*.cc' '*.c' '*.h')
+community_diff=$(git diff HEAD --diff-filter=ACMRT --name-only -- '*.cpp' '*.hpp' '*.cc' '*.c' '*.h')
 if ! [[ -z "${community_diff// }" ]]; then
   docker run --rm -u "$(id -u):$(id -g)" --mount type=bind,source="$adb_path",target=/usr/src/arangodb arangodb/clang-format:1.0 "$community_diff"
 fi

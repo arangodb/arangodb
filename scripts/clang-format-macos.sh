@@ -10,12 +10,12 @@ echo "ArangoDB directory: $adb_path"
 echo "Enterprise directory: $adb_path/$ent_dir"
 
 cd "$adb_path"
-community_diff=$(git diff HEAD --diff-filter=ACMR --name-only -- '*.cpp' '*.hpp' '*.cc' '*.c' '*.h')
+community_diff=$(git diff HEAD --diff-filter=ACMRT --name-only -- '*.cpp' '*.hpp' '*.cc' '*.c' '*.h')
 
 if [ -d "$adb_path/$ent_dir" ]
 then
    cd "$adb_path/$ent_dir"
-   enterprise_diff=$(git diff HEAD --diff-filter=ACMR --name-only -- '*.cpp' '*.hpp' '*.cc' '*.c' '*.h' | sed "s,^,$ent_dir/,")
+   enterprise_diff=$(git diff HEAD --diff-filter=ACMRT --name-only -- '*.cpp' '*.hpp' '*.cc' '*.c' '*.h' | sed "s,^,$ent_dir/,")
 fi
 
 cd "$adb_path"
