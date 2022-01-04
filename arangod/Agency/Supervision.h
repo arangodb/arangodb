@@ -183,9 +183,6 @@ class Supervision : public arangodb::Thread {
   /// @brief Check for broken analyzers
   void checkBrokenAnalyzers();
 
-  /// @brief Check replicated logs
-  void checkReplicatedLogs();
-
   struct ResourceCreatorLostEvent {
     std::shared_ptr<Node> const& resource;
     std::string const& coordinatorId;

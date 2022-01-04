@@ -210,17 +210,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   /// @brief current recovery tick
   virtual TRI_voc_tick_t recoveryTick() = 0;
 
-  virtual auto createReplicatedLog(TRI_vocbase_t&,
-                                   arangodb::replication2::LogId)
-      -> ResultT<std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog>> = 0;
-
-  virtual auto dropReplicatedLog(
-      TRI_vocbase_t&,
-      std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog> const&)
-      -> Result = 0;
-
   //// Operations on Collections
   // asks the storage engine to create a collection as specified in the VPack
   // Slice object and persist the creation info. It is guaranteed by the server
@@ -366,11 +355,6 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   void registerView(TRI_vocbase_t& vocbase,
                     std::shared_ptr<arangodb::LogicalView> const& view);
-
-  static void registerReplicatedLog(
-      TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
-      std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>
-          log);
 
  private:
   std::unique_ptr<IndexFactory> const _indexFactory;

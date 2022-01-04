@@ -39,11 +39,6 @@
 
 namespace arangodb {
 
-namespace replication2 {
-class LogId;
-struct LogIndex;
-};  // namespace replication2
-
 class RocksDBKey {
  public:
   RocksDBKey()
@@ -76,12 +71,6 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   void constructCollection(TRI_voc_tick_t databaseId,
                            DataSourceId collectionId);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Create a fully-specified replicated log key
-  //////////////////////////////////////////////////////////////////////////////
-  void constructReplicatedLog(TRI_voc_tick_t databaseId,
-                              arangodb::replication2::LogId logId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified document key
@@ -184,11 +173,6 @@ class RocksDBKey {
   void constructZkdIndexValue(uint64_t objectId, const zkd::byte_string& value);
   void constructZkdIndexValue(uint64_t objectId, const zkd::byte_string& value,
                               LocalDocumentId documentId);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Create a fully-specified key for revision tree for a collection
-  //////////////////////////////////////////////////////////////////////////////
-  void constructLogEntry(uint64_t objectId, replication2::LogIndex idx);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -298,12 +282,6 @@ class RocksDBKey {
   /// May be called only on zkd index values
   //////////////////////////////////////////////////////////////////////////////
   static zkd::byte_string_view zkdIndexValue(rocksdb::Slice const& slice);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Extracts log index from key
-  //////////////////////////////////////////////////////////////////////////////
-  static replication2::LogIndex logIndex(RocksDBKey const&);
-  static replication2::LogIndex logIndex(rocksdb::Slice const&);
 
   /// size of internal objectID
   static constexpr size_t objectIdSize() { return sizeof(uint64_t); }

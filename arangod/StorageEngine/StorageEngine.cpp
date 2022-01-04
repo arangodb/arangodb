@@ -26,8 +26,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-#include "Replication2/ReplicatedLog/LogCommon.h"
-
 #include <utility>
 
 using namespace arangodb;
@@ -111,12 +109,6 @@ void StorageEngine::registerView(
     TRI_vocbase_t& vocbase,
     const std::shared_ptr<arangodb::LogicalView>& view) {
   vocbase.registerView(true, view);
-}
-
-void StorageEngine::registerReplicatedLog(
-    TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
-    std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log) {
-  vocbase.registerReplicatedLog(id, std::move(log));
 }
 
 std::string const& StorageEngine::typeName() const { return _typeName; }

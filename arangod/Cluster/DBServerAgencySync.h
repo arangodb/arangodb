@@ -32,13 +32,6 @@ namespace application_features {
 class ApplicationServer;
 }
 
-namespace replication2 {
-namespace replicated_log {
-struct LogStatus;
-}
-class LogId;
-}  // namespace replication2
-
 class HeartbeatThread;
 
 struct DBServerAgencySyncResult {
@@ -68,11 +61,6 @@ class DBServerAgencySync {
  public:
   void work();
 
-  using LocalLogsMap = std::unordered_map<
-      std::string,
-      std::unordered_map<arangodb::replication2::LogId,
-                         arangodb::replication2::replicated_log::LogStatus>>;
-
   /**
    * @brief Get copy of current local state
    * @param  collections  Builder to fill to
@@ -80,8 +68,7 @@ class DBServerAgencySync {
   arangodb::Result getLocalCollections(
       std::unordered_set<std::string> const& dirty,
       std::unordered_map<std::string, std::shared_ptr<VPackBuilder>>&
-          collections,
-      LocalLogsMap& replLogs);
+          collections);
 
  private:
   DBServerAgencySyncResult execute();
