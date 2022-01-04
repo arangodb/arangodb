@@ -48,11 +48,10 @@ using namespace std::literals::string_literals;
 
 class StringUtilsTest : public ::testing::Test {
  protected:
-  StringUtilsTest () {
+  StringUtilsTest() {
     IcuInitializer::setup("./3rdParty/V8/v8/third_party/icu/common/icudtl.dat");
   }
 };
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -60,33 +59,41 @@ class StringUtilsTest : public ::testing::Test {
 
 TEST_F(StringUtilsTest, test_SplitEmptyness) {
   EXPECT_EQ(StringUtils::split("", '\0'), (std::vector<std::string>{}));
-  EXPECT_EQ(StringUtils::split({"a\0b\0c", 5}, '\0'), (std::vector<std::string>{"a", "b", "c"}));
+  EXPECT_EQ(StringUtils::split({"a\0b\0c", 5}, '\0'),
+            (std::vector<std::string>{"a", "b", "c"}));
 
   EXPECT_EQ(StringUtils::split("", '/'), (std::vector<std::string>{}));
   EXPECT_EQ(StringUtils::split("/", '/'), (std::vector<std::string>{"", ""}));
   EXPECT_EQ(StringUtils::split("/1", '/'), (std::vector<std::string>{"", "1"}));
   EXPECT_EQ(StringUtils::split("1/", '/'), (std::vector<std::string>{"1", ""}));
-  EXPECT_EQ(StringUtils::split("//", '/'), (std::vector<std::string>{"", "", ""}));
-  EXPECT_EQ(StringUtils::split("knurps", '/'), (std::vector<std::string>{"knurps"}));
-  
-  
+  EXPECT_EQ(StringUtils::split("//", '/'),
+            (std::vector<std::string>{"", "", ""}));
+  EXPECT_EQ(StringUtils::split("knurps", '/'),
+            (std::vector<std::string>{"knurps"}));
+
   EXPECT_EQ(StringUtils::split("", "/"), (std::vector<std::string>{}));
   EXPECT_EQ(StringUtils::split("/", "/"), (std::vector<std::string>{"", ""}));
   EXPECT_EQ(StringUtils::split("/1", "/"), (std::vector<std::string>{"", "1"}));
   EXPECT_EQ(StringUtils::split("1/", "/"), (std::vector<std::string>{"1", ""}));
-  EXPECT_EQ(StringUtils::split("//", "/"), (std::vector<std::string>{"", "", ""}));
-  EXPECT_EQ(StringUtils::split("knurps", "/"), (std::vector<std::string>{"knurps"}));
-  
+  EXPECT_EQ(StringUtils::split("//", "/"),
+            (std::vector<std::string>{"", "", ""}));
+  EXPECT_EQ(StringUtils::split("knurps", "/"),
+            (std::vector<std::string>{"knurps"}));
+
   EXPECT_EQ(StringUtils::split("", "abc"), (std::vector<std::string>{}));
   EXPECT_EQ(StringUtils::split("/", "abc"), (std::vector<std::string>{"/"}));
   EXPECT_EQ(StringUtils::split("/1", "abc"), (std::vector<std::string>{"/1"}));
   EXPECT_EQ(StringUtils::split("1/", "abc"), (std::vector<std::string>{"1/"}));
   EXPECT_EQ(StringUtils::split("//", "abc"), (std::vector<std::string>{"//"}));
-  
-  EXPECT_EQ(StringUtils::split("abcdefg", "abc"), (std::vector<std::string>{"", "", "", "defg"}));
-  EXPECT_EQ(StringUtils::split("foo-split-bar-split-baz", "-sp"), (std::vector<std::string>{"foo", "", "", "lit", "bar", "", "", "lit", "baz"}));
 
-  EXPECT_EQ(StringUtils::split("this-line.is,split", ".,-"), (std::vector<std::string>{"this", "line", "is", "split"}));
+  EXPECT_EQ(StringUtils::split("abcdefg", "abc"),
+            (std::vector<std::string>{"", "", "", "defg"}));
+  EXPECT_EQ(StringUtils::split("foo-split-bar-split-baz", "-sp"),
+            (std::vector<std::string>{"foo", "", "", "lit", "bar", "", "",
+                                      "lit", "baz"}));
+
+  EXPECT_EQ(StringUtils::split("this-line.is,split", ".,-"),
+            (std::vector<std::string>{"this", "line", "is", "split"}));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,8 +104,8 @@ TEST_F(StringUtilsTest, test_Split1) {
   vector<string> lines = StringUtils::split("Hallo\nWorld\\/Me", '\n');
 
   EXPECT_EQ(lines.size(), 2U);
-  EXPECT_EQ(lines[0],  "Hallo");
-  EXPECT_EQ(lines[1],  "World\\/Me");
+  EXPECT_EQ(lines[0], "Hallo");
+  EXPECT_EQ(lines[1], "World\\/Me");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,10 +117,10 @@ TEST_F(StringUtilsTest, test_Split2) {
 
   EXPECT_EQ(lines.size(), 4U);
 
-  EXPECT_EQ(lines[0],  "");
-  EXPECT_EQ(lines[1],  "Hallo");
-  EXPECT_EQ(lines[2],  "World");
-  EXPECT_EQ(lines[3],  "");
+  EXPECT_EQ(lines[0], "");
+  EXPECT_EQ(lines[1], "Hallo");
+  EXPECT_EQ(lines[2], "World");
+  EXPECT_EQ(lines[3], "");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,9 +131,9 @@ TEST_F(StringUtilsTest, test_Split3) {
   vector<string> lines = StringUtils::split("Hallo\nWorld\\/Me", '\n');
 
   EXPECT_EQ(lines.size(), 2U);
-  
-  EXPECT_EQ(lines[0],  "Hallo");
-  EXPECT_EQ(lines[1],  "World\\/Me");
+
+  EXPECT_EQ(lines[0], "Hallo");
+  EXPECT_EQ(lines[1], "World\\/Me");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -144,7 +151,8 @@ TEST_F(StringUtilsTest, test_tolower) {
   EXPECT_EQ(StringUtils::tolower("HeLlO WoRlD!"), "hello world!");
   EXPECT_EQ(StringUtils::tolower("hello-world-nono "), "hello-world-nono ");
   EXPECT_EQ(StringUtils::tolower("HELLo-world-NONO "), "hello-world-nono ");
-  EXPECT_EQ(StringUtils::tolower(" The quick \r\nbrown Fox"), " the quick \r\nbrown fox");
+  EXPECT_EQ(StringUtils::tolower(" The quick \r\nbrown Fox"),
+            " the quick \r\nbrown fox");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -165,21 +173,35 @@ TEST_F(StringUtilsTest, test_toupper) {
 }
 
 TEST_F(StringUtilsTest, test_equalStringsCaseInsensitive) {
-  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string(), std::string()));
-  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("ABC"), std::string("ABC")));
-  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("ABC 1235667"), std::string("ABC 1235667")));
-  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("abc 1235667"), std::string("ABC 1235667")));
-  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("abc 1235667"), std::string("AbC 1235667")));
-  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("abc 1235667"), std::string("aBc 1235667")));
-  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("ABC 1235667"), std::string("abc 1235667")));
-  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("mötör"), std::string("MöTöR")));
-  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string(".'2!#"), std::string(".'2!#")));
-  
-  EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(std::string(" ABC"), std::string("ABC")));
-  EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(std::string("ABC"), std::string("12345")));
-  EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(std::string("mötör"), std::string("MÖTÖR")));
-  EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(std::string(".'2!#"), std::string("abcd")));
-  EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(std::string(".'2!#"), std::string(".'2!!")));
+  EXPECT_TRUE(
+      StringUtils::equalStringsCaseInsensitive(std::string(), std::string()));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("ABC"),
+                                                       std::string("ABC")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(
+      std::string("ABC 1235667"), std::string("ABC 1235667")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(
+      std::string("abc 1235667"), std::string("ABC 1235667")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(
+      std::string("abc 1235667"), std::string("AbC 1235667")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(
+      std::string("abc 1235667"), std::string("aBc 1235667")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(
+      std::string("ABC 1235667"), std::string("abc 1235667")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string("mötör"),
+                                                       std::string("MöTöR")));
+  EXPECT_TRUE(StringUtils::equalStringsCaseInsensitive(std::string(".'2!#"),
+                                                       std::string(".'2!#")));
+
+  EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(std::string(" ABC"),
+                                                        std::string("ABC")));
+  EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(std::string("ABC"),
+                                                        std::string("12345")));
+  EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(std::string("mötör"),
+                                                        std::string("MÖTÖR")));
+  EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(std::string(".'2!#"),
+                                                        std::string("abcd")));
+  EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(std::string(".'2!#"),
+                                                        std::string(".'2!!")));
 
   {
     std::string s1;
@@ -190,7 +212,7 @@ TEST_F(StringUtilsTest, test_equalStringsCaseInsensitive) {
     }
     s1.push_back('A');
     s2.push_back('B');
-  
+
     EXPECT_FALSE(StringUtils::equalStringsCaseInsensitive(s1, s2));
 
     s1.pop_back();
@@ -218,7 +240,8 @@ TEST_F(StringUtilsTest, test_uint64) {
   EXPECT_EQ(0ULL, StringUtils::uint64("-1"s));
   EXPECT_EQ(0ULL, StringUtils::uint64("-12345"s));
   EXPECT_EQ(1234ULL, StringUtils::uint64("1234.56"s));
-  EXPECT_EQ(0ULL, StringUtils::uint64("1234567890123456789012345678901234567890"s));
+  EXPECT_EQ(0ULL,
+            StringUtils::uint64("1234567890123456789012345678901234567890"s));
   EXPECT_EQ(0ULL, StringUtils::uint64("@"s));
 
   EXPECT_EQ(0ULL, StringUtils::uint64("0"s));
@@ -251,8 +274,10 @@ TEST_F(StringUtilsTest, test_uint64_trusted) {
   EXPECT_EQ(9ULL, StringUtils::uint64_trusted("0009"));
   EXPECT_EQ(12345678ULL, StringUtils::uint64_trusted("12345678"));
   EXPECT_EQ(1234567800ULL, StringUtils::uint64_trusted("1234567800"));
-  EXPECT_EQ(1234567890123456ULL, StringUtils::uint64_trusted("1234567890123456"));
-  EXPECT_EQ(UINT64_MAX, StringUtils::uint64_trusted(std::to_string(UINT64_MAX)));
+  EXPECT_EQ(1234567890123456ULL,
+            StringUtils::uint64_trusted("1234567890123456"));
+  EXPECT_EQ(UINT64_MAX,
+            StringUtils::uint64_trusted(std::to_string(UINT64_MAX)));
 }
 
 TEST_F(StringUtilsTest, test_encodeHex) {
@@ -280,14 +305,22 @@ TEST_F(StringUtilsTest, test_encodeHex) {
   EXPECT_EQ("ff", StringUtils::encodeHex("\xff"));
   EXPECT_EQ("aa0009", StringUtils::encodeHex(std::string("\xaa\x00\x09", 3)));
   EXPECT_EQ("000102", StringUtils::encodeHex(std::string("\x00\x01\x02", 3)));
-  EXPECT_EQ("00010203", StringUtils::encodeHex(std::string("\x00\x01\x02\03", 4)));
+  EXPECT_EQ("00010203",
+            StringUtils::encodeHex(std::string("\x00\x01\x02\03", 4)));
   EXPECT_EQ("20", StringUtils::encodeHex(" "));
   EXPECT_EQ("2a2a", StringUtils::encodeHex("**"));
   EXPECT_EQ("616263646566", StringUtils::encodeHex("abcdef"));
   EXPECT_EQ("4142434445462047", StringUtils::encodeHex("ABCDEF G"));
-  EXPECT_EQ("54686520517569636b2062726f776e20466f78206a756d706564206f76657220746865206c617a7920646f6721", StringUtils::encodeHex("The Quick brown Fox jumped over the lazy dog!"));
-  EXPECT_EQ("446572204bc3b674c3b67220737072c3bc6e6720c3bc62657220646965204272c3bc636b65", StringUtils::encodeHex("Der Kötör sprüng über die Brücke"));
-  EXPECT_EQ("c3a4c3b6c3bcc39fc384c396c39ce282acc2b5", StringUtils::encodeHex("äöüßÄÖÜ€µ"));
+  EXPECT_EQ(
+      "54686520517569636b2062726f776e20466f78206a756d706564206f7665722074686520"
+      "6c617a7920646f6721",
+      StringUtils::encodeHex("The Quick brown Fox jumped over the lazy dog!"));
+  EXPECT_EQ(
+      "446572204bc3b674c3b67220737072c3bc6e6720c3bc62657220646965204272c3bc636b"
+      "65",
+      StringUtils::encodeHex("Der Kötör sprüng über die Brücke"));
+  EXPECT_EQ("c3a4c3b6c3bcc39fc384c396c39ce282acc2b5",
+            StringUtils::encodeHex("äöüßÄÖÜ€µ"));
 }
 
 TEST_F(StringUtilsTest, test_decodeHex) {
@@ -315,7 +348,7 @@ TEST_F(StringUtilsTest, test_decodeHex) {
   EXPECT_EQ("\x0d", StringUtils::decodeHex("0D"));
   EXPECT_EQ("\x0e", StringUtils::decodeHex("0E"));
   EXPECT_EQ("\x0f", StringUtils::decodeHex("0F"));
- 
+
   EXPECT_EQ("\x1a", StringUtils::decodeHex("1a"));
   EXPECT_EQ("\x2b", StringUtils::decodeHex("2b"));
   EXPECT_EQ("\x3c", StringUtils::decodeHex("3c"));
@@ -331,16 +364,22 @@ TEST_F(StringUtilsTest, test_decodeHex) {
   EXPECT_EQ("\xdf", StringUtils::decodeHex("df"));
   EXPECT_EQ("\xef", StringUtils::decodeHex("eF"));
   EXPECT_EQ("\xff", StringUtils::decodeHex("ff"));
-  
+
   EXPECT_EQ(" ", StringUtils::decodeHex("20"));
   EXPECT_EQ("**", StringUtils::decodeHex("2a2a"));
   EXPECT_EQ("abcdef", StringUtils::decodeHex("616263646566"));
   EXPECT_EQ("ABCDEF G", StringUtils::decodeHex("4142434445462047"));
 
-  EXPECT_EQ("The Quick brown Fox jumped over the lazy dog!", StringUtils::decodeHex("54686520517569636b2062726f776e20466f78206a756d706564206f76657220746865206c617a7920646f6721"));
-  EXPECT_EQ("Der Kötör sprüng über die Brücke", StringUtils::decodeHex("446572204bc3b674c3b67220737072c3bc6e6720c3bc62657220646965204272c3bc636b65"));
-  EXPECT_EQ("äöüßÄÖÜ€µ", StringUtils::decodeHex("c3a4c3b6c3bcc39fc384c396c39ce282acc2b5"));
-  
+  EXPECT_EQ(
+      "The Quick brown Fox jumped over the lazy dog!",
+      StringUtils::decodeHex("54686520517569636b2062726f776e20466f78206a756d706"
+                             "564206f76657220746865206c617a7920646f6721"));
+  EXPECT_EQ("Der Kötör sprüng über die Brücke",
+            StringUtils::decodeHex("446572204bc3b674c3b67220737072c3bc6e6720c3b"
+                                   "c62657220646965204272c3bc636b65"));
+  EXPECT_EQ("äöüßÄÖÜ€µ",
+            StringUtils::decodeHex("c3a4c3b6c3bcc39fc384c396c39ce282acc2b5"));
+
   EXPECT_EQ("", StringUtils::decodeHex("1"));
   EXPECT_EQ("", StringUtils::decodeHex(" "));
   EXPECT_EQ("", StringUtils::decodeHex(" 2"));
@@ -363,12 +402,13 @@ TEST_F(StringUtilsTest, test_encodeURLComponent) {
   EXPECT_EQ("%25", StringUtils::encodeURIComponent("%"));
   EXPECT_EQ("abc", StringUtils::encodeURIComponent("abc"));
   EXPECT_EQ("abc%20abc", StringUtils::encodeURIComponent("abc abc"));
-  EXPECT_EQ(".!%3A%24%25%40b013%2F-", StringUtils::encodeURIComponent(".!:$%@b013/-"));
-  
+  EXPECT_EQ(".!%3A%24%25%40b013%2F-",
+            StringUtils::encodeURIComponent(".!:$%@b013/-"));
+
   std::string result;
 
   StringUtils::encodeURIComponent(result, "", 0);
-  EXPECT_EQ("", result); 
+  EXPECT_EQ("", result);
 
   StringUtils::encodeURIComponent(result, " ", 1);
   EXPECT_EQ("%20", result);
@@ -378,10 +418,10 @@ TEST_F(StringUtilsTest, test_encodeURLComponent) {
 
   StringUtils::encodeURIComponent(result, "abc", 3);
   EXPECT_EQ("%20%25abc", result);
-  
+
   StringUtils::encodeURIComponent(result, "abc abc", 7);
   EXPECT_EQ("%20%25abcabc%20abc", result);
-  
+
   StringUtils::encodeURIComponent(result, ".!:$%@b013/-", 12);
   EXPECT_EQ("%20%25abcabc%20abc.!%3A%24%25%40b013%2F-", result);
 }
@@ -413,8 +453,10 @@ TEST_F(StringUtilsTest, joinT) {
   EXPECT_EQ(", , ", StringUtils::joinT(", "sv, "", "", ""));
   EXPECT_EQ("hello, world", StringUtils::joinT(", "sv, "hello", "world"));
   EXPECT_EQ("hello, world", StringUtils::joinT(""sv, "hello", ", ", "world"));
-  EXPECT_EQ("cstr 42 stdstr view", StringUtils::joinT(""sv, "cstr ", 42, " stdstr "s, "view"sv));
-  EXPECT_EQ("cstr, 42, stdstr, view", StringUtils::joinT(", "sv, "cstr", 42, "stdstr"s, "view"sv));
+  EXPECT_EQ("cstr 42 stdstr view",
+            StringUtils::joinT(""sv, "cstr ", 42, " stdstr "s, "view"sv));
+  EXPECT_EQ("cstr, 42, stdstr, view",
+            StringUtils::joinT(", "sv, "cstr", 42, "stdstr"s, "view"sv));
 }
 
 TEST_F(StringUtilsTest, formatSize) {

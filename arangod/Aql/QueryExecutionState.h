@@ -56,5 +56,5 @@ std::string toStringWithPrefix(QueryExecutionState::ValueType state);
 }  // namespace aql
 }  // namespace arangodb
 
-std::ostream& operator<<(std::ostream&, arangodb::aql::QueryExecutionState::ValueType);
-
+std::ostream& operator<<(std::ostream&,
+                         arangodb::aql::QueryExecutionState::ValueType);

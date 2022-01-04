@@ -39,7 +39,8 @@ struct UpgradeResult {
   UpgradeResult() : type(VersionResult::INVALID), _result() {}
   UpgradeResult(ErrorCode err, VersionResult::StatusCode s)
       : type(s), _result(err) {}
-  UpgradeResult(ErrorCode err, std::string_view msg, VersionResult::StatusCode s)
+  UpgradeResult(ErrorCode err, std::string_view msg,
+                VersionResult::StatusCode s)
       : type(s), _result(err, msg) {}
   VersionResult::StatusCode type;
 
@@ -80,7 +81,8 @@ struct Upgrade {
     CLUSTER_DB_SERVER_LOCAL = (1u << 10)
   };
 
-  typedef std::function<bool(TRI_vocbase_t&, velocypack::Slice const&)> TaskFunction;
+  typedef std::function<bool(TRI_vocbase_t&, velocypack::Slice const&)>
+      TaskFunction;
   struct Task {
     std::string name;
     std::string description;
@@ -103,7 +105,8 @@ struct Upgrade {
   /// @brief executed on startup for non-coordinators
   /// @param upgrade  Perform an actual upgrade
   /// Corresponds to upgrade-database.js
-  static UpgradeResult startup(TRI_vocbase_t& vocbase, bool upgrade, bool ignoreFileErrors);
+  static UpgradeResult startup(TRI_vocbase_t& vocbase, bool upgrade,
+                               bool ignoreFileErrors);
 
   /// @brief executed on startup for coordinators
   /// @param upgrade  Perform an actual upgrade
@@ -149,4 +152,3 @@ struct Upgrade {
 
 }  // namespace methods
 }  // namespace arangodb
-

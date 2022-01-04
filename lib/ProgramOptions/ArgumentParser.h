@@ -164,4 +164,3 @@ class ArgumentParser {
 };
 }  // namespace options
 }  // namespace arangodb
-

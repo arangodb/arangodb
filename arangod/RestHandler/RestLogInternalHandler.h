@@ -40,8 +40,6 @@ class RestLogInternalHandler : public RestVocbaseBaseHandler {
  public:
   RestStatus execute() final;
   char const* name() const final { return "RestLogInternalHandler"; }
-  RequestLane lane() const final {
-    return RequestLane::CLIENT_SLOW;
-  }
+  RequestLane lane() const final { return RequestLane::CLIENT_SLOW; }
 };
 }  // namespace arangodb

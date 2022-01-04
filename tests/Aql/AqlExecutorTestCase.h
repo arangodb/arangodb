@@ -50,11 +50,12 @@ namespace aql {
  *
  * @tparam enableQueryTrace Enable Aql Profile Trace logging
  */
-template <bool enableQueryTrace = false>
+template<bool enableQueryTrace = false>
 class AqlExecutorTestCase : public ::testing::Test {
  public:
   // Creating a server instance costs a lot of time, so do it only once.
-  // Note that newer version of gtest call these SetUpTestSuite/TearDownTestSuite
+  // Note that newer version of gtest call these
+  // SetUpTestSuite/TearDownTestSuite
   static void SetUpTestCase() {
     _server = std::make_unique<mocks::MockAqlServer>();
   }
@@ -71,16 +72,20 @@ class AqlExecutorTestCase : public ::testing::Test {
    *        These nodes can be used to create the Executors
    *        Caller does not need to manage the memory.
    *
-   * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
+   * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed,
+   * do not delete.
    */
-  auto generateNodeDummy(ExecutionNode::NodeType type = ExecutionNode::NodeType::SINGLETON)
+  auto generateNodeDummy(
+      ExecutionNode::NodeType type = ExecutionNode::NodeType::SINGLETON)
       -> ExecutionNode*;
 
   auto generateScatterNodeDummy() -> ScatterNode*;
 
-  template <std::size_t inputColumns = 1, std::size_t outputColumns = 1>
-  auto makeExecutorTestHelper() -> ExecutorTestHelper<inputColumns, outputColumns> {
-    return ExecutorTestHelper<inputColumns, outputColumns>(*fakedQuery, itemBlockManager);
+  template<std::size_t inputColumns = 1, std::size_t outputColumns = 1>
+  auto makeExecutorTestHelper()
+      -> ExecutorTestHelper<inputColumns, outputColumns> {
+    return ExecutorTestHelper<inputColumns, outputColumns>(*fakedQuery,
+                                                           itemBlockManager);
   }
 
  private:
@@ -91,7 +96,8 @@ class AqlExecutorTestCase : public ::testing::Test {
   static inline std::unique_ptr<mocks::MockAqlServer> _server;
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor,
+                                       SerializationFormat::SHADOWROWS};
   std::shared_ptr<arangodb::aql::Query> fakedQuery;
 };
 
@@ -101,9 +107,10 @@ class AqlExecutorTestCase : public ::testing::Test {
  * @tparam T The Test Parameter used for gtest.
  * @tparam enableQueryTrace Enable Aql Profile Trace logging
  */
-template <typename T, bool enableQueryTrace = false>
-class AqlExecutorTestCaseWithParam : public AqlExecutorTestCase<enableQueryTrace>,
-                                     public ::testing::WithParamInterface<T> {};
+template<typename T, bool enableQueryTrace = false>
+class AqlExecutorTestCaseWithParam
+    : public AqlExecutorTestCase<enableQueryTrace>,
+      public ::testing::WithParamInterface<T> {};
 
 }  // namespace aql
 }  // namespace tests

@@ -65,8 +65,10 @@ namespace {
 auto doNothingVisitor = [](AstNode const*) {};
 
 [[noreturn]] void throwFormattedError(arangodb::aql::QueryContext& query,
-                                      ErrorCode code, std::string_view details) {
-  std::string msg = arangodb::aql::QueryWarnings::buildFormattedString(code, details);
+                                      ErrorCode code,
+                                      std::string_view details) {
+  std::string msg =
+      arangodb::aql::QueryWarnings::buildFormattedString(code, details);
   query.warnings().registerError(code, msg);
 }
 
@@ -86,8 +88,9 @@ auto doNothingVisitor = [](AstNode const*) {};
  * to the translated name (cid => name if required).
  */
 LogicalDataSource::Category const* injectDataSourceInQuery(
-    Ast& ast, arangodb::CollectionNameResolver const& resolver, AccessMode::Type accessType,
-    bool failIfDoesNotExist, std::string_view& nameRef) {
+    Ast& ast, arangodb::CollectionNameResolver const& resolver,
+    AccessMode::Type accessType, bool failIfDoesNotExist,
+    std::string_view& nameRef) {
   std::string const name = std::string(nameRef);
   // NOTE The name may be modified if a numeric collection ID is given instead
   // of a collection Name. Afterwards it will contain the name.
@@ -104,7 +107,8 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
     // for queries that are parsed-only (e.g. via `db._parse(query);`. In this
     // case it is ok that the datasource does not exist, but we need to track
     // the names of datasources used in the query
-    ast.query().collections().add(name, accessType, aql::Collection::Hint::None);
+    ast.query().collections().add(name, accessType,
+                                  aql::Collection::Hint::None);
 
     return LogicalCollection::category();
   }
@@ -117,7 +121,8 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
   if (nameRef != name) {
     // name has changed by the lookup, so we need to reserve the collection
     // name on the heap and update our std::string_view
-    char* p = ast.resources().registerString(dataSourceName.data(), dataSourceName.size());
+    char* p = ast.resources().registerString(dataSourceName.data(),
+                                             dataSourceName.size());
     nameRef = std::string_view(p, dataSourceName.size());
   }
 
@@ -130,20 +135,23 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
     }
     ast.query().collections().add(std::string(nameRef), accessType, hint);
     if (nameRef != name) {
-      ast.query().collections().add(name, accessType, hint);  // Add collection by ID as well
+      ast.query().collections().add(name, accessType,
+                                    hint);  // Add collection by ID as well
     }
   } else if (dataSource->category() == LogicalView::category()) {
     // it's a view!
     // add views to the collection list
     // to register them with transaction as well
-    ast.query().collections().add(std::string(nameRef), accessType, aql::Collection::Hint::None);
+    ast.query().collections().add(std::string(nameRef), accessType,
+                                  aql::Collection::Hint::None);
 
     ast.query().addDataSource(dataSource);
 
     // Make sure to add all collections now:
     resolver.visitCollections(
         [&ast, accessType](LogicalCollection& col) -> bool {
-          ast.query().collections().add(col.name(), accessType, aql::Collection::Hint::Collection);
+          ast.query().collections().add(col.name(), accessType,
+                                        aql::Collection::Hint::Collection);
           return true;
         },
         dataSource->id());
@@ -159,31 +167,43 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
 
 /// @brief inverse comparison operators
 std::unordered_map<int, AstNodeType> const Ast::NegatedOperators{
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ), NODE_TYPE_OPERATOR_BINARY_NE},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NE), NODE_TYPE_OPERATOR_BINARY_EQ},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT), NODE_TYPE_OPERATOR_BINARY_LE},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE), NODE_TYPE_OPERATOR_BINARY_LT},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT), NODE_TYPE_OPERATOR_BINARY_GE},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE), NODE_TYPE_OPERATOR_BINARY_GT},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN), NODE_TYPE_OPERATOR_BINARY_NIN},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NIN), NODE_TYPE_OPERATOR_BINARY_IN}};
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ),
+     NODE_TYPE_OPERATOR_BINARY_NE},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NE),
+     NODE_TYPE_OPERATOR_BINARY_EQ},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT),
+     NODE_TYPE_OPERATOR_BINARY_LE},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE),
+     NODE_TYPE_OPERATOR_BINARY_LT},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT),
+     NODE_TYPE_OPERATOR_BINARY_GE},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE),
+     NODE_TYPE_OPERATOR_BINARY_GT},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN),
+     NODE_TYPE_OPERATOR_BINARY_NIN},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NIN),
+     NODE_TYPE_OPERATOR_BINARY_IN}};
 
 /// @brief reverse comparison operators
 std::unordered_map<int, AstNodeType> const Ast::ReversedOperators{
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ), NODE_TYPE_OPERATOR_BINARY_EQ},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT), NODE_TYPE_OPERATOR_BINARY_LT},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE), NODE_TYPE_OPERATOR_BINARY_LE},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT), NODE_TYPE_OPERATOR_BINARY_GT},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE), NODE_TYPE_OPERATOR_BINARY_GE}};
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ),
+     NODE_TYPE_OPERATOR_BINARY_EQ},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT),
+     NODE_TYPE_OPERATOR_BINARY_LT},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE),
+     NODE_TYPE_OPERATOR_BINARY_LE},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT),
+     NODE_TYPE_OPERATOR_BINARY_GT},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE),
+     NODE_TYPE_OPERATOR_BINARY_GE}};
 
-Ast::SpecialNodes::SpecialNodes() 
-  : NopNode{NODE_TYPE_NOP},
-    NullNode{AstNodeValue()},
-    FalseNode{AstNodeValue(false)},
-    TrueNode{AstNodeValue(true)},
-    ZeroNode{AstNodeValue(int64_t(0))},
-    EmptyStringNode{AstNodeValue("", uint32_t(0))} {
-
+Ast::SpecialNodes::SpecialNodes()
+    : NopNode{NODE_TYPE_NOP},
+      NullNode{AstNodeValue()},
+      FalseNode{AstNodeValue(false)},
+      TrueNode{AstNodeValue(true)},
+      ZeroNode{AstNodeValue(int64_t(0))},
+      EmptyStringNode{AstNodeValue("", uint32_t(0))} {
   NopNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
   NullNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
   FalseNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
@@ -191,14 +211,19 @@ Ast::SpecialNodes::SpecialNodes()
   ZeroNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
   EmptyStringNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
 
-  // the const-away casts are necessary API-wise. however, we are never ever modifying
-  // the computed values for these special nodes.
-  NullNode.setComputedValue(const_cast<uint8_t*>(VPackSlice::nullSlice().begin()));
-  FalseNode.setComputedValue(const_cast<uint8_t*>(VPackSlice::falseSlice().begin()));
-  TrueNode.setComputedValue(const_cast<uint8_t*>(VPackSlice::trueSlice().begin()));
-  ZeroNode.setComputedValue(const_cast<uint8_t*>(VPackSlice::zeroSlice().begin()));
-  EmptyStringNode.setComputedValue(const_cast<uint8_t*>(VPackSlice::emptyStringSlice().begin()));
-  
+  // the const-away casts are necessary API-wise. however, we are never ever
+  // modifying the computed values for these special nodes.
+  NullNode.setComputedValue(
+      const_cast<uint8_t*>(VPackSlice::nullSlice().begin()));
+  FalseNode.setComputedValue(
+      const_cast<uint8_t*>(VPackSlice::falseSlice().begin()));
+  TrueNode.setComputedValue(
+      const_cast<uint8_t*>(VPackSlice::trueSlice().begin()));
+  ZeroNode.setComputedValue(
+      const_cast<uint8_t*>(VPackSlice::zeroSlice().begin()));
+  EmptyStringNode.setComputedValue(
+      const_cast<uint8_t*>(VPackSlice::emptyStringSlice().begin()));
+
   TRI_ASSERT(NopNode.hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
   TRI_ASSERT(NullNode.hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
   TRI_ASSERT(FalseNode.hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
@@ -208,7 +233,8 @@ Ast::SpecialNodes::SpecialNodes()
 }
 
 /// @brief create the AST
-Ast::Ast(QueryContext& query, AstPropertiesFlagsType flags /* = AstPropertyFlag::AST_FLAG_DEFAULT */)
+Ast::Ast(QueryContext& query,
+         AstPropertiesFlagsType flags /* = AstPropertyFlag::AST_FLAG_DEFAULT */)
     : _query(query),
       _resources(query.resourceMonitor()),
       _root(nullptr),
@@ -270,12 +296,14 @@ AstNode* Ast::createNodePassthru(AstNode const* what) {
 }
 
 /// @brief create an AST example node
-AstNode* Ast::createNodeExample(AstNode const* variable, AstNode const* example) {
+AstNode* Ast::createNodeExample(AstNode const* variable,
+                                AstNode const* example) {
   if (example == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  if (example->type != NODE_TYPE_OBJECT && example->type != NODE_TYPE_PARAMETER) {
+  if (example->type != NODE_TYPE_OBJECT &&
+      example->type != NODE_TYPE_PARAMETER) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_PARSE,
         "expecting object literal or bind parameter for example");
@@ -294,7 +322,8 @@ AstNode* Ast::createNodeSubquery() { return createNode(NODE_TYPE_SUBQUERY); }
 
 /// @brief create an AST for node as part of an UPSERT
 AstNode* Ast::createNodeForUpsert(char const* variableName, size_t nameLength,
-                                  AstNode const* expression, bool isUserDefinedVariable) {
+                                  AstNode const* expression,
+                                  bool isUserDefinedVariable) {
   if (variableName == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -303,7 +332,8 @@ AstNode* Ast::createNodeForUpsert(char const* variableName, size_t nameLength,
   node->setFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES);
   node->reserve(3);
 
-  AstNode* variable = createNodeVariable(std::string_view(variableName, nameLength), isUserDefinedVariable);
+  AstNode* variable = createNodeVariable(
+      std::string_view(variableName, nameLength), isUserDefinedVariable);
   node->addMember(variable);
   node->addMember(expression);
   node->addMember(&_specialNodes.NopNode);
@@ -366,7 +396,8 @@ AstNode* Ast::createNodeForView(Variable* variable, AstNode const* expression,
 
 /// @brief create an AST let node, without an IF condition
 AstNode* Ast::createNodeLet(char const* variableName, size_t nameLength,
-                            AstNode const* expression, bool isUserDefinedVariable) {
+                            AstNode const* expression,
+                            bool isUserDefinedVariable) {
   if (variableName == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -374,7 +405,8 @@ AstNode* Ast::createNodeLet(char const* variableName, size_t nameLength,
   AstNode* node = createNode(NODE_TYPE_LET);
   node->reserve(2);
 
-  AstNode* variable = createNodeVariable(std::string_view(variableName, nameLength), isUserDefinedVariable);
+  AstNode* variable = createNodeVariable(
+      std::string_view(variableName, nameLength), isUserDefinedVariable);
   node->addMember(variable);
   node->addMember(expression);
 
@@ -382,7 +414,8 @@ AstNode* Ast::createNodeLet(char const* variableName, size_t nameLength,
 }
 
 /// @brief create an AST let node, without creating a variable
-AstNode* Ast::createNodeLet(AstNode const* variable, AstNode const* expression) {
+AstNode* Ast::createNodeLet(AstNode const* variable,
+                            AstNode const* expression) {
   if (variable == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -398,7 +431,8 @@ AstNode* Ast::createNodeLet(AstNode const* variable, AstNode const* expression) 
 
 /// @brief create an AST let node, with an IF condition
 AstNode* Ast::createNodeLet(char const* variableName, size_t nameLength,
-                            AstNode const* expression, AstNode const* condition) {
+                            AstNode const* expression,
+                            AstNode const* condition) {
   if (variableName == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -406,7 +440,8 @@ AstNode* Ast::createNodeLet(char const* variableName, size_t nameLength,
   AstNode* node = createNode(NODE_TYPE_LET);
   node->reserve(3);
 
-  AstNode* variable = createNodeVariable(std::string_view(variableName, nameLength), true);
+  AstNode* variable =
+      createNodeVariable(std::string_view(variableName, nameLength), true);
   node->addMember(variable);
   node->addMember(expression);
   node->addMember(condition);
@@ -423,7 +458,8 @@ AstNode* Ast::createNodeFilter(AstNode const* expression) {
 }
 
 /// @brief create an AST filter node for an UPSERT query
-AstNode* Ast::createNodeUpsertFilter(AstNode const* variable, AstNode const* object) {
+AstNode* Ast::createNodeUpsertFilter(AstNode const* variable,
+                                     AstNode const* object) {
   AstNode* node = createNode(NODE_TYPE_FILTER);
   AstNode* example = createNodeExample(variable, object);
 
@@ -442,7 +478,8 @@ AstNode* Ast::createNodeReturn(AstNode const* expression) {
 
 /// @brief create an AST remove node
 AstNode* Ast::createNodeRemove(AstNode const* expression,
-                               AstNode const* collection, AstNode const* options) {
+                               AstNode const* collection,
+                               AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_REMOVE);
   node->reserve(4);
 
@@ -461,7 +498,8 @@ AstNode* Ast::createNodeRemove(AstNode const* expression,
 
 /// @brief create an AST insert node
 AstNode* Ast::createNodeInsert(AstNode const* expression,
-                               AstNode const* collection, AstNode const* options) {
+                               AstNode const* collection,
+                               AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_INSERT);
 
   if (options == nullptr) {
@@ -471,7 +509,8 @@ AstNode* Ast::createNodeInsert(AstNode const* expression,
 
   bool returnOld = false;
   if (options->type == NODE_TYPE_OBJECT) {
-    auto ops = ExecutionPlan::parseModificationOptions(query(), "INSERT", options, /*addWarnings*/ false);
+    auto ops = ExecutionPlan::parseModificationOptions(
+        query(), "INSERT", options, /*addWarnings*/ false);
     returnOld = ops.isOverwriteModeUpdateReplace();
   }
 
@@ -488,8 +527,10 @@ AstNode* Ast::createNodeInsert(AstNode const* expression,
 }
 
 /// @brief create an AST update node
-AstNode* Ast::createNodeUpdate(AstNode const* keyExpression, AstNode const* docExpression,
-                               AstNode const* collection, AstNode const* options) {
+AstNode* Ast::createNodeUpdate(AstNode const* keyExpression,
+                               AstNode const* docExpression,
+                               AstNode const* collection,
+                               AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_UPDATE);
   node->reserve(6);
 
@@ -515,8 +556,10 @@ AstNode* Ast::createNodeUpdate(AstNode const* keyExpression, AstNode const* docE
 }
 
 /// @brief create an AST replace node
-AstNode* Ast::createNodeReplace(AstNode const* keyExpression, AstNode const* docExpression,
-                                AstNode const* collection, AstNode const* options) {
+AstNode* Ast::createNodeReplace(AstNode const* keyExpression,
+                                AstNode const* docExpression,
+                                AstNode const* collection,
+                                AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_REPLACE);
   node->reserve(6);
 
@@ -543,8 +586,10 @@ AstNode* Ast::createNodeReplace(AstNode const* keyExpression, AstNode const* doc
 
 /// @brief create an AST upsert node
 AstNode* Ast::createNodeUpsert(AstNodeType type, AstNode const* docVariable,
-                               AstNode const* insertExpression, AstNode const* updateExpression,
-                               AstNode const* collection, AstNode const* options) {
+                               AstNode const* insertExpression,
+                               AstNode const* updateExpression,
+                               AstNode const* collection,
+                               AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_UPSERT);
   node->reserve(7);
 
@@ -579,9 +624,11 @@ AstNode* Ast::createNodeDistinct(AstNode const* value) {
 }
 
 /// @brief create an AST collect node
-AstNode* Ast::createNodeCollect(AstNode const* groups, AstNode const* aggregates,
-                                AstNode const* into, AstNode const* intoExpression,
-                                AstNode const* keepVariables, AstNode const* options) {
+AstNode* Ast::createNodeCollect(AstNode const* groups,
+                                AstNode const* aggregates, AstNode const* into,
+                                AstNode const* intoExpression,
+                                AstNode const* keepVariables,
+                                AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_COLLECT);
   node->reserve(6);
 
@@ -599,21 +646,26 @@ AstNode* Ast::createNodeCollect(AstNode const* groups, AstNode const* aggregates
   node->addMember(agg);
 
   node->addMember(into != nullptr ? into : &_specialNodes.NopNode);
-  node->addMember(intoExpression != nullptr ? intoExpression : &_specialNodes.NopNode);
-  node->addMember(keepVariables != nullptr ? keepVariables : &_specialNodes.NopNode);
+  node->addMember(intoExpression != nullptr ? intoExpression
+                                            : &_specialNodes.NopNode);
+  node->addMember(keepVariables != nullptr ? keepVariables
+                                           : &_specialNodes.NopNode);
 
   return node;
 }
 
 /// @brief create an AST collect node with a single COUNT aggregator
 AstNode* Ast::createNodeCollectCount(AstNode const* list, char const* name,
-                                     size_t nameLength, AstNode const* options) {
-  auto count = createNodeAssign(name, nameLength,
-                                createNodeAggregateFunctionCall("COUNT", createNodeArray()));
+                                     size_t nameLength,
+                                     AstNode const* options) {
+  auto count = createNodeAssign(
+      name, nameLength,
+      createNodeAggregateFunctionCall("COUNT", createNodeArray()));
   auto aggregators = createNodeArray(1);
   aggregators->addMember(count);
 
-  return createNodeCollect(list, aggregators, nullptr, nullptr, nullptr, options);
+  return createNodeCollect(list, aggregators, nullptr, nullptr, nullptr,
+                           options);
 }
 
 /// @brief create an AST sort node
@@ -625,7 +677,8 @@ AstNode* Ast::createNodeSort(AstNode const* list) {
 }
 
 /// @brief create an AST sort element node
-AstNode* Ast::createNodeSortElement(AstNode const* expression, AstNode const* ascending) {
+AstNode* Ast::createNodeSortElement(AstNode const* expression,
+                                    AstNode const* ascending) {
   AstNode* node = createNode(NODE_TYPE_SORT_ELEMENT);
   node->reserve(2);
   node->addMember(expression);
@@ -645,17 +698,17 @@ AstNode* Ast::createNodeLimit(AstNode const* offset, AstNode const* count) {
 }
 
 /// @brief create an AST window node
-AstNode* Ast::createNodeWindow(AstNode const* spec,
-                               AstNode const* rangeVar,
+AstNode* Ast::createNodeWindow(AstNode const* spec, AstNode const* rangeVar,
                                AstNode const* aggregates) {
   if (aggregates == 0 || aggregates->numMembers() == 0) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY); // parser should prevent this
+    THROW_ARANGO_EXCEPTION(
+        TRI_ERROR_OUT_OF_MEMORY);  // parser should prevent this
   }
-  
+
   if (_containsModificationNode) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_WINDOW_AFTER_MODIFICATION);
   }
-  
+
   AstNode* node = createNode(NODE_TYPE_WINDOW);
   node->reserve(3);
   node->addMember(spec);
@@ -678,7 +731,8 @@ AstNode* Ast::createNodeAssign(char const* variableName, size_t nameLength,
 
   AstNode* node = createNode(NODE_TYPE_ASSIGN);
   node->reserve(2);
-  AstNode* variable = createNodeVariable(std::string_view(variableName, nameLength), true);
+  AstNode* variable =
+      createNodeVariable(std::string_view(variableName, nameLength), true);
   node->addMember(variable);
   node->addMember(expression);
 
@@ -692,7 +746,7 @@ AstNode* Ast::createNodeVariable(std::string_view name, bool isUserDefined) {
   }
 
   if (_scopes.existsVariable(name)) {
-    if (!isUserDefined && 
+    if (!isUserDefined &&
         (name == Variable::NAME_OLD || name == Variable::NAME_NEW)) {
       // special variable
       auto variable = _variables.createVariable(name, isUserDefined);
@@ -718,15 +772,14 @@ AstNode* Ast::createNodeVariable(std::string_view name, bool isUserDefined) {
 
 /// @brief create an AST datasource
 /// this function will return either an AST collection or an AST view node
-AstNode* Ast::createNodeDataSource(arangodb::CollectionNameResolver const& resolver,
-                                   std::string_view name,
-                                   AccessMode::Type accessType,
-                                   bool validateName, bool failIfDoesNotExist) {
+AstNode* Ast::createNodeDataSource(
+    arangodb::CollectionNameResolver const& resolver, std::string_view name,
+    AccessMode::Type accessType, bool validateName, bool failIfDoesNotExist) {
   // will throw if validation fails
   validateDataSourceName(name, validateName);
   // this call may update name
-  LogicalCollection::Category const* category =
-      injectDataSourceInQuery(*this, resolver, accessType, failIfDoesNotExist, name);
+  LogicalCollection::Category const* category = injectDataSourceInQuery(
+      *this, resolver, accessType, failIfDoesNotExist, name);
 
   if (category == LogicalCollection::category()) {
     return createNodeCollectionNoValidation(name, accessType);
@@ -744,9 +797,9 @@ AstNode* Ast::createNodeDataSource(arangodb::CollectionNameResolver const& resol
 }
 
 /// @brief create an AST collection node
-AstNode* Ast::createNodeCollection(arangodb::CollectionNameResolver const& resolver,
-                                   std::string_view name,
-                                   AccessMode::Type accessType) {
+AstNode* Ast::createNodeCollection(
+    arangodb::CollectionNameResolver const& resolver, std::string_view name,
+    AccessMode::Type accessType) {
   // will throw if validation fails
   validateDataSourceName(name, true);
   // this call may update name
@@ -755,14 +808,15 @@ AstNode* Ast::createNodeCollection(arangodb::CollectionNameResolver const& resol
 
   if (category == LogicalCollection::category()) {
     // add collection to query
-    _query.collections().add(std::string(name), accessType, Collection::Hint::Collection);
+    _query.collections().add(std::string(name), accessType,
+                             Collection::Hint::Collection);
 
     // call private function after validation
     return createNodeCollectionNoValidation(name, accessType);
   }
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
-                                 std::string(name) +
-                                     " is required to be a collection.");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
+      std::string(name) + " is required to be a collection.");
 }
 
 /// @brief create an AST reference node
@@ -807,12 +861,13 @@ AstNode* Ast::createNodeSubqueryReference(std::string_view variableName) {
 }
 
 /// @brief create an AST variable access
-AstNode* Ast::createNodeAccess(Variable const* variable,
-                               std::vector<basics::AttributeName> const& field) {
+AstNode* Ast::createNodeAccess(
+    Variable const* variable, std::vector<basics::AttributeName> const& field) {
   TRI_ASSERT(!field.empty());
   AstNode* node = createNodeReference(variable);
   for (auto const& it : field) {
-    node = createNodeAttributeAccess(node, std::string_view(it.name.data(), it.name.size()));
+    node = createNodeAttributeAccess(
+        node, std::string_view(it.name.data(), it.name.size()));
   }
   return node;
 }
@@ -828,8 +883,8 @@ AstNode* Ast::createNodeAttributeAccess(AstNode const* refNode,
   return node;
 }
 
-AstNode* Ast::createNodeAttributeAccess(AstNode const* refNode,
-                                        std::vector<std::string_view> const& path) {
+AstNode* Ast::createNodeAttributeAccess(
+    AstNode const* refNode, std::vector<std::string_view> const& path) {
   AstNode* node = refNode->clone(this);
   for (auto const& part : path) {
     // adjust pointer
@@ -839,11 +894,12 @@ AstNode* Ast::createNodeAttributeAccess(AstNode const* refNode,
   return node;
 }
 
-AstNode* Ast::createNodeAttributeAccess(AstNode const* node,
-                                        std::vector<basics::AttributeName> const& attrs) {
+AstNode* Ast::createNodeAttributeAccess(
+    AstNode const* node, std::vector<basics::AttributeName> const& attrs) {
   std::vector<std::string_view> vec;
-  std::transform(attrs.begin(), attrs.end(), std::back_inserter(vec),
-                 [](basics::AttributeName const& a) { return std::string_view(a.name); });
+  std::transform(
+      attrs.begin(), attrs.end(), std::back_inserter(vec),
+      [](basics::AttributeName const& a) { return std::string_view(a.name); });
   return createNodeAttributeAccess(node, vec);
 }
 
@@ -882,7 +938,8 @@ AstNode* Ast::createNodeQuantifier(int64_t type) {
 }
 
 /// @brief create an AST unary operator node
-AstNode* Ast::createNodeUnaryOperator(AstNodeType type, AstNode const* operand) {
+AstNode* Ast::createNodeUnaryOperator(AstNodeType type,
+                                      AstNode const* operand) {
   AstNode* node = createNode(type);
   node->addMember(operand);
 
@@ -898,30 +955,36 @@ AstNode* Ast::createNodeBinaryOperator(AstNodeType type, AstNode const* lhs,
   // note that there will still be cases in which both sides of the comparison
   // contain an attribute access, e.g.  doc.value1 == doc.value2
   bool swap = false;
-  if (type == NODE_TYPE_OPERATOR_BINARY_EQ && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+  if (type == NODE_TYPE_OPERATOR_BINARY_EQ &&
+      rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
       lhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
     // value == doc.value  =>  doc.value == value
     swap = true;
-  } else if (type == NODE_TYPE_OPERATOR_BINARY_NE && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_NE &&
+             rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
              lhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
     // value != doc.value  =>  doc.value != value
     swap = true;
-  } else if (type == NODE_TYPE_OPERATOR_BINARY_GT && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_GT &&
+             rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
              lhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
     // value > doc.value  =>  doc.value < value
     type = NODE_TYPE_OPERATOR_BINARY_LT;
     swap = true;
-  } else if (type == NODE_TYPE_OPERATOR_BINARY_LT && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_LT &&
+             rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
              lhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
     // value < doc.value  =>  doc.value > value
     type = NODE_TYPE_OPERATOR_BINARY_GT;
     swap = true;
-  } else if (type == NODE_TYPE_OPERATOR_BINARY_GE && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_GE &&
+             rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
              lhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
     // value >= doc.value  =>  doc.value <= value
     type = NODE_TYPE_OPERATOR_BINARY_LE;
     swap = true;
-  } else if (type == NODE_TYPE_OPERATOR_BINARY_LE && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_LE &&
+             rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
              lhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
     // value <= doc.value  =>  doc.value >= value
     type = NODE_TYPE_OPERATOR_BINARY_GE;
@@ -943,8 +1006,10 @@ AstNode* Ast::createNodeBinaryOperator(AstNodeType type, AstNode const* lhs,
 }
 
 /// @brief create an AST binary array operator node
-AstNode* Ast::createNodeBinaryArrayOperator(AstNodeType type, AstNode const* lhs,
-                                            AstNode const* rhs, AstNode const* quantifier) {
+AstNode* Ast::createNodeBinaryArrayOperator(AstNodeType type,
+                                            AstNode const* lhs,
+                                            AstNode const* rhs,
+                                            AstNode const* quantifier) {
   // re-use existing function
   AstNode* node = createNodeBinaryOperator(type, lhs, rhs);
   node->addMember(quantifier);
@@ -955,8 +1020,9 @@ AstNode* Ast::createNodeBinaryArrayOperator(AstNodeType type, AstNode const* lhs
   return node;
 }
 
-/// @brief create an AST ternary operator node, using the condition as the truth part
-AstNode* Ast::createNodeTernaryOperator(AstNode const* condition, 
+/// @brief create an AST ternary operator node, using the condition as the truth
+/// part
+AstNode* Ast::createNodeTernaryOperator(AstNode const* condition,
                                         AstNode const* falsePart) {
   AstNode* node = createNode(NODE_TYPE_OPERATOR_TERNARY);
   node->reserve(2);
@@ -967,7 +1033,8 @@ AstNode* Ast::createNodeTernaryOperator(AstNode const* condition,
 }
 
 /// @brief create an AST ternary operator node
-AstNode* Ast::createNodeTernaryOperator(AstNode const* condition, AstNode const* truePart,
+AstNode* Ast::createNodeTernaryOperator(AstNode const* condition,
+                                        AstNode const* truePart,
                                         AstNode const* falsePart) {
   AstNode* node = createNode(NODE_TYPE_OPERATOR_TERNARY);
   node->reserve(3);
@@ -980,7 +1047,8 @@ AstNode* Ast::createNodeTernaryOperator(AstNode const* condition, AstNode const*
 
 /// @brief create an AST attribute access node
 /// note that the caller must make sure that char* data remains valid!
-AstNode* Ast::createNodeAttributeAccess(AstNode const* accessed, std::string_view name) {
+AstNode* Ast::createNodeAttributeAccess(AstNode const* accessed,
+                                        std::string_view name) {
   AstNode* node = createNode(NODE_TYPE_ATTRIBUTE_ACCESS);
   node->addMember(accessed);
   node->setStringValue(name.data(), name.size());
@@ -989,10 +1057,12 @@ AstNode* Ast::createNodeAttributeAccess(AstNode const* accessed, std::string_vie
 }
 
 /// @brief create an AST attribute access node w/ bind parameter
-AstNode* Ast::createNodeBoundAttributeAccess(AstNode const* accessed, AstNode const* parameter) {
+AstNode* Ast::createNodeBoundAttributeAccess(AstNode const* accessed,
+                                             AstNode const* parameter) {
   AstNode* node = createNode(NODE_TYPE_BOUND_ATTRIBUTE_ACCESS);
   node->reserve(2);
-  node->setStringValue(parameter->getStringValue(), parameter->getStringLength());
+  node->setStringValue(parameter->getStringValue(),
+                       parameter->getStringLength());
   node->addMember(accessed);
   node->addMember(parameter);
 
@@ -1002,7 +1072,8 @@ AstNode* Ast::createNodeBoundAttributeAccess(AstNode const* accessed, AstNode co
 }
 
 /// @brief create an AST indexed access node
-AstNode* Ast::createNodeIndexedAccess(AstNode const* accessed, AstNode const* indexValue) {
+AstNode* Ast::createNodeIndexedAccess(AstNode const* accessed,
+                                      AstNode const* indexValue) {
   AstNode* node = createNode(NODE_TYPE_INDEXED_ACCESS);
   node->reserve(2);
   node->addMember(accessed);
@@ -1012,7 +1083,8 @@ AstNode* Ast::createNodeIndexedAccess(AstNode const* accessed, AstNode const* in
 }
 
 /// @brief create an AST array limit node (offset, count)
-AstNode* Ast::createNodeArrayLimit(AstNode const* offset, AstNode const* count) {
+AstNode* Ast::createNodeArrayLimit(AstNode const* offset,
+                                   AstNode const* count) {
   AstNode* node = createNode(NODE_TYPE_ARRAY_LIMIT);
   node->reserve(2);
 
@@ -1027,8 +1099,9 @@ AstNode* Ast::createNodeArrayLimit(AstNode const* offset, AstNode const* count) 
 
 /// @brief create an AST expansion node, with or without a filter
 AstNode* Ast::createNodeExpansion(int64_t levels, AstNode const* iterator,
-                                  AstNode const* expanded, AstNode const* filter,
-                                  AstNode const* limit, AstNode const* projection) {
+                                  AstNode const* expanded,
+                                  AstNode const* filter, AstNode const* limit,
+                                  AstNode const* projection) {
   AstNode* node = createNode(NODE_TYPE_EXPANSION);
   node->reserve(5);
   node->setIntValue(levels);
@@ -1070,7 +1143,8 @@ AstNode* Ast::createNodeIterator(char const* variableName, size_t nameLength,
   AstNode* node = createNode(NODE_TYPE_ITERATOR);
   node->reserve(2);
 
-  AstNode* variable = createNodeVariable(std::string_view(variableName, nameLength), false);
+  AstNode* variable =
+      createNodeVariable(std::string_view(variableName, nameLength), false);
   node->addMember(variable);
   node->addMember(expanded);
 
@@ -1118,12 +1192,13 @@ AstNode* Ast::createNodeValueInt(int64_t value) {
 
 /// @brief create an AST double value node
 AstNode* Ast::createNodeValueDouble(double value) {
-  if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL || value == -HUGE_VAL) {
+  if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL ||
+      value == -HUGE_VAL) {
     return createNodeValueNull();
   }
 
   if (value == -0.0) {
-    // unify -0.0 and +0.0 
+    // unify -0.0 and +0.0
     value = 0.0;
   }
   AstNode* node = createNode(NODE_TYPE_VALUE);
@@ -1189,7 +1264,8 @@ AstNode* Ast::createNodeArray(size_t size) {
 
 /// @brief create an AST unique array node, AND-merged from two other arrays
 /// the resulting array has no particular order
-AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs, AstNode const* rhs) {
+AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs,
+                                         AstNode const* rhs) {
   TRI_ASSERT(lhs->isArray() && lhs->isConstant());
   TRI_ASSERT(rhs->isArray() && rhs->isConstant());
 
@@ -1203,7 +1279,8 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs, AstNode const* rhs)
     std::swap(nl, nr);
   }
 
-  std::unordered_map<VPackSlice, AstNode const*, arangodb::basics::VelocyPackHelper::VPackHash,
+  std::unordered_map<VPackSlice, AstNode const*,
+                     arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
       cache(nl, arangodb::basics::VelocyPackHelper::VPackHash(),
             arangodb::basics::VelocyPackHelper::VPackEqual());
@@ -1225,8 +1302,7 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs, AstNode const* rhs)
 
     auto it = cache.find(slice);
 
-    if (it != cache.end() &&
-        (*it).second != nullptr) {
+    if (it != cache.end() && (*it).second != nullptr) {
       // add to output
       node->addMember((*it).second);
       // make sure we don't add the same value again
@@ -1248,7 +1324,8 @@ AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
 
   auto node = createNodeArray(nl + nr);
 
-  std::unordered_map<VPackSlice, AstNode const*, arangodb::basics::VelocyPackHelper::VPackHash,
+  std::unordered_map<VPackSlice, AstNode const*,
+                     arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
       cache(nl + nr, arangodb::basics::VelocyPackHelper::VPackHash(),
             arangodb::basics::VelocyPackHelper::VPackEqual());
@@ -1279,7 +1356,8 @@ AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
 AstNode* Ast::createNodeObject() { return createNode(NODE_TYPE_OBJECT); }
 
 /// @brief create an AST object element node
-AstNode* Ast::createNodeObjectElement(std::string_view attributeName, AstNode const* expression) {
+AstNode* Ast::createNodeObjectElement(std::string_view attributeName,
+                                      AstNode const* expression) {
   AstNode* node = createNode(NODE_TYPE_OBJECT_ELEMENT);
   node->setStringValue(attributeName.data(), attributeName.size());
   node->addMember(expression);
@@ -1299,8 +1377,9 @@ AstNode* Ast::createNodeCalculatedObjectElement(AstNode const* attributeName,
 }
 
 /// @brief create an AST with collections node
-AstNode* Ast::createNodeWithCollections(AstNode const* collections,
-                                        arangodb::CollectionNameResolver const& resolver) {
+AstNode* Ast::createNodeWithCollections(
+    AstNode const* collections,
+    arangodb::CollectionNameResolver const& resolver) {
   AstNode* node = createNode(NODE_TYPE_COLLECTION_LIST);
 
   TRI_ASSERT(collections->type == NODE_TYPE_ARRAY);
@@ -1312,13 +1391,17 @@ AstNode* Ast::createNodeWithCollections(AstNode const* collections,
       std::string const name = c->getString();
       std::string_view nameRef(name);
       // this call may update nameRef, but it doesn't matter
-      LogicalDataSource::Category const* category =
-          injectDataSourceInQuery(*this, resolver, AccessMode::Type::READ, false, nameRef);
+      LogicalDataSource::Category const* category = injectDataSourceInQuery(
+          *this, resolver, AccessMode::Type::READ, false, nameRef);
       if (category == LogicalCollection::category()) {
-        _query.collections().add(name, AccessMode::Type::READ, Collection::Hint::Collection);
+        _query.collections().add(name, AccessMode::Type::READ,
+                                 Collection::Hint::Collection);
 
         if (ServerState::instance()->isCoordinator()) {
-          auto& ci = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+          auto& ci = _query.vocbase()
+                         .server()
+                         .getFeature<ClusterFeature>()
+                         .clusterInfo();
 
           // We want to tolerate that a collection name is given here
           // which does not exist, if only for some unit tests:
@@ -1329,8 +1412,9 @@ AstNode* Ast::createNodeWithCollections(AstNode const* collections,
             for (auto const& n : names) {
               std::string_view shardsNameRef(n);
               LogicalDataSource::Category const* shardsCategory =
-                  injectDataSourceInQuery(*this, resolver, AccessMode::Type::READ,
-                                          false, shardsNameRef);
+                  injectDataSourceInQuery(*this, resolver,
+                                          AccessMode::Type::READ, false,
+                                          shardsNameRef);
               TRI_ASSERT(shardsCategory == LogicalCollection::category());
             }
           }
@@ -1359,11 +1443,14 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
   auto ss = ServerState::instance();
   auto doTheAdd = [&](std::string const& name) {
     std::string_view nameRef(name);
-    LogicalDataSource::Category const* category =
-        injectDataSourceInQuery(*this, resolver, AccessMode::Type::READ, false, nameRef);
+    LogicalDataSource::Category const* category = injectDataSourceInQuery(
+        *this, resolver, AccessMode::Type::READ, false, nameRef);
     if (category == LogicalCollection::category()) {
       if (ss->isCoordinator()) {
-        auto& ci = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+        auto& ci = _query.vocbase()
+                       .server()
+                       .getFeature<ClusterFeature>()
+                       .clusterInfo();
         auto c = ci.getCollectionNT(_query.vocbase().name(), name);
         if (c != nullptr) {
           auto const& names = c->realNames();
@@ -1378,9 +1465,9 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
         }  // else { TODO Should we really not react? }
       }
     } else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
-                                     std::string(nameRef) +
-                                         " is required to be a collection.");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
+          std::string(nameRef) + " is required to be a collection.");
     }
   };
 
@@ -1432,7 +1519,8 @@ AstNode* Ast::createNodeDirection(uint64_t direction, AstNode const* steps) {
   return node;
 }
 
-AstNode* Ast::createNodeCollectionDirection(uint64_t direction, AstNode const* collection) {
+AstNode* Ast::createNodeCollectionDirection(uint64_t direction,
+                                            AstNode const* collection) {
   AstNode* node = createNode(NODE_TYPE_DIRECTION);
   node->reserve(2);
   AstNode* dir = createNodeValueInt(direction);
@@ -1445,7 +1533,8 @@ AstNode* Ast::createNodeCollectionDirection(uint64_t direction, AstNode const* c
 }
 
 /// @brief create an AST traversal node
-AstNode* Ast::createNodeTraversal(AstNode const* outVars, AstNode const* graphInfo) {
+AstNode* Ast::createNodeTraversal(AstNode const* outVars,
+                                  AstNode const* graphInfo) {
   TRI_ASSERT(outVars->type == NODE_TYPE_ARRAY);
   TRI_ASSERT(graphInfo->type == NODE_TYPE_ARRAY);
   AstNode* node = createNode(NODE_TYPE_TRAVERSAL);
@@ -1464,7 +1553,8 @@ AstNode* Ast::createNodeTraversal(AstNode const* outVars, AstNode const* graphIn
   for (size_t i = 0; i < outVars->numMembers(); ++i) {
     node->addMember(outVars->getMemberUnchecked(i));
   }
-  TRI_ASSERT(node->numMembers() == graphInfo->numMembers() + outVars->numMembers());
+  TRI_ASSERT(node->numMembers() ==
+             graphInfo->numMembers() + outVars->numMembers());
 
   _containsTraversal = true;
 
@@ -1472,7 +1562,8 @@ AstNode* Ast::createNodeTraversal(AstNode const* outVars, AstNode const* graphIn
 }
 
 /// @brief create an AST shortest path node
-AstNode* Ast::createNodeShortestPath(AstNode const* outVars, AstNode const* graphInfo) {
+AstNode* Ast::createNodeShortestPath(AstNode const* outVars,
+                                     AstNode const* graphInfo) {
   TRI_ASSERT(outVars->type == NODE_TYPE_ARRAY);
   TRI_ASSERT(graphInfo->type == NODE_TYPE_ARRAY);
   AstNode* node = createNode(NODE_TYPE_SHORTEST_PATH);
@@ -1491,7 +1582,8 @@ AstNode* Ast::createNodeShortestPath(AstNode const* outVars, AstNode const* grap
   for (size_t i = 0; i < outVars->numMembers(); ++i) {
     node->addMember(outVars->getMemberUnchecked(i));
   }
-  TRI_ASSERT(node->numMembers() == graphInfo->numMembers() + outVars->numMembers());
+  TRI_ASSERT(node->numMembers() ==
+             graphInfo->numMembers() + outVars->numMembers());
 
   _containsTraversal = true;
 
@@ -1499,7 +1591,9 @@ AstNode* Ast::createNodeShortestPath(AstNode const* outVars, AstNode const* grap
 }
 
 /// @brief create an AST k-shortest paths or k-paths node
-AstNode* Ast::createNodeKShortestPaths(arangodb::graph::ShortestPathType::Type type, AstNode const* outVars, AstNode const* graphInfo) {
+AstNode* Ast::createNodeKShortestPaths(
+    arangodb::graph::ShortestPathType::Type type, AstNode const* outVars,
+    AstNode const* graphInfo) {
   TRI_ASSERT(outVars->type == NODE_TYPE_ARRAY);
   TRI_ASSERT(graphInfo->type == NODE_TYPE_ARRAY);
   AstNode* node = createNode(NODE_TYPE_K_SHORTEST_PATHS);
@@ -1508,8 +1602,8 @@ AstNode* Ast::createNodeKShortestPaths(arangodb::graph::ShortestPathType::Type t
   TRI_ASSERT(graphInfo->numMembers() == 5);
   TRI_ASSERT(outVars->numMembers() == 1);
 
-  TRI_ASSERT(type == arangodb::graph::ShortestPathType::Type::KShortestPaths || 
-             type == arangodb::graph::ShortestPathType::Type::KPaths); 
+  TRI_ASSERT(type == arangodb::graph::ShortestPathType::Type::KShortestPaths ||
+             type == arangodb::graph::ShortestPathType::Type::KPaths);
 
   // type: K_SHORTEST_PATH vs. K_PATHS
   TRI_ASSERT(node->numMembers() == 0);
@@ -1525,7 +1619,8 @@ AstNode* Ast::createNodeKShortestPaths(arangodb::graph::ShortestPathType::Type t
   for (size_t i = 0; i < outVars->numMembers(); ++i) {
     node->addMember(outVars->getMemberUnchecked(i));
   }
-  TRI_ASSERT(node->numMembers() == 1 + graphInfo->numMembers() + outVars->numMembers());
+  TRI_ASSERT(node->numMembers() ==
+             1 + graphInfo->numMembers() + outVars->numMembers());
 
   _containsTraversal = true;
 
@@ -1540,7 +1635,8 @@ AstNode const* Ast::createNodeOptions(AstNode const* options) const {
 }
 
 /// @brief create an AST function call node for aggregate functions
-AstNode* Ast::createNodeAggregateFunctionCall(std::string_view functionName, AstNode const* arguments) {
+AstNode* Ast::createNodeAggregateFunctionCall(std::string_view functionName,
+                                              AstNode const* arguments) {
   auto [normalized, isBuiltIn] = normalizeFunctionName(functionName);
 
   if (!Aggregator::isValid(normalized)) {
@@ -1553,11 +1649,13 @@ AstNode* Ast::createNodeAggregateFunctionCall(std::string_view functionName, Ast
 
   if (Aggregator::requiresInput(normalized)) {
     // validate number of function call arguments
-    size_t numExpectedArguments = 1; // at the moment all aggregators take only a single argument
+    size_t numExpectedArguments =
+        1;  // at the moment all aggregators take only a single argument
     if (arguments->numMembers() != numExpectedArguments) {
       std::string temp(functionName);
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
-                                    temp.c_str(), 1, 1);
+      THROW_ARANGO_EXCEPTION_PARAMS(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, temp.c_str(), 1,
+          1);
     }
   }
 
@@ -1565,8 +1663,9 @@ AstNode* Ast::createNodeAggregateFunctionCall(std::string_view functionName, Ast
   AstNode* node = createNode(NODE_TYPE_FCALL);
 
   // Register a pointer to the function.
-  // However, this function is never called, but the function name is later translated to an aggregator.
-  // This also implies that ATM we can only support aggregator functions that also have a matching AQL function.
+  // However, this function is never called, but the function name is later
+  // translated to an aggregator. This also implies that ATM we can only support
+  // aggregator functions that also have a matching AQL function.
   auto& server = query().vocbase().server();
   auto func = server.getFeature<AqlFunctionFeature>().byName(normalized);
   TRI_ASSERT(func != nullptr);
@@ -1579,7 +1678,8 @@ AstNode* Ast::createNodeAggregateFunctionCall(std::string_view functionName, Ast
 
 /// @brief create an AST function call node
 AstNode* Ast::createNodeFunctionCall(std::string_view functionName,
-                                     AstNode const* arguments, bool allowInternalFunctions) {
+                                     AstNode const* arguments,
+                                     bool allowInternalFunctions) {
   auto [normalized, isBuiltIn] = normalizeFunctionName(functionName);
 
   AstNode* node;
@@ -1589,15 +1689,20 @@ AstNode* Ast::createNodeFunctionCall(std::string_view functionName,
     auto& server = query().vocbase().server();
     auto func = server.getFeature<AqlFunctionFeature>().byName(normalized);
     TRI_ASSERT(func != nullptr);
-    
+
     if (!allowInternalFunctions && func->hasFlag(Function::Flags::Internal)) {
-      // a function flagged as internal, but internal functions cannot be used in this context.
-      // throw an error pretending that the function does not exist
-      std::string msg = basics::Exception::FillExceptionString(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, normalized.c_str());
-      msg.append(" - this is an internal function and not supposed to be used directly");
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, std::move(msg));
+      // a function flagged as internal, but internal functions cannot be used
+      // in this context. throw an error pretending that the function does not
+      // exist
+      std::string msg = basics::Exception::FillExceptionString(
+          TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, normalized.c_str());
+      msg.append(
+          " - this is an internal function and not supposed to be used "
+          "directly");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN,
+                                     std::move(msg));
     }
-   
+
     node = createNode(NODE_TYPE_FCALL);
     // register a pointer to the function
     node->setData(static_cast<void const*>(func));
@@ -1613,14 +1718,15 @@ AstNode* Ast::createNodeFunctionCall(std::string_view functionName,
     if (n < numExpectedArguments.first || n > numExpectedArguments.second) {
       // string_view is not necessarily null-terminated...
       std::string const fname(functionName);
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
-                                    fname.c_str(),
-                                    static_cast<int>(numExpectedArguments.first),
-                                    static_cast<int>(numExpectedArguments.second));
+      THROW_ARANGO_EXCEPTION_PARAMS(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, fname.c_str(),
+          static_cast<int>(numExpectedArguments.first),
+          static_cast<int>(numExpectedArguments.second));
     }
-    
+
     if (func->hasFlag(Function::Flags::CanReadDocuments)) {
-      // this also qualifies a query for potentially reading documents via function calls!
+      // this also qualifies a query for potentially reading documents via
+      // function calls!
       _functionsMayAccessDocuments = true;
     }
   } else {
@@ -1649,11 +1755,14 @@ AstNode* Ast::createNodeRange(AstNode const* start, AstNode const* end) {
 }
 
 /// @brief create an AST nop node
-AstNode* Ast::createNodeNop() { return const_cast<AstNode*>(&_specialNodes.NopNode); }
+AstNode* Ast::createNodeNop() {
+  return const_cast<AstNode*>(&_specialNodes.NopNode);
+}
 
 /// @brief create an AST n-ary operator node
 AstNode* Ast::createNodeNaryOperator(AstNodeType type) {
-  TRI_ASSERT(type == NODE_TYPE_OPERATOR_NARY_AND || type == NODE_TYPE_OPERATOR_NARY_OR);
+  TRI_ASSERT(type == NODE_TYPE_OPERATOR_NARY_AND ||
+             type == NODE_TYPE_OPERATOR_NARY_OR);
 
   return createNode(type);
 }
@@ -1667,24 +1776,28 @@ AstNode* Ast::createNodeNaryOperator(AstNodeType type, AstNode const* child) {
 }
 
 /// @brief injects bind parameters into the AST
-void Ast::injectBindParameters(BindParameters& parameters,
-                               arangodb::CollectionNameResolver const& resolver) {
+void Ast::injectBindParameters(
+    BindParameters& parameters,
+    arangodb::CollectionNameResolver const& resolver) {
   if (_containsBindParameters || _containsTraversal) {
     // inject bind parameters into query AST
     auto func = [&](AstNode* node) -> AstNode* {
-      if (node->type == NODE_TYPE_PARAMETER || node->type == NODE_TYPE_PARAMETER_DATASOURCE) {
+      if (node->type == NODE_TYPE_PARAMETER ||
+          node->type == NODE_TYPE_PARAMETER_DATASOURCE) {
         // found a bind parameter in the query string
         std::string const param = node->getString();
 
         if (param.empty()) {
           // parameter name must not be empty
-          ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param);
+          ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING,
+                                param);
         }
 
         VPackSlice value = parameters.markUsed(param);
         if (value.isNone()) {
           // query uses a bind parameter that was not defined by the user
-          ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param);
+          ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING,
+                                param);
         }
 
         if (node->type == NODE_TYPE_PARAMETER) {
@@ -1709,11 +1822,12 @@ void Ast::injectBindParameters(BindParameters& parameters,
           }
         } else {
           TRI_ASSERT(node->type == NODE_TYPE_PARAMETER_DATASOURCE);
-         
+
           if (!value.isString()) {
             // we can get here in case `WITH @col ...` when the value of @col
             // is not a string
-            ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, param);
+            ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
+                                  param);
             // query will have been aborted here
           }
 
@@ -1730,14 +1844,16 @@ void Ast::injectBindParameters(BindParameters& parameters,
           for (auto const& it : _writeCollections) {
             auto const& c = it.first;
 
-            if (c->type == NODE_TYPE_PARAMETER_DATASOURCE && paramRef == c->getStringView()) {
+            if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
+                paramRef == c->getStringView()) {
               // bind parameter still present in _writeCollections
               TRI_ASSERT(newNode == nullptr);
               isWriteCollection = true;
               break;
-            } else if (c->type == NODE_TYPE_COLLECTION && name == c->getStringView()) {
-              // bind parameter was already replaced with a proper collection node 
-              // in _writeCollections
+            } else if (c->type == NODE_TYPE_COLLECTION &&
+                       name == c->getStringView()) {
+              // bind parameter was already replaced with a proper collection
+              // node in _writeCollections
               TRI_ASSERT(newNode == nullptr);
               isWriteCollection = true;
               newNode = const_cast<AstNode*>(c);
@@ -1748,10 +1864,11 @@ void Ast::injectBindParameters(BindParameters& parameters,
           TRI_ASSERT(newNode == nullptr || isWriteCollection);
 
           if (newNode == nullptr) {
-            newNode = createNodeDataSource(resolver, name,
-                                           isWriteCollection ? AccessMode::Type::WRITE
-                                                             : AccessMode::Type::READ,
-                                        false, true);
+            newNode =
+                createNodeDataSource(resolver, name,
+                                     isWriteCollection ? AccessMode::Type::WRITE
+                                                       : AccessMode::Type::READ,
+                                     false, true);
             TRI_ASSERT(newNode != nullptr);
 
             if (isWriteCollection) {
@@ -1760,7 +1877,8 @@ void Ast::injectBindParameters(BindParameters& parameters,
               for (auto& it : _writeCollections) {
                 auto& c = it.first;
 
-                if (c->type == NODE_TYPE_PARAMETER_DATASOURCE && paramRef == c->getStringView()) {
+                if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
+                    paramRef == c->getStringView()) {
                   c = newNode;
                   // no break here. replace all occurrences
                 }
@@ -1774,10 +1892,12 @@ void Ast::injectBindParameters(BindParameters& parameters,
         auto name = node->getMember(1);
 
         if (name->type == NODE_TYPE_VALUE) {
-          if (name->value.type == VALUE_TYPE_STRING && name->value.length != 0) {
+          if (name->value.type == VALUE_TYPE_STRING &&
+              name->value.length != 0) {
             // convert into a regular attribute access node to simplify handling
             // later
-            return createNodeAttributeAccess(node->getMember(0), name->getStringView());
+            return createNodeAttributeAccess(node->getMember(0),
+                                             name->getStringView());
           }
         } else if (name->type == NODE_TYPE_ARRAY) {
           // bind parameter is an array (e.g. ["a", "b", "c"]. now build the
@@ -1791,7 +1911,8 @@ void Ast::injectBindParameters(BindParameters& parameters,
 
           for (size_t i = 0; i < n; ++i) {
             auto part = name->getMember(i);
-            if (part->value.type != VALUE_TYPE_STRING || part->value.length == 0) {
+            if (part->value.type != VALUE_TYPE_STRING ||
+                part->value.length == 0) {
               // invalid attribute name part
               result = nullptr;
               break;
@@ -1830,10 +1951,15 @@ void Ast::injectBindParameters(BindParameters& parameters,
     bool isExclusive = it.second;
     if (c->type == NODE_TYPE_COLLECTION) {
       std::string const name = c->getString();
-      _query.collections().add(name, isExclusive ? AccessMode::Type::EXCLUSIVE
-                                              : AccessMode::Type::WRITE, Collection::Hint::Collection);
+      _query.collections().add(
+          name,
+          isExclusive ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE,
+          Collection::Hint::Collection);
       if (ServerState::instance()->isCoordinator()) {
-        auto& ci = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+        auto& ci = _query.vocbase()
+                       .server()
+                       .getFeature<ClusterFeature>()
+                       .clusterInfo();
 
         // We want to tolerate that a collection name is given here
         // which does not exist, if only for some unit tests:
@@ -1842,8 +1968,10 @@ void Ast::injectBindParameters(BindParameters& parameters,
           auto names = coll->realNames();
 
           for (auto const& n : names) {
-            _query.collections().add(n, isExclusive ? AccessMode::Type::EXCLUSIVE
-                                                 : AccessMode::Type::WRITE, Collection::Hint::Collection);
+            _query.collections().add(n,
+                                     isExclusive ? AccessMode::Type::EXCLUSIVE
+                                                 : AccessMode::Type::WRITE,
+                                     Collection::Hint::Collection);
           }
         }
       }
@@ -1853,14 +1981,16 @@ void Ast::injectBindParameters(BindParameters& parameters,
   // visit all bind parameters to ensure that they are all marked as used
   parameters.visit([](std::string const& key, VPackSlice /*value*/, bool used) {
     if (!used) {
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED, key.c_str());
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED,
+                                    key.c_str());
     }
   });
 }
 
 /// @brief replace an attribute access with just the variable
-AstNode* Ast::replaceAttributeAccess(AstNode* node, Variable const* variable,
-                                     std::vector<std::string> const& attribute) {
+AstNode* Ast::replaceAttributeAccess(
+    AstNode* node, Variable const* variable,
+    std::vector<std::string> const& attribute) {
   TRI_ASSERT(!attribute.empty());
   if (attribute.empty()) {
     return node;
@@ -1913,9 +2043,10 @@ AstNode* Ast::replaceAttributeAccess(AstNode* node, Variable const* variable,
 }
 
 /// @brief replace variables
-/*static*/ AstNode* Ast::replaceVariables(AstNode* node,
-                                          std::unordered_map<VariableId, Variable const*> const& replacements,
-                                          bool unlockNodes) {
+/*static*/ AstNode* Ast::replaceVariables(
+    AstNode* node,
+    std::unordered_map<VariableId, Variable const*> const& replacements,
+    bool unlockNodes) {
   auto visitor = [&replacements, &unlockNodes](AstNode* node) -> AstNode* {
     if (node == nullptr) {
       return nullptr;
@@ -1950,8 +2081,8 @@ AstNode* Ast::replaceAttributeAccess(AstNode* node, Variable const* variable,
 /// @brief replace a variable reference in the expression with another
 /// expression (e.g. inserting c = `a + b` into expression `c + 1` so the latter
 /// becomes `a + b + 1`
-/*static*/ AstNode* Ast::replaceVariableReference(AstNode* node, Variable const* variable,
-                                       AstNode const* expressionNode) {
+/*static*/ AstNode* Ast::replaceVariableReference(
+    AstNode* node, Variable const* variable, AstNode const* expressionNode) {
   struct SearchPattern {
     Variable const* variable;
     AstNode const* expressionNode;
@@ -1986,7 +2117,8 @@ size_t Ast::validatedParallelism(AstNode const* value) {
       return static_cast<size_t>(p);
     }
   }
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "parallelism: invalid value");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                 "parallelism: invalid value");
 }
 
 size_t Ast::extractParallelism(AstNode const* optionsNode) {
@@ -2019,14 +2151,14 @@ size_t Ast::extractParallelism(AstNode const* optionsNode) {
 void Ast::validateAndOptimize(transaction::Methods& trx) {
   struct TraversalContext {
     TraversalContext(transaction::Methods& t) : trx(t) {}
-    
+
     std::unordered_set<std::string> writeCollectionsSeen;
     std::unordered_map<Variable const*, AstNode const*> variableDefinitions;
     AqlFunctionsInternalCache aqlFunctionsInternalCache;
     transaction::Methods& trx;
     int64_t stopOptimizationRequests = 0;
-    int64_t nestingLevel = 0;  // only used for subqueries
-    int64_t filterDepth = -1;  // -1 = not in filter
+    int64_t nestingLevel = 0;     // only used for subqueries
+    int64_t filterDepth = -1;     // -1 = not in filter
     uint64_t recursionDepth = 0;  // current depth of the tree we walk
     bool hasSeenAnyWriteNode = false;
     bool hasSeenWriteNodeInCurrentScope = false;
@@ -2036,7 +2168,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
 
   auto preVisitor = [&](AstNode const* node) -> bool {
     auto ctx = &context;
-    
+
     if (ctx->filterDepth >= 0) {
       ++ctx->filterDepth;
     }
@@ -2073,8 +2205,10 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
       ++ctx->nestingLevel;
     } else if (node->hasFlag(FLAG_BIND_PARAMETER)) {
       return false;
-    } else if (node->type == NODE_TYPE_REMOVE || node->type == NODE_TYPE_INSERT ||
-               node->type == NODE_TYPE_UPDATE || node->type == NODE_TYPE_REPLACE ||
+    } else if (node->type == NODE_TYPE_REMOVE ||
+               node->type == NODE_TYPE_INSERT ||
+               node->type == NODE_TYPE_UPDATE ||
+               node->type == NODE_TYPE_REPLACE ||
                node->type == NODE_TYPE_UPSERT) {
       if (ctx->hasSeenWriteNodeInCurrentScope) {
         // no two data-modification nodes are allowed in the same scope
@@ -2087,7 +2221,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
       // nothing to be done in constant arrays
       return false;
     }
-    
+
     if (++ctx->recursionDepth > maxExpressionNesting) {
       // maximum nesting level for expressions/other constructs reached.
       // we abort to prevent a potential stack overflow
@@ -2099,7 +2233,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
 
   auto postVisitor = [&](AstNode const* node) -> void {
     auto ctx = &context;
-   
+
     TRI_ASSERT(ctx->recursionDepth > 0);
     --ctx->recursionDepth;
 
@@ -2111,8 +2245,10 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
       ctx->filterDepth = -1;
     } else if (node->type == NODE_TYPE_SUBQUERY) {
       --ctx->nestingLevel;
-    } else if (node->type == NODE_TYPE_REMOVE || node->type == NODE_TYPE_INSERT ||
-               node->type == NODE_TYPE_UPDATE || node->type == NODE_TYPE_REPLACE ||
+    } else if (node->type == NODE_TYPE_REMOVE ||
+               node->type == NODE_TYPE_INSERT ||
+               node->type == NODE_TYPE_UPDATE ||
+               node->type == NODE_TYPE_REPLACE ||
                node->type == NODE_TYPE_UPSERT) {
       ctx->hasSeenAnyWriteNode = true;
 
@@ -2132,23 +2268,25 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
       }
     } else if (node->type == NODE_TYPE_AGGREGATIONS) {
       --ctx->stopOptimizationRequests;
-    } else if (node->type == NODE_TYPE_ARRAY && node->hasFlag(DETERMINED_CONSTANT) &&
+    } else if (node->type == NODE_TYPE_ARRAY &&
+               node->hasFlag(DETERMINED_CONSTANT) &&
                !node->hasFlag(VALUE_CONSTANT) && node->numMembers() < 10) {
-      // optimization attempt: we are speculating that this array contains function
-      // call parameters, which may have been optimized somehow.
-      // if the array is marked as non-const, we remove this non-const marker so its
+      // optimization attempt: we are speculating that this array contains
+      // function call parameters, which may have been optimized somehow. if the
+      // array is marked as non-const, we remove this non-const marker so its
       // constness will be checked upon next attempt again
       // this allows optimizing cases such as FUNC1(FUNC2(...)):
-      // in this case, due to the depth-first traversal we will first optimize FUNC2(...)
-      // and replace it with a constant value. This will turn the Ast into FUNC1(const),
-      // which may be optimized further if FUNC1 is deterministic.
-      // However, function parameters are stored in ARRAY Ast nodes, which do not have
-      // a back pointer to the actual function, so all we can do here is guess and
-      // speculate that the array contained actual function call parameters
-      // note: the max array length of 10 is chosen arbitrarily based on the assumption
-      // that function calls normally have few parameters only, and it puts a cap
-      // on the additional costs of having to re-calculate the const-determination flags
-      // for all array members later on
+      // in this case, due to the depth-first traversal we will first optimize
+      // FUNC2(...) and replace it with a constant value. This will turn the Ast
+      // into FUNC1(const), which may be optimized further if FUNC1 is
+      // deterministic. However, function parameters are stored in ARRAY Ast
+      // nodes, which do not have a back pointer to the actual function, so all
+      // we can do here is guess and speculate that the array contained actual
+      // function call parameters note: the max array length of 10 is chosen
+      // arbitrarily based on the assumption that function calls normally have
+      // few parameters only, and it puts a cap on the additional costs of
+      // having to re-calculate the const-determination flags for all array
+      // members later on
       node->removeFlag(DETERMINED_CONSTANT);
       node->removeFlag(VALUE_CONSTANT);
     }
@@ -2172,21 +2310,27 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
     }
 
     // binary operators
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_AND || node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
       return this->optimizeBinaryOperatorLogical(node, ctx->filterDepth == 1);
     }
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ ||
-        node->type == NODE_TYPE_OPERATOR_BINARY_NE || node->type == NODE_TYPE_OPERATOR_BINARY_LT ||
-        node->type == NODE_TYPE_OPERATOR_BINARY_LE || node->type == NODE_TYPE_OPERATOR_BINARY_GT ||
-        node->type == NODE_TYPE_OPERATOR_BINARY_GE || node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_NE ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_LT ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_GT ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
         node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
-      return this->optimizeBinaryOperatorRelational(ctx->trx, ctx->aqlFunctionsInternalCache, node);
+      return this->optimizeBinaryOperatorRelational(
+          ctx->trx, ctx->aqlFunctionsInternalCache, node);
     }
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS ||
         node->type == NODE_TYPE_OPERATOR_BINARY_MINUS ||
-        node->type == NODE_TYPE_OPERATOR_BINARY_TIMES || node->type == NODE_TYPE_OPERATOR_BINARY_DIV ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_TIMES ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_DIV ||
         node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
       return this->optimizeBinaryOperatorArithmetic(node);
     }
@@ -2212,7 +2356,8 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
     if (node->type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(node->getData());
 
-      if (ctx->hasSeenAnyWriteNode && func->hasFlag(Function::Flags::CanReadDocuments)) {
+      if (ctx->hasSeenAnyWriteNode &&
+          func->hasFlag(Function::Flags::CanReadDocuments)) {
         // we have a document-reading function _after_ a modification/write
         // operation. this is disallowed
         std::string name("function ");
@@ -2223,7 +2368,8 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
 
       if (ctx->stopOptimizationRequests == 0) {
         // optimization allowed
-        return this->optimizeFunctionCall(ctx->trx, ctx->aqlFunctionsInternalCache, node);
+        return this->optimizeFunctionCall(ctx->trx,
+                                          ctx->aqlFunctionsInternalCache, node);
       }
       // optimization not allowed
       return node;
@@ -2374,7 +2520,8 @@ size_t Ast::countReferences(AstNode const* node, Variable const* search) {
 
 /// @brief determines the top-level attributes referenced in an expression,
 /// grouped by variable name
-TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node, bool& isSafeForOptimization) {
+TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node,
+                                                bool& isSafeForOptimization) {
   TopLevelAttributes result;
 
   // traversal state
@@ -2408,12 +2555,11 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node, bool& isSaf
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      auto[it, emp] = result.try_emplace(
-        variable,
-        arangodb::lazyConstruct([&]{
-         return std::unordered_set<std::string>( {std::string(attributeName, nameLength)});
-         })
-      );
+      auto [it, emp] =
+          result.try_emplace(variable, arangodb::lazyConstruct([&] {
+                               return std::unordered_set<std::string>(
+                                   {std::string(attributeName, nameLength)});
+                             }));
       if (emp) {
         // insert attributeName only
         (*it).second.emplace(attributeName, nameLength);
@@ -2488,10 +2634,11 @@ bool Ast::getReferencedAttributes(AstNode const* node, Variable const* variable,
   return state.isSafeForOptimization;
 }
 
-/// @brief determines the attributes (and their subattributes) referenced in an 
+/// @brief determines the attributes (and their subattributes) referenced in an
 /// expression for the specified out variable
-bool Ast::getReferencedAttributesRecursive(AstNode const* node, Variable const* variable,
-                                           std::unordered_set<arangodb::aql::AttributeNamePath>& vars) {
+bool Ast::getReferencedAttributesRecursive(
+    AstNode const* node, Variable const* variable,
+    std::unordered_set<arangodb::aql::AttributeNamePath>& vars) {
   // traversal state
   struct TraversalState {
     Variable const* variable;
@@ -2508,7 +2655,8 @@ bool Ast::getReferencedAttributesRecursive(AstNode const* node, Variable const* 
     }
 
     if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      state.path.path.emplace_back(node->getStringValue(), node->getStringLength());
+      state.path.path.emplace_back(node->getStringValue(),
+                                   node->getStringLength());
       return true;
     }
 
@@ -2549,21 +2697,25 @@ void Ast::copyPayload(AstNode const* node, AstNode* copy) const {
 
   AstNodeType const type = node->type;
 
-  if (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_VIEW || type == NODE_TYPE_PARAMETER ||
-      type == NODE_TYPE_PARAMETER_DATASOURCE || type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-      type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_FCALL_USER) {
+  if (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_VIEW ||
+      type == NODE_TYPE_PARAMETER || type == NODE_TYPE_PARAMETER_DATASOURCE ||
+      type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_OBJECT_ELEMENT ||
+      type == NODE_TYPE_FCALL_USER) {
     copy->setStringValue(node->getStringValue(), node->getStringLength());
-  } else if (type == NODE_TYPE_VARIABLE || type == NODE_TYPE_REFERENCE || type == NODE_TYPE_FCALL) {
+  } else if (type == NODE_TYPE_VARIABLE || type == NODE_TYPE_REFERENCE ||
+             type == NODE_TYPE_FCALL) {
     copy->setData(node->getData());
   } else if (type == NODE_TYPE_UPSERT || type == NODE_TYPE_EXPANSION) {
     copy->setIntValue(node->getIntValue(true));
   } else if (type == NODE_TYPE_QUANTIFIER) {
     copy->setIntValue(node->getIntValue(true));
-  } else if (type == NODE_TYPE_OPERATOR_BINARY_LE || type == NODE_TYPE_OPERATOR_BINARY_LT ||
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_LE ||
+             type == NODE_TYPE_OPERATOR_BINARY_LT ||
              type == NODE_TYPE_OPERATOR_BINARY_EQ) {
     // copy "definitely is not null" information
     copy->setExcludesNull(node->getExcludesNull());
-  } else if (type == NODE_TYPE_OPERATOR_BINARY_IN || type == NODE_TYPE_OPERATOR_BINARY_NIN ||
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
+             type == NODE_TYPE_OPERATOR_BINARY_NIN ||
              type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
              type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
     // copy sortedness information
@@ -2606,7 +2758,7 @@ AstNode* Ast::clone(AstNode const* node) {
     // nop node is a singleton
     return const_cast<AstNode*>(node);
   }
-  
+
   AstNode* copy = createNode(type);
   TRI_ASSERT(copy != nullptr);
 
@@ -2614,11 +2766,11 @@ AstNode* Ast::clone(AstNode const* node) {
   copy->flags = node->flags;
   copy->removeFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
   TEMPORARILY_UNLOCK_NODE(copy);  // if locked, unlock to copy properly
-  
+
   // special handling for certain node types
   // copy payload...
   copyPayload(node, copy);
-  
+
   // recursively clone subnodes
   size_t const n = node->numMembers();
   copy->members.reserve(n);
@@ -2647,7 +2799,7 @@ AstNode* Ast::shallowCopyForModify(AstNode const* node) {
   // special handling for certain node types
   // copy payload...
   copyPayload(node, copy);
-  
+
   // recursively add subnodes
   size_t const n = node->numMembers();
   copy->members.reserve(n);
@@ -2675,7 +2827,7 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
     // nothing to do
     return node;
   }
-  
+
   VPackBuilder temp;
 
   if (node->isSorted()) {
@@ -2700,7 +2852,8 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
   }
 
   // TODO: sort values in place first and compare two adjacent members each
-  std::unordered_map<VPackSlice, AstNode const*, arangodb::basics::VelocyPackHelper::VPackHash,
+  std::unordered_map<VPackSlice, AstNode const*,
+                     arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
       cache(n, arangodb::basics::VelocyPackHelper::VPackHash(),
             arangodb::basics::VelocyPackHelper::VPackEqual());
@@ -2727,7 +2880,8 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
 
 /// @brief check if an operator is reversible
 bool Ast::IsReversibleOperator(AstNodeType type) {
-  return (ReversedOperators.find(static_cast<int>(type)) != ReversedOperators.end());
+  return (ReversedOperators.find(static_cast<int>(type)) !=
+          ReversedOperators.end());
 }
 
 /// @brief get the reversed operator for a comparison operator
@@ -2744,7 +2898,8 @@ AstNodeType Ast::ReverseOperator(AstNodeType type) {
 
 /// @brief get the n-ary operator type equivalent for a binary operator type
 AstNodeType Ast::NaryOperatorType(AstNodeType old) {
-  TRI_ASSERT(old == NODE_TYPE_OPERATOR_BINARY_AND || old == NODE_TYPE_OPERATOR_BINARY_OR);
+  TRI_ASSERT(old == NODE_TYPE_OPERATOR_BINARY_AND ||
+             old == NODE_TYPE_OPERATOR_BINARY_OR);
 
   if (old == NODE_TYPE_OPERATOR_BINARY_AND) {
     return NODE_TYPE_OPERATOR_NARY_AND;
@@ -2758,7 +2913,8 @@ AstNodeType Ast::NaryOperatorType(AstNodeType old) {
 }
 
 bool Ast::IsAndOperatorType(AstNodeType tt) {
-  return tt == NODE_TYPE_OPERATOR_BINARY_AND || tt == NODE_TYPE_OPERATOR_NARY_AND;
+  return tt == NODE_TYPE_OPERATOR_BINARY_AND ||
+         tt == NODE_TYPE_OPERATOR_NARY_AND;
 }
 
 bool Ast::IsOrOperatorType(AstNodeType tt) {
@@ -2786,7 +2942,8 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
   AstNode* result = nullptr;
   ::arangodb::containers::SmallVectorWithArena<std::string_view> attributeParts;
 
-  std::function<void(AstNode const*)> createCondition = [&](AstNode const* object) -> void {
+  std::function<void(AstNode const*)> createCondition =
+      [&](AstNode const* object) -> void {
     TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
 
     auto const n = object->numMembers();
@@ -2811,14 +2968,15 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
           access = createNodeAttributeAccess(access, it);
         }
 
-        auto condition =
-            createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, value);
+        auto condition = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                  access, value);
 
         if (result == nullptr) {
           result = condition;
         } else {
           // AND-combine with previous condition
-          result = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, result, condition);
+          result = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND,
+                                            result, condition);
         }
       }
 
@@ -2877,7 +3035,8 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
     return const_cast<AstNode*>(&_specialNodes.ZeroNode);
   }
 
-  if (converted->value.type != VALUE_TYPE_INT && converted->value.type != VALUE_TYPE_DOUBLE) {
+  if (converted->value.type != VALUE_TYPE_INT &&
+      converted->value.type != VALUE_TYPE_DOUBLE) {
     // non-numeric operand
     return node;
   }
@@ -2886,7 +3045,7 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
     // + number => number
     return const_cast<AstNode*>(converted);
   }
-  
+
   // - number
   if (converted->value.type == VALUE_TYPE_INT) {
     // int64
@@ -2962,7 +3121,8 @@ AstNode* Ast::optimizeUnaryOperatorLogical(AstNode* node) {
 }
 
 /// @brief optimizes the binary logical operators && and ||
-AstNode* Ast::optimizeBinaryOperatorLogical(AstNode* node, bool canModifyResultType) {
+AstNode* Ast::optimizeBinaryOperatorLogical(AstNode* node,
+                                            bool canModifyResultType) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
              node->type == NODE_TYPE_OPERATOR_BINARY_OR);
@@ -3023,9 +3183,9 @@ AstNode* Ast::optimizeBinaryOperatorLogical(AstNode* node, bool canModifyResultT
 }
 
 /// @brief optimizes the binary relational operators <, <=, >, >=, ==, != and IN
-AstNode* Ast::optimizeBinaryOperatorRelational(transaction::Methods& trx,
-                                               AqlFunctionsInternalCache& aqlFunctionsInternalCache,
-                                               AstNode* node) {
+AstNode* Ast::optimizeBinaryOperatorRelational(
+    transaction::Methods& trx,
+    AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
@@ -3036,8 +3196,10 @@ AstNode* Ast::optimizeBinaryOperatorRelational(transaction::Methods& trx,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  if (lhs->isDeterministic() && rhs->type == NODE_TYPE_ARRAY && rhs->numMembers() <= 1 &&
-      (node->type == NODE_TYPE_OPERATOR_BINARY_IN || node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
+  if (lhs->isDeterministic() && rhs->type == NODE_TYPE_ARRAY &&
+      rhs->numMembers() <= 1 &&
+      (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
+       node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
     // turn an IN or a NOT IN with few members into an equality comparison
     if (rhs->numMembers() == 0) {
       // IN with no members returns false
@@ -3054,7 +3216,8 @@ AstNode* Ast::optimizeBinaryOperatorRelational(transaction::Methods& trx,
                                         rhs->getMember(0));
       }
       // and optimize ourselves...
-      return optimizeBinaryOperatorRelational(trx, aqlFunctionsInternalCache, node);
+      return optimizeBinaryOperatorRelational(trx, aqlFunctionsInternalCache,
+                                              node);
     }
     // intentionally falls through
   }
@@ -3065,8 +3228,9 @@ AstNode* Ast::optimizeBinaryOperatorRelational(transaction::Methods& trx,
     return node;
   }
 
-  if (rhs->type != NODE_TYPE_ARRAY && (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
-                                       node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
+  if (rhs->type != NODE_TYPE_ARRAY &&
+      (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
+       node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
     // right operand of IN or NOT IN must be an array or a range, otherwise we
     // return false
     return createNodeValueBool(false);
@@ -3075,8 +3239,10 @@ AstNode* Ast::optimizeBinaryOperatorRelational(transaction::Methods& trx,
   bool const lhsIsConst = lhs->isConstant();
 
   if (!lhsIsConst) {
-    if (rhs->numMembers() >= AstNode::SortNumberThreshold && rhs->type == NODE_TYPE_ARRAY &&
-        (node->type == NODE_TYPE_OPERATOR_BINARY_IN || node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
+    if (rhs->numMembers() >= AstNode::SortNumberThreshold &&
+        rhs->type == NODE_TYPE_ARRAY &&
+        (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
+         node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
       // if the IN list contains a considerable amount of items, we will sort
       // it, so we can find elements quicker later using a binary search
       // note that sorting will also set a flag for the node
@@ -3103,7 +3269,8 @@ AstNode* Ast::optimizeBinaryOperatorRelational(transaction::Methods& trx,
   AqlValue a = exp.execute(&context, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
 
-  AqlValueMaterializer materializer(trx.transactionContextPtr()->getVPackOptions());
+  AqlValueMaterializer materializer(
+      trx.transactionContextPtr()->getVPackOptions());
   return nodeFromVPack(materializer.slice(a, false), true);
 }
 
@@ -3126,7 +3293,8 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
       AstNode const* left = lhs->castToNumber(this);
       AstNode const* right = rhs->castToNumber(this);
 
-      bool useDoublePrecision = (left->isDoubleValue() || right->isDoubleValue());
+      bool useDoublePrecision =
+          (left->isDoubleValue() || right->isDoubleValue());
 
       if (!useDoublePrecision) {
         auto l = left->getIntValue();
@@ -3141,12 +3309,14 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
       }
 
       // must use double precision
-      return createArithmeticResultNode(left->getDoubleValue() + right->getDoubleValue());
+      return createArithmeticResultNode(left->getDoubleValue() +
+                                        right->getDoubleValue());
     } else if (node->type == NODE_TYPE_OPERATOR_BINARY_MINUS) {
       AstNode const* left = lhs->castToNumber(this);
       AstNode const* right = rhs->castToNumber(this);
 
-      bool useDoublePrecision = (left->isDoubleValue() || right->isDoubleValue());
+      bool useDoublePrecision =
+          (left->isDoubleValue() || right->isDoubleValue());
 
       if (!useDoublePrecision) {
         auto l = left->getIntValue();
@@ -3161,12 +3331,14 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
       }
 
       // must use double precision
-      return createArithmeticResultNode(left->getDoubleValue() - right->getDoubleValue());
+      return createArithmeticResultNode(left->getDoubleValue() -
+                                        right->getDoubleValue());
     } else if (node->type == NODE_TYPE_OPERATOR_BINARY_TIMES) {
       AstNode const* left = lhs->castToNumber(this);
       AstNode const* right = rhs->castToNumber(this);
 
-      bool useDoublePrecision = (left->isDoubleValue() || right->isDoubleValue());
+      bool useDoublePrecision =
+          (left->isDoubleValue() || right->isDoubleValue());
 
       if (!useDoublePrecision) {
         auto l = left->getIntValue();
@@ -3181,12 +3353,14 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
       }
 
       // must use double precision
-      return createArithmeticResultNode(left->getDoubleValue() * right->getDoubleValue());
+      return createArithmeticResultNode(left->getDoubleValue() *
+                                        right->getDoubleValue());
     } else if (node->type == NODE_TYPE_OPERATOR_BINARY_DIV) {
       AstNode const* left = lhs->castToNumber(this);
       AstNode const* right = rhs->castToNumber(this);
 
-      bool useDoublePrecision = (left->isDoubleValue() || right->isDoubleValue());
+      bool useDoublePrecision =
+          (left->isDoubleValue() || right->isDoubleValue());
       if (!useDoublePrecision) {
         auto l = left->getIntValue();
         auto r = right->getIntValue();
@@ -3197,7 +3371,8 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
         }
 
         // check if the result would overflow
-        useDoublePrecision = (isUnsafeDivision<int64_t>(l, r) || r < -1 || r > 1);
+        useDoublePrecision =
+            (isUnsafeDivision<int64_t>(l, r) || r < -1 || r > 1);
 
         if (!useDoublePrecision) {
           // can calculate using integers
@@ -3210,12 +3385,14 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
         return const_cast<AstNode*>(&_specialNodes.NullNode);
       }
 
-      return createArithmeticResultNode(left->getDoubleValue() / right->getDoubleValue());
+      return createArithmeticResultNode(left->getDoubleValue() /
+                                        right->getDoubleValue());
     } else if (node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
       AstNode const* left = lhs->castToNumber(this);
       AstNode const* right = rhs->castToNumber(this);
 
-      bool useDoublePrecision = (left->isDoubleValue() || right->isDoubleValue());
+      bool useDoublePrecision =
+          (left->isDoubleValue() || right->isDoubleValue());
       if (!useDoublePrecision) {
         auto l = left->getIntValue();
         auto r = right->getIntValue();
@@ -3258,8 +3435,10 @@ AstNode* Ast::optimizeTernaryOperator(AstNode* node) {
   TRI_ASSERT(node->numMembers() >= 2 && node->numMembers() <= 3);
 
   AstNode* condition = node->getMember(0);
-  AstNode* truePart = (node->numMembers() == 2) ? condition : node->getMember(1);
-  AstNode* falsePart = (node->numMembers() == 2) ? node->getMember(1) : node->getMember(2);
+  AstNode* truePart =
+      (node->numMembers() == 2) ? condition : node->getMember(1);
+  AstNode* falsePart =
+      (node->numMembers() == 2) ? node->getMember(1) : node->getMember(2);
 
   if (condition == nullptr || truePart == nullptr || falsePart == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -3280,7 +3459,8 @@ AstNode* Ast::optimizeTernaryOperator(AstNode* node) {
 
 /// @brief optimizes an attribute access
 AstNode* Ast::optimizeAttributeAccess(
-    AstNode* node, std::unordered_map<Variable const*, AstNode const*> const& variableDefinitions) {
+    AstNode* node, std::unordered_map<Variable const*, AstNode const*> const&
+                       variableDefinitions) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
   TRI_ASSERT(node->numMembers() == 1);
@@ -3289,7 +3469,8 @@ AstNode* Ast::optimizeAttributeAccess(
 
   if (what->type == NODE_TYPE_REFERENCE) {
     // check if the access value is a variable and if it is an alias
-    auto it = variableDefinitions.find(static_cast<Variable const*>(what->getData()));
+    auto it =
+        variableDefinitions.find(static_cast<Variable const*>(what->getData()));
 
     if (it != variableDefinitions.end()) {
       what = (*it).second;
@@ -3310,7 +3491,8 @@ AstNode* Ast::optimizeAttributeAccess(
     for (size_t i = 0; i < n; ++i) {
       AstNode const* member = what->getMember(i);
 
-      if (member->type == NODE_TYPE_OBJECT_ELEMENT && member->getStringLength() == length &&
+      if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
+          member->getStringLength() == length &&
           memcmp(name, member->getStringValue(), length) == 0) {
         // found matching member
         return member->getMember(0);
@@ -3322,8 +3504,9 @@ AstNode* Ast::optimizeAttributeAccess(
 }
 
 /// @brief optimizes a call to a built-in function
-AstNode* Ast::optimizeFunctionCall(transaction::Methods& trx,
-                                   AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node) {
+AstNode* Ast::optimizeFunctionCall(
+    transaction::Methods& trx,
+    AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_FCALL);
   TRI_ASSERT(node->numMembers() == 1);
@@ -3348,9 +3531,11 @@ AstNode* Ast::optimizeFunctionCall(transaction::Methods& trx,
     auto args = node->getMember(0);
     if (args->numMembers() == 1) {
       // replace IS_NULL(x) function call with `x == null`
-      return this->optimizeBinaryOperatorRelational(trx, aqlFunctionsInternalCache, 
-                                                    createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
-                                                                             args->getMemberUnchecked(0), createNodeValueNull()));
+      return this->optimizeBinaryOperatorRelational(
+          trx, aqlFunctionsInternalCache,
+          createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                   args->getMemberUnchecked(0),
+                                   createNodeValueNull()));
     }
 #if 0
   } else if (func->name == "LIKE") {
@@ -3446,7 +3631,8 @@ AstNode* Ast::optimizeFunctionCall(transaction::Methods& trx,
   AqlValue a = exp.execute(&context, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
 
-  AqlValueMaterializer materializer(trx.transactionContextPtr()->getVPackOptions());
+  AqlValueMaterializer materializer(
+      trx.transactionContextPtr()->getVPackOptions());
   return nodeFromVPack(materializer.slice(a, false), true);
 }
 
@@ -3496,7 +3682,8 @@ AstNode* Ast::optimizeIndexedAccess(AstNode* node) {
       // we have to be careful with numeric values here...
       // e.g. array['0'] is not the same as array.0 but must remain a['0'] or
       // (a[0])
-      return createNodeAttributeAccess(node->getMember(0), index->getStringView());
+      return createNodeAttributeAccess(node->getMember(0),
+                                       index->getStringView());
     }
   }
 
@@ -3574,7 +3761,8 @@ AstNode* Ast::optimizeFor(AstNode* node) {
     // right-hand operand to FOR statement is no array
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_ARRAY_EXPECTED,
-        StringUtils::concatT("collection or ", TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED),
+        StringUtils::concatT("collection or ",
+                             TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED),
                              " as operand to FOR loop; you specified type '",
                              expression->getValueTypeString(),
                              "' with content '", expression->toString(), "'"));
@@ -3697,9 +3885,8 @@ AstNode* Ast::nodeFromVPack(VPackSlice slice, bool copyStringValues) {
         attributeName = std::string_view(p, attributeName.size());
       }
 
-      node->addMember(
-          createNodeObjectElement(attributeName,
-                                  nodeFromVPack(current.value, copyStringValues)));
+      node->addMember(createNodeObjectElement(
+          attributeName, nodeFromVPack(current.value, copyStringValues)));
       it.next();
     }
 
@@ -3714,7 +3901,8 @@ AstNode* Ast::nodeFromVPack(VPackSlice slice, bool copyStringValues) {
 }
 
 /// @brief resolve an attribute access
-AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node, bool& isValid) {
+AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node,
+                                                bool& isValid) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
   AstNode const* original = node;
@@ -3789,10 +3977,10 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
 }
 
 /// @brief traverse the AST, using pre- and post-order visitors
-AstNode* Ast::traverseAndModify(AstNode* node,
-                                std::function<bool(AstNode const*)> const& preVisitor,
-                                std::function<AstNode*(AstNode*)> const& visitor,
-                                std::function<void(AstNode const*)> const& postVisitor) {
+AstNode* Ast::traverseAndModify(
+    AstNode* node, std::function<bool(AstNode const*)> const& preVisitor,
+    std::function<AstNode*(AstNode*)> const& visitor,
+    std::function<void(AstNode const*)> const& postVisitor) {
   if (node == nullptr) {
     return nullptr;
   }
@@ -3807,7 +3995,8 @@ AstNode* Ast::traverseAndModify(AstNode* node,
     auto member = node->getMemberUnchecked(i);
 
     if (member != nullptr) {
-      AstNode* result = traverseAndModify(member, preVisitor, visitor, postVisitor);
+      AstNode* result =
+          traverseAndModify(member, preVisitor, visitor, postVisitor);
 
       if (result != member) {
         TEMPORARILY_UNLOCK_NODE(node);
@@ -3824,8 +4013,8 @@ AstNode* Ast::traverseAndModify(AstNode* node,
 
 /// @brief traverse the AST, using a depth-first visitor
 /// Note that the starting node is not replaced!
-AstNode* Ast::traverseAndModify(AstNode* node,
-                                std::function<AstNode*(AstNode*)> const& visitor) {
+AstNode* Ast::traverseAndModify(
+    AstNode* node, std::function<AstNode*(AstNode*)> const& visitor) {
   if (node == nullptr) {
     return nullptr;
   }
@@ -3849,9 +4038,9 @@ AstNode* Ast::traverseAndModify(AstNode* node,
 }
 
 /// @brief traverse the AST, using pre- and post-order visitors
-void Ast::traverseReadOnly(AstNode const* node,
-                           std::function<bool(AstNode const*)> const& preVisitor,
-                           std::function<void(AstNode const*)> const& postVisitor) {
+void Ast::traverseReadOnly(
+    AstNode const* node, std::function<bool(AstNode const*)> const& preVisitor,
+    std::function<void(AstNode const*)> const& postVisitor) {
   if (node == nullptr) {
     return;
   }
@@ -3896,9 +4085,11 @@ void Ast::traverseReadOnly(AstNode const* node,
 std::pair<std::string, bool> Ast::normalizeFunctionName(std::string_view name) {
   std::string functionName(name.data(), name.size());
   // convert name to upper case
-  std::transform(functionName.begin(), functionName.end(), functionName.begin(), ::toupper);
+  std::transform(functionName.begin(), functionName.end(), functionName.begin(),
+                 ::toupper);
 
-  return std::make_pair(std::move(functionName), functionName.find(':') == std::string::npos);
+  return std::make_pair(std::move(functionName),
+                        functionName.find(':') == std::string::npos);
 }
 
 /// @brief create a node of the specified type
@@ -3908,16 +4099,17 @@ AstNode* Ast::createNode(AstNodeType type) {
 
 /// @brief validate the name of the given datasource
 /// in case validation fails, will throw an exception
-void Ast::validateDataSourceName(std::string_view name,
-                                 bool validateStrict) {
-  bool extendedNames = _query.vocbase().server().getFeature<DatabaseFeature>().extendedNamesForCollections();
+void Ast::validateDataSourceName(std::string_view name, bool validateStrict) {
+  bool extendedNames = _query.vocbase()
+                           .server()
+                           .getFeature<DatabaseFeature>()
+                           .extendedNamesForCollections();
 
   // common validation
   if (name.empty() ||
-      (validateStrict &&
-       !CollectionNameValidator::isAllowedName(
-           /*allowSystem*/ true, extendedNames, name))) {
-    // will throw    
+      (validateStrict && !CollectionNameValidator::isAllowedName(
+                             /*allowSystem*/ true, extendedNames, name))) {
+    // will throw
     std::string errorMessage(TRI_errno_string(TRI_ERROR_ARANGO_ILLEGAL_NAME));
     errorMessage.append(": ");
     errorMessage.append(name.data(), name.size());
@@ -3931,7 +4123,8 @@ void Ast::validateDataSourceName(std::string_view name,
 AstNode* Ast::createNodeCollectionNoValidation(std::string_view name,
                                                AccessMode::Type accessType) {
   if (ServerState::instance()->isCoordinator()) {
-    auto& ci = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+    auto& ci =
+        _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
     // We want to tolerate that a collection name is given here
     // which does not exist, if only for some unit tests:
     auto coll = ci.getCollectionNT(_query.vocbase().name(), std::string(name));
@@ -3963,22 +4156,26 @@ void Ast::extractCollectionsFromGraph(AstNode const* graphNode) {
 
     auto const& graph = graphLookupRes.get();
     for (const auto& n : graph->vertexCollections()) {
-      _query.collections().add(n, AccessMode::Type::READ, Collection::Hint::Collection);
+      _query.collections().add(n, AccessMode::Type::READ,
+                               Collection::Hint::Collection);
     }
 
     auto const& eColls = graph->edgeCollections();
 
     for (const auto& n : eColls) {
-      _query.collections().add(n, AccessMode::Type::READ, Collection::Hint::Collection);
+      _query.collections().add(n, AccessMode::Type::READ,
+                               Collection::Hint::Collection);
     }
 
     if (ServerState::instance()->isCoordinator()) {
-      auto& ci = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+      auto& ci =
+          _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
       for (const auto& n : eColls) {
         auto c = ci.getCollection(_query.vocbase().name(), n);
         for (auto const& name : c->realNames()) {
-          _query.collections().add(name, AccessMode::Type::READ, Collection::Hint::Collection);
+          _query.collections().add(name, AccessMode::Type::READ,
+                                   Collection::Hint::Collection);
         }
       }
     }
@@ -4031,7 +4228,8 @@ std::unordered_set<std::string> Ast::bindParameters() const {
 
 Scopes* Ast::scopes() { return &_scopes; }
 void Ast::addWriteCollection(AstNode const* node, bool isExclusiveAccess) {
-  TRI_ASSERT(node->type == NODE_TYPE_COLLECTION || node->type == NODE_TYPE_PARAMETER_DATASOURCE);
+  TRI_ASSERT(node->type == NODE_TYPE_COLLECTION ||
+             node->type == NODE_TYPE_PARAMETER_DATASOURCE);
 
   _writeCollections.emplace_back(node, isExclusiveAccess);
 }
@@ -4042,7 +4240,9 @@ bool Ast::functionsMayAccessDocuments() const {
 
 bool Ast::containsTraversal() const noexcept { return _containsTraversal; }
 
-bool Ast::containsModificationNode() const noexcept { return _containsModificationNode; }
+bool Ast::containsModificationNode() const noexcept {
+  return _containsModificationNode;
+}
 
 void Ast::setContainsModificationNode() noexcept {
   _containsModificationNode = true;
@@ -4050,9 +4250,7 @@ void Ast::setContainsModificationNode() noexcept {
 
 bool Ast::containsUpsertNode() const noexcept { return _containsUpsertNode; }
 
-void Ast::setContainsUpsertNode() noexcept {
-  _containsUpsertNode = true;
-}
+void Ast::setContainsUpsertNode() noexcept { _containsUpsertNode = true; }
 
 void Ast::setContainsParallelNode() noexcept {
 #ifdef USE_ENTERPRISE
@@ -4060,10 +4258,6 @@ void Ast::setContainsParallelNode() noexcept {
 #endif
 }
 
-bool Ast::willUseV8() const noexcept {
-  return _willUseV8;
-}
+bool Ast::willUseV8() const noexcept { return _willUseV8; }
 
-void Ast::setWillUseV8() noexcept {
-  _willUseV8 = true;
-}
+void Ast::setWillUseV8() noexcept { _willUseV8 = true; }

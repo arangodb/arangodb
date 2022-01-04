@@ -43,13 +43,13 @@ struct UnderGuardAtomic {
   std::atomic<int> val{};
 };
 
-template <typename T>
+template<typename T>
 class GuardedTest : public ::testing::Test {
  protected:
   using Mutex = typename T::first_type;
-  template <typename M>
+  template<typename M>
   using Lock = typename T::second_type::template instantiate<M>;
-  template <typename V>
+  template<typename V>
   using Guarded = Guarded<V, Mutex, Lock>;
 };
 
@@ -58,7 +58,7 @@ TYPED_TEST_CASE_P(GuardedTest);
 // Test helper that acquires a lock;
 // then executes a callback that tries to acquire the same lock;
 // then release the lock.
-template <typename GuardedType, typename F>
+template<typename GuardedType, typename F>
 static auto testWaitForLock(F&& callback) {
   auto guardedObj = GuardedType{1};
   std::atomic<bool> holds_lock = true;
@@ -95,7 +95,8 @@ TYPED_TEST_P(GuardedTest, test_copy_waits_for_access) {
   using GuardedType = typename TestFixture::template Guarded<UnderGuard>;
 
   auto const copyValue = [](GuardedType* guardedObj,
-                            std::atomic<bool>* holds_lock, std::atomic<bool>* waiting) {
+                            std::atomic<bool>* holds_lock,
+                            std::atomic<bool>* waiting) {
     ASSERT_TRUE(holds_lock->load(std::memory_order_acquire));
     waiting->store(true, std::memory_order_release);
     auto v = guardedObj->copy();
@@ -122,7 +123,8 @@ TYPED_TEST_P(GuardedTest, test_assign_waits_for_access) {
   using GuardedType = typename TestFixture::template Guarded<UnderGuard>;
 
   auto const assignValue = [](GuardedType* guardedObj,
-                            std::atomic<bool>* holds_lock, std::atomic<bool>* waiting) {
+                              std::atomic<bool>* holds_lock,
+                              std::atomic<bool>* waiting) {
     ASSERT_TRUE(holds_lock->load(std::memory_order_acquire));
     waiting->store(true, std::memory_order_release);
     guardedObj->assign(UnderGuard{2});
@@ -149,7 +151,8 @@ TYPED_TEST_P(GuardedTest, test_guard_waits_for_access) {
   using GuardedType = typename TestFixture::template Guarded<UnderGuard>;
 
   auto const acquireGuard = [](GuardedType* guardedObj,
-                              std::atomic<bool>* holds_lock, std::atomic<bool>* waiting) {
+                               std::atomic<bool>* holds_lock,
+                               std::atomic<bool>* waiting) {
     ASSERT_TRUE(holds_lock->load(std::memory_order_acquire));
     waiting->store(true, std::memory_order_release);
     {
@@ -239,14 +242,16 @@ TYPED_TEST_P(GuardedTest, test_do_waits_for_access) {
         threadStarted.store(true, std::memory_order_release);
         bool didExecute = false;
         auto const res = guardedObj.doUnderLock(
-            [&didExecute](UnderGuardAtomic& obj) -> std::optional<std::monostate> {
+            [&didExecute](
+                UnderGuardAtomic& obj) -> std::optional<std::monostate> {
               EXPECT_EQ(1, obj.val.load(std::memory_order_relaxed));
               obj.val.store(2, std::memory_order_release);
               didExecute = true;
               EXPECT_EQ(2, obj.val.load(std::memory_order_relaxed));
               return std::monostate{};
             });
-        static_assert(std::is_same_v<std::optional<std::monostate> const, decltype(res)>);
+        static_assert(
+            std::is_same_v<std::optional<std::monostate> const, decltype(res)>);
         EXPECT_TRUE(res.has_value());
         EXPECT_TRUE(didExecute);
         threadFinished.store(true, std::memory_order_release);
@@ -286,7 +291,8 @@ TYPED_TEST_P(GuardedTest, test_try_allows_access) {
         EXPECT_EQ(2, obj.val);
         return;
       });
-      static_assert(std::is_same_v<std::optional<std::monostate> const, decltype(res)>);
+      static_assert(
+          std::is_same_v<std::optional<std::monostate> const, decltype(res)>);
       EXPECT_EQ(didExecute, res.has_value());
       {
         auto guard = guardedObj.getLockedGuard();
@@ -341,7 +347,8 @@ TYPED_TEST_P(GuardedTest, test_try_fails_access) {
         didExecute = true;
         EXPECT_EQ(2, obj.val);
       });
-      static_assert(std::is_same_v<std::optional<std::monostate> const, decltype(res)>);
+      static_assert(
+          std::is_same_v<std::optional<std::monostate> const, decltype(res)>);
       EXPECT_FALSE(res.has_value());
       EXPECT_FALSE(didExecute);
       threadFinished = true;
@@ -378,25 +385,27 @@ TYPED_TEST_P(GuardedTest, test_try_guard_fails_access) {
   }
 }
 
-REGISTER_TYPED_TEST_CASE_P(GuardedTest, test_copy_allows_access, test_copy_waits_for_access,
-                           test_assign_allows_access, test_assign_waits_for_access,
-                           test_guard_allows_access, test_guard_waits_for_access,
-                           test_guard_unlock_releases_mutex, test_do_allows_access,
-                           test_do_waits_for_access, test_try_allows_access,
-                           test_try_guard_allows_access, test_try_fails_access,
-                           test_try_guard_fails_access, test_guard_unlock_releases_value);
+REGISTER_TYPED_TEST_CASE_P(
+    GuardedTest, test_copy_allows_access, test_copy_waits_for_access,
+    test_assign_allows_access, test_assign_waits_for_access,
+    test_guard_allows_access, test_guard_waits_for_access,
+    test_guard_unlock_releases_mutex, test_do_allows_access,
+    test_do_waits_for_access, test_try_allows_access,
+    test_try_guard_allows_access, test_try_fails_access,
+    test_try_guard_fails_access, test_guard_unlock_releases_value);
 
-template <template <typename> typename T>
+template<template<typename> typename T>
 struct ParamT {
-  template <typename U>
+  template<typename U>
   using instantiate = T<U>;
 };
 
-using TestedTypes =
-    ::testing::Types<std::pair<std::mutex, ParamT<std::unique_lock>>,
-                     std::pair<arangodb::basics::UnshackledMutex, ParamT<std::unique_lock>>,
-                     std::pair<arangodb::Mutex, ParamT<std::unique_lock>>>;
+using TestedTypes = ::testing::Types<
+    std::pair<std::mutex, ParamT<std::unique_lock>>,
+    std::pair<arangodb::basics::UnshackledMutex, ParamT<std::unique_lock>>,
+    std::pair<arangodb::Mutex, ParamT<std::unique_lock>>>;
 
-INSTANTIATE_TYPED_TEST_CASE_P(GuardedTestInstantiation, GuardedTest, TestedTypes);
+INSTANTIATE_TYPED_TEST_CASE_P(GuardedTestInstantiation, GuardedTest,
+                              TestedTypes);
 
 }  // namespace arangodb::tests
