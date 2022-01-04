@@ -435,7 +435,7 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"IS_SAME_COLLECTION", ".h,.h", flags, &Functions::IsSameCollection});
   add({"DECODE_REV", ".", flags, &Functions::DecodeRev});
   add({"SHARD_ID", ".,.", Function::makeFlags(
-        FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard, FF::CanReadDocuments),
+        FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard),
       &Functions::ShardId});
 
   // only function without a C++ implementation
