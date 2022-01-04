@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertFalse, assertUndefined, assertNull, fail, AQL_EXPLAIN */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertUndefined, assertNull, fail, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -173,7 +173,7 @@ function indexStoredValuesCreateSuite() {
     
     testCreateManyAttributesNonUnique: function () {
       let attributes = [];
-      for (let i = 0; i < 20; ++i) {
+      for (let i = 0; i < 32; ++i) {
         attributes.push("testi" + i);
       }
       c.ensureIndex({ type: "persistent", fields: ["value"], storedValues: attributes });
@@ -187,7 +187,7 @@ function indexStoredValuesCreateSuite() {
     
     testCreateManyAttributesUnique: function () {
       let attributes = [];
-      for (let i = 0; i < 20; ++i) {
+      for (let i = 0; i < 32; ++i) {
         attributes.push("testi" + i);
       }
       c.ensureIndex({ type: "persistent", fields: ["value"], storedValues: attributes, unique: true });
@@ -198,7 +198,76 @@ function indexStoredValuesCreateSuite() {
       assertEqual(["value"], indexes[1].fields);
       assertEqual(attributes, indexes[1].storedValues);
     },
+    
+    testCreateTooManyAttributes: function () {
+      let attributes = [];
+      for (let i = 0; i < 33; ++i) {
+        attributes.push("testi" + i);
+      }
+      try {
+        c.ensureIndex({ type: "persistent", fields: ["value"], storedValues: attributes, unique: true });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+    
+    testCreateTwoWithDifferentFields: function () {
+      let idx1 = c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["x"] });
+      assertTrue(idx1.isNewlyCreated);
+      let idx2 = c.ensureIndex({ type: "persistent", fields: ["value2"], storedValues: ["y"] });
+      assertTrue(idx2.isNewlyCreated);
+      assertNotEqual(idx1.id, idx2.id);
+      let indexes = c.indexes();
+      assertEqual(3, indexes.length);
+      assertEqual("persistent", indexes[1].type);
+      assertEqual(["x"], indexes[1].storedValues);
+      assertEqual("persistent", indexes[2].type);
+      assertEqual(["y"], indexes[2].storedValues);
+    },
   
+    testCreateTwoWithDifferentFieldsSameStoredValue: function () {
+      let idx1 = c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["x"] });
+      assertTrue(idx1.isNewlyCreated);
+      let idx2 = c.ensureIndex({ type: "persistent", fields: ["value2"], storedValues: ["x"] });
+      assertTrue(idx2.isNewlyCreated);
+      assertNotEqual(idx1.id, idx2.id);
+      let indexes = c.indexes();
+      assertEqual(3, indexes.length);
+      assertEqual("persistent", indexes[1].type);
+      assertEqual(["x"], indexes[1].storedValues);
+      assertEqual("persistent", indexes[2].type);
+      assertEqual(["x"], indexes[2].storedValues);
+    },
+    
+    testCreateTwoWithSameFields: function () {
+      let idx1 = c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["x"] });
+      assertTrue(idx1.isNewlyCreated);
+      // will return the old index
+      let idx2 = c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["y"] });
+      assertFalse(idx2.isNewlyCreated);
+      assertEqual(idx1.id, idx2.id);
+      let indexes = c.indexes();
+      assertEqual(2, indexes.length);
+      assertEqual("persistent", indexes[1].type);
+      assertEqual(["x"], indexes[1].storedValues);
+    },
+    
+    testCreateWithSubAttributes1: function () {
+      c.ensureIndex({ type: "persistent", fields: ["value"], storedValues: ["x", "y", "z.a", "z.b", "z.c", "z.x.y"] });
+      let indexes = c.indexes();
+      assertEqual(2, indexes.length);
+      assertEqual("persistent", indexes[1].type);
+      assertEqual(["x", "y", "z.a", "z.b", "z.c", "z.x.y"], indexes[1].storedValues);
+    },
+    
+    testCreateWithSubAttributes2: function () {
+      c.ensureIndex({ type: "persistent", fields: ["value"], storedValues: ["x", "x.y", "x.y.z", "x.a"] });
+      let indexes = c.indexes();
+      assertEqual(2, indexes.length);
+      assertEqual("persistent", indexes[1].type);
+      assertEqual(["x", "x.y", "x.y.z", "x.a"], indexes[1].storedValues);
+    },
   };
 }
 
@@ -603,6 +672,30 @@ function indexStoredValuesResultsSuite() {
         let result = db._query(query, { value: i }).toArray();
         assertEqual(1, result.length);
         assertEqual([i * 1, i * 2, i * 3, i * 4], result[0]);
+      }
+    },
+    
+    testResultSubAttributes3: function () {
+      c.truncate();
+
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ value: { sub1: { sub2: { sub3: i }, a: i * 2 }, a: i * 3 } });
+      }
+      c.insert(docs);
+      c.ensureIndex({ type: "persistent", fields: ["value.sub1.sub2.sub3"], storedValues: ["value.sub1.a", "value.a"] });
+      
+      const query =" FOR doc IN " + cn + " FILTER doc.value.sub1.sub2.sub3 == @value RETURN [doc.value.sub1.sub2.sub3, doc.value.sub1.a, doc.value.a]"; 
+      let nodes = AQL_EXPLAIN(query, { value: 0 }).plan.nodes;
+      assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
+      assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
+      assertFalse(nodes[1].indexCoversProjections);
+      assertEqual(["value"], nodes[1].projections);
+      
+      for (let i = 0; i < 10; ++i) {
+        let result = db._query(query, { value: i }).toArray();
+        assertEqual(1, result.length);
+        assertEqual([i, i * 2, i * 3], result[0]);
       }
     },
     

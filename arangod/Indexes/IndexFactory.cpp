@@ -576,7 +576,7 @@ Result IndexFactory::enhanceJsonIndexGeneric(VPackSlice definition,
                          /*allowExpansion*/ true, /*allowSubAttributes*/ true);
 
   if (res.ok()) {
-    res = processIndexStoredValues(definition, builder, 1, INT_MAX, create,
+    res = processIndexStoredValues(definition, builder, 1, 32, create,
                                    /*allowSubAttributes*/ true);
   }
 

@@ -25,6 +25,8 @@ devel
   great positive effect on index scan performance if the number of scanned 
   index entries is large.
 
+  The maximum number of attributes to store in `storedValues` is 32.
+
 * Fixed BTS-693: Sort-limit rule now always ensures proper LIMIT node placement
   to avoid possible invalid results in the fullCount data.
 
