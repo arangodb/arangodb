@@ -53,7 +53,8 @@ TEST(CacheMetadataTest, test_basic_constructor) {
   ASSERT_EQ(metadata.hardUsageLimit, usageLimit);
 }
 
-TEST(CacheMetadataTest, verify_usage_limits_are_adjusted_and_enforced_correctly) {
+TEST(CacheMetadataTest,
+     verify_usage_limits_are_adjusted_and_enforced_correctly) {
   std::uint64_t overhead = 80;
   Metadata metadata(1024, 0, 0, 2048 + overhead);
 

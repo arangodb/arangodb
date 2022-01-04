@@ -29,8 +29,8 @@ namespace arangodb {
 
 class ClusterIndexFactory final : public IndexFactory {
  public:
-  static void linkIndexFactories(application_features::ApplicationServer& server,
-                                 IndexFactory& factory);
+  static void linkIndexFactories(
+      application_features::ApplicationServer& server, IndexFactory& factory);
   explicit ClusterIndexFactory(application_features::ApplicationServer&);
   ~ClusterIndexFactory() = default;
 
@@ -45,13 +45,14 @@ class ClusterIndexFactory final : public IndexFactory {
   /// "hash") used to display storage engine capabilities
   std::unordered_map<std::string, std::string> indexAliases() const override;
 
-  void fillSystemIndexes(LogicalCollection& col,
-                         std::vector<std::shared_ptr<Index>>& systemIndexes) const override;
+  void fillSystemIndexes(
+      LogicalCollection& col,
+      std::vector<std::shared_ptr<Index>>& systemIndexes) const override;
 
   /// @brief create indexes from a list of index definitions
-  void prepareIndexes(LogicalCollection& col, velocypack::Slice indexesSlice,
-                      std::vector<std::shared_ptr<Index>>& indexes) const override;
+  void prepareIndexes(
+      LogicalCollection& col, velocypack::Slice indexesSlice,
+      std::vector<std::shared_ptr<Index>>& indexes) const override;
 };
 
 }  // namespace arangodb
-

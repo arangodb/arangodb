@@ -54,7 +54,7 @@ class AstResources {
 
   /// @brief create and register an AstNode
   AstNode* registerNode(AstNodeType type);
-  
+
   /// @brief create and register an AstNode
   AstNode* registerNode(Ast*, arangodb::velocypack::Slice slice);
 
@@ -73,12 +73,12 @@ class AstResources {
   char* registerEscapedString(char const* p, size_t length, size_t& outLength);
 
  private:
-  template <typename T>
+  template<typename T>
   size_t newCapacity(T const& container, size_t initialCapacity) const noexcept;
 
   /// @brief registers a long string and takes over the ownership for it
   char* registerLongString(char* copy, size_t length);
-  
+
   /// @brief return the memory usage for a block of strings
   constexpr size_t memoryUsageForStringBlock() const noexcept;
 
@@ -101,4 +101,3 @@ class AstResources {
 
 }  // namespace aql
 }  // namespace arangodb
-

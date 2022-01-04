@@ -81,4 +81,3 @@ struct CountCache {
 
 }  // namespace transaction
 }  // namespace arangodb
-
