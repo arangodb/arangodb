@@ -32,6 +32,24 @@
 
 namespace arangodb::pregel {
 
+struct PregelStats {
+  using server_t = std::string;
+  using numGss_t = uint32_t;
+  using spentTime_t = uint64_t;
+
+  uint16_t numThreadsGlobal = 0;
+  // server->numThreads
+  std::map<server_t, uint16_t> serverNumThreads;
+  // sourceServer -> (targetServer -> numMsg): sum over all gss
+  std::map<server_t, std::map<server_t, uint16_t>> serverToServerNumMsg;
+  // server->(global step number -> milliseconds) // better micro?
+  std::map<server_t, std::map<numGss_t, spentTime_t>> serverGSSTime;
+  // (sourceServer->(targetServer->(global step number->sum of sizes of messages)))
+  std::map<server_t, std::map<server_t, std::map<numGss_t, size_t>>> serverToServerGSSMessageSize;
+  // (gss->number active vertices)
+  std::map<numGss_t, uint16_t> GSSToNumActive;
+};
+
 struct MessageStats {
   size_t sendCount = 0;
   size_t receivedCount = 0;
