@@ -310,7 +310,7 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
 };
 
 frozen::set<irs::string_ref, 5> forbiddenFunctions{"TOKENS", "NGRAM_MATCH",
-                                                   "PHRASE", "ANALYZER"
+                                                   "PHRASE", "ANALYZER",
                                                    "SHARD_ID"};
 
 arangodb::Result validateQuery(std::string const& queryStringRaw, TRI_vocbase_t& vocbase) {
