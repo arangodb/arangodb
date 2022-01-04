@@ -590,7 +590,7 @@ void arangodb::maintenance::diffReplicatedLogs(
               // check if participants generation has changed (in case we are
               // the leader)
               if (status.role == replicated_log::ParticipantRole::kLeader) {
-                if (status.activeParticipantsConfig->generation <
+                if (status.activeParticipantConfig->generation <
                     spec.participantsConfig.generation) {
                   return true;
                 }
@@ -1297,21 +1297,18 @@ static auto reportCurrentReplicatedLogLeader(
              replication2::replicated_log::ParticipantRole::kLeader)
       << "expected participant with leader role";
   if (status.leadershipEstablished) {
-    // must have a value after leadership has been established
-    TRI_ASSERT(status.committedParticipantsConfig != nullptr);
     // check if either there is no entry in current yet, the term has changed or
     // the participant config generation has changed.
-    bool const requiresUpdate =
+    bool requiresUpdate =
         currentLeader == nullptr ||
         currentLeader->term != status.getCurrentTerm() ||
-        status.committedParticipantsConfig->generation !=
-            currentLeader->committedParticipantsConfig.generation;
-
+        currentLeader->committedParticipantsConfig.generation !=
+            status.committedParticipantConfig->generation;
     if (requiresUpdate) {
       replication2::agency::LogCurrent::Leader leader;
       leader.term = *status.getCurrentTerm();
       leader.serverId = serverId;
-      leader.committedParticipantsConfig = *status.committedParticipantsConfig;
+      leader.committedParticipantsConfig = *status.activeParticipantConfig;
       return leader;
     }
   }
