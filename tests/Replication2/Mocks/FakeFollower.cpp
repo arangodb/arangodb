@@ -78,6 +78,21 @@ auto FakeFollower::getStatus() const -> replicated_log::LogStatus {
   }};
 }
 
+auto FakeFollower::getQuickStatus() const -> replicated_log::QuickLogStatus {
+  auto guard = guarded.getLockedGuard();
+  constexpr auto kBaseIndex = LogIndex{0};
+  return replicated_log::QuickLogStatus{
+      .role = replicated_log::ParticipantRole::kFollower,
+      .term = term,
+      .local = {{
+          .spearHead = guard->log.getLastTermIndexPair(),
+          .commitIndex = guard->commitIndex,
+          .firstIndex = guard->log.getFirstIndex(),
+      }},
+      .leadershipEstablished = guard->commitIndex > kBaseIndex,
+  };
+}
+
 auto FakeFollower::waitForLeaderAcked() -> WaitForFuture {
   return waitForLeaderAckedQueue.waitFor({});
 }
