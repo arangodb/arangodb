@@ -1214,7 +1214,6 @@ auto replicated_log::LogLeader::isLeadershipEstablished() const noexcept
 
 void replicated_log::LogLeader::establishLeadership(
     std::shared_ptr<ParticipantsConfig const> config) {
-void replicated_log::LogLeader::establishLeadership() {
   LOG_CTX("f3aa8", TRACE, _logContext) << "trying to establish leadership";
   auto waitForIndex =
       _guardedLeaderData.doUnderLock([](GuardedLeaderData& data) {
