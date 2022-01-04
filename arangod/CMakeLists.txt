@@ -541,14 +541,15 @@ set(LIB_ARANGO_REPLICATION_SOURCES
 set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/AgencyCollectionSpecification.cpp
   Replication2/AgencyMethods.cpp
+  Replication2/Methods.cpp
   Replication2/ReplicatedLog/AgencyLogSpecification.cpp
   Replication2/ReplicatedLog/Algorithms.cpp
+  Replication2/ReplicatedLog/ILogInterfaces.cpp
   Replication2/ReplicatedLog/InMemoryLog.cpp
   Replication2/ReplicatedLog/LogCommon.cpp
   Replication2/ReplicatedLog/LogCore.cpp
   Replication2/ReplicatedLog/LogFollower.cpp
   Replication2/ReplicatedLog/LogLeader.cpp
-  Replication2/ReplicatedLog/ILogInterfaces.cpp
   Replication2/ReplicatedLog/LogStatus.cpp
   Replication2/ReplicatedLog/NetworkAttachedFollower.cpp
   Replication2/ReplicatedLog/NetworkMessages.cpp
@@ -556,17 +557,16 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/ReplicatedLogFeature.cpp
   Replication2/ReplicatedLog/ReplicatedLogMetrics.cpp
   Replication2/ReplicatedLog/types.cpp
+  Replication2/ReplicatedState/AgencySpecification.cpp
+  Replication2/ReplicatedState/FollowerStateManager.tpp Replication2/ReplicatedState/FollowerStateManager.h
+  Replication2/ReplicatedState/LeaderStateManager.tpp Replication2/ReplicatedState/LeaderStateManager.h
+  Replication2/ReplicatedState/ReplicatedStateCore.cpp
+  Replication2/ReplicatedState/ReplicatedStateFeature.cpp
+  Replication2/ReplicatedState/StateCommon.cpp
+  Replication2/ReplicatedState/StateStatus.cpp
   Replication2/Version.cpp
   RestHandler/RestLogHandler.cpp
-  Replication2/Methods.cpp
   RestHandler/RestLogInternalHandler.cpp
-  Replication2/ReplicatedState/ReplicatedStateFeature.cpp
-  Replication2/ReplicatedState/AgencySpecification.cpp
-  Replication2/ReplicatedState/StateStatus.cpp
-  Replication2/ReplicatedState/StateCommon.cpp
-  Replication2/ReplicatedState/ReplicatedStateCore.cpp
-  Replication2/ReplicatedState/LeaderStateManager.tpp Replication2/ReplicatedState/LeaderStateManager.h
-  Replication2/ReplicatedState/FollowerStateManager.tpp Replication2/ReplicatedState/FollowerStateManager.h
 )
 
 set (LIB_ARANGO_METRICS_SOURCES
