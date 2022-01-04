@@ -27,6 +27,7 @@
 
 #include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
 
+#include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/types.h"
@@ -264,8 +265,7 @@ TEST_F(FollowerAppendEntriesTest, resigned_follower) {
   // follower should now be resigned
   ASSERT_THROW(
       std::ignore = follower->getStatus(),
-      arangodb::basics::
-          Exception);  // TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED
+      ParticipantResignedException);  // TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED
 
   {
     AppendEntriesRequest request;
