@@ -38,6 +38,7 @@
 #include "Replication2/Streams/Streams.h"
 
 #include "Replication2/Streams/LogMultiplexer.tpp"
+#include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedState/LeaderStateManager.tpp"
 #include "Replication2/ReplicatedState/FollowerStateManager.tpp"
 

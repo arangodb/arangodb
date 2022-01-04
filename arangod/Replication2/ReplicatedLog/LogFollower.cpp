@@ -29,6 +29,7 @@
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
+#include "Replication2/Exceptions/ParticipantResignedException.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/Result.h>
@@ -348,8 +349,8 @@ replicated_log::LogFollower::GuardedFollowerData::GuardedFollowerData(
 auto replicated_log::LogFollower::getStatus() const -> LogStatus {
   return _guardedFollowerData.doUnderLock([this](auto const& followerData) {
     if (followerData._logCore == nullptr) {
-      THROW_ARANGO_EXCEPTION(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+      throw ParticipantResignedException(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
     }
     FollowerStatus status;
     status.local = followerData.getLocalStatistics();
@@ -363,8 +364,8 @@ auto replicated_log::LogFollower::getStatus() const -> LogStatus {
 auto replicated_log::LogFollower::getQuickStatus() const -> QuickLogStatus {
   return _guardedFollowerData.doUnderLock([this](auto const& followerData) {
     if (followerData._logCore == nullptr) {
-      THROW_ARANGO_EXCEPTION(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+      throw ParticipantResignedException(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
     }
     constexpr auto kBaseIndex = LogIndex{0};
     return QuickLogStatus{
@@ -382,39 +383,37 @@ auto replicated_log::LogFollower::getParticipantId() const noexcept
 
 auto replicated_log::LogFollower::resign() && -> std::tuple<
     std::unique_ptr<LogCore>, DeferredAction> {
-  return _guardedFollowerData.doUnderLock(
-      [this](GuardedFollowerData& followerData) {
-        LOG_CTX("838fe", DEBUG, _loggerContext) << "follower resign";
-        if (followerData._logCore == nullptr) {
-          LOG_CTX("55a1d", WARN, _loggerContext)
-              << "follower log core is already gone. Resign was called twice!";
-          basics::abortOrThrow(
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
-        }
+  return _guardedFollowerData.doUnderLock([this](GuardedFollowerData&
+                                                     followerData) {
+    LOG_CTX("838fe", DEBUG, _loggerContext) << "follower resign";
+    if (followerData._logCore == nullptr) {
+      LOG_CTX("55a1d", WARN, _loggerContext)
+          << "follower log core is already gone. Resign was called twice!";
+      basics::abortOrThrowException(ParticipantResignedException(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE));
+    }
 
-        // use a unique ptr because move constructor for multimaps is not
-        // noexcept
-        auto queue = std::make_unique<WaitForQueue>(
-            std::move(followerData._waitForQueue.getLockedGuard().get()));
+    // use a unique ptr because move constructor for multimaps is not noexcept
+    auto queue = std::make_unique<WaitForQueue>(
+        std::move(followerData._waitForQueue.getLockedGuard().get()));
 
-        auto action = [queue = std::move(queue)]() noexcept {
-          std::for_each(queue->begin(), queue->end(), [](auto& pair) {
-            pair.second.setException(basics::Exception(
-                TRI_ERROR_REPLICATION_LEADER_CHANGE, __FILE__, __LINE__));
-          });
-        };
-        using action_type = decltype(action);
-
-        static_assert(std::is_nothrow_move_constructible_v<action_type>);
-        static_assert(
-            std::is_nothrow_constructible_v<
-                DeferredAction, std::add_rvalue_reference_t<action_type>>);
-
-        // make_tuple is noexcept, _logCore is a unique_ptr which is nothrow
-        // move constructable
-        return std::make_tuple(std::move(followerData._logCore),
-                               DeferredAction{std::move(action)});
+    auto action = [queue = std::move(queue)]() noexcept {
+      std::for_each(queue->begin(), queue->end(), [](auto& pair) {
+        pair.second.setException(ParticipantResignedException(
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE));
       });
+    };
+    using action_type = decltype(action);
+
+    static_assert(std::is_nothrow_move_constructible_v<action_type>);
+    static_assert(std::is_nothrow_constructible_v<
+                  DeferredAction, std::add_rvalue_reference_t<action_type>>);
+
+    // make_tuple is noexcept, _logCore is a unique_ptr which is nothrow move
+    // constructable
+    return std::make_tuple(std::move(followerData._logCore),
+                           DeferredAction{std::move(action)});
+  });
 }
 
 replicated_log::LogFollower::LogFollower(

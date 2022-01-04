@@ -541,6 +541,7 @@ set(LIB_ARANGO_REPLICATION_SOURCES
 set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/AgencyCollectionSpecification.cpp
   Replication2/AgencyMethods.cpp
+  Replication2/Exceptions/ParticipantResignedException.h
   Replication2/Methods.cpp
   Replication2/ReplicatedLog/AgencyLogSpecification.cpp
   Replication2/ReplicatedLog/Algorithms.cpp

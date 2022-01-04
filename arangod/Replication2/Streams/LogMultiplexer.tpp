@@ -32,9 +32,11 @@
 #if (_MSC_VER >= 1)
 // suppress warnings:
 #pragma warning(push)
-// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of data
+// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of
+// data
 #pragma warning(disable : 4267)
-// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
+// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift
+// intended?)
 #pragma warning(disable : 4334)
 #endif
 #include <immer/flex_vector.hpp>
@@ -49,6 +51,7 @@
 #include <Basics/application-exit.h>
 
 #include "LogMultiplexer.h"
+#include "Replication2/Exceptions/ParticipantResignedException.h"
 
 #include <Replication2/ReplicatedLog/ILogInterfaces.h>
 
@@ -62,12 +65,14 @@
 namespace arangodb::replication2::streams {
 
 namespace {
-template <typename Queue, typename Result>
+template<typename Queue, typename Result>
 auto allUnresolved(std::pair<Queue, Result>& q) {
-  return std::all_of(std::begin(q.first), std::end(q.first),
-                     [&](auto const& pair) { return !pair.second.isFulfilled(); });
+  return std::all_of(
+      std::begin(q.first), std::end(q.first),
+      [&](auto const& pair) { return !pair.second.isFulfilled(); });
 }
-template <typename Descriptor, typename Queue, typename Result, typename Block = StreamInformationBlock<Descriptor>>
+template<typename Descriptor, typename Queue, typename Result,
+         typename Block = StreamInformationBlock<Descriptor>>
 auto resolvePromiseSet(std::pair<Queue, Result>& q) {
   TRI_ASSERT(allUnresolved(q));
   std::for_each(std::begin(q.first), std::end(q.first), [&](auto& pair) {
@@ -78,54 +83,65 @@ auto resolvePromiseSet(std::pair<Queue, Result>& q) {
   });
 }
 
-template <typename... Descriptors, typename... Pairs, std::size_t... Idxs>
+template<typename... Descriptors, typename... Pairs, std::size_t... Idxs>
 auto resolvePromiseSets(stream_descriptor_set<Descriptors...>,
-                        std::index_sequence<Idxs...>, std::tuple<Pairs...>& pairs) {
+                        std::index_sequence<Idxs...>,
+                        std::tuple<Pairs...>& pairs) {
   (resolvePromiseSet<Descriptors>(std::get<Idxs>(pairs)), ...);
 }
 
-template <typename... Descriptors, typename... Pairs>
-auto resolvePromiseSets(stream_descriptor_set<Descriptors...>, std::tuple<Pairs...>& pairs) {
+template<typename... Descriptors, typename... Pairs>
+auto resolvePromiseSets(stream_descriptor_set<Descriptors...>,
+                        std::tuple<Pairs...>& pairs) {
   resolvePromiseSets(stream_descriptor_set<Descriptors...>{},
                      std::index_sequence_for<Descriptors...>{}, pairs);
 }
 }  // namespace
 
-template <typename Derived, typename Spec, template <typename> typename StreamInterface>
+template<typename Derived, typename Spec,
+         template<typename> typename StreamInterface>
 struct LogMultiplexerImplementationBase {
   explicit LogMultiplexerImplementationBase()
       : _guardedData(static_cast<Derived&>(*this)) {}
 
-  template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
-            typename E = StreamEntryView<T>>
+  template<typename StreamDescriptor,
+           typename T = stream_descriptor_type_t<StreamDescriptor>,
+           typename E = StreamEntryView<T>>
   auto waitForIteratorInternal(LogIndex first)
       -> futures::Future<std::unique_ptr<TypedLogRangeIterator<E>>> {
     return waitForInternal<StreamDescriptor>(first).thenValue(
-        [weak = weak_from_self(), first](auto&&) -> std::unique_ptr<TypedLogRangeIterator<E>> {
+        [weak = weak_from_self(),
+         first](auto&&) -> std::unique_ptr<TypedLogRangeIterator<E>> {
           if (auto that = weak.lock(); that != nullptr) {
-            return that->_guardedData.doUnderLock([&](MultiplexerData<Spec>& self) {
-              auto& block = std::get<StreamInformationBlock<StreamDescriptor>>(self._blocks);
-              return block.getIteratorRange(first, self._firstUncommittedIndex);
-            });
+            return that->_guardedData.doUnderLock(
+                [&](MultiplexerData<Spec>& self) {
+                  auto& block =
+                      std::get<StreamInformationBlock<StreamDescriptor>>(
+                          self._blocks);
+                  return block.getIteratorRange(first,
+                                                self._firstUncommittedIndex);
+                });
           } else {
             return nullptr;
           }
         });
   }
 
-  template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
-            typename W = typename Stream<T>::WaitForResult>
+  template<typename StreamDescriptor,
+           typename T = stream_descriptor_type_t<StreamDescriptor>,
+           typename W = typename Stream<T>::WaitForResult>
   auto waitForInternal(LogIndex index) -> futures::Future<W> {
     return _guardedData.doUnderLock([&](MultiplexerData<Spec>& self) {
       if (self._firstUncommittedIndex > index) {
         return futures::Future<W>{std::in_place};
       }
-      auto& block = std::get<StreamInformationBlock<StreamDescriptor>>(self._blocks);
+      auto& block =
+          std::get<StreamInformationBlock<StreamDescriptor>>(self._blocks);
       return block.registerWaitFor(index);
     });
   }
 
-  template <typename StreamDescriptor>
+  template<typename StreamDescriptor>
   auto releaseInternal(LogIndex index) -> void {
     // update the release index for the given stream
     // then compute the minimum and forward it to the
@@ -133,7 +149,8 @@ struct LogMultiplexerImplementationBase {
     auto globalReleaseIndex = _guardedData.doUnderLock(
         [&](MultiplexerData<Spec>& self) -> std::optional<LogIndex> {
           {
-            auto& block = self.template getBlockForDescriptor<StreamDescriptor>();
+            auto& block =
+                self.template getBlockForDescriptor<StreamDescriptor>();
             auto newIndex = std::max(block._releaseIndex, index);
             if (newIndex == block._releaseIndex) {
               return std::nullopt;
@@ -151,8 +168,9 @@ struct LogMultiplexerImplementationBase {
     }
   }
 
-  template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>,
-            typename E = StreamEntryView<T>>
+  template<typename StreamDescriptor,
+           typename T = stream_descriptor_type_t<StreamDescriptor>,
+           typename E = StreamEntryView<T>>
   auto getIteratorInternal() -> std::unique_ptr<TypedLogRangeIterator<E>> {
     return _guardedData.doUnderLock([](MultiplexerData<Spec>& self) {
       auto& block = self.template getBlockForDescriptor<StreamDescriptor>();
@@ -161,16 +179,17 @@ struct LogMultiplexerImplementationBase {
   }
 
   auto resolveLeaderChange(std::exception_ptr ptr) {
-    auto promiseSet = _guardedData.getLockedGuard()->getChangeLeaderResolveSet(ptr);
+    auto promiseSet =
+        _guardedData.getLockedGuard()->getChangeLeaderResolveSet(ptr);
     resolvePromiseSets(Spec{}, promiseSet);
   }
 
  protected:
   auto& getLogInterface() { return static_cast<Derived&>(*this)._interface; }
 
-  template <typename>
+  template<typename>
   struct MultiplexerData;
-  template <typename... Descriptors>
+  template<typename... Descriptors>
   struct MultiplexerData<stream_descriptor_set<Descriptors...>> {
     std::tuple<StreamInformationBlock<Descriptors>...> _blocks;
     LogIndex _firstUncommittedIndex{1};
@@ -182,8 +201,8 @@ struct LogMultiplexerImplementationBase {
     explicit MultiplexerData(Derived& self) : _self(self) {}
     void digestIterator(LogIterator& iter) {
       while (auto memtry = iter.next()) {
-        auto muxedValue =
-            MultiplexedValues::fromVelocyPack<Descriptors...>(memtry->logPayload());
+        auto muxedValue = MultiplexedValues::fromVelocyPack<Descriptors...>(
+            memtry->logPayload());
         std::visit(
             [&](auto&& value) {
               using ValueTag = std::decay_t<decltype(value)>;
@@ -198,13 +217,17 @@ struct LogMultiplexerImplementationBase {
     auto getChangeLeaderResolveSet(std::exception_ptr ptr) {
       return std::make_tuple(std::make_pair(
           std::move(getBlockForDescriptor<Descriptors>()._waitForQueue),
-          futures::Try<typename StreamInformationBlock<Descriptors>::WaitForResult>{ptr})...);
+          futures::Try<
+              typename StreamInformationBlock<Descriptors>::WaitForResult>{
+              ptr})...);
     }
 
     auto getWaitForResolveSetAll(LogIndex commitIndex) {
       return std::make_tuple(std::make_pair(
-          getBlockForDescriptor<Descriptors>().getWaitForResolveSet(commitIndex),
-          futures::Try{typename StreamInformationBlock<Descriptors>::WaitForResult{}})...);
+          getBlockForDescriptor<Descriptors>().getWaitForResolveSet(
+              commitIndex),
+          futures::Try{typename StreamInformationBlock<
+              Descriptors>::WaitForResult{}})...);
     }
 
     // returns a LogIndex to wait for (if necessary)
@@ -222,14 +245,15 @@ struct LogMultiplexerImplementationBase {
       return std::min({getBlockForDescriptor<Descriptors>()._releaseIndex...});
     }
 
-    template <typename Descriptor>
+    template<typename Descriptor>
     auto getBlockForDescriptor() -> StreamInformationBlock<Descriptor>& {
       return std::get<StreamInformationBlock<Descriptor>>(_blocks);
     }
   };
 
   auto shared_from_self() -> std::shared_ptr<Derived> {
-    return std::static_pointer_cast<Derived>(static_cast<Derived&>(*this).shared_from_this());
+    return std::static_pointer_cast<Derived>(
+        static_cast<Derived&>(*this).shared_from_this());
   }
   auto weak_from_self() -> std::weak_ptr<Derived> { return shared_from_self(); }
 
@@ -243,12 +267,16 @@ struct LogMultiplexerImplementationBase {
 #pragma warning(disable : 4250)
 #endif
 
-template <typename Spec>
+template<typename Spec>
 struct LogDemultiplexerImplementation
     : LogDemultiplexer<Spec>,  // implement the actual class
-      ProxyStreamDispatcher<LogDemultiplexerImplementation<Spec>, Spec, Stream>,  // use a proxy stream dispatcher
-      LogMultiplexerImplementationBase<LogDemultiplexerImplementation<Spec>, Spec, arangodb::replication2::streams::Stream> {
-  explicit LogDemultiplexerImplementation(std::shared_ptr<replicated_log::ILogParticipant> interface_)
+      ProxyStreamDispatcher<LogDemultiplexerImplementation<Spec>, Spec,
+                            Stream>,  // use a proxy stream dispatcher
+      LogMultiplexerImplementationBase<
+          LogDemultiplexerImplementation<Spec>, Spec,
+          arangodb::replication2::streams::Stream> {
+  explicit LogDemultiplexerImplementation(
+      std::shared_ptr<replicated_log::ILogParticipant> interface_)
       : _interface(std::move(interface_)) {}
 
   auto digestIterator(LogIterator& iter) -> void override {
@@ -256,8 +284,8 @@ struct LogDemultiplexerImplementation
   }
 
   auto listen() -> void override {
-    auto nextIndex =
-        this->_guardedData.doUnderLock([](auto& self) -> std::optional<LogIndex> {
+    auto nextIndex = this->_guardedData.doUnderLock(
+        [](auto& self) -> std::optional<LogIndex> {
           if (!self._pendingWaitFor) {
             self._pendingWaitFor = true;
             return self._firstUncommittedIndex;
@@ -275,34 +303,40 @@ struct LogDemultiplexerImplementation
   void triggerWaitFor(LogIndex waitForIndex) {
     this->_interface->waitForIterator(waitForIndex)
         .thenFinal([weak = this->weak_from_this()](
-                       futures::Try<std::unique_ptr<LogRangeIterator>>&& result) noexcept {
+                       futures::Try<std::unique_ptr<LogRangeIterator>>&&
+                           result) noexcept {
           if (auto locked = weak.lock(); locked) {
-            auto that = std::static_pointer_cast<LogDemultiplexerImplementation>(locked);
+            auto that =
+                std::static_pointer_cast<LogDemultiplexerImplementation>(
+                    locked);
             try {
-              auto iter = std::move(result).get();  // potentially throws an exception
-              auto [nextIndex, promiseSets] = that->_guardedData.doUnderLock([&](auto& self) {
-                self._firstUncommittedIndex = iter->range().to;
-                self.digestIterator(*iter);
-                return std::make_tuple(self._firstUncommittedIndex,
-                                       self.getWaitForResolveSetAll(
-                                           self._firstUncommittedIndex.saturatedDecrement()));
-              });
+              auto iter =
+                  std::move(result).get();  // potentially throws an exception
+              auto [nextIndex, promiseSets] =
+                  that->_guardedData.doUnderLock([&](auto& self) {
+                    self._firstUncommittedIndex = iter->range().to;
+                    self.digestIterator(*iter);
+                    return std::make_tuple(
+                        self._firstUncommittedIndex,
+                        self.getWaitForResolveSetAll(
+                            self._firstUncommittedIndex.saturatedDecrement()));
+                  });
 
               that->triggerWaitFor(nextIndex);
               resolvePromiseSets(Spec{}, promiseSets);
+            } catch (replicated_log::ParticipantResignedException const&) {
+              LOG_TOPIC("c5c04", DEBUG, Logger::REPLICATION2)
+                  << "demultiplexer received follower-resigned exception";
+              that->resolveLeaderChange(std::current_exception());
             } catch (basics::Exception const& e) {
-              if (e.code() == TRI_ERROR_REPLICATION_LEADER_CHANGE) {
-                LOG_TOPIC("c5c04", DEBUG, Logger::REPLICATION2)
-                    << "demultiplexer received follower-resigned exception";
-                that->resolveLeaderChange(std::current_exception());
-              } else {
-                LOG_TOPIC("2e28d", FATAL, Logger::REPLICATION2)
-                    << "demultiplexer received unexpected exception: " << e.what();
-                FATAL_ERROR_EXIT();
-              }
+              LOG_TOPIC("2e28d", FATAL, Logger::REPLICATION2)
+                  << "demultiplexer received unexpected exception: "
+                  << e.what();
+              FATAL_ERROR_EXIT();
             } catch (std::exception const& e) {
               LOG_TOPIC("2e28d", FATAL, Logger::REPLICATION2)
-                  << "demultiplexer received unexpected exception: " << e.what();
+                  << "demultiplexer received unexpected exception: "
+                  << e.what();
               FATAL_ERROR_EXIT();
             } catch (...) {
               LOG_TOPIC("c3a3d", FATAL, Logger::REPLICATION2)
@@ -314,14 +348,18 @@ struct LogDemultiplexerImplementation
   }
 };
 
-template <typename Spec>
+template<typename Spec>
 struct LogMultiplexerImplementation
     : LogMultiplexer<Spec>,
-      ProxyStreamDispatcher<LogMultiplexerImplementation<Spec>, Spec, ProducerStream>,
-      LogMultiplexerImplementationBase<LogMultiplexerImplementation<Spec>, Spec, arangodb::replication2::streams::ProducerStream> {
+      ProxyStreamDispatcher<LogMultiplexerImplementation<Spec>, Spec,
+                            ProducerStream>,
+      LogMultiplexerImplementationBase<
+          LogMultiplexerImplementation<Spec>, Spec,
+          arangodb::replication2::streams::ProducerStream> {
   using SelfClass = LogMultiplexerImplementation<Spec>;
 
-  explicit LogMultiplexerImplementation(std::shared_ptr<replicated_log::ILogLeader> interface_)
+  explicit LogMultiplexerImplementation(
+      std::shared_ptr<replicated_log::ILogLeader> interface_)
       : _interface(std::move(interface_)) {}
 
   void digestAvailableEntries() override {
@@ -336,7 +374,8 @@ struct LogMultiplexerImplementation
     }
   }
 
-  template <typename StreamDescriptor, typename T = stream_descriptor_type_t<StreamDescriptor>>
+  template<typename StreamDescriptor,
+           typename T = stream_descriptor_type_t<StreamDescriptor>>
   auto insertInternal(T const& t) -> LogIndex {
     auto serialized = std::invoke([&] {
       velocypack::UInt8Buffer buffer;
@@ -347,21 +386,22 @@ struct LogMultiplexerImplementation
 
     // we have to lock before we insert, otherwise we could mess up the order
     // of log entries for this stream
-    auto [index, waitForIndex] = this->_guardedData.doUnderLock([&](auto& self) {
-      // First write to replicated log - note that insert could trigger a
-      // waitFor to be resolved. Therefore, we should hold the lock.
-      auto insertIndex =
-          _interface->insert(LogPayload(std::move(serialized)), false,
-                             replicated_log::LogLeader::doNotTriggerAsyncReplication);
-      TRI_ASSERT(insertIndex > self._lastIndex);
-      self._lastIndex = insertIndex;
+    auto [index, waitForIndex] =
+        this->_guardedData.doUnderLock([&](auto& self) {
+          // First write to replicated log - note that insert could trigger a
+          // waitFor to be resolved. Therefore, we should hold the lock.
+          auto insertIndex = _interface->insert(
+              LogPayload(std::move(serialized)), false,
+              replicated_log::LogLeader::doNotTriggerAsyncReplication);
+          TRI_ASSERT(insertIndex > self._lastIndex);
+          self._lastIndex = insertIndex;
 
-      // Now we insert the value T into the StreamsLog,
-      // but it is not yet visible because of the commitIndex
-      auto& block = self.template getBlockForDescriptor<StreamDescriptor>();
-      block.appendEntry(insertIndex, t);
-      return std::make_pair(insertIndex, self.checkWaitFor());
-    });
+          // Now we insert the value T into the StreamsLog,
+          // but it is not yet visible because of the commitIndex
+          auto& block = self.template getBlockForDescriptor<StreamDescriptor>();
+          block.appendEntry(insertIndex, t);
+          return std::make_pair(insertIndex, self.checkWaitFor());
+        });
     // TODO - HACK: because LogLeader::insert can resolve waitFor promises
     //    we have a possible deadlock with triggerWaitForIndex callback.
     //    This is circumvented by first inserting the entry but not triggering
@@ -375,57 +415,60 @@ struct LogMultiplexerImplementation
   }
 
   std::shared_ptr<replicated_log::ILogLeader> _interface;
+
  private:
   void triggerWaitForIndex(LogIndex waitForIndex) {
     LOG_TOPIC("2b7b1", TRACE, Logger::REPLICATION2)
         << "multiplexer trigger wait for index " << waitForIndex;
     auto f = this->_interface->waitFor(waitForIndex);
-    std::move(f).thenFinal([weak = this->weak_from_this()](
-                               futures::Try<replicated_log::WaitForResult>&& tryResult) noexcept {
-      LOG_TOPIC("2b7b1", TRACE, Logger::REPLICATION2)
-          << "multiplexer trigger wait for returned";
-      // First lock the shared pointer
-      if (auto locked = weak.lock(); locked) {
-        auto that = std::static_pointer_cast<SelfClass>(locked);
-        try {
-          auto& result = tryResult.get();
-          // now acquire the mutex
-          auto [resolveSets, nextIndex] = that->_guardedData.doUnderLock([&](auto& self) {
-            self._pendingWaitFor = false;
+    std::move(f).thenFinal(
+        [weak = this->weak_from_this()](
+            futures::Try<replicated_log::WaitForResult>&& tryResult) noexcept {
+          LOG_TOPIC("2b7b1", TRACE, Logger::REPLICATION2)
+              << "multiplexer trigger wait for returned";
+          // First lock the shared pointer
+          if (auto locked = weak.lock(); locked) {
+            auto that = std::static_pointer_cast<SelfClass>(locked);
+            try {
+              auto& result = tryResult.get();
+              // now acquire the mutex
+              auto [resolveSets, nextIndex] =
+                  that->_guardedData.doUnderLock([&](auto& self) {
+                    self._pendingWaitFor = false;
 
-            // find out what the commit index is
-            self._firstUncommittedIndex = result.currentCommitIndex + 1;
-            LOG_TOPIC("2b7b1", TRACE, Logger::REPLICATION2)
-                << "multiplexer update commit index to " << result.currentCommitIndex;
-            return std::make_pair(self.getWaitForResolveSetAll(result.currentCommitIndex),
-                                  self.checkWaitFor());
-          });
+                    // find out what the commit index is
+                    self._firstUncommittedIndex = result.currentCommitIndex + 1;
+                    LOG_TOPIC("2b7b1", TRACE, Logger::REPLICATION2)
+                        << "multiplexer update commit index to "
+                        << result.currentCommitIndex;
+                    return std::make_pair(
+                        self.getWaitForResolveSetAll(result.currentCommitIndex),
+                        self.checkWaitFor());
+                  });
 
-          resolvePromiseSets(Spec{}, resolveSets);
-          if (nextIndex.has_value()) {
-            that->triggerWaitForIndex(*nextIndex);
+              resolvePromiseSets(Spec{}, resolveSets);
+              if (nextIndex.has_value()) {
+                that->triggerWaitForIndex(*nextIndex);
+              }
+            } catch (replicated_log::ParticipantResignedException const&) {
+              LOG_TOPIC("c5c05", DEBUG, Logger::REPLICATION2)
+                  << "multiplexer received leader-resigned exception";
+              that->resolveLeaderChange(std::current_exception());
+            } catch (basics::Exception const& e) {
+              LOG_TOPIC("2e28e", FATAL, Logger::REPLICATION2)
+                  << "multiplexer received unexpected exception: " << e.what();
+              FATAL_ERROR_EXIT();
+            } catch (std::exception const& e) {
+              LOG_TOPIC("709f9", FATAL, Logger::REPLICATION2)
+                  << "multiplexer received unexpected exception: " << e.what();
+              FATAL_ERROR_EXIT();
+            } catch (...) {
+              LOG_TOPIC("c3a3e", FATAL, Logger::REPLICATION2)
+                  << "multiplexer received unexpected exception";
+              FATAL_ERROR_EXIT();
+            }
           }
-        } catch (basics::Exception const& e) {
-          if (e.code() == TRI_ERROR_REPLICATION_LEADER_CHANGE) {
-            LOG_TOPIC("c5c05", DEBUG, Logger::REPLICATION2)
-                << "multiplexer received leader-resigned exception";
-            that->resolveLeaderChange(std::current_exception());
-          } else {
-            LOG_TOPIC("2e28e", FATAL, Logger::REPLICATION2)
-                << "multiplexer received unexpected exception: " << e.what();
-            FATAL_ERROR_EXIT();
-          }
-        } catch (std::exception const& e) {
-          LOG_TOPIC("709f9", FATAL, Logger::REPLICATION2)
-              << "multiplexer received unexpected exception: " << e.what();
-          FATAL_ERROR_EXIT();
-        } catch (...) {
-          LOG_TOPIC("c3a3e", FATAL, Logger::REPLICATION2)
-              << "multiplexer received unexpected exception";
-          FATAL_ERROR_EXIT();
-        }
-      }
-    });
+        });
   }
 };
 
@@ -433,16 +476,20 @@ struct LogMultiplexerImplementation
 #pragma warning(pop)
 #endif
 
-template <typename Spec>
-auto LogDemultiplexer<Spec>::construct(std::shared_ptr<replicated_log::ILogParticipant> interface_)
+template<typename Spec>
+auto LogDemultiplexer<Spec>::construct(
+    std::shared_ptr<replicated_log::ILogParticipant> interface_)
     -> std::shared_ptr<LogDemultiplexer> {
-  return std::make_shared<streams::LogDemultiplexerImplementation<Spec>>(std::move(interface_));
+  return std::make_shared<streams::LogDemultiplexerImplementation<Spec>>(
+      std::move(interface_));
 }
 
-template <typename Spec>
-auto LogMultiplexer<Spec>::construct(std::shared_ptr<arangodb::replication2::replicated_log::ILogLeader> leader)
+template<typename Spec>
+auto LogMultiplexer<Spec>::construct(
+    std::shared_ptr<arangodb::replication2::replicated_log::ILogLeader> leader)
     -> std::shared_ptr<LogMultiplexer> {
-  return std::make_shared<streams::LogMultiplexerImplementation<Spec>>(std::move(leader));
+  return std::make_shared<streams::LogMultiplexerImplementation<Spec>>(
+      std::move(leader));
 }
 
 }  // namespace arangodb::replication2::streams
