@@ -47,8 +47,12 @@ const replicatedLogIsReady = function (logId, term, participants, leader) {
         }
 
         for (const srv of participants) {
-            if (!current.localStatus || !current.localStatus[srv] || current.localStatus[srv].term < term) {
-                return Error(`Participant ${srv} has not yet acknowledge the current term.`);
+            if (!current.localStatus || !current.localStatus[srv]) {
+                return Error(`Participant ${srv} has not yet reported to current.`);
+            }
+            if (current.localStatus[srv].term < term) {
+                return Error(`Participant ${srv} has not yet acknowledged the current term; ` +
+                    `found = ${current.localStatus[srv].term}, expected = ${term}.`);
             }
         }
 
@@ -86,8 +90,14 @@ const replicatedLogParticipantsFlag = function (logId, flags, generation = undef
         if (!current.leader) {
             return Error("Leader has not yet established its term");
         }
-        if (!current.leader.committedParticipantsConfig || (generation !== undefined && current.leader.committedParticipantsConfig.generation < generation)) {
-            return Error("Leader has not yet acked new generation");
+        if (!current.leader.committedParticipantsConfig) {
+            return Error("Leader has not yet committed any participants config");
+        }
+        if (generation !== undefined) {
+            if (current.leader.committedParticipantsConfig.generation < generation) {
+                return Error("Leader has not yet acked new generation; "
+                 + `found ${current.leader.committedParticipantsConfig.generation}, expected = ${generation}`);
+            }
         }
 
         const participants = current.leader.committedParticipantsConfig.participants;
