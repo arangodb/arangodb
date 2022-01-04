@@ -1,10 +1,6 @@
 devel
 -----
 
-* Fixed potentially undefined behavior for exit code of arangodump.
-
-* Ignore signals such as SIGPIPE in client tools.
-
 * APM-292: Added new AQL function SHARD_ID.
 
 * BTS-707: rename "hardened" option value for `--server.support-info-api`
