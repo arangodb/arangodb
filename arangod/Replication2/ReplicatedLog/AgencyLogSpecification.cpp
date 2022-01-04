@@ -37,6 +37,11 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::agency;
 
+namespace {
+auto constexpr StringCommittedParticipantsConfig =
+    std::string_view{"committedParticipantsConfig"};
+}
+
 auto LogPlanTermSpecification::toVelocyPack(VPackBuilder& builder) const
     -> void {
   VPackObjectBuilder ob(&builder);
@@ -252,14 +257,16 @@ auto agency::operator==(const LogCurrentSupervisionElection& left,
 auto LogCurrent::Leader::toVelocyPack(VPackBuilder& builder) const -> void {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::Term, VPackValue(term));
-  builder.add(VPackValue("committedParticipantsConfig"));
+  builder.add(StaticStrings::ServerId, VPackValue(serverId));
+  builder.add(VPackValue(StringCommittedParticipantsConfig));
   committedParticipantsConfig.toVelocyPack(builder);
 }
 
 auto LogCurrent::Leader::fromVelocyPack(VPackSlice s) -> Leader {
   auto leader = LogCurrent::Leader{};
   leader.term = s.get(StaticStrings::Term).extract<LogTerm>();
-  leader.committedParticipantsConfig =
-      ParticipantsConfig::fromVelocyPack(s.get("committedParticipantsConfig"));
+  leader.serverId = s.get(StaticStrings::ServerId).copyString();
+  leader.committedParticipantsConfig = ParticipantsConfig::fromVelocyPack(
+      s.get(StringCommittedParticipantsConfig));
   return leader;
 }
