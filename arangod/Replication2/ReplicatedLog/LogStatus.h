@@ -33,11 +33,7 @@
 
 namespace arangodb::replication2::replicated_log {
 
-enum class ParticipantRole {
-  kUnconfigured,
-  kLeader,
-  kFollower
-};
+enum class ParticipantRole { kUnconfigured, kLeader, kFollower };
 
 /**
  * @brief A minimalist variant of LogStatus, designed to replace FollowerStatus
@@ -65,12 +61,16 @@ struct FollowerStatistics : LogStatistics {
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics;
 
-  friend auto operator==(FollowerStatistics const& left, FollowerStatistics const& right) noexcept -> bool;
-  friend auto operator!=(FollowerStatistics const& left, FollowerStatistics const& right) noexcept -> bool;
+  friend auto operator==(FollowerStatistics const& left,
+                         FollowerStatistics const& right) noexcept -> bool;
+  friend auto operator!=(FollowerStatistics const& left,
+                         FollowerStatistics const& right) noexcept -> bool;
 };
 
-[[nodiscard]] auto operator==(FollowerStatistics const& left, FollowerStatistics const& right) noexcept -> bool;
-[[nodiscard]] auto operator!=(FollowerStatistics const& left, FollowerStatistics const& right) noexcept -> bool;
+[[nodiscard]] auto operator==(FollowerStatistics const& left,
+                              FollowerStatistics const& right) noexcept -> bool;
+[[nodiscard]] auto operator!=(FollowerStatistics const& left,
+                              FollowerStatistics const& right) noexcept -> bool;
 
 struct LeaderStatus {
   LogStatistics local;
@@ -87,7 +87,8 @@ struct LeaderStatus {
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> LeaderStatus;
 
-  friend auto operator==(LeaderStatus const& left, LeaderStatus const& right) noexcept -> bool = default;
+  friend auto operator==(LeaderStatus const& left,
+                         LeaderStatus const& right) noexcept -> bool = default;
 };
 
 struct FollowerStatus {
@@ -130,4 +131,4 @@ struct LogStatus {
   VariantType _variant;
 };
 
-}
+}  // namespace arangodb::replication2::replicated_log

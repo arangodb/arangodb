@@ -56,4 +56,3 @@ class S2MultiPointRegion final : public S2Region {
   int num_points_;
   S2Point* points_;
 };
-

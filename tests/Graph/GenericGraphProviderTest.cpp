@@ -51,9 +51,11 @@ static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
 
 // Add more providers here
 using TypesToTest =
-    ::testing::Types<MockGraphProvider, SingleServerProvider<SingleServerProviderStep>, ClusterProvider>;
+    ::testing::Types<MockGraphProvider,
+                     SingleServerProvider<SingleServerProviderStep>,
+                     ClusterProvider>;
 
-template <class ProviderType>
+template<class ProviderType>
 class GraphProviderTest : public ::testing::Test {
  public:
   using Step = typename ProviderType::Step;
@@ -64,7 +66,8 @@ class GraphProviderTest : public ::testing::Test {
   std::unique_ptr<MockGraphDatabase> singleServer{nullptr};
   std::unique_ptr<mocks::MockServer> server{nullptr};
   std::shared_ptr<arangodb::aql::Query> query{nullptr};
-  std::unique_ptr<std::unordered_map<ServerID, aql::EngineId>> clusterEngines{nullptr};
+  std::unique_ptr<std::unordered_map<ServerID, aql::EngineId>> clusterEngines{
+      nullptr};
   std::unique_ptr<arangodb::transaction::Methods> _trx{};
 
   arangodb::GlobalResourceMonitor global{};
@@ -77,9 +80,10 @@ class GraphProviderTest : public ::testing::Test {
   GraphProviderTest() {}
   ~GraphProviderTest() {}
 
-  auto makeProvider(MockGraph const& graph,
-                    std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const& expectedVerticesEdgesBundleToFetch)
-      -> ProviderType {
+  auto makeProvider(
+      MockGraph const& graph,
+      std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const&
+          expectedVerticesEdgesBundleToFetch) -> ProviderType {
     // Setup code for each provider type
     if constexpr (std::is_same_v<ProviderType, MockGraphProvider>) {
       s = std::make_unique<GraphTestSetup>();
@@ -90,11 +94,14 @@ class GraphProviderTest : public ::testing::Test {
       // We now have collections "v" and "e"
       query = singleServer->getQuery("RETURN 1", {"v", "e"});
 
-      return MockGraphProvider(*query.get(),
-                               MockGraphProviderOptions{graph, MockGraphProvider::LooseEndBehaviour::NEVER},
-                               resourceMonitor);
+      return MockGraphProvider(
+          *query.get(),
+          MockGraphProviderOptions{graph,
+                                   MockGraphProvider::LooseEndBehaviour::NEVER},
+          resourceMonitor);
     }
-    if constexpr (std::is_same_v<ProviderType, SingleServerProvider<SingleServerProviderStep>>) {
+    if constexpr (std::is_same_v<ProviderType, SingleServerProvider<
+                                                   SingleServerProviderStep>>) {
       s = std::make_unique<GraphTestSetup>();
       singleServer =
           std::make_unique<MockGraphDatabase>(s->server, "testVocbase");
@@ -102,26 +109,30 @@ class GraphProviderTest : public ::testing::Test {
 
       // We now have collections "v" and "e"
       query = singleServer->getQuery("RETURN 1", {"v", "e"});
-      _trx = std::make_unique<arangodb::transaction::Methods>(query->newTrxContext());
+      _trx = std::make_unique<arangodb::transaction::Methods>(
+          query->newTrxContext());
 
       auto edgeIndexHandle = singleServer->getEdgeIndexHandle("e");
       auto tmpVar = singleServer->generateTempVar(query.get());
-      auto indexCondition = singleServer->buildOutboundCondition(query.get(), tmpVar);
+      auto indexCondition =
+          singleServer->buildOutboundCondition(query.get(), tmpVar);
 
       std::vector<IndexAccessor> usedIndexes{};
-      usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0, nullptr, std::nullopt, 0});
+      usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0,
+                                             nullptr, std::nullopt, 0});
 
       _expressionContext =
-          std::make_unique<arangodb::aql::FixedVarExpressionContext>(*_trx.get(), *query,
-                                                                     _functionsCache);
+          std::make_unique<arangodb::aql::FixedVarExpressionContext>(
+              *_trx.get(), *query, _functionsCache);
 
       BaseProviderOptions opts(
           tmpVar,
-          std::make_pair(std::move(usedIndexes),
-                         std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
+          std::make_pair(
+              std::move(usedIndexes),
+              std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
           *_expressionContext.get(), _emptyShardMap);
-      return SingleServerProvider<SingleServerProviderStep>(*query.get(), std::move(opts),
-                                                            resourceMonitor);
+      return SingleServerProvider<SingleServerProviderStep>(
+          *query.get(), std::move(opts), resourceMonitor);
     }
     if constexpr (std::is_same_v<ProviderType, ClusterProvider>) {
       // Prepare the DBServerResponses
@@ -131,14 +142,16 @@ class GraphProviderTest : public ::testing::Test {
         arangodb::tests::mocks::MockDBServer server{true, true};
         graph.prepareServer(server);
 
-        auto queryString = arangodb::aql::QueryString(std::string_view("RETURN 1"));
+        auto queryString =
+            arangodb::aql::QueryString(std::string_view("RETURN 1"));
 
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
             server.getSystemDatabase());
-        auto fakeQuery = arangodb::aql::Query::create(ctx, queryString, nullptr);
+        auto fakeQuery =
+            arangodb::aql::Query::create(ctx, queryString, nullptr);
         try {
           fakeQuery->collections().add("s9880", AccessMode::Type::READ,
-                                      arangodb::aql::Collection::Hint::Shard);
+                                       arangodb::aql::Collection::Hint::Shard);
         } catch (...) {
         }
         fakeQuery->prepareQuery(SerializationFormat::SHADOWROWS);
@@ -150,19 +163,22 @@ class GraphProviderTest : public ::testing::Test {
         ShortestPathOptions opts{*fakeQuery};
         opts.setVariable(tmpVar);
 
-        auto const* access =
-            ast->createNodeAttributeAccess(tmpVarRef, StaticStrings::FromString);
-        auto const* cond =
-            ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpIdNode);
-        auto fromCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+        auto const* access = ast->createNodeAttributeAccess(
+            tmpVarRef, StaticStrings::FromString);
+        auto const* cond = ast->createNodeBinaryOperator(
+            NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpIdNode);
+        auto fromCondition =
+            ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
         fromCondition->addMember(cond);
-        opts.addLookupInfo(fakeQuery->plan(), "s9880", StaticStrings::FromString, fromCondition);
+        opts.addLookupInfo(fakeQuery->plan(), "s9880",
+                           StaticStrings::FromString, fromCondition);
 
         auto const* revAccess =
             ast->createNodeAttributeAccess(tmpVarRef, StaticStrings::ToString);
-        auto const* revCond = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
-                                                            revAccess, tmpIdNode);
-        auto toCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+        auto const* revCond = ast->createNodeBinaryOperator(
+            NODE_TYPE_OPERATOR_BINARY_EQ, revAccess, tmpIdNode);
+        auto toCondition =
+            ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
         toCondition->addMember(revCond);
         opts.addReverseLookupInfo(fakeQuery->plan(), "s9880",
                                   StaticStrings::FromString, toCondition);
@@ -180,15 +196,18 @@ class GraphProviderTest : public ::testing::Test {
       }
 
       server = std::make_unique<mocks::MockCoordinator>(true, false);
-      mocks::MockCoordinator* srv = static_cast<mocks::MockCoordinator*>(server.get());
+      mocks::MockCoordinator* srv =
+          static_cast<mocks::MockCoordinator*>(server.get());
       graph.prepareServer(*srv);
       auto dbServerEndpoint = srv->registerFakedDBServer("PRMR_0001");
       auto pool = srv->getPool();
       static_cast<arangodb::tests::PreparedResponseConnectionPool*>(pool)
-          ->addPreparedResponses(dbServerEndpoint, std::move(preparedResponses));
+          ->addPreparedResponses(dbServerEndpoint,
+                                 std::move(preparedResponses));
 
       {
-        auto queryString = arangodb::aql::QueryString(std::string_view("RETURN 1"));
+        auto queryString =
+            arangodb::aql::QueryString(std::string_view("RETURN 1"));
 
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
             server->getSystemDatabase());
@@ -202,12 +221,15 @@ class GraphProviderTest : public ::testing::Test {
         query->prepareQuery(SerializationFormat::SHADOWROWS);
       }
 
-      clusterEngines = std::make_unique<std::unordered_map<ServerID, aql::EngineId>>();
+      clusterEngines =
+          std::make_unique<std::unordered_map<ServerID, aql::EngineId>>();
       clusterEngines->emplace("PRMR_0001", engineId);
 
-      auto clusterCache = std::make_shared<RefactoredClusterTraverserCache>(resourceMonitor);
+      auto clusterCache =
+          std::make_shared<RefactoredClusterTraverserCache>(resourceMonitor);
 
-      ClusterBaseProviderOptions opts(clusterCache, clusterEngines.get(), false);
+      ClusterBaseProviderOptions opts(clusterCache, clusterEngines.get(),
+                                      false);
       return ClusterProvider(*query.get(), std::move(opts), resourceMonitor);
     }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -219,9 +241,10 @@ TYPED_TEST_CASE(GraphProviderTest, TypesToTest);
 TYPED_TEST(GraphProviderTest, no_results_if_graph_is_empty) {
   MockGraph empty{};
 
-  std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const& expectedVerticesEdgesBundleToFetch = {
-      {0, {}}};
-  TypeParam testee = this->makeProvider(empty, expectedVerticesEdgesBundleToFetch);
+  std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const&
+      expectedVerticesEdgesBundleToFetch = {{0, {}}};
+  TypeParam testee =
+      this->makeProvider(empty, expectedVerticesEdgesBundleToFetch);
   std::string startString = "v/0";
   VPackHashedStringRef startH{startString.c_str(),
                               static_cast<uint32_t>(startString.length())};
@@ -243,7 +266,8 @@ TYPED_TEST(GraphProviderTest, no_results_if_graph_is_empty) {
   TraversalStats stats = testee.stealStats();
   EXPECT_EQ(stats.getFiltered(), 0);
 
-  if constexpr (std::is_same_v<TypeParam, SingleServerProvider<SingleServerProviderStep>> ||
+  if constexpr (std::is_same_v<TypeParam, SingleServerProvider<
+                                              SingleServerProviderStep>> ||
                 std::is_same_v<TypeParam, MockGraphProvider>) {
     EXPECT_EQ(stats.getHttpRequests(), 0);
   } else if (std::is_same_v<TypeParam, ClusterProvider>) {
@@ -258,8 +282,8 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
   MockGraph g{};
   g.addEdge(0, 1);
 
-  std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const& expectedVerticesEdgesBundleToFetch = {
-      {0, {}}};
+  std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const&
+      expectedVerticesEdgesBundleToFetch = {{0, {}}};
 
   auto testee = this->makeProvider(g, expectedVerticesEdgesBundleToFetch);
   std::string startString = "v/0";
@@ -287,7 +311,8 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
   {
     TraversalStats stats = testee.stealStats();
     EXPECT_EQ(stats.getFiltered(), 0);
-    if constexpr (std::is_same_v<TypeParam, SingleServerProvider<SingleServerProviderStep>> ||
+    if constexpr (std::is_same_v<TypeParam, SingleServerProvider<
+                                                SingleServerProviderStep>> ||
                   std::is_same_v<TypeParam, MockGraphProvider>) {
       EXPECT_EQ(stats.getHttpRequests(), 0);
     } else if (std::is_same_v<TypeParam, ClusterProvider>) {
@@ -313,8 +338,8 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
   g.addEdge(0, 3);
   std::unordered_set<std::string> found{};
 
-  std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const& expectedVerticesEdgesBundleToFetch = {
-      {0, {}}};
+  std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const&
+      expectedVerticesEdgesBundleToFetch = {{0, {}}};
   auto testee = this->makeProvider(g, expectedVerticesEdgesBundleToFetch);
   std::string startString = g.vertexToId(0);
   VPackHashedStringRef startH{startString.c_str(),
@@ -349,7 +374,8 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
   {
     TraversalStats stats = testee.stealStats();
     EXPECT_EQ(stats.getFiltered(), 0);
-    if constexpr (std::is_same_v<TypeParam, SingleServerProvider<SingleServerProviderStep>> ||
+    if constexpr (std::is_same_v<TypeParam, SingleServerProvider<
+                                                SingleServerProviderStep>> ||
                   std::is_same_v<TypeParam, MockGraphProvider>) {
       EXPECT_EQ(stats.getHttpRequests(), 0);
     } else if (std::is_same_v<TypeParam, ClusterProvider>) {
@@ -362,19 +388,23 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
 
 TYPED_TEST(GraphProviderTest, destroy_engines) {
   MockGraph empty{};
-  std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const& expectedVerticesEdgesBundleToFetch = {};
-  TypeParam testee = this->makeProvider(empty, expectedVerticesEdgesBundleToFetch);
+  std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const&
+      expectedVerticesEdgesBundleToFetch = {};
+  TypeParam testee =
+      this->makeProvider(empty, expectedVerticesEdgesBundleToFetch);
 
   // steel the stats, so we reset them internally and have a clean state
   std::ignore = testee.stealStats();
 
   testee.destroyEngines();
   TraversalStats statsAfterSteal = testee.stealStats();
-  if constexpr (std::is_same_v<TypeParam, SingleServerProvider<SingleServerProviderStep>> ||
+  if constexpr (std::is_same_v<TypeParam, SingleServerProvider<
+                                              SingleServerProviderStep>> ||
                 std::is_same_v<TypeParam, MockGraphProvider>) {
     EXPECT_EQ(statsAfterSteal.getHttpRequests(), 0);
   } else if (std::is_same_v<TypeParam, ClusterProvider>) {
-    EXPECT_EQ(statsAfterSteal.getHttpRequests(), this->clusterEngines.get()->size());
+    EXPECT_EQ(statsAfterSteal.getHttpRequests(),
+              this->clusterEngines.get()->size());
   }
 }
 

@@ -32,12 +32,13 @@ class TransactionDB;
 namespace arangodb {
 
 // only implements GET
-class RocksDBSingleOperationReadOnlyMethods final : public RocksDBReadOnlyBaseMethods {
+class RocksDBSingleOperationReadOnlyMethods final
+    : public RocksDBReadOnlyBaseMethods {
  public:
   using RocksDBReadOnlyBaseMethods::RocksDBReadOnlyBaseMethods;
 
   Result beginTransaction() override;
-  
+
   Result commitTransaction() override;
 
   Result abortTransaction() override;
@@ -52,4 +53,3 @@ class RocksDBSingleOperationReadOnlyMethods final : public RocksDBReadOnlyBaseMe
 };
 
 }  // namespace arangodb
-

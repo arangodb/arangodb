@@ -41,14 +41,15 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-template <class ProviderType, class Step>
-PathResult<ProviderType, Step>::PathResult(ProviderType& sourceProvider, ProviderType& targetProvider)
+template<class ProviderType, class Step>
+PathResult<ProviderType, Step>::PathResult(ProviderType& sourceProvider,
+                                           ProviderType& targetProvider)
     : _numVerticesFromSourceProvider(0),
       _numEdgesFromSourceProvider(0),
       _sourceProvider(sourceProvider),
       _targetProvider(targetProvider) {}
 
-template <class ProviderType, class Step>
+template<class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::clear() -> void {
   _numVerticesFromSourceProvider = 0;
   _numEdgesFromSourceProvider = 0;
@@ -56,24 +57,27 @@ auto PathResult<ProviderType, Step>::clear() -> void {
   _edges.clear();
 }
 
-template <class ProviderType, class Step>
-auto PathResult<ProviderType, Step>::appendVertex(typename Step::Vertex v) -> void {
+template<class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::appendVertex(typename Step::Vertex v)
+    -> void {
   _vertices.push_back(std::move(v));
 }
 
-template <class ProviderType, class Step>
-auto PathResult<ProviderType, Step>::prependVertex(typename Step::Vertex v) -> void {
+template<class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::prependVertex(typename Step::Vertex v)
+    -> void {
   _numVerticesFromSourceProvider++;
   _vertices.insert(_vertices.begin(), std::move(v));
 }
 
-template <class ProviderType, class Step>
+template<class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::appendEdge(typename Step::Edge e) -> void {
   _edges.push_back(std::move(e));
 }
 
-template <class ProviderType, class Step>
-auto PathResult<ProviderType, Step>::prependEdge(typename Step::Edge e) -> void {
+template<class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::prependEdge(typename Step::Edge e)
+    -> void {
   _numEdgesFromSourceProvider++;
   _edges.insert(_edges.begin(), std::move(e));
 }
@@ -82,9 +86,9 @@ auto PathResult<ProviderType, Step>::prependEdge(typename Step::Edge e) -> void 
 // Potential optimization: Instead of counting on each append
 // We can do a size call to the vector when switching the Provider.
 
-template <class ProviderType, class Step>
-auto PathResult<ProviderType, Step>::toVelocyPack(arangodb::velocypack::Builder& builder)
-    -> void {
+template<class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::toVelocyPack(
+    arangodb::velocypack::Builder& builder) -> void {
   TRI_ASSERT(_numVerticesFromSourceProvider <= _vertices.size());
   VPackObjectBuilder path{&builder};
   {
@@ -114,7 +118,7 @@ auto PathResult<ProviderType, Step>::toVelocyPack(arangodb::velocypack::Builder&
   }
 }
 
-template <class ProviderType, class Step>
+template<class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::isEmpty() const -> bool {
   return _vertices.empty();
 }
@@ -123,18 +127,30 @@ auto PathResult<ProviderType, Step>::isEmpty() const -> bool {
 
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
-template class ::arangodb::graph::PathResult<::arangodb::graph::SingleServerProvider<SingleServerProviderStep>, SingleServerProviderStep>;
-template class ::arangodb::graph::PathResult<::arangodb::graph::ProviderTracer<SingleServerProvider<SingleServerProviderStep>>, SingleServerProviderStep>;
+template class ::arangodb::graph::PathResult<
+    ::arangodb::graph::SingleServerProvider<SingleServerProviderStep>,
+    SingleServerProviderStep>;
+template class ::arangodb::graph::PathResult<
+    ::arangodb::graph::ProviderTracer<
+        SingleServerProvider<SingleServerProviderStep>>,
+    SingleServerProviderStep>;
 
 #ifdef USE_ENTERPRISE
-template class ::arangodb::graph::PathResult<::arangodb::graph::SingleServerProvider<enterprise::SmartGraphStep>, enterprise::SmartGraphStep>;
 template class ::arangodb::graph::PathResult<
-    ::arangodb::graph::ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>, enterprise::SmartGraphStep>;
+    ::arangodb::graph::SingleServerProvider<enterprise::SmartGraphStep>,
+    enterprise::SmartGraphStep>;
+template class ::arangodb::graph::PathResult<
+    ::arangodb::graph::ProviderTracer<
+        SingleServerProvider<enterprise::SmartGraphStep>>,
+    enterprise::SmartGraphStep>;
 #endif
 
 /* ClusterProvider Section */
 
-template class ::arangodb::graph::PathResult<::arangodb::graph::ClusterProvider, ::arangodb::graph::ClusterProvider::Step>;
+template class ::arangodb::graph::PathResult<
+    ::arangodb::graph::ClusterProvider,
+    ::arangodb::graph::ClusterProvider::Step>;
 
-template class ::arangodb::graph::PathResult<::arangodb::graph::ProviderTracer<::arangodb::graph::ClusterProvider>,
-                                             ::arangodb::graph::ClusterProvider::Step>;
+template class ::arangodb::graph::PathResult<
+    ::arangodb::graph::ProviderTracer<::arangodb::graph::ClusterProvider>,
+    ::arangodb::graph::ClusterProvider::Step>;

@@ -35,7 +35,7 @@ namespace basics {
 /// note: T must be an unsigned type
 ////////////////////////////////////////////////////////////////////////////////
 
-template <typename T>
+template<typename T>
 static T binaryGcd(T u, T v) {
   if (u == 0) {
     return v;
@@ -69,4 +69,3 @@ static T binaryGcd(T u, T v) {
 }
 }  // namespace basics
 }  // namespace arangodb
-
