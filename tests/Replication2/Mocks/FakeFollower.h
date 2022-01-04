@@ -63,7 +63,8 @@ struct FakeFollower final : replicated_log::ILogFollower,
 
   template<typename State>
   auto insertMultiplexedValue(typename State::EntryType const& t) -> LogIndex {
-    using streamSpec = typename replicated_state::ReplicatedStateStreamSpec<State>;
+    using streamSpec =
+        typename replicated_state::ReplicatedStateStreamSpec<State>;
     velocypack::UInt8Buffer buffer;
     velocypack::Builder builder(buffer);
     using descriptor = streams::stream_descriptor_by_id_t<1, streamSpec>;

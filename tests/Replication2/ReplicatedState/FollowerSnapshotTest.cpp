@@ -55,14 +55,17 @@ struct FollowerSnapshotTest
       std::make_unique<ReplicatedStateCore>();
 };
 
-
 TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
   auto follower =
       std::make_shared<test::FakeFollower>("follower", "leader", LogTerm{1});
-  follower->insertMultiplexedValue<State>(test::DefaultEntryType{.key = "A", .value = "a"});
-  follower->insertMultiplexedValue<State>(test::DefaultEntryType{.key = "B", .value = "b"});
-  follower->insertMultiplexedValue<State>(test::DefaultEntryType{.key = "C", .value = "c"});
-  follower->insertMultiplexedValue<State>(test::DefaultEntryType{.key = "D", .value = "d"});
+  follower->insertMultiplexedValue<State>(
+      test::DefaultEntryType{.key = "A", .value = "a"});
+  follower->insertMultiplexedValue<State>(
+      test::DefaultEntryType{.key = "B", .value = "b"});
+  follower->insertMultiplexedValue<State>(
+      test::DefaultEntryType{.key = "C", .value = "c"});
+  follower->insertMultiplexedValue<State>(
+      test::DefaultEntryType{.key = "D", .value = "d"});
 
   auto manager = std::make_shared<FollowerStateManager<State>>(
       nullptr, follower, std::move(core), factory);
@@ -118,7 +121,7 @@ TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
   EXPECT_EQ(state->apply.inspectValue()->range(),
             LogRange(LogIndex{1}, LogIndex{4}));
 
-  state->apply.resolveWith(Result{}); // resolve with ok
+  state->apply.resolveWith(Result{});  // resolve with ok
   {
     auto status = *manager->getStatus().asFollowerStatus();
     EXPECT_EQ(status.state.state, FollowerInternalState::kNothingToApply);
@@ -128,10 +131,14 @@ TEST_F(FollowerSnapshotTest, basic_follower_manager_test) {
 TEST_F(FollowerSnapshotTest, follower_resign_before_leadership_acked) {
   auto follower =
       std::make_shared<test::FakeFollower>("follower", "leader", LogTerm{1});
-  follower->insertMultiplexedValue<State>(test::DefaultEntryType{.key = "A", .value = "a"});
-  follower->insertMultiplexedValue<State>(test::DefaultEntryType{.key = "B", .value = "b"});
-  follower->insertMultiplexedValue<State>(test::DefaultEntryType{.key = "C", .value = "c"});
-  follower->insertMultiplexedValue<State>(test::DefaultEntryType{.key = "D", .value = "d"});
+  follower->insertMultiplexedValue<State>(
+      test::DefaultEntryType{.key = "A", .value = "a"});
+  follower->insertMultiplexedValue<State>(
+      test::DefaultEntryType{.key = "B", .value = "b"});
+  follower->insertMultiplexedValue<State>(
+      test::DefaultEntryType{.key = "C", .value = "c"});
+  follower->insertMultiplexedValue<State>(
+      test::DefaultEntryType{.key = "D", .value = "d"});
 
   auto manager = std::make_shared<FollowerStateManager<State>>(
       nullptr, follower, std::move(core), factory);

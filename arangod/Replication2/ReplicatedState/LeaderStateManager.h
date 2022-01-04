@@ -39,17 +39,17 @@ struct LeaderStateManager
   using FollowerType = typename ReplicatedStateTraits<S>::FollowerType;
   using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
 
-  explicit LeaderStateManager(std::shared_ptr<ReplicatedState<S>> const& parent,
-                              std::shared_ptr<replicated_log::ILogLeader> leader,
-                              std::unique_ptr<ReplicatedStateCore> core,
-                              std::shared_ptr<Factory> factory) noexcept;
+  explicit LeaderStateManager(
+      std::shared_ptr<ReplicatedState<S>> const& parent,
+      std::shared_ptr<replicated_log::ILogLeader> leader,
+      std::unique_ptr<ReplicatedStateCore> core,
+      std::shared_ptr<Factory> factory) noexcept;
 
   using Stream = streams::ProducerStream<EntryType>;
   using Iterator = typename Stream::Iterator;
 
   auto getStatus() const -> StateStatus final;
   auto getSnapshotStatus() const -> SnapshotStatus final;
-
 
   void run();
 
@@ -76,4 +76,4 @@ struct LeaderStateManager
 
   // TODO locking
 };
-}
+}  // namespace arangodb::replication2::replicated_state

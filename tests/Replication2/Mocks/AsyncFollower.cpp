@@ -40,15 +40,18 @@ auto AsyncFollower::getQuickStatus() const -> QuickLogStatus {
   return _follower->getQuickStatus();
 }
 
-auto AsyncFollower::resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> {
+auto AsyncFollower::resign() && -> std::tuple<std::unique_ptr<LogCore>,
+                                              DeferredAction> {
   return std::move(*_follower).resign();
 }
 
-auto AsyncFollower::waitFor(arangodb::replication2::LogIndex index) -> WaitForFuture {
+auto AsyncFollower::waitFor(arangodb::replication2::LogIndex index)
+    -> WaitForFuture {
   return _follower->waitFor(index);
 }
 
-auto AsyncFollower::release(arangodb::replication2::LogIndex doneWithIdx) -> Result {
+auto AsyncFollower::release(arangodb::replication2::LogIndex doneWithIdx)
+    -> Result {
   return _follower->release(doneWithIdx);
 }
 
@@ -68,7 +71,8 @@ auto AsyncFollower::waitForLeaderAcked() -> WaitForFuture {
   return _follower->waitForLeaderAcked();
 }
 
-auto AsyncFollower::getLeader() const noexcept -> std::optional<ParticipantId> const&{
+auto AsyncFollower::getLeader() const noexcept
+    -> std::optional<ParticipantId> const& {
   return _follower->getLeader();
 }
 
@@ -79,8 +83,10 @@ auto AsyncFollower::appendEntries(AppendEntriesRequest request)
   return _requests.emplace_back(std::move(request)).promise.getFuture();
 }
 
-AsyncFollower::AsyncFollower(std::shared_ptr<replicated_log::LogFollower> follower)
-    : _follower(std::move(follower)), _asyncWorker([this] { this->runWorker(); }) {}
+AsyncFollower::AsyncFollower(
+    std::shared_ptr<replicated_log::LogFollower> follower)
+    : _follower(std::move(follower)),
+      _asyncWorker([this] { this->runWorker(); }) {}
 
 AsyncFollower::~AsyncFollower() noexcept {
   if (!_stopping) {
@@ -104,9 +110,10 @@ void AsyncFollower::runWorker() {
     }
 
     for (auto& req : requests) {
-      _follower->appendEntries(req.request).thenFinal([promise = std::move(req.promise)](auto&& res) mutable {
-        promise.setValue(std::forward<decltype(res)>(res));
-      });
+      _follower->appendEntries(req.request)
+          .thenFinal([promise = std::move(req.promise)](auto&& res) mutable {
+            promise.setValue(std::forward<decltype(res)>(res));
+          });
     }
   }
 }

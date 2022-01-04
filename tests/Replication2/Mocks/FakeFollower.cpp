@@ -60,8 +60,7 @@ auto FakeFollower::resign() && -> std::tuple<
 }
 
 FakeFollower::FakeFollower(ParticipantId id,
-                           std::optional<ParticipantId> leader,
-                           LogTerm term)
+                           std::optional<ParticipantId> leader, LogTerm term)
     : id(std::move(id)), leaderId(std::move(leader)), term(term) {}
 
 auto FakeFollower::getStatus() const -> replicated_log::LogStatus {
@@ -91,7 +90,6 @@ auto FakeFollower::addEntry(LogPayload payload) -> LogIndex {
                            std::move(memtry));
     return index;
   });
-
 
   return index;
 }

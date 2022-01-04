@@ -49,8 +49,8 @@ void ReplicatedState<S>::runFollower(
     std::unique_ptr<ReplicatedStateCore> core) {
   LOG_TOPIC("95b9d", DEBUG, Logger::REPLICATED_STATE)
       << "create follower state";
-  auto manager = std::make_shared<FollowerStateManager<S>>(this->shared_from_this(),
-                                                 logFollower, std::move(core), factory);
+  auto manager = std::make_shared<FollowerStateManager<S>>(
+      this->shared_from_this(), logFollower, std::move(core), factory);
   manager->run();
   currentManager = manager;
 }
@@ -60,8 +60,8 @@ void ReplicatedState<S>::runLeader(
     std::shared_ptr<replicated_log::ILogLeader> logLeader,
     std::unique_ptr<ReplicatedStateCore> core) {
   LOG_TOPIC("95b9d", DEBUG, Logger::REPLICATED_STATE) << "create leader state";
-  auto manager = std::make_shared<LeaderStateManager<S>>(this->shared_from_this(),
-                                               logLeader, std::move(core), factory);
+  auto manager = std::make_shared<LeaderStateManager<S>>(
+      this->shared_from_this(), logLeader, std::move(core), factory);
   manager->run();
   currentManager = manager;
 }
@@ -112,7 +112,8 @@ void ReplicatedState<S>::flush(std::unique_ptr<ReplicatedStateCore> core) {
 
 template<typename S>
 auto ReplicatedState<S>::getFollower() const -> std::shared_ptr<FollowerType> {
-  if (auto machine = std::dynamic_pointer_cast<FollowerStateManager<S>>(currentManager);
+  if (auto machine =
+          std::dynamic_pointer_cast<FollowerStateManager<S>>(currentManager);
       machine) {
     return std::static_pointer_cast<FollowerType>(machine->getFollowerState());
   }
@@ -121,7 +122,8 @@ auto ReplicatedState<S>::getFollower() const -> std::shared_ptr<FollowerType> {
 
 template<typename S>
 auto ReplicatedState<S>::getLeader() const -> std::shared_ptr<LeaderType> {
-  if (auto internalState = std::dynamic_pointer_cast<LeaderStateManager<S>>(currentManager);
+  if (auto internalState =
+          std::dynamic_pointer_cast<LeaderStateManager<S>>(currentManager);
       internalState) {
     if (internalState->state != nullptr) {
       return std::static_pointer_cast<LeaderType>(internalState->state);

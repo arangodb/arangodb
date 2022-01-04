@@ -39,9 +39,11 @@ namespace arangodb::replication2::test {
  * consider using the FakeFollower.
  */
 struct FakeAbstractFollower : AbstractFollower {
-  explicit FakeAbstractFollower(ParticipantId id) : participantId(std::move(id)) {}
+  explicit FakeAbstractFollower(ParticipantId id)
+      : participantId(std::move(id)) {}
 
-  [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const& override {
+  [[nodiscard]] auto getParticipantId() const noexcept
+      -> ParticipantId const& override {
     return participantId;
   };
 
@@ -56,11 +58,11 @@ struct FakeAbstractFollower : AbstractFollower {
   }
 
   void resolveWithOk() {
-    resolveRequest(AppendEntriesResult{LogTerm{4}, TRI_ERROR_NO_ERROR,
-                                       {}, currentRequest().messageId});
+    resolveRequest(AppendEntriesResult{
+        LogTerm{4}, TRI_ERROR_NO_ERROR, {}, currentRequest().messageId});
   }
 
-  template <typename E>
+  template<typename E>
   void resolveRequestWithException(E&& e) {
     requests.front().promise.setException(std::forward<E>(e));
     requests.pop_front();
@@ -70,7 +72,9 @@ struct FakeAbstractFollower : AbstractFollower {
     return requests.front().request;
   }
 
-  [[nodiscard]] auto hasPendingRequests() const -> bool { return !requests.empty(); }
+  [[nodiscard]] auto hasPendingRequests() const -> bool {
+    return !requests.empty();
+  }
 
   void handleAllRequestsWithOk() {
     while (hasPendingRequests()) {

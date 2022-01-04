@@ -40,10 +40,11 @@ struct FollowerStateManager
   using Stream = streams::Stream<EntryType>;
   using Iterator = typename Stream::Iterator;
 
-  FollowerStateManager(std::shared_ptr<ReplicatedState<S>> parent,
-                       std::shared_ptr<replicated_log::ILogFollower> logFollower,
-                       std::unique_ptr<ReplicatedStateCore> core,
-                       std::shared_ptr<Factory> factory) noexcept;
+  FollowerStateManager(
+      std::shared_ptr<ReplicatedState<S>> parent,
+      std::shared_ptr<replicated_log::ILogFollower> logFollower,
+      std::unique_ptr<ReplicatedStateCore> core,
+      std::shared_ptr<Factory> factory) noexcept;
 
   void run();
   auto getStatus() const -> StateStatus final;
@@ -58,7 +59,6 @@ struct FollowerStateManager
   void checkSnapshot(std::shared_ptr<IReplicatedFollowerState<S>>);
   void tryTransferSnapshot(std::shared_ptr<IReplicatedFollowerState<S>>);
   void startService(std::shared_ptr<IReplicatedFollowerState<S>>);
-
 
   void applyEntries(std::unique_ptr<Iterator> iter) noexcept;
 
@@ -88,4 +88,4 @@ struct FollowerStateManager
     ingestionRange = range;
   }
 };
-}
+}  // namespace arangodb::replication2::replicated_state

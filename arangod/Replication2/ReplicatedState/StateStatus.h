@@ -98,7 +98,7 @@ struct FollowerStatus {
 struct StateStatus {
   std::variant<LeaderStatus, FollowerStatus> variant;
 
-  auto asFollowerStatus() const noexcept -> FollowerStatus const * {
+  auto asFollowerStatus() const noexcept -> FollowerStatus const* {
     return std::get_if<FollowerStatus>(&variant);
   }
 

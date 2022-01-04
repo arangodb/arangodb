@@ -115,6 +115,7 @@ struct FakeLeaderType : replicated_state::IReplicatedLeaderState<S> {
   }
 
   AsyncOperationMarker<std::unique_ptr<EntryIterator>, Result> recovery;
+
  protected:
   auto recoverEntries(std::unique_ptr<EntryIterator> iter)
       -> futures::Future<Result> override {
@@ -129,6 +130,7 @@ struct FakeFollowerType : replicated_state::IReplicatedFollowerState<S> {
 
   AsyncOperationMarker<std::unique_ptr<EntryIterator>, Result> apply;
   AsyncOperationMarker<std::pair<ParticipantId, LogIndex>, Result> acquire;
+
  protected:
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
       -> futures::Future<Result> override {
@@ -161,9 +163,9 @@ struct DefaultFactory {
  * leader and follower available to the outside world until a certain stage in
  * startup procedure is reached.
  *
- * This recording factory keeps track of all created instances and allow a tester
- * to access them immediately after creation. It only stores weak pointer,
- * otherwise constructors might not run until the factory is destroyed.
+ * This recording factory keeps track of all created instances and allow a
+ * tester to access them immediately after creation. It only stores weak
+ * pointer, otherwise constructors might not run until the factory is destroyed.
  * @tparam LeaderType
  * @tparam FollowerType
  */

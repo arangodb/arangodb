@@ -36,7 +36,8 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::test;
 
-void MyStateBase::applyIterator(TypedLogRangeIterator<streams::StreamEntryView<MyEntryType>>& iter) {
+void MyStateBase::applyIterator(
+    TypedLogRangeIterator<streams::StreamEntryView<MyEntryType>>& iter) {
   while (auto entry = iter.next()) {
     auto& [idx, modification] = *entry;
     store[modification.key] = modification.value;
@@ -46,12 +47,12 @@ void MyStateBase::applyIterator(TypedLogRangeIterator<streams::StreamEntryView<M
 void MyLeaderState::set(std::string key, std::string value) {
   auto entry = MyEntryType{key, value};
   auto idx = getStream()->insert(entry);
-  getStream()->waitFor(idx).thenValue([this, key, value](auto&& res) {
-    store[key] = value;
-  });
+  getStream()->waitFor(idx).thenValue(
+      [this, key, value](auto&& res) { store[key] = value; });
 }
 
-auto MyFollowerState::acquireSnapshot(ParticipantId const& destination, LogIndex) noexcept
+auto MyFollowerState::acquireSnapshot(ParticipantId const& destination,
+                                      LogIndex) noexcept
     -> futures::Future<Result> {
   return futures::Future<Result>{TRI_ERROR_NO_ERROR};
 }
@@ -81,10 +82,12 @@ auto MyFollowerState::applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 
 template struct replicated_state::ReplicatedState<MyState>;
-template struct streams::LogMultiplexer<replicated_state::ReplicatedStateStreamSpec<MyState>>;
+template struct streams::LogMultiplexer<
+    replicated_state::ReplicatedStateStreamSpec<MyState>>;
 
 auto replicated_state::EntryDeserializer<MyEntryType>::operator()(
-    streams::serializer_tag_t<MyEntryType>, velocypack::Slice s) const -> MyEntryType {
+    streams::serializer_tag_t<MyEntryType>, velocypack::Slice s) const
+    -> MyEntryType {
   auto key = s.get("key").copyString();
   auto value = s.get("value").copyString();
   return MyEntryType{.key = key, .value = value};
