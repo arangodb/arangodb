@@ -1,14 +1,68 @@
 devel
 -----
 
+* Improved performance in replication dump protocol by inserting arrays of 
+  documents instead of one document at a time and also not retrieving the
+  document revision field when not needed.
+
+* Changed various default values for RocksDB to tune operations for different
+  typical scenarios like gp2 type volumes and gp3 type volumes and locally
+  attached SSDs with RAID0:
+  - `--rocksdb.level0-slowdown-trigger` has been decreased from 20 to 16
+  - `--rocksdb.level0-stop-trigger` has been increased from 36 to 256
+  - `--rocksdb.max-background-jobs` has been increased to the number of cores
+    and is no longer limited to 8
+  - `--rocksdb.enabled-pipelined-write` is now `true` by default instead of `false`
+  - `--rocksdb.throttle-frequency` has been decreased from 60000ms down to
+    1000ms per iteration, which makes the RocksDB throttle react much quicker
+  - `--rocksdb.pending-compactions-slowdown-trigger` has been decreased from
+    64 GB down to 8 GB
+  - `--rocksdb.pending-compactions-stop-trigger` has been decreased from
+    256 GB down to 16 GB
+  - `--rocksdb.throttle-slots` has been increased from 63 to 120
+  - `--rocksdb.encryption-hardware-acceleration` is now `true` by default,
+    which helps performance and should not create any problems, since we
+    require sandybridge anyway.
+  Combined, these changes help ArangoDB/RocksDB to react quicker to a backlog
+  of background jobs and thus to prevent catastrophic stops which abort
+  data ingestion or lead to cluster internal timeouts.
+
+* Added startup options to adjust previously hard-coded parameters for RocksDB's
+  behavior:
+
+  - `--rocksdb.pending-compactions-bytes-slowdown-trigger` controls RocksDB's
+    setting `soft_pending_compaction_bytes_limit`, which controls how many
+    pending compaction bytes RocksDB tolerates before it slows down writes.
+  - `--rocksdb.pending-compactions-bytes-stop-trigger` controls RocksDB's
+    setting `hard_pending_compaction_bytes_limit`, which controls how many
+    pending compaction bytes RocksDB tolerates before it stops writes entirely.
+  - `--rocksdb.throttle-lower-bound-bps`, which controls a lower bound for the
+    bandwidth restriction on RocksDB writes the throttle imposes.
+
+* Fixed PRESUPP-439: In arangoimport, for CSV and TSV files, it could happen 
+  that a buffer containing only the header would be sent to the server, and 
+  also batches would contain the documents equivalent to the csv rows in them, 
+  but not the header, which should be sent together with the documents. 
+
+* Adjust default value for startup option `--rocksdb.max-subcompactions` from 1
+  to 2. This allows compactions jobs to be broken up into disjoint ranges which
+  can be processed in parallel.
+
+* Allow initial, full dump shard synchronization to abort prematurely if it 
+  turns out that the follower was removed from the plan as a follower (e.g. if 
+  there are enough other in-sync followers).
+
+* Make per-server values "numberOfCores" and "physicalMemory" available to
+  agency to improve quality of potential future shard rebalancing algorithms.
+
 * Unify the result structure of `db._version(true)` calls for arangosh and
   server console. Previously such a call in the server console would return
   a different structure that only consisted of the `details` subobject.
   This is now unified so that the result structure in the server console is
   consistent with arangosh, but strictly speaking this is a breaking change.
 
-* Set a limit for ArangoSearch segment size to 256MB during recovery to avoid OOM kill in rare 
-  cases.
+* Set the limit for ArangoSearch segment size to 256MB during recovery to avoid
+  OOM kill in rare cases.
 
 * Updated arangosync to 2.7.0.
 

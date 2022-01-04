@@ -199,6 +199,19 @@ struct arangodb::VocBaseLogManager {
     return result;
   }
 
+  [[nodiscard]] auto getReplicatedLogsQuickStatus() const -> std::unordered_map<
+      arangodb::replication2::LogId,
+      arangodb::replication2::replicated_log::QuickLogStatus> {
+    std::unordered_map<arangodb::replication2::LogId,
+                       arangodb::replication2::replicated_log::QuickLogStatus>
+        result;
+    auto guard = _guardedData.getLockedGuard();
+    for (auto& [id, log] : guard->logs) {
+      result.emplace(id, log->getParticipant()->getQuickStatus());
+    }
+    return result;
+  }
+
   application_features::ApplicationServer& _server;
   LoggerContext const _logContext;
 
@@ -1812,6 +1825,13 @@ auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
 [[nodiscard]] auto TRI_vocbase_t::getReplicatedLogs() const
     -> std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::LogStatus> {
   return _logManager->getReplicatedLogs();
+}
+
+[[nodiscard]] auto TRI_vocbase_t::getReplicatedLogsQuickStatus() const
+    -> std::unordered_map<
+        arangodb::replication2::LogId,
+        arangodb::replication2::replicated_log::QuickLogStatus> {
+  return _logManager->getReplicatedLogsQuickStatus();
 }
 
 using namespace arangodb::replication2;

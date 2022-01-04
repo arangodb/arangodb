@@ -1105,6 +1105,10 @@ function runArangoImport (options, instanceInfo, what, coreCheck = false) {
     args['merge-attributes'] = what.mergeAttributes;
   }
 
+  if (what.batchSize !== undefined) {
+    args['batch-size'] = what.batchSize;
+  }
+
 
   return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir, coreCheck);
 }

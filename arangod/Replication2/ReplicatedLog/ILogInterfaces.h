@@ -42,6 +42,7 @@ namespace arangodb::replication2::replicated_log {
 
 struct LogCore;
 struct LogStatus;
+struct QuickLogStatus;
 struct InMemoryLog;
 
 struct WaitForResult {
@@ -66,6 +67,7 @@ struct WaitForResult {
 */
 struct ILogParticipant {
   [[nodiscard]] virtual auto getStatus() const -> LogStatus = 0;
+  [[nodiscard]] virtual auto getQuickStatus() const -> QuickLogStatus = 0;
   virtual ~ILogParticipant() = default;
   [[nodiscard]] virtual auto resign() &&
       -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> = 0;
@@ -121,6 +123,7 @@ struct LogUnconfiguredParticipant final
                                       std::shared_ptr<ReplicatedLogMetrics> logMetrics);
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
+  [[nodiscard]] auto getQuickStatus() const -> QuickLogStatus override;
   auto resign() &&
       -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;

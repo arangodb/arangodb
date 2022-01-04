@@ -36,6 +36,10 @@ auto AsyncFollower::getStatus() const -> LogStatus {
   return _follower->getStatus();
 }
 
+auto AsyncFollower::getQuickStatus() const -> QuickLogStatus {
+  return _follower->getQuickStatus();
+}
+
 auto AsyncFollower::resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> {
   return std::move(*_follower).resign();
 }
