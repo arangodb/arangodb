@@ -33,9 +33,10 @@ using namespace arangodb::replication2::test;
 
 struct UpdateParticipantsFlagsTest : ReplicatedLogTest {
   void runAllAsyncAppendEntries() {
-    while (std::ranges::any_of(followers, [](auto const& follower) {
-      return follower->hasPendingAppendEntries();
-    })) {
+    while (std::any_of(followers.begin(), followers.end(),
+                       [](auto const& follower) {
+                         return follower->hasPendingAppendEntries();
+                       })) {
       for (auto const& follower : followers) {
         follower->runAsyncAppendEntries();
       }
@@ -563,10 +564,10 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_remove_follower) {
     auto const status = leader->getStatus();
     auto const leaderStatus = status.asLeaderStatus();
     auto keys = std::vector<decltype(leaderStatus->follower)::key_type>{};
-    // std::ranges::keys does not work in clang/libc++ yet
-    std::ranges::transform(leaderStatus->follower, std::back_inserter(keys),
-                           [&](auto const& it) { return it.first; });
-    std::ranges::sort(keys);
+    std::transform(leaderStatus->follower.begin(), leaderStatus->follower.end(),
+                   std::back_inserter(keys),
+                   [&](auto const& it) { return it.first; });
+    std::sort(keys.begin(), keys.end());
     EXPECT_EQ(keys, (decltype(keys){"follower2", "leader"}));
   }
 }
@@ -619,10 +620,10 @@ TEST_F(UpdateParticipantsFlagsTest,
     auto const status = leader->getStatus();
     auto const leaderStatus = status.asLeaderStatus();
     auto keys = std::vector<decltype(leaderStatus->follower)::key_type>{};
-    // std::ranges::keys does not work in clang/libc++ yet
-    std::ranges::transform(leaderStatus->follower, std::back_inserter(keys),
-                           [&](auto const& it) { return it.first; });
-    std::ranges::sort(keys);
+    std::transform(leaderStatus->follower.begin(), leaderStatus->follower.end(),
+                   std::back_inserter(keys),
+                   [&](auto const& it) { return it.first; });
+    std::sort(keys.begin(), keys.end());
     EXPECT_EQ(keys, (decltype(keys){"follower2", "leader"}));
   }
 }
