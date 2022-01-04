@@ -31,7 +31,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace aql {
 struct AstNode;
@@ -57,6 +57,7 @@ class IndexHint {
   std::string toString() const;
 
   size_t getLookahead() const noexcept { return _lookahead; }
+
  private:
   HintType _type;
   bool _forced;
@@ -70,8 +71,8 @@ class IndexHint {
   } _hint;
 };
 
-std::ostream& operator<<(std::ostream& stream, arangodb::aql::IndexHint const& hint);
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::aql::IndexHint const& hint);
 
 }  // namespace aql
 }  // namespace arangodb
-
