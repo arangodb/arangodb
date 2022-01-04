@@ -80,20 +80,17 @@ void FollowerStateManager<S>::pollNewEntries() {
           futures::Try<std::unique_ptr<Iterator>> result) {
         try {
           self->applyEntries(std::move(result).get());
-        } catch (basics::Exception const& e) {
-          if (e.code() == TRI_ERROR_REPLICATION_LEADER_CHANGE) {
-            if (auto ptr = self->parent.lock(); ptr) {
-              ptr->flush(std::move(self->core));
-            } else {
-              LOG_TOPIC("15cb4", DEBUG, Logger::REPLICATED_STATE)
-                  << "LogFollower resigned, but Replicated State already "
-                     "gone";
-            }
+        } catch (replicated_log::ParticipantResignedException const&) {
+          if (auto ptr = self->parent.lock(); ptr) {
+            ptr->flush(std::move(self->core));
           } else {
-            LOG_TOPIC("f2188", FATAL, Logger::REPLICATED_STATE)
-                << "waiting for leader ack failed with unexpected exception: "
-                << e.message();
+            LOG_TOPIC("15cb4", DEBUG, Logger::REPLICATED_STATE)
+                << "LogFollower resigned, but Replicated State already gone";
           }
+        } catch (basics::Exception const& e) {
+          LOG_TOPIC("f2188", FATAL, Logger::REPLICATED_STATE)
+              << "waiting for leader ack failed with unexpected exception: "
+              << e.message();
         }
       });
 }
@@ -179,21 +176,19 @@ void FollowerStateManager<S>::awaitLeaderShip() {
             LOG_TOPIC("53ba1", TRACE, Logger::REPLICATED_STATE)
                 << "leadership acknowledged - ingesting log data";
             self->ingestLogData();
-          } catch (basics::Exception const& e) {
-            if (e.code() == TRI_ERROR_REPLICATION_LEADER_CHANGE) {
-              if (auto ptr = self->parent.lock(); ptr) {
-                ptr->flush(std::move(self->core));
-              } else {
-                LOG_TOPIC("15cb4", DEBUG, Logger::REPLICATED_STATE)
-                    << "LogFollower resigned, but Replicated State already "
-                       "gone";
-              }
+          } catch (replicated_log::ParticipantResignedException const&) {
+            if (auto ptr = self->parent.lock(); ptr) {
+              ptr->flush(std::move(self->core));
             } else {
-              LOG_TOPIC("f2188", FATAL, Logger::REPLICATED_STATE)
-                  << "waiting for leader ack failed with unexpected exception: "
-                  << e.message();
-              FATAL_ERROR_EXIT();
+              LOG_TOPIC("15cb4", DEBUG, Logger::REPLICATED_STATE)
+                  << "LogFollower resigned, but Replicated State already "
+                     "gone";
             }
+          } catch (basics::Exception const& e) {
+            LOG_TOPIC("f2188", FATAL, Logger::REPLICATED_STATE)
+                << "waiting for leader ack failed with unexpected exception: "
+                << e.message();
+            FATAL_ERROR_EXIT();
           }
         } catch (std::exception const& ex) {
           LOG_TOPIC("c7787", FATAL, Logger::REPLICATED_STATE)

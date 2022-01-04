@@ -22,13 +22,14 @@
 
 #include "FakeFollower.h"
 
+#include "Basics/Exceptions.h"
+#include "Basics/Result.h"
+#include "Basics/voc-errors.h"
+#include "Replication2/Exceptions/ParticipantResignedException.h"
+#include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
-#include "Basics/Result.h"
-#include "Basics/Exceptions.h"
-#include "Basics/voc-errors.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
-#include "Replication2/ReplicatedLog/ILogInterfaces.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -136,10 +137,12 @@ void FakeFollower::updateCommitIndex(LogIndex index) {
 }
 
 void FakeFollower::resign() & {
-  waitForQueue.resolveAll(
-      futures::Try<replicated_log::WaitForResult>(std::make_exception_ptr(
-          basics::Exception(TRI_ERROR_REPLICATION_LEADER_CHANGE, ADB_HERE))));
+  waitForQueue.resolveAll(futures::Try<replicated_log::WaitForResult>(
+      std::make_exception_ptr(replicated_log::ParticipantResignedException(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE))));
   waitForLeaderAckedQueue.resolveAll(
-      futures::Try<replicated_log::WaitForResult>(std::make_exception_ptr(
-          basics::Exception(TRI_ERROR_REPLICATION_LEADER_CHANGE, ADB_HERE))));
+      futures::Try<replicated_log::WaitForResult>(
+          std::make_exception_ptr(replicated_log::ParticipantResignedException(
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
+              ADB_HERE))));
 }
