@@ -47,13 +47,13 @@ struct LogBuffer {
   double _timestamp;
   char _message[512];
 
-  LogBuffer(); 
+  LogBuffer();
 };
 
 class LogBufferFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr uint32_t BufferSize = 2048;
-  
+
   explicit LogBufferFeature(application_features::ApplicationServer& server);
   ~LogBufferFeature() = default;
 
@@ -61,7 +61,7 @@ class LogBufferFeature final : public application_features::ApplicationFeature {
   void prepare() override;
 
   /// @brief return all buffered log entries
-  std::vector<LogBuffer> entries(LogLevel, uint64_t start, bool upToLevel, 
+  std::vector<LogBuffer> entries(LogLevel, uint64_t start, bool upToLevel,
                                  std::string const& searchString);
 
   /// @brief clear all log entries
@@ -74,4 +74,3 @@ class LogBufferFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

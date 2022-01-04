@@ -26,7 +26,7 @@
 #include <string_view>
 
 namespace arangodb {
-template <typename T>
+template<typename T>
 class ResultT;
 }
 namespace arangodb::velocypack {

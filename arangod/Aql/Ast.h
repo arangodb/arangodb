@@ -62,14 +62,15 @@ class QueryContext;
 class AqlFunctionsInternalCache;
 struct Variable;
 
-typedef std::unordered_map<Variable const*, std::unordered_set<std::string>> TopLevelAttributes;
+typedef std::unordered_map<Variable const*, std::unordered_set<std::string>>
+    TopLevelAttributes;
 
 /// @brief type for Ast flags
 using AstPropertiesFlagsType = uint32_t;
 
 /// @brief flags for customizing Ast building process
 enum AstPropertyFlag : AstPropertiesFlagsType {
-  AST_FLAG_DEFAULT = 0x00000000,     // Regular Ast     
+  AST_FLAG_DEFAULT = 0x00000000,     // Regular Ast
   NON_CONST_PARAMETERS = 0x00000001  // Parameters are considered non-const
 };
 
@@ -82,7 +83,8 @@ class Ast {
   Ast& operator=(Ast const&) = delete;
 
   /// @brief create the AST
-  explicit Ast(QueryContext&, AstPropertiesFlagsType flags = AstPropertyFlag::AST_FLAG_DEFAULT);
+  explicit Ast(QueryContext&, AstPropertiesFlagsType flags =
+                                  AstPropertyFlag::AST_FLAG_DEFAULT);
 
   /// @brief destroy the AST
   ~Ast();
@@ -92,7 +94,7 @@ class Ast {
 
   /// @brief return the query
   QueryContext& query() const { return _query; }
-  
+
   AstResources& resources() { return _resources; }
 
   /// @brief return the variable generator
@@ -125,7 +127,7 @@ class Ast {
 
   /// @brief whether or not the query contains a traversal
   bool containsTraversal() const noexcept;
-  
+
   /// @brief whether or not query contains any modification operations
   bool containsModificationNode() const noexcept;
   void setContainsModificationNode() noexcept;
@@ -134,11 +136,11 @@ class Ast {
   void setContainsParallelNode() noexcept;
   bool willUseV8() const noexcept;
   void setWillUseV8() noexcept;
-        
+
   bool canApplyParallelism() const noexcept {
     return _containsParallelNode && !_willUseV8 && !_containsModificationNode;
   }
-  
+
   /// @brief convert the AST into VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const;
 
@@ -147,7 +149,7 @@ class Ast {
 
   /// @brief find the bottom-most expansion subnodes (if any)
   AstNode const* findExpansionSubNode(AstNode const*) const;
-  
+
   /// @brief create a node from the velocypack data
   AstNode* createNode(arangodb::velocypack::Slice slice);
 
@@ -164,11 +166,13 @@ class Ast {
 
   /// @brief create an AST for node as part of an UPSERT
   AstNode* createNodeForUpsert(char const* variableName, size_t nameLength,
-                               AstNode const* expression, bool isUserDefinedVariable);
+                               AstNode const* expression,
+                               bool isUserDefinedVariable);
 
   /// @brief create an AST for (non-view) node, using an existing output
   /// variable
-  AstNode* createNodeFor(Variable* variable, AstNode const* expression, AstNode const* options);
+  AstNode* createNodeFor(Variable* variable, AstNode const* expression,
+                         AstNode const* options);
 
   /// @brief create an AST for (view) node, using an existing out variable
   AstNode* createNodeForView(Variable* variable, AstNode const* expression,
@@ -199,10 +203,12 @@ class Ast {
   AstNode* createNodeInsert(AstNode const*, AstNode const*, AstNode const*);
 
   /// @brief create an AST update node
-  AstNode* createNodeUpdate(AstNode const*, AstNode const*, AstNode const*, AstNode const*);
+  AstNode* createNodeUpdate(AstNode const*, AstNode const*, AstNode const*,
+                            AstNode const*);
 
   /// @brief create an AST replace node
-  AstNode* createNodeReplace(AstNode const*, AstNode const*, AstNode const*, AstNode const*);
+  AstNode* createNodeReplace(AstNode const*, AstNode const*, AstNode const*,
+                             AstNode const*);
 
   /// @brief create an AST upsert node
   AstNode* createNodeUpsert(AstNodeType, AstNode const*, AstNode const*,
@@ -216,20 +222,20 @@ class Ast {
                              AstNode const*, AstNode const*, AstNode const*);
 
   /// @brief create an AST collect node, COUNT INTO
-  AstNode* createNodeCollectCount(AstNode const*, char const*, size_t length, AstNode const*);
+  AstNode* createNodeCollectCount(AstNode const*, char const*, size_t length,
+                                  AstNode const*);
 
   /// @brief create an AST sort node
   AstNode* createNodeSort(AstNode const*);
 
   /// @brief create an AST sort element node
   AstNode* createNodeSortElement(AstNode const*, AstNode const*);
-  
+
   /// @brief create an AST limit node
   AstNode* createNodeLimit(AstNode const*, AstNode const*);
-  
+
   /// @brief create an AST window node
-  AstNode* createNodeWindow(AstNode const* spec,
-                            AstNode const* rangeVar,
+  AstNode* createNodeWindow(AstNode const* spec, AstNode const* rangeVar,
                             AstNode const* assignments);
 
   /// @brief create an AST assign node
@@ -242,14 +248,14 @@ class Ast {
   /// this function will return either an AST collection or an AST view node
   /// if failIfDoesNotExist is true, the function will throw if the specified
   /// data source does not exist
-  AstNode* createNodeDataSource(arangodb::CollectionNameResolver const& resolver,
-                                std::string_view name, AccessMode::Type accessType,
-                                bool validateName, bool failIfDoesNotExist);
+  AstNode* createNodeDataSource(
+      arangodb::CollectionNameResolver const& resolver, std::string_view name,
+      AccessMode::Type accessType, bool validateName, bool failIfDoesNotExist);
 
   /// @brief create an AST collection node
-  AstNode* createNodeCollection(arangodb::CollectionNameResolver const& resolver,
-                                std::string_view name,
-                                AccessMode::Type accessType);
+  AstNode* createNodeCollection(
+      arangodb::CollectionNameResolver const& resolver, std::string_view name,
+      AccessMode::Type accessType);
 
   /// @brief create an AST reference node
   AstNode* createNodeReference(std::string_view variableName);
@@ -273,7 +279,8 @@ class Ast {
   AstNode* createNodeUnaryOperator(AstNodeType, AstNode const*);
 
   /// @brief create an AST binary operator
-  AstNode* createNodeBinaryOperator(AstNodeType, AstNode const*, AstNode const*);
+  AstNode* createNodeBinaryOperator(AstNodeType, AstNode const*,
+                                    AstNode const*);
 
   /// @brief create an AST binary array operator
   AstNode* createNodeBinaryArrayOperator(AstNodeType, AstNode const*,
@@ -281,20 +288,24 @@ class Ast {
 
   /// @brief create an AST ternary operator
   AstNode* createNodeTernaryOperator(AstNode const*, AstNode const*);
-  AstNode* createNodeTernaryOperator(AstNode const*, AstNode const*, AstNode const*);
+  AstNode* createNodeTernaryOperator(AstNode const*, AstNode const*,
+                                     AstNode const*);
 
   /// @brief create an AST variable access
-  AstNode* createNodeAccess(Variable const*, std::vector<basics::AttributeName> const&);
+  AstNode* createNodeAccess(Variable const*,
+                            std::vector<basics::AttributeName> const&);
 
   /// @brief create an AST attribute access node
   /// note that the caller must make sure that char* data remains valid!
   AstNode* createNodeAttributeAccess(AstNode const*, std::string_view name);
 
   /// @brief create an AST attribute access node for multiple accesses
-  AstNode* createNodeAttributeAccess(AstNode const*, std::vector<std::string_view> const& parts);
-  AstNode* createNodeAttributeAccess(AstNode const*, std::vector<std::string> const& parts);
-  AstNode* createNodeAttributeAccess(AstNode const* node,
-                                     std::vector<basics::AttributeName> const& attrs);
+  AstNode* createNodeAttributeAccess(
+      AstNode const*, std::vector<std::string_view> const& parts);
+  AstNode* createNodeAttributeAccess(AstNode const*,
+                                     std::vector<std::string> const& parts);
+  AstNode* createNodeAttributeAccess(
+      AstNode const* node, std::vector<basics::AttributeName> const& attrs);
 
   /// @brief create an AST attribute access node w/ bind parameter
   AstNode* createNodeBoundAttributeAccess(AstNode const*, AstNode const*);
@@ -351,12 +362,12 @@ class Ast {
   AstNode* createNodeCalculatedObjectElement(AstNode const*, AstNode const*);
 
   /// @brief create an AST with collections node
-  AstNode* createNodeWithCollections(AstNode const*,
-                                     arangodb::CollectionNameResolver const& resolver);
+  AstNode* createNodeWithCollections(
+      AstNode const*, arangodb::CollectionNameResolver const& resolver);
 
   /// @brief create an AST collection list node
-  AstNode* createNodeCollectionList(AstNode const*,
-                                    arangodb::CollectionNameResolver const& resolver);
+  AstNode* createNodeCollectionList(
+      AstNode const*, arangodb::CollectionNameResolver const& resolver);
 
   /// @brief create an AST direction node
   AstNode* createNodeDirection(uint64_t, uint64_t);
@@ -379,14 +390,18 @@ class Ast {
   AstNode* createNodeShortestPath(AstNode const*, AstNode const*);
 
   /// @brief create an AST k-shortest paths node
-  AstNode* createNodeKShortestPaths(arangodb::graph::ShortestPathType::Type type, AstNode const*, AstNode const*);
+  AstNode* createNodeKShortestPaths(
+      arangodb::graph::ShortestPathType::Type type, AstNode const*,
+      AstNode const*);
 
   /// @brief create an AST function call node
-  AstNode* createNodeFunctionCall(std::string_view functionName, AstNode const* arguments,
+  AstNode* createNodeFunctionCall(std::string_view functionName,
+                                  AstNode const* arguments,
                                   bool allowInternalFunctions);
 
   /// @brief create an AST function call node for aggregate functions
-  AstNode* createNodeAggregateFunctionCall(std::string_view functionName, AstNode const* arguments);
+  AstNode* createNodeAggregateFunctionCall(std::string_view functionName,
+                                           AstNode const* arguments);
 
   /// @brief create an AST range node
   AstNode* createNodeRange(AstNode const*, AstNode const*);
@@ -405,18 +420,20 @@ class Ast {
                             arangodb::CollectionNameResolver const& resolver);
 
   /// @brief replace variables
-  ///        the unlock parameter will unlock the variable node before it replaces the variable.
-  ///        This unlock is potentially dangerous if the Node is linked somewhere else, so use with care
-  ///        and only if you are sure that you hold the ONLY reference to this node.
-  static AstNode* replaceVariables(AstNode* node,
-                                   std::unordered_map<VariableId, Variable const*> const&,
-                                   bool unlockNodes = false);
+  ///        the unlock parameter will unlock the variable node before it
+  ///        replaces the variable. This unlock is potentially dangerous if the
+  ///        Node is linked somewhere else, so use with care and only if you are
+  ///        sure that you hold the ONLY reference to this node.
+  static AstNode* replaceVariables(
+      AstNode* node, std::unordered_map<VariableId, Variable const*> const&,
+      bool unlockNodes = false);
 
   /// @brief replace a variable reference in the expression with another
   /// expression (e.g. inserting c = `a + b` into expression `c + 1` so the
   /// latter
   /// becomes `a + b + 1`
-  static AstNode* replaceVariableReference(AstNode*, Variable const*, AstNode const*);
+  static AstNode* replaceVariableReference(AstNode*, Variable const*,
+                                           AstNode const*);
 
   static size_t validatedParallelism(AstNode const* value);
 
@@ -431,23 +448,25 @@ class Ast {
   /// @brief count how many times a variable is referenced in an expression
   static size_t countReferences(AstNode const*, Variable const*);
 
-  /// @brief determines the top-level attributes used in an expression, grouped by
-  /// variable
+  /// @brief determines the top-level attributes used in an expression, grouped
+  /// by variable
   static TopLevelAttributes getReferencedAttributes(AstNode const*, bool&);
-  
+
   /// @brief determines the top-level attributes used in an expression for the
   /// specified variable
   static bool getReferencedAttributes(AstNode const*, Variable const*,
                                       std::unordered_set<std::string>&);
-  
-  /// @brief determines the attributes and subattributes used in an expression for the
-  /// specified variable
-  static bool getReferencedAttributesRecursive(AstNode const*, Variable const*,
-                                               std::unordered_set<arangodb::aql::AttributeNamePath>&);
+
+  /// @brief determines the attributes and subattributes used in an expression
+  /// for the specified variable
+  static bool getReferencedAttributesRecursive(
+      AstNode const*, Variable const*,
+      std::unordered_set<arangodb::aql::AttributeNamePath>&);
 
   /// @brief replace an attribute access with just the variable
-  static AstNode* replaceAttributeAccess(AstNode* node, Variable const* variable,
-                                         std::vector<std::string> const& attributeName);
+  static AstNode* replaceAttributeAccess(
+      AstNode* node, Variable const* variable,
+      std::vector<std::string> const& attributeName);
 
   /// @brief recursively clone a node
   AstNode* clone(AstNode const*);
@@ -482,11 +501,12 @@ class Ast {
   AstNode const* resolveConstAttributeAccess(AstNode const*);
 
   /// @brief resolve an attribute access, static version
-  /// if isValid is set to true, then the returned value is to be trusted. if 
-  /// isValid is set to false, then the returned value is not to be trued and the
-  /// the result is equivalent to an AQL `null` value
-  static AstNode const* resolveConstAttributeAccess(AstNode const*, bool& isValid);
-  
+  /// if isValid is set to true, then the returned value is to be trusted. if
+  /// isValid is set to false, then the returned value is not to be trued and
+  /// the the result is equivalent to an AQL `null` value
+  static AstNode const* resolveConstAttributeAccess(AstNode const*,
+                                                    bool& isValid);
+
   /// @brief optimizes the unary operators + and -
   /// the unary plus will be converted into a simple value node if the operand
   /// of the operation is a constant number
@@ -511,9 +531,11 @@ class Ast {
   /// @brief optimizes the binary logical operators && and ||
   AstNode* optimizeBinaryOperatorLogical(AstNode*, bool);
 
-  /// @brief optimizes the binary relational operators <, <=, >, >=, ==, != and IN
+  /// @brief optimizes the binary relational operators <, <=, >, >=, ==, != and
+  /// IN
   AstNode* optimizeBinaryOperatorRelational(transaction::Methods&,
-                                            AqlFunctionsInternalCache&, AstNode*);
+                                            AqlFunctionsInternalCache&,
+                                            AstNode*);
 
   /// @brief optimizes the binary arithmetic operators +, -, *, / and %
   AstNode* optimizeBinaryOperatorArithmetic(AstNode*);
@@ -522,8 +544,8 @@ class Ast {
   AstNode* optimizeTernaryOperator(AstNode*);
 
   /// @brief optimizes an attribute access
-  AstNode* optimizeAttributeAccess(AstNode*,
-                                   std::unordered_map<Variable const*, AstNode const*> const&);
+  AstNode* optimizeAttributeAccess(
+      AstNode*, std::unordered_map<Variable const*, AstNode const*> const&);
 
   /// @brief optimizes a call to a built-in function
   AstNode* optimizeFunctionCall(transaction::Methods&,
@@ -555,19 +577,23 @@ class Ast {
    *  has only access to the node but not its parent / owner.
    */
   /// @brief traverse the AST, using pre- and post-order visitors
-  static AstNode* traverseAndModify(AstNode*, std::function<bool(AstNode const*)> const&,
+  static AstNode* traverseAndModify(AstNode*,
+                                    std::function<bool(AstNode const*)> const&,
                                     std::function<AstNode*(AstNode*)> const&,
                                     std::function<void(AstNode const*)> const&);
 
   /// @brief traverse the AST using a depth-first visitor
-  static AstNode* traverseAndModify(AstNode*, std::function<AstNode*(AstNode*)> const&);
+  static AstNode* traverseAndModify(AstNode*,
+                                    std::function<AstNode*(AstNode*)> const&);
 
   /// @brief traverse the AST, using pre- and post-order visitors
-  static void traverseReadOnly(AstNode const*, std::function<bool(AstNode const*)> const&,
+  static void traverseReadOnly(AstNode const*,
+                               std::function<bool(AstNode const*)> const&,
                                std::function<void(AstNode const*)> const&);
 
   /// @brief traverse the AST using a depth-first visitor, with const nodes
-  static void traverseReadOnly(AstNode const*, std::function<void(AstNode const*)> const&);
+  static void traverseReadOnly(AstNode const*,
+                               std::function<void(AstNode const*)> const&);
 
  private:
   /// @brief normalize a function name
@@ -605,7 +631,7 @@ class Ast {
  private:
   /// @brief the query
   QueryContext& _query;
-  
+
   AstResources _resources;
 
   /// @brief all scopes used in the query
@@ -624,7 +650,7 @@ class Ast {
   std::vector<AstNode*> _queries;
 
   /// @brief which collection is going to be modified in the query
-  /// maps from NODE_TYPE_COLLECTION/NODE_TYPE_PARAMETER_DATASOURCE to 
+  /// maps from NODE_TYPE_COLLECTION/NODE_TYPE_PARAMETER_DATASOURCE to
   /// whether the collection is used in exclusive mode
   std::vector<std::pair<AstNode const*, bool>> _writeCollections;
 
@@ -636,15 +662,15 @@ class Ast {
 
   /// @brief whether or not the query contains bind parameters
   bool _containsBindParameters;
-  
+
   /// @brief contains INSERT / UPDATE / REPLACE / REMOVE
   bool _containsModificationNode;
-  
+
   bool _containsUpsertNode{false};
 
   /// @brief contains a parallel traversal
   bool _containsParallelNode;
-  
+
   /// @brief query makes use of V8 function(s)
   bool _willUseV8;
 
@@ -676,11 +702,10 @@ class Ast {
   };
 
   SpecialNodes const _specialNodes;
-    
+
   /// @brief ast flags
   AstPropertiesFlagsType _astFlags;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-

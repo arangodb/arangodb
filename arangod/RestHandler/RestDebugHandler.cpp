@@ -29,8 +29,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestDebugHandler::RestDebugHandler(application_features::ApplicationServer& server,
-                                   GeneralRequest* request, GeneralResponse* response)
+RestDebugHandler::RestDebugHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestDebugHandler::execute() {
@@ -41,7 +42,8 @@ RestStatus RestDebugHandler::execute() {
 
   if (len == 0 || len > 2) {
     generateNotImplemented(
-        "ILLEGAL /_admin/debug/failat or /_admin/debug/raceControl or /_admin/debug/crash");
+        "ILLEGAL /_admin/debug/failat or /_admin/debug/raceControl or "
+        "/_admin/debug/crash");
     return RestStatus::DONE;
   }
 
@@ -125,6 +127,7 @@ RestStatus RestDebugHandler::execute() {
     }
   }
   generateNotImplemented(
-      "ILLEGAL /_admin/debug/failat or /_admin/debug/raceControl or /_admin/debug/crash");
+      "ILLEGAL /_admin/debug/failat or /_admin/debug/raceControl or "
+      "/_admin/debug/crash");
   return RestStatus::DONE;
 }

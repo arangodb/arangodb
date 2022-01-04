@@ -27,7 +27,8 @@
 
 namespace arangodb::metrics {
 
-Counter::Counter(uint64_t n, std::string_view name, std::string_view help, std::string_view labels)
+Counter::Counter(uint64_t n, std::string_view name, std::string_view help,
+                 std::string_view labels)
     : Metric{name, help, labels}, _c{n}, _b{_c} {}
 
 Counter::~Counter() { _b.push(); }

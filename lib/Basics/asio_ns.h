@@ -69,4 +69,3 @@ using system_error = boost::system::system_error;
 namespace asio_ns = boost::asio;
 
 #endif
-
