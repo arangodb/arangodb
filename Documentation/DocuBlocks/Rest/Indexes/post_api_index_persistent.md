@@ -15,11 +15,22 @@ must be equal to *"persistent"*.
 @RESTBODYPARAM{fields,array,required,string}
 an array of attribute paths.
 
+@RESTBODYPARAM{storedValues,array,optional,string}
+The optional **storedValues** attribute can contain an array of paths to additional 
+attributes to store in the index. These additional attributes cannot be used for
+index lookups or for sorting, but they can be used for projections. This allows an
+index to fully cover more queries and avoid extra document lookups.
+The maximum number of attributes in **storedValues** is 32.
+It is not possible to create multiple indexes with the same **fields** attributes
+and uniqueness but different **storedValues** attributes. That means the value of 
+**storedValues** is not considered by index creation calls when checking if an 
+index is already present or needs to be created.
+
 @RESTBODYPARAM{unique,boolean,optional,}
-if *true*, then create a unique index.
+if *true*, then create a unique index. Defaults to *false*.
 
 @RESTBODYPARAM{sparse,boolean,optional,}
-if *true*, then create a sparse index.
+if *true*, then create a sparse index. Defaults to *false*.
 
 @RESTBODYPARAM{deduplicate,boolean,optional,}
 The attribute **deduplicate** is supported by array indexes of type *persistent*,
