@@ -126,8 +126,29 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   void _ensureUniqueResponse(VPackSlice body);
 
   // === REST callbacks ===
+  /**
+   * Checks only.
+   * @param data
+   */
   void finishedWorkerStartup(VPackSlice const& data);
+
+  /**
+   * Append reports (if any), accumulate statistics. If not all workers are
+   * ready, return the empty VPackBuilder (in sync mode), otherwise (1) if
+   * all messages have been received, set the new state depending on the
+   * algorithm, aggregate the messages and return them together with
+   * Utils::enterNextGSSKey set to true if necessary; (2) if messages are
+   * being awaited, increase gss and enqueue starting a new global step.
+   *
+   * @param data
+   * @return
+   */
   VPackBuilder finishedWorkerStep(VPackSlice const& data);
+
+  /**
+   * Save and serialize statistics and reports, enqueue cleanupConductor.
+   * @param data
+   */
   void finishedWorkerFinalize(VPackSlice data);
 
   void finishedRecoveryStep(VPackSlice const& data);
@@ -145,6 +166,9 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
 
   ~Conductor();
 
+  /**
+ * Set initial time, gss, set state to RUNNING, initialize workers.
+   */
   void start();
   void cancel();
   void startRecovery();

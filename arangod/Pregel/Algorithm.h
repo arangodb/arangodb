@@ -118,12 +118,12 @@ struct  Algorithm : IAlgorithm {
   virtual uint32_t messageBatchSize(WorkerConfig const& config,
                                     MessageStats const& stats) const {
     if (config.localSuperstep() == 0) {
-      return 500;
+      return 500; // todo (Roman): magic number
     } else {
       double msgsPerSec = static_cast<double>(stats.sendCount) / stats.superstepRuntimeSecs;
       msgsPerSec /= static_cast<double>(config.parallelism());  // per thread
-      msgsPerSec *= 0.06;
-      return msgsPerSec > 250.0 ? (uint32_t)msgsPerSec : 250;
+      msgsPerSec *= 0.06; // todo (Roman): magic number
+      return msgsPerSec > 250.0 ? (uint32_t)msgsPerSec : 250; // todo (Roman): magic number
     }
   }
 

@@ -96,7 +96,7 @@ class Worker : public IWorker {
   std::atomic<WorkerState> _state = WorkerState::DEFAULT;
   WorkerConfig _config;
   uint64_t _expectedGSS = 0;
-  uint32_t _messageBatchSize = 500;
+  uint32_t _messageBatchSize = 500; //todo (Roman): magic number
   std::unique_ptr<Algorithm<V, E, M>> _algorithm;
   std::unique_ptr<WorkerContext> _workerContext;
   // locks modifying member vars

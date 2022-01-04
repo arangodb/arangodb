@@ -143,7 +143,7 @@ struct StatsManager {
   size_t clientCount() const { return _serverStats.size(); }
 
  private:
-  std::map<std::string, uint64_t> _activeStats;
+  std::map<std::string, uint64_t> _activeStats; // (senderKey->activeCountKey)
   std::map<std::string, MessageStats> _serverStats;
 };
 }  // namespace arangodb::pregel

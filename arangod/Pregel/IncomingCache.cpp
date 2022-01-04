@@ -275,13 +275,13 @@ void CombiningInCache<M>::mergeCache(WorkerConfig const& config,
       if (!guard) {
         if (i == 0) {  // eventually we hit the last one
           std::this_thread::sleep_for(
-              std::chrono::microseconds(100));  // don't busy wait
+              std::chrono::microseconds(100));  // don't busy wait todo (Roman) magic number
         }
         continue;
       }
 
       // only access bucket after we acquired the lock
-      HMap& myVertexMap = _shardMap[shardId];
+      HMap& myVertexMap = _shardMap[shardId]; // todo (Roman) read it again
       for (auto& vertexMessage : it->second) {
         auto vmsg = myVertexMap.find(vertexMessage.first);
         if (vmsg != myVertexMap.end()) {  // got a message for the same vertex
@@ -292,8 +292,8 @@ void CombiningInCache<M>::mergeCache(WorkerConfig const& config,
       }
     }
 
-    randomized.erase(randomized.begin() + i);
-  } while (randomized.size() > 0);
+    randomized.erase(randomized.begin() + i); // todo (Roman) then i should not be increased?
+  } while (!randomized.empty());
 }
 
 template<typename M>

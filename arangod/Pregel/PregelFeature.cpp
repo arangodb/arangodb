@@ -117,6 +117,8 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
     }
   }
 
+  // check that collections exist, are not marked deleted and are not system
+  // todo (Roman) this could be done when loading collections (once, not twice)
   for (std::string const& name : vertexCollections) {
     if (ss->isCoordinator()) {
       try {
@@ -216,6 +218,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
     }
   } // end filling edgeColls
 
+  // create a conductor and register it in PregelFeature
   uint64_t en = createExecutionNumber();
   auto c = std::make_shared<pregel::Conductor>(
       en, vocbase, vertexCollections, edgeColls, edgeCollectionRestrictions,
@@ -445,7 +448,7 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
   }
 
   if (path == Utils::finishedStartupPath) {
-    co->finishedWorkerStartup(body);
+    co->finishedWorkerStartup(body); // checks only
   } else if (path == Utils::finishedWorkerStepPath) {
     outBuilder = co->finishedWorkerStep(body);
   } else if (path == Utils::finishedWorkerFinalizationPath) {

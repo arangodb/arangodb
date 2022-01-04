@@ -36,6 +36,8 @@ class RestPregelHandler : public arangodb::RestVocbaseBaseHandler {
                              GeneralRequest*, GeneralResponse*);
 
  public:
+  /* Start handleConductorRequest or handleWorkerRequest.
+   * */
   RestStatus execute() override;
   char const* name() const override { return "Pregel Rest Handler"; }
   RequestLane lane() const final { return RequestLane::CLIENT_SLOW; }

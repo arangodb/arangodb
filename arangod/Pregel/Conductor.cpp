@@ -432,7 +432,7 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
 
   // only compensations supported
   bool proceed = false;
-  if (_masterContext) {
+  if (_masterContext) { // todo (Roman): proceed is false?!
     proceed = proceed || _masterContext->postCompensation();
   }
 
@@ -811,7 +811,7 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   }
 
   _ensureUniqueResponse(data);
-  if (_respondedServers.size() != _dbServers.size()) {
+  if (_respondedServers.size() != _dbServers.size()) { // still waiting for workers
     return;
   }
 

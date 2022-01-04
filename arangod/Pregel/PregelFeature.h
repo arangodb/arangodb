@@ -54,6 +54,10 @@ class PregelFeature final : public application_features::ApplicationFeature {
 
   static size_t availableParallelism();
 
+  /* Make a conductor, register it in PregelFeature and start it.
+   * Return the Result and the execution number of the conductor.
+   * todo (Roman) could be ResultT
+   * */
   std::pair<Result, uint64_t> startExecution(
       TRI_vocbase_t& vocbase, const std::string& algorithm,
       std::vector<std::string> const& vertexCollections,
@@ -62,9 +66,17 @@ class PregelFeature final : public application_features::ApplicationFeature {
           edgeCollectionRestrictions,
       VPackSlice const& params);
 
-  void start() override final;
-  void beginShutdown() override final;
-  void unprepare() override final;
+  /* A Coordinator stores a new recoveryManager, an Agent runs
+   * scheduleGarbageCollection.
+   * */
+  void start() final;
+  /* Cancel all conductors and workers.
+   * */
+  void beginShutdown() final;
+  /* Runs garbage collectors, in maintainer mode checks that all references
+   * to conductors and workers have been dropped.
+   * */
+  void unprepare() final;
 
   bool isStopping() const noexcept;
 
@@ -75,15 +87,31 @@ class PregelFeature final : public application_features::ApplicationFeature {
   void garbageCollectConductors();
 
   void addWorker(std::shared_ptr<IWorker>&&, uint64_t executionNumber);
+  /* If the worker exists in _workers, return it, otherwise return nullptr.
+   * */
   std::shared_ptr<IWorker> worker(uint64_t executionNumber);
 
+  /* Erase the objects with executionNumber from _conductors and _workers.
+   * */
   void cleanupConductor(uint64_t executionNumber);
+  /* Enqueues the task to erase the object with executionNumber from _workers.
+   * */
   void cleanupWorker(uint64_t executionNumber);
 
   RecoveryManager* recoveryManager() {
     return _recoveryManagerPtr.load(std::memory_order_acquire);
   }
 
+  /**
+   *
+   * @param vocbase
+   * @param path the state of the state machine
+   * @param body may have Utils::executionNumberKey, Utils::vertexCountKey,
+   * Utils::edgeCountKey, Utils::senderKey, Utils::globalSuperstepKey,
+   * "reports", Utils::aggregatorValuesKey, Utils::receivedCountKey,
+   * Utils::sendCountKey
+   * @param outResponse
+   */
   void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
                               VPackSlice const& body,
                               VPackBuilder& outResponse);
@@ -124,7 +152,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
 
   std::unordered_map<uint64_t, ConductorEntry> _conductors;
   std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<IWorker>>>
-      _workers;
+      _workers; // executionNumber -> (user -> worker)
 
   std::atomic<bool> _softShutdownOngoing;
 };
