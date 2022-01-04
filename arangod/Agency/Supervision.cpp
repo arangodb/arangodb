@@ -1740,8 +1740,8 @@ bool Supervision::handleJobs() {
   LOG_TOPIC("69480", TRACE, Logger::SUPERVISION)
       << "Begin checkBrokenCollections";
   checkBrokenCollections();
-  
-    LOG_TOPIC("69481", TRACE, Logger::SUPERVISION)
+
+  LOG_TOPIC("69481", TRACE, Logger::SUPERVISION)
       << "Begin checkReplicatedLogAndShardLeadership";
   checkReplicatedLogAndShardLeadership();
 
@@ -2507,8 +2507,9 @@ void Supervision::checkReplicatedLogAndShardLeadership() {
   if (!planNode) {
     return;
   }
-  
-  auto const readPlanSpecification = [](Node const& node) -> LogPlanSpecification {
+
+  auto const readPlanSpecification =
+      [](Node const& node) -> LogPlanSpecification {
     auto builder = node.toBuilder();
     return LogPlanSpecification{from_velocypack, builder.slice()};
   };
@@ -2516,7 +2517,8 @@ void Supervision::checkReplicatedLogAndShardLeadership() {
   // dbpair is <std::string, std::shared_ptr<Node>>
   for (auto const& [dbId, db] : collections.value().get().children()) {
     for (auto const& [collectionId, collection] : db->children()) {
-      auto collectionName = collection->hasAsString(StaticStrings::DataSourceName);
+      auto collectionName =
+          collection->hasAsString(StaticStrings::DataSourceName);
       if (!collectionName || collectionName.value().empty()) {
         continue;
       }
@@ -2537,13 +2539,19 @@ void Supervision::checkReplicatedLogAndShardLeadership() {
           continue;
         }
         if (serversNode->slice()[0].stringView() == term.leader->serverId) {
-          continue; // leaders match -> nothing to do!
+          continue;  // leaders match -> nothing to do!
         }
 
         // shard and replicated log have different leaders
-        // -> rewrite the shard's server list so that the log leader is the first one
-        std::string collection_path =
-            plan()->collections()->database(dbId)->collection(collectionId)->shards()->shard(shardId)->str();
+        // -> rewrite the shard's server list so that the log leader is the
+        // first one
+        std::string collection_path = plan()
+                                          ->collections()
+                                          ->database(dbId)
+                                          ->collection(collectionId)
+                                          ->shards()
+                                          ->shard(shardId)
+                                          ->str();
         {
           auto envelope = std::make_shared<Builder>();
           {
@@ -2554,7 +2562,8 @@ void Supervision::checkReplicatedLogAndShardLeadership() {
                 VPackObjectBuilder operation(envelope.get());
                 // increment Plan Version
                 {
-                  VPackObjectBuilder o(envelope.get(), _agencyPrefix + "/" + PLAN_VERSION);
+                  VPackObjectBuilder o(envelope.get(),
+                                       _agencyPrefix + "/" + PLAN_VERSION);
                   envelope->add("op", VPackValue("increment"));
                 }
 
@@ -2571,9 +2580,7 @@ void Supervision::checkReplicatedLogAndShardLeadership() {
                   }
                 }
               }
-              {
-                VPackObjectBuilder preconditions(envelope.get());
-              }
+              { VPackObjectBuilder preconditions(envelope.get()); }
             }
           }
 

@@ -3090,23 +3090,28 @@ Result ClusterInfo::createCollectionsCoordinator(
 
     for (auto [shardId, serverIds] : VPackObjectIterator(info.json["shards"])) {
       replication2::agency::LogPlanSpecification spec;
-      std::string logId{shardId.stringView().data() + 1, shardId.stringView().size() - 1};
+      std::string logId{shardId.stringView().data() + 1,
+                        shardId.stringView().size() - 1};
       spec.id = replication2::LogId(StringUtils::uint64(logId));
-      replication2::LogConfig config(
-        info.writeConcern,
-        info.replicationFactor,
-        info.replicationFactor,
-        false
-      );
+      replication2::LogConfig config(info.writeConcern, info.replicationFactor,
+                                     info.replicationFactor, false);
       spec.targetConfig = config;
-      std::unordered_map<replication2::ParticipantId, replication2::agency::LogPlanTermSpecification::Participant> participants;
+      std::unordered_map<
+          replication2::ParticipantId,
+          replication2::agency::LogPlanTermSpecification::Participant>
+          participants;
       for (auto serverId : VPackArrayIterator(serverIds)) {
-        participants.emplace(serverId.copyString(), replication2::agency::LogPlanTermSpecification::Participant{});
+        participants.emplace(
+            serverId.copyString(),
+            replication2::agency::LogPlanTermSpecification::Participant{});
       }
       auto builder = std::make_shared<VPackBuilder>();
-      spec.currentTerm = replication2::agency::LogPlanTermSpecification(replication2::LogTerm(1), config, std::nullopt, participants);
+      spec.currentTerm = replication2::agency::LogPlanTermSpecification(
+          replication2::LogTerm(1), config, std::nullopt, participants);
       spec.toVelocyPack(*builder);
-      opers.emplace_back(AgencyOperation("Plan/ReplicatedLogs/" + databaseName + "/" + logId, AgencyValueOperationType::SET, std::move(builder)));
+      opers.emplace_back(
+          AgencyOperation("Plan/ReplicatedLogs/" + databaseName + "/" + logId,
+                          AgencyValueOperationType::SET, std::move(builder)));
     }
 
     // Ensure preconditions on the agency

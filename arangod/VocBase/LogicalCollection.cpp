@@ -1323,7 +1323,8 @@ replication2::LogId LogicalCollection::replicatedLogId() const {
   return replication2::LogId(basics::StringUtils::uint64(logId));
 }
 
-std::shared_ptr<replication2::replicated_log::ILogLeader> LogicalCollection::replicatedLogLeader() {
+std::shared_ptr<replication2::replicated_log::ILogLeader>
+LogicalCollection::replicatedLogLeader() {
   if (_replicatedLog == nullptr) {
     _replicatedLog = vocbase().getReplicatedLogById(replicatedLogId());
   }

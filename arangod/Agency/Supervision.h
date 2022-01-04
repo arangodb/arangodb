@@ -179,12 +179,13 @@ class Supervision : public arangodb::Thread {
   /// built
   void checkBrokenCreatedDatabases();
 
-  /// @brief Check for boken collections
+  /// @brief Check for broken collections
   void checkBrokenCollections();
 
-  /// @brief Check if the shard leader matches that of the corresponding replicated log
+  /// @brief Check if the shard leader matches that of the corresponding
+  /// replicated log
   void checkReplicatedLogAndShardLeadership();
-  
+
   /// @brief Check for broken analyzers
   void checkBrokenAnalyzers();
 
