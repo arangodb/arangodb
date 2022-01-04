@@ -1,0 +1,443 @@
+////
+Copyright 2017 Peter Dimov
+
+Distributed under the Boost Software License, Version 1.0.
+
+See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt
+////
+
+[#list]
+# List Operations, <boost/mp11/list.hpp>
+:toc:
+:toc-title:
+:idprefix:
+
+## mp_list<T...>
+
+    template<class... T> struct mp_list {};
+
+`mp_list` is the standard list type of Mp11, although the library is not restricted to it and can operate on arbitrary class templates
+such as `std::tuple` or `std::variant`. Even `std::pair` can be used if the transformation does not alter the number of the elements in
+the list.
+
+## mp_list_c<T, I...>
+
+    template<class T, T... I> using mp_list_c =
+        mp_list<std::integral_constant<T, I>...>;
+
+`mp_list_c` produces an `mp_list` of the `std::integral_constant` types corresponding to its integer template arguments.
+
+.Using mp_list_c
+```
+using L1 = mp_list_c<int, 2, 3>; // mp_list<mp_int<2>, mp_int<3>>
+```
+
+## mp_is_list<L>
+
+    template<class L> using mp_is_list = /*...*/;
+
+`mp_is_list<L>` is `mp_true` if `L` is a list (an instantiation of a class template whose template parameters are types), `mp_false` otherwise.
+
+## mp_size<L>
+
+    template<class L> using mp_size = /*...*/;
+
+`mp_size<L>` returns the number of elements in the list `L`, as a `mp_size_t`. In other words, `mp_size<L<T...>>` is an alias for
+`mp_size_t<sizeof...(T)>`.
+
+.Using mp_size with mp_list
+```
+using L1 = mp_list<>;
+using R1 = mp_size<L1>; // mp_size_t\<0>
+```
+
+.Using mp_size with std::pair
+```
+using L2 = std::pair<int, int>;
+using R2 = mp_size<L2>; // mp_size_t\<2>
+```
+
+.Using mp_size with std::tuple
+```
+using L3 = std::tuple<float>;
+using R3 = mp_size<L3>; // mp_size_t\<1>
+```
+
+## mp_empty<L>
+
+    template<class L> using mp_empty = mp_bool<mp_size<L>::value == 0>;
+
+`mp_empty<L>` is an alias for `mp_true` if the list `L` is empty, for `mp_false` otherwise.
+
+.Using mp_empty with std::tuple
+```
+using L1 = std::tuple<float>;
+using R1 = mp_empty<L1>; // mp_false
+
+using L2 = std::tuple<>;
+using R2 = mp_empty<L2>; // mp_true
+```
+
+## mp_assign<L1, L2>
+
+    template<class L1, class L2> using mp_assign = /*...*/;
+
+`mp_assign<L1<T1...>, L2<T2...>>` is an alias for `L1<T2...>`. That is, it replaces the elements of `L1` with those of `L2`.
+
+.Using mp_assign with mp_list and std::tuple
+```
+using L1 = std::tuple<long>;
+using L2 = mp_list<int, float>;
+
+using R1 = mp_assign<L1, L2>; // std::tuple<int, float>
+```
+
+.Using mp_assign with mp_list and std::pair
+```
+using L1 = std::pair<long, char>;
+using L2 = mp_list<int, float>;
+
+using R1 = mp_assign<L1, L2>; // std::pair<int, float>
+```
+
+## mp_clear<L>
+
+    template<class L> using mp_clear = mp_assign<L, mp_list<>>;
+
+`mp_clear<L<T...>>` is an alias for `L<>`, that is, it removes the elements of `L`.
+
+.Using mp_clear with std::tuple
+```
+using L1 = std::tuple<int, float>;
+using R1 = mp_clear<L1>; // std::tuple<>
+```
+
+## mp_front<L>
+
+    template<class L> using mp_front = /*...*/;
+
+`mp_front<L>` is the first element of the list `L`. That is, `mp_front<L<T1, T...>>` is an alias for `T1`.
+
+.Using mp_front with std::pair
+```
+using L1 = std::pair<int, float>;
+using R1 = mp_front<L1>; // int
+```
+
+.Using mp_front with std::tuple
+```
+using L2 = std::tuple<float, double, long double>;
+using R2 = mp_front<L2>; // float
+```
+
+.Using mp_front with mp_list
+```
+using L3 = mp_list<char[1], char[2], char[3], char[4]>;
+using R3 = mp_front<L3>; // char[1]
+```
+
+## mp_pop_front<L>
+
+    template<class L> using mp_pop_front = /*...*/;
+
+`mp_pop_front<L>` removes the first element of the list `L`. That is, `mp_pop_front<L<T1, T...>>` is an alias for `L<T...>`.
+
+.Using mp_pop_front with std::tuple
+```
+using L1 = std::tuple<float, double, long double>;
+using R1 = mp_pop_front<L1>; // std::tuple<double, long double>
+```
+
+.Using mp_pop_front with mp_list
+```
+using L2 = mp_list<void>;
+using R2 = mp_pop_front<L2>; // mp_list<>
+```
+
+## mp_first<L>
+
+    template<class L> using mp_first = mp_front<L>;
+
+`mp_first` is another name for `mp_front`.
+
+## mp_rest<L>
+
+    template<class L> using mp_rest = mp_pop_front<L>;
+
+`mp_rest` is another name for `mp_pop_front`.
+
+## mp_second<L>
+
+    template<class L> using mp_second = /*...*/;
+
+`mp_second<L>` is the second element of the list `L`. That is, `mp_second<L<T1, T2, T...>>` is an alias for `T2`.
+
+.Using mp_second with std::pair
+```
+using L1 = std::pair<int, float>;
+using R1 = mp_second<L1>; // float
+```
+
+.Using mp_second with std::tuple
+```
+using L2 = std::tuple<float, double, long double>;
+using R2 = mp_second<L2>; // double
+```
+
+.Using mp_second with mp_list
+```
+using L3 = mp_list<char[1], char[2], char[3], char[4]>;
+using R3 = mp_second<L3>; // char[2]
+```
+
+## mp_third<L>
+
+    template<class L> using mp_third = /*...*/;
+
+`mp_third<L>` is the third element of the list `L`. That is, `mp_third<L<T1, T2, T3, T...>>` is an alias for `T3`.
+
+.Using mp_third with std::tuple
+```
+using L1 = std::tuple<float, double, long double>;
+using R1 = mp_third<L1>; // long double
+```
+
+.Using mp_third with mp_list
+```
+using L2 = mp_list<char[1], char[2], char[3], char[4]>;
+using R2 = mp_third<L2>; // char[3]
+```
+
+## mp_push_front<L, T...>
+
+    template<class L, class... T> using mp_push_front = /*...*/;
+
+`mp_push_front<L, T...>` inserts the elements `T...` at the front of the list `L`. That is, `mp_push_front<L<U...>, T...>`
+is an alias for `L<T..., U...>`.
+
+.Using mp_push_front with std::tuple
+```
+using L1 = std::tuple<double, long double>;
+using R1 = mp_push_front<L1, float>; // std::tuple<float, double, long double>
+```
+
+.Using mp_push_front with mp_list
+```
+using L2 = mp_list<void>;
+using R2 = mp_push_front<L2, char[1], char[2]>; // mp_list<char[1], char[2], void>
+```
+
+## mp_push_back<L, T...>
+
+    template<class L, class... T> using mp_push_back = /*...*/;
+
+`mp_push_back<L, T...>` inserts the elements `T...` at the back of the list `L`. That is, `mp_push_back<L<U...>, T...>`
+is an alias for `L<U..., T...>`.
+
+.Using mp_push_back with std::tuple
+```
+using L1 = std::tuple<double, long double>;
+using R1 = mp_push_back<L1, float>; // std::tuple<double, long double, float>
+```
+
+.Using mp_push_back with mp_list
+```
+using L2 = mp_list<void>;
+using R2 = mp_push_back<L2, char[1], char[2]>; // mp_list<void, char[1], char[2]>
+```
+
+## mp_rename<L, Y>
+
+    template<class L, template<class...> class Y> using mp_rename = /*...*/;
+
+`mp_rename<L, Y>` changes the type of the list `L` to `Y`. That is, `mp_rename<L<T...>, Y>` is an alias for `Y<T...>`.
+
+.Using mp_rename to rename std::pair to std::tuple
+```
+using L1 = std::pair<double, long double>;
+using R1 = mp_rename<L1, std::tuple>; // std::tuple<double, long double>
+```
+
+.Using mp_rename to rename std::tuple to mp_list
+```
+using L2 = std::tuple<void>;
+using R2 = mp_rename<L2, mp_list>; // mp_list<void>
+```
+
+## mp_apply<F, L>
+
+    template<template<class...> class F, class L> using mp_apply = mp_rename<L, F>;
+
+`mp_apply<F, L>` applies the metafunction `F` to the contents of the list `L`, that is, `mp_apply<F, L<T...>>` is an alias for `F<T...>`.
+(`mp_apply` is the same as `mp_rename` with the arguments reversed.)
+
+.Using mp_apply with std::pair
+```
+using L1 = std::pair<double, long double>;
+using R1 = mp_apply<std::is_same, L1>; // std::is_same<double, long double>
+```
+
+## mp_apply_q<Q, L>
+
+    template<class Q, class L> using mp_apply_q = mp_apply<Q::template fn, L>;
+
+Same as `mp_apply`, but takes a quoted metafunction.
+
+.Using mp_apply_q with mp_bind_front
+```
+using L1 = std::tuple<double, long double>;
+using L2 = mp_list<int, long>;
+
+using R1 = mp_apply_q<mp_bind_front<mp_push_back, L1>, L2>;
+  // R1 is std::tuple<double, long double, int, long>
+```
+
+## mp_append<L...>
+
+    template<class... L> using mp_append = /*...*/;
+
+`mp_append<L...>` concatenates the lists in `L...` into a single list that has the same type as the first list. `mp_append<>`
+is an alias for `mp_list<>`. `mp_append<L1<T1...>, L2<T2...>, ..., Ln<Tn...>>` is an alias for `L1<T1..., T2..., ..., Tn...>`.
+
+.Using mp_append with lists of various types
+```
+using L1 = std::tuple<double, long double>;
+using L2 = mp_list<int>;
+using L3 = std::pair<short, long>;
+using L4 = mp_list<>;
+
+using R1 = mp_append<L1, L2, L3, L4>;
+  // std::tuple<double, long double, int, short, long>
+```
+
+## mp_replace_front<L, T>
+
+    template<class L, class T> using mp_replace_front = /*...*/;
+
+`mp_replace_front<L, T>` replaces the first element of the list `L` with `T`. That is, `mp_replace_front<L<U1, U...>, T>` is
+an alias for `L<T, U...>`.
+
+.Using mp_replace_front with std::pair
+```
+using L1 = std::pair<int, float>;
+using R1 = mp_replace_front<L1, void>; // std::pair<void, float>
+```
+
+.Using mp_replace_front with std::tuple
+```
+using L2 = std::tuple<float, double, long double>;
+using R2 = mp_replace_front<L2, void>; // std::tuple<void, double, long double>
+```
+
+.Using mp_replace_front with mp_list
+```
+using L3 = mp_list<char[1], char[2], char[3], char[4]>;
+using R3 = mp_replace_front<L3, void>; // mp_list<void, char[2], char[3], char[4]>;
+```
+
+## mp_replace_first<L, T>
+
+    template<class L, class T> using mp_replace_first = mp_replace_front<L, T>;
+
+`mp_replace_first` is another name for `mp_replace_front`.
+
+## mp_replace_second<L, T>
+
+    template<class L, class T> using mp_replace_second = /*...*/;
+
+`mp_replace_second<L, T>` replaces the second element of the list `L` with `T`. That is, `mp_replace_second<L<U1, U2, U...>, T>`
+is an alias for `L<U1, T, U...>`.
+
+.Using mp_replace_second with std::pair
+```
+using L1 = std::pair<int, float>;
+using R1 = mp_replace_second<L1, void>; // std::pair<int, void>
+```
+
+.Using mp_replace_second with std::tuple
+```
+using L2 = std::tuple<float, double, long double>;
+using R2 = mp_replace_second<L2, void>; // std::tuple<float, void, long double>
+```
+
+.Using mp_replace_front with mp_list
+```
+using L3 = mp_list<char[1], char[2], char[3], char[4]>;
+using R3 = mp_replace_second<L3, void>; // mp_list<char[1], void, char[3], char[4]>;
+```
+
+## mp_replace_third<L, T>
+
+    template<class L, class T> using mp_replace_third = /*...*/;
+
+`mp_replace_third<L, T>` replaces the third element of the list `L` with `T`. That is, `mp_replace_third<L<U1, U2, U3, U...>, T>`
+is an alias for `L<U1, U2, T, U...>`.
+
+.Using mp_replace_third with std::tuple
+```
+using L1 = std::tuple<float, double, long double>;
+using R1 = mp_replace_third<L1, void>; // std::tuple<float, double, void>
+```
+
+.Using mp_replace_third with mp_list
+```
+using L2 = mp_list<char[1], char[2], char[3], char[4]>;
+using R2 = mp_replace_third<L2, void>; // mp_list<char[1], char[2], void, char[4]>;
+```
+
+## mp_transform_front<L, F>
+
+    template<class L, template<class...> class F> using mp_transform_front =
+        /*...*/;
+
+`mp_transform_front<L, F>` replaces the first element `T1` of the list `L` with `F<T1>`.
+
+## mp_transform_front_q<L, Q>
+
+    template<class L, class Q> using mp_transform_front_q =
+        mp_transform_front<L, Q::template fn>;
+
+As `mp_transform_front`, but takes a quoted metafunction.
+
+## mp_transform_first<L, F>
+
+    template<class L, template<class...> class F> using mp_transform_first =
+        mp_transform_front<L, F>;
+
+`mp_transform_first` is another name for `mp_transform_front`.
+
+## mp_transform_first_q<L, Q>
+
+    template<class L, class Q> using mp_transform_first_q =
+        mp_transform_first<L, Q::template fn>;
+
+As `mp_transform_first`, but takes a quoted metafunction.
+
+## mp_transform_second<L, F>
+
+    template<class L, template<class...> class F> using mp_transform_second =
+        /*...*/;
+
+`mp_transform_second<L, F>` replaces the second element `T2` of the list `L` with `F<T2>`.
+
+## mp_transform_second_q<L, Q>
+
+    template<class L, class Q> using mp_transform_second_q =
+        mp_transform_second<L, Q::template fn>;
+
+As `mp_transform_second`, but takes a quoted metafunction.
+
+## mp_transform_third<L, F>
+
+    template<class L, template<class...> class F> using mp_transform_third =
+        /*...*/;
+
+`mp_transform_third<L, F>` replaces the third element `T3` of the list `L` with `F<T3>`.
+
+## mp_transform_third_q<L, Q>
+
+    template<class L, class Q> using mp_transform_third_q =
+        mp_transform_third<L, Q::template fn>;
+
+As `mp_transform_third`, but takes a quoted metafunction.

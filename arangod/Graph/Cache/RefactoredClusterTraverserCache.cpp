@@ -59,16 +59,18 @@ void RefactoredClusterTraverserCache::clear() {
 
 auto RefactoredClusterTraverserCache::cacheVertex(VertexType const& vertexId,
                                                   velocypack::Slice vertexSlice) -> void {
+  ResourceUsageScope guard(_resourceMonitor, ::costPerVertexOrEdgeStringRefSlice);
   auto [it, inserted] = _vertexData.try_emplace(vertexId, vertexSlice);
+
   if (inserted) {
     // If we have added something into the cache, we need to account for it.
-    _resourceMonitor.increaseMemoryUsage(costPerVertexOrEdgeStringRefSlice);
+    guard.steal();
   }
 }
 
 auto RefactoredClusterTraverserCache::isVertexCached(VertexType const& vertexKey) const
     -> bool {
-  return _vertexData.find(vertexKey) != _vertexData.end();
+  return _vertexData.contains(vertexKey);
 }
 
 auto RefactoredClusterTraverserCache::isEdgeCached(EdgeType const& edgeKey) const -> bool {
@@ -76,18 +78,20 @@ auto RefactoredClusterTraverserCache::isEdgeCached(EdgeType const& edgeKey) cons
 }
 
 auto RefactoredClusterTraverserCache::getCachedVertex(VertexType const& vertex) const -> VPackSlice {
-  if (!isVertexCached(vertex)) {
+  auto it = _vertexData.find(vertex);
+  if (it == _vertexData.end()) {
     return VPackSlice::nullSlice();
   }
-  return _vertexData.at(vertex);
+  return it->second;
 }
 
 auto RefactoredClusterTraverserCache::getCachedEdge(EdgeType const& edge) const
     -> VPackSlice {
-  if (!isEdgeCached(edge)) {
+  auto it = _edgeData.find(edge);
+  if (it == _edgeData.end()) {
     return VPackSlice::nullSlice();
   }
-  return _edgeData.at(edge);
+  return it->second;
 }
 
 auto RefactoredClusterTraverserCache::persistString(arangodb::velocypack::HashedStringRef idString) -> arangodb::velocypack::HashedStringRef {
@@ -97,8 +101,9 @@ auto RefactoredClusterTraverserCache::persistString(arangodb::velocypack::Hashed
   }
   auto res = _stringHeap.registerString(idString);
   ResourceUsageScope guard(_resourceMonitor, ::costPerPersistedString);
-   
-  _persistedStrings.emplace(res);
+
+  auto [itx, inserted] = _persistedStrings.emplace(res);
+  TRI_ASSERT(inserted);
     
   // now make the TraverserCache responsible for memory tracking
   guard.steal();

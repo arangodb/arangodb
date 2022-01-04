@@ -29,7 +29,8 @@
 #include "Basics/StringUtils.h"
 #include "Basics/process-utils.h"
 #include "Rest/GeneralRequest.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/Counter.h"
+#include "Metrics/MetricsFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
@@ -106,7 +107,7 @@ static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
 
   TRI_GET_GLOBALS();
   ServerStatistics const& info =
-      v8g->_server.getFeature<MetricsFeature>().serverStatistics();
+      v8g->_server.getFeature<metrics::MetricsFeature>().serverStatistics();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
@@ -229,7 +230,7 @@ static void JS_EnabledMetrics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   TRI_GET_GLOBALS();
-  bool enabled = v8g->_server.getFeature<MetricsFeature>().exportAPI();
+  bool enabled = v8g->_server.getFeature<metrics::MetricsFeature>().exportAPI();
   v8::Handle<v8::Value> result = v8::Boolean::New(isolate, enabled);
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

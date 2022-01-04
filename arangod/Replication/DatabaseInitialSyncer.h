@@ -31,6 +31,7 @@
 #include "Replication/utilities.h"
 #include "Utils/SingleCollectionTransaction.h"
 
+#include <chrono>
 #include <memory>
 
 struct TRI_vocbase_t;
@@ -156,6 +157,14 @@ class DatabaseInitialSyncer : public InitialSyncer {
   
   /// @brief return information about the leader
   replutils::LeaderInfo leaderInfo() const;
+  
+  void setOnSuccessCallback(std::function<Result(DatabaseInitialSyncer&)> const& cb) {
+    _onSuccess = cb;
+  }
+  
+  void setAbortionCheckCallback(std::function<bool()> const& cb) {
+    _checkAbortion = cb;
+  }
 
  private:
   enum class FormatHint {
@@ -250,6 +259,15 @@ class DatabaseInitialSyncer : public InitialSyncer {
   Result batchFinish() noexcept;
 
   Configuration _config;
+  
+  // custom callback executed when synchronization was completed successfully
+  std::function<Result(DatabaseInitialSyncer&)> _onSuccess;
+
+  // custom callback to check if the sync should be aborted
+  std::function<bool()> _checkAbortion;
+
+  // point in time when we last executed the _checkAbortion callback
+  mutable std::chrono::steady_clock::time_point _lastAbortionCheck;
 
   /// @brief whether or not we are a coordinator/dbserver
   bool const _isClusterRole;

@@ -253,7 +253,7 @@ const TOP_DIR = (function findTopDir () {
   const topDir = fs.normalize(fs.makeAbsolute('.'));
 
   if (!fs.exists('3rdParty') && !fs.exists('arangod') &&
-    !fs.exists('arangosh') && !fs.exists('tests')) {
+    !fs.exists('client-tools') && !fs.exists('tests')) {
     throw new Error('Must be in ArangoDB topdir to execute tests.');
   }
 
@@ -643,8 +643,10 @@ function makeArgsArangod (options, appDir, role, tmpDir) {
 }
 
 function killWithCoreDump (options, instanceInfo) {
-  if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
-    crashUtils.stopProcdump (options, instanceInfo, true);
+  if (platform.substr(0, 3) === 'win') {
+    if (!options.disableMonitor) {
+      crashUtils.stopProcdump (options, instanceInfo, true);
+    }
     crashUtils.runProcdump (options, instanceInfo, instanceInfo.rootDir, instanceInfo.pid, true);
   }
   instanceInfo.exitStatus = killExternal(instanceInfo.pid, abortSignal);
@@ -1101,6 +1103,10 @@ function runArangoImport (options, instanceInfo, what, coreCheck = false) {
 
   if (what.mergeAttributes !== undefined) {
     args['merge-attributes'] = what.mergeAttributes;
+  }
+
+  if (what.batchSize !== undefined) {
+    args['batch-size'] = what.batchSize;
   }
 
 
@@ -2264,8 +2270,12 @@ function startInstanceAgency (instanceInfo, protocol, options, addArgs, rootDir)
     usedPorts.push(port);
     instanceArgs['server.endpoint'] = protocol + '://127.0.0.1:' + port;
     instanceArgs['agency.my-address'] = protocol + '://127.0.0.1:' + port;
-    instanceArgs['agency.supervision-grace-period'] = '10.0';
-    instanceArgs['agency.supervision-frequency'] = '1.0';
+    if (!instanceArgs.hasOwnProperty("agency.supervision-grace-period")) {
+      instanceArgs['agency.supervision-grace-period'] = '10.0';
+    }
+    if (!instanceArgs.hasOwnProperty("agency.supervision-frequency")) {
+      instanceArgs['agency.supervision-frequency'] = '1.0';
+    }
     if (options.encryptionAtRest) {
       instanceArgs['rocksdb.encryption-keyfile'] = instanceInfo.restKeyFile;
     }

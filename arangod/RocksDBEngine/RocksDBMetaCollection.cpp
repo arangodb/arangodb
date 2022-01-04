@@ -385,6 +385,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(tr
     auto const& operations = RocksDBTransactionState::toState(&trx)->trackedOperations(
         _logicalCollection.id());
         
+    // this revision tree exists only temporarily, so we do not track its memory usage
     tree->insert(operations.inserts);
     tree->remove(operations.removals);
   
@@ -429,7 +430,10 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::computeRevision
 
   RevisionReplicationIterator& it =
       *static_cast<RevisionReplicationIterator*>(iter.get());
-  
+ 
+  // the tree may only be there temporarily, so we intentionally do
+  // not track its memory usage here, but rather at some indirect call sites
+  // only.
   return buildTreeFromIterator(it);
 }
 
@@ -768,6 +772,9 @@ RocksDBMetaCollection::revisionTreeFromCollection(bool checkForBlockers) {
   RevisionReplicationIterator& it =
       *static_cast<RevisionReplicationIterator*>(iter.get());
   
+  // the tree may only be there temporarily, so we intentionally do
+  // not track its memory usage here, but rather at some indirect call sites
+  // only.
   auto newTree = buildTreeFromIterator(it);
   return std::make_pair(std::move(newTree), state->beginSeq());
 }
@@ -952,7 +959,7 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
       TRI_ASSERT(_revisionTreeApplied <= beginSeq);
       TRI_ASSERT(_revisionTreeSerializedSeq <= beginSeq);
 
-      // establish the new tree
+      // establish the new tree. this will also track the memory usage of the tree
       _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree), _logicalCollection);
       _revisionTreeApplied = beginSeq;
       _revisionTreeCreationSeq = beginSeq;
@@ -1043,6 +1050,8 @@ void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder, bool from
   if (fromCollection) {
     // rebuild a temporary tree from the collection
     auto result = revisionTreeFromCollection(false);
+    // the tree is only there temporarily, so we intentionally do
+    // not track its memory usage!
 
     if (result.fail()) {
       THROW_ARANGO_EXCEPTION(result.result());
@@ -1234,6 +1243,8 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq,
   if (!_revisionTreeCanBeSerialized) {
     return;
   }
+
+  auto oldMemoryUsage = _revisionTree->memoryUsage();
   
   Result res = basics::catchVoidToResult([&]() -> void {
     // bump sequence number upwards
@@ -1401,6 +1412,18 @@ void RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq,
       }
     }
   });
+
+  // if memory usage changed, track the adjustment
+  auto newMemoryUsage = _revisionTree->memoryUsage();
+  if (oldMemoryUsage != newMemoryUsage) {
+    auto& engine =
+        _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+    if (oldMemoryUsage > newMemoryUsage) {
+      engine.trackRevisionTreeMemoryDecrease(oldMemoryUsage - newMemoryUsage);
+    } else {
+      engine.trackRevisionTreeMemoryIncrease(newMemoryUsage - oldMemoryUsage);
+    }
+  }
 
   if (res.fail()) {
     LOG_TOPIC("fdfa7", ERR, Logger::ENGINES)
@@ -1619,6 +1642,21 @@ RocksDBMetaCollection::RevisionTreeAccessor::RevisionTreeAccessor(std::unique_pt
       _hibernationRequests(0),
       _compressible(true) {
   TRI_ASSERT(_depth == revisionTreeDepth);
+  TRI_ASSERT(_tree != nullptr);
+        
+  auto& engine = _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  engine.trackRevisionTreeMemoryIncrease(_tree->memoryUsage());
+}
+
+RocksDBMetaCollection::RevisionTreeAccessor::~RevisionTreeAccessor() {
+  TRI_ASSERT((_tree == nullptr && !_compressed.empty()) || (_tree != nullptr && _compressed.empty()));
+
+  auto& engine = _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  if (_tree != nullptr) {
+    engine.trackRevisionTreeMemoryDecrease(_tree->memoryUsage());
+  } else if (!_compressed.empty()) {
+    engine.trackRevisionTreeMemoryDecrease(_compressed.size());
+  }
 }
 
 void RocksDBMetaCollection::RevisionTreeAccessor::insert(std::vector<std::uint64_t> const& keys) {
@@ -1633,8 +1671,14 @@ void RocksDBMetaCollection::RevisionTreeAccessor::remove(std::vector<std::uint64
 
 void RocksDBMetaCollection::RevisionTreeAccessor::clear() {
   ensureTree();
+ 
+  // do not track memory usage here. the caller has to do this
   _tree->clear();
+  TRI_ASSERT(_tree->memoryUsage() == 0);
+  _compressed.clear();
   _compressible = true;
+  
+  TRI_ASSERT(_tree != nullptr && _compressed.empty());
 }
     
 std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::RevisionTreeAccessor::clone() const {
@@ -1666,6 +1710,11 @@ std::uint64_t RocksDBMetaCollection::RevisionTreeAccessor::depth() const {
   return _depth;
 }
 
+std::size_t RocksDBMetaCollection::RevisionTreeAccessor::memoryUsage() const {
+  ensureTree();
+  return _tree->memoryUsage();
+}
+
 void RocksDBMetaCollection::RevisionTreeAccessor::checkConsistency() const {
   ensureTree();
   return _tree->checkConsistency();
@@ -1674,18 +1723,31 @@ void RocksDBMetaCollection::RevisionTreeAccessor::checkConsistency() const {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 void RocksDBMetaCollection::RevisionTreeAccessor::corrupt(uint64_t count, uint64_t hash) {
   ensureTree();
+
+  // track memory usage differences
+  auto oldMemoryUsage = _tree->memoryUsage();
+  // corrupt will _insert_ intentionally broken data into the tree. it does not _remove_ data 
   _tree->corrupt(count, hash);
+  
+  RocksDBEngine& engine =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  engine.trackRevisionTreeMemoryIncrease(_tree->memoryUsage() - oldMemoryUsage);
 }
 #endif
 
 void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
+  TRI_ASSERT((_tree == nullptr && !_compressed.empty()) || (_tree != nullptr && _compressed.empty()));
+
   if (_tree == nullptr) {
     // already compressed, nothing to do
     TRI_ASSERT(!_compressed.empty());
     return;
   }
+  
+  TRI_ASSERT(_compressed.empty());
 
   std::uint64_t count = _tree->count();
+  auto oldMemoryUsage = _tree->memoryUsage();
 
   if (!force) {
     if (count >= 5'000'000) {
@@ -1696,6 +1758,11 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
     
     if (count >= 1'000'000 && !_compressible) {
       // for whatever reason this collection is not well compressible
+      return;
+    }
+  
+    if (oldMemoryUsage == 0) {
+      // tree is empty -> we do not want to compress it!
       return;
     }
     
@@ -1709,31 +1776,37 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
   }
 
   double start = TRI_microtime();
-  
+ 
   _compressed.clear();
   _tree->serializeBinary(_compressed, arangodb::containers::MerkleTreeBase::BinaryFormat::Optimal);
 
   TRI_ASSERT(!_compressed.empty());
- 
+  
   LOG_TOPIC("45eae", DEBUG, Logger::REPLICATION) 
       << "hibernating revision tree for "
       << _logicalCollection.vocbase().name() << "/" << _logicalCollection.name()
       << " with " << count << " entries and size " 
       << _tree->byteSize() << ", hibernated size: " << _compressed.size() 
-      << ", hibernation took: " << (TRI_microtime() - start);;
+      << ", hibernation took: " << (TRI_microtime() - start);
 
   // we would like to see at least 50% compressibility
   if (_compressed.size() * 2 < _tree->byteSize()) {
     // compression ratio ok.
     // remove tree from memory. now we only have _compressed
+    RocksDBEngine& engine =
+        _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+    engine.trackRevisionTreeHibernation();
+    engine.trackRevisionTreeMemoryIncrease(_compressed.size());
+    engine.trackRevisionTreeMemoryDecrease(oldMemoryUsage);
     _tree.reset();
     _compressible = true;
+    TRI_ASSERT(_tree == nullptr && !_compressed.empty());
   } else {
     // otherwise we'll keep the uncompressed tree, and will
     // not try compressing again soon
-    _compressed.clear();
-    _compressed.shrink_to_fit();
+    _compressed = std::string();
     _compressible = false;
+    TRI_ASSERT(_tree != nullptr && _compressed.empty());
   }
 }
 
@@ -1750,6 +1823,8 @@ void RocksDBMetaCollection::RevisionTreeAccessor::serializeBinary(std::string& o
 // unfortunately we need to declare this method const although it can
 // modify internal (mutable) state
 void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
+  TRI_ASSERT((_tree == nullptr && !_compressed.empty()) || (_tree != nullptr && _compressed.empty()));
+
   if (_tree == nullptr) {
     // build tree from compressed state
     TRI_ASSERT(!_compressed.empty());
@@ -1761,6 +1836,12 @@ void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
     if (_tree == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to uncompress tree");
     }
+  
+    RocksDBEngine& engine =
+        _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+    engine.trackRevisionTreeResurrection();
+    engine.trackRevisionTreeMemoryIncrease(_tree->memoryUsage());
+    engine.trackRevisionTreeMemoryDecrease(_compressed.size());
 
     // reset hibernation counter
     _hibernationRequests = 0;
@@ -1774,8 +1855,8 @@ void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
         << (TRI_microtime() - start);
 
     // clear the compressed state and free the associated memory
-    _compressed.clear();
-    _compressed.shrink_to_fit();
+    _compressed = std::string();
   }
   TRI_ASSERT(_tree != nullptr);
+  TRI_ASSERT(_compressed.empty());
 }

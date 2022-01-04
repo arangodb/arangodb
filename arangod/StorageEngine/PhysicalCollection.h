@@ -164,10 +164,10 @@ class PhysicalCollection {
   ///        it at that moment.
   virtual void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) = 0;
 
-  virtual Result lookupKey(transaction::Methods*, arangodb::velocypack::StringRef,
+  virtual Result lookupKey(transaction::Methods*, std::string_view,
                            std::pair<LocalDocumentId, RevisionId>&, ReadOwnWrites readOwnWrites) const = 0;
 
-  virtual Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
+  virtual Result read(transaction::Methods*, std::string_view key,
                       IndexIterator::DocumentCallback const& cb, ReadOwnWrites readOwnWrites) const = 0;
   
   /// @brief read a documument referenced by token (internal method)
@@ -206,7 +206,7 @@ class PhysicalCollection {
                         ManagedDocumentResult& previous, OperationOptions& options);
 
   /// @brief new object for insert, value must have _key set correctly.
-  Result newObjectForInsert(transaction::Methods* trx, velocypack::Slice const& value,
+  Result newObjectForInsert(transaction::Methods* trx, velocypack::Slice value,
                             bool isEdgeCollection, velocypack::Builder& builder,
                             bool isRestore, RevisionId& revisionId) const;
 
@@ -233,20 +233,20 @@ class PhysicalCollection {
   bool isValidEdgeAttribute(velocypack::Slice const& slice) const;
 
   /// @brief new object for remove, must have _key set
-  void newObjectForRemove(transaction::Methods* trx, velocypack::Slice const& oldValue,
+  void newObjectForRemove(transaction::Methods* trx, velocypack::Slice oldValue,
                           velocypack::Builder& builder, bool isRestore,
                           RevisionId& revisionId) const;
 
   /// @brief merge two objects for update
-  Result mergeObjectsForUpdate(transaction::Methods* trx, velocypack::Slice const& oldValue,
-                               velocypack::Slice const& newValue,
+  Result mergeObjectsForUpdate(transaction::Methods* trx, velocypack::Slice oldValue,
+                               velocypack::Slice newValue,
                                bool isEdgeCollection, bool mergeObjects,
                                bool keepNull, velocypack::Builder& builder,
                                bool isRestore, RevisionId& revisionId) const;
 
   /// @brief new object for replace
-  Result newObjectForReplace(transaction::Methods* trx, velocypack::Slice const& oldValue,
-                             velocypack::Slice const& newValue,
+  Result newObjectForReplace(transaction::Methods* trx, velocypack::Slice oldValue,
+                             velocypack::Slice newValue,
                              bool isEdgeCollection, velocypack::Builder& builder,
                              bool isRestore, RevisionId& revisionId) const;
 

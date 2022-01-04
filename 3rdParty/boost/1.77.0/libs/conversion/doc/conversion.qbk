@@ -1,0 +1,218 @@
+[/
+    Copyright 2016 Mikhail Maximov.
+    Copyright 2020-2021 Antony Polukhin.
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt">http://www.boost.org/LICENSE_1_0.txt</a>)
+]
+
+[article The Conversion Library
+    [quickbook 1.6]
+    [compatibility-mode 1.5]
+    [id conversion]
+    [version 1.7]
+    [authors [Stroustrup, Bjarne], [Abrahams, Dave], [Rasin, Boris], [Polukhin, Antony]]
+    [copyright 2001 Beman Dawes, 2014-2021 Antony Polukhin]
+    [license
+        Distributed under the Boost Software License, Version 1.0.
+        (See accompanying file LICENSE_1_0.txt or copy at
+        [@http://www.boost.org/LICENSE_1_0.txt])
+    ]
+    [source-mode c++]
+]
+
+[/ QuickBook Document version 1.5 ]
+[/ Dec, 2016 ]
+
+[section Description]
+
+The Conversion Library improves program safety and clarity by performing
+otherwise messy conversions. It includes cast-style function templates designed 
+to complement the C++ Standard's built-in casts.
+
+To reduce coupling, particularly to standard library IOStreams, 
+the Boost Conversion Library is supplied by several headers:
+
+# The [@boost:boost/polymorphic_cast.hpp boost/polymorphic_cast.hpp] header
+  provides [link polymorphic_cast `polymorphic_cast<>`] and
+  [link polymorphic_downcast `polymorphic_downcast<>`]
+  to perform safe casting between polymorphic types.
+# The [@boost:boost/polymorphic_pointer_cast.hpp boost/polymorphic_pointer_cast.hpp] header
+  provides [link polymorphic_pointer_cast `polymorphic_pointer_cast<>`] and
+  [link polymorphic_pointer_cast `polymorphic_pointer_downcast<>`]
+# The [@boost:boost/implicit_cast.hpp boost/implicit_cast.hpp] header provides `implicit_cast<>` 
+  to perform implicit casts only (no down-cast, no void*->T*, no U->T if T has only explicit constructors for U).
+# The [@boost:boost/lexical_cast.hpp boost/lexical_cast.hpp] header 
+  provides [@boost:doc/libs/release/libs/lexical_cast/ `lexical_cast<>`] general literal text conversions, such as an `int` represented as a `string`, or vice-versa. 
+
+[endsect]
+
+[section Polymorphic casts]
+Pointers to polymorphic objects (objects of classes which define at
+least one virtual function) are sometimes downcast or crosscast.
+Downcasting means casting from a base class to a derived class.
+Crosscasting means casting across an inheritance hierarchy diagram, such
+as from one base to the other in a [^Y] diagram hierarchy.
+
+Such casts can be done with old-style casts, but this approach is
+never to be recommended. Old-style casts are sorely lacking in type
+safety, suffer poor readability, and are difficult to locate with search
+tools.
+
+[#polymorphic_downcast]
+[section polymorphic_downcast]
+
+The C++ built-in `static_cast` can be used for efficiently
+downcasting pointers to polymorphic objects, but provides no error
+detection for the case where the pointer being cast actually points to
+the wrong derived class. The `polymorphic_downcast` template retains
+the efficiency of `static_cast` for non-debug compilations, but for
+debug compilations adds safety via an `assert()` that a `dynamic_cast`
+succeeds.
+
+A `polymorphic_downcast` should be used for
+downcasts that you are certain should succeed. Error checking is
+only performed in translation units where `NDEBUG` is
+not defined, via
+```
+    assert( dynamic_cast<Derived>(x) == x )
+```
+where `x` is the source pointer.  This approach
+ensures that not only is a non-zero pointer returned, but also
+that it is correct in the presence of multiple inheritance.
+Attempts to crosscast using `polymorphic_downcast` will
+fail to compile.
+
+[warning Because `polymorphic_downcast` uses `assert()`, it
+violates the One Definition Rule (ODR) if `NDEBUG` is inconsistently
+defined across translation units. See ISO Std 3.2]
+
+[h4 Example:]
+```
+    #include <boost/polymorphic_cast.hpp>
+    ...
+    class Fruit { public: virtual ~Fruit(){}; ... };
+    class Banana : public Fruit { ... };
+    ...
+    void f( Fruit * fruit ) {
+      // ... logic which leads us to believe it is a Banana
+      Banana * banana = boost::polymorphic_downcast<Banana*>(fruit);
+      ...
+    }
+```
+[endsect]
+
+[#polymorphic_cast]
+[section polymorphic_cast]
+
+The C++ built-in `dynamic_cast` can be used for downcasts and
+crosscasts of pointers to polymorphic objects, but error notification in
+the form of a returned value of 0 is inconvenient to test, or worse yet,
+easy to forget to test. The throwing form of `dynamic_cast`, which
+works on references, can be used on pointers through the ugly expression
+`&dynamic_cast<T&>(*p)`, which causes undefined
+behavior if `p` is `0`. The `polymorphic_cast`
+template performs a `dynamic_cast` on a pointer, and throws an
+exception if the `dynamic_cast` returns 0.
+
+For crosscasts, or when the success of a cast can only be known at runtime, 
+or when efficiency is not important, `polymorphic_cast` is preferred.
+
+The C++ built-in `dynamic_cast` must be used to cast references rather than pointers.
+It is also the only cast that can be used to check whether a given interface is supported; in that case a return of 0 isn't an error condition.
+
+[endsect]
+
+
+[#polymorphic_pointer_cast]
+[section polymorphic_pointer_cast]
+While `polymorphic_downcast` and `polymorphic_cast` work with built-in pointer types only,
+`polymorphic_pointer_downcast` and `polymorphic_pointer_cast` are more generic versions
+with support for any pointer type for which the following expressions would be valid:
+
+For `polymorphic_pointer_downcast`:
+```
+    static_pointer_cast<Derived>(p);
+    dynamic_pointer_cast<Derived>(p);
+```
+For `polymorphic_pointer_cast`:
+```
+    dynamic_pointer_cast<Derived>(p);
+    !p; // conversion to bool with negation
+```
+
+This includes C++ built-in pointers, `std::shared_ptr`,
+`boost::shared_ptr`, `boost::intrusive_ptr`, etc.
+
+
+[h4 Example:]
+```
+    #include <boost/polymorphic_pointer_cast.hpp>
+
+    class Fruit { public: virtual ~Fruit(){} };
+    class Banana : public Fruit {};
+
+    // Use one of these:
+    typedef Fruit* FruitPtr;
+    typedef std::shared_ptr<Fruit> FruitPtr;
+    typedef boost::shared_ptr<Fruit> FruitPtr;
+    typedef boost::intrusive_ptr<Fruit> FruitPtr;
+
+    void f(FruitPtr fruit) {
+      // ... logic which leads us to believe it is a banana
+      auto banana = boost::polymorphic_pointer_downcast<Banana>(fruit);
+      ...
+    }
+```
+
+[endsect]
+
+[endsect]
+
+[section Synopsis]
+```
+    namespace boost {
+
+    // Throws: std::bad_cast if ( dynamic_cast<Derived>(x) == 0 )
+    // Returns: dynamic_cast<Derived>(x)
+    template <class Derived, class Base>
+    inline Derived polymorphic_cast(Base* x);
+
+    // Effects: assert( dynamic_cast<Derived>(x) == x );
+    // Returns: static_cast<Derived>(x)
+    template <class Derived, class Base>
+    inline Derived polymorphic_downcast(Base* x);
+
+    // Effects: assert( dynamic_cast<Derived>(&x) == &x );
+    // Returns: static_cast<Derived>(x)
+    template <class Derived, class Base>
+    inline Derived polymorphic_downcast(Base& x);
+
+    // Throws: std::bad_cast if ( dynamic_pointer_cast<Derived>(x) == 0 )
+    // Returns: dynamic_pointer_cast<Derived>(x)
+    template <class Derived, class Base>
+    inline auto polymorphic_pointer_cast(Base x);
+
+    // Effects: assert( dynamic_pointer_cast<Derived>(x) == x );
+    // Returns: static_pointer_cast<Derived>(x)
+    template <class Derived, class Base>
+    inline auto polymorphic_pointer_downcast(Base x);
+
+    }
+```
+[endsect]
+
+
+[section History]
+`polymorphic_cast` was suggested by Bjarne Stroustrup in "The C++ Programming Language".
+
+`polymorphic_downcast` was contributed by [@http://www.boost.org/people/dave_abrahams.htm Dave Abrahams].
+
+`polymorphic_pointer_downcast` was contributed by [@http://www.boost.org/people/boris_rasin.htm Boris Rasin]
+and `polymorphic_pointer_cast` by Antony Polukhin.
+
+`polymorphic_downcast` overload for references was contributed by Julien Delacroix.
+
+An old `numeric_cast` that was contributed by [@http://www.boost.org/people/kevlin_henney.htm Kevlin Henney]
+is now superseded by the [@boost:numeric_conversion/doc/html/html/boost_numericconversion/improved_numeric_cast__.html Boost Numeric Conversion Library]
+[endsect]

@@ -21,26 +21,36 @@
 /// @author Kaveh Vahedipour
 /// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
 
-#ifndef METRICS_FEATURE_TEST_H
-#define METRICS_FEATURE_TEST_H
-#include <RestServer/MetricsFeature.h>
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/LinScale.h"
+#include "Metrics/LogScale.h"
+#include "Metrics/MetricsFeature.h"
+
 struct HISTOGRAMLOGSCALE {
-  static log_scale_t<double> scale() { return { 10.0, 0, 1000.0, 8 }; }
+  static arangodb::metrics::LogScale<double> scale() {
+    return {10.0, 0, 1000.0, 8};
+  }
 };
 struct HISTOGRAMLINSCALE {
-  static lin_scale_t<double> scale() { return { 0., 1., 10 }; }
+  static arangodb::metrics::LinScale<double> scale() { return {0., 1., 10}; }
 };
 struct COUNTER : arangodb::metrics::CounterBuilder<COUNTER> {
   COUNTER() { _name = "COUNTER", _help = "one counter"; }
 };
 struct HISTOGRAMLOG : arangodb::metrics::HistogramBuilder<HISTOGRAMLOG, HISTOGRAMLOGSCALE> {
-  HISTOGRAMLOG() { _name = "HISTOGRAMLOG", _help = "one histogram with log scale"; }
+  HISTOGRAMLOG() {
+    _name = "HISTOGRAMLOG", _help = "one histogram with log scale";
+  }
 };
 struct HISTOGRAMLIN : arangodb::metrics::HistogramBuilder<HISTOGRAMLIN, HISTOGRAMLINSCALE> {
-  HISTOGRAMLIN() { _name = "HISTOGRAMLIN", _help = "one histogram with lin scale"; }
+  HISTOGRAMLIN() {
+    _name = "HISTOGRAMLIN", _help = "one histogram with lin scale";
+  }
 };
 struct GAUGE : arangodb::metrics::GaugeBuilder<GAUGE, uint64_t> {
   GAUGE() { _name = "GAUGE", _help = "one gauge"; }
 };
-#endif

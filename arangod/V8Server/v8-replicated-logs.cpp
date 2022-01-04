@@ -30,10 +30,13 @@
 #include "v8-externals.h"
 #include "v8-vocbaseprivate.h"
 
+#include "velocypack/Iterator.h"
+
 #include "Replication2/Methods.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
+#include "Replication2/ReplicatedLog/Utilities.h"
 
 using namespace arangodb::replication2;
 
@@ -205,6 +208,52 @@ static void JS_Insert(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_MultiInsert(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  auto& vocbase = GetContextVocBase(isolate);
+  auto id = UnwrapReplicatedLog(isolate, args.Holder());
+  if (!arangodb::ExecContext::current().isAdminUser()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("No access to replicated log '") + to_string(id) + "'");
+  }
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("multiInsert(<payload>)");
+  }
+
+  VPackBufferUInt8 payload;
+  VPackBuilder builder(payload);
+  TRI_V8ToVPack(isolate, builder, args[0], false, false);
+  auto slice = builder.slice();
+  if (!slice.isArray()) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "multiInsert(<payload>) expects array");
+  }
+
+  replicated_log::VPackArrayToLogPayloadIterator iter{slice};
+  auto result = ReplicatedLogMethods::createInstance(vocbase)
+                    ->insert(id, iter).get();
+
+  VPackBuilder response;
+  {
+    VPackObjectBuilder ob(&response);
+    {
+      VPackArrayBuilder ab{&response, "indexes"};
+      for (auto const logIndex : result.first) {
+        response.add(VPackValue(logIndex));
+      }
+    }
+    response.add(VPackValue("result"));
+    result.second.toVelocyPack(response);
+  }
+
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
+  TRI_V8_TRY_CATCH_END
+}
+
 static void JS_Status(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -236,9 +285,9 @@ static void JS_Head(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::size_t length;
   if (args.Length() == 0) {
-    length = 100;
+    length = ReplicatedLogMethods::kDefaultLimit;
   } else if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("head(<limit = 100>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("head(<limit = 10>)");
   } else {
     length = args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value();
   }
@@ -269,9 +318,9 @@ static void JS_Tail(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::size_t length;
   if (args.Length() == 0) {
-    length = 100;
+    length = ReplicatedLogMethods::kDefaultLimit;
   } else if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("tail(<limit = 100>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("tail(<limit = 10>)");
   } else {
     length = args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value();
   }
@@ -300,12 +349,19 @@ static void JS_Slice(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("No access to replicated log '") + to_string(id) + "'");
   }
 
-  if (args.Length() != 2) {
+  if (args.Length() > 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("slice(<start>, <stop>)");
   }
-
-  auto start = LogIndex{args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value()};
-  auto stop = LogIndex{args[1]->ToUint32(TRI_IGETC).ToLocalChecked()->Value()};
+  auto [start, stop] = std::invoke([&]() -> std::pair<LogIndex, LogIndex> {
+    auto startIdx = args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value();
+    if (args.Length() > 1) {
+      auto stopIdx = args[1]->ToUint32(TRI_IGETC).ToLocalChecked()->Value();
+      return std::make_pair(LogIndex{startIdx}, LogIndex{stopIdx});
+    }
+    return std::make_pair(
+        LogIndex{startIdx},
+        LogIndex{startIdx + ReplicatedLogMethods::kDefaultLimit + 1});
+  });
   auto iter =
       ReplicatedLogMethods::createInstance(vocbase)->slice(id, start, stop).get();
   VPackBuilder response;
@@ -331,8 +387,8 @@ static void JS_Poll(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("No access to replicated log '") + to_string(id) + "'");
   }
 
-  if (args.Length() < 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("poll(<first, limit = 1000>)");
+  if (args.Length() > 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("poll(<first = 0, limit = 10>)");
   }
   auto [first, limit] = std::invoke([&]() -> std::pair<LogIndex, std::size_t> {
     auto firstIdx = args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value();
@@ -340,7 +396,7 @@ static void JS_Poll(v8::FunctionCallbackInfo<v8::Value> const& args) {
       auto limitValue = args[1]->ToUint32(TRI_IGETC).ToLocalChecked()->Value();
       return std::make_pair(LogIndex{firstIdx}, limitValue);
     }
-    return std::make_pair(LogIndex{firstIdx}, 1000);
+    return std::make_pair(LogIndex{firstIdx}, ReplicatedLogMethods::kDefaultLimit);
   });
 
   auto iter = ReplicatedLogMethods::createInstance(vocbase)->poll(id, first, limit).get();
@@ -431,6 +487,7 @@ void TRI_InitV8ReplicatedLogs(TRI_v8_global_t* v8g, v8::Isolate* isolate) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "id"), JS_Id);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "drop"), JS_Drop);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "insert"), JS_Insert);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "multiInsert"), JS_MultiInsert);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "status"), JS_Status);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "head"), JS_Head);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "tail"), JS_Tail);

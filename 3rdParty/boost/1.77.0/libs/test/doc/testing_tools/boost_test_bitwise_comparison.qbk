@@ -1,0 +1,21 @@
+[/
+ / Copyright (c) 2015 Boost development team
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+
+[section:bitwise Bitwise comparison]
+
+[caution this feature is not available for non C++11 compilers.]
+
+The manipulator [classref boost::test_tools::bitwise] can be provided to the __BOOST_TEST__ macro in order to have a bitwise comparison
+of the operands. In that case, the __UTF__ indicates the bit indices where the two operands do not match.
+
+[bt_example boost_test_bitwise..BOOST_TEST bitwise comparison..run-fail]
+
+[note the indices start at least significant bit.]
+
+
+[endsect] [/ bitwise comparison]

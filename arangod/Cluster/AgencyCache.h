@@ -29,7 +29,7 @@
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "Futures/Promise.h"
-#include "RestServer/Metrics.h"
+#include "Metrics/Fwd.h"
 
 #include <map>
 #include <shared_mutex>
@@ -106,7 +106,7 @@ class AgencyCache final : public arangodb::Thread {
   /// @brief Used exclusively in unit tests!
   ///        Do not use for production code under any circumstances
   std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> applyTestTransaction(
-    consensus::query_t const& trx);
+    arangodb::velocypack::Slice trx);
 #endif
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -195,7 +195,7 @@ class AgencyCache final : public arangodb::Thread {
   consensus::index_t _lastSnapshot;
   
   /// @brief current number of entries in _callbacks
-  Gauge<uint64_t>& _callbacksCount;
+  metrics::Gauge<uint64_t>& _callbacksCount;
 };
 
 } // namespace

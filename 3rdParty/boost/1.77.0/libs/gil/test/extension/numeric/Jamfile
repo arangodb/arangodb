@@ -1,0 +1,28 @@
+# Boost.GIL (Generic Image Library) - Numeric tests
+#
+# Copyright (c) 2013 Christian Henning
+# Copyright (c) 2019 Mateusz Loskot <mateusz at loskot dot net>
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or
+# copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import testing ;
+
+alias headers : [ generate_self_contained_headers extension/numeric ] ;
+
+compile-fail kernel_1d_fixed_even_size_fail.cpp ;
+
+run channel_numeric_operations.cpp ;
+run convolve.cpp ;
+run convolve_2d.cpp ;
+run convolve_cols.cpp ;
+run convolve_rows.cpp ;
+run extend_boundary.cpp ;
+run kernel.cpp ;
+run kernel_fixed.cpp ;
+run matrix3x2.cpp ;
+run pixel_numeric_operations.cpp ;
+run pixel_numeric_operations_float.cpp ;
+run resample.cpp ;
+

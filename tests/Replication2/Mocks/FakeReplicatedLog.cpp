@@ -41,5 +41,7 @@ auto TestReplicatedLog::becomeLeader(ParticipantId const& id, LogTerm term,
   LogConfig config;
   config.writeConcern = writeConcern;
   config.waitForSync = false;
+  config.softWriteConcern = writeConcern;
+  config.replicationFactor = follower.size();
   return becomeLeader(config, id, term, follower);
 }

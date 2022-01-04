@@ -25,7 +25,11 @@
 #include "gtest/gtest.h"
 #include "Basics/system-compiler.h"
 
-#include "RestServer/Metrics.h"
+#include "Metrics/Counter.h"
+#include "Metrics/Gauge.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/LinScale.h"
+#include "Metrics/LogScale.h"
 
 #include <algorithm>
 #include <atomic>
@@ -42,8 +46,10 @@ constexpr size_t numThreads = 4;
 constexpr uint64_t numOpsPerThread = 25 * 1000 * 1000;
 }
 
+using namespace arangodb::metrics;
+
 TEST(MetricsTest, test_counter_concurrency) {
-  Counter c(0, "counter", "Counter");
+  Counter c(0, "counter", "Counter", "");
 
   ASSERT_EQ(c.load(),  0);
 
@@ -73,8 +79,8 @@ TEST(MetricsTest, test_counter_concurrency) {
 }
 
 TEST(MetricsTest, test_histogram_concurrency_same) {
-  lin_scale_t scale(1, 100, 4);
-  Histogram h(scale, "histogram", "Histogram");
+  LinScale scale(1, 100, 4);
+  Histogram h(scale, "histogram", "Histogram", "");
 
   ASSERT_EQ(h.load(0), 0);
   ASSERT_EQ(h.load(1), 0);
@@ -110,8 +116,8 @@ TEST(MetricsTest, test_histogram_concurrency_same) {
 }
 
 TEST(MetricsTest, test_histogram_concurrency_distributed) {
-  lin_scale_t scale(1, 100, 4);
-  Histogram h(scale, "histogram", "Histogram");
+  LinScale scale(1, 100, 4);
+  Histogram h(scale, "histogram", "Histogram", "");
 
   ASSERT_EQ(h.load(0), 0);
   ASSERT_EQ(h.load(1), 0);
@@ -147,8 +153,8 @@ TEST(MetricsTest, test_histogram_concurrency_distributed) {
 }
 
 TEST(MetricsTest, test_histogram_simple) {
-  lin_scale_t scale(1, 100, 4);
-  Histogram h(scale, "histogram", "Histogram");
+  LinScale scale(1, 100, 4);
+  Histogram h(scale, "histogram", "Histogram", "");
 
   ASSERT_EQ(h.load(0), 0);
   ASSERT_EQ(h.load(1), 0);
@@ -230,10 +236,10 @@ TEST(MetricsTest, test_histogram_simple) {
 
 
 TEST(MetricsTest, test_counter) {
-  Counter c(0, "counter_1", "Counter 1");
+  Counter c(0, "counter_1", "Counter 1", "");
 
   ASSERT_EQ(c.load(),  0);
-  c++;
+  ++c;
   ASSERT_EQ(c.load(),  1);
   c += 9;
   ASSERT_EQ(c.load(), 10);
@@ -253,7 +259,7 @@ template<typename T> void gauge_test() {
   T zdo = T(.1);
   T zero = T(0.);
   T one = T(1.);
-  Gauge g(zero, "gauge_1", "Gauge 1");
+  Gauge g(zero, "gauge_1", "Gauge 1", "");
 
   using namespace std;
   using namespace std::chrono;
@@ -353,7 +359,7 @@ TEST(MetricsTest, test_gauge_float) {
 }
 
 TEST(MetricsTest, test_gauge_operations_uint64) {
-  Gauge<uint64_t> g(0, "gauge", "Test gauge");
+  Gauge<uint64_t> g(0, "gauge", "Test gauge", "");
 
   ASSERT_EQ(0, g.load());
 
@@ -440,7 +446,7 @@ TEST(MetricsTest, test_gauge_operations_uint64) {
 }
 
 TEST(MetricsTest, test_gauge_operations_double) {
-  Gauge<double> g(0.0, "gauge", "Test gauge");
+  Gauge<double> g(0.0, "gauge", "Test gauge", "");
   
   ASSERT_DOUBLE_EQ(0.0, g.load());
 
@@ -528,8 +534,8 @@ TEST(MetricsTest, test_gauge_operations_double) {
 
 template<typename Scale> void histogram_test(Scale const& scale) {
 
-  using T = typename Scale::value_type;
-  bool constexpr linear = (Scale::scale_type == ScaleType::Linear);
+  using T = typename Scale::Value;
+  bool constexpr linear = (Scale::kScaleType == ScaleType::Linear);
 
   int buckets = static_cast<int>(scale.n());
   T mx = scale.high(), mn = scale.low(), d;
@@ -541,7 +547,7 @@ template<typename Scale> void histogram_test(Scale const& scale) {
   if constexpr (!linear) {
     base = scale.base();
   }
-  Histogram h(scale, "hist_test", "Hist test");
+  Histogram h(scale, "hist_test", "Hist test", "");
 
   //lower bucket bounds
   for (int i = 0; i < buckets; ++i) {
@@ -582,60 +588,60 @@ template<typename Scale> void histogram_test(Scale const& scale) {
 
 
 TEST(MetricsTest, test_double_histogram) {
-  histogram_test(lin_scale_t( 1.,  2.,  9));
-  histogram_test(lin_scale_t(-1.,  1., 10));
-  histogram_test(lin_scale_t(-2., -1.,  8));
+  histogram_test(LinScale( 1.,  2.,  9));
+  histogram_test(LinScale(-1.,  1., 10));
+  histogram_test(LinScale(-2., -1.,  8));
 }
 TEST(MetricsTest, test_float_histogram) {
-  histogram_test(lin_scale_t( 1.f,  2.f,  9));
-  histogram_test(lin_scale_t(-1.f,  1.f, 10));
-  histogram_test(lin_scale_t(-2.f, -1.f,  8));
+  histogram_test(LinScale( 1.f,  2.f,  9));
+  histogram_test(LinScale(-1.f,  1.f, 10));
+  histogram_test(LinScale(-2.f, -1.f,  8));
 }
 
 TEST(MetricsTest, test_short_histogram) {
-  histogram_test(lin_scale_t<short>(-17, 349, 6));
-  histogram_test(lin_scale_t<short>( 20,  40, 7));
-  histogram_test(lin_scale_t<short>(-63, -11, 8));
+  histogram_test(LinScale<short>(-17, 349, 6));
+  histogram_test(LinScale<short>( 20,  40, 7));
+  histogram_test(LinScale<short>(-63, -11, 8));
 }
 TEST(MetricsTest, test_int_histogram) {
-  histogram_test(lin_scale_t<int>(-17, 349, 6));
-  histogram_test(lin_scale_t<int>( 20,  40, 7));
-  histogram_test(lin_scale_t<int>(-63, -11, 8));
+  histogram_test(LinScale<int>(-17, 349, 6));
+  histogram_test(LinScale<int>( 20,  40, 7));
+  histogram_test(LinScale<int>(-63, -11, 8));
 }
 
 TEST(MetricsTest, test_double_log_10_histogram) {
-  histogram_test(log_scale_t(10., 0.,  2000.,  5));
+  histogram_test(LogScale(10., 0.,  2000.,  5));
 }
 TEST(MetricsTest, test_float_log_10_histogram) {
-  histogram_test(log_scale_t(10.f, 0.f,  2000.f,  5));
+  histogram_test(LogScale(10.f, 0.f,  2000.f,  5));
 }
 TEST(MetricsTest, test_double_log_2_histogram) {
-  histogram_test(log_scale_t(2., 0.,  2000.,  10));
+  histogram_test(LogScale(2., 0.,  2000.,  10));
 }
 TEST(MetricsTest, test_float_log_2_histogram) {
-  histogram_test(log_scale_t(2.f, 0.f,  2000.f,  10));
+  histogram_test(LogScale(2.f, 0.f,  2000.f,  10));
 }
 TEST(MetricsTest, test_double_log_e_histogram) {
-  histogram_test(log_scale_t(std::exp(1.), 0.,  2000.,  10));
+  histogram_test(LogScale(std::exp(1.), 0.,  2000.,  10));
 }
 TEST(MetricsTest, test_float_log_e_histogram) {
-  histogram_test(log_scale_t(std::exp(1.f), 0.f,  2000.f,  10));
+  histogram_test(LogScale(std::exp(1.f), 0.f,  2000.f,  10));
 }
 TEST(MetricsTest, test_double_log_bin_histogram) {
-  histogram_test(log_scale_t(2., 0.,  128.,  8));
+  histogram_test(LogScale(2., 0.,  128.,  8));
 }
 TEST(MetricsTest, test_float_log_bin_histogram) {
-  histogram_test(log_scale_t(2.f, 0.f,  128.f,  8));
+  histogram_test(LogScale(2.f, 0.f,  128.f,  8));
 }
 TEST(MetricsTest, test_double_log_offset_histogram) {
-  histogram_test(log_scale_t(2., 0.,  128.,  8));
+  histogram_test(LogScale(2., 0.,  128.,  8));
 }
 TEST(MetricsTest, test_float_log__histogram) {
-  histogram_test(log_scale_t(2.f, 0.f,  128.f,  8));
+  histogram_test(LogScale(2.f, 0.f,  128.f,  8));
 }
 TEST(MetricsTest, test_int64_log_bin_histogram) {
-  histogram_test(log_scale_t<int64_t>(2, 50,  8000,  10));
+  histogram_test(LogScale<int64_t>(2, 50,  8000,  10));
 }
 TEST(MetricsTest, test_uint64_log_bin_histogram) {
-  histogram_test(log_scale_t<uint64_t>(2, 50, 8000, 10));
+  histogram_test(LogScale<uint64_t>(2, 50, 8000, 10));
 }

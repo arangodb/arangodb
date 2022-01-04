@@ -25,7 +25,7 @@
 
 #include "Agency/Store.h"
 #include "AgencyCommon.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/Fwd.h"
 #include "Utils/OperationOptions.h"
 
 #include <cstdint>
@@ -63,15 +63,15 @@ class State {
   void append(query_t const& query);
 
   /// @brief Log entries (leader)
-  std::vector<index_t> logLeaderMulti(query_t const& query,
+  std::vector<index_t> logLeaderMulti(arangodb::velocypack::Slice query,
                                       std::vector<apply_ret_t> const& indices, term_t term);
 
   /// @brief Single log entry (leader)
-  index_t logLeaderSingle(velocypack::Slice const& slice, term_t term,
+  index_t logLeaderSingle(arangodb::velocypack::Slice slice, term_t term,
                           std::string const& clientId = std::string());
 
   /// @brief Log entries (followers)
-  arangodb::consensus::index_t logFollower(query_t const&);
+  arangodb::consensus::index_t logFollower(arangodb::velocypack::Slice transactions);
 
   /// @brief Find entry at index with term
   bool find(index_t index, term_t term);
@@ -173,7 +173,7 @@ class State {
   /// @brief Remove RAFT conflicts. i.e. All indices, where higher term version
   ///        exists are overwritten, a snapshot in first position is ignored
   ///        as well, the flag gotSnapshot has to be true in this case.
-  size_t removeConflicts(query_t const&, bool gotSnapshot);
+  size_t removeConflicts(arangodb::velocypack::Slice transactions, bool gotSnapshot);
 
  public:
   bool ready() const;
@@ -218,7 +218,7 @@ class State {
                             arangodb::consensus::term_t term);
 
   /// @brief Log single log entry. Must be guarded by caller.
-  index_t logNonBlocking(index_t idx, velocypack::Slice const& slice,
+  index_t logNonBlocking(index_t idx, velocypack::Slice slice,
                          term_t term, uint64_t millis,
                          std::string const& clientId = std::string(),
                          bool leading = false, bool reconfiguration = false);
@@ -292,10 +292,10 @@ class State {
   arangodb::Mutex _configurationWriteLock;
 
   /// @brief Current state deque size in bytes
-  Gauge<uint64_t>& _log_size;
+  metrics::Gauge<uint64_t>& _log_size;
 
   /// @brief current number of entries in _clientIdLookupTable
-  Gauge<uint64_t>& _clientIdLookupCount;
+  metrics::Gauge<uint64_t>& _clientIdLookupCount;
 
 };
 

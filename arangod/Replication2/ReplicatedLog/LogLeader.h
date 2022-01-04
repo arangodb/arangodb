@@ -37,7 +37,7 @@
 #include "Basics/Result.h"
 #include "Futures/Future.h"
 #include "Replication2/LoggerContext.h"
-#include "Replication2/ReplicatedLog/ILogParticipant.h"
+#include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
@@ -79,7 +79,7 @@ namespace arangodb::replication2::replicated_log {
 /**
  * @brief Leader instance of a replicated log.
  */
-class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogParticipant {
+class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogLeader {
  public:
   ~LogLeader() override;
 
@@ -98,10 +98,16 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
       std::shared_ptr<ReplicatedLogMetrics> logMetrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options) -> std::shared_ptr<LogLeader>;
 
-  struct DoNotTriggerAsyncReplication {};
-  constexpr static auto doNotTriggerAsyncReplication = DoNotTriggerAsyncReplication{};
+  [[nodiscard]] static auto construct(
+      LogConfig config, std::unique_ptr<LogCore> logCore,
+      std::vector<std::shared_ptr<AbstractFollower>> const& followers,
+      std::shared_ptr<ParticipantsConfig const> participantsConfig,
+      ParticipantId id, LogTerm term, LoggerContext const& logContext,
+      std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+      std::shared_ptr<ReplicatedLogGlobalSettings const> options) -> std::shared_ptr<LogLeader>;
 
-  auto insert(LogPayload payload, bool waitForSync = false) -> LogIndex;
+
+  auto insert(LogPayload payload, bool waitForSync = false) -> LogIndex override;
 
   // As opposed to the above insert methods, this one does not trigger the async
   // replication automatically, i.e. does not call triggerAsyncReplication after
@@ -112,7 +118,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   // This method will however not prevent the resulting log entry from being
   // replicated, if async replication is running in the background already, or
   // if it is triggered by someone else.
-  auto insert(LogPayload payload, bool waitForSync, DoNotTriggerAsyncReplication) -> LogIndex;
+  auto insert(LogPayload payload, bool waitForSync, DoNotTriggerAsyncReplication) -> LogIndex override;
 
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
 
@@ -127,9 +133,11 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   // until all participants are perfectly in sync, and will then stop.
   // Is usually called automatically after an insert, but can be called manually
   // from test code.
-  auto triggerAsyncReplication() -> void;
+  auto triggerAsyncReplication() -> void override;
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
+
+  [[nodiscard]] auto getQuickStatus() const -> QuickLogStatus override;
 
   [[nodiscard]] auto resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
 
@@ -137,13 +145,31 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
 
   [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
 
-  [[nodiscard]] auto copyInMemoryLog() const -> InMemoryLog;
+  [[nodiscard]] auto copyInMemoryLog() const -> InMemoryLog override;
+
+  // Returns true if the leader has established its leadership: at least one
+  // entry within its term has been committed.
+  [[nodiscard]] auto isLeadershipEstablished() const noexcept -> bool override;
+
+  auto waitForLeadership() -> WaitForFuture override;
+
+  // This function returns the current commit index. Do NOT poll this function,
+  // use waitFor(idx) instead. This function is used in tests.
+  [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
+
+  // Updates the flags of the participants.
+  auto updateParticipantsConfig(
+      std::shared_ptr<ParticipantsConfig const> config) -> LogIndex;
+
+  // Returns [acceptedConfig.generation, committedConfig.generation]
+  auto getParticipantConfigGenerations() const noexcept
+      -> std::pair<std::size_t, std::size_t>;
 
  protected:
   // Use the named constructor construct() to create a leader!
   LogLeader(LoggerContext logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
             std::shared_ptr<ReplicatedLogGlobalSettings const> options, LogConfig config,
-            ParticipantId id, LogTerm term, InMemoryLog inMemoryLog);
+            ParticipantId id, LogTerm term, LogIndex firstIndexOfCurrentTerm, InMemoryLog inMemoryLog);
 
  private:
   struct GuardedLeaderData;
@@ -152,8 +178,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   using ConstGuard = MutexGuard<GuardedLeaderData const, std::unique_lock<std::mutex>>;
 
   struct alignas(64) FollowerInfo {
-    explicit FollowerInfo(std::shared_ptr<AbstractFollower> impl,
-                          TermIndexPair lastLogIndex, LoggerContext const& logContext);
+    explicit FollowerInfo(std::shared_ptr<AbstractFollower> impl, TermIndexPair lastLogIndex,
+                          LoggerContext const& logContext);
 
     std::chrono::steady_clock::duration _lastRequestLatency{};
     std::chrono::steady_clock::time_point _lastRequestStartTP{};
@@ -164,7 +190,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
     LogIndex lastAckedLCI = LogIndex{0};
     MessageId lastSentMessageId{0};
     std::size_t numErrorsSinceLastAnswer = 0;
-    AppendEntriesErrorReason lastErrorReason = AppendEntriesErrorReason::NONE;
+    AppendEntriesErrorReason lastErrorReason;
     LoggerContext const logContext;
 
     enum class State {
@@ -203,14 +229,11 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   struct PreparedAppendEntryRequest {
     PreparedAppendEntryRequest() = delete;
     PreparedAppendEntryRequest(std::shared_ptr<LogLeader> const& logLeader,
-                               FollowerInfo& follower,
+                               std::shared_ptr<FollowerInfo> follower,
                                std::chrono::steady_clock::duration executionDelay);
 
     std::weak_ptr<LogLeader> _parentLog;
-    // This weak_ptr will always be an alias of _parentLog. It's thus not
-    // strictly necessary, but makes it more clear that we do share ownership
-    // of this particular FollowerInfo.
-    std::weak_ptr<FollowerInfo> _follower;
+    std::shared_ptr<FollowerInfo> _follower;
     std::chrono::steady_clock::duration _executionDelay;
   };
 
@@ -230,7 +253,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
     auto operator=(GuardedLeaderData const&) -> GuardedLeaderData& = delete;
     auto operator=(GuardedLeaderData&&) -> GuardedLeaderData& = delete;
 
-    [[nodiscard]] auto prepareAppendEntry(FollowerInfo& follower)
+    [[nodiscard]] auto prepareAppendEntry(std::shared_ptr<FollowerInfo> follower)
         -> std::optional<PreparedAppendEntryRequest>;
     [[nodiscard]] auto prepareAppendEntries()
         -> std::vector<std::optional<PreparedAppendEntryRequest>>;
@@ -266,16 +289,27 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
     [[nodiscard]] auto calculateCommitLag() const noexcept
         -> std::chrono::duration<double, std::milli>;
 
+    auto insertInternal(std::optional<LogPayload>, bool waitForSync,
+                        std::optional<InMemoryLogEntry::clock::time_point> insertTp)
+        -> LogIndex;
+
+
     LogLeader& _self;
     InMemoryLog _inMemoryLog;
-    std::vector<FollowerInfo> _follower{};
+    std::unordered_map<ParticipantId, std::shared_ptr<FollowerInfo>> _follower{};
     WaitForQueue _waitForQueue{};
     std::shared_ptr<QuorumData> _lastQuorum{};
     LogIndex _commitIndex{0};
     LogIndex _largestCommonIndex{0};
     LogIndex _releaseIndex{0};
     bool _didResign{false};
+    bool _leadershipEstablished{false};
     CommitFailReason _lastCommitFailReason;
+
+    // active - that is currently used to check for committed entries
+    std::shared_ptr<ParticipantsConfig const> activeParticipantConfig;
+    // committed - latest active config that has committed at least one entry
+    std::shared_ptr<ParticipantsConfig const> committedParticipantConfig;
   };
 
   LoggerContext const _logContext;
@@ -284,16 +318,19 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>, public ILogPar
   LogConfig const _config;
   ParticipantId const _id;
   LogTerm const _currentTerm;
+  LogIndex const _firstIndexOfCurrentTerm;
   // _localFollower is const after construction
   std::shared_ptr<LocalFollower> _localFollower;
   // make this thread safe in the most simple way possible, wrap everything in
   // a single mutex.
   Guarded<GuardedLeaderData> _guardedLeaderData;
 
+  void establishLeadership();
+
   [[nodiscard]] static auto instantiateFollowers(
-      LoggerContext, std::vector<std::shared_ptr<AbstractFollower>> const& follower,
-      std::shared_ptr<LocalFollower> const& localFollower,
-      TermIndexPair lastEntry) -> std::vector<FollowerInfo>;
+      LoggerContext const&, std::vector<std::shared_ptr<AbstractFollower>> const& followers,
+      std::shared_ptr<LocalFollower> const& localFollower, TermIndexPair lastEntry)
+      -> std::unordered_map<ParticipantId, std::shared_ptr<FollowerInfo>>;
 
   auto acquireMutex() -> Guard;
   auto acquireMutex() const -> ConstGuard;

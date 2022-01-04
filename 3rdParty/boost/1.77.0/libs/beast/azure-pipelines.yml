@@ -1,0 +1,359 @@
+variables:
+  GIT_BRANCH: $(Build.SourceBranch)
+
+jobs:
+  - job: 'LinuxCoverage'
+    pool:
+      vmImage: 'ubuntu-16.04'
+    container:
+      image: djarek/boost-beast-ci:latest
+      options: --privileged
+    steps:
+      - bash: |
+            sudo apt update && sudo apt install -y g++ lcov
+        displayName: Get dependencies
+      - bash: |
+            set -e
+            export BUILD_DIR=$(pwd)
+            cd ..
+            $BUILD_DIR/tools/get-boost.sh $GIT_BRANCH $BUILD_DIR
+            cd boost-root
+            export CXX=g++ CC=gcc
+            ./bootstrap.sh || cat bootstrap.log
+        displayName: Get Boost
+      - bash: |
+            set -e
+            cd ../boost-root
+            ./b2 libs/beast/test//run-fat-tests toolset=gcc coverage=on link=static cxxstd=11 -j2
+            libs/beast/tools/coverage.sh
+        env:
+            CODECOV_TOKEN: $(CODECOV_TOKEN)
+        displayName: Build & Run tests
+  - job: 'Linux'
+    pool:
+      vmImage: 'ubuntu-16.04'
+    container:
+      image: djarek/boost-beast-ci:latest
+      options: --privileged
+    strategy:
+      matrix:
+        GCC 9 C++17 Release:
+          TOOLSET: gcc
+          CXX: g++-9
+          PACKAGES: g++-9
+          VARIANT: release
+          B2_FLAGS: <define>BOOST_BEAST_USE_STD_STRING_VIEW
+          CXXSTD: 17
+          B2_TARGETS: libs/beast/test//run-fat-tests libs/beast/example
+        GCC 9 C++11 HEADER_ONLY NO_DEPRECATED:
+          TOOLSET: gcc
+          CXX: g++-9
+          PACKAGES: g++-9
+          VARIANT: release
+          B2_FLAGS: <boost.beast.separate-compilation>off <boost.beast.allow-deprecated>off
+          CXXSTD: 11
+          B2_TARGETS: libs/beast/test//run-fat-tests
+        GCC 9 C++11 NO_DEPRECATED NO_TLS:
+          TOOLSET: gcc
+          CXX: g++-9
+          PACKAGES: g++-9
+          VARIANT: release
+          B2_FLAGS: <boost.beast.allow-deprecated>off <define>BOOST_NO_CXX11_THREAD_LOCAL
+          CXXSTD: 11
+          B2_TARGETS: libs/beast/test//run-fat-tests
+        GCC 9 C++11 UBASAN:
+          TOOLSET: gcc
+          CXX: g++-9
+          PACKAGES: g++-9
+          VARIANT: debug
+          B2_FLAGS: <address-sanitizer>norecover <undefined-sanitizer>norecover
+          # use GOLD to workaround UBSAN linker issue in gcc 7/8
+          # https://stackoverflow.com/questions/50024731/ld-unrecognized-option-push-state-no-as-needed
+          CXX_FLAGS: <cxxflags>"-msse4.2 -funsigned-char -fno-omit-frame-pointer" <linkflags>-fuse-ld=gold
+          CXXSTD: 11
+          B2_TARGETS: libs/beast/test//run-fat-tests
+        GCC 9 C++11 TSAN:
+          TOOLSET: gcc
+          CXX: g++-9
+          PACKAGES: g++-9
+          VARIANT: release
+          B2_FLAGS: <thread-sanitizer>norecover
+          CXX_FLAGS: <cxxflags>"-msse4.2 -funsigned-char -fno-omit-frame-pointer"
+          CXXSTD: 11
+          B2_TARGETS: libs/beast/test//run-fat-tests
+        GCC 8 C++17 Release:
+          TOOLSET: gcc
+          CXX: g++-8
+          PACKAGES: g++-8
+          VARIANT: release
+          B2_FLAGS: <define>BOOST_BEAST_USE_STD_STRING_VIEW
+          CXXSTD: 17
+          B2_TARGETS: libs/beast/test//run-fat-tests libs/beast/example
+        GCC 8 C++11 HEADER_ONLY NO_DEPRECATED:
+          TOOLSET: gcc
+          CXX: g++-8
+          PACKAGES: g++-8
+          VARIANT: release
+          B2_FLAGS: <boost.beast.separate-compilation>off <boost.beast.allow-deprecated>off
+          CXXSTD: 11
+          B2_TARGETS: libs/beast/test//run-fat-tests
+        GCC 8 C++11 UBASAN:
+          TOOLSET: gcc
+          CXX: g++-8
+          PACKAGES: g++-8
+          VARIANT: debug
+          B2_FLAGS: <address-sanitizer>norecover <undefined-sanitizer>norecover
+          # use GOLD to workaround UBSAN linker issue in gcc 7/8
+          # https://stackoverflow.com/questions/50024731/ld-unrecognized-option-push-state-no-as-needed
+          CXX_FLAGS: <cxxflags>"-msse4.2 -funsigned-char -fno-omit-frame-pointer" <linkflags>-fuse-ld=gold
+          CXXSTD: 11
+          B2_TARGETS: libs/beast/test//run-fat-tests
+        GCC 8 C++11 TSAN:
+          TOOLSET: gcc
+          CXX: g++-8
+          PACKAGES: g++-8
+          VARIANT: release
+          B2_FLAGS: <thread-sanitizer>norecover
+          CXX_FLAGS: <cxxflags>"-msse4.2 -funsigned-char -fno-omit-frame-pointer"
+          CXXSTD: 11
+          B2_TARGETS: libs/beast/test//run-fat-tests
+        GCC 7 C++14 Valgrind:
+          TOOLSET: gcc
+          CXX: g++-7
+          PACKAGES: g++-7 valgrind
+          VARIANT: release
+          B2_FLAGS: <define>BOOST_BEAST_TEST_STATIC_PRNG_SEED <valgrind>on <testing.launcher>"valgrind --track-origins=yes --error-exitcode=1 --max-stackframe=16000000 --suppressions=libs/beast/tools/valgrind.supp"
+          CXXSTD: 14
+          B2_TARGETS: libs/beast/test//run-fat-tests
+        GCC Default C++11 Release:
+          TOOLSET: gcc
+          CXX: g++
+          PACKAGES: g++
+          VARIANT: release
+          CXXSTD: 11
+          B2_TARGETS: libs/beast/test//run-fat-tests libs/beast/example
+        Clang 6.0 C++11 Debug:
+          TOOLSET: clang
+          CXX: clang++-6.0
+          PACKAGES: clang-6.0
+          VARIANT: debug
+          CXXSTD: 11
+          B2_TARGETS: libs/beast/test//run-fat-tests libs/beast/example
+        Clang 7 libc++ C++14 Valgrind:
+          TOOLSET: clang
+          CXX: clang++-7
+          PACKAGES: clang-7 libc++-7-dev libc++abi-7-dev valgrind
+          VARIANT: release
+          B2_FLAGS: <valgrind>on <testing.launcher>"valgrind --track-origins=yes --error-exitcode=1 --max-stackframe=16000000 --suppressions=libs/beast/tools/valgrind.supp"
+          CXXSTD: 14
+          CXX_FLAGS: <cxxflags>"-stdlib=libc++" <linkflags>"-stdlib=libc++"
+          B2_TARGETS: libs/beast/test//run-fat-tests
+        Clang 7 C++11 Debug:
+          TOOLSET: clang
+          CXX: clang++-7
+          PACKAGES: clang-7
+          VARIANT: debug
+          CXXSTD: 11
+          B2_TARGETS: libs/beast/test//run-fat-tests libs/beast/example
+        Clang 7 C++14 Release:
+          TOOLSET: clang
+          CXX: clang++-7
+          PACKAGES: clang-7
+          VARIANT: release
+          CXXSTD: 14
+          B2_TARGETS: libs/beast/test//run-fat-tests libs/beast/example
+        Clang Default C++11 Debug:
+          TOOLSET: clang
+          CXX: clang++
+          PACKAGES: clang
+          VARIANT: debug
+          CXXSTD: 11
+          B2_TARGETS: libs/beast/test//run-fat-tests libs/beast/example
+        Clang 8 libc++ C++14 UBASAN:
+          TOOLSET: clang
+          CXX: clang++-8
+          PACKAGES: clang-8 libc++-8-dev libc++abi-8-dev
+          VARIANT: release
+          B2_FLAGS: <address-sanitizer>norecover <undefined-sanitizer>norecover
+          UBSAN_OPTIONS: print_stacktrace=1
+          CXXSTD: 14
+          CXX_FLAGS: <cxxflags>"-stdlib=libc++ -msse4.2 -funsigned-char -fno-omit-frame-pointer" <linkflags>-stdlib=libc++
+          B2_TARGETS: libs/beast/test//run-fat-tests
+        Clang 8 libc++ C++14 TSAN:
+          TOOLSET: clang
+          CXX: clang++-8
+          PACKAGES: clang-8 libc++-8-dev libc++abi-8-dev
+          VARIANT: release
+          B2_FLAGS: <thread-sanitizer>norecover
+          CXXSTD: 14
+          CXX_FLAGS: <cxxflags>"-stdlib=libc++ -msse4.2 -funsigned-char -fno-omit-frame-pointer" <linkflags>-stdlib=libc++
+          B2_TARGETS: libs/beast/test//run-fat-tests
+        Clang 9 libc++ C++14 Release HEADER_ONLY NO_DEPRECATED:
+          TOOLSET: clang
+          CXX: clang++-9
+          PACKAGES: clang-9 libc++-9-dev libc++abi-9-dev
+          VARIANT: release
+          B2_FLAGS: <boost.beast.separate-compilation>off <boost.beast.allow-deprecated>off
+          CXXSTD: 14
+          CXX_FLAGS: <cxxflags>"-stdlib=libc++ -msse4.2 -funsigned-char -fno-omit-frame-pointer" <linkflags>-stdlib=libc++
+          B2_TARGETS: libs/beast/test//run-fat-tests
+        Clang 9 libc++ C++17 UBASAN:
+          TOOLSET: clang
+          CXX: clang++-9
+          PACKAGES: clang-9 libc++-9-dev libc++abi-9-dev
+          VARIANT: release
+          B2_FLAGS: <address-sanitizer>norecover <undefined-sanitizer>norecover
+          UBSAN_OPTIONS: print_stacktrace=1
+          CXXSTD: 17
+          CXX_FLAGS: <cxxflags>"-stdlib=libc++ -msse4.2 -funsigned-char -fno-omit-frame-pointer" <linkflags>-stdlib=libc++
+          B2_TARGETS: libs/beast/test//run-fat-tests
+        Clang 9 libc++ C++17 TSAN:
+          TOOLSET: clang
+          CXX: clang++-9
+          PACKAGES: clang-9 libc++-9-dev libc++abi-9-dev
+          VARIANT: release
+          B2_FLAGS: <thread-sanitizer>norecover
+          CXXSTD: 17
+          CXX_FLAGS: <cxxflags>"-stdlib=libc++ -msse4.2 -funsigned-char -fno-omit-frame-pointer" <linkflags>-stdlib=libc++
+          B2_TARGETS: libs/beast/test//run-fat-tests
+        Clang 9 libc++ C++11 Release HEADER_ONLY NO_DEPRECATED:
+          TOOLSET: clang
+          CXX: clang++-9
+          PACKAGES: clang-9 libc++-9-dev libc++abi-9-dev
+          VARIANT: release
+          B2_FLAGS: <boost.beast.separate-compilation>off <boost.beast.allow-deprecated>off
+          CXXSTD: 11
+          CXX_FLAGS: <cxxflags>"-stdlib=libc++ -msse4.2 -funsigned-char -fno-omit-frame-pointer" <linkflags>-stdlib=libc++
+          B2_TARGETS: libs/beast/test//run-fat-tests
+    steps:
+      - bash: |
+            sudo apt update && sudo apt install -y $PACKAGES
+        displayName: Get dependencies
+      - bash: |
+            set -e
+            export BUILD_DIR=$(pwd)
+            cd ..
+            $BUILD_DIR/tools/get-boost.sh $GIT_BRANCH $BUILD_DIR
+            cd boost-root
+            ./bootstrap.sh || cat bootstrap.log
+            cp libs/beast/tools/user-config.jam ~/user-config.jam
+            echo "using $TOOLSET : : $(which $CXX) : $CXX_FLAGS ;" >> ~/user-config.jam
+            echo "project : requirements $B2_FLAGS ;" >> ~/user-config.jam
+        displayName: Get Boost
+      - bash: |
+            set -e
+            cd ../boost-root
+            echo "B2_FLAGS: $B2_FLAGS"
+            ./b2 -j2 \
+              --debug-configuration \
+              cxxstd=$CXXSTD \
+              toolset=$TOOLSET \
+              variant=$VARIANT \
+              $B2_TARGETS
+        displayName: Build & Run tests
+
+  - job: 'macOS'
+    pool:
+      vmImage: 'macOS-10.13'
+    strategy:
+      matrix:
+        Xcode 10.1 C++17 Release:
+          TOOLSET: clang
+          VARIANT: release
+          CXXSTD: 17
+          XCODE_APP: /Applications/Xcode_10.1.app
+        Xcode 9.4.1 C++11 Release:
+          TOOLSET: clang
+          VARIANT: release
+          CXXSTD: 11
+          XCODE_APP: /Applications/Xcode_9.4.1.app
+    steps:
+      - bash: |
+          brew install openssl
+        displayName: Get OpenSSL
+      - bash: |
+          set -e
+          sudo xcode-select -switch ${XCODE_APP}
+          which clang++
+          export BUILD_DIR=$(pwd)
+          cd ..
+          $BUILD_DIR/tools/get-boost.sh $GIT_BRANCH $BUILD_DIR
+          cd boost-root
+          ./bootstrap.sh || cat bootstrap.log
+          cp libs/beast/tools/user-config.jam ~/user-config.jam
+        displayName: Get Boost
+      - bash: |
+            set -e
+            export OPENSSL_ROOT=$(brew --prefix openssl)
+            cd ../boost-root
+            ./b2 -j2 \
+              --debug-configuration \
+              define=BOOST_COROUTINES_NO_DEPRECATION_WARNING=1 \
+              cxxstd=$CXXSTD \
+              libs/beast/test//run-fat-tests \
+              libs/beast/example \
+              toolset=$TOOLSET \
+              variant=$VARIANT
+        displayName: Build & Run tests
+
+  - job: 'Windows'
+    strategy:
+      matrix:
+        # MSVC14.2: # FIXME(djarek): windows-2019 doesn't have vcpkg
+        MSVC14.2 C++17 x64:
+          VM_IMAGE: 'windows-2019'
+          TOOLSET: msvc-14.2
+          B2_FLAGS: define=BOOST_BEAST_USE_STD_STRING_VIEW
+          CXXSTD: 17
+          ADDRMODEL: 64
+        MSVC14.1 C++17 x64:
+          VM_IMAGE: 'vs2017-win2016'
+          TOOLSET: msvc-14.1
+          B2_FLAGS: define=BOOST_BEAST_USE_STD_STRING_VIEW
+          CXXSTD: 17
+          ADDRMODEL: 64
+        MSVC14.0 C++11 x64:
+          VM_IMAGE: 'vs2017-win2016'
+          TOOLSET: msvc-14.0
+          CXXSTD: 11
+          ADDRMODEL: 64
+    pool:
+      vmImage: $(VM_IMAGE)
+    steps:
+      - bash: |
+          vcpkg install openssl --triplet "x$ADDRMODEL""-windows"
+        displayName: Get OpenSSL
+
+      - bash: |
+          set -e
+          export BUILD_DIR=$(pwd)
+          cd ..
+          $BUILD_DIR/tools/get-boost.sh $GIT_BRANCH $BUILD_DIR
+          cd boost-root
+          ./bootstrap.sh
+          cp libs/beast/tools/user-config.jam ~/user-config.jam
+        displayName: Get Boost
+
+      - bash: |
+          set -e
+          echo "VCPKG_ROOT: $VCPKG_INSTALLATION_ROOT"
+          export OPENSSL_ROOT="$VCPKG_INSTALLATION_ROOT""/installed/x$ADDRMODEL""-windows"
+          cd ../boost-root
+          ./b2 -j2 \
+            --debug-configuration \
+            variant=debug \
+            cxxstd=$CXXSTD \
+            address-model=$ADDRMODEL \
+            toolset=$TOOLSET \
+            $B2_FLAGS \
+            libs/beast/example
+          ./b2 -j2 \
+            --debug-configuration \
+            variant=debug,release \
+            cxxstd=$CXXSTD \
+            address-model=$ADDRMODEL \
+            toolset=$TOOLSET \
+            $B2_FLAGS \
+            --verbose-test \
+            libs/beast/test//run-fat-tests
+        displayName: Build & Run tests

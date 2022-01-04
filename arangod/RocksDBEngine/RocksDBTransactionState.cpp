@@ -36,7 +36,9 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/Counter.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/LogScale.h"
 #include "RocksDBEngine/Methods/RocksDBReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBTrxMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.h"
@@ -262,16 +264,15 @@ void RocksDBTransactionState::prepareOperation(DataSourceId cid, RevisionId rid,
 
 /// @brief add an operation for a transaction collection
 Result RocksDBTransactionState::addOperation(DataSourceId cid, RevisionId revisionId,
-                                             TRI_voc_document_operation_e operationType,
-                                             bool& hasPerformedIntermediateCommit) {
-  Result result = rocksdbMethods(cid)->addOperation(cid, revisionId, operationType);
+                                             TRI_voc_document_operation_e operationType) {
+  Result result = rocksdbMethods(cid)->addOperation(operationType);
 
   if (result.ok()) {
     auto tcoll = static_cast<RocksDBTransactionCollection*>(findCollection(cid));
     if (tcoll == nullptr) {
       std::string message = "collection '" + std::to_string(cid.id()) +
                             "' not found in transaction state";
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(message));
     }
 
     // should not fail or fail with exception
@@ -283,10 +284,13 @@ Result RocksDBTransactionState::addOperation(DataSourceId cid, RevisionId revisi
     if (queryCache->mayBeActive() && tcoll->collection()) {
       queryCache->invalidate(&_vocbase, tcoll->collection()->guid());
     }
-    
-    result = rocksdbMethods(cid)->checkIntermediateCommit(hasPerformedIntermediateCommit);
   }
+
   return result;
+}
+
+Result RocksDBTransactionState::performIntermediateCommitIfRequired(DataSourceId cid) {
+  return rocksdbMethods(cid)->checkIntermediateCommit();
 }
 
 RocksDBTransactionCollection::TrackedOperations& RocksDBTransactionState::trackedOperations(DataSourceId cid) {
@@ -335,7 +339,7 @@ bool RocksDBTransactionState::isOnlyExclusiveTransaction() const noexcept {
   if (!AccessMode::isWriteOrExclusive(_type)) {
     return false;
   }
-  return std::none_of(_collections.cbegin(), _collections.cend(), [](auto* coll) {
+  return std::none_of(_collections.begin(), _collections.end(), [](auto* coll) {
     return AccessMode::isWrite(coll->accessType());
   });
 }

@@ -224,7 +224,7 @@
     addNewGraph: function (e) {
       e.preventDefault();
       if (!this.readOnly) {
-        if (frontendConfig.isCluster && frontendConfig.isEnterprise) {
+        if (frontendConfig.isEnterprise) {
           this.createEditGraphModal();
         } else {
           this.createEditGraphModal();
@@ -358,7 +358,8 @@
       var i;
       for (i = 0; i < this.counter; i++) {
         $('#newEdgeDefinitions' + i).select2({
-          tags: self.eCollList
+          tags: self.eCollList,
+          maximumSelectionSize: 1
         });
         $('#newEdgeDefinitions' + i).select2('data', self.cachedNewEdgeDefinitions);
         $('#newEdgeDefinitions' + i).attr('disabled', self.cachedNewEdgeDefinitionsState);
@@ -388,7 +389,8 @@
 
       for (i = 0; i < self.counter; i++) {
         $('#newEdgeDefinitions' + i).select2({
-          tags: []
+          tags: [],
+          maximumSelectionSize: 1
         });
         self.cachedNewEdgeDefinitions = $('#newEdgeDefinitions' + i).select2('data');
         self.cachedNewEdgeDefinitionsState = $('#newEdgeDefinitions' + i).attr('disabled');
@@ -425,7 +427,7 @@
     },
 
     setCacheModeState: function (forget) {
-      if (!frontendConfig.isCluster || !frontendConfig.isEnterprise) {
+      if (!frontendConfig.isEnterprise) {
         return;
       }
 
@@ -780,7 +782,7 @@
         orphanCollections: vertexCollections
       };
 
-      // if SmartGraph
+      // SmartGraph enterprise area
       if ($('#tab-smartGraph').parent().hasClass('active')) {
         if ($('#new-numberOfShards').val() === '' || $('#new-smartGraphAttribute').val() === '') {
           arangoHelper.arangoError('SmartGraph creation', 'numberOfShards and/or smartGraphAttribute not set!');
@@ -805,11 +807,13 @@
           }
         }
       } else if ($('#tab-satelliteGraph').parent().hasClass('active')) {
+        // SatelliteGraph enterprise area
         newCollectionObject.options = {
           replicationFactor: "satellite"
         };
       } else {
         if (frontendConfig.isCluster) {
+          // General graph community cluster area
           if ($('#general-numberOfShards').val().length > 0) {
             newCollectionObject.options = {
               numberOfShards: parseInt($('#general-numberOfShards').val())
@@ -980,7 +984,8 @@
               'new-hybridSatelliteCollections',
               'New Satellite collections',
               hybridSatelliteCollections,
-              'Collections that are part of the graph used in an newly created edge definition and should be created as satellite collections.',
+              'Insert vertex collections here which are being used in new edge definitions (fromCollections, toCollections).' +
+              'Those defined collections will be created as SatelliteCollections, and therefore will be replicated to all DB-Servers.',
               'New Satellite Collections',
               false,
               false,
@@ -1020,7 +1025,8 @@
         );
       }
 
-      if (frontendConfig.isEnterprise === true && frontendConfig.isCluster && !graph) {
+      if (frontendConfig.isEnterprise === true && !graph) {
+        // Enterprise Graphs
         tableContent.push(
           window.modalView.createTextEntry(
             'new-numberOfShards',
@@ -1102,6 +1108,7 @@
       }
 
       if (frontendConfig.isCluster && !graph) {
+        // General Graphs Community
         tableContent.push(
           window.modalView.createTextEntry(
             'general-numberOfShards',
@@ -1155,7 +1162,8 @@
             'hybridSatelliteCollections',
             'Satellite collections',
             hybridSatelliteCollections,
-            'Collections that are part of a graph used in an edge definition and should be created as satellite collections.',
+            'Insert vertex collections here which are being used in your edge definitions (fromCollections, toCollections).' +
+            'Those defined collections will be created as SatelliteCollections, and therefore will be replicated to all DB-Servers.',
             'Satellite Collections',
             false,
             false,

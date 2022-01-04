@@ -22,7 +22,9 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/ILogParticipant.h"
+#include "Basics/voc-errors.h"
+
+#include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/types.h"
@@ -46,6 +48,11 @@ struct FakeFollower : AbstractFollower {
     requests.pop_front();
   }
 
+  void resolveWithOk() {
+    resolveRequest(AppendEntriesResult{LogTerm{4}, TRI_ERROR_NO_ERROR,
+                                       {}, currentRequest().messageId});
+  }
+
   template <typename E>
   void resolveRequestWithException(E&& e) {
     requests.front().promise.setException(std::forward<E>(e));
@@ -60,9 +67,7 @@ struct FakeFollower : AbstractFollower {
 
   void handleAllRequestsWithOk() {
     while (hasPendingRequests()) {
-      resolveRequest(AppendEntriesResult{LogTerm{4}, TRI_ERROR_NO_ERROR,
-                                         AppendEntriesErrorReason::NONE,
-                                         currentRequest().messageId});
+      resolveWithOk();
     }
   }
 

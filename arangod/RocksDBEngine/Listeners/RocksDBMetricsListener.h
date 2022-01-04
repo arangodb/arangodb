@@ -26,7 +26,7 @@
 // public rocksdb headers
 #include <rocksdb/listener.h>
 
-#include "RestServer/Metrics.h"
+#include "Metrics/Fwd.h"
 
 namespace arangodb {
 namespace application_features {
@@ -41,8 +41,8 @@ class RocksDBMetricsListener : public rocksdb::EventListener {
   void OnStallConditionsChanged(const rocksdb::WriteStallInfo& info) override;
 
  protected:
-  Counter& _writeStalls;
-  Counter& _writeStops;
+  metrics::Counter& _writeStalls;
+  metrics::Counter& _writeStops;
 };
 
 }  // namespace arangodb

@@ -208,7 +208,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   // simon: access mode can always be write on the coordinator
   const AccessMode::Type mode = AccessMode::Type::WRITE;
   auto query = aql::Query::create(createTransactionContext(mode),
-                                  arangodb::aql::QueryString(querySlice.stringRef()),
+                                  arangodb::aql::QueryString(querySlice.stringView()),
                                   std::move(bindVarsBuilder), aql::QueryOptions(opts));
 
   if (stream) {
@@ -223,7 +223,9 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
     TRI_ASSERT(cursors != nullptr);
     _cursor = cursors->createQueryStream(std::move(query), batchSize, ttl);
     // Throws if soft shutdown is ongoing!
-    _cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
+    _cursor->setWakeupHandler(withLogContext([self = shared_from_this()]() {
+      return self->wakeupHandler();
+    }));
     
     return generateCursorResult(rest::ResponseCode::CREATED);
   }
@@ -238,9 +240,9 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
       return RestStatus::DONE;
     }
 
-    ss->setWakeupHandler([self = shared_from_this()] {
+    ss->setWakeupHandler(withLogContext([self = shared_from_this()] {
       return self->wakeupHandler();
-    });
+    }));
   }
 
   registerQuery(std::move(query));
@@ -489,7 +491,7 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
       if (!it.key.isString() || it.value.isNone()) {
         continue;
       }
-      velocypack::StringRef keyName = it.key.stringRef();
+      std::string_view keyName = it.key.stringView();
       if (keyName == "count" || keyName == "batchSize" || keyName == "ttl" || keyName == "stream" ||
           (isStream && keyName == "fullCount")) {
         continue;  // filter out top-level keys
@@ -646,7 +648,9 @@ RestStatus RestCursorHandler::modifyQueryCursor() {
     return RestStatus::DONE;
   }
 
-  _cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
+  _cursor->setWakeupHandler(withLogContext([self = shared_from_this()]() {
+    return self->wakeupHandler();
+  }));
   
   return generateCursorResult(rest::ResponseCode::OK);
 }

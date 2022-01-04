@@ -58,6 +58,6 @@ struct thread_local_free_list_heap_policy {
 
 using arango_heap_policy = thread_local_free_list_heap_policy<::immer::cpp_heap>;
 using arango_memory_policy =
-    ::immer::memory_policy<arango_heap_policy, ::immer::default_refcount_policy>;
+    ::immer::memory_policy<arango_heap_policy, ::immer::default_refcount_policy, ::immer::default_lock_policy>;
 
 }  // namespace arangodb::immer

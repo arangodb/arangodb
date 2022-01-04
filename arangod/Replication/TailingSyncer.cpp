@@ -61,7 +61,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -71,10 +70,10 @@ using namespace arangodb::rest;
 
 namespace {
 
-static arangodb::velocypack::StringRef const cnameRef("cname");
-static arangodb::velocypack::StringRef const dataRef("data");
-static arangodb::velocypack::StringRef const tickRef("tick");
-static arangodb::velocypack::StringRef const dbRef("db");
+constexpr std::string_view cnameRef("cname");
+constexpr std::string_view dataRef("data");
+constexpr std::string_view tickRef("tick");
+constexpr std::string_view dbRef("db");
 
 bool hasHeader(std::unique_ptr<httpclient::SimpleHttpResult> const& response,
                std::string const& name) {
@@ -175,7 +174,7 @@ size_t TailingSyncer::countOngoingTransactions(VPackSlice slice) const {
   if (nameSlice.isString()) {
     for (auto const& it : _ongoingTransactions) {
       auto const& trx = it.second;
-      if (trx != nullptr && arangodb::velocypack::StringRef(nameSlice) == trx->vocbase().name()) {
+      if (trx != nullptr && nameSlice.stringView() == trx->vocbase().name()) {
         ++result;
       }
     }
@@ -202,7 +201,7 @@ bool TailingSyncer::hasMultipleOngoingTransactions() const {
 #endif
 
 /// @brief whether or not a marker should be skipped
-bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick, VPackSlice const& slice,
+bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick, VPackSlice slice,
                                TRI_voc_tick_t actualMarkerTick, TRI_replication_operation_e type) {
   TRI_ASSERT(slice.isObject());
 
@@ -229,10 +228,10 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick, VPackSlice const
         }
       }
     }
-  }
-
-  if (tooOld) {
-    return true;
+  
+    if (tooOld) {
+      return true;
+    }
   }
 
   // the transient applier state is just used for one shard / collection
@@ -245,7 +244,7 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick, VPackSlice const
     return false;
   }
 
-  VPackSlice const name = slice.get(::cnameRef);
+  VPackSlice name = slice.get(::cnameRef);
   if (name.isString()) {
     return isExcludedCollection(name.copyString());
   }
@@ -380,7 +379,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto* coll = resolveCollection(*vocbase, slice).get();
+  auto coll = resolveCollection(*vocbase, slice);
 
   if (coll == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -415,8 +414,8 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   }
 
   // extract "tid"
-  arangodb::velocypack::StringRef const transactionId =
-      VelocyPackHelper::getStringRef(slice, "tid", VPackStringRef());
+  std::string_view const transactionId =
+      VelocyPackHelper::getStringView(slice, "tid", std::string_view());
   TransactionId tid = TransactionId::none();
   if (!transactionId.empty()) {
     // operation is part of a transaction
@@ -455,7 +454,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
 
     trx->addCollectionAtRuntime(coll->id(), coll->name(), AccessMode::Type::EXCLUSIVE);
     std::string conflictingDocumentKey;
-    Result r = applyCollectionDumpMarker(*trx, coll, type, applySlice, conflictingDocumentKey);
+    Result r = applyCollectionDumpMarker(*trx, coll.get(), type, applySlice, conflictingDocumentKey);
     TRI_ASSERT(!r.is(TRI_ERROR_ARANGO_TRY_AGAIN));
 
     if (r.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
@@ -491,7 +490,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
 
       // intentionally ignore the return code here, as the operation will be followed
       // by yet another insert/replace
-      removeSingleDocument(coll, conflictDocumentKey);
+      removeSingleDocument(coll.get(), conflictDocumentKey);
       conflictDocumentKey.clear();
     }
     
@@ -514,7 +513,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
                         "unable to create replication transaction: ", res.errorMessage()));
     }
 
-    res = applyCollectionDumpMarker(trx, coll, type, applySlice, conflictDocumentKey);
+    res = applyCollectionDumpMarker(trx, coll.get(), type, applySlice, conflictDocumentKey);
 
     TRI_ASSERT(res.is(TRI_ERROR_ARANGO_TRY_AGAIN) == !conflictDocumentKey.empty());
 
@@ -723,16 +722,16 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  arangodb::LogicalCollection* col = nullptr;
+  std::shared_ptr<arangodb::LogicalCollection> col;
 
   if (slice.hasKey("cuid")) {
-    col = resolveCollection(*vocbase, slice).get();
+    col = resolveCollection(*vocbase, slice);
 
     if (col == nullptr) {
       return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "unknown cuid");
     }
   } else if (collection.hasKey("oldName")) {
-    col = vocbase->lookupCollection(collection.get("oldName").copyString()).get();
+    col = vocbase->lookupCollection(collection.get("oldName").copyString());
 
     if (col == nullptr) {
       return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -812,7 +811,7 @@ Result TailingSyncer::truncateCollection(arangodb::velocypack::Slice const& slic
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  auto* col = resolveCollection(*vocbase, slice).get();
+  auto col = resolveCollection(*vocbase, slice);
   if (col == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }

@@ -1,0 +1,37 @@
+# Copyright (c) 2007, 2008 Joseph Gauterin
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+# bring in rules for testing
+import testing ;
+
+compile swap_root_header_1.cpp ;
+compile swap_root_header_2.cpp ;
+compile swap_lib_header_1.cpp ;
+compile swap_lib_header_2.cpp ;
+compile swap_mixed_headers_1.cpp ;
+compile swap_mixed_headers_2.cpp ;
+
+compile-fail swap_const_wrapper_fail.cpp ;
+
+run swap_primitive.cpp ;
+run swap_specialized_in_boost.cpp ;
+run swap_specialized_in_global.cpp ;
+run swap_specialized_in_other.cpp ;
+run swap_specialized_in_std.cpp ;
+run swap_specialized_in_boost_and_other.cpp ;
+run swap_std_bitset.cpp ;
+run swap_std_dateorder.cpp ;
+run swap_std_string.cpp ;
+run swap_std_typeinfo_ptr.cpp ;
+run swap_std_vector_of_boost.cpp ;
+run swap_std_vector_of_global.cpp ;
+run swap_std_vector_of_other.cpp ;
+run swap_no_ambiguity_in_boost.cpp ;
+run swap_array_of_array_of_class.cpp ;
+run swap_array_of_array_of_int.cpp ;
+run swap_array_of_class.cpp ;
+run swap_array_of_int.cpp ;
+run swap_array_of_template.cpp ;

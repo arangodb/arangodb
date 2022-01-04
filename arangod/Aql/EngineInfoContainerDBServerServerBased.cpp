@@ -55,20 +55,20 @@ std::string const traverserUrl("/_internal/traverser/");
 
 Result ExtractRemoteAndShard(VPackSlice keySlice, ExecutionNodeId& remoteId,
                              std::string& shardId) {
-  TRI_ASSERT(keySlice.isString());  // used as  a key in Json
-  arangodb::velocypack::StringRef key(keySlice);
+  TRI_ASSERT(keySlice.isString());  // used as a key in Json
+  std::string_view key = keySlice.stringView();
   size_t p = key.find(':');
-  if (p == std::string::npos) {
+  if (p == key.npos) {
     return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
             "Unexpected response from DBServer during setup"};
   }
-  arangodb::velocypack::StringRef remId = key.substr(0, p);
-  remoteId = ExecutionNodeId{basics::StringUtils::uint64(remId.begin(), remId.length())};
+  std::string_view remId = key.substr(0, p);
+  remoteId = ExecutionNodeId{basics::StringUtils::uint64(remId.data(), remId.length())};
   if (remoteId == ExecutionNodeId{0}) {
     return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
             "Unexpected response from DBServer during setup"};
   }
-  shardId = key.substr(p + 1).toString();
+  shardId = std::string(key.substr(p + 1));
   if (shardId.empty()) {
     return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
             "Unexpected response from DBServer during setup"};
@@ -300,7 +300,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   TRI_ASSERT(!_closedSnippets.empty() || !_graphNodes.empty());
 
   ErrorCode cleanupReason = TRI_ERROR_CLUSTER_TIMEOUT;
-  
+
   auto cleanupGuard = scopeGuard([this, &serverToQueryId, &cleanupReason]() noexcept {
     try {
       transaction::Methods& trx = _query.trxForOptimization();

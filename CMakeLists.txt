@@ -4,7 +4,7 @@
 # General
 # ------------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.13)
 message(STATUS "CMake version: ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}")
 
 if (NOT CMAKE_BUILD_TYPE)
@@ -406,9 +406,9 @@ else ()
   set(HAVE_ARANGODB_BUILD_REPOSITORY "0")
 endif()
 
-if (DEFINED GIT_EXE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/enterprise/.git")
+if (DEFINED GIT_EXE AND USE_ENTERPRISE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/enterprise/.git")
   execute_process(
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/enterprise
 
     COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty
     OUTPUT_VARIABLE GIT_OUTPUT)
@@ -584,6 +584,9 @@ if (WINDOWS)
   set(BASE_FLAGS     "/D WIN32 /D _WINDOWS /W3 /MP"      CACHE STRING "base flags")
   set(BASE_C_FLAGS   ""                                  CACHE STRING "base C flags")
   set(BASE_CXX_FLAGS "/GR /EHsc /Zc:__cplusplus"         CACHE STRING "base C++flags")
+  # Increase the reserved stack size for all threads to 4MB
+  # Note: this is only _reserved_ memory, not necessarily _committed_ memory
+  set(BASE_LD_FLAGS  "/STACK:4194304"             CACHE STRING "base linker flags")
 else ()
   set(BASE_FLAGS     ""                                  CACHE STRING "base flags")
   set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}   $ENV{CFLAGS}"   CACHE STRING "base C flags")
@@ -595,15 +598,13 @@ endif ()
 if (CMAKE_COMPILER_IS_GNUCC)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10.0")
     message(WARNING "ArangoDB requires g++ 10.0 or newer, building with older compiler versions is unsupported")
-  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "10.9.9")
-    message(WARNING "ArangoDB doesn't support g++ 11.0 yet, building with newer compiler versions is unsupported")
+  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "11.9.9")
+    message(WARNING "ArangoDB doesn't support g++ 12.0 yet, building with newer compiler versions is unsupported")
   endif()
   set(BASE_C_FLAGS "${BASE_C_FLAGS}")
 endif ()
 
-if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG OR APPLE)
-  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++17")
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
   if (MSVC_VERSION VERSION_LESS 1915)
     message(FATAL_ERROR "ArangoDB doesn't support MSVC less than 2017 update 15.8!")
@@ -616,7 +617,6 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   elseif (MSVC_VERSION VERSION_GREATER_EQUAL 1920 AND MSVC_VERSION VERSION_LESS 1924)
     message(FATAL_ERROR "ArangoDB requires at least MSVC 2019 update 16.4!")
   endif()
-  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std:c++17") 
 endif()
 
 if (CMAKE_COMPILER_IS_CLANG)
@@ -637,9 +637,19 @@ if (CMAKE_COMPILER_IS_CLANG)
   endif ()
 endif ()
 
-# need c++17
+# need c++20
 # XXX this should really be set on a per target level using cmake compile_features capabilties
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
+# turn off compiler language extensions (e.g. don't use -std=gnu++20, but
+# -std=c++20).
+set(CMAKE_CXX_EXTENSIONS OFF)
+if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+  # We need to use c++latest instead of c++20 because <format>, <ranges>, and the formatting part of <chrono> will
+  # remain restricted to /std:c++latest due to WG21's upcoming changes.
+  # For more details on this see https://github.com/microsoft/STL/issues/1814#issuecomment-845572895")
+  set(CMAKE_CXX20_STANDARD_COMPILE_OPTION "-std:c++latest")
+  set(CMAKE_CXX20_EXTENSION_COMPILE_OPTION "-std:c++latest")
+endif ()
 
 # need threads
 find_package(Threads REQUIRED)
@@ -656,6 +666,11 @@ if (MSVC)
   set(CMAKE_EXE_LINKER_FLAGS
     "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /SAFESEH:NO /MACHINE:x64 /ignore:4099 ${BASE_LD_FLAGS}"
   )
+  # We currently need to disable ICF because unfortunately we have some code
+  # that depends on unique addresses for functions or read-only data members.
+  set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL     "/DEBUG /OPT:REF /OPT:NOICF")
+  set(CMAKE_EXE_LINKER_FLAGS_RELEASE        "/OPT:REF /OPT:NOICF")
+  set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "/DEBUG /OPT:REF /OPT:NOICF")
 else ()
   set(CMAKE_EXE_LINKER_FLAGS
     "${CMAKE_EXE_LINKER_FLAGS} ${BASE_LD_FLAGS}"
@@ -684,27 +699,11 @@ if (APPLE)
 endif ()
 
 ################################################################################
-## INCLUDE DIRECTORIES
-################################################################################
-
-include_directories(${PROJECT_BINARY_DIR})
-include_directories(${PROJECT_BINARY_DIR}/lib)
-
-include_directories(${PROJECT_SOURCE_DIR}/arangod)
-include_directories(${PROJECT_SOURCE_DIR}/lib)
-
-if (CUSTOM_INCLUDES)
-  include_directories(${CUSTOM_INCLUDES})
-endif ()
-
-################################################################################
 ## TARGET ARCHITECTURE
 ################################################################################
 
 set(ARANGODB_SSE42_FLAGS "")
-if (WINDOWS)
-  add_definitions("-DNO_SSE42")
-else ()
+if (NOT WINDOWS)
   include(TargetArch)
 
   target_architecture(CMAKE_TARGET_ARCHITECTURES)
@@ -751,11 +750,11 @@ set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
 ################################################################################
 
 # Allow to prohibit assembler optimization code explicitly
-if (MSVC OR BUILDING_FOR_ARM64)
+if (BUILDING_FOR_ARM64)
   SET(ASM_OPTIMIZATIONS_DEFAULT OFF)
-else (MSVC OR BUILDING_FOR_ARM64)
+else (BUILDING_FOR_ARM64)
   SET(ASM_OPTIMIZATIONS_DEFAULT ON)
-endif (MSVC OR BUILDING_FOR_ARM64)
+endif (BUILDING_FOR_ARM64)
 
 option(ASM_OPTIMIZATIONS "whether hand-optimized assembler code should be used"
   ${ASM_OPTIMIZATIONS_DEFAULT})
@@ -974,17 +973,17 @@ if (MSVC)
 
   set(BASE_FLAGS "/wd4996 ${BASE_FLAGS}")
 
-  set(CMAKE_C_FLAGS                "/MTd"                                              CACHE INTERNAL "default C compiler flags")
-  set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj"         CACHE INTERNAL "C debug flags")
-  set(CMAKE_C_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                                      CACHE INTERNAL "C minimal size flags")
-  set(CMAKE_C_FLAGS_RELEASE        "/MT /O2 /Ob2"                                      CACHE INTERNAL "C release flags")
-  set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                                  CACHE INTERNAL "C release with debug info flags")
+  set(CMAKE_C_FLAGS                ""                                      CACHE INTERNAL "default C compiler flags")
+  set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1"     CACHE INTERNAL "C debug flags")
+  set(CMAKE_C_FLAGS_MINSIZEREL     "/MT /O1"                               CACHE INTERNAL "C minimal size flags")
+  set(CMAKE_C_FLAGS_RELEASE        "/MT /O2"                               CACHE INTERNAL "C release flags")
+  set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT /Zi /O2"                           CACHE INTERNAL "C release with debug info flags")
 
-  set(CMAKE_CXX_FLAGS                "/MTd"                                            CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj"       CACHE INTERNAL "C++ debug flags")
-  set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                                    CACHE INTERNAL "C++ minimal size flags")
-  set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2 /Ob2"                                    CACHE INTERNAL "C++ release flags")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                                CACHE INTERNAL "C++ release with debug info flags")
+  set(CMAKE_CXX_FLAGS                ""                                    CACHE INTERNAL "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1"   CACHE INTERNAL "C++ debug flags")
+  set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1"                             CACHE INTERNAL "C++ minimal size flags")
+  set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2"                             CACHE INTERNAL "C++ release flags")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2"                         CACHE INTERNAL "C++ release with debug info flags")
 
   if (USE_CLCACHE_MODE)
     set(CMAKE_VS_GLOBALS "TrackFileAccess=false")
@@ -1183,7 +1182,6 @@ endif ()
 
 message(${OPENSSL_INCLUDE_DIR})
 
-include_directories(${OPENSSL_INCLUDE_DIR})
 add_definitions(-DARANGODB_OPENSSL_VERSION=\"${OPENSSL_VERSION}\")
 add_definitions(-DOPENSSL_VERSION_MAJOR=${OPENSSL_VERSION_MAJOR})
 add_definitions(-DOPENSSL_VERSION_MINOR=${OPENSSL_VERSION_MINOR})
@@ -1238,29 +1236,11 @@ add_subdirectory(3rdParty)
 
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 
-
-################################################################################
-## 3rd Party INCLUDE DIRECTORIES
-################################################################################
-
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/function2)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/${ARANGO_S2GEOMETRY_VERSION}/src)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION})
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
-
 # ------------------------------------------------------------------------------
 # RocksDB
 # ------------------------------------------------------------------------------
 
 add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ARANGO_ROCKSDB_VERSION}\")
-include_directories(${ROCKSDB_INCLUDE_DIR})
-
-set(ROCKSDB_LIBS rocksdb;${SNAPPY_LIB})
 
 add_dependencies(rocksdb snappy)
 
@@ -1278,16 +1258,9 @@ add_definitions("-DVELOCYPACK_XXHASH=1")
 set(V8_LINK_DIRECTORIES "${LINK_DIRECTORIES}" CACHE INTERNAL "" FORCE)
 
 ################################################################################
-## ICU
-################################################################################
-
-include_directories(SYSTEM ${ICU_INCLUDE_DIR})
-
-################################################################################
 ## V8
 ################################################################################
 
-include_directories(SYSTEM ${V8_INCLUDE_DIR})
 add_definitions("-DARANGODB_V8_VERSION=\"${V8_VERSION}\"")
 
 foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
@@ -1298,7 +1271,6 @@ endforeach()
 ## ZLIB
 ################################################################################
 
-include_directories(SYSTEM ${ZLIB_INCLUDE_DIR})
 add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 link_directories("${PROJECT_BINARY_DIR}/bin")
 
@@ -1396,7 +1368,7 @@ list(INSERT SYSTEM_LIBRARIES 0
 )
 
 add_subdirectory(lib)
-add_subdirectory(arangosh)
+add_subdirectory(client-tools)
 add_subdirectory(arangod)
 
 

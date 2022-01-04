@@ -1,0 +1,64 @@
+[#one_of_c]
+[section one_of_c]
+
+[h1 Synopsis]
+
+  template <char... Cs>
+  struct one_of_c;
+
+This is a [link parser parser].
+
+[table Arguments
+  [[Name] [Type]]
+  [[`Cs`] [character values]]
+]
+
+[h1 Description]
+
+It accepts inputs beginning with any of the `Cs...` characters. The result of
+parsing is the first character of the input.
+
+On compilers, which are not C++11-compliant, the maximum number of characters
+that can be provided is defined by the `BOOST_METAPARSE_LIMIT_ONE_OF_SIZE`
+macro. Its default value is `20`.
+
+[h1 Header]
+
+  #include <boost/metaparse/one_of_c.hpp>
+
+[h1 Expression semantics]
+
+For any `c1`, ..., `cn` characters
+
+  one_of_c<c1, ..., cn>
+
+is equivalent to
+
+  one_of<lit_c<c1>, /* ... */, lit_c<cn>>
+
+[h1 Example]
+
+  #include <boost/metaparse/one_of_c.hpp>
+  #include <boost/metaparse/start.hpp>
+  #include <boost/metaparse/string.hpp>
+  #include <boost/metaparse/get_result.hpp>
+  #include <boost/metaparse/is_error.hpp>
+  
+  using namespace boost::metaparse;
+  
+  using whitespace = one_of_c<' ', '\n', '\r', '\t', '\v'>;
+  
+  static_assert(
+    get_result<
+      whitespace::apply<BOOST_METAPARSE_STRING(" "), start>
+    >::type::value == ' ',
+    "the result of parsing should be the first character of the input"
+  );
+  
+  static_assert(
+    is_error<whitespace::apply<BOOST_METAPARSE_STRING("x"), start>>::type::value,
+    "it should return an error when the input does not begin with a whitespace"
+  );
+
+[endsect]
+

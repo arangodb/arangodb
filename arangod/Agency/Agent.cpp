@@ -41,6 +41,11 @@
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/LogScale.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -52,10 +57,10 @@ using namespace std::chrono;
 
 
 struct AppendScale {
-  static log_scale_t<float> scale() { return {2.f, 0.f, 1000.f, 10}; }
+  static arangodb::metrics::LogScale<float> scale() { return {2.f, 0.f, 1000.f, 10}; }
 };
 struct AgentScale {
-  static log_scale_t<float> scale() { return {std::exp(1.f), 0.f, 200.f, 10}; }
+  static arangodb::metrics::LogScale<float> scale() { return {std::exp(1.f), 0.f, 200.f, 10}; }
 };
 
 DECLARE_HISTOGRAM(arangodb_agency_append_hist, AppendScale, "Agency write histogram [ms]");
@@ -94,23 +99,23 @@ Agent::Agent(application_features::ApplicationServer& server, config_t const& co
       _preparing(0),
       _loaded(false),
       _write_ok(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_write_ok_total{})),
+        _server.getFeature<arangodb::metrics::MetricsFeature>().add(arangodb_agency_write_ok_total{})),
       _write_no_leader(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_write_no_leader_total{})),
+        _server.getFeature<arangodb::metrics::MetricsFeature>().add(arangodb_agency_write_no_leader_total{})),
       _read_ok(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_read_ok_total{})),
+        _server.getFeature<arangodb::metrics::MetricsFeature>().add(arangodb_agency_read_ok_total{})),
       _read_no_leader(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_read_no_leader_total{})),
+        _server.getFeature<arangodb::metrics::MetricsFeature>().add(arangodb_agency_read_no_leader_total{})),
       _write_hist_msec(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_write_hist{})),
+        _server.getFeature<arangodb::metrics::MetricsFeature>().add(arangodb_agency_write_hist{})),
       _commit_hist_msec(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_commit_hist{})),
+        _server.getFeature<arangodb::metrics::MetricsFeature>().add(arangodb_agency_commit_hist{})),
       _append_hist_msec(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_append_hist{})),
+        _server.getFeature<arangodb::metrics::MetricsFeature>().add(arangodb_agency_append_hist{})),
       _compaction_hist_msec(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_compaction_hist{})),
+        _server.getFeature<arangodb::metrics::MetricsFeature>().add(arangodb_agency_compaction_hist{})),
       _local_index(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_local_commit_index{})) {
+        _server.getFeature<arangodb::metrics::MetricsFeature>().add(arangodb_agency_local_commit_index{})) {
   _state.configure(this);
   _constituent.configure(this);
   if (size() > 1) {
@@ -141,7 +146,7 @@ bool Agent::id(std::string const& id) {
 }
 
 /// Merge command line and persisted comfigurations
-bool Agent::mergeConfiguration(VPackSlice const& persisted) {
+bool Agent::mergeConfiguration(VPackSlice persisted) {
   auto res = _config.merge(persisted);  // Concurrency managed in merge
   syncActiveAndAcknowledged();
   return res;
@@ -188,9 +193,6 @@ bool Agent::start() {
   Thread::start();
   return true;
 }
-
-/// Get all logs from state machine
-query_t Agent::allLogs() const { return _state.allLogs(); }
 
 /// This agent's term
 term_t Agent::term() const { return _constituent.term(); }
@@ -296,7 +298,7 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
 }
 
 // Check if log is committed up to index.
-bool Agent::isCommitted(index_t index) {
+bool Agent::isCommitted(index_t index) const {
   if (size() == 1) {  // single host agency
     return true;
   }
@@ -419,6 +421,7 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog, bool sent) {
 }
 
 void Agent::logsForTrigger() {
+  auto builder = std::make_shared<VPackBuilder>();
   // Wake up poll rest handlers:
   // Get everything from _lowestPromise
   // Create one builder pass shared pointer to all rest handlers
@@ -426,7 +429,6 @@ void Agent::logsForTrigger() {
   // Delete all promises.
   // Reset _lowestPromise.
   std::lock_guard lck(_promLock);
-  auto builder = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder e(builder.get());
     auto const logs = _state.get(_lowestPromise, _commitIndex.load(std::memory_order_relaxed));
@@ -446,7 +448,8 @@ void Agent::logsForTrigger() {
       }
     }
   }
-  triggerPollsNoLock(builder);
+
+  triggerPollsNoLock(std::move(builder));
   _lowestPromise = std::numeric_limits<index_t>::max();
 }
 
@@ -470,7 +473,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
     return priv_rpc_ret_t(false, t);
   }
 
-  VPackSlice payload = queries->slice();
+  VPackSlice const payload = queries->slice();
 
   // Update commit index
   if (payload.type() != VPackValueType::Array) {
@@ -522,7 +525,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
   bool ok = true;
   index_t lastIndex = 0;  // Index of last entry in our log
   try {
-    lastIndex = _state.logFollower(queries);
+    lastIndex = _state.logFollower(payload);
     if (lastIndex < payload[nqs - 1].get("index").getNumber<index_t>()) {
       // We could not log all the entries in this query, we need to report
       // this to the leader!
@@ -790,9 +793,18 @@ void Agent::resign(term_t otherTerm) {
   _constituent.follow(otherTerm, NO_LEADER);
 
   // Wake up all polls with resignation letter
+  auto qu = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder qb(qu.get());
+    qu->add("error", VPackValue(true));
+    qu->add("code", VPackValue(TRI_ERROR_HTTP_SERVICE_UNAVAILABLE));
+    qu->add(VPackValue("result"));
+    VPackArrayBuilder arr(qu.get());
+  }
+
   {
     std::lock_guard lck(_promLock);
-    triggerPollsNoLock();
+    triggerPollsNoLock(std::move(qu));
   }
 
   endPrepareLeadership();
@@ -910,7 +922,7 @@ void Agent::advanceCommitIndex() {
 }
 
 std::tuple<futures::Future<query_t>, bool, std::string> Agent::poll(
-  index_t const& index, double const& timeout) {
+  index_t index, double timeout) {
 
   using namespace std::chrono;
 
@@ -988,12 +1000,6 @@ std::tuple<futures::Future<query_t>, bool, std::string> Agent::poll(
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL, "Failed to add promise for polling");
   }
-}
-
-// Check if I am member of active agency
-bool Agent::active() const {
-  std::vector<std::string> active = _config.active();
-  return (find(active.begin(), active.end(), id()) != active.end());
 }
 
 /// @brief Activate agency (Inception thread for multi-host, main thread else)
@@ -1171,7 +1177,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
   // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (leader != id()) {
-    return trans_ret_t(false, leader);
+    return trans_ret_t(false, std::move(leader));
   }
 
   {
@@ -1242,7 +1248,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
     advanceCommitIndex();
   }
 
-  return trans_ret_t(true, id(), maxind, failed, ret);
+  return trans_ret_t(true, id(), maxind, failed, std::move(ret));
 }
 
 // Non-persistent write to non-persisted key-value store
@@ -1253,7 +1259,7 @@ trans_ret_t Agent::transient(query_t const& queries) {
   // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (leader != id()) {
-    return trans_ret_t(false, leader);
+    return trans_ret_t(false, std::move(leader));
   }
 
   {
@@ -1287,7 +1293,7 @@ trans_ret_t Agent::transient(query_t const& queries) {
     }
   }
 
-  return trans_ret_t(true, id(), 0, 0, ret);
+  return trans_ret_t(true, id(), 0, 0, std::move(ret));
 }
 
 write_ret_t Agent::inquire(query_t const& query) {
@@ -1297,7 +1303,7 @@ write_ret_t Agent::inquire(query_t const& query) {
   // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (leader != id()) {
-    return write_ret_t(false, leader);
+    return write_ret_t(false, std::move(leader));
   }
 
   write_ret_t ret;
@@ -1318,7 +1324,7 @@ write_ret_t Agent::inquire(query_t const& query) {
     std::this_thread::sleep_for(std::chrono::duration<double>(0.1));
     leader = _constituent.leaderID();
     if (leader != id()) {
-      return write_ret_t(false, leader);
+      return write_ret_t(false, std::move(leader));
     }
   }
 
@@ -1351,7 +1357,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
   auto leader = _constituent.leaderID();
   if ((!loaded() && wmode != WriteMode(true, true)) || (multihost && leader != id())) {
     ++_write_no_leader;
-    return write_ret_t(false, leader);
+    return write_ret_t(false, std::move(leader));
   }
 
   if (!wmode.discardStartup()) {
@@ -1389,12 +1395,13 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
     auto const start = high_resolution_clock::now();
     // Apply to spearhead and get indices for log entries
     // Avoid keeping lock indefinitely
+    VPackBuilder chunk;
     for (size_t i = 0, l = 0; i < npacks; ++i) {
-      query_t chunk = std::make_shared<Builder>();
+      chunk.clear();
       {
-        VPackArrayBuilder b(chunk.get());
+        VPackArrayBuilder b(&chunk);
         for (size_t j = 0; j < _config.maxAppendSize() && l < ntrans; ++j, ++l) {
-          chunk->add(slice.at(l));
+          chunk.add(slice.at(l));
         }
       }
 
@@ -1414,8 +1421,8 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
       _tiLock.assertNotLockedByCurrentThread();
       MUTEX_LOCKER(ioLocker, _ioLock);
 
-      applied = _spearhead.applyTransactions(chunk, wmode);
-      auto tmp = _state.logLeaderMulti(chunk, applied, currentTerm);
+      applied = _spearhead.applyTransactions(chunk.slice(), wmode);
+      auto tmp = _state.logLeaderMulti(chunk.slice(), applied, currentTerm);
       indices.insert(indices.end(), tmp.begin(), tmp.end());
     }
     _write_hist_msec.count(
@@ -1436,7 +1443,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
   }
 
   ++_write_ok;
-  return write_ret_t(true, id(), applied, indices);
+  return write_ret_t(true, id(), std::move(applied), std::move(indices));
 }
 
 /// Read from store
@@ -1448,7 +1455,7 @@ read_ret_t Agent::read(query_t const& query) {
   auto leader = _constituent.leaderID();
   if (!loaded() || (size() > 1 && leader != id())) {
     ++_read_no_leader;
-    return read_ret_t(false, leader);
+    return read_ret_t(false, std::move(leader));
   }
 
   {
@@ -1472,10 +1479,10 @@ read_ret_t Agent::read(query_t const& query) {
   READ_LOCKER(oLocker, _outputLock);
 
   // Retrieve data from readDB
-  std::vector<bool> success = _readDB.read(query, result);
+  std::vector<bool> success = _readDB.readMultiple(query->slice(), *result);
 
   ++_read_ok;
-  return read_ret_t(true, leader, std::move(success), std::move(result));
+  return read_ret_t(true, std::move(leader), std::move(success), std::move(result));
 }
 
 
@@ -1492,9 +1499,9 @@ void Agent::clearExpiredPolls() {
     empty->add(VPackValue("log"));
     VPackArrayBuilder a(empty.get());
   }
-  std::lock_guard lck(_promLock);
 
-  triggerPollsNoLock(empty, std::chrono::steady_clock::now());
+  std::lock_guard lck(_promLock);
+  triggerPollsNoLock(std::move(empty), std::chrono::steady_clock::now());
 }
 
 
@@ -1502,22 +1509,14 @@ void Agent::clearExpiredPolls() {
 /// Wake up everybody with query and delete with empty.
 /// If qu is nullptr, we're resigning.
 void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
-
-  if (qu == nullptr) { // We have resigned
-    qu = std::make_shared<VPackBuilder>();
-    VPackObjectBuilder qb(qu.get());
-    qu->add("error", VPackValue(true));
-    qu->add("code", VPackValue(TRI_ERROR_HTTP_SERVICE_UNAVAILABLE));
-    qu->add(VPackValue("result"));
-    VPackArrayBuilder arr(qu.get());
-  }
-
   auto* scheduler = SchedulerFeature::SCHEDULER;
   auto pit = _promises.begin();
   while (pit != _promises.end()) {
     if (pit->first < tp) {
       auto pp = std::make_shared<futures::Promise<query_t>>(std::move(pit->second));
-      scheduler->queue(RequestLane::CLUSTER_INTERNAL, [pp, qu] { pp->setValue(qu); });
+      scheduler->queue(RequestLane::CLUSTER_INTERNAL, [pp = std::move(pp), qu] {
+        pp->setValue(qu);
+      });
       pit = _promises.erase(pit);
     } else {
       ++pit;
@@ -1980,6 +1979,8 @@ void Agent::executeLockedRead(std::function<void()> const& cb) {
   cb();
 }
 
+#if 0
+// currently not called from anywhere
 void Agent::executeLockedWrite(std::function<void()> const& cb) {
   _tiLock.assertNotLockedByCurrentThread();
   MUTEX_LOCKER(ioLocker, _ioLock);
@@ -1987,6 +1988,7 @@ void Agent::executeLockedWrite(std::function<void()> const& cb) {
   CONDITION_LOCKER(guard, _waitForCV);
   cb();
 }
+#endif
 
 void Agent::executeTransientLocked(std::function<void()> const& cb) {
   MUTEX_LOCKER(transientLocker, _transientLock);
@@ -2003,7 +2005,7 @@ Store const& Agent::transient() const {
 }
 
 /// Rebuild from persisted state
-void Agent::setPersistedState(VPackSlice const& compaction) {
+void Agent::setPersistedState(VPackSlice compaction) {
   // Catch up with compacted state, this is only called at startup
   _spearhead = compaction;
 
@@ -2225,8 +2227,8 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
   return out;
 }
 
-void Agent::resetRAFTTimes(double min_timeout, double max_timeout) {
-  _config.pingTimes(min_timeout, max_timeout);
+void Agent::resetRAFTTimes(double minTimeout, double maxTimeout) {
+  _config.pingTimes(minTimeout, maxTimeout);
 }
 
 void Agent::ready(bool b) {
@@ -2385,19 +2387,15 @@ void Agent::removeTrxsOngoing(Slice trxs) noexcept {
   }
 }
 
-bool Agent::isTrxOngoing(std::string& id) {
-  try {
-    MUTEX_LOCKER(guard, _trxsLock);
-    auto it = _ongoingTrxs.find(id);
-    return it != _ongoingTrxs.end();
-  } catch (...) {
-    return false;
-  }
+bool Agent::isTrxOngoing(std::string const& id) const noexcept {
+  MUTEX_LOCKER(guard, _trxsLock);
+  auto it = _ongoingTrxs.find(id);
+  return it != _ongoingTrxs.end();
 }
 
 Inception const* Agent::inception() const { return _inception.get(); }
 
-void Agent::updateConfiguration(Slice const& slice) {
+void Agent::updateConfiguration(Slice slice) {
   _config.updateConfiguration(slice);
   // updateConfiguration causes the list of peers to change potentially
   syncActiveAndAcknowledged();

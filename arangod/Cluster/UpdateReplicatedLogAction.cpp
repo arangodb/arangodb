@@ -26,6 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Cluster/ServerState.h"
 #include "Network/NetworkFeature.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
@@ -35,32 +36,34 @@
 #include "UpdateReplicatedLogAction.h"
 #include "Utils/DatabaseGuard.h"
 
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::replication2;
 
+namespace {
+struct LogActionContextMaintenance : algorithms::LogActionContext {
+  LogActionContextMaintenance(TRI_vocbase_t& vocbase, network::ConnectionPool* pool)
+      : vocbase(vocbase), pool(pool) {}
 
+  auto dropReplicatedLog(LogId id) -> arangodb::Result override {
+    return vocbase.dropReplicatedLog(id);
+  }
+  auto ensureReplicatedLog(LogId id)
+      -> std::shared_ptr<replicated_log::ReplicatedLog> override {
+    return vocbase.ensureReplicatedLog(id, std::nullopt);
+  }
+  auto buildAbstractFollowerImpl(LogId id, ParticipantId participantId)
+      -> std::shared_ptr<replicated_log::AbstractFollower> override {
+    return std::make_shared<replicated_log::NetworkAttachedFollower>(
+        pool, std::move(participantId), vocbase.name(), id);
+  }
+
+  TRI_vocbase_t& vocbase;
+  network::ConnectionPool* pool;
+};
+}
 
 bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
-
-  struct LogActionContextMaintenance : algorithms::LogActionContext {
-    LogActionContextMaintenance(TRI_vocbase_t& vocbase, network::ConnectionPool* pool)
-        : vocbase(vocbase), pool(pool) {}
-
-    auto dropReplicatedLog(LogId id) -> arangodb::Result override {
-      return vocbase.dropReplicatedLog(id);
-    }
-    auto ensureReplicatedLog(LogId id)
-        -> std::shared_ptr<replicated_log::ReplicatedLog> override {
-      return vocbase.ensureReplicatedLog(id, std::nullopt);
-    }
-    auto buildAbstractFollowerImpl(LogId id, ParticipantId participantId)
-    -> std::shared_ptr<replicated_log::AbstractFollower> override {
-      return std::make_shared<replicated_log::NetworkAttachedFollower>(pool, std::move(participantId), vocbase.name(), id);
-    }
-
-    TRI_vocbase_t& vocbase;
-    network::ConnectionPool* pool;
-  };
 
   auto spec = std::invoke([&]() -> std::optional<agency::LogPlanSpecification> {
     auto buffer = StringUtils::decodeBase64(_description.get(REPLICATED_LOG_SPEC));
@@ -82,15 +85,25 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   auto& df = _feature.server().getFeature<DatabaseFeature>();
   DatabaseGuard guard(df, database);
   auto ctx = LogActionContextMaintenance{guard.database(), pool};
-  auto result =
-      replication2::algorithms::updateReplicatedLog(ctx, serverId, rebootId, logId,
-                                                    spec.has_value() ? &spec.value() : nullptr);
-
-  if (result.fail()) {
-    LOG_TOPIC("ba775", ERR, Logger::REPLICATION2)
-        << "failed to modify replicated log " << _description.get(DATABASE)
-        << '/' << logId << "; " << result.errorMessage();
-  }
+  auto result = replication2::algorithms::updateReplicatedLog(
+      ctx, serverId, rebootId, logId,
+      spec.has_value() ? &spec.value() : nullptr);
+  std::move(result).thenFinal([desc = _description, logId, &feature = _feature](
+                                  futures::Try<Result>&& tryResult) noexcept {
+    try {
+      auto const& result = tryResult.get();
+      if (result.fail()) {
+        LOG_TOPIC("ba775", ERR, Logger::REPLICATION2)
+            << "failed to modify replicated log " << desc.get(DATABASE) << '/'
+            << logId << "; " << result.errorMessage();
+      }
+      feature.addDirty(desc.get(DATABASE));
+    } catch (std::exception const& e) {
+      LOG_TOPIC("f824f", ERR, Logger::REPLICATION2)
+          << "exception during update of replicated log " << desc.get(DATABASE)
+          << '/' << logId << "; " << e.what();
+    }
+  });
 
   return false;
 }

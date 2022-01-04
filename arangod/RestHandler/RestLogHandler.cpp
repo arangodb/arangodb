@@ -36,10 +36,9 @@
 #include "Replication2/Methods.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
-#include "Replication2/ReplicatedLog/NetworkAttachedFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
-#include "Replication2/ReplicatedLog/types.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
+#include "Replication2/ReplicatedLog/Utilities.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -126,20 +125,7 @@ RestStatus RestLogHandler::handlePostInsertMulti(ReplicatedLogMethods const& met
     return RestStatus::DONE;
   }
 
-  struct Iterator : TypedLogIterator<LogPayload> {
-    auto next() -> std::optional<LogPayload> override {
-      if (iter.valid()) {
-        return LogPayload::createFromSlice(*iter++);
-      }
-
-      return std::nullopt;
-    }
-
-    explicit Iterator(VPackSlice slice) : iter(slice) {}
-    VPackArrayIterator iter;
-  };
-
-  auto iter = Iterator{payload};
+  auto iter = replicated_log::VPackArrayToLogPayloadIterator{payload};
   auto f = methods.insert(logId, iter).thenValue([this](auto&& waitForResult) {
     VPackBuilder response;
     {
@@ -209,7 +195,7 @@ RestStatus RestLogHandler::handleGetRequest(ReplicatedLogMethods const& methods)
     return handleGetSlice(methods, logId);
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-                  "expecting one of the resources 'tail', 'entry', 'slice'");
+                  "expecting one of the resources 'poll', 'head', 'tail', 'entry', 'slice'");
   }
   return RestStatus::DONE;
 }
@@ -270,9 +256,11 @@ RestStatus RestLogHandler::handleGetPoll(ReplicatedLogMethods const& methods,
                   "expect GET /_api/log/<log-id>/poll");
     return RestStatus::DONE;
   }
+  bool limitFound;
   LogIndex logIdx{basics::StringUtils::uint64(_request->value("first"))};
-  std::size_t limit{basics::StringUtils::uint64(_request->value("limit"))};
-  limit = limit == 0 ? 1000 : limit;
+  std::size_t limit{basics::StringUtils::uint64(_request->value("limit", limitFound))};
+  limit = limitFound ? limit : ReplicatedLogMethods::kDefaultLimit;
+
   auto fut = methods.poll(logId, logIdx, limit).thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
     VPackBuilder builder;
     {
@@ -295,7 +283,9 @@ RestStatus RestLogHandler::handleGetTail(ReplicatedLogMethods const& methods,
                   "expect GET /_api/log/<log-id>/tail");
     return RestStatus::DONE;
   }
-  std::size_t limit{basics::StringUtils::uint64(_request->value("limit"))};
+  bool limitFound;
+  std::size_t limit{basics::StringUtils::uint64(_request->value("limit", limitFound))};
+  limit = limitFound ? limit : ReplicatedLogMethods::kDefaultLimit;
 
   auto fut =
       methods.tail(logId, limit).thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
@@ -320,7 +310,9 @@ RestStatus RestLogHandler::handleGetHead(ReplicatedLogMethods const& methods,
                   "expect GET /_api/log/<log-id>/head");
     return RestStatus::DONE;
   }
-  std::size_t limit{basics::StringUtils::uint64(_request->value("limit"))};
+  bool limitFound;
+  std::size_t limit{basics::StringUtils::uint64(_request->value("limit", limitFound))};
+  limit = limitFound ? limit : ReplicatedLogMethods::kDefaultLimit;
 
   auto fut =
       methods.head(logId, limit).thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
@@ -345,8 +337,10 @@ RestStatus RestLogHandler::handleGetSlice(ReplicatedLogMethods const& methods,
                   "expect GET /_api/log/<log-id>/slice");
     return RestStatus::DONE;
   }
+  bool stopFound;
   LogIndex start{basics::StringUtils::uint64(_request->value("start"))};
-  LogIndex stop{basics::StringUtils::uint64(_request->value("stop"))};
+  LogIndex stop{basics::StringUtils::uint64(_request->value("stop", stopFound))};
+  stop = stopFound ? stop: start + ReplicatedLogMethods::kDefaultLimit + 1;
 
   auto fut =
       methods.slice(logId, start, stop).thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {

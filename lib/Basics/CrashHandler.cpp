@@ -76,6 +76,8 @@ namespace {
 // forward-declare a pseudo struct so the following code compiles
 struct siginfo_t;
 
+void createMiniDump(EXCEPTION_POINTERS* pointers);
+
 #else
 
 // memory reserved for the signal handler stack
@@ -103,6 +105,12 @@ std::atomic<bool> killHard(false);
     // TerminateProcess is async, alright wait here for selfdestruct (we will never exit wait)
     WaitForSingleObject(hSelf, INFINITE);
   } else {
+    // exit will not trigger dump creation. So do this manually.
+    if (SIGABRT == signal) {
+      SetUnhandledExceptionFilter(NULL);
+      // produce intentional segfault to trigger WER (and attached debugger if any)
+      *static_cast<volatile int*>(nullptr) = 1;
+    }
     exit(255 + signal);
   }
 #else
@@ -127,10 +135,9 @@ std::atomic<bool> killHard(false);
 
 /// @brief appends null-terminated string src to dst,
 /// advances dst pointer by length of src
-void appendNullTerminatedString(char const* src, char*& dst) {
-  size_t len = strlen(src);
-  memcpy(static_cast<void*>(dst), src, len);
-  dst += len;
+void appendNullTerminatedString(std::string_view src, char*& dst) {
+  memcpy(static_cast<void*>(dst), src.data(), src.size());
+  dst += src.size();
   *dst = '\0';
 }
 
@@ -195,7 +202,7 @@ void appendAddress(unw_word_t pc, long base, char*& dst) {
 /// Assumes that the buffer pointed to by s has enough space to
 /// hold the thread id, the thread name and the signal name
 /// (4096 bytes should be more than enough).
-size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const* info, void* ucontext) {
+size_t buildLogMessage(char* s, std::string_view context, int signal, siginfo_t const* info, void* ucontext) {
   // build a crash message
   char* p = s;
   appendNullTerminatedString("💥 ArangoDB ", p);
@@ -282,7 +289,7 @@ size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const
   return p - s;
 }
 
-void logCrashInfo(char const* context, int signal, siginfo_t* info, void* ucontext) try {
+void logCrashInfo(std::string_view context, int signal, siginfo_t* info, void* ucontext) try {
   // buffer for constructing temporary log messages (to avoid malloc)
   char buffer[4096];
   memset(&buffer[0], 0, sizeof(buffer));
@@ -492,6 +499,16 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
 static std::string miniDumpDirectory = "C:\\temp";
 static std::mutex miniDumpLock;
 
+// TODO - ATM if these are put inside the function MSVC complains that they
+// are not captured in the lambda, but a lamba with captures cannot convert
+// to a function pointer. Since these are constexpr is should not be necessary
+// to capture them, and with C++20 enabled MSVC no longer complains.
+// So once we have upgraded to C++20 these should be move into the function.
+constexpr DWORD64 blockSize = 1024;  // 1kb
+constexpr DWORD64 maxStackAddrs = 2048;
+constexpr DWORD maxNumAddrs = 160000;
+constexpr DWORD numRegs = 16;
+
 void createMiniDump(EXCEPTION_POINTERS* pointers) {
   // we have to serialize calls to MiniDumpWriteDump
   std::lock_guard<std::mutex> lock(miniDumpLock);
@@ -525,10 +542,106 @@ void createMiniDump(EXCEPTION_POINTERS* pointers) {
   exceptionInfo.ThreadId = GetCurrentThreadId();
   exceptionInfo.ExceptionPointers = pointers;
   exceptionInfo.ClientPointers = FALSE;
+  
+  // We try to gather some additional information from referenced memory
+  // In total we gather up to 16000 memory blocks of 1kb each.
+  // We consider only addresses that reference some memory block that can
+  // actually be read (-> !IsBadReadPtr).
+
+  // we want to have enough addresses to cover all 16 registers plus all indirections and all
+  // maxStackAddrs stack addresses
+  static_assert(maxNumAddrs > maxStackAddrs + numRegs * (blockSize / sizeof(void*)));
+  
+  DWORD64 addrs[maxNumAddrs];
+  DWORD numAddrs = 0;
+
+  if (pointers) {
+    auto addAddr = [&addrs, &numAddrs](DWORD64 reg) {
+      auto base = reg & ~(blockSize - 1);
+      if (base == 0 || IsBadReadPtr((void*)base, blockSize) || numAddrs >= maxNumAddrs) {
+        return;
+      }
+      for (DWORD i = 0; i < numAddrs; ++i) {
+        if (addrs[i] == base) {
+          return;
+        }
+      }
+      addrs[numAddrs++] = base;
+    };
+
+    // we take the values of all general purpose registers
+    auto& ctx = *pointers->ContextRecord;
+    addAddr(ctx.Rax);
+    addAddr(ctx.Rcx);
+    addAddr(ctx.Rdx);
+    addAddr(ctx.Rbx);
+    addAddr(ctx.Rsp);
+    addAddr(ctx.Rbp);
+    addAddr(ctx.Rsi);
+    addAddr(ctx.Rdi);
+    addAddr(ctx.R8);
+    addAddr(ctx.R9);
+    addAddr(ctx.R10);
+    addAddr(ctx.R11);
+    addAddr(ctx.R12);
+    addAddr(ctx.R13);
+    addAddr(ctx.R14);
+    addAddr(ctx.R15);
+    TRI_ASSERT(numAddrs <= numRegs);
+
+    // Take the first 2048 pointers from the stack and add them to the address list.
+    // We use the thread information block (TIB) to get the base address of the stack
+    // to handle the (unlikely) cases where the stack has less than 2048 items.
+    auto* tib = (PNT_TIB)NtCurrentTeb();
+    auto numStackAddrs = std::min(((DWORD64)tib->StackBase - ctx.Rsp) / sizeof(void*), maxStackAddrs);
+    void** p = (void**)ctx.Rsp;
+    for (DWORD64 i = 0; i < numStackAddrs; ++i) {
+      addAddr((DWORD64)p[i]);
+    }
+
+    // Now we take all the addresses we gathered so far and add all indirect addresses,
+    // i.e., we take each 1024 byte block and add all 128 potential addresses from that
+    // block (as long as we don't exceed our limit).
+    // That way can follow at least one level of indirection when analyzing the dump.
+    DWORD idx = numAddrs;
+    do {
+      --idx;
+      void** p = (void**)addrs[idx];
+      for (DWORD i = 0; i < blockSize / sizeof(void*) && numAddrs < maxNumAddrs; ++i) {
+        auto base = (DWORD64)p[i] & ~(blockSize - 1);
+        if (base != 0) {
+          addrs[numAddrs++] = base;
+        }
+      }
+    } while (idx != 0 && numAddrs < maxNumAddrs);
+  }
+
+  struct CallbackParam {
+    DWORD64* addrs;
+    DWORD idx;
+    DWORD numAddrs;
+  };
+  CallbackParam param{addrs, 0, numAddrs};
+
+  auto callback = [](PVOID callbackParam, PMINIDUMP_CALLBACK_INPUT callbackInput, PMINIDUMP_CALLBACK_OUTPUT callbackOutput) -> BOOL {
+    auto* param = static_cast<CallbackParam*>(callbackParam);
+    if (callbackInput->CallbackType == MemoryCallback && param->idx < param->numAddrs) {
+      callbackOutput->MemoryBase = param->addrs[param->idx];
+      callbackOutput->MemorySize = blockSize;
+      ++param->idx;
+    }
+    return TRUE;
+  };
+  
+  MINIDUMP_CALLBACK_INFORMATION callbackInfo{
+    callback,
+    &param
+  };
 
   if (MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile,
-                        MINIDUMP_TYPE(MiniDumpNormal | MiniDumpWithProcessThreadData | MiniDumpWithDataSegs),
-                        pointers ? &exceptionInfo : nullptr, nullptr, nullptr)) {
+                        MINIDUMP_TYPE(MiniDumpNormal | MiniDumpWithProcessThreadData | MiniDumpWithDataSegs | MiniDumpIgnoreInaccessibleMemory),
+                        pointers ? &exceptionInfo : nullptr, nullptr,
+                        pointers ? &callbackInfo : nullptr)) {
     char* p = &buffer[0];
     appendNullTerminatedString("Wrote minidump: ", p);
     appendNullTerminatedString(filename, p);
@@ -576,7 +689,7 @@ void CrashHandler::logBacktrace() {
 }
 
 /// @brief logs a fatal message and crashes the program
-void CrashHandler::crash(char const* context) {
+void CrashHandler::crash(std::string_view context) {
   ::logCrashInfo(context, SIGABRT, /*no signal*/ nullptr, /*no context*/ nullptr);
   ::logBacktrace();
   ::logProcessInfo();
@@ -610,7 +723,7 @@ void CrashHandler::assertionFailure(char const* file, int line, char const* func
     appendNullTerminatedString(message, p);
   }
 
-  crash(&buffer[0]);
+  crash(std::string_view(&buffer[0], p - &buffer[0]));
 }
 
 /// @brief set flag to kill process hard using SIGKILL, in order to circumvent core
@@ -713,7 +826,7 @@ void CrashHandler::installCrashHandler() {
       appendNullTerminatedString(msg, p);
     }
 
-    CrashHandler::crash(&buffer[0]);
+    CrashHandler::crash(std::string_view(&buffer[0], p - &buffer[0]));
   });
 }
 

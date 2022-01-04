@@ -51,14 +51,14 @@ namespace {
 IndexIteratorOptions defaultIndexIteratorOptions;
 
 #ifdef USE_ENTERPRISE
-static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge) {
+static bool CheckInaccessible(transaction::Methods* trx, VPackSlice edge) {
   // for skipInaccessibleCollections we need to check the edge
   // document, in that case nextWithExtra has no benefit
   TRI_ASSERT(edge.isString());
-  arangodb::velocypack::StringRef str(edge);
+  std::string_view str(edge.stringView());
   size_t pos = str.find('/');
-  TRI_ASSERT(pos != std::string::npos);
-  return trx->isInaccessibleCollection(str.substr(0, pos).toString());
+  TRI_ASSERT(pos != std::string_view::npos);
+  return trx->isInaccessibleCollection(std::string(str.substr(0, pos)));
 }
 #endif
 }  // namespace
@@ -277,20 +277,20 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(SingleServerProvider<Step>&
     } else {
       cursor.all([&](LocalDocumentId const& token) {
         return collection->getPhysical()
-            ->read(
-                _trx, token,
-                [&](LocalDocumentId const&, VPackSlice edgeDoc) {
-                  stats.addScannedIndex(1);
+            ->read(_trx, token,
+                   [&](LocalDocumentId const&, VPackSlice edgeDoc) {
+                     stats.addScannedIndex(1);
 #ifdef USE_ENTERPRISE
-                  if (_trx->skipInaccessible()) {
-                    // TODO: we only need to check one of these
-                    VPackSlice from =
-                        transaction::helpers::extractFromFromDocument(edgeDoc);
-                    VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
-                    if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
-                      return false;
-                    }
-                  }
+                     if (_trx->skipInaccessible()) {
+                       // TODO: we only need to check one of these
+                       VPackSlice from =
+                           transaction::helpers::extractFromFromDocument(edgeDoc);
+                       VPackSlice to =
+                           transaction::helpers::extractToFromDocument(edgeDoc);
+                       if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
+                         return false;
+                       }
+                     }
 #endif
                   // eval depth-based expression first if available
                   EdgeDocumentToken edgeToken(cid, token);

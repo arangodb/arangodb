@@ -1,0 +1,40 @@
+# Boost.Geometry
+#
+# Copyright (c) 2007-2019 Barend Gehrels, Amsterdam, the Netherlands.
+# Copyright (c) 2008-2019 Bruno Lalande, Paris, France.
+# Copyright (c) 2009-2019 Mateusz Loskot, London, UK.
+# Copyright (c) 2014-2019 Adam Wulkiewicz, Lodz, Poland.
+
+# Use, modification and distribution is subject to the Boost Software License,
+# Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+test-suite boost-geometry-geometries
+    :
+    [ run adapted.cpp              : : : : geometries_adapted ]
+    [ run boost_array_as_point.cpp : : : : geometries_boost_array_as_point ]
+    [ run boost_fusion.cpp         : : : : geometries_boost_fusion ]
+    [ run boost_polygon.cpp        : : : : geometries_boost_polygon ] 
+    [ run boost_range.cpp          : : : : geometries_boost_range ]
+    [ run boost_tuple.cpp          : : : : geometries_boost_tuple ]
+    [ run box.cpp                  : : : : geometries_box ]
+    #[ compile-fail custom_linestring.cpp
+    #    : # requirements
+    #    <define>TEST_FAIL_CLEAR
+    #    : # target name
+    #    geometries_custom_linestring_test_fail_clear
+    #]
+    [ run custom_linestring.cpp    : : : : geometries_custom_linestring ]
+    [ run initialization.cpp       : : : : geometries_initialization ]
+    [ run linestring.cpp           : : : : geometries_linestring ]
+    [ run multi_linestring.cpp     : : : : geometries_multi_linestring ]
+    [ run multi_point.cpp          : : : : geometries_multi_point ]
+    [ run multi_polygon.cpp        : : : : geometries_multi_polygon ]
+    [ run point.cpp                : : : : geometries_point ]
+    [ run point_xy.cpp             : : : : geometries_point_xy ]
+    [ run point_xyz.cpp            : : : : geometries_point_xyz ]
+    [ run polygon.cpp              : : : : geometries_polygon ]
+    [ run ring.cpp                 : : : : geometries_ring ]
+    [ run segment.cpp              : : : : geometries_segment ]
+    [ run infinite_line.cpp        : : : : geometries_infinite_line ]
+    ;

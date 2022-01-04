@@ -32,7 +32,8 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/Counter.h"
+#include "Metrics/MetricsFeature.h"
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -52,7 +53,6 @@ using namespace arangodb;
 TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                    transaction::Options const& options)
     : _vocbase(vocbase),
-      _collections{_arena},  // assign arena to vector
       _serverRole(ServerState::instance()->getRole()),
       _options(options),
       _id(tid) {
@@ -483,5 +483,5 @@ void TransactionState::coordinatorRerollTransactionId() {
 
 /// @brief return a reference to the global transaction statistics
 TransactionStatistics& TransactionState::statistics() noexcept {
-  return _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics;
+  return _vocbase.server().getFeature<metrics::MetricsFeature>().serverStatistics()._transactionsStatistics;
 }

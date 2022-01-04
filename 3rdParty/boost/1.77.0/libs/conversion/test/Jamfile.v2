@@ -1,0 +1,29 @@
+# Copyright (C) 2001-2003 Douglas Gregor
+# Copyright (C) 2011-2021 Antony Polukhin
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+
+import testing ;
+import feature ;
+
+project
+    : requirements
+        <toolset>gcc-4.7:<cxxflags>-ftrapv
+        <toolset>gcc-4.6:<cxxflags>-ftrapv
+        <toolset>clang:<cxxflags>-ftrapv
+        # default to all warnings on:
+        <warnings>all
+        # set warnings as errors for those compilers we know we get warning free:
+        <toolset>gcc:<cxxflags>-Wextra
+        <toolset>gcc:<cxxflags>-Wno-uninitialized
+    ;
+
+test-suite conversion
+  : [ run implicit_cast.cpp ]
+    [ compile-fail implicit_cast_fail.cpp ]
+    [ run cast_test.cpp ]
+    [ run polymorphic_cast_test.cpp ]
+    [ compile-fail implicit_cast_fail2.cpp ]
+  ;

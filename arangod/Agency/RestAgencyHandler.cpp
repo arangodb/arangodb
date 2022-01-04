@@ -34,6 +34,8 @@
 #include "Rest/Version.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/LogScale.h"
 
 using namespace arangodb;
 

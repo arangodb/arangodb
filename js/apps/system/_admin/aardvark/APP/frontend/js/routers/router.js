@@ -111,6 +111,12 @@
             this.loggerView.logTopicView.remove();
           }
         }
+      
+        if (this.lastRoute === '#shards') {
+          if (this.shardsView) {
+            this.shardsView.remove();
+          }
+        }
 
         // react unmounting
         ReactDOM.unmountComponentAtNode(document.getElementById('content'));
@@ -1127,6 +1133,10 @@
       this.init.then(() => {
         if (!this.foxxApiEnabled) {
           this.navigate('#dashboard', { trigger: true });
+          return;
+        }
+        if (!frontendConfig.foxxAllowInstallFromRemote) {
+          this.navigate('#services/install/upload', { trigger: true });
           return;
         }
         window.modalView.clearValidators();

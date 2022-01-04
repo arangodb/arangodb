@@ -535,7 +535,7 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
       bool found = false;
       for (const auto& plannedServer :
            VPackArrayIterator(snap.hasAsArray(plannedShardPath).value())) {
-        if (plannedServer.isEqualString(server.stringRef())) {
+        if (plannedServer.isEqualString(server.stringView())) {
           found = true;
           break;
         }

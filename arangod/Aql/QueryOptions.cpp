@@ -201,10 +201,10 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   if (value = slice.get("explainRegisters"); value.isBool()) {
     explainRegisters = value.getBool() ? ExplainRegisterPlan::Yes : ExplainRegisterPlan::No;
   }
-  
+
   // note: skipAudit is intentionally not read here.
   // the end user cannot override this setting
-  
+
   if (value = slice.get("forceOneShardAttributeValue"); value.isString()) {
     forceOneShardAttributeValue = value.copyString();
   }
@@ -272,11 +272,10 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   builder.add("fullCount", VPackValue(fullCount));
   builder.add("count", VPackValue(count));
   builder.add("verboseErrors", VPackValue(verboseErrors));
-
-  if (!forceOneShardAttributeValue.empty()) {
+if (!forceOneShardAttributeValue.empty()) {
     builder.add("forceOneShardAttributeValue", VPackValue(forceOneShardAttributeValue));
   }
-  
+
   // note: skipAudit is intentionally not serialized here.
   // the end user cannot override this setting anyway.
 

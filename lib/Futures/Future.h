@@ -79,7 +79,7 @@ struct ArgType<> {
 template <typename F, typename... Args>
 struct argResult {
   using ArgList = ArgType<Args...>;
-  using Result = typename std::result_of<F(Args...)>::type;
+  using Result = typename std::invoke_result<F, Args...>::type;
 };
 
 template <typename T, typename F>
@@ -98,7 +98,7 @@ struct valueCallableResult {
   typedef Future<typename ReturnsFuture::inner> FutureT;
 };
 
-template <class F, typename R = typename std::result_of<F()>::type>
+template <class F, typename R = typename std::invoke_result<F>::type>
 typename std::enable_if<!std::is_same<R, void>::value, Try<R>>::type makeTryWith(F&& func) noexcept {
   try {
     return Try<R>(std::in_place, func());
@@ -107,7 +107,7 @@ typename std::enable_if<!std::is_same<R, void>::value, Try<R>>::type makeTryWith
   }
 }
 
-template <class F, typename R = typename std::result_of<F()>::type>
+template <class F, typename R = typename std::invoke_result<F>::type>
 typename std::enable_if<std::is_same<R, void>::value, Try<Unit>>::type makeTryWith(F&& func) noexcept {
   try {
     func();
@@ -145,7 +145,7 @@ void waitImpl(Future<T>& f) {
 
   Promise<T> p;
   Future<T> ret = p.getFuture();
-  f.thenFinal([p(std::move(p)), &cv, &m](Try<T>&& t) mutable {
+  std::move(f).thenFinal([p(std::move(p)), &cv, &m](Try<T>&& t) mutable {
     // We need to hold this mutex, while sending the notify.
     // Otherwise the future ret may be ready and thereby leaving this function
     // which would free the condtion variable, before sending notify.
@@ -171,7 +171,7 @@ void waitImpl(Future<T>& f, std::chrono::time_point<Clock, Duration> const& tp) 
 
   Promise<T> p;
   Future<T> ret = p.getFuture();
-  f.thenFinal([p(std::move(p)), &cv, &m](Try<T>&& t) mutable {
+  std::move(f).thenFinal([p(std::move(p)), &cv, &m](Try<T>&& t) mutable {
     // We need to hold this mutex, while sending the notify.
     // Otherwise the future ret may be ready and thereby leaving this function
     // which would free the condtion variable, before sending notify.
@@ -449,14 +449,14 @@ class Future {
   /// Variant: function returns void and accepts Try<T>&&
   /// When this Future has completed, execute func which is a function that
   /// can be called with either `T&&` or `Try<T>&&`.
-  template <typename F, typename R = typename std::result_of<F && (Try<T> &&)>::type>
-  typename std::enable_if<std::is_same<R, void>::value>::type thenFinal(F&& fn) {
+  template <typename F, typename R = typename std::invoke_result<F&&, Try<T>&&>::type>
+  typename std::enable_if<std::is_same<R, void>::value>::type thenFinal(F&& fn) && {
     getState().setCallback(std::forward<detail::decay_t<F>>(fn));
   }
 
   /// Set an error continuation for this Future where the continuation can
   /// be called with a known exception type and returns a `T`
-  template <typename ExceptionType, typename F, typename R = std::result_of_t<F(ExceptionType)>>
+  template <typename ExceptionType, typename F, typename R = std::invoke_result_t<F, ExceptionType>>
   typename std::enable_if<!isFuture<R>::value, Future<typename lift_unit<R>::type>>::type thenError(
       F&& func) && {
     typedef typename lift_unit<R>::type B;
@@ -486,7 +486,7 @@ class Future {
 
   /// Set an error continuation for this Future where the continuation can
   /// be called with a known exception type and returns a `Future<T>`
-  template <typename ExceptionType, typename F, typename R = std::result_of_t<F(ExceptionType)>>
+  template <typename ExceptionType, typename F, typename R = std::invoke_result_t<F, ExceptionType>>
   typename std::enable_if<isFuture<R>::value, Future<typename isFuture<R>::inner>>::type thenError(F&& fn) && {
     typedef typename isFuture<R>::inner B;
     typedef std::decay_t<ExceptionType> ET;

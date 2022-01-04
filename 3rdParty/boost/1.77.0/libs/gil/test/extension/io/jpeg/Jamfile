@@ -1,0 +1,29 @@
+# Boost.GIL (Generic Image Library) - IO tests
+#
+# Copyright (c) 2012 Christian Henning
+# Copyright (c) 2017 Stefan Seefeld
+# Copyright (c) 2012-2020 Mateusz Loskot <mateusz@loskot.net>
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or
+# copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import ac ;
+import testing ;
+
+using libjpeg : : : : true ; # work around bug on master
+
+project
+   : requirements
+      <define>BOOST_GIL_IO_TEST_ALLOW_READING_IMAGES
+      <define>BOOST_GIL_IO_TEST_ALLOW_WRITING_IMAGES
+      <library>/boost/filesystem//boost_filesystem
+      [ ac.check-library /libjpeg//libjpeg : <library>/libjpeg//libjpeg : <build>no ]
+   ;
+
+
+run jpeg_test.cpp ;
+run jpeg_read_test.cpp ;
+run jpeg_write_test.cpp  ;
+
+run jpeg_old_test.cpp ;

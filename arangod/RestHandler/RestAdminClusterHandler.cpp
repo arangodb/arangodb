@@ -37,6 +37,7 @@
 #include "Agency/TransactionBuilder.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ResultT.h"
+#include "Basics/NumberUtils.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
@@ -984,7 +985,7 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
 
         return waitForFuture(
           sendTransaction()
-          .thenValue([=](AsyncAgencyCommResult&& wr) {
+          .thenValue([=, this](AsyncAgencyCommResult&& wr) {
             if (!wr.ok()) {
               // Only if no longer pending or todo.
               if (wr.statusCode() == 412) {
@@ -1308,33 +1309,30 @@ RestStatus RestAdminClusterHandler::handleGetMaintenance() {
 }
 
 RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::waitForSupervisionState(
-    bool state, clock::time_point startTime) {
-  if (startTime == clock::time_point()) {
-    startTime = clock::now();
-  }
-
+    bool state, std::string const& reactivationTime, clock::time_point startTime) {
   return SchedulerFeature::SCHEDULER->delay(1s)
       .thenValue([](auto) {
         return AsyncAgencyComm().getValues(
             arangodb::cluster::paths::root()->arango()->supervision()->state()->mode());
       })
-      .thenValue([this, state, startTime](AgencyReadResult&& result) {
+      .thenValue([this, state, startTime, reactivationTime](AgencyReadResult&& result) {
         auto waitFor = state ? "Maintenance" : "Normal";
         if (result.ok() && result.statusCode() == fuerte::StatusOK) {
           if (!result.value().isEqualString(waitFor)) {
             if ((clock::now() - startTime) < 120.0s) {
               // wait again
-              return waitForSupervisionState(state, startTime);
+              return waitForSupervisionState(state, reactivationTime, startTime);
             }
 
             generateError(rest::ResponseCode::REQUEST_TIMEOUT,
-                          TRI_ERROR_HTTP_GATEWAY_TIMEOUT, std::string{"timed out while waiting for supervision to go into maintenance mode"});
+                          TRI_ERROR_HTTP_GATEWAY_TIMEOUT, std::string{"timed out while waiting for supervision maintenance mode change"});
           } else {
-            auto msg = state ? "Cluster supervision deactivated. It will be "
-                               "reactivated automatically in 60 minutes unless "
+            auto msg = state ? std::string("Cluster supervision deactivated. It will be "
+                               "reactivated automatically on ") + reactivationTime + " unless "
                                "this call is repeated until then."
-                             : "Cluster supervision reactivated.";
+                             : std::string("Cluster supervision reactivated.");
             VPackBuilder builder;
+            VPackBuffer<uint8_t> body;
             {
               VPackObjectBuilder obj(&builder);
               builder.add("warning", VPackValue(msg));
@@ -1349,16 +1347,23 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::waitForSupervisionS
       });
 }
 
-RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActivate) {
+RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActivate, uint64_t timeout) {
+  // we don't need a timeout when disabling the maintenance
+  TRI_ASSERT(wantToActivate || timeout == 0);
+
   auto maintenancePath =
       arangodb::cluster::paths::root()->arango()->supervision()->maintenance();
 
+  // (stringified) timepoint at which maintenance will reactivate itself
+  std::string reactivationTime;
+  if (wantToActivate) {
+    reactivationTime = timepointToString(
+              std::chrono::system_clock::now() + std::chrono::seconds(timeout));
+  }
+
   auto sendTransaction = [&] {
     if (wantToActivate) {
-      constexpr int timeout = 3600; // 1 hour
-      return AsyncAgencyComm().setValue(60s, maintenancePath,
-          VPackValue(timepointToString(
-              std::chrono::system_clock::now() + std::chrono::seconds(timeout))), 3600);
+      return AsyncAgencyComm().setValue(60s, maintenancePath, VPackValue(reactivationTime), timeout);
     } else {
       return AsyncAgencyComm().deleteKey(60s, maintenancePath);
     }
@@ -1368,9 +1373,9 @@ RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActivate) {
 
   return waitForFuture(
       sendTransaction()
-          .thenValue([this, wantToActivate](AsyncAgencyCommResult&& result) {
+          .thenValue([this, wantToActivate, reactivationTime](AsyncAgencyCommResult&& result) {
             if (result.ok() && result.statusCode() == 200) {
-              return waitForSupervisionState(wantToActivate);
+              return waitForSupervisionState(wantToActivate, reactivationTime, std::chrono::steady_clock::now());
             } else {
               generateError(result.asResult());
             }
@@ -1400,10 +1405,28 @@ RestStatus RestAdminClusterHandler::handlePutMaintenance() {
 
   if (body.isString()) {
     if (body.isEqualString("on")) {
-      return setMaintenance(true);
+      // supervision maintenance will turn itself off automatically
+      // after one hour by default
+      constexpr uint64_t timeout = 3600; // 1 hour
+      return setMaintenance(true, timeout);
     } else if (body.isEqualString("off")) {
-      return setMaintenance(false);
+      // timeout doesn't matter for turning off the supervision
+      return setMaintenance(false, /*timeout*/ 0);
+    } else {
+      // user sent a stringified timeout value, so lets honor this
+      VPackValueLength l;
+      char const* p = body.getString(l);
+      bool valid = false;
+      uint64_t timeout = NumberUtils::atoi_positive<uint64_t>(p, p + l, valid);
+      if (valid) {
+        return setMaintenance(true, timeout);
+      }
+      // otherwise fall-through to error
     }
+  } else if (body.isNumber()) {
+    // user sent a numeric timeout value, so lets honor this
+    uint64_t timeout = body.getNumber<uint64_t>();
+    return setMaintenance(true, timeout);
   }
 
   generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,

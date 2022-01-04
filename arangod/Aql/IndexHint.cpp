@@ -32,7 +32,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <ostream>
@@ -71,7 +70,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node)
       AstNode const* child = node->getMember(i);
 
       if (child->type == AstNodeType::NODE_TYPE_OBJECT_ELEMENT) {
-        VPackStringRef name(child->getStringValue(), child->getStringLength());
+        std::string_view name(child->getStringView());
 
         bool handled = false;
 

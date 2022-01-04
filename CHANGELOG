@@ -1,6 +1,319 @@
 devel
 -----
 
+* Improved performance in replication dump protocol by inserting arrays of 
+  documents instead of one document at a time and also not retrieving the
+  document revision field when not needed.
+
+* Changed various default values for RocksDB to tune operations for different
+  typical scenarios like gp2 type volumes and gp3 type volumes and locally
+  attached SSDs with RAID0:
+  - `--rocksdb.level0-slowdown-trigger` has been decreased from 20 to 16
+  - `--rocksdb.level0-stop-trigger` has been increased from 36 to 256
+  - `--rocksdb.max-background-jobs` has been increased to the number of cores
+    and is no longer limited to 8
+  - `--rocksdb.enabled-pipelined-write` is now `true` by default instead of `false`
+  - `--rocksdb.throttle-frequency` has been decreased from 60000ms down to
+    1000ms per iteration, which makes the RocksDB throttle react much quicker
+  - `--rocksdb.pending-compactions-slowdown-trigger` has been decreased from
+    64 GB down to 8 GB
+  - `--rocksdb.pending-compactions-stop-trigger` has been decreased from
+    256 GB down to 16 GB
+  - `--rocksdb.throttle-slots` has been increased from 63 to 120
+  - `--rocksdb.encryption-hardware-acceleration` is now `true` by default,
+    which helps performance and should not create any problems, since we
+    require sandybridge anyway.
+  Combined, these changes help ArangoDB/RocksDB to react quicker to a backlog
+  of background jobs and thus to prevent catastrophic stops which abort
+  data ingestion or lead to cluster internal timeouts.
+
+* Added startup options to adjust previously hard-coded parameters for RocksDB's
+  behavior:
+
+  - `--rocksdb.pending-compactions-bytes-slowdown-trigger` controls RocksDB's
+    setting `soft_pending_compaction_bytes_limit`, which controls how many
+    pending compaction bytes RocksDB tolerates before it slows down writes.
+  - `--rocksdb.pending-compactions-bytes-stop-trigger` controls RocksDB's
+    setting `hard_pending_compaction_bytes_limit`, which controls how many
+    pending compaction bytes RocksDB tolerates before it stops writes entirely.
+  - `--rocksdb.throttle-lower-bound-bps`, which controls a lower bound for the
+    bandwidth restriction on RocksDB writes the throttle imposes.
+
+* Fixed PRESUPP-439: In arangoimport, for CSV and TSV files, it could happen 
+  that a buffer containing only the header would be sent to the server, and 
+  also batches would contain the documents equivalent to the csv rows in them, 
+  but not the header, which should be sent together with the documents. 
+
+* Adjust default value for startup option `--rocksdb.max-subcompactions` from 1
+  to 2. This allows compactions jobs to be broken up into disjoint ranges which
+  can be processed in parallel.
+
+* Allow initial, full dump shard synchronization to abort prematurely if it 
+  turns out that the follower was removed from the plan as a follower (e.g. if 
+  there are enough other in-sync followers).
+
+* Make per-server values "numberOfCores" and "physicalMemory" available to
+  agency to improve quality of potential future shard rebalancing algorithms.
+
+* Unify the result structure of `db._version(true)` calls for arangosh and
+  server console. Previously such a call in the server console would return
+  a different structure that only consisted of the `details` subobject.
+  This is now unified so that the result structure in the server console is
+  consistent with arangosh, but strictly speaking this is a breaking change.
+
+* Set the limit for ArangoSearch segment size to 256MB during recovery to avoid
+  OOM kill in rare cases.
+
+* Updated arangosync to 2.7.0.
+
+* Updated Enterprise license behavior: now there will be a one hour period for
+  a new deployment to provide the license. After that period, the read-only mode
+  will be enforced.
+
+* Added startup security option `--foxx.allow-install-from-remote` to allow 
+  installing Foxx apps from remote URLs other than Github. The option is turned 
+  off by default.
+
+* Cancel ongoing RocksDB compactions on server shutdown.
+
+* Added new option `--custom-query-bindvars` to arangoexport, so queries given 
+  via option `--custom-query` can have bind variables in them. Also changed the 
+  flag names `--query` to `--custom-query` and `--query-max-runtime` to 
+  `--custom-query-max-runtime` to be like in the other client-tools.
+
+* Improve some RocksDB-related error messages during server startup.
+
+* Added startup options to adjust previously hard-coded parameters for the 
+  RocksDB throttle:
+  - `--rocksdb.throttle-frequency`: frequency for write-throttle calculations
+    (in milliseconds, default value is 60000, i.e. 60 seconds).
+  - `--rocksdb.throttle-slots`: number of historic measures to use for throttle
+    value calculation (default value is 63).
+  - `--rocksdb.throttle-scaling-factor`: adaptiveness scaling factor for write-
+    throttle calculations (default value is 17). There is normally no need to
+    change this value.
+  - `--rocksdb.throttle-max-write-rate`: maximum write rate enforced by the
+    throttle (in bytes per second, default value is 0, meaning "unlimited").
+    The actual write rate will be the minimum of this value and the value the
+    throttle calculation produces.
+  - `--rocksdb.throttle-slow-down-writes-trigger`: number of level 0 files whose
+    payload is not considered in throttle calculations when penalizing the 
+    presence of L0 files. There is normally no need to change this value.
+  All these options will only have an effect if `--rocksdb.throttle` is enabled
+  (which is the default). The configuration options introduced here use the
+  previously hard-coded settings as their default values, so there should not be
+  a change in behavior if the options are not adjusted.
+
+* Raised minimal macOS supported version to 10.15 (Catalina).
+
+* Remove background thread `RocksDBShaThread` for background SHA256 checksum
+  calculation for .sst files in the Enterprise Edition. The checksums are now
+  calculated incrementally while writing into the .sst files, and the checksum
+  files will be stored on disk as soon as an .sst file is made durable by
+  RocksDB. There is no more need to periodically scan the database directory
+  and look for any additional .sst files.
+
+* Fix BTS-580: Trimmed the password field from the payload in the client 
+  requests when displaying error messages in arangorestore, because they 
+  displayed the password as plain text. 
+
+* Refactored unit tests with the `grey` keyword, which is for skipping certain 
+  tests. A test file that did not perform any test, but only had a function to 
+  sleep, was removed. Two test files were renamed so they would not be skipped.
+
+* Fixed BTS-611: In some cases AQL queries, in particular in a cluster,
+  reported the wrong fullCount when the optimizer rule(s)
+  `late-document-materialization and/or `sort-limit` were active.
+
+* Fix BTS-535: TakeoverShardLeadership waits properly for Current data in
+  ClusterInfo. This avoids a fake warning and fake test failure.
+
+* APM-256: make arangoexport escape potential formulae in CSV exports.
+  This addresses a potential security issue when exporting specially
+  crafted documents to CSV, opening the CSV file in MS Excel or OpenOffice
+  and then clicking links in any of the tainted cells.
+  
+  This change also adds a new option `--escape-csv-formulae` to
+  toggle the escaping behavior for potential formulae values. The
+  option is turned on by default.
+
+* Second step of hotbackup transfer job cleanup. Now locks are also cleaned up
+  as well as old, seemingly unfinished jobs.
+
+* Defer intermediate commits in the middle of a multi-document (array)
+  operation. This is to ensure that the RocksDB key locks for all participating
+  document keys are still held while the operations are replicating via the
+  synchronous replication.
+
+* Fix potential read inconsistency for single document operations.
+  Wen reading a single document that is concurrently being updated or replaced,
+  the read operation could erroneously return a "document not found" error
+  although the document actually existed. This only happened for single
+  document operations, i.e., no transactions or AQL queries.
+
+* Fix GitHub issue #15084. Fixed a potential use-after-free on Windows for
+  queries that used the NeighborsEnumerator (though other PathEnumerators
+  might have been affected as well).
+
+* Cleanup and properly fail hotbackup upload and download jobs if a dbserver
+  fails or is restarted during the transfer. This gets rid of upload and
+  download blockages in these circumstances.
+
+* Added new option `--custom-query-bindvars` to arangobench, so queries given via 
+  option `--custom-query` can have bind variables in them.
+
+* BTS-624: The `move-calculations-up` optimization rule is now also applied to
+  subqueries, when they don't have dependencies on the outer nodes, don't have
+  modification nodes and don't read their own writes. This fixed the execution
+  of a query without the splicing-subqueries option being faster than the
+  execution of a query with this option (after version 3.8, this option cannot
+  be switched off). 
+
+* Changed arangobench concurrency flag name from `--concurrency` to `--threads`.
+
+* Added the following metrics for revision trees:
+  - `arangodb_revision_tree_hibernations_total`: number of times a revision
+    tree was compressed in RAM and set to hibernation
+  - `arangodb_revision_tree_resurrections_total`: number of times a revision
+    tree was resurrected from hibernation and uncompressed in RAM
+  - `arangodb_revision_tree_memory_usage`: total memory usage (in bytes) by
+    all active revision trees
+
+* Added metric `rocksdb_wal_sequence` to track the current tip of the
+  WAL's sequence number.
+
+* APM-217: deprecate the usage of fulltext indexes.
+
+* Improve visibility in case of potential data corruption between primary
+  index and actual document store in documents column family.
+
+* Changed "arangosh" directory name to "client-tools", because the directory 
+  contains the code for all client tools and not just arangosh.
+
+* Make `db.<collection>.figures(true)` operate on the same snapshot when 
+  counting the number of documents in the documents column family and the
+  indexes. This ensures consistency for the results of a single figures result.
+
+* Upgraded bundled version of RocksDB to 6.27.
+
+* Updated immer to version 0.7.0.
+
+* Improved sync protocol to commit after each chunk and get rid of
+  potentially dangerous NO_INDEXING optimization.
+
+* Removed an invalid assertion that could be triggered during chaos testing in
+  maintainer mode.
+
+* Simplify the tagging of EnumerateCollectionNodes and IndexNodes with the
+  "read-own-writes" flag. Previously the tagging only happened after all query
+  optimizations were completed, making the tag unavailable to the optimizer.
+  Now the tag is set early on, so it is accessible by the query optimizer.
+
+* Made the `--version` and `--version-json` commands usable in arangobackup
+  when no positional argument (operation type) was specified. Previously,
+  arangobackup insisted on specifying the operation type alongside the
+  `--version` or `--version-json` commands.
+
+* Updated boost to version 1.77.0.
+
+* Removed the following deprecated arangobench testcases:
+  * aqltrx
+  * aqlv8
+  * counttrx
+  * deadlocktrx
+  * multi-collection
+  * multitrx
+  * random-shapes
+  * shapes
+  * shapes-append
+  * skiplist
+  * stream-cursor
+
+* Renamed arangobench testcase "hash" to "persistent-index".
+
+* Fixed an issue in old incremental sync protocol with document keys that
+  contained special characters (`%`). These keys could be send unencoded in
+  the incremental sync protocol, leading to wrong key ranges being transfered
+  between leader and follower, and thus causing follow-up errors and preventing
+  getting in sync.
+
+* APM-209: Histogram displaying is now switched off by default. For displaying
+  it, the new flag `histogram.generate` must be set to true. Its default value
+  is false for compatibility with other versions and also for complying with the
+  histogram not being displayed by default. If this flag is not set to true, but
+  other histogram flags are addressed, e.g. `--histogram.interval-size 500`,
+  everything will still run normally, but a warning message will be displayed
+  saying that the histogram is switched off and setting this flag would not be
+  of use. When the flag is set to true, the histogram is displayed before the
+  summary in the output.
+
+* Extend Windows minidumps with memory regions referenced from CPU registers or
+  the stack to provide more contextual information in case of crashes.
+
+* Add option to content-transfer encode gzip Foxx replies.
+
+* Simplify internal request compression/decompression handling code.
+
+* In the shards overview the list of servers to move the leader shard to, now
+  also contains the current followers. This means that from now on also active
+  follower servers can be nominated as the leading server for that specific
+  shard.
+
+* Fix issues during rolling upgrades from 3.8.0 to 3.8.x (x >= 1) and from
+  3.7.x (x <= 12) to 3.8.3. The problem was that older versions did not handle
+  following term ids that are sent from newer versions during synchronous
+  replication operations.
+
+* Added Enterprise Sharded Graphs Simulation: Now it is possible to test
+  SmartGraphs and SatelliteGraphs on a single server instance and then to port
+  them to a cluster with multiple servers. All existing types of SmartGraphs
+  are eligible to this procedure: SmartGraphs themselves, Disjoint SmartGraphs,
+  Hybrid SmartGraphs and Hybrid Disjoint SmartGraphs. One can create a graph of
+  any of those types in the usual way, e.g., using `arangosh`, but on a single
+  server, then dump it, start a cluster (with multiple servers) and restore the
+  graph in the cluster. The graph and the collections will keep all properties
+  that are kept when the graph is already created in a cluster. This feature is
+  only available in the Enterprise Edition.
+
+* Close a potential gap during shard synchronization when moving from the
+  initial sync step to the WAL tailing step. In this small gap the leader 
+  could purge some of the WAL files that would be required by the following
+  WAL tailing step. This was possible because at the end of the initial sync
+  step, the snapshot on the leader is released, and there is a small window
+  of time before the follower will issue its first WAL tailing request.
+
+* Improve Shards overview in web UI: the number of currently syncing shards is
+  now displayed per collection. Additionally, shards on failed servers are now
+  displayed in a different color.
+
+* Increase default stack size on Windows from 1MB to 4MB. This should allow
+  execution of larger queries without overflowing the stack.
+
+* Fixed BTS-637: Slow SynchronizeShard jobs which need to copy data could
+  block quick SynchronizeShard jobs which have the data and only need to
+  resync.
+
+* When enabling the cluster supervision maintenance mode via the web UI, there
+  is now the possibility to select a duration for the maintenance mode.
+  Previous versions of ArangoDB always enabled the maintenance mode for one
+  hour, without allowing any choice here.
+
+* Remove unsupported `--server.default-api-compatibility` startup option.
+
+* Fixed potential undefined behavior in edge cache during cache migration tasks.
+  There was a short window of time in which an already freed Table could be
+  used by concurrently running edge lookups.
+
+* DEVSUP-899: Fixed Subquery execution
+  in a very rare case a subquery, nested in another subquery, was not
+  executed, which is fixed now. Technical details:
+  If we have two subqueries: `Outer` and `Nested` the Outer will define
+  the input for Nested. And Outer has the pattern: 1 input, subqueryDone, 1
+  input, subqueryDone [...] and our internal batching did cut a batch like
+  this: [<...>, input (A)] | [subqueryDone, input (B), subqueryDone, <...>]
+  than Nested on input (B) was not executed. As soon as we have more than 1
+  input per Outer, or a different cutting position, all was good.
+
 * Fixed SEARCH-261: Fix possible race between file creation and directory
   cleaner (ArangoSearch).
 

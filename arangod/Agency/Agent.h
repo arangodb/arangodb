@@ -36,7 +36,7 @@
 #include "Futures/Promise.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadWriteLock.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/Fwd.h"
 
 struct TRI_vocbase_t;
 
@@ -123,7 +123,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
   /// @brief Long pool for higher index than given if leader or else empty builder and false
   std::tuple<futures::Future<query_t>, bool, std::string> poll(
-    index_t const& index, double const& timeout);
+    index_t index, double timeout);
 
   /// @brief Inquire success of logs given clientIds
   write_ret_t inquire(query_t const&);
@@ -138,7 +138,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   void removeTrxsOngoing(Slice trxs) noexcept;
 
   /// @brief Check whether a trx is ongoing.
-  bool isTrxOngoing(std::string& id);
+  bool isTrxOngoing(std::string const& id) const noexcept;
 
   /// @brief Received by followers to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
@@ -160,7 +160,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   ///        if qu is nullptr, we're resigning.
   ///        Caller must have _promLock!
   void triggerPollsNoLock(
-    query_t qu = nullptr,
+    query_t qu,
     SteadyTimePoint const& tp = std::chrono::steady_clock::now() + std::chrono::seconds(60));
 
   /// @brief trigger all expire polls
@@ -222,7 +222,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   AgentInterface::raft_commit_t waitFor(index_t last_entry, double timeout = 10.0) override;
 
   /// @brief Check if everything up to a given index has been committed:
-  bool isCommitted(index_t last_entry) override;
+  bool isCommitted(index_t last_entry) const override;
 
   /// @brief Convencience size of agency
   size_t size() const;
@@ -248,7 +248,10 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
   /// @brief execute a callback while holding _ioLock
   ///  and write lock for _readDB
+#if 0
+// currently not called from anywhere
   void executeLockedWrite(std::function<void()> const& cb);
+#endif
 
   /// @brief execute a callback while holding _transientLock
   void executeTransientLocked(std::function<void()> const& cb);
@@ -281,17 +284,11 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Get notification as inactive pool member
   void notify(query_t const&);
 
-  /// @brief All there is in the state machine
-  query_t allLogs() const;
-
   /// @brief Get copy of log entries starting with begin ending on end
   std::vector<log_t> logs(index_t begin = 0, index_t end = (std::numeric_limits<uint64_t>::max)()) const;
 
   /// @brief Last contact with followers
   void lastAckedAgo(Builder&) const;
-
-  /// @brief Am I active agent
-  bool active() const;
 
   /// @brief Are we ready for RAFT?
   bool ready() const;
@@ -300,7 +297,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   void ready(bool b);
 
   /// @brief Reset RAFT timeout intervals
-  void resetRAFTTimes(double, double);
+  void resetRAFTTimes(double minTimeout, double maxTimeout);
 
   /// @brief How long back did I take over leadership, result in seconds
   int64_t leaderFor() const;
@@ -323,6 +320,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
                        std::chrono::steady_clock::now().time_since_epoch())
                        .count();
   }
+
   int getPrepareLeadership() { return _preparing; }
 
   // #brief access Inception thread
@@ -333,13 +331,13 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
   /// @brief Assignment of persisted state, only used at startup, one needs
   /// to hold the _ioLock to call this
-  void setPersistedState(VPackSlice const&);
+  void setPersistedState(VPackSlice compaction);
 
   /// @brief Get our own id
-  bool id(std::string const&);
+  bool id(std::string const& id);
 
   /// @brief Merge configuration with a persisted state
-  bool mergeConfiguration(VPackSlice const&);
+  bool mergeConfiguration(VPackSlice persisted);
 
   /// @brief Wakeup main loop of the agent (needed from Constituent)
   void wakeupMainLoop() {
@@ -352,13 +350,13 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   void activateAgency();
 
   /// @brief add agent to configuration (from State after successful local persistence)
-  void updateConfiguration(VPackSlice const&);
+  void updateConfiguration(VPackSlice slice);
 
   /// @brief patch some configuration values, this is for manual interaction with
   /// the agency leader.
-  void updateSomeConfigValues(VPackSlice);
+  void updateSomeConfigValues(VPackSlice data);
 
-  Histogram<log_scale_t<float>>& commitHist() const;
+  metrics::Histogram<metrics::LogScale<float>>& commitHist() const;
 
  private:
 
@@ -527,7 +525,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   std::unordered_set<std::string> _ongoingTrxs;
 
   // lock for _ongoingTrxs
-  arangodb::Mutex _trxsLock;
+  mutable arangodb::Mutex _trxsLock;
 
   // @brief promises for poll interface and the guard
   //        The map holds all current poll promises.
@@ -539,15 +537,15 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   index_t _lowestPromise;
   std::multimap<SteadyTimePoint, futures::Promise<query_t>> _promises;
 
-  Counter& _write_ok;
-  Counter& _write_no_leader;
-  Counter& _read_ok;
-  Counter& _read_no_leader;
-  Histogram<log_scale_t<float>>& _write_hist_msec;
-  Histogram<log_scale_t<float>>& _commit_hist_msec;
-  Histogram<log_scale_t<float>>& _append_hist_msec;
-  Histogram<log_scale_t<float>>& _compaction_hist_msec;
-  Gauge<uint64_t>& _local_index;
+  metrics::Counter& _write_ok;
+  metrics::Counter& _write_no_leader;
+  metrics::Counter& _read_ok;
+  metrics::Counter& _read_no_leader;
+  metrics::Histogram<metrics::LogScale<float>>& _write_hist_msec;
+  metrics::Histogram<metrics::LogScale<float>>& _commit_hist_msec;
+  metrics::Histogram<metrics::LogScale<float>>& _append_hist_msec;
+  metrics::Histogram<metrics::LogScale<float>>& _compaction_hist_msec;
+  metrics::Gauge<uint64_t>& _local_index;
 
 };
 }  // namespace consensus

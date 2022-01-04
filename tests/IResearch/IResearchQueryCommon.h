@@ -22,12 +22,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_IRESEARCH_QUERY_COMMON_H
-#define ARANGOD_AQL_IRESEARCH_QUERY_COMMON_H
+#pragma once
 
 #include "gtest/gtest.h"
 
-#include "3rdParty/iresearch/tests/tests_config.hpp"
+#include "../3rdParty/iresearch/tests/tests_config.hpp"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/norm.hpp"
@@ -188,5 +187,3 @@ class IResearchQueryTest
     return GetParam();
   }
 };  // IResearchQueryTest
-
-#endif // ARANGOD_AQL_IRESEARCH_QUERY_COMMON_H

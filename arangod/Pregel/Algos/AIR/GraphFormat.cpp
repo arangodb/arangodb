@@ -81,7 +81,7 @@ void filterDocumentData(VPackBuilder& finalBuilder, PathList paths,
                           size_t pathLength = path.size();
                           size_t iterationStep = 0;
 
-                          std::vector<VPackStringRef> pathInner;
+                          std::vector<std::string_view> pathInner;
 
                           VPackBuilder innerArrayBuilder;
                           innerArrayBuilder.openObject();  // open outer object

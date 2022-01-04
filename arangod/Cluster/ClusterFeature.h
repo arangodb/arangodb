@@ -29,7 +29,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Network/NetworkFeature.h"
-#include "RestServer/Metrics.h"
+#include "Metrics/Fwd.h"
 
 namespace arangodb {
 
@@ -98,11 +98,23 @@ class ClusterFeature : public application_features::ApplicationFeature {
   /// - "jwt-write"  = JWT required to access post/put/delete operations
   /// - "jwt-compat" = compatibility mode = same permissions as in 3.7
   std::string const& apiJwtPolicy() const noexcept { return _apiJwtPolicy; }
-  
-  Counter& followersDroppedCounter() { return _followersDroppedCounter->get(); }
-  Counter& followersRefusedCounter() { return _followersRefusedCounter->get(); }
-  Counter& followersWrongChecksumCounter() { return _followersWrongChecksumCounter->get(); }
-  Counter& followersTotalRebuildCounter() { return _followersTotalRebuildCounter->get(); }
+
+  metrics::Counter& followersDroppedCounter() {
+    TRI_ASSERT(_followersDroppedCounter != nullptr);
+    return *_followersDroppedCounter;
+  }
+  metrics::Counter& followersRefusedCounter() {
+    TRI_ASSERT(_followersRefusedCounter != nullptr);
+    return *_followersRefusedCounter;
+  }
+  metrics::Counter& followersWrongChecksumCounter() {
+    TRI_ASSERT(_followersWrongChecksumCounter != nullptr);
+    return *_followersWrongChecksumCounter;
+  }
+  metrics::Counter& followersTotalRebuildCounter() {
+    TRI_ASSERT(_followersTotalRebuildCounter != nullptr);
+    return *_followersTotalRebuildCounter;
+  }
 
   /**
    * @brief Add databases to dirty list
@@ -128,9 +140,9 @@ class ClusterFeature : public application_features::ApplicationFeature {
   void pruneAsyncAgencyConnectionPool() {
     _asyncAgencyCommPool->pruneConnections();
   }
-  
+
   /// the following methods may also be called from tests
-  
+
   void shutdownHeartbeatThread();
   /// @brief wait for the AgencyCache to shut down
   /// note: this may be called multiple times during shutdown
@@ -143,7 +155,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   void setSyncerShutdownCode(ErrorCode code) { _syncerShutdownCode = code; }
 #endif
 
-  Histogram<log_scale_t<uint64_t>>& agency_comm_request_time_ms() { return _agency_comm_request_time_ms; }
+  metrics::Histogram<metrics::LogScale<uint64_t>>& agency_comm_request_time_ms() { return _agency_comm_request_time_ms; }
 
  protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
@@ -181,12 +193,12 @@ class ClusterFeature : public application_features::ApplicationFeature {
   uint64_t _heartbeatInterval = 0;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
-  Histogram<log_scale_t<uint64_t>>& _agency_comm_request_time_ms;
+  metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
   std::unique_ptr<network::ConnectionPool> _asyncAgencyCommPool;
-  std::optional<std::reference_wrapper<Counter>> _followersDroppedCounter;
-  std::optional<std::reference_wrapper<Counter>> _followersRefusedCounter;
-  std::optional<std::reference_wrapper<Counter>> _followersWrongChecksumCounter;
-  std::optional<std::reference_wrapper<Counter>> _followersTotalRebuildCounter;
+  metrics::Counter* _followersDroppedCounter = nullptr;
+  metrics::Counter* _followersRefusedCounter = nullptr;
+  metrics::Counter* _followersWrongChecksumCounter = nullptr;
+  metrics::Counter* _followersTotalRebuildCounter = nullptr;
   std::shared_ptr<AgencyCallback> _hotbackupRestoreCallback;
 
   /// @brief lock for dirty database list
