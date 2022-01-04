@@ -8464,8 +8464,8 @@ AqlValue Functions::ShardId(ExpressionContext* expressionContext,
   auto& vocbase = expressionContext->trx().vocbase();
   auto role = ServerState::instance()->getRole();
   std::shared_ptr<LogicalCollection> collection;
-  auto const colName = col.stringView();
-  auto const dbName = vocbase.name();
+  auto const colName = col.copyString();
+  auto const& dbName = vocbase.name();
   auto const cluster = role == ServerState::ROLE_COORDINATOR || role == ServerState::ROLE_DBSERVER;
 
   if (cluster) {
