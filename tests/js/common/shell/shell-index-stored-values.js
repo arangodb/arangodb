@@ -354,6 +354,19 @@ function indexStoredValuesPlanSuite() {
       assertEqual(["value1", "value2"], nodes[1].projections);
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
     },
+    
+    testExecutionPlanUsedWhenMultipleCandidates: function () {
+      c.ensureIndex({ type: "persistent", fields: ["value2"], storedValues: ["value1"] });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value3"] });
+      const query =" FOR doc IN " + cn + " RETURN [doc.value1, doc.value2]"; 
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
+      assertTrue(nodes[1].indexCoversProjections);
+      assertEqual(["value1", "value2"], nodes[1].projections);
+      assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
+    },
+    
   };
 }
 
