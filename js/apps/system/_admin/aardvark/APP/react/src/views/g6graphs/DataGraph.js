@@ -36,6 +36,7 @@ import { DeleteNodeFromGraphData } from './DeleteNodeFromGraphData';
 import { AddNodeToGraphData } from './AddNodeToGraphData';
 import { AddEdgeToGraphData } from './AddEdgeToGraphData';
 import { ResponseInfo } from './ResponseInfo';
+import { SlideInMenu } from './SlideInMenu';
 import './dataGraphStyles.css';
 
 const GraphDataInfo = (graphData) => {
@@ -187,6 +188,7 @@ const DataGraph = () => {
 
     return (
       <div>
+        <strong>Choose Layout</strong>
         <Select style={{ width: '90%' }} value={value} onChange={onChange}>
           {options.map(item => {
             const { type } = item;
@@ -632,51 +634,52 @@ const DataGraph = () => {
           extra={
             <>
               <Grid>
-                <Cell size={'1-4'}>
-                <ResponseInfo
-                  duration={responseTimes.fetchDuration}
-                />
+                <Cell size={'4-4'}>
+                  <SlideInMenu>
+                    <LayoutSelector options={layouts} value={type} onChange={handleChange} />
+                    <hr />
+                    <NodeList
+                      nodes={graphData.nodes}
+                      graphData={graphData}
+                      onNodeInfo={() => console.log('onNodeInfo() in MenuGraph')}
+                      onDeleteNode={onDeleteNode} />
+                    <hr />
+                    <EdgeList edges={graphData.edges} />
+                    <hr />
+                    <AddNodeToGraphData
+                        graphData={graphData}
+                        onAddNode={(newGraphData) => {
+                          console.log('newGraphData in addNode: ', newGraphData);
+                          setGraphData(newGraphData);
+                          //setShowDeleteNodeModal(false);
+                        }}
+                      />
+                    <hr />
+                    <AddEdgeToGraphData
+                        graphData={graphData}
+                        onAddEdge={(newGraphData) => {
+                          console.log('newGraphData in addEdge: ', newGraphData);
+                          setGraphData(newGraphData);
+                        }}
+                      />
+                    <hr />
+                    <AqlEditor
+                        queryString={queryString}
+                        onNewSearch={(myString) => {setQueryString(myString)}}
+                        onQueryChange={(myString) => {setQueryString(myString)}}
+                        onOnclickHandler={(myString) => changeCollection(myString)}
+                        onReduceNodes={(nodes) => changeGraphNodes(nodes)}
+                        onAqlQueryHandler={(myString) => setAqlQueryString(myString)}
+                    />
+                  </SlideInMenu>
+                  <ResponseInfo
+                    duration={responseTimes.fetchDuration}
+                  />
+                  <hr style={{"width": "90%" }} />
+                  <GraphDataInfo graphData={graphData}/>
                   <CollectionLoader onLoadCollection={(graphName) => {
                     changeCollection(graphName);
                     setGraphName(graphName);}}
-                  />
-                  <hr style={{width: '90%'}} />
-                  <AqlEditor
-                    queryString={queryString}
-                    onNewSearch={(myString) => {setQueryString(myString)}}
-                    onQueryChange={(myString) => {setQueryString(myString)}}
-                    onOnclickHandler={(myString) => changeCollection(myString)}
-                    onReduceNodes={(nodes) => changeGraphNodes(nodes)}
-                    onAqlQueryHandler={(myString) => setAqlQueryString(myString)}
-                  />
-                </Cell>
-                <Cell size={'1-4'}>
-                  <LayoutSelector options={layouts} value={type} onChange={handleChange} />
-                  <NodeList
-                  nodes={graphData.nodes}
-                  graphData={graphData}
-                  onNodeInfo={() => console.log('onNodeInfo() in MenuGraph')}
-                  onDeleteNode={onDeleteNode} />
-                  <EdgeList edges={graphData.edges} />
-                  <GraphDataInfo graphData={graphData}/>
-                </Cell>
-                <Cell size={'1-4'}>
-                  <AddNodeToGraphData
-                    graphData={graphData}
-                    onAddNode={(newGraphData) => {
-                      console.log('newGraphData in addNode: ', newGraphData);
-                      setGraphData(newGraphData);
-                      //setShowDeleteNodeModal(false);
-                    }}
-                  />
-                </Cell>
-                <Cell size={'1-4'}>
-                  <AddEdgeToGraphData
-                    graphData={graphData}
-                    onAddEdge={(newGraphData) => {
-                      console.log('newGraphData in addEdge: ', newGraphData);
-                      setGraphData(newGraphData);
-                    }}
                   />
                 </Cell>
               </Grid>
