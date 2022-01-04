@@ -3,6 +3,14 @@ v3.8.5 (XXXX-XX-XX)
 
 * Added new AQL function SHARD_ID.
 
+* APM-78: Added startup security option `--foxx.allow-install-from-remote` to
+  allow installing Foxx apps from remote URLs other than Github. The option is
+  turned on by default to ensure backwards compatibility with previous version,
+  but can be turned off to disallow installation of Foxx apps from arbitrary
+  sources.
+  Starting with ArangoDB 3.9, the default value for the option will flip from
+  `true` to `false`.
+
 * Fixed BTS-693: Sort-limit rule now always ensures proper LIMIT node placement
   to avoid possible invalid results in the fullCount data.
 
