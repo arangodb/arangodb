@@ -320,7 +320,7 @@ auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
   // This assertion is no longer true, as followers can now be added.
   // TRI_ASSERT(newLCI >= _largestCommonIndex)
   //     << "req.lci = " << newLCI << ", this.lci = " << _largestCommonIndex;
-  if (_largestCommonIndex != newLCI) {
+  if (_largestCommonIndex < newLCI) {
     LOG_CTX("fc467", TRACE, _follower._loggerContext)
         << "largest common index went from " << _largestCommonIndex << " to "
         << newLCI << ".";
