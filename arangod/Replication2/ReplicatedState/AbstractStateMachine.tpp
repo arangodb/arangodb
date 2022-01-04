@@ -32,19 +32,19 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-template <typename T>
+template<typename T>
 auto replicated_state::AbstractStateMachine<T>::getIterator(LogIndex first)
     -> std::unique_ptr<LogIterator> {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-template <typename T>
+template<typename T>
 auto replicated_state::AbstractStateMachine<T>::getEntry(LogIndex)
     -> std::optional<T> {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-template <typename T>
+template<typename T>
 auto replicated_state::AbstractStateMachine<T>::insert(T const& v) -> LogIndex {
   velocypack::UInt8Buffer payload;
   {
@@ -54,21 +54,22 @@ auto replicated_state::AbstractStateMachine<T>::insert(T const& v) -> LogIndex {
   return log->getLeader()->insert(LogPayload(std::move(payload)));
 }
 
-template <typename T>
-auto replication2::replicated_state::AbstractStateMachine<T>::waitFor(LogIndex idx)
-    -> futures::Future<replicated_log::WaitForResult> {
+template<typename T>
+auto replication2::replicated_state::AbstractStateMachine<T>::waitFor(
+    LogIndex idx) -> futures::Future<replicated_log::WaitForResult> {
   return log->getParticipant()->waitFor(idx);
 }
 
-template <typename T>
+template<typename T>
 void replicated_state::AbstractStateMachine<T>::releaseIndex(LogIndex) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 namespace {
-template <typename T>
+template<typename T>
 struct DeserializeLogIterator : TypedLogRangeIterator<T> {
-  explicit DeserializeLogIterator(std::unique_ptr<replication2::LogRangeIterator> base)
+  explicit DeserializeLogIterator(
+      std::unique_ptr<replication2::LogRangeIterator> base)
       : base(std::move(base)) {}
 
   auto next() -> std::optional<T> override {
@@ -79,19 +80,17 @@ struct DeserializeLogIterator : TypedLogRangeIterator<T> {
     return std::nullopt;
   }
 
-  auto range() const noexcept -> LogRange override {
-    return base->range();
-  }
+  auto range() const noexcept -> LogRange override { return base->range(); }
 
   std::unique_ptr<replication2::LogRangeIterator> base;
 };
 }  // namespace
 
-template <typename T>
+template<typename T>
 auto replicated_state::AbstractStateMachine<T>::triggerPollEntries()
     -> futures::Future<Result> {
-  auto nextIndex =
-      _guardedData.doUnderLock([&](GuardedData& guard) -> std::optional<LogIndex> {
+  auto nextIndex = _guardedData.doUnderLock(
+      [&](GuardedData& guard) -> std::optional<LogIndex> {
         if (guard.pollOnGoing) {
           return std::nullopt;
         }
@@ -109,14 +108,16 @@ auto replicated_state::AbstractStateMachine<T>::triggerPollEntries()
             auto [from, to] = res->range();  // [from, to)
             TRI_ASSERT(from != to);
 
-            auto iter = std::make_unique<DeserializeLogIterator<T>>(std::move(res));
-            return self->applyEntries(std::move(iter)).thenValue([self, to = to](Result&& result) {
-              auto guard = self->_guardedData.getLockedGuard();
-              guard->pollOnGoing = false;
-              TRI_ASSERT(to > guard->nextIndex);
-              guard->nextIndex = to;
-              return std::move(result);
-            });
+            auto iter =
+                std::make_unique<DeserializeLogIterator<T>>(std::move(res));
+            return self->applyEntries(std::move(iter))
+                .thenValue([self, to = to](Result&& result) {
+                  auto guard = self->_guardedData.getLockedGuard();
+                  guard->pollOnGoing = false;
+                  TRI_ASSERT(to > guard->nextIndex);
+                  guard->nextIndex = to;
+                  return std::move(result);
+                });
           }
 
           return futures::Future<Result>{TRI_ERROR_NO_ERROR};
@@ -126,7 +127,7 @@ auto replicated_state::AbstractStateMachine<T>::triggerPollEntries()
   return futures::Future<Result>{TRI_ERROR_NO_ERROR};
 }
 
-template <typename T>
+template<typename T>
 replicated_state::AbstractStateMachine<T>::AbstractStateMachine(
     std::shared_ptr<replicated_log::ReplicatedLog> log)
     : log(std::move(log)) {}
