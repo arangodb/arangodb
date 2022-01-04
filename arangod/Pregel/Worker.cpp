@@ -176,7 +176,7 @@ template<typename V, typename E, typename M>
 void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
                                         VPackBuilder& response) {
   // Only expect serial calls from the conductor.
-  // Lock to prevent malicous activity
+  // Lock to prevent malicious activity
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state != WorkerState::IDLE) {
     LOG_PREGEL("b8506", ERR)
@@ -191,7 +191,7 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
                                   "Invalid gss in %s:%d", __FILE__, __LINE__);
   }
-  const uint64_t gss = (uint64_t)gssSlice.getUInt();
+  const auto gss = (uint64_t)gssSlice.getUInt();
   if (_expectedGSS != gss) {
     THROW_ARANGO_EXCEPTION_FORMAT(
         TRI_ERROR_BAD_PARAMETER,

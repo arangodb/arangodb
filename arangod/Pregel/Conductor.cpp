@@ -191,7 +191,7 @@ bool Conductor::_startGlobalStep() {
 
   {
     VPackArrayBuilder guard(&messagesFromWorkers);
-    // we are explicitly expecting an response containing the aggregated
+    // we are explicitly expecting a response containing the aggregated
     // values as well as the count of active vertices
     auto res = _sendToAllDBServers(
         Utils::prepareGSSPath, b, [&](VPackSlice const& payload) {
@@ -345,7 +345,7 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
 
 /// Will optionally send a response, to notify the worker of converging
 /// aggregator
-/// values which can be coninually updated (in async mode)
+/// values which can be continually updated (in async mode)
 VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   // this method can be called multiple times in a superstep depending on
@@ -355,7 +355,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
                                    _state == ExecutionState::CANCELED)) {
     LOG_PREGEL("dc904", WARN)
         << "Conductor did received a callback from the wrong superstep";
-    return VPackBuilder();
+    return {};
   }
 
   if (auto reports = data.get("reports"); reports.isArray()) {
@@ -366,13 +366,13 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   // In normal mode this will wait for a response from each worker,
   // in async mode this will wait until all messages were processed
   _statistics.accumulateMessageStats(data);
-  if (_asyncMode == false) {  // in async mode we wait for all responded
+  if (!_asyncMode) {  // in async mode we wait for all responded
     _ensureUniqueResponse(data);
     // wait for the last worker to respond
     if (_respondedServers.size() != _dbServers.size()) {
-      return VPackBuilder();
+      return {};
     }
-  } else if (_statistics.clientCount() < _dbServers.size() ||  // no messages
+   } else if (_statistics.clientCount() < _dbServers.size() ||  // no messages
              !_statistics.allMessagesProcessed()) {  // haven't received msgs
     VPackBuilder response;
     _aggregators->aggregateValues(data);
@@ -412,7 +412,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
           << "No further action taken after receiving all responses";
     }
   });
-  return VPackBuilder();
+  return {};
 }
 
 void Conductor::finishedRecoveryStep(VPackSlice const& data) {
@@ -495,13 +495,13 @@ void Conductor::startRecovery() {
   MUTEX_LOCKER(guard, _callbackMutex);
   if (_state != ExecutionState::RUNNING && _state != ExecutionState::IN_ERROR) {
     return;  // maybe we are already in recovery mode
-  } else if (_algorithm->supportsCompensation() == false) {
+  } else if (!_algorithm->supportsCompensation()) {
     LOG_PREGEL("12e0e", ERR) << "Algorithm does not support recovery";
     cancelNoLock();
     return;
   }
 
-  // we lost a DBServer, we need to reconfigure all remainging servers
+  // we lost a DBServer, we need to reconfigure all remaining servers
   // so they load the data for the lost machine
   updateState(ExecutionState::RECOVERING);
   _statistics.reset();
@@ -602,7 +602,7 @@ static void resolveInfo(
     for (auto const& shard : *shardIDs) {
       std::shared_ptr<std::vector<ServerID> const> servers =
           ci.getResponsibleServer(shard);
-      if (servers->size() > 0) {
+      if (!servers->empty()) {
         serverMap[(*servers)[0]][lc->name()].push_back(shard);
       }
     }
@@ -642,7 +642,7 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
     _dbServers.push_back(pair.first);
   }
   // do not reload all shard id's, this list must stay in the same order
-  if (_allShards.size() == 0) {
+  if (_allShards.empty()) {
     _allShards = shardList;
   }
 
@@ -822,7 +822,7 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
                               : ExecutionState::DONE);
     didStore = true;
   }
-  _endTimeSecs = TRI_microtime();  // offically done
+  _endTimeSecs = TRI_microtime();  // officially done
 
   VPackBuilder debugOut;
   debugOut.openObject();

@@ -83,7 +83,7 @@ struct IAlgorithm {
 
 // specify serialization, whatever
 template<typename V, typename E, typename M>
-struct Algorithm : IAlgorithm {
+struct  Algorithm : IAlgorithm {
  public:
   // Data used by the algorithm at every vertex
   using vertex_type = V;

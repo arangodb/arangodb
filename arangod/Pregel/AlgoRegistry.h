@@ -29,8 +29,7 @@
 
 struct TRI_vocbase_t;
 
-namespace arangodb {
-namespace pregel {
+namespace arangodb::pregel {
 
 class PregelFeature;
 
@@ -50,5 +49,4 @@ struct AlgoRegistry {
                                                PregelFeature& feature);
 };
 
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel

@@ -82,7 +82,7 @@ struct NonDeleter {
 }  // namespace
 
 std::pair<Result, uint64_t> PregelFeature::startExecution(
-    TRI_vocbase_t& vocbase, std::string algorithm,
+    TRI_vocbase_t& vocbase, const std::string& algorithm,
     std::vector<std::string> const& vertexCollections,
     std::vector<std::string> const& edgeCollections,
     std::unordered_map<std::string, std::vector<std::string>> const&
@@ -153,7 +153,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
 
   std::vector<CollectionID> edgeColls;
 
-  // load edge collection
+  // fill edgeColls with real collection names
   for (std::string const& name : edgeCollections) {
     if (ss->isCoordinator()) {
       try {
@@ -214,7 +214,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
     } else {
       return std::make_pair(Result{TRI_ERROR_INTERNAL}, 0);
     }
-  }
+  } // end filling edgeColls
 
   uint64_t en = createExecutionNumber();
   auto c = std::make_shared<pregel::Conductor>(
@@ -313,7 +313,7 @@ void PregelFeature::unprepare() {
     TRI_ASSERT(it.second.conductor.use_count() == 1);
   }
 
-  for (auto it : _workers) {
+  for (const auto& it : _workers) {
     TRI_ASSERT(it.second.second.use_count() == 1);
   }
 #endif

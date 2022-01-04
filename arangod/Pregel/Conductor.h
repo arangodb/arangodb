@@ -129,6 +129,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   void finishedWorkerStartup(VPackSlice const& data);
   VPackBuilder finishedWorkerStep(VPackSlice const& data);
   void finishedWorkerFinalize(VPackSlice data);
+
   void finishedRecoveryStep(VPackSlice const& data);
 
   std::vector<ShardID> getShardIds(ShardID const& collection) const;

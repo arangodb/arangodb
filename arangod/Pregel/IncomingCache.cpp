@@ -53,7 +53,7 @@ void InCache<M>::parseMessages(VPackSlice const& incomingData) {
   // temporary variables
   VPackValueLength i = 0;
   std::string_view key;
-  PregelShard shard = (PregelShard)shardSlice.getUInt();
+  auto shard = (PregelShard)shardSlice.getUInt();
   std::lock_guard<std::mutex> guard(this->_bucketLocker[shard]);
 
   for (VPackSlice current : VPackArrayIterator(messages)) {
@@ -252,10 +252,10 @@ void CombiningInCache<M>::_set(PregelShard shard, std::string_view const& key,
 template<typename M>
 void CombiningInCache<M>::mergeCache(WorkerConfig const& config,
                                      InCache<M> const* otherCache) {
-  CombiningInCache<M>* other = (CombiningInCache<M>*)otherCache;
+  auto* other = (CombiningInCache<M>*)otherCache;
   this->_containedMessageCount += other->_containedMessageCount;
 
-  // ranomize access to buckets, don't wait for the lock
+  // randomize access to buckets, don't wait for the lock
   std::set<PregelShard> const& shardIDs = config.localPregelShardIDs();
   std::vector<PregelShard> randomized(shardIDs.begin(), shardIDs.end());
   std::random_device rd;

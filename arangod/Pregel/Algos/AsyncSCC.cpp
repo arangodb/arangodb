@@ -23,6 +23,8 @@
 
 #include "AsyncSCC.h"
 
+#include <utility>
+
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -51,11 +53,11 @@ enum SCCPhase {
 
 struct ASCCComputation final
     : public VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>> {
-  ASCCComputation() {}
+  ASCCComputation() = default;
 
   void compute(
       MessageIterator<SenderMessage<uint64_t>> const& messages) override {
-    if (isActive() == false) {
+    if (!isActive()) {
       // color was already determinded or vertex was trimmed
       return;
     }
@@ -89,7 +91,7 @@ struct ASCCComputation final
         vertexState->color = vertexState->vertexID;
         // If this node doesn't have any parents or outgoing edges,
         // it can't be part of an SCC
-        if (vertexState->parents.size() == 0 || getEdgeCount() == 0) {
+        if (vertexState->parents.empty() || getEdgeCount() == 0) {
           voteHalt();
         } else {
           SenderMessage<uint64_t> message(pregelId(), vertexState->color);
@@ -158,8 +160,8 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
   const std::string _resultField;
 
   explicit SCCGraphFormat(application_features::ApplicationServer& server,
-                          std::string const& result)
-      : GraphFormat<SCCValue, int8_t>(server), _resultField(result) {}
+                          std::string  result)
+      : GraphFormat<SCCValue, int8_t>(server), _resultField(std::move(result)) {}
 
   size_t estimatedEdgeSize() const override { return 0; }
 
@@ -184,14 +186,14 @@ GraphFormat<SCCValue, int8_t>* AsyncSCC::inputFormat() const {
 }
 
 struct ASCCMasterContext : public MasterContext {
-  ASCCMasterContext() {}  // TODO use _threshold
+  ASCCMasterContext() = default;  // TODO use _threshold
   void preGlobalSuperstep() override {
     if (globalSuperstep() == 0) {
       enterNextGlobalSuperstep();
       return;
     }
 
-    uint32_t const* phase = getAggregatedValue<uint32_t>(kPhase);
+    auto const* phase = getAggregatedValue<uint32_t>(kPhase);
     switch (*phase) {
       case SCCPhase::TRANSPOSE:
         LOG_TOPIC("b0431", DEBUG, Logger::PREGEL) << "Phase: TRIMMING";
@@ -207,7 +209,7 @@ struct ASCCMasterContext : public MasterContext {
 
       case SCCPhase::FORWARD_TRAVERSAL: {
         bool const* newMaxFound = getAggregatedValue<bool>(kFoundNewMax);
-        if (*newMaxFound == false) {
+        if (!*newMaxFound) {
           LOG_TOPIC("14832", DEBUG, Logger::PREGEL)
               << "Phase: BACKWARD_TRAVERSAL_START";
           aggregate<uint32_t>(kPhase, SCCPhase::BACKWARD_TRAVERSAL_START);
@@ -223,7 +225,7 @@ struct ASCCMasterContext : public MasterContext {
       case SCCPhase::BACKWARD_TRAVERSAL_REST:
         bool const* converged = getAggregatedValue<bool>(kConverged);
         // continue until no more vertices are updated
-        if (*converged == false) {
+        if (!*converged) {
           LOG_TOPIC("a9542", DEBUG, Logger::PREGEL) << "Phase: TRANSPOSE";
           aggregate<uint32_t>(kPhase, SCCPhase::TRANSPOSE);
         }
@@ -232,16 +234,16 @@ struct ASCCMasterContext : public MasterContext {
   };
 
   void postLocalSuperstep() override {
-    uint32_t const* phase = getAggregatedValue<uint32_t>(kPhase);
+    auto const* phase = getAggregatedValue<uint32_t>(kPhase);
     if (*phase == SCCPhase::FORWARD_TRAVERSAL) {
       bool const* newMaxFound = getAggregatedValue<bool>(kFoundNewMax);
-      if (*newMaxFound == false) {
+      if (!*newMaxFound) {
         enterNextGlobalSuperstep();
       }
     } else if (*phase == SCCPhase::BACKWARD_TRAVERSAL_REST) {
       bool const* converged = getAggregatedValue<bool>(kConverged);
       // continue until no more vertices are updated
-      if (*converged == false) {
+      if (!*converged) {
         enterNextGlobalSuperstep();
       }
     }

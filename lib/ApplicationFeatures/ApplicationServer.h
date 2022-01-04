@@ -85,9 +85,9 @@ namespace application_features {
 //
 // `start`
 //
-// Start the features. Features are now allowed to created threads.
+// Start the features. Features are now allowed to create threads.
 //
-// The `start` methods are called in a order that obeys the `startsAfter`
+// The `start` methods are called in an order that obeys the `startsAfter`
 // conditions.
 //
 // `stop`
@@ -102,10 +102,10 @@ namespace application_features {
 class ApplicationServer {
   using FeatureMap =
       std::unordered_map<std::type_index, std::unique_ptr<ApplicationFeature>>;
+ public:
   ApplicationServer(ApplicationServer const&) = delete;
   ApplicationServer& operator=(ApplicationServer const&) = delete;
 
- public:
   // handled i.e. in WindowsServiceFeature.cpp
   enum class State : int {
     UNINITIALIZED,

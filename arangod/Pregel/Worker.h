@@ -124,7 +124,7 @@ class Worker : public IWorker {
   InCache<M>* _writeCacheNextGSS = nullptr;
   // preallocated incoming caches
   std::vector<InCache<M>*> _inCaches;
-  // preallocated ootgoing caches
+  // preallocated outgoing caches
   std::vector<OutCache<M>*> _outCaches;
 
   /// Stats about the CURRENT gss

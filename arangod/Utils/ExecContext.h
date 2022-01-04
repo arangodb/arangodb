@@ -46,8 +46,8 @@ class ExecContext : public RequestContext {
  protected:
   enum class Type { Default, Internal };
 
-  ExecContext(ExecContext::Type type, std::string const& user,
-              std::string const& database, auth::Level systemLevel,
+  ExecContext(ExecContext::Type type, std::string  user,
+              std::string  database, auth::Level systemLevel,
               auth::Level dbLevel, bool isAdminUser);
   ExecContext(ExecContext const&) = delete;
   ExecContext(ExecContext&&) = delete;

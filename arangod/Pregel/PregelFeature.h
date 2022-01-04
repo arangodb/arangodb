@@ -41,8 +41,7 @@
 
 struct TRI_vocbase_t;
 
-namespace arangodb {
-namespace pregel {
+namespace arangodb::pregel {
 
 class Conductor;
 class IWorker;
@@ -51,12 +50,12 @@ class RecoveryManager;
 class PregelFeature final : public application_features::ApplicationFeature {
  public:
   explicit PregelFeature(application_features::ApplicationServer& server);
-  ~PregelFeature();
+  ~PregelFeature() override;
 
   static size_t availableParallelism();
 
   std::pair<Result, uint64_t> startExecution(
-      TRI_vocbase_t& vocbase, std::string algorithm,
+      TRI_vocbase_t& vocbase, const std::string& algorithm,
       std::vector<std::string> const& vertexCollections,
       std::vector<std::string> const& edgeCollections,
       std::unordered_map<std::string, std::vector<std::string>> const&
@@ -69,7 +68,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
 
   bool isStopping() const noexcept;
 
-  uint64_t createExecutionNumber();
+  static uint64_t createExecutionNumber();
   void addConductor(std::shared_ptr<Conductor>&&, uint64_t executionNumber);
   std::shared_ptr<Conductor> conductor(uint64_t executionNumber);
 
@@ -93,7 +92,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
 
   uint64_t numberOfActiveConductors() const;
 
-  void initiateSoftShutdown() override final {
+  void initiateSoftShutdown() final {
     _softShutdownOngoing.store(true, std::memory_order_relaxed);
   }
 
@@ -111,7 +110,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
   /// _recoveryManager, but allows the pointer to be read atomically. This is
   /// necessary because _recoveryManager is initialized lazily at a time when
   /// other threads are already running and potentially trying to read the
-  /// pointer. This only works because _recoveryManager is only initialzed once
+  /// pointer. This only works because _recoveryManager is only initialized once
   /// and lives until the owning PregelFeature instance is also destroyed.
   std::atomic<RecoveryManager*> _recoveryManagerPtr{nullptr};
 
@@ -130,5 +129,4 @@ class PregelFeature final : public application_features::ApplicationFeature {
   std::atomic<bool> _softShutdownOngoing;
 };
 
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel

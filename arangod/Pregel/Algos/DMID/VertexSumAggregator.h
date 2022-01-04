@@ -31,8 +31,7 @@
 #include <vector>
 #include "Pregel/Graph.h"
 
-namespace arangodb {
-namespace pregel {
+namespace arangodb::pregel {
 
 struct VertexSumAggregator : public IAggregator {
   typedef std::map<PregelShard, std::unordered_map<std::string, double>>
@@ -40,11 +39,11 @@ struct VertexSumAggregator : public IAggregator {
   typedef std::pair<PregelShard, std::unordered_map<std::string, double>>
       MyPair;
 
-  VertexSumAggregator(bool perm = false) : _permanent(perm) {}
+  explicit VertexSumAggregator(bool perm = false) : _permanent(perm) {}
 
   // if you use this from a vertex I will end you
   void aggregate(void const* valuePtr) override {
-    VertexMap const* map = (VertexMap const*)valuePtr;
+    auto const* map = (VertexMap const*)valuePtr;
     for (auto const& pair1 : *map) {
       for (auto const& pair2 : pair1.second) {
         _entries[pair1.first][pair2.first] += pair2.second;
@@ -146,5 +145,4 @@ struct VertexSumAggregator : public IAggregator {
   double _default = 0;
   bool _permanent;
 };
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel

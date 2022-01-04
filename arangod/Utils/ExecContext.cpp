@@ -23,6 +23,8 @@
 
 #include "ExecContext.h"
 
+#include <utility>
+
 #include "Auth/UserManager.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
@@ -52,11 +54,11 @@ ExecContext const ExecContext::Superuser(ExecContext::Type::Internal,
   return ExecContext::Superuser;
 }
 
-ExecContext::ExecContext(ExecContext::Type type, std::string const& user,
-                         std::string const& database, auth::Level systemLevel,
+ExecContext::ExecContext(ExecContext::Type type, std::string  user,
+                         std::string  database, auth::Level systemLevel,
                          auth::Level dbLevel, bool isAdminUser)
-    : _user(user),
-      _database(database),
+    : _user(std::move(user)),
+      _database(std::move(database)),
       _type(type),
       _isAdminUser(isAdminUser),
       _systemDbAuthLevel(systemLevel),
