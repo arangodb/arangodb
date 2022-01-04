@@ -151,8 +151,13 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
                                    canReadOwnWrites());
 
     if (s.ok()) {
+      VPackSlice storedValues = VPackSlice::emptyArraySlice();
+      if (_index->hasStoredValues()) {
+        storedValues = RocksDBValue::uniqueIndexStoredValues(ps);
+      }
+
       cb(LocalDocumentId(RocksDBValue::documentId(ps)),
-         RocksDBKey::indexedVPack(_key.ref()), VPackSlice::emptyArraySlice());
+         RocksDBKey::indexedVPack(_key.ref()), storedValues);
     }
 
     // there is at most one element, so we are done now
@@ -464,6 +469,8 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid,
 
   fillPaths(_fields, _paths, &_expanding);
   fillPaths(_storedValues, _storedValuesPaths, nullptr);
+  TRI_ASSERT(_fields.size() == _paths.size());
+  TRI_ASSERT(_storedValues.size() == _storedValuesPaths.size());
 }
 
 /// @brief destroy the index
@@ -925,11 +932,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
       transaction::BuilderLeaser leased(&trx);
       leased->openArray(true);
       for (auto const it : _storedValuesPaths) {
-        VPackSlice s = doc.get(it);
-        if (s.isNone()) {
-          s = VPackSlice::nullSlice();
-        }
-        leased->add(s);
+        leased->add(doc.get(it));
       }
       leased->close();
       value = RocksDBValue::UniqueVPackIndexValue(documentId, leased->slice());
@@ -1006,18 +1009,14 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
       transaction::BuilderLeaser leased(&trx);
       leased->openArray(true);
       for (auto const it : _storedValuesPaths) {
-        VPackSlice s = doc.get(it);
-        if (s.isNone()) {
-          s = VPackSlice::nullSlice();
-        }
-        leased->add(s);
+        leased->add(doc.get(it));
       }
       leased->close();
       value = RocksDBValue::VPackIndexValue(leased->slice());
     }
 
     rocksdb::Status s;
-    for (RocksDBKey& key : elements) {
+    for (RocksDBKey const& key : elements) {
       TRI_ASSERT(key.containsLocalDocumentId(documentId));
       s = mthds->PutUntracked(_cf, key, value.string());
       if (!s.ok()) {

@@ -558,6 +558,54 @@ function indexStoredValuesResultsSuite() {
       }
     },
     
+    testResultSubAttributes1: function () {
+      c.truncate();
+
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ lookup: i, value: { sub1: i * 1, sub2: i * 2, sub3: i * 3, sub4: i * 4 } });
+      }
+      c.insert(docs);
+      c.ensureIndex({ type: "persistent", fields: ["lookup"], storedValues: ["value"] });
+      
+      const query =" FOR doc IN " + cn + " FILTER doc.lookup == @value RETURN [doc.value.sub1, doc.value.sub2, doc.value.sub3, doc.value.sub4]"; 
+      let nodes = AQL_EXPLAIN(query, { value: 0 }).plan.nodes;
+      assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
+      assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
+      assertTrue(nodes[1].indexCoversProjections);
+      assertEqual(["value"], nodes[1].projections.sort());
+      
+      for (let i = 0; i < 10; ++i) {
+        let result = db._query(query, { value: i }).toArray();
+        assertEqual(1, result.length);
+        assertEqual([i * 1, i * 2, i * 3, i * 4], result[0]);
+      }
+    },
+    
+    testResultSubAttributes2: function () {
+      c.truncate();
+
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ value: { sub1: i * 1, sub2: i * 2, sub3: i * 3, sub4: i * 4 } });
+      }
+      c.insert(docs);
+      c.ensureIndex({ type: "persistent", fields: ["value.sub1", "value.sub3"], storedValues: ["value.sub2", "value.sub4"] });
+      
+      const query =" FOR doc IN " + cn + " FILTER doc.value.sub1 == @value RETURN [doc.value.sub1, doc.value.sub2, doc.value.sub3, doc.value.sub4]"; 
+      let nodes = AQL_EXPLAIN(query, { value: 0 }).plan.nodes;
+      assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
+      assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
+      assertFalse(nodes[1].indexCoversProjections);
+      assertEqual(["value"], nodes[1].projections);
+      
+      for (let i = 0; i < 10; ++i) {
+        let result = db._query(query, { value: i }).toArray();
+        assertEqual(1, result.length);
+        assertEqual([i * 1, i * 2, i * 3, i * 4], result[0]);
+      }
+    },
+    
     testResultAttributeMissing: function () {
       c.truncate();
 
@@ -567,6 +615,7 @@ function indexStoredValuesResultsSuite() {
       }
       c.insert(docs);
 
+      // value2 is completely absent from the documents and is None internally
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       
       const query =" FOR doc IN " + cn + " SORT doc.value1 RETURN doc.value2"; 
@@ -578,6 +627,45 @@ function indexStoredValuesResultsSuite() {
       assertEqual(5000, result.length);
       for (let i = 0; i < 5000; ++i) {
         assertNull(result[i]);
+      }
+      
+      // point lookups
+      for (let i = 0; i < 10; ++i) {
+        const query =" FOR doc IN " + cn + " FILTER doc.value1 == @value RETURN doc.value2"; 
+        let nodes = AQL_EXPLAIN(query, { value: i }).plan.nodes;
+        assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
+        assertTrue(nodes[1].indexCoversProjections);
+
+        let result = db._query(query, { value: i }).toArray();
+        assertEqual(1, result.length);
+        assertNull(result[0]);
+      }
+    },
+    
+    testResultAttributeMissingHas: function () {
+      c.truncate();
+
+      let docs = [];
+      for (let i = 0; i < 5000; ++i) {
+        docs.push({ value1: i });
+      }
+      c.insert(docs);
+
+      // value2 is completely absent from the documents and is None internally
+      c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
+      
+      // point lookups
+      for (let i = 0; i < 10; ++i) {
+        // projections won't be used here because we access the full "doc" variable
+        const query =" FOR doc IN " + cn + " FILTER doc.value1 == @value RETURN HAS(doc, 'value2')"; 
+        let nodes = AQL_EXPLAIN(query, { value: i }).plan.nodes;
+        assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
+        assertFalse(nodes[1].indexCoversProjections);
+        assertEqual([], nodes[1].projections);
+
+        let result = db._query(query, { value: i }).toArray();
+        assertEqual(1, result.length);
+        assertFalse(result[0]);
       }
     },
     
@@ -594,6 +682,7 @@ function indexStoredValuesResultsSuite() {
       }
       c.insert(docs);
 
+      // value2 is partly absent from the documents and is None internally
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       
       const query =" FOR doc IN " + cn + " SORT doc.value1 RETURN doc.value2"; 
@@ -605,6 +694,94 @@ function indexStoredValuesResultsSuite() {
       assertEqual(5000, result.length);
       for (let i = 0; i < 5000; ++i) {
         assertNull(result[i]);
+      }
+
+      // point lookups
+      for (let i = 0; i < 10; ++i) {
+        const query =" FOR doc IN " + cn + " FILTER doc.value1 == @value RETURN doc.value2"; 
+        let nodes = AQL_EXPLAIN(query, { value: i }).plan.nodes;
+        assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
+        assertTrue(nodes[1].indexCoversProjections);
+
+        let result = db._query(query, { value: i }).toArray();
+        assertEqual(1, result.length);
+        assertNull(result[0]);
+      }
+    },
+    
+    testResultAttributeMissingUnique: function () {
+      c.truncate();
+
+      let docs = [];
+      for (let i = 0; i < 5000; ++i) {
+        docs.push({ value1: i });
+      }
+      c.insert(docs);
+
+      // value2 is completely absent from the documents and is None internally
+      c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"], unique: true });
+      
+      const query =" FOR doc IN " + cn + " SORT doc.value1 RETURN doc.value2"; 
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
+      assertTrue(nodes[1].indexCoversProjections);
+
+      let result = db._query(query).toArray();
+      assertEqual(5000, result.length);
+      for (let i = 0; i < 5000; ++i) {
+        assertNull(result[i]);
+      }
+      
+      // point lookups
+      for (let i = 0; i < 10; ++i) {
+        const query =" FOR doc IN " + cn + " FILTER doc.value1 == @value RETURN doc.value2"; 
+        let nodes = AQL_EXPLAIN(query, { value: i }).plan.nodes;
+        assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
+        assertTrue(nodes[1].indexCoversProjections);
+
+        let result = db._query(query, { value: i }).toArray();
+        assertEqual(1, result.length);
+        assertNull(result[0]);
+      }
+    },
+    
+    testResultNullValuesUnique: function () {
+      c.truncate();
+
+      let docs = [];
+      for (let i = 0; i < 5000; ++i) {
+        let doc = { value1: i };
+        if (i % 2 === 0) {
+          doc.value2 = null;
+        }
+        docs.push(doc);
+      }
+      c.insert(docs);
+
+      // value2 is partly absent from the documents and is None internally
+      c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"], unique: true });
+      
+      const query =" FOR doc IN " + cn + " SORT doc.value1 RETURN doc.value2"; 
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
+      assertTrue(nodes[1].indexCoversProjections);
+
+      let result = db._query(query).toArray();
+      assertEqual(5000, result.length);
+      for (let i = 0; i < 5000; ++i) {
+        assertNull(result[i]);
+      }
+      
+      // point lookups
+      for (let i = 0; i < 10; ++i) {
+        const query =" FOR doc IN " + cn + " FILTER doc.value1 == @value RETURN doc.value2"; 
+        let nodes = AQL_EXPLAIN(query, { value: i }).plan.nodes;
+        assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
+        assertTrue(nodes[1].indexCoversProjections);
+
+        let result = db._query(query, { value: i }).toArray();
+        assertEqual(1, result.length);
+        assertNull(result[0]);
       }
     },
   };

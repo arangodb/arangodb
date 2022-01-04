@@ -245,8 +245,11 @@ void Projections::toVelocyPackFromIndex(
       // attributes (persistent/hash/skiplist)
       VPackSlice found;
       if (it.coveringIndexPosition >= numIndexAttributes) {
+        TRI_ASSERT(extra.length() >
+                   it.coveringIndexPosition - numIndexAttributes);
         found = extra.at(it.coveringIndexPosition - numIndexAttributes);
       } else {
+        TRI_ASSERT(slice.length() > it.coveringIndexPosition);
         found = slice.at(it.coveringIndexPosition);
       }
       if (found.isNone()) {

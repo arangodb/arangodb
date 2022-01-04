@@ -121,6 +121,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
   void afterTruncate(TRI_voc_tick_t tick,
                      arangodb::transaction::Methods* trx) override;
 
+  bool hasStoredValues() const noexcept { return !_storedValues.empty(); }
+
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId, velocypack::Slice doc,
@@ -134,8 +136,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
                 LocalDocumentId const& oldDocumentId, velocypack::Slice oldDoc,
                 LocalDocumentId const& newDocumentId, velocypack::Slice newDoc,
                 OperationOptions const& options, bool performChecks) override;
-
-  bool hasStoredValues() const noexcept { return !_storedValues.empty(); }
 
  private:
   /// @brief returns whether the document can be inserted into the index
