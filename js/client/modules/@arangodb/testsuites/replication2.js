@@ -60,7 +60,11 @@ function replication2Server(options) {
   const opts = _.clone(options);
   opts.dbServers = Math.max(opts.dbServers, 5);
 
-  return tu.performTests(opts, testCases, 'replication2_server', tu.runThere);
+  return tu.performTests(opts, testCases, 'replication2_server', tu.runThere, {
+        'javascript.allow-external-process-control': 'true',
+        'javascript.allow-port-testing': 'true',
+        'javascript.allow-admin-execute': 'true',
+      });
 }
 
 

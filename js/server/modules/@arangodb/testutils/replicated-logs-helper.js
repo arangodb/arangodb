@@ -32,10 +32,10 @@ const waitFor = function (checkFn, maxTries = 100) {
         if (result === true) {
             return result;
         }
+        console.log(result);
         if (!(result instanceof Error)) {
             throw Error("expected error");
         }
-        console.log(result);
         count += 1;
         wait(0.5);
     }
@@ -128,7 +128,61 @@ const replicatedLogDeletePlan = function (database, logId) {
     global.ArangoAgency.increaseVersion(`Plan/Version`);
 };
 
+const replicatedLogIsReady = function (database, logId, term, participants, leader) {
+    return function () {
+        let {current} = readReplicatedLogAgency(database, logId);
+        if (current === undefined) {
+            return Error("current not yet defined");
+        }
 
+        for (const srv of participants) {
+            if (!current.localStatus || !current.localStatus[srv]) {
+                return Error(`Participant ${srv} has not yet reported to current.`);
+            }
+            if (current.localStatus[srv].term < term) {
+                return Error(`Participant ${srv} has not yet acknowledged the current term; ` +
+                    `found = ${current.localStatus[srv].term}, expected = ${term}.`);
+            }
+        }
+
+        if (leader !== undefined) {
+            if (!current.leader) {
+                return Error("Leader has not yet established its term");
+            }
+            if ( current.leader.serverId !== leader) {
+                return Error(`Wrong leader in current; found = ${current.leader.serverId}, expected = ${leader}`);
+            }
+            if (current.leader.term < term) {
+                return Error(`Leader has not yet confirmed the term; found = ${current.leader.term}, expected = ${term}`);
+            }
+        }
+        return true;
+    };
+};
+
+const getServerProcessID = function(serverId) {
+    let endpoint = global.ArangoClusterInfo.getServerEndpoint(serverId);
+    // Now look for instanceInfo:
+    let pos = _.findIndex(global.instanceInfo.arangods,
+        x => x.endpoint === endpoint);
+    return global.instanceInfo.arangods[pos].pid;
+};
+
+const stopServer = function (serverId) {
+    console.log(`suspending server ${serverId}`);
+    let result = require('internal').suspendExternal(getServerProcessID(serverId));
+    if (!result) {
+        throw Error("Failed to suspend server");
+    }
+};
+
+const continueServer = function (serverId) {
+    console.log(`continuing server ${serverId}`);
+    let result = require('internal').continueExternal(getServerProcessID(serverId));
+    if (!result) {
+        throw Error("Failed to continue server");
+    }
+};
 
 exports.waitFor = waitFor;
 exports.readAgencyValueAt = readAgencyValueAt;
@@ -140,3 +194,6 @@ exports.replicatedLogUpdatePlanParticipantsFlags = replicatedLogUpdatePlanPartic
 exports.replicatedLogSetPlanTerm = replicatedLogSetPlanTerm;
 exports.replicatedLogSetPlan = replicatedLogSetPlan;
 exports.replicatedLogDeletePlan = replicatedLogDeletePlan;
+exports.replicatedLogIsReady = replicatedLogIsReady;
+exports.stopServer = stopServer;
+exports.continueServer = continueServer;

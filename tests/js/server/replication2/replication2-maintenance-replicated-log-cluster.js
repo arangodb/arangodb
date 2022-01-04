@@ -34,36 +34,11 @@ const {
     replicatedLogUpdatePlanParticipantsFlags,
     replicatedLogSetPlanTerm,
     createTermSpecification,
+    replicatedLogIsReady,
     dbservers
 } = require("@arangodb/testutils/replicated-logs-helper");
 
 const database = 'ReplLogsMaintenanceTest';
-
-const replicatedLogIsReady = function (logId, term, participants, leader) {
-    return function () {
-        let {current} = readReplicatedLogAgency(database, logId);
-        if (current === undefined) {
-            return Error("current not yet defined");
-        }
-
-        for (const srv of participants) {
-            if (!current.localStatus || !current.localStatus[srv]) {
-                return Error(`Participant ${srv} has not yet reported to current.`);
-            }
-            if (current.localStatus[srv].term < term) {
-                return Error(`Participant ${srv} has not yet acknowledged the current term; ` +
-                    `found = ${current.localStatus[srv].term}, expected = ${term}.`);
-            }
-        }
-
-        if (leader !== undefined) {
-            if (!current.leader || current.leader.term < term || current.leader.serverId !== leader) {
-                return Error("Leader has not yet established its term");
-            }
-        }
-        return true;
-    };
-};
 
 const replicatedLogParticipantGeneration = function (logId, generation) {
     return function () {
@@ -74,9 +49,14 @@ const replicatedLogParticipantGeneration = function (logId, generation) {
         if (!current.leader) {
             return Error("Leader has not yet established its term");
         }
-        if (!current.leader.committedParticipantsConfig || current.leader.committedParticipantsConfig.generation < generation) {
-            return Error("Leader has not yet acked new generation");
+        if (!current.leader.committedParticipantsConfig) {
+            return Error("Leader has not yet committed any participants config");
         }
+        if (current.leader.committedParticipantsConfig.generation < generation) {
+            return Error("Leader has not yet acked new generation; "
+                + `found ${current.leader.committedParticipantsConfig.generation}, expected = ${generation}`);
+        }
+
         return true;
     };
 };
@@ -169,7 +149,7 @@ const replicatedLogSuite = function () {
             });
 
             // wait for all servers to have reported in current
-            waitFor(replicatedLogIsReady(logId, term, servers, leader));
+            waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
 
             replicatedLogDeletePlan(database, logId);
         },
@@ -185,7 +165,7 @@ const replicatedLogSuite = function () {
             });
 
             // wait for all servers to have reported in current
-            waitFor(replicatedLogIsReady(logId, term, servers));
+            waitFor(replicatedLogIsReady(database, logId, term, servers));
 
             replicatedLogDeletePlan(database, logId);
         },
@@ -202,7 +182,7 @@ const replicatedLogSuite = function () {
             });
 
             // wait for all servers to have reported in current
-            waitFor(replicatedLogIsReady(logId, term, servers, leader));
+            waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
 
             // now update the excluded flag for one participant
             const follower = servers[1];
@@ -228,11 +208,11 @@ const replicatedLogSuite = function () {
             });
 
             // wait for all servers to have reported in current
-            waitFor(replicatedLogIsReady(logId, term, servers, leader));
+            waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
             replicatedLogSetPlanTerm(database, logId, createTermSpecification(term + 1, servers, targetConfig, leader));
 
             // wait again for all servers to have acked term
-            waitFor(replicatedLogIsReady(logId, term + 1, servers, leader));
+            waitFor(replicatedLogIsReady(database, logId, term + 1, servers, leader));
             replicatedLogDeletePlan(database, logId);
         },
 
@@ -248,11 +228,11 @@ const replicatedLogSuite = function () {
             });
 
             // wait for all servers to have reported in current
-            waitFor(replicatedLogIsReady(logId, term, servers));
+            waitFor(replicatedLogIsReady(database, logId, term, servers));
             // wait again for all servers to have acked term
             const otherLeader = servers[1];
             replicatedLogSetPlanTerm(database, logId, createTermSpecification(term + 1, servers, targetConfig, otherLeader));
-            waitFor(replicatedLogIsReady(logId, term + 1, servers, otherLeader));
+            waitFor(replicatedLogIsReady(database, logId, term + 1, servers, otherLeader));
             replicatedLogDeletePlan(database, logId);
         },
 
@@ -269,11 +249,11 @@ const replicatedLogSuite = function () {
             });
 
             // wait for all servers to have reported in current
-            waitFor(replicatedLogIsReady(logId, term, servers));
+            waitFor(replicatedLogIsReady(database, logId, term, servers));
             // now rewrite the term with an additional participant
             const newServers = [...servers, _.sample(remaining)];
             replicatedLogSetPlanTerm(database, logId, createTermSpecification(term, newServers, targetConfig, leader));
-            waitFor(replicatedLogIsReady(logId, term, newServers, leader));
+            waitFor(replicatedLogIsReady(database, logId, term, newServers, leader));
             replicatedLogDeletePlan(database, logId);
         },
 
@@ -292,7 +272,7 @@ const replicatedLogSuite = function () {
             });
 
             // wait for all servers to have reported in current
-            waitFor(replicatedLogIsReady(logId, term, newServers));
+            waitFor(replicatedLogIsReady(database, logId, term, newServers));
             // now rewrite the term with an additional participant
             replicatedLogSetPlanTerm(database, logId, createTermSpecification(term, servers, targetConfig, leader));
             // TODO waitFor(replicatedLogParticipantsFlag(logId, {[toBeRemoved]: null})); -- doesn't work yet
