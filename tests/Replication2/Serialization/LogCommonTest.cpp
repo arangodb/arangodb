@@ -102,4 +102,13 @@ TEST(LogCommonTest, log_config) {
   auto jsonSlice = velocypack::Slice(jsonBuffer->data());
   EXPECT_TRUE(VelocyPackHelper::equal(jsonSlice, slice, true))
       << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
+
+  jsonBuffer = R"({
+    "writeConcern": 2,
+    "replicationFactor": 3,
+    "waitForSync": false
+  })"_vpack;
+  jsonSlice = velocypack::Slice(jsonBuffer->data());
+  logConfig = LogConfig{jsonSlice};
+  EXPECT_EQ(logConfig.softWriteConcern, logConfig.writeConcern);
 }
