@@ -1265,26 +1265,30 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
     std::unordered_map<ParticipantId, std::shared_ptr<AbstractFollower>>
         additionalFollowers,
     std::vector<ParticipantId> const& followersToRemove) -> LogIndex {
-  LOG_CTX("ac277", DEBUG, _logContext)
-      << "updating configuration to generation " << config->generation;
+  LOG_CTX("ac277", TRACE, _logContext)
+      << "trying to update configuration to generation " << config->generation;
   TRI_ASSERT(previousGeneration < config->generation);
   auto waitForIndex = _guardedLeaderData.doUnderLock([&](GuardedLeaderData&
                                                              data) {
     if (data.activeParticipantsConfig->generation >= config->generation) {
-      THROW_ARANGO_EXCEPTION_FORMAT(
-          TRI_ERROR_BAD_PARAMETER,
+      auto const message = basics::StringUtils::concatT(
           "updated participant config generation is smaller or equal to "
-          "current generation - refusing to update; new = %zu, current = %zu",
-          config->generation, data.activeParticipantsConfig->generation);
+          "current generation - refusing to update; ",
+          "new = ", config->generation,
+          ", current = ", data.activeParticipantsConfig->generation);
+      LOG_CTX("bab5b", TRACE, _logContext) << message;
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
     }
     if (data.activeParticipantsConfig->generation != previousGeneration) {
       // This is to make sure the `additionalFollowers` list is really the
       // (asymmetric) difference between the current and new configuration.
-      THROW_ARANGO_EXCEPTION_FORMAT(
-          TRI_ERROR_BAD_PARAMETER,
+      auto const message = basics::StringUtils::concatT(
           "assumed participant config generation does not match the current "
-          "generation - refusing to update; previous = %zu, current = %zu",
-          previousGeneration, data.activeParticipantsConfig->generation);
+          "generation - refusing to update; ",
+          "previous = ", previousGeneration,
+          ", current = ", data.activeParticipantsConfig->generation);
+      LOG_CTX("8dc8b", TRACE, _logContext) << message;
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
     }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

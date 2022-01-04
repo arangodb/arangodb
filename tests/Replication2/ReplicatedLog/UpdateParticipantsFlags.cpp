@@ -627,3 +627,67 @@ TEST_F(UpdateParticipantsFlagsTest,
     EXPECT_EQ(keys, (decltype(keys){"follower2", "leader"}));
   }
 }
+
+TEST_F(UpdateParticipantsFlagsTest, wc2_add_mismatching_config_should_fail) {
+  leader->triggerAsyncReplication();
+  runAllAsyncAppendEntries();
+  ASSERT_TRUE(leader->isLeadershipEstablished());
+
+  EXPECT_EQ(leader->getCommitIndex(), LogIndex{1});
+  EXPECT_EQ(leader->getParticipantConfigGenerations(),
+            (std::pair<std::size_t, std::optional<std::size_t>>(0, 0)));
+
+  {  // (unsuccessfully) try to set a new config with the wrong generation
+    auto oldConfig =
+        leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
+    EXPECT_EQ(oldConfig.generation, 0);
+    auto newConfig = std::make_shared<ParticipantsConfig>();
+    newConfig->generation = 3;
+
+    EXPECT_ANY_THROW(leader->updateParticipantsConfig(newConfig, 1, {}, {}));
+    EXPECT_ANY_THROW(leader->updateParticipantsConfig(newConfig, 2, {}, {}));
+  }
+
+  runAllAsyncAppendEntries();
+
+  // should be unchanged
+  EXPECT_EQ(leader->getCommitIndex(), LogIndex{1});
+  EXPECT_EQ(leader->getParticipantConfigGenerations(),
+            (std::pair<std::size_t, std::optional<std::size_t>>(0, 0)));
+
+  {  // set a new config
+    auto oldConfig =
+        leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
+    EXPECT_EQ(oldConfig.generation, 0);
+    auto newConfig = std::make_shared<ParticipantsConfig>();
+    newConfig->generation = 1;
+
+    auto logIndex = leader->updateParticipantsConfig(
+        newConfig, oldConfig.generation, {}, {});
+    EXPECT_EQ(logIndex, LogIndex{2});
+  }
+
+  EXPECT_EQ(leader->getCommitIndex(), LogIndex{1});
+  EXPECT_EQ(leader->getParticipantConfigGenerations(),
+            (std::pair<std::size_t, std::optional<std::size_t>>(1, 0)));
+  runAllAsyncAppendEntries();
+  EXPECT_EQ(leader->getCommitIndex(), LogIndex{2});
+  EXPECT_EQ(leader->getParticipantConfigGenerations(),
+            (std::pair<std::size_t, std::optional<std::size_t>>(1, 1)));
+
+  {  // (unsuccessfully) try to set a new config with the wrong generation
+    auto oldConfig =
+        leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
+    EXPECT_EQ(oldConfig.generation, 1);
+    auto newConfig = std::make_shared<ParticipantsConfig>();
+    newConfig->generation = 2;
+
+    EXPECT_ANY_THROW(leader->updateParticipantsConfig(newConfig, 0, {}, {}));
+  }
+
+  // should be unchanged
+  runAllAsyncAppendEntries();
+  EXPECT_EQ(leader->getCommitIndex(), LogIndex{2});
+  EXPECT_EQ(leader->getParticipantConfigGenerations(),
+            (std::pair<std::size_t, std::optional<std::size_t>>(1, 1)));
+}
