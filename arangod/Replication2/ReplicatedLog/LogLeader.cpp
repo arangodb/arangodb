@@ -916,13 +916,20 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
     -> ResolvedPromiseSet {
   auto const quorum_size = _self._config.writeConcern;
 
+  if (quorum_size == 0 || quorum_size > _follower.size()) {
+    LOG_CTX("24e92", WARN, _self._logContext)
+        << "not enough participants to fulfill quorum size requirement";
+    return {};
+  }
+
   auto [newLargestCommonIndex, indexes] = collectEligibleFollowerIndexes();
 
   LOG_CTX("a2d04", TRACE, _self._logContext)
       << "checking commit index on set " << indexes;
-  if (quorum_size == 0 || quorum_size > indexes.size()) {
-    LOG_CTX("24e92", WARN, _self._logContext)
-        << "not enough participants to fulfill quorum size requirement";
+  if (quorum_size > indexes.size()) {
+    LOG_CTX("d8b19", DEBUG, _self._logContext)
+        << "not enough eligible participants to fulfill quorum size "
+           "requirement";
     return {};
   }
 
@@ -1199,7 +1206,7 @@ auto replicated_log::LogLeader::isLeadershipEstablished() const noexcept
 }
 
 void replicated_log::LogLeader::establishLeadership() {
-  LOG_CTX("f3aa8", INFO, _logContext) << "trying to establish leadership";
+  LOG_CTX("f3aa8", TRACE, _logContext) << "trying to establish leadership";
   auto waitForIndex =
       _guardedLeaderData.doUnderLock([](GuardedLeaderData& data) {
         auto const lastIndex = data._inMemoryLog.getLastTermIndexPair();
@@ -1224,7 +1231,7 @@ void replicated_log::LogLeader::establishLeadership() {
             result.throwIfFailed();
             self->_guardedLeaderData.getLockedGuard()->_leadershipEstablished =
                 true;
-            LOG_CTX("536f4", INFO, self->_logContext)
+            LOG_CTX("536f4", TRACE, self->_logContext)
                 << "leadership established";
           } catch (std::exception const& err) {
             LOG_CTX("5ceda", FATAL, self->_logContext)
