@@ -55,6 +55,7 @@
 #include "Futures/Unit.h"
 #include "Logger/LogContextKeys.h"
 #include "Replication2/DeferredExecution.h"
+#include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
@@ -388,43 +389,43 @@ auto replicated_log::LogLeader::acquireMutex() const -> LogLeader::ConstGuard {
 
 auto replicated_log::LogLeader::resign() && -> std::tuple<
     std::unique_ptr<LogCore>, DeferredAction> {
-  return _guardedLeaderData.doUnderLock(
-      [this, &localFollower = *_localFollower,
-       &participantId = _id](GuardedLeaderData& leaderData) {
-        if (leaderData._didResign) {
-          LOG_CTX("5d3b8", ERR, _logContext)
-              << "Leader " << participantId << " already resigned!";
-          THROW_ARANGO_EXCEPTION(
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+  return _guardedLeaderData.doUnderLock([this, &localFollower = *_localFollower,
+                                         &participantId = _id](
+                                            GuardedLeaderData& leaderData) {
+    if (leaderData._didResign) {
+      LOG_CTX("5d3b8", ERR, _logContext)
+          << "Leader " << participantId << " already resigned!";
+      throw ParticipantResignedException(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
+    }
+
+    // WARNING! This stunt is here to make things exception safe.
+    // The move constructor of std::multimap is **not** noexcept.
+    // Thus we have to make a new map unique and use std::swap to
+    // transfer the content. And then move the unique_ptr into
+    // the lambda.
+    auto queue =
+        std::make_unique<WaitForQueue>(std::move(leaderData._waitForQueue));
+
+    auto action = [promises = std::move(queue)]() mutable noexcept {
+      for (auto& [idx, promise] : *promises) {
+        // Check this to make sure that setException does not throw
+        if (!promise.isFulfilled()) {
+          promise.setException(ParticipantResignedException(
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE));
         }
+      }
+    };
 
-        // WARNING! This stunt is here to make things exception safe.
-        // The move constructor of std::multimap is **not** noexcept.
-        // Thus we have to make a new map unique and use std::swap to
-        // transfer the content. And then move the unique_ptr into
-        // the lambda.
-        auto queue =
-            std::make_unique<WaitForQueue>(std::move(leaderData._waitForQueue));
-
-        auto action = [promises = std::move(queue)]() mutable noexcept {
-          for (auto& [idx, promise] : *promises) {
-            // Check this to make sure that setException does not throw
-            if (!promise.isFulfilled()) {
-              promise.setException(basics::Exception(
-                  TRI_ERROR_REPLICATION_LEADER_CHANGE, __FILE__, __LINE__));
-            }
-          }
-        };
-
-        LOG_CTX("8696f", DEBUG, _logContext) << "resign";
-        leaderData._didResign = true;
-        static_assert(
-            std::is_nothrow_constructible_v<
-                DeferredAction, std::add_rvalue_reference_t<decltype(action)>>);
-        static_assert(noexcept(std::declval<LocalFollower&&>().resign()));
-        return std::make_tuple(std::move(localFollower).resign(),
-                               DeferredAction(std::move(action)));
-      });
+    LOG_CTX("8696f", DEBUG, _logContext) << "resign";
+    leaderData._didResign = true;
+    static_assert(
+        std::is_nothrow_constructible_v<
+            DeferredAction, std::add_rvalue_reference_t<decltype(action)>>);
+    static_assert(noexcept(std::declval<LocalFollower&&>().resign()));
+    return std::make_tuple(std::move(localFollower).resign(),
+                           DeferredAction(std::move(action)));
+  });
 }
 
 auto replicated_log::LogLeader::readReplicatedEntryByIndex(LogIndex idx) const
@@ -432,8 +433,8 @@ auto replicated_log::LogLeader::readReplicatedEntryByIndex(LogIndex idx) const
   return _guardedLeaderData.doUnderLock(
       [&idx](auto& leaderData) -> std::optional<PersistingLogEntry> {
         if (leaderData._didResign) {
-          THROW_ARANGO_EXCEPTION(
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+          throw ParticipantResignedException(
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
         }
         if (auto entry = leaderData._inMemoryLog.getEntryByIndex(idx);
             entry.has_value() &&
@@ -450,8 +451,8 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
                                             GuardedLeaderData const&
                                                 leaderData) {
     if (leaderData._didResign) {
-      THROW_ARANGO_EXCEPTION(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+      throw ParticipantResignedException(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
     }
     LeaderStatus status;
     status.local = leaderData.getLocalStatistics();
@@ -498,8 +499,8 @@ auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
   return _guardedLeaderData.doUnderLock(
       [term = _currentTerm](GuardedLeaderData const& leaderData) {
         if (leaderData._didResign) {
-          THROW_ARANGO_EXCEPTION(
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+          throw ParticipantResignedException(
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
         }
         return QuickLogStatus{
             .role = ParticipantRole::kLeader,
@@ -534,8 +535,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::insertInternal(
     std::optional<LogPayload> payload, bool waitForSync,
     std::optional<InMemoryLogEntry::clock::time_point> insertTp) -> LogIndex {
   if (this->_didResign) {
-    THROW_ARANGO_EXCEPTION(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    throw ParticipantResignedException(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
   }
   auto const index = this->_inMemoryLog.getNextIndex();
   auto const payloadSize = payload.has_value() ? payload->byteSize() : 0;
@@ -553,9 +554,8 @@ auto replicated_log::LogLeader::waitFor(LogIndex index) -> WaitForFuture {
   return _guardedLeaderData.doUnderLock([index](auto& leaderData) {
     if (leaderData._didResign) {
       auto promise = WaitForPromise{};
-      promise.setException(basics::Exception(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, __FILE__,
-          __LINE__));
+      promise.setException(ParticipantResignedException(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE));
       return promise.getFuture();
     }
     if (leaderData._commitIndex >= index) {
@@ -578,8 +578,8 @@ auto replicated_log::LogLeader::getParticipantId() const noexcept
 auto replicated_log::LogLeader::triggerAsyncReplication() -> void {
   auto preparedRequests = _guardedLeaderData.doUnderLock([](auto& leaderData) {
     if (leaderData._didResign) {
-      THROW_ARANGO_EXCEPTION(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+      throw ParticipantResignedException(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
     }
     return leaderData.prepareAppendEntries();
   });
@@ -916,13 +916,20 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
     -> ResolvedPromiseSet {
   auto const quorum_size = _self._config.writeConcern;
 
+  if (quorum_size == 0 || quorum_size > _follower.size()) {
+    LOG_CTX("24e92", WARN, _self._logContext)
+        << "not enough participants to fulfill quorum size requirement";
+    return {};
+  }
+
   auto [newLargestCommonIndex, indexes] = collectEligibleFollowerIndexes();
 
   LOG_CTX("a2d04", TRACE, _self._logContext)
       << "checking commit index on set " << indexes;
-  if (quorum_size == 0 || quorum_size > indexes.size()) {
-    LOG_CTX("24e92", WARN, _self._logContext)
-        << "not enough participants to fulfill quorum size requirement";
+  if (quorum_size > indexes.size()) {
+    LOG_CTX("d8b19", DEBUG, _self._logContext)
+        << "not enough eligible participants to fulfill quorum size "
+           "requirement";
     return {};
   }
 
@@ -1023,8 +1030,8 @@ auto replicated_log::LogLeader::getReplicatedLogSnapshot() const
   auto [log, commitIndex] =
       _guardedLeaderData.doUnderLock([](auto const& leaderData) {
         if (leaderData._didResign) {
-          THROW_ARANGO_EXCEPTION(
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+          throw ParticipantResignedException(
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
         }
 
         return std::make_pair(leaderData._inMemoryLog, leaderData._commitIndex);
@@ -1199,7 +1206,7 @@ auto replicated_log::LogLeader::isLeadershipEstablished() const noexcept
 }
 
 void replicated_log::LogLeader::establishLeadership() {
-  LOG_CTX("f3aa8", INFO, _logContext) << "trying to establish leadership";
+  LOG_CTX("f3aa8", TRACE, _logContext) << "trying to establish leadership";
   auto waitForIndex =
       _guardedLeaderData.doUnderLock([](GuardedLeaderData& data) {
         auto const lastIndex = data._inMemoryLog.getLastTermIndexPair();
@@ -1224,7 +1231,7 @@ void replicated_log::LogLeader::establishLeadership() {
             result.throwIfFailed();
             self->_guardedLeaderData.getLockedGuard()->_leadershipEstablished =
                 true;
-            LOG_CTX("536f4", INFO, self->_logContext)
+            LOG_CTX("536f4", TRACE, self->_logContext)
                 << "leadership established";
           } catch (std::exception const& err) {
             LOG_CTX("5ceda", FATAL, self->_logContext)
@@ -1284,21 +1291,13 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
                   << "configuration already newer than generation "
                   << config->generation;
             }
-          } catch (arangodb::basics::Exception const& err) {
-            if (err.code() ==
-                TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED) {
-              LOG_CTX("3959f", DEBUG, self->_logContext)
-                  << "leader resigned before new participant configuration was "
-                     "committed";
-            } else {
-              LOG_CTX("1af0f", FATAL, self->_logContext)
-                  << "failed to commit new participant config; "
-                  << err.message();
-              FATAL_ERROR_EXIT();
-            }
+          } catch (ParticipantResignedException const&) {
+            LOG_CTX("3959f", DEBUG, self->_logContext)
+                << "leader resigned before new participant configuration was "
+                   "committed";
           } catch (std::exception const& err) {
-            LOG_CTX("5cedb", FATAL, self->_logContext)
-                << "failed to establish leadership: " << err.what();
+            LOG_CTX("1af0f", FATAL, self->_logContext)
+                << "failed to commit new participant config; " << err.what();
             FATAL_ERROR_EXIT();  // TODO is there nothing we can do here?
           }
         }
