@@ -402,8 +402,7 @@ algorithms::CalculateCommitIndexOptions::CalculateCommitIndexOptions(
     std::size_t replicationFactor)
     : _writeConcern(writeConcern),
       _softWriteConcern(softWriteConcern),
-      _replicationFactor(replicationFactor) {
-}
+      _replicationFactor(replicationFactor) {}
 
 auto algorithms::calculateCommitIndex(
     std::vector<ParticipantStateTuple> const& indexes,
