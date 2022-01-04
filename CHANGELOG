@@ -1,7 +1,7 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
-* Added new AQL function SHARD_ID.
+* APM-292: Added new AQL function SHARD_ID.
 
 * APM-78: Added startup security option `--foxx.allow-install-from-remote` to
   allow installing Foxx apps from remote URLs other than Github. The option is
