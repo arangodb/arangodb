@@ -56,7 +56,7 @@ bool hex_decode(std::string& buf, VPackStringRef value) {
   if (value.length() & 1) {
     IR_FRMT_WARN(
       "Invalid size for hex-encoded value while HEX decoding masked token: %s",
-      value.toString().c_str());
+      std::string{value}.c_str());
 
     return false;
   }
@@ -93,9 +93,9 @@ irs::analysis::analyzer::ptr construct(const VPackArrayIterator& mask, bool hex)
       return nullptr;
     }
     std::string token;
-    auto value = (*itr).stringRef();
+    auto value = (*itr).stringView();
     if (!hex) {
-      tokens.emplace(std::string(value.data(), value.length())); // interpret verbatim
+      tokens.emplace(value); // interpret verbatim
     } else if (hex_decode(token, value)) {
       tokens.emplace(std::move(token));
     } else {

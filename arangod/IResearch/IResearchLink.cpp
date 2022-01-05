@@ -300,6 +300,22 @@ uint64_t computeAvg(std::atomic<uint64_t>& timeNum, uint64_t newTime) {
   return (oldTime + newTime) / (oldNum + 1);
 }
 
+template<typename NormType>
+auto getIndexFeatures() {
+  return [](irs::type_info::type_id id) {
+    TRI_ASSERT(irs::type<NormType>::id() == id);
+
+    const irs::column_info info{
+        irs::type<irs::compression::none>::get(), {}, false};
+
+    if (irs::type<NormType>::id() == id) {
+      return std::make_pair(info, &NormType::MakeWriter);
+    }
+
+    return std::make_pair(info, irs::feature_writer_factory_t{});
+  };
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief total number of loaded links
 ////////////////////////////////////////////////////////////////////////////////
@@ -1554,26 +1570,26 @@ Result IResearchLink::initDataStore(
   irs::index_writer::init_options options;
   // Set 256MB limit during recovery. Actual "operational" limit will be set
   // later when this link will be added to the view.
-  options.segment_memory_max = 256 * (size_t(1) << 20);
-  options.lock_repository =
-      false;  // do not lock index, ArangoDB has its own lock
-  options.comparator =
-      sorted ? &_comparer : nullptr;  // set comparator if requested
-  options.features[irs::type<irs::granularity_prefix>::id()] = nullptr;
-  if (LinkVersion(version) < LinkVersion::MAX) {
-    options.features[irs::type<irs::norm>::id()] = &irs::norm::compute;
+  options.segment_memory_max = 256 * (size_t{1} << 20);
+  // Do not lock index, ArangoDB has its own lock.
+  options.lock_repository = false;
+  // Set comparator if requested.
+  options.comparator = sorted ? &_comparer : nullptr;
+  // Set index features.
+  if (LinkVersion{version} < LinkVersion::MAX) {
+    options.features = getIndexFeatures<irs::Norm>();
   } else {
-    options.features[irs::type<irs::norm2>::id()] = &irs::norm2::compute;
+    options.features = getIndexFeatures<irs::Norm2>();
   }
+
   // initialize commit callback
   options.meta_payload_provider = [this](uint64_t tick, irs::bstring& out) {
-    _lastCommittedTick =
-        std::max(_lastCommittedTick, TRI_voc_tick_t(tick));  // update last tick
-    tick = irs::numeric_utils::hton64(
-        uint64_t(_lastCommittedTick));  // convert to BE
+    // update last tick
+    _lastCommittedTick = std::max(_lastCommittedTick, TRI_voc_tick_t{tick});
+    // convert to BE
+    tick = irs::numeric_utils::hton64(uint64_t{_lastCommittedTick});
 
-    out.append(reinterpret_cast<irs::byte_type const*>(&tick),
-               sizeof(uint64_t));
+    out.append(reinterpret_cast<irs::byte_type const*>(&tick), sizeof tick);
 
     return true;
   };
