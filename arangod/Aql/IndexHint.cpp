@@ -103,6 +103,15 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) : IndexHint() {
             _forced = value->value.value._bool;
             handled = true;
           }
+        } else if (name == "lookahead") {
+          TRI_ASSERT(child->numMembers() > 0);
+          AstNode const* value = child->getMember(0);
+
+          if (value->type == AstNodeType::NODE_TYPE_VALUE &&
+              value->value.type == AstNodeValueType::VALUE_TYPE_INT) {
+            _lookahead = value->value.value._int;
+            handled = true;
+          }
         }
 
         if (!handled) {
