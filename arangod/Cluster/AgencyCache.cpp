@@ -227,17 +227,6 @@ void AgencyCache::handleCallbacksNoLock(
                        0) {
           auto tmp = r.substr(strlen(PLAN_COLLECTIONS));
           planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
-        } else if (rs > strlen(PLAN_REPLICATED_LOGS) &&  // Plan/ReplicatedLogs
-                   r.compare(0, strlen(PLAN_REPLICATED_LOGS),
-                             PLAN_REPLICATED_LOGS) == 0) {
-          auto tmp = r.substr(strlen(PLAN_REPLICATED_LOGS));
-          planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
-        } else if (rs > strlen(
-                            PLAN_COLLECTION_GROUPS) &&  // Plan/CollectionGroups
-                   r.compare(0, strlen(PLAN_COLLECTION_GROUPS),
-                             PLAN_COLLECTION_GROUPS) == 0) {
-          auto tmp = r.substr(strlen(PLAN_COLLECTION_GROUPS));
-          planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
         } else if (rs > strlen(PLAN_DATABASES) &&  // Plan/Databases
                    r.compare(0, strlen(PLAN_DATABASES), PLAN_DATABASES) == 0) {
           auto tmp = r.substr(strlen(PLAN_DATABASES));
@@ -272,12 +261,6 @@ void AgencyCache::handleCallbacksNoLock(
                    r.compare(0, strlen(CURRENT_DATABASES), CURRENT_DATABASES) ==
                        0) {
           auto tmp = r.substr(strlen(CURRENT_DATABASES));
-          currentChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
-        } else if (
-            rs > strlen(CURRENT_REPLICATED_LOGS) &&  // Current/ReplicatedLogs
-            r.compare(0, strlen(CURRENT_REPLICATED_LOGS),
-                      CURRENT_REPLICATED_LOGS) == 0) {
-          auto tmp = r.substr(strlen(CURRENT_REPLICATED_LOGS));
           currentChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
         } else {
           currentChanges.emplace();  // "" to indicate non database
@@ -694,12 +677,9 @@ AgencyCache::change_set_t AgencyCache::changedSince(
       {AgencyCommHelper::path(PLAN_ANALYZERS) + "/",
        AgencyCommHelper::path(PLAN_COLLECTIONS) + "/",
        AgencyCommHelper::path(PLAN_DATABASES) + "/",
-       AgencyCommHelper::path(PLAN_VIEWS) + "/",
-       AgencyCommHelper::path(PLAN_COLLECTION_GROUPS) + "/",
-       AgencyCommHelper::path(PLAN_REPLICATED_LOGS) + "/"});
+       AgencyCommHelper::path(PLAN_VIEWS) + "/"});
   static std::vector<std::string> const currentGoodies(
       {AgencyCommHelper::path(CURRENT_COLLECTIONS) + "/",
-       AgencyCommHelper::path(CURRENT_REPLICATED_LOGS) + "/",
        AgencyCommHelper::path(CURRENT_DATABASES) + "/"});
 
   bool get_rest = false;

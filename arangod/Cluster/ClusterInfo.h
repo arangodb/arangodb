@@ -59,12 +59,6 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 
-namespace replication2::agency {
-struct LogPlanSpecification;
-struct CollectionGroupId;
-struct CollectionGroup;
-}  // namespace replication2::agency
-
 class ClusterInfo;
 class LogicalCollection;
 struct ClusterCollectionCreationInfo;
@@ -994,10 +988,6 @@ class ClusterInfo final {
 
   /// @brief map shardId to collection name (not ID)
   CollectionID getCollectionNameForShard(ShardID const& shardId);
-
-  auto getReplicatedLogLeader(DatabaseID const& database,
-                              replication2::LogId) const
-      -> std::optional<ServerID>;
 
   /**
    * @brief Lock agency's hot backup with TTL 60 seconds

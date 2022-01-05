@@ -184,7 +184,6 @@ class Logger {
   static LogTopic PREGEL;
   static LogTopic QUERIES;
   static LogTopic REPLICATION;
-  static LogTopic REPLICATION2;
   static LogTopic REQUESTS;
   static LogTopic RESTORE;
   static LogTopic ROCKSDB;
