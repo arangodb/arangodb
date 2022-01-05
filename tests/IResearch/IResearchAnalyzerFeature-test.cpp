@@ -1486,15 +1486,12 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
     {
       auto const colPath = "/Current/Collections/_system/" +
                            std::to_string(logicalCollection->id().id());
-      auto const
-          colValue =
-              VPackParser::
-                  fromJson(
-                      "{ \"same-as-dummy-shard-id\": { \"indexes\": [ { "
-                      "\"id\": \"43\" "
-                      "} ], \"servers\": [ \"same-as-dummy-shard-server\" ] } "
-                      "}");  // '1' must match 'idString' in
-                             // ClusterInfo::ensureIndexCoordinatorInner(...)
+      auto const colValue = VPackParser::fromJson(
+          "{ \"same-as-dummy-shard-id\": { \"indexes\": [ { "
+          "\"id\": \"43\" "
+          "} ], \"servers\": [ \"same-as-dummy-shard-server\" ] } "
+          "}");  // '1' must match 'idString' in
+                 // ClusterInfo::ensureIndexCoordinatorInner(...)
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(colPath, colValue->slice(), 0.0)
                       .successful());
@@ -2281,7 +2278,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_features) {
         pool->features());
     ASSERT_EQ(irs::IndexFeatures::FREQ, pool->indexFeatures());
     irs::type_info::type_id const expectedFeatures[]{
-        irs::type<irs::norm>::id()};
+        irs::type<irs::Norm>::id()};
     ASSERT_EQ((irs::features_t{expectedFeatures, 1}), pool->fieldFeatures());
   }
 
@@ -2305,7 +2302,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_features) {
         pool->features());
     ASSERT_EQ(irs::IndexFeatures::FREQ, pool->indexFeatures());
     irs::type_info::type_id const expectedFeatures[]{
-        irs::type<irs::norm2>::id()};
+        irs::type<irs::Norm2>::id()};
     ASSERT_EQ((irs::features_t{expectedFeatures, 1}), pool->fieldFeatures());
   }
 
@@ -2547,11 +2544,12 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for
                                                              // constructing
                                                              // TRI_vocbase_t
-    newServer
-        .addFeature<arangodb::ShardingFeature>();  // required for
-                                                   // Collections::create>(std::make_unique<arangodb::ShardingFeature(newServer));
-                                                   // // required for
-                                                   // Collections::create>(...)
+    newServer.addFeature<
+        arangodb::
+            ShardingFeature>();  // required for
+                                 // Collections::create>(std::make_unique<arangodb::ShardingFeature(newServer));
+                                 // // required for
+                                 // Collections::create>(...)
     auto& sysDatabase = newServer.addFeature<
         arangodb::
             SystemDatabaseFeature>();  // required for
@@ -2559,10 +2557,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
                                        // // required for
                                        // IResearchAnalyzerFeature::start>()
     newServer.addFeature<
-        arangodb::V8DealerFeature>();  // required for
-                                       // DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(newServer));
-                                       // // required for
-                                       // DatabaseFeature::createDatabase>(...)
+        arangodb::
+            V8DealerFeature>();  // required for
+                                 // DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(newServer));
+                                 // // required for
+                                 // DatabaseFeature::createDatabase>(...)
     newServer.addFeature<
         arangodb::application_features::
             CommunicationFeaturePhase>();  // required for
@@ -2655,20 +2654,22 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for
                                                              // constructing
                                                              // TRI_vocbase_t
-    newServer
-        .addFeature<arangodb::ShardingFeature>();  // required for
-                                                   // Collections::create>(std::make_unique<arangodb::ShardingFeature(server));
-                                                   // // required for
-                                                   // Collections::create>(...)
+    newServer.addFeature<
+        arangodb::
+            ShardingFeature>();  // required for
+                                 // Collections::create>(std::make_unique<arangodb::ShardingFeature(server));
+                                 // // required for
+                                 // Collections::create>(...)
     auto& sysDatabase = newServer.addFeature<
         arangodb::
             SystemDatabaseFeature>();  // required for
                                        // IResearchAnalyzerFeature::start()
     newServer.addFeature<
-        arangodb::V8DealerFeature>();  // required for
-                                       // DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server));
-                                       // // required for
-                                       // DatabaseFeature::createDatabase>(...)
+        arangodb::
+            V8DealerFeature>();  // required for
+                                 // DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server));
+                                 // // required for
+                                 // DatabaseFeature::createDatabase>(...)
     newServer.addFeature<
         arangodb::application_features::
             CommunicationFeaturePhase>();  // required for
@@ -3152,10 +3153,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   auto& sharding = newServer.addFeature<arangodb::ShardingFeature>();
   auto& systemdb = newServer.addFeature<arangodb::SystemDatabaseFeature>();
   newServer.addFeature<
-      arangodb::V8DealerFeature>();  // required for
-                                     // DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server));
-                                     // // required for
-                                     // DatabaseFeature::createDatabase>(...)
+      arangodb::
+          V8DealerFeature>();  // required for
+                               // DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server));
+                               // // required for
+                               // DatabaseFeature::createDatabase>(...)
 
   auto cleanup = arangodb::scopeGuard([&dbfeature, this]() noexcept {
     dbfeature.unprepare();
@@ -4225,10 +4227,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
       arangodb::SystemDatabaseFeature>();  // required for
                                            // IResearchAnalyzerFeature::start()
   newServer.addFeature<
-      arangodb::V8DealerFeature>();  // required for
-                                     // DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server));
-                                     // // required for
-                                     // DatabaseFeature::createDatabase>(...)
+      arangodb::
+          V8DealerFeature>();  // required for
+                               // DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server));
+                               // // required for
+                               // DatabaseFeature::createDatabase>(...)
 
   // create system vocbase (before feature start)
   {
@@ -4560,10 +4563,11 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
       arangodb::SystemDatabaseFeature>();  // required for
                                            // IResearchAnalyzerFeature::start()
   newServer.addFeature<
-      arangodb::V8DealerFeature>();  // required for
-                                     // DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server));
-                                     // // required for
-                                     // DatabaseFeature::createDatabase>(...)
+      arangodb::
+          V8DealerFeature>();  // required for
+                               // DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server));
+                               // // required for
+                               // DatabaseFeature::createDatabase>(...)
   auto cleanup = arangodb::scopeGuard([&dbFeature, this]() noexcept {
     dbFeature.unprepare();
     server.getFeature<arangodb::DatabaseFeature>()
@@ -4704,10 +4708,11 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
       arangodb::SystemDatabaseFeature>();  // required for
                                            // IResearchAnalyzerFeature::start()
   newServer.addFeature<
-      arangodb::V8DealerFeature>();  // required for
-                                     // DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server));
-                                     // // required for
-                                     // DatabaseFeature::createDatabase>(...)
+      arangodb::
+          V8DealerFeature>();  // required for
+                               // DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server));
+                               // // required for
+                               // DatabaseFeature::createDatabase>(...)
   auto cleanup = arangodb::scopeGuard([&dbFeature, this]() noexcept {
     dbFeature.unprepare();
     server.getFeature<arangodb::DatabaseFeature>()
@@ -5116,21 +5121,21 @@ TEST(FeaturesTest, add_validate) {
   }
 
   {
-    ASSERT_TRUE(f.add(irs::type<irs::norm>::name()));
+    ASSERT_TRUE(f.add(irs::type<irs::Norm>::name()));
     ASSERT_EQ(irs::IndexFeatures::FREQ, f.indexFeatures());
-    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm>::id()},
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::Norm>::id()},
               f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN));
-    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm2>::id()},
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::Norm2>::id()},
               f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX));
     ASSERT_TRUE(f.validate().ok());
   }
 
   {
-    ASSERT_TRUE(f.add(irs::type<irs::norm>::name()));
+    ASSERT_TRUE(f.add(irs::type<irs::Norm>::name()));
     ASSERT_EQ(irs::IndexFeatures::FREQ, f.indexFeatures());
-    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm>::id()},
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::Norm>::id()},
               f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN));
-    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm2>::id()},
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::Norm2>::id()},
               f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX));
     ASSERT_TRUE(f.validate().ok());
   }
@@ -5139,20 +5144,20 @@ TEST(FeaturesTest, add_validate) {
     ASSERT_TRUE(f.add(irs::type<irs::position>::name()));
     ASSERT_EQ(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS,
               f.indexFeatures());
-    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm>::id()},
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::Norm>::id()},
               f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN));
-    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm2>::id()},
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::Norm2>::id()},
               f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX));
     ASSERT_TRUE(f.validate().ok());
   }
 
   {
-    ASSERT_FALSE(f.add(irs::type<irs::norm2>::name()));
+    ASSERT_FALSE(f.add(irs::type<irs::Norm2>::name()));
     ASSERT_EQ(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS,
               f.indexFeatures());
-    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm>::id()},
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::Norm>::id()},
               f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN));
-    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm2>::id()},
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::Norm2>::id()},
               f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX));
     ASSERT_TRUE(f.validate().ok());
   }
