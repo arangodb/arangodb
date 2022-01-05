@@ -576,8 +576,9 @@ std::vector<arangodb::graph::IndexAccessor> TraversalNode::buildUsedIndexes()
     switch (dir) {
       case TRI_EDGE_IN: {
         std::shared_ptr<Index> indexToUse{nullptr};
-//        aql::AstNode* condition = toCondition->clone(_plan->getAst());
-        aql::AstNode* condition = globalEdgeConditionBuilder.getInboundCondition()->clone(ast);
+        //        aql::AstNode* condition = toCondition->clone(_plan->getAst());
+        aql::AstNode* condition =
+            globalEdgeConditionBuilder.getInboundCondition()->clone(ast);
         bool res = aql::utils::getBestIndexHandleForFilterCondition(
             *_edgeColls[i], condition, options()->tmpVar(), 1000,
             aql::IndexHint(), indexToUse, onlyEdgeIndexes);
@@ -619,8 +620,10 @@ std::vector<arangodb::graph::IndexAccessor> TraversalNode::buildUsedIndexes()
       }
       case TRI_EDGE_OUT: {
         std::shared_ptr<Index> indexToUse{nullptr};
-//        aql::AstNode* condition = fromCondition->clone(_plan->getAst());
-        aql::AstNode* condition = globalEdgeConditionBuilder.getOutboundCondition()->clone(ast);
+        //        aql::AstNode* condition =
+        //        fromCondition->clone(_plan->getAst());
+        aql::AstNode* condition =
+            globalEdgeConditionBuilder.getOutboundCondition()->clone(ast);
         bool res = aql::utils::getBestIndexHandleForFilterCondition(
             *_edgeColls[i], condition, options()->tmpVar(), 1000,
             aql::IndexHint(), indexToUse, onlyEdgeIndexes);
@@ -632,8 +635,8 @@ std::vector<arangodb::graph::IndexAccessor> TraversalNode::buildUsedIndexes()
         ::arangodb::containers::HashSet<size_t> toRemove;
         aql::Condition::collectOverlappingMembers(
             _plan, options()->tmpVar(), condition,
-            globalEdgeConditionBuilder.getOutboundCondition(), toRemove, nullptr,
-            false);
+            globalEdgeConditionBuilder.getOutboundCondition(), toRemove,
+            nullptr, false);
         size_t n = condition->numMembers();
 
         std::unique_ptr<aql::Expression> expression = nullptr;
