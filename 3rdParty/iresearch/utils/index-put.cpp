@@ -98,7 +98,7 @@ constexpr frozen::unordered_set<irs::string_ref, 6> LEGACY_FORMATS{
 // norm features supported by old format
 constexpr std::array<irs::type_info::type_id, 1> LEGACY_TEXT_FEATURES{ irs::type<irs::Norm>::id()  };
 // fixed length norm
-constexpr std::array<irs::type_info::type_id, 1> TEXT_FEATURES{ irs::type<irs::norm2>::id()  };
+constexpr std::array<irs::type_info::type_id, 1> TEXT_FEATURES{ irs::type<irs::Norm2>::id()  };
 constexpr std::array<irs::type_info::type_id, 1> NUMERIC_FEATURES{ irs::type<irs::granularity_prefix>::id() };
 
 }
@@ -393,13 +393,23 @@ int put(
   indexer_threads = (std::max)(size_t(1), indexer_threads);
 
   irs::index_writer::init_options opts;
-  opts.features[irs::type<irs::granularity_prefix>::id()] = nullptr;
-  opts.features[irs::type<irs::Norm>::id()] = &irs::Norm::compute;
   opts.segment_pool_size = indexer_threads;
   opts.segment_memory_max = segment_mem_max;
-  opts.feature_column_info = [](irs::type_info::type_id) {
-    return irs::column_info{ irs::type<irs::compression::none>::get(), {}, false };
+  opts.features = [](irs::type_info::type_id id) {
+    const irs::column_info info{ irs::type<irs::compression::none>::get(), {}, false };
+
+    if (irs::type<irs::Norm>::id() == id) {
+      return std::make_pair(info, &irs::Norm::MakeWriter);
+    }
+
+    if (irs::type<irs::Norm2>::id() == id) {
+      return std::make_pair(info, &irs::Norm2::MakeWriter);
+    }
+
+    return std::make_pair(info, irs::feature_writer_factory_t{});
+
   };
+
 
   auto writer = irs::index_writer::make(*dir, codec, irs::OM_CREATE, opts);
 
