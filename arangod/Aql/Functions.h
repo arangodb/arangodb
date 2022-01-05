@@ -515,6 +515,8 @@ struct Functions {
                        VPackFunctionParameters const&);
   static AqlValue DecodeRev(arangodb::aql::ExpressionContext*,
                             AstNode const&, VPackFunctionParameters const&);
+  static AqlValue ShardId(arangodb::aql::ExpressionContext*, AstNode const&,
+                          VPackFunctionParameters const&);
   static AqlValue CurrentUser(arangodb::aql::ExpressionContext*,
                               AstNode const&, VPackFunctionParameters const&);
 
