@@ -205,9 +205,6 @@ auto sampleParticipants(
     agency::LogPlanSpecification const& spec,
     std::unordered_map<ParticipantId, ParticipantRecord> const& info)
     -> std::optional<std::unordered_map<ParticipantId, ParticipantFlags>> {
-  // TODO use std::sample instead of std::shuffle, and a consistent random
-  //      device like RandomDevice from lib/Random/RandomGenerator.h.
-
   std::vector<std::string_view> participantCandidates;
   participantCandidates.reserve(info.size());
   // where is std::transform_if ?
@@ -217,22 +214,24 @@ auto sampleParticipants(
     }
   }
 
-  if (participantCandidates.size() < spec.targetConfig.replicationFactor) {
+  auto const replicationFactor = spec.targetConfig.replicationFactor;
+
+  if (participantCandidates.size() < replicationFactor) {
     // not enough participantCandidates to form a term
     return {};
   }
 
-  {
-    std::random_device rd;
-    std::mt19937 g(rd());
-    std::shuffle(participantCandidates.begin(), participantCandidates.end(), g);
-  }
+  std::vector<std::string_view> chosenParticipants;
+  chosenParticipants.reserve(replicationFactor);
+
+  auto urbg = RandomGenerator::UniformRandomGenerator<std::uint64_t>();
+  std::sample(participantCandidates.begin(), participantCandidates.end(),
+              std::back_inserter(chosenParticipants), replicationFactor, urbg);
 
   auto participants = std::unordered_map<ParticipantId, ParticipantFlags>{};
 
-  for (std::size_t i = 0; i < spec.targetConfig.replicationFactor; i++) {
-    participants.emplace(ParticipantId{participantCandidates[i]},
-                         ParticipantFlags{});
+  for (auto const& participant : chosenParticipants) {
+    participants.emplace(ParticipantId{participant}, ParticipantFlags{});
   }
 
   return participants;
