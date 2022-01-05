@@ -569,8 +569,10 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
 // creating a new iterator if one does not exist for this collection
 RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
     TRI_vocbase_t& vocbase, std::string const& cname,
-    VPackBuffer<uint8_t>& buffer, uint64_t chunkSize, bool useEnvelope) {
+    VPackBuffer<uint8_t>& buffer, uint64_t chunkSize, bool useEnvelope,
+    bool singleArray) {
   TRI_ASSERT(_users > 0 && chunkSize > 0);
+  TRI_ASSERT(!useEnvelope || !singleArray);
 
   CollectionIterator* cIter{nullptr};
   auto guard = scopeGuard([&]() noexcept {
@@ -604,6 +606,10 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
                  RocksDBColumnFamilyManager::Family::Documents));
 
   VPackBuilder builder(buffer, &cIter->vpackOptions);
+  if (singleArray) {
+    // put everything into a single result array on demand
+    builder.openArray(true);
+  }
   TRI_ASSERT(cIter->iter && !cIter->sorted());
   while (cIter->hasMore() && buffer.length() < chunkSize) {
     if (useEnvelope) {
@@ -618,6 +624,9 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
     }
     cIter->iter->Next();
     ++cIter->numberDocumentsDumped;
+  }
+  if (singleArray) {
+    builder.close();
   }
 
   bool hasMore = cIter->hasMore();
@@ -1180,6 +1189,8 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
   _cTypeHandler =
       transaction::Context::createCustomTypeHandler(vocbase, _resolver);
   vpackOptions.customTypeHandler = _cTypeHandler.get();
+  vpackOptions.paddingBehavior =
+      velocypack::Options::PaddingBehavior::UsePadding;
   setSorted(sorted);
 
   if (!vocbase.use()) {  // false if vobase was deleted
