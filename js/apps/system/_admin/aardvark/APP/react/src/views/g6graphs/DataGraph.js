@@ -1,4 +1,4 @@
-/* global arangoHelper, arangoFetch, frontendConfig */
+/* global arangoHelper, arangoFetch, frontendConfig, document, $ */
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Graphin, { Utils, GraphinContext } from '@antv/graphin';
@@ -66,7 +66,10 @@ const DataGraph = () => {
   const [nodeId, setNodeId] = useState('Vancouver');
   const [deleteNodeId, setDeletNodeId] = useState("");
   const [editNode, setEditNode] = useState();
+  const [editNodeData, setEditNodeData] = useState();
+  const [selectedNodeData, setSelectedNodeData] = useState();
   const [showEditNodeModal, setShowEditNodeModal] = useState(false);
+
   let responseTimesObject = {
     fetchStarted: null,
     fetchFinished: null,
@@ -174,6 +177,51 @@ const DataGraph = () => {
     fetchData();
   }, [fetchData]);
   // fetching data # end
+
+  // fetching document # start
+  const fetchDoc = useCallback(() => {
+    const data = {
+      "keys": [
+          "Berlin"
+      ],
+      "collection": "germanCity"
+    };
+    /*
+    $.ajax({
+      cache: false,
+      type: 'PUT',
+      url: arangoHelper.databaseUrl('/_api/simple/lookup-by-keys'),
+      contentType: 'application/json',
+      data: JSON.stringify(data),
+      processData: false,
+      success: function (data) {
+        console.log("DATA from AJAX: ", data);
+      },
+      error: function (data) {
+        console.error("Error data from ajax: ", data);
+      }
+    });
+    */
+   
+    arangoFetch(arangoHelper.databaseUrl("/_api/simple/lookup-by-keys"), {
+      method: "PUT",
+      body: JSON.stringify(data),
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log("Document DATA");
+      console.log(data);
+      setSelectedNodeData(data);
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+  }, []);
+
+  useEffect(() => {
+    fetchDoc();
+  }, [fetchDoc]);
+  // fetching document # end
 
   // diverse functions # start
   const toggleEditNodeModal = (editNodeModalVisibility) => {
@@ -401,10 +449,63 @@ const DataGraph = () => {
         setShowAddNodeModal(!showAddNodeModal);
       }
 
-      const editModal = (nodeId) => {
-        console.log("nodeId in menuHandleChange (editModal): ", nodeId.id);
+      const EditModal = (nodeId) => {
+        console.log("nodeId in menuHandleChange (editModal): ", nodeId);
+        console.log("nodeId.id in menuHandleChange (editModal): ", nodeId.id);
+        console.log("Collection in EditModal: ", nodeId.id.split('/')[0]);
+        console.log("ID in EditModal: ", nodeId.id.split('/')[1]);
         console.log("node object in menuHandleChange (editModal): ", nodeId);
+        const nodeData = {
+          "keys": [
+            nodeId.id.split('/')[1]
+          ],
+          "collection": nodeId.id.split('/')[0]
+        };
+        console.log("nodeData in EditModal: ", nodeData);
+        arangoFetch(arangoHelper.databaseUrl("/_api/simple/lookup-by-keys"), {
+          method: "PUT",
+          body: JSON.stringify(nodeData),
+        })
+        .then(response => response.json())
+        .then(data => {
+          console.log("Document DATA in editModal: ", data);
+          setSelectedNodeData(data);
+          console.log("selectedNodeData in editModal: ", selectedNodeData);
+        })
+        .catch((err) => {
+          console.log(err);
+        });
         //setEditNode(nodeId);
+        // fetching document # start
+        /*
+        const fetchDoc = useCallback(() => {
+          //e.data.node.id.split('/')[0], e.data.node.id.split('/')[1]
+          const data = {
+            "keys": [
+                "Berlin"
+            ],
+            "collection": "germanCity"
+          };
+          arangoFetch(arangoHelper.databaseUrl("/_api/simple/lookup-by-keys"), {
+            method: "PUT",
+            body: JSON.stringify(data),
+          })
+          .then(response => response.json())
+          .then(data => {
+            console.log("Document DATA");
+            console.log(data);
+            setSelectedNodeData(data);
+          })
+          .catch((err) => {
+            console.log(err);
+          });
+        }, []);
+
+        useEffect(() => {
+          fetchDoc();
+        }, [fetchDoc]);
+        */
+        // fetching document # end
         setEditNode(nodeId.id);
         //setShowEditNodeModal(!showEditNodeModal);
         setShowEditNodeModal(true);
@@ -443,7 +544,8 @@ const DataGraph = () => {
             //message.info(`GraphData：${graphData}`);
             //query = `/_admin/aardvark/graph/routeplanner?depth=2&limit=250&nodeColor=#2ecc71&nodeColorAttribute=&nodeColorByCollection=true&edgeColor=#cccccc&edgeColorAttribute=&edgeColorByCollection=false&nodeLabel=_key&edgeLabel=&nodeSize=&nodeSizeByEdges=true&edgeEditable=true&nodeLabelByCollection=false&edgeLabelByCollection=false&nodeStart=&barnesHutOptimize=true&query=FOR v, e, p IN 1..1 ANY "${menuData.id}" GRAPH "routeplanner" RETURN p`;
             //queryMethod = "GET";
-            editModal(menuData);
+            console.log("editnode (menudata): ", menuData);
+            EditModal(menuData);
             //message.info(`Open Modal with text editor`);
             //toggleEditNodeModal(true);
             //showEditNodeModal(graphData);
@@ -622,6 +724,38 @@ const DataGraph = () => {
     setQueryString(`/_admin/aardvark/g6graph/${myString}`);
   }
 
+  const lookupNodeData = () => {
+    console.log("lookupNodeData() triggered");
+    /*
+    $.ajax({
+      cache: false,
+      type: 'PUT',
+      url: arangoHelper.databaseUrl('/_api/simple/lookup-by-keys'),
+      contentType: 'application/json',
+      data: JSON.stringify(data),
+      processData: false,
+      success: function (data) {
+        if (data.documents[0]) {
+          self.add(data.documents[0]);
+          if (data.documents[0]._from && data.documents[0]._to) {
+            callback(false, data, 'edge');
+          } else {
+            callback(false, data, 'document');
+          }
+        } else {
+          self.add(true, data);
+          callback(true, data, colid + '/' + dockey);
+        }
+      },
+      error: function (data) {
+        self.add(true, data);
+        arangoHelper.arangoError('Error', data.responseJSON.errorMessage + ' - error number: ' + data.responseJSON.errorNum);
+        callback(true, data, colid + '/' + dockey);
+      }
+    });
+    */
+  }
+
   if(graphData) {
     console.log("graphdata (nodes) in menu graph");
     console.log(graphData.nodes);
@@ -672,6 +806,9 @@ const DataGraph = () => {
                         onAqlQueryHandler={(myString) => setAqlQueryString(myString)}
                     />
                   </SlideInMenu>
+                  <button onClick={() => lookupNodeData()}>
+                    Lookup-by-keys
+                  </button>
                   <ResponseInfo
                     duration={responseTimes.fetchDuration}
                   />
@@ -728,11 +865,15 @@ const DataGraph = () => {
               >
                 <h1>Edit Node</h1>
                 <p>Really edit node: {editNode}</p>
+                <p>Edit node (object): {JSON.stringify(selectedNodeData, null, 2)}</p>
               </EditNodeModal>
             </>
           }
         >
-          <Graphin data={graphData} layout={layout}>
+          <Graphin
+            data={graphData}
+            layout={layout}
+          >
             <ContextMenu>
               <Menu options={menuOptions} onChange={menuHandleChange} graphData={graphData} bindType="node" />
             </ContextMenu>
