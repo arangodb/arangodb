@@ -25,6 +25,7 @@
 
 #include "frozen/bits/exceptions.h"
 
+#include <array>
 #include <utility>
 #include <iterator>
 #include <string>
@@ -112,6 +113,12 @@ public:
   template <std::size_t M>
   constexpr carray(T const (&init)[M])
     : carray(init, std::make_index_sequence<N>())
+  {
+    static_assert(M >= N, "Cannot initialize a carray with an smaller array");
+  }
+  template <std::size_t M>
+  constexpr carray(std::array<T, M> const &init)
+    : carray(&init[0], std::make_index_sequence<N>())
   {
     static_assert(M >= N, "Cannot initialize a carray with an smaller array");
   }

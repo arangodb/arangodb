@@ -49,6 +49,33 @@
 
 #include "tests_shared.hpp"
 
+namespace {
+
+bool visit(const irs::column_reader& reader,
+           const std::function<bool(irs::doc_id_t, irs::bytes_ref)>& visitor) {
+  auto it = reader.iterator(true);
+
+  irs::payload dummy;
+  auto* doc = irs::get<irs::document>(*it);
+  if (!doc) {
+    return false;
+  }
+  auto* payload = irs::get<irs::payload>(*it);
+  if (!payload) {
+    payload = &dummy;
+  }
+
+  while (it->next()) {
+    if (!visitor(doc->value, payload->value)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+}
+
 namespace tests {
 
 void assert_term(
@@ -165,6 +192,15 @@ void column_values::insert(irs::doc_id_t key, irs::bytes_ref value) {
   }
 }
 
+irs::bstring column_values::payload() const {
+  if (!payload_.has_value() && writer_) {
+    payload_.emplace();
+    writer_->finish(payload_.value());
+  }
+
+  return payload_.value_or(irs::bstring{});
+}
+
 void column_values::sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs) {
   std::map<irs::doc_id_t, irs::bstring> resorted_values;
 
@@ -175,6 +211,26 @@ void column_values::sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs) {
   }
 
   values_ = std::move(resorted_values);
+}
+
+void column_values::rewrite() {
+  if (writer_ && factory_) {
+    irs::bstring hdr = payload();
+    const irs::bytes_ref ref = hdr;
+    auto writer = factory_({&ref, 1});
+    ASSERT_NE(nullptr, writer);
+
+    std::map<irs::doc_id_t, irs::bstring> values;
+    for (auto& value : values_) {
+      irs::bytes_output out{values[value.first]};
+      writer->write(out, value.second);
+    }
+
+    ASSERT_TRUE(payload_.has_value());
+    payload_.value().clear();
+    writer->finish(payload_.value());
+    values_ = std::move(values);
+  }
 }
 
 void index_segment::compute_features() {
@@ -211,12 +267,12 @@ void index_segment::compute_features() {
 
   for (auto* field : doc_fields_) {
     for (auto& entry : field->feature_infos) {
-      if (entry.handler) {
+      if (entry.writer) {
         buf_.clear();
 
         const auto doc_id = doc();
         written = false;
-        entry.handler(field->stats, doc_id, writer);
+        entry.writer->write(field->stats, doc_id, writer);
 
         if (written) {
           columns_[entry.id].insert(doc_id, buf_);
@@ -244,16 +300,16 @@ void index_segment::insert_stored(const ifield& f) {
   const size_t id = columns_.size();
   EXPECT_LE(id, std::numeric_limits<irs::field_id>::max());
 
-  auto res = columns_meta_.emplace(static_cast<std::string>(f.name()), id);
+  auto res = named_columns_.emplace(static_cast<std::string>(f.name()), nullptr);
 
   if (res.second) {
-    columns_.emplace_back();
+    res.first->second = &columns_.emplace_back(static_cast<std::string>(f.name()), id);
   }
 
-  const auto column_id = res.first->second;
-  EXPECT_LT(column_id, columns_.size()) ;
-
-  columns_[column_id].insert(doc(), buf_);
+  auto* column = res.first->second;
+  ASSERT_NE(nullptr, column);
+  EXPECT_LT(column->id(), columns_.size()) ;
+  column->insert(doc(), buf_);
 }
 
 void index_segment::insert_indexed(const ifield& f) {
@@ -269,17 +325,21 @@ void index_segment::insert_indexed(const ifield& f) {
     auto& new_field = res.first->second;
     id_to_field_.emplace_back(&new_field);
     for (auto& feature : new_field.features) {
-      auto handler = field_features_.find(feature.first);
+      auto handler = field_features_(feature.first);
 
-      if (handler != field_features_.end()) {
+      auto feature_writer = handler.second
+        ? (*handler.second)({})
+        : nullptr;
+
+      if (feature_writer) {
         const size_t id = columns_.size();
         ASSERT_LE(id, std::numeric_limits<irs::field_id>::max());
-        columns_.emplace_back();
+        columns_.emplace_back(id, handler.second, feature_writer.get());
 
         feature.second = irs::field_id{id};
 
         new_field.feature_infos.emplace_back(field::feature_info{
-          irs::field_id{id}, handler->second});
+          irs::field_id{id}, handler.second, std::move(feature_writer)});
       }
     }
 
@@ -301,10 +361,20 @@ void index_segment::insert_indexed(const ifield& f) {
 
   while (stream.next()) {
     tests::term& trm = field.insert(term->value);
+
+    if (trm.postings.empty() || std::prev(std::end(trm.postings))->id() != doc_id) {
+      ++field.stats.num_unique;
+    }
+
     tests::posting& pst = trm.insert(doc_id);
     field.stats.pos += inc->value;
+    field.stats.num_overlap += static_cast<uint32_t>(0 == inc->value);
     ++field.stats.len;
     pst.insert(field.stats.pos, field.stats.offs, stream);
+    field.stats.max_term_freq = std::max(
+        field.stats.max_term_freq,
+        static_cast<decltype(field.stats.max_term_freq)>(pst.positions().size()));
+
     empty = false;
   }
 
@@ -831,20 +901,17 @@ void assert_terms_seek(
 }
 
 void assert_pk(
-    const irs::columnstore_reader::column_reader& actual_reader,
+    const irs::column_reader& actual_reader,
     const std::vector<std::pair<irs::bstring, irs::doc_id_t>>& expected_values) {
   ASSERT_EQ(expected_values.size(), actual_reader.size());
 
   // check iterators & values
   {
-    auto actual_it = actual_reader.iterator();
+    auto actual_it = actual_reader.iterator(false);
     ASSERT_NE(nullptr, actual_it);
 
-    auto actual_seek_it = actual_reader.iterator();
+    auto actual_seek_it = actual_reader.iterator(false);
     ASSERT_NE(nullptr, actual_seek_it);
-
-    auto actual_values = actual_reader.values();
-    ASSERT_TRUE(actual_values);
 
     auto* actual_key = irs::get<irs::document>(*actual_it);
     ASSERT_NE(nullptr, actual_key);
@@ -856,7 +923,7 @@ void assert_pk(
       auto& expected_value = expected.first;
       ASSERT_TRUE(actual_it->next());
 
-      auto actual_stateless_seek_it = actual_reader.iterator();
+      auto actual_stateless_seek_it = actual_reader.iterator(false);
       ASSERT_NE(nullptr, actual_stateless_seek_it);
 
       ASSERT_EQ(expected_key, actual_it->value());
@@ -864,10 +931,6 @@ void assert_pk(
       ASSERT_EQ(expected_value, actual_value->value);
       ASSERT_EQ(expected_key, actual_seek_it->seek(expected_key));
       ASSERT_EQ(expected_key, actual_stateless_seek_it->seek(expected_key));
-
-      irs::bytes_ref actual_value2;
-      ASSERT_TRUE(actual_values(expected_key, actual_value2));
-      ASSERT_EQ(expected_value, actual_value2);
 
       ++expected_key;
     }
@@ -880,38 +943,47 @@ void assert_pk(
     auto begin = expected_values.begin();
     irs::doc_id_t expected_key = irs::doc_limits::min();
 
-    actual_reader.visit(
-      [&begin, &expected_key](auto actual_key, auto& actual_value) mutable {
-        EXPECT_EQ(expected_key, actual_key);
-        EXPECT_EQ(begin->first, actual_value);
-        ++begin;
-        ++expected_key;
-        return true;
+    visit(actual_reader,
+          [&begin, &expected_key](auto actual_key, const auto& actual_value) mutable {
+            EXPECT_EQ(expected_key, actual_key);
+            EXPECT_EQ(begin->first, actual_value);
+            ++begin;
+            ++expected_key;
+            return true;
     });
     ASSERT_EQ(begin, expected_values.end());
   }
 }
 
 void assert_column(
-    const irs::columnstore_reader::column_reader* actual_reader,
+    const irs::column_reader* actual_reader,
     const column_values& expected_values) {
   if (!actual_reader) {
     ASSERT_TRUE(expected_values.empty());
     return;
   }
 
+  if (expected_values.name().null()) {
+    // field features are stored as annonymous columns
+    ASSERT_TRUE(actual_reader->name().null());
+  } else {
+    ASSERT_EQ(expected_values.name(), actual_reader->name());
+  }
+
+  if (!actual_reader->payload().null()) {
+    // old formats may not support column header payload
+    ASSERT_EQ(expected_values.payload(), actual_reader->payload());
+  }
+
   ASSERT_EQ(expected_values.size(), actual_reader->size());
 
   // check iterators & values
   {
-    auto actual_it = actual_reader->iterator();
+    auto actual_it = actual_reader->iterator(false);
     ASSERT_NE(nullptr, actual_it);
 
-    auto actual_seek_it = actual_reader->iterator();
+    auto actual_seek_it = actual_reader->iterator(false);
     ASSERT_NE(nullptr, actual_seek_it);
-
-    auto actual_values = actual_reader->values();
-    ASSERT_TRUE(actual_values);
 
     auto* actual_key = irs::get<irs::document>(*actual_it);
     ASSERT_NE(nullptr, actual_key);
@@ -921,7 +993,7 @@ void assert_column(
     for (auto& [expected_key, expected_value] : expected_values) {
       ASSERT_TRUE(actual_it->next());
 
-      auto actual_stateless_seek_it = actual_reader->iterator();
+      auto actual_stateless_seek_it = actual_reader->iterator(false);
       ASSERT_NE(nullptr, actual_stateless_seek_it);
 
       ASSERT_EQ(expected_key, actual_it->value());
@@ -929,10 +1001,6 @@ void assert_column(
       ASSERT_EQ(expected_value, actual_value->value);
       ASSERT_EQ(expected_key, actual_seek_it->seek(expected_key));
       ASSERT_EQ(expected_key, actual_stateless_seek_it->seek(expected_key));
-
-      irs::bytes_ref actual_value2;
-      ASSERT_TRUE(actual_values(expected_key, actual_value2));
-      ASSERT_EQ(expected_value, actual_value2);
     }
     ASSERT_FALSE(actual_it->next());
     ASSERT_FALSE(actual_it->next());
@@ -942,13 +1010,13 @@ void assert_column(
   {
     auto begin = expected_values.begin();
 
-    actual_reader->visit(
-      [&begin](auto actual_key, auto& actual_value) mutable {
-        auto& [expected_key, expected_value] = *begin;
-        EXPECT_EQ(expected_key, actual_key);
-        EXPECT_EQ(expected_value, actual_value);
-        ++begin;
-        return true;
+    visit(*actual_reader,
+          [&begin](auto actual_key, const auto& actual_value) mutable {
+            auto& [expected_key, expected_value] = *begin;
+            EXPECT_EQ(expected_key, actual_key);
+            EXPECT_EQ(expected_value, actual_value);
+            ++begin;
+            return true;
     });
     ASSERT_EQ(begin, expected_values.end());
   }
@@ -972,30 +1040,30 @@ void assert_columnstore(
     const tests::index_segment& expected_segment = expected_index[i];
 
     // check pk if present
-    if (auto& expected_pk = expected_segment.pk(); expected_pk.empty()) {
+    if (auto& expected_pk = expected_segment.pk(); !expected_pk.empty()) {
       auto* actual_pk = actual_segment.sort();
       ASSERT_NE(nullptr, actual_pk);
       assert_pk(*actual_pk, expected_pk);
     }
 
     // check stored columns
-    auto& expected_columns = expected_segment.columns_meta();
+    auto& expected_columns = expected_segment.named_columns();
     auto expected_columns_begin = expected_columns.begin();
     auto actual_columns = actual_segment.columns();
 
     for (; actual_columns->next(); ++expected_columns_begin) {
       auto& actual_column = actual_columns->value();
-      ASSERT_EQ(expected_columns_begin->first, actual_column.name);
+      ASSERT_EQ(expected_columns_begin->first, actual_column.name());
       // column id is format dependent
-      ASSERT_TRUE(irs::field_limits::valid(expected_columns_begin->second));
-      ASSERT_TRUE(irs::field_limits::valid(actual_column.id));
-      ASSERT_LT(expected_columns_begin->second, expected_segment.columns().size());
+      ASSERT_TRUE(irs::field_limits::valid(expected_columns_begin->second->id()));
+      ASSERT_TRUE(irs::field_limits::valid(actual_column.id()));
+      ASSERT_LT(expected_columns_begin->second->id(), expected_segment.columns().size());
 
-      const auto* actual_column_reader = actual_segment.column_reader(actual_column.id);
-      ASSERT_EQ(actual_column_reader, actual_segment.column_reader(actual_column.name));
+      const auto* actual_column_reader = actual_segment.column(actual_column.id());
+      ASSERT_EQ(actual_column_reader, actual_segment.column(actual_column.name()));
 
       assert_column(actual_column_reader,
-                    expected_segment.columns()[expected_columns_begin->second]);
+                    expected_segment.columns()[expected_columns_begin->second->id()]);
     }
     ASSERT_FALSE(actual_columns->next());
     ASSERT_EQ(expected_columns_begin, expected_columns.end());
@@ -1012,7 +1080,7 @@ void assert_columnstore(
           ASSERT_FALSE(irs::field_limits::valid(actual_field_feature->second));
         } else {
           ASSERT_LT(expected_field_feature.second, expected_segment.columns().size());
-          const auto* actual_column = actual_segment.column_reader(actual_field_feature->second);
+          const auto* actual_column = actual_segment.column(actual_field_feature->second);
           assert_column(actual_column, expected_segment.columns()[expected_field_feature.second]);
         }
         ++actual_field_feature;
