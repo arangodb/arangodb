@@ -4,8 +4,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
 ///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -28,8 +26,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-let jsunity = require("jsunity");
-let db = require("@arangodb").db;
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
 const ruleName = "reduce-extraction-to-projection";
 const cn = "UnitTestsOptimizer";
 
@@ -42,7 +40,7 @@ function projectionsPlansTestSuite () {
       c = db._createEdgeCollection(cn, { numberOfShards: 4 });
 
       let docs = [];
-      for (var i = 0; i < 1000; ++i) {
+      for (let i = 0; i < 1000; ++i) {
         docs.push({ _from: "v/test" + i, _to: "v/test" + i, _key: "test" + i, value1: i, value2: "test" + i, value3: i, foo: { bar: i, baz: i, bat: i } });
       }
       c.insert(docs);
@@ -657,7 +655,88 @@ function projectionsExtractionTestSuite () {
   };
 }
 
+function projectionsMaxProjectionsTestSuite () {
+  let c = null;
+
+  return {
+    setUp : function () {
+      db._drop(cn);
+      c = db._create(cn, { numberOfShards: 1 });
+
+      let docs = [];
+      for (var i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i, value2: i, value3: i, value4: i, value5: i, value6: i, value7: i });
+      }
+      c.insert(docs);
+    },
+
+    tearDown : function () {
+      db._drop(cn);
+    },
+
+    testDefaultMaxProjections : function () {
+      let queries = [];
+      for (let i = 1; i < 11; ++i) {
+        let fields = [];
+        let projections = [];
+        for (let j = 0; j < i; ++j) {
+          fields.push(`doc.value${j}`);
+          if (i <= 5) {
+            projections.push(`value${j}`);
+          }
+        }
+        let query = `FOR doc IN ${cn} RETURN [ ${fields.join(', ')} ]`;
+        queries.push([ query, projections ]);
+      }
+
+      queries.forEach(function(query) {
+        let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
+        let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
+        assertEqual(1, nodes.length, query);
+        assertEqual(query[1], nodes[0].projections.sort(), query);
+        if (query[1].length) {
+          assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        } else {
+          assertEqual(-1, plan.rules.indexOf(ruleName));
+        }
+      });
+    },
+    
+    testAdjustedMaxProjections : function () {
+      let queries = [];
+      [ 1, 2, 3, 5, 6, 10, 12 ].forEach((maxProjections) => {
+        for (let i = 1; i < 11; ++i) {
+          let fields = [];
+          let projections = [];
+          for (let j = 0; j < i; ++j) {
+            fields.push(`doc.value${j}`);
+            if (i <= maxProjections) {
+              projections.push(`value${j}`);
+            }
+          }
+          let query = `FOR doc IN ${cn} OPTIONS { maxProjections: ${maxProjections} } RETURN [ ${fields.join(', ')} ]`;
+          queries.push([ query, projections ]);
+        }
+      });
+
+      queries.forEach(function(query) {
+        let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
+        let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
+        assertEqual(1, nodes.length, query);
+        assertEqual(query[1], nodes[0].projections.sort(), query);
+        if (query[1].length) {
+          assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        } else {
+          assertEqual(-1, plan.rules.indexOf(ruleName));
+        }
+      });
+    },
+    
+  };
+}
+
 jsunity.run(projectionsPlansTestSuite);
 jsunity.run(projectionsExtractionTestSuite);
+jsunity.run(projectionsMaxProjectionsTestSuite);
 
 return jsunity.done();

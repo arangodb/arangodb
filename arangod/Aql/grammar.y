@@ -1390,7 +1390,6 @@ upsert_statement:
             std::string_view nodeMemberName = nodeMember->getStringView();
             if (nodeMemberName == arangodb::StaticStrings::IndexHintOption || 
                 nodeMemberName == arangodb::StaticStrings::IndexHintOptionForce ||
-                nodeMemberName == arangodb::StaticStrings::IndexHintMaxProjections ||
                 nodeMemberName == arangodb::StaticStrings::IndexHintDisableIndex) {
               forOptionsNode->addMember(nodeMember);
             } else {

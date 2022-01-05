@@ -2,7 +2,8 @@ devel
 -----
 
 * Added `disableIndex` index hint for AQL FOR loops. This index hint disables
-  the usage of any index and will always cause a full scan over the collection.
+  the usage of any index (except geo or full text indexes) and will cause a
+  full scan over the collection.
   In some circumstances a full scan can be more efficient than an index scan,
   for example if the index scan produces many matches (close to the number of
   documents in the collection) and the index is not fully covering the query.
