@@ -1,6 +1,9 @@
 devel
 -----
 
+* BTS-707: rename "hardened" option value for `--server.support-info-api`
+  startup option to "admin".
+
 * When creating a new database the value of the write concern has to be smaller
   or equal to the replication factor. Otherwise an error message will be displayed
   and no database will be created.
