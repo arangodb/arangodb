@@ -250,4 +250,39 @@ auto replicatedLogAction(Log const& log, ParticipantsHealth const& health)
   return nullptr;
 }
 
+// External forces can modif Target/ReplicatedState; for instance
+// add/remove participants to/from Target/ReplicatedState or change flags in
+// participants
+//
+// This function reacts to discrepancies between Target/ReplicatedState
+auto checkTarget(Log const& log, State const& state)
+    -> std::unique_ptr<PlanAction> {
+  // external forces can add/remove participants to/from target
+  // or change flags in participants; we need to detect
+  // discrepancies between target and plan and add
+  // them to the plan
+
+  auto const& tps = state.target.participants;
+  auto const& pps = state.plan.participants;
+
+  // Find if there is an participant in Target that is not in Plan;
+  // if so, add it to Plan.
+  for (auto const& [pid, _] : tps) {
+    if (!pps.contains(pid)) {
+      // Add participant to target, but excluded
+      return std::make_unique<AddParticipantAction>(pid);
+    }
+  }
+
+  // Find if there is a participant in Plan that is not in Target;
+  // if so, remove it from Plan.
+  for (auto const& pid : pps.set) {
+    if (!tps.contains(pid)) {
+      return std::unique_ptr<PlanAction>{};
+    }
+  }
+
+  return nullptr;
+}
+
 }  // namespace arangodb::replication2::replicated_state

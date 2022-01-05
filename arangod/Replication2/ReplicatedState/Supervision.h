@@ -33,6 +33,7 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
 #include <chrono>
+#include <memory>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -177,5 +178,26 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
 
 auto replicatedLogAction(Log const&, ParticipantsHealth const&)
     -> std::unique_ptr<Action>;
+
+struct PlanAction {
+  enum class ActionType { AddParticipantAction };
+  virtual void execute() = 0;
+  virtual ActionType type() const = 0;
+  virtual void toVelocyPack(VPackBuilder& builder) const = 0;
+  virtual ~PlanAction() = default;
+};
+
+struct AddParticipantAction : PlanAction {
+  AddParticipantAction(ParticipantId participant) : _pid(participant){};
+  void execute() override{};
+  ActionType type() const override {
+    return PlanAction::ActionType::AddParticipantAction;
+  };
+  void toVelocyPack(VPackBuilder& builder) const override;
+
+  ParticipantId _pid;
+};
+
+auto checkPlan(Log const& log) -> std::unique_ptr<PlanAction>;
 
 }  // namespace arangodb::replication2::replicated_state
