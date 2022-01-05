@@ -1086,7 +1086,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
   ManagedDocumentResult docResult;
   ManagedDocumentResult prevDocResult;  // return OLD (with override option)
 
-  auto workForOneDocument = [&](VPackSlice const value, bool isBabies,
+  auto workForOneDocument = [&](VPackSlice value, bool isBabies,
                                 bool& excludeFromReplication) -> Result {
     excludeFromReplication = false;
 

@@ -669,41 +669,93 @@ Result DatabaseInitialSyncer::parseCollectionDump(
   bool found = false;
   std::string const& cType =
       response->getHeaderField(StaticStrings::ContentTypeHeader, found);
+
   if (found && cType == StaticStrings::MimeTypeVPack) {
+    // received a velocypack response from the leader
     LOG_TOPIC("b9f4d", DEBUG, Logger::REPLICATION)
         << "using vpack for chunk contents";
 
     VPackValidator validator(
         &basics::VelocyPackHelper::strictRequestValidationOptions);
 
-    try {
-      while (p < end) {
-        size_t remaining = static_cast<size_t>(end - p);
-        // throws if the data is invalid
-        validator.validate(p, remaining, /*isSubPart*/ true);
+    // now check the sub-format of the velocypack data we received...
+    VPackSlice s(reinterpret_cast<uint8_t const*>(p));
 
-        VPackSlice marker(reinterpret_cast<uint8_t const*>(p));
-        Result r = parseCollectionDumpMarker(trx, coll, marker, hint);
+    if (s.isArray()) {
+      // got one big velocypack array with all documents in it.
+      // servers >= 3.10 will send this if we send the "array=true" request
+      // parameter. older versions are not able to send this format, but will
+      // send each document as a single velocypack slice.
 
-        TRI_ASSERT(!r.is(TRI_ERROR_ARANGO_TRY_AGAIN));
-        if (r.fail()) {
-          r.reset(r.errorNumber(),
-                  std::string("received invalid dump data for collection '") +
-                      coll->name() + "'");
-          return r;
-        }
-        ++markersProcessed;
-        p += marker.byteSize();
+      size_t remaining = static_cast<size_t>(end - p);
+      // throws if the data is invalid
+      validator.validate(p, remaining, /*isSubPart*/ false);
+
+      markersProcessed += s.length();
+
+      OperationOptions options;
+      options.silent = true;
+      options.ignoreRevs = true;
+      options.isRestore = true;
+      options.validate = false;
+      options.returnOld = false;
+      options.returnNew = false;
+      options.checkUniqueConstraintsInPreflight = false;
+      options.isSynchronousReplicationFrom = _state.leaderId;
+
+      auto opRes = trx.insert(coll->name(), s, options);
+      if (opRes.fail()) {
+        return opRes.result;
       }
-    } catch (velocypack::Exception const& e) {
-      LOG_TOPIC("b9f4f", ERR, Logger::REPLICATION)
-          << "Error parsing VPack response: " << e.what();
-      return Result(TRI_ERROR_HTTP_CORRUPTED_JSON, e.what());
-    }
 
+      VPackSlice resultSlice = opRes.slice();
+      if (resultSlice.isArray()) {
+        for (VPackSlice it : VPackArrayIterator(resultSlice)) {
+          VPackSlice s = it.get(StaticStrings::Error);
+          if (!s.isTrue()) {
+            continue;
+          }
+          // found an error
+          auto errorCode =
+              ErrorCode{it.get(StaticStrings::ErrorNum).getNumber<int>()};
+          VPackSlice msg = it.get(StaticStrings::ErrorMessage);
+          return Result(errorCode, msg.copyString());
+        }
+      }
+
+    } else {
+      // received a VelocyPack response from the leader, with one document
+      // per slice (multiple slices in the same response)
+      try {
+        while (p < end) {
+          size_t remaining = static_cast<size_t>(end - p);
+          // throws if the data is invalid
+          validator.validate(p, remaining, /*isSubPart*/ true);
+
+          VPackSlice marker(reinterpret_cast<uint8_t const*>(p));
+          Result r = parseCollectionDumpMarker(trx, coll, marker, hint);
+
+          TRI_ASSERT(!r.is(TRI_ERROR_ARANGO_TRY_AGAIN));
+          if (r.fail()) {
+            r.reset(r.errorNumber(),
+                    std::string("received invalid dump data for collection '") +
+                        coll->name() + "'");
+            return r;
+          }
+          ++markersProcessed;
+          p += marker.byteSize();
+        }
+      } catch (velocypack::Exception const& e) {
+        LOG_TOPIC("b9f4f", ERR, Logger::REPLICATION)
+            << "Error parsing VPack response: " << e.what();
+        return Result(TRI_ERROR_HTTP_CORRUPTED_JSON, e.what());
+      }
+    }
   } else {
+    // received a JSONL response from the leader, with one document per line
     // buffer must end with a NUL byte
     TRI_ASSERT(*end == '\0');
+
     LOG_TOPIC("bad5d", DEBUG, Logger::REPLICATION)
         << "using json for chunk contents";
 
@@ -868,6 +920,21 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
       "&batchId=" + std::to_string(_config.batch.id) + "&includeSystem=" +
       std::string(_config.applier._includeSystem ? "true" : "false") +
       "&useEnvelope=false" + "&serverId=" + _state.localServerIdString;
+
+  if (ServerState::instance()->isDBServer() && !_config.isChild() &&
+      _config.applier._skipCreateDrop &&
+      _config.applier._restrictType ==
+          ReplicationApplierConfiguration::RestrictType::Include &&
+      _config.applier._restrictCollections.size() == 1 &&
+      !hasDocuments(*coll)) {
+    // DB server doing shard synchronization. now try to fetch everything in a
+    // single VPack array. note: only servers >= 3.10 will honor this URL
+    // parameter. servers that are not capable of this format will simply ignore
+    // it and send the old format. the syncer has code to tell the two formats
+    // apart. note: we can only add this flag if we are sure there are no
+    // documents present locally. everything else is not safe.
+    baseUrl += "&array=true";
+  }
 
   if (maxTick > 0) {
     baseUrl += "&to=" + itoa(maxTick + 1);
