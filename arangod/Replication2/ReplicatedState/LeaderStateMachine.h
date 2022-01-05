@@ -39,24 +39,6 @@
 #include <string>
 #include <unordered_map>
 
-// We have
-//  - ReplicatedLog
-//  - ReplicatedState
-//
-//  ReplicatedState is built on top of ReplicatedLogs
-//
-// We have (in the agency)
-//  - Current
-//  - Plan
-//  - Target
-//  for each of ReplicatedLog and ReplicatedState
-//
-//  write down structs that reflect the necessary information
-//  in the agency for everything involved here
-//
-//  Then write (a) function(s)
-// auto replicatedStateAction(Log, State) -> Action;
-
 namespace arangodb::replication2::replicated_state {
 
 using namespace arangodb::replication2;
