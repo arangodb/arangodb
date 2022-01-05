@@ -52,13 +52,17 @@ bool CompareVariables(Variable const* mine, Variable const* yours) {
 }
 }  // namespace
 
-SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan,
+                                 arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable", true)),
-      _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")) {}
+      _inVariable(
+          Variable::varFromVPack(plan->getAst(), base, "inVariable", true)),
+      _outVariable(
+          Variable::varFromVPack(plan->getAst(), base, "outVariable")) {}
 
 SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, ExecutionNodeId id,
-                                 Variable const* inVariable, Variable const* outVariable)
+                                 Variable const* inVariable,
+                                 Variable const* outVariable)
     : ExecutionNode(plan, id),
       _inVariable(inVariable),
       _outVariable(outVariable) {
@@ -70,7 +74,8 @@ ExecutionLocation SubqueryEndNode::getAllowedLocation() const {
   return ExecutionLocation(ExecutionLocation::LocationType::SUBQUERY_END);
 }
 
-void SubqueryEndNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void SubqueryEndNode::doToVelocyPack(VPackBuilder& nodes,
+                                     unsigned flags) const {
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
 
@@ -83,7 +88,6 @@ void SubqueryEndNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const 
 std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
-
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -97,17 +101,19 @@ std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
   auto outReg = variableToRegisterId(_outVariable);
   outputRegisters.emplace(outReg);
 
-  auto registerInfos = createRegisterInfos(std::move(inputRegisters), std::move(outputRegisters));
+  auto registerInfos = createRegisterInfos(std::move(inputRegisters),
+                                           std::move(outputRegisters));
 
   auto const& vpackOptions = engine.getQuery().vpackOptions();
-  auto executorInfos =
-      SubqueryEndExecutorInfos(&vpackOptions, engine.getQuery().resourceMonitor(), inReg, outReg);
+  auto executorInfos = SubqueryEndExecutorInfos(
+      &vpackOptions, engine.getQuery().resourceMonitor(), inReg, outReg);
 
   return std::make_unique<ExecutionBlockImpl<SubqueryEndExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
-ExecutionNode* SubqueryEndNode::clone(ExecutionPlan* plan, bool withDependencies,
+ExecutionNode* SubqueryEndNode::clone(ExecutionPlan* plan,
+                                      bool withDependencies,
                                       bool withProperties) const {
   auto outVariable = _outVariable;
   auto inVariable = _inVariable;
@@ -118,7 +124,8 @@ ExecutionNode* SubqueryEndNode::clone(ExecutionPlan* plan, bool withDependencies
       inVariable = plan->getAst()->variables()->createVariable(inVariable);
     }
   }
-  auto c = std::make_unique<SubqueryEndNode>(plan, _id, inVariable, outVariable);
+  auto c =
+      std::make_unique<SubqueryEndNode>(plan, _id, inVariable, outVariable);
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
@@ -145,7 +152,8 @@ bool SubqueryEndNode::isEqualTo(ExecutionNode const& other) const {
   if (other.getType() != ExecutionNode::SUBQUERY_END) {
     return false;
   }
-  SubqueryEndNode const* p = ExecutionNode::castTo<SubqueryEndNode const*>(&other);
+  SubqueryEndNode const* p =
+      ExecutionNode::castTo<SubqueryEndNode const*>(&other);
   TRI_ASSERT(p->_outVariable != nullptr);
   if (!CompareVariables(_outVariable, p->_outVariable) ||
       !CompareVariables(_inVariable, p->_inVariable)) {
@@ -160,8 +168,8 @@ bool SubqueryEndNode::isEqualTo(ExecutionNode const& other) const {
 //       and subquery splicing runs as the *last* optimizer rule in any case.
 //
 //       If this assumption is changed, you will need to make an implementation
-//       of this function that makes sense (for example by deriving the isModificationNode
-//       from the SubqueryNode).
+//       of this function that makes sense (for example by deriving the
+//       isModificationNode from the SubqueryNode).
 bool SubqueryEndNode::isModificationNode() const {
   TRI_ASSERT(false);
   return false;

@@ -33,11 +33,7 @@
 
 namespace arangodb::replication2::replicated_log {
 
-enum class ParticipantRole {
-  kUnconfigured,
-  kLeader,
-  kFollower
-};
+enum class ParticipantRole { kUnconfigured, kLeader, kFollower };
 
 /**
  * @brief A minimalist variant of LogStatus, designed to replace FollowerStatus
@@ -50,8 +46,10 @@ struct QuickLogStatus {
   bool leadershipEstablished{false};
 
   // The following make sense only for a leader.
-  std::shared_ptr<ParticipantsConfig const> activeParticipantConfig{};
-  std::shared_ptr<ParticipantsConfig const> committedParticipantConfig{};
+  std::shared_ptr<ParticipantsConfig const> activeParticipantsConfig{};
+  // Note that committedParticipantsConfig will be nullptr until leadership has
+  // been established!
+  std::shared_ptr<ParticipantsConfig const> committedParticipantsConfig{};
 
   [[nodiscard]] auto getCurrentTerm() const noexcept -> std::optional<LogTerm>;
   [[nodiscard]] auto getLocalStatistics() const noexcept
@@ -65,12 +63,16 @@ struct FollowerStatistics : LogStatistics {
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics;
 
-  friend auto operator==(FollowerStatistics const& left, FollowerStatistics const& right) noexcept -> bool;
-  friend auto operator!=(FollowerStatistics const& left, FollowerStatistics const& right) noexcept -> bool;
+  friend auto operator==(FollowerStatistics const& left,
+                         FollowerStatistics const& right) noexcept -> bool;
+  friend auto operator!=(FollowerStatistics const& left,
+                         FollowerStatistics const& right) noexcept -> bool;
 };
 
-[[nodiscard]] auto operator==(FollowerStatistics const& left, FollowerStatistics const& right) noexcept -> bool;
-[[nodiscard]] auto operator!=(FollowerStatistics const& left, FollowerStatistics const& right) noexcept -> bool;
+[[nodiscard]] auto operator==(FollowerStatistics const& left,
+                              FollowerStatistics const& right) noexcept -> bool;
+[[nodiscard]] auto operator!=(FollowerStatistics const& left,
+                              FollowerStatistics const& right) noexcept -> bool;
 
 struct LeaderStatus {
   LogStatistics local;
@@ -81,13 +83,14 @@ struct LeaderStatus {
   // now() - insertTP of last uncommitted entry
   std::chrono::duration<double, std::milli> commitLagMS;
   CommitFailReason lastCommitStatus;
-  ParticipantsConfig activeParticipantConfig;
-  ParticipantsConfig committedParticipantConfig;
+  ParticipantsConfig activeParticipantsConfig;
+  std::optional<ParticipantsConfig> committedParticipantsConfig;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> LeaderStatus;
 
-  friend auto operator==(LeaderStatus const& left, LeaderStatus const& right) noexcept -> bool = default;
+  friend auto operator==(LeaderStatus const& left,
+                         LeaderStatus const& right) noexcept -> bool = default;
 };
 
 struct FollowerStatus {
@@ -130,4 +133,4 @@ struct LogStatus {
   VariantType _variant;
 };
 
-}
+}  // namespace arangodb::replication2::replicated_log

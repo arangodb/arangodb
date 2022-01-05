@@ -24,12 +24,12 @@
 
 namespace arangodb::replication2::replicated_state {
 
-template <typename T>
+template<typename T>
 struct EntryDeserializer {};
-template <typename T>
+template<typename T>
 struct EntrySerializer {};
 
-template <typename S>
+template<typename S>
 struct ReplicatedStateTraits {
   using FactoryType = typename S::FactoryType;
   using LeaderType = typename S::LeaderType;
@@ -39,4 +39,4 @@ struct ReplicatedStateTraits {
   using Serializer = EntrySerializer<EntryType>;
 };
 
-}
+}  // namespace arangodb::replication2::replicated_state

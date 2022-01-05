@@ -41,4 +41,3 @@ class RestExplainHandler : public RestVocbaseBaseHandler {
   void explainQuery();
 };
 }  // namespace arangodb
-

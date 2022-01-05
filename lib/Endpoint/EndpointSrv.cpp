@@ -167,13 +167,14 @@ static std::vector<SrvRecord> srvRecords(std::string const& specification) {
         << "DNS record for '" << specification << "' not found";
   }
 
-  std::sort(services.begin(), services.end(), [](SrvRecord const& lhs, SrvRecord const& rhs) {
-    if (lhs.priority != rhs.priority) {
-      return lhs.priority < rhs.priority;
-    }
+  std::sort(services.begin(), services.end(),
+            [](SrvRecord const& lhs, SrvRecord const& rhs) {
+              if (lhs.priority != rhs.priority) {
+                return lhs.priority < rhs.priority;
+              }
 
-    return lhs.weight > rhs.weight;
-  });
+              return lhs.weight > rhs.weight;
+            });
 
   return services;
 }
@@ -200,13 +201,15 @@ bool EndpointSrv::isConnected() const {
   return false;
 }
 
-TRI_socket_t EndpointSrv::connect(double connectTimeout, double requestTimeout) {
+TRI_socket_t EndpointSrv::connect(double connectTimeout,
+                                  double requestTimeout) {
   auto services = srvRecords(_specification);
 
   TRI_socket_t res;
 
   for (auto service : services) {
-    std::string spec = "tcp://" + service.name + ":" + StringUtils::itoa(service.port);
+    std::string spec =
+        "tcp://" + service.name + ":" + StringUtils::itoa(service.port);
 
     _endpoint.reset(Endpoint::clientFactory(spec));
 

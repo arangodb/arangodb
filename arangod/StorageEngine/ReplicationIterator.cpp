@@ -32,7 +32,8 @@ LogicalCollection& ReplicationIterator::collection() const {
   return _collection;
 }
 
-RevisionReplicationIterator::RevisionReplicationIterator(LogicalCollection& collection)
+RevisionReplicationIterator::RevisionReplicationIterator(
+    LogicalCollection& collection)
     : ReplicationIterator(collection) {}
 
 ReplicationIterator::Ordering RevisionReplicationIterator::order() const {

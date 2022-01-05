@@ -48,7 +48,8 @@ std::vector<OptimizerRule> OptimizerRulesFeature::_rules;
 // @brief lookup from rule name to rule level
 std::unordered_map<std::string_view, int> OptimizerRulesFeature::_ruleLookup;
 
-OptimizerRulesFeature::OptimizerRulesFeature(arangodb::application_features::ApplicationServer& server)
+OptimizerRulesFeature::OptimizerRulesFeature(
+    arangodb::application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "OptimizerRules"),
       _parallelizeGatherWrites(true) {
   setOptional(false);
@@ -57,20 +58,23 @@ OptimizerRulesFeature::OptimizerRulesFeature(arangodb::application_features::App
   startsAfter<AqlFeature>();
 }
 
-void OptimizerRulesFeature::collectOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) {
+void OptimizerRulesFeature::collectOptions(
+    std::shared_ptr<arangodb::options::ProgramOptions> options) {
   options
-      ->addOption("--query.optimizer-rules",
-                  "enable or disable specific optimizer rules (use rule name "
-                  "prefixed with '-' for disabling, '+' for enabling)",
-                  new arangodb::options::VectorParameter<arangodb::options::StringParameter>(
-                      &_optimizerRules),
-                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption(
+          "--query.optimizer-rules",
+          "enable or disable specific optimizer rules (use rule name "
+          "prefixed with '-' for disabling, '+' for enabling)",
+          new arangodb::options::VectorParameter<
+              arangodb::options::StringParameter>(&_optimizerRules),
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setIntroducedIn(30600);
 
   options
-      ->addOption("--query.parallelize-gather-writes",
-                  "enable write parallelization for gather nodes",
-                  new arangodb::options::BooleanParameter(&_parallelizeGatherWrites))
+      ->addOption(
+          "--query.parallelize-gather-writes",
+          "enable write parallelization for gather nodes",
+          new arangodb::options::BooleanParameter(&_parallelizeGatherWrites))
       .setIntroducedIn(30600);
 }
 
@@ -116,9 +120,9 @@ OptimizerRule& OptimizerRulesFeature::ruleByIndex(int index) {
 }
 
 /// @brief register a rule
-void OptimizerRulesFeature::registerRule(std::string_view name, RuleFunction func,
-                                         OptimizerRule::RuleLevel level,
-                                         std::underlying_type<OptimizerRule::Flags>::type flags) {
+void OptimizerRulesFeature::registerRule(
+    std::string_view name, RuleFunction func, OptimizerRule::RuleLevel level,
+    std::underlying_type<OptimizerRule::Flags>::type flags) {
   // rules must only be added before start()
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(!_fixed);
@@ -150,24 +154,29 @@ void OptimizerRulesFeature::addRules() {
   // note that levels must be unique
 
   registerRule("replace-function-with-index", replaceNearWithinFulltextRule,
-               OptimizerRule::replaceNearWithinFulltext, OptimizerRule::makeFlags());
+               OptimizerRule::replaceNearWithinFulltext,
+               OptimizerRule::makeFlags());
 
   // inline subqueries one level higher
-  registerRule("inline-subqueries", inlineSubqueriesRule, OptimizerRule::inlineSubqueriesRule,
+  registerRule("inline-subqueries", inlineSubqueriesRule,
+               OptimizerRule::inlineSubqueriesRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // simplify conditions
-  registerRule("simplify-conditions", simplifyConditionsRule, OptimizerRule::simplifyConditionsRule,
+  registerRule("simplify-conditions", simplifyConditionsRule,
+               OptimizerRule::simplifyConditionsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // move calculations up the dependency chain (to pull them out of
   // inner loops etc.)
-  registerRule("move-calculations-up", moveCalculationsUpRule, OptimizerRule::moveCalculationsUpRule,
+  registerRule("move-calculations-up", moveCalculationsUpRule,
+               OptimizerRule::moveCalculationsUpRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // move filters up the dependency chain (to make result sets as small
   // as possible as early as possible)
-  registerRule("move-filters-up", moveFiltersUpRule, OptimizerRule::moveFiltersUpRule,
+  registerRule("move-filters-up", moveFiltersUpRule,
+               OptimizerRule::moveFiltersUpRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // remove redundant calculations
@@ -183,7 +192,8 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // remove calculations that are never necessary
-  registerRule("remove-unnecessary-calculations", removeUnnecessaryCalculationsRule,
+  registerRule("remove-unnecessary-calculations",
+               removeUnnecessaryCalculationsRule,
                OptimizerRule::removeUnnecessaryCalculationsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
@@ -191,9 +201,11 @@ void OptimizerRulesFeature::addRules() {
   // add a sort node for each COLLECT (may be removed later)
   // this rule cannot be turned off (otherwise, the query result might be
   // wrong!)
-  registerRule("specialize-collect", specializeCollectRule, OptimizerRule::specializeCollectRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanCreateAdditionalPlans,
-                                        OptimizerRule::Flags::Hidden));
+  registerRule(
+      "specialize-collect", specializeCollectRule,
+      OptimizerRule::specializeCollectRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanCreateAdditionalPlans,
+                               OptimizerRule::Flags::Hidden));
 
   // remove redundant sort blocks
   registerRule("remove-redundant-sorts", removeRedundantSortsRule,
@@ -201,16 +213,18 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // push limits into subqueries and simplify them
-  registerRule("optimize-subqueries", optimizeSubqueriesRule, OptimizerRule::optimizeSubqueriesRule,
+  registerRule("optimize-subqueries", optimizeSubqueriesRule,
+               OptimizerRule::optimizeSubqueriesRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   /// "Pass 3": interchange EnumerateCollection nodes in all possible ways
   ///           this is level 500, please never let new plans from higher
   ///           levels go back to this or lower levels!
-  registerRule("interchange-adjacent-enumerations", interchangeAdjacentEnumerationsRule,
-               OptimizerRule::interchangeAdjacentEnumerationsRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanCreateAdditionalPlans,
-                                        OptimizerRule::Flags::CanBeDisabled));
+  registerRule(
+      "interchange-adjacent-enumerations", interchangeAdjacentEnumerationsRule,
+      OptimizerRule::interchangeAdjacentEnumerationsRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanCreateAdditionalPlans,
+                               OptimizerRule::Flags::CanBeDisabled));
 
   // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
   // move calculations up the dependency chain (to pull them out of
@@ -221,7 +235,8 @@ void OptimizerRulesFeature::addRules() {
 
   // move filters up the dependency chain (to make result sets as small
   // as possible as early as possible)
-  registerRule("move-filters-up-2", moveFiltersUpRule, OptimizerRule::moveFiltersUpRule2,
+  registerRule("move-filters-up-2", moveFiltersUpRule,
+               OptimizerRule::moveFiltersUpRule2,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // remove redundant sort node
@@ -240,21 +255,25 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // remove unused out variables for data-modification queries
-  registerRule("remove-data-modification-out-variables", removeDataModificationOutVariablesRule,
+  registerRule("remove-data-modification-out-variables",
+               removeDataModificationOutVariablesRule,
                OptimizerRule::removeDataModificationOutVariablesRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
   // try to replace simple OR conditions with IN
-  registerRule("replace-or-with-in", replaceOrWithInRule, OptimizerRule::replaceOrWithInRule,
+  registerRule("replace-or-with-in", replaceOrWithInRule,
+               OptimizerRule::replaceOrWithInRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // try to remove redundant OR conditions
-  registerRule("remove-redundant-or", removeRedundantOrRule, OptimizerRule::removeRedundantOrRule,
+  registerRule("remove-redundant-or", removeRedundantOrRule,
+               OptimizerRule::removeRedundantOrRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // remove FILTER DISTANCE(...) and SORT DISTANCE(...)
-  registerRule("geo-index-optimizer", geoIndexRule, OptimizerRule::applyGeoIndexRule,
+  registerRule("geo-index-optimizer", geoIndexRule,
+               OptimizerRule::applyGeoIndexRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // try to find a filter after an enumerate collection and find indexes
@@ -262,7 +281,8 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // try to remove filters which are covered by index ranges
-  registerRule("remove-filter-covered-by-index", removeFiltersCoveredByIndexRule,
+  registerRule("remove-filter-covered-by-index",
+               removeFiltersCoveredByIndexRule,
                OptimizerRule::removeFiltersCoveredByIndexRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
@@ -275,29 +295,35 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // try to find sort blocks which are superseeded by indexes
-  registerRule("use-index-for-sort", useIndexForSortRule, OptimizerRule::useIndexForSortRule,
+  registerRule("use-index-for-sort", useIndexForSortRule,
+               OptimizerRule::useIndexForSortRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // sort in-values in filters (note: must come after
   // remove-filter-covered-by-index rule)
-  registerRule("sort-in-values", sortInValuesRule, OptimizerRule::sortInValuesRule,
+  registerRule("sort-in-values", sortInValuesRule,
+               OptimizerRule::sortInValuesRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // merge filters into traversals
-  registerRule("optimize-traversals", optimizeTraversalsRule, OptimizerRule::optimizeTraversalsRule,
+  registerRule("optimize-traversals", optimizeTraversalsRule,
+               OptimizerRule::optimizeTraversalsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // optimize unneccessary filters already applied by the traversal
-  registerRule("remove-filter-covered-by-traversal", removeFiltersCoveredByTraversal,
+  registerRule("remove-filter-covered-by-traversal",
+               removeFiltersCoveredByTraversal,
                OptimizerRule::removeFiltersCoveredByTraversal,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // move filters and sort conditions into views
-  registerRule("handle-arangosearch-views", arangodb::iresearch::handleViewsRule,
-               OptimizerRule::handleArangoSearchViewsRule, OptimizerRule::makeFlags());
+  registerRule(
+      "handle-arangosearch-views", arangodb::iresearch::handleViewsRule,
+      OptimizerRule::handleArangoSearchViewsRule, OptimizerRule::makeFlags());
 
   // remove calculations that are never necessary
-  registerRule("remove-unnecessary-calculations-2", removeUnnecessaryCalculationsRule,
+  registerRule("remove-unnecessary-calculations-2",
+               removeUnnecessaryCalculationsRule,
                OptimizerRule::removeUnnecessaryCalculationsRule2,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
@@ -313,7 +339,8 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 
-  // make sort node aware of subsequent limit statements for internal optimizations
+  // make sort node aware of subsequent limit statements for internal
+  // optimizations
   registerRule("sort-limit", sortLimitRule, OptimizerRule::applySortLimitRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
@@ -325,27 +352,28 @@ void OptimizerRulesFeature::addRules() {
   // fuse multiple adjacent filters into one
   registerRule("fuse-filters", fuseFiltersRule, OptimizerRule::fuseFiltersRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-  
-  registerRule("insert-distribute-calculations",
-               insertDistributeCalculationsRule,
-               OptimizerRule::insertDistributeCalculationsRule,
-               // TODO: the following flags must be fixed when activating the
-               // new distribution mechanism: the rule must be enabled by default
-               // and cannot be disabled, and must be cluster-only.
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::DisabledByDefault));
-                                       // OptimizerRule::Flags::ClusterOnly));
+
+  registerRule(
+      "insert-distribute-calculations", insertDistributeCalculationsRule,
+      OptimizerRule::insertDistributeCalculationsRule,
+      // TODO: the following flags must be fixed when activating the
+      // new distribution mechanism: the rule must be enabled by default
+      // and cannot be disabled, and must be cluster-only.
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                               OptimizerRule::Flags::DisabledByDefault));
+  // OptimizerRule::Flags::ClusterOnly));
 
 #ifdef USE_ENTERPRISE
   // must be the first cluster optimizer rule
-  registerRule("cluster-one-shard", clusterOneShardRule, OptimizerRule::clusterOneShardRule,
+  registerRule("cluster-one-shard", clusterOneShardRule,
+               OptimizerRule::clusterOneShardRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 #endif
 
 #ifdef USE_ENTERPRISE
-  // must run before distribute-in-cluster and must not be disabled, as it is necessary
-  // for distributing SmartGraph operations
+  // must run before distribute-in-cluster and must not be disabled, as it is
+  // necessary for distributing SmartGraph operations
   registerRule("cluster-lift-constant-for-disjoint-graph-nodes",
                clusterLiftConstantsForDisjointGraphNodes,
                OptimizerRule::clusterLiftConstantsForDisjointGraphNodes,
@@ -363,11 +391,13 @@ void OptimizerRulesFeature::addRules() {
 #endif
 
   // distribute operations in cluster
-  registerRule("scatter-in-cluster", scatterInClusterRule, OptimizerRule::scatterInClusterRule,
+  registerRule("scatter-in-cluster", scatterInClusterRule,
+               OptimizerRule::scatterInClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
 
   // distribute operations in cluster
-  registerRule("distribute-filtercalc-to-cluster", distributeFilterCalcToClusterRule,
+  registerRule("distribute-filtercalc-to-cluster",
+               distributeFilterCalcToClusterRule,
                OptimizerRule::distributeFilterCalcToClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
@@ -378,13 +408,15 @@ void OptimizerRulesFeature::addRules() {
                                         OptimizerRule::Flags::ClusterOnly));
 
   // remove calculations that are never necessary
-  registerRule("remove-unnecessary-calculations-3", removeUnnecessaryCalculationsRule,
+  registerRule("remove-unnecessary-calculations-3",
+               removeUnnecessaryCalculationsRule,
                OptimizerRule::removeUnnecessaryCalculationsRule3,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::DisabledByDefault,
                                         OptimizerRule::Flags::Hidden));
 
-  registerRule("remove-unnecessary-remote-scatter", removeUnnecessaryRemoteScatterRule,
+  registerRule("remove-unnecessary-remote-scatter",
+               removeUnnecessaryRemoteScatterRule,
                OptimizerRule::removeUnnecessaryRemoteScatterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
@@ -406,12 +438,14 @@ void OptimizerRulesFeature::addRules() {
                                         OptimizerRule::Flags::ClusterOnly));
 #endif
 
-  registerRule("undistribute-remove-after-enum-coll", undistributeRemoveAfterEnumCollRule,
+  registerRule("undistribute-remove-after-enum-coll",
+               undistributeRemoveAfterEnumCollRule,
                OptimizerRule::undistributeRemoveAfterEnumCollRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 
-  registerRule("collect-in-cluster", collectInClusterRule, OptimizerRule::collectInClusterRule,
+  registerRule("collect-in-cluster", collectInClusterRule,
+               OptimizerRule::collectInClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 
@@ -428,7 +462,8 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::optimizeCountRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
-  registerRule("parallelize-gather", parallelizeGatherRule, OptimizerRule::parallelizeGatherRule,
+  registerRule("parallelize-gather", parallelizeGatherRule,
+               OptimizerRule::parallelizeGatherRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 
@@ -457,18 +492,20 @@ void OptimizerRulesFeature::addRules() {
 
   // add the storage-engine specific rules
   addStorageEngineRules();
-  
+
   // distribute query in the cluster.
-  // currently does nothing, but in the future this will be the _one_ rule 
+  // currently does nothing, but in the future this will be the _one_ rule
   // to determine where (coord, db server) to carry out the individual parts
   // of the query and the shards that are required.
-  registerRule("distribute-query", distributeQueryRule, OptimizerRule::distributeQueryRule,
-               // TODO: the following flags must be fixed when activating the
-               // new distribution mechanism: the rule must be enabled by default
-               // and cannot be disabled, and must be cluster-only.
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::DisabledByDefault));
-                                        // OptimizerRule::Flags::ClusterOnly;
+  registerRule(
+      "distribute-query", distributeQueryRule,
+      OptimizerRule::distributeQueryRule,
+      // TODO: the following flags must be fixed when activating the
+      // new distribution mechanism: the rule must be enabled by default
+      // and cannot be disabled, and must be cluster-only.
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                               OptimizerRule::Flags::DisabledByDefault));
+  // OptimizerRule::Flags::ClusterOnly;
 
   // Splice subqueries
   //
@@ -478,31 +515,32 @@ void OptimizerRulesFeature::addRules() {
   // It changes the structure of the query plan by "splicing", i.e. replacing
   // every SubqueryNode by a SubqueryStart and a SubqueryEnd node with the
   // subquery's nodes in between, resulting in a linear query plan. If an
-  // optimizer rule runs after this rule, it has to be aware of SubqueryStartNode and
-  // SubqueryEndNode and would likely be more complicated to write.
-  // note: since 3.8 this rule cannot be turned off anymore. this also means
-  // that any query execution plan created by 3.8 will not contain nodes of type
-  // SUBQUERY after optimization. it is still possible that 3.8 encounters plan
-  // with SUBQUERY node types inside, e.g. if they come from 3.7 coordinators
-  // during rolling upgrades.
-  registerRule("splice-subqueries", spliceSubqueriesRule, OptimizerRule::spliceSubqueriesRule,
-               OptimizerRule::makeFlags());
+  // optimizer rule runs after this rule, it has to be aware of
+  // SubqueryStartNode and SubqueryEndNode and would likely be more complicated
+  // to write. note: since 3.8 this rule cannot be turned off anymore. this also
+  // means that any query execution plan created by 3.8 will not contain nodes
+  // of type SUBQUERY after optimization. it is still possible that 3.8
+  // encounters plan with SUBQUERY node types inside, e.g. if they come from 3.7
+  // coordinators during rolling upgrades.
+  registerRule("splice-subqueries", spliceSubqueriesRule,
+               OptimizerRule::spliceSubqueriesRule, OptimizerRule::makeFlags());
 
-  // allow nodes to asynchronously prefetch the next batch while processing the current batch.
-  // this effectively allows parts of the query to run in parallel, but as some internal details
-  // are currently not guaranteed to be thread safe (e.g., TransactionState), this is currently
-  // disabled, and should only be activated for experimental usage at one's own risk.
-  registerRule("async-prefetch", asyncPrefetchRule, OptimizerRule::asyncPrefetch,
+  // allow nodes to asynchronously prefetch the next batch while processing the
+  // current batch. this effectively allows parts of the query to run in
+  // parallel, but as some internal details are currently not guaranteed to be
+  // thread safe (e.g., TransactionState), this is currently disabled, and
+  // should only be activated for experimental usage at one's own risk.
+  registerRule("async-prefetch", asyncPrefetchRule,
+               OptimizerRule::asyncPrefetch,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::DisabledByDefault,
                                         OptimizerRule::Flags::Hidden));
 
   // finally sort all rules by their level
-  std::sort(
-      _rules.begin(), _rules.end(),
-      [](OptimizerRule const& lhs, OptimizerRule const& rhs) noexcept {
-        return (lhs.level < rhs.level);
-      });
+  std::sort(_rules.begin(), _rules.end(),
+            [](OptimizerRule const& lhs, OptimizerRule const& rhs) noexcept {
+              return (lhs.level < rhs.level);
+            });
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // make the rules database read-only from now on
@@ -516,7 +554,8 @@ void OptimizerRulesFeature::addStorageEngineRules() {
 }
 
 /// @brief translate a list of rule ids into rule names
-std::vector<std::string_view> OptimizerRulesFeature::translateRules(std::vector<int> const& rules) {
+std::vector<std::string_view> OptimizerRulesFeature::translateRules(
+    std::vector<int> const& rules) {
   std::vector<std::string_view> names;
   names.reserve(rules.size());
 
@@ -571,7 +610,8 @@ void OptimizerRulesFeature::enableOrDisableRules() {
       if (n == "all") {
         for (auto& rule : _rules) {
           if (rule.hasFlag(OptimizerRule::Flags::CanBeDisabled)) {
-            rule.flags |= OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault);
+            rule.flags |= OptimizerRule::makeFlags(
+                OptimizerRule::Flags::DisabledByDefault);
           }
         }
       } else {
@@ -579,7 +619,8 @@ void OptimizerRulesFeature::enableOrDisableRules() {
         if (id != -1) {
           auto& rule = ruleByLevel(id);
           if (rule.hasFlag(OptimizerRule::Flags::CanBeDisabled)) {
-            rule.flags |= OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault);
+            rule.flags |= OptimizerRule::makeFlags(
+                OptimizerRule::Flags::DisabledByDefault);
           }
         } else {
           LOG_TOPIC("6103b", WARN, Logger::QUERIES)
@@ -589,13 +630,15 @@ void OptimizerRulesFeature::enableOrDisableRules() {
     } else {
       if (n == "all") {
         for (auto& rule : _rules) {
-          rule.flags &= ~OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault);
+          rule.flags &= ~OptimizerRule::makeFlags(
+              OptimizerRule::Flags::DisabledByDefault);
         }
       } else {
         int id = translateRule(n);
         if (id != -1) {
           auto& rule = ruleByLevel(id);
-          rule.flags &= ~OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault);
+          rule.flags &= ~OptimizerRule::makeFlags(
+              OptimizerRule::Flags::DisabledByDefault);
         } else {
           LOG_TOPIC("aa52f", WARN, Logger::QUERIES)
               << "cannot enable unknown optimizer rule '" << n << "'";

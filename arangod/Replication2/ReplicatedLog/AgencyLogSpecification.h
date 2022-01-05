@@ -45,6 +45,8 @@ struct LogPlanTermSpecification {
   };
   std::optional<Leader> leader;
 
+  // TODO remove the participants map here in favour of
+  //      LogPlanSpecification::participantsConfig::participants.
   struct Participant {};
   std::unordered_map<ParticipantId, Participant> participants;
 
@@ -52,8 +54,9 @@ struct LogPlanTermSpecification {
   LogPlanTermSpecification(from_velocypack_t, VPackSlice);
   LogPlanTermSpecification() = default;
 
-  LogPlanTermSpecification(LogTerm term, LogConfig config, std::optional<Leader>,
-                           std::unordered_map<ParticipantId, Participant> participants);
+  LogPlanTermSpecification(
+      LogTerm term, LogConfig config, std::optional<Leader>,
+      std::unordered_map<ParticipantId, Participant> participants);
 };
 
 struct LogPlanSpecification {
@@ -67,7 +70,8 @@ struct LogPlanSpecification {
   LogPlanSpecification(from_velocypack_t, VPackSlice);
   LogPlanSpecification() = default;
 
-  LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term, LogConfig config);
+  LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term,
+                       LogConfig config);
   LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term,
                        LogConfig config, ParticipantsConfig participantsConfig);
 };
@@ -99,7 +103,8 @@ struct LogCurrentSupervisionElection {
   friend auto operator==(LogCurrentSupervisionElection const&,
                          LogCurrentSupervisionElection const&) noexcept -> bool;
   friend auto operator!=(LogCurrentSupervisionElection const& left,
-                         LogCurrentSupervisionElection const& right) noexcept -> bool {
+                         LogCurrentSupervisionElection const& right) noexcept
+      -> bool {
     return !(left == right);
   }
 
@@ -110,8 +115,10 @@ struct LogCurrentSupervisionElection {
 auto operator==(LogCurrentSupervisionElection const&,
                 LogCurrentSupervisionElection const&) noexcept -> bool;
 
-auto to_string(LogCurrentSupervisionElection::ErrorCode) noexcept -> std::string_view;
-auto toVelocyPack(LogCurrentSupervisionElection::ErrorCode, VPackBuilder&) -> void;
+auto to_string(LogCurrentSupervisionElection::ErrorCode) noexcept
+    -> std::string_view;
+auto toVelocyPack(LogCurrentSupervisionElection::ErrorCode, VPackBuilder&)
+    -> void;
 
 struct LogCurrentSupervision {
   std::optional<LogCurrentSupervisionElection> election;
@@ -127,6 +134,7 @@ struct LogCurrent {
   std::optional<LogCurrentSupervision> supervision;
 
   struct Leader {
+    ParticipantId serverId;
     LogTerm term;
     ParticipantsConfig committedParticipantsConfig;
 
@@ -134,6 +142,7 @@ struct LogCurrent {
     static auto fromVelocyPack(VPackSlice) -> Leader;
   };
 
+  // Will be nullopt until leadership has been established
   std::optional<Leader> leader;
 
   auto toVelocyPack(VPackBuilder&) const -> void;
@@ -142,4 +151,4 @@ struct LogCurrent {
   LogCurrent() = default;
 };
 
-}
+}  // namespace arangodb::replication2::agency

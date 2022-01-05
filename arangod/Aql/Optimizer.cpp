@@ -37,12 +37,13 @@
 using namespace arangodb::aql;
 
 Optimizer::Optimizer(size_t maxNumberOfPlans)
-    : _maxNumberOfPlans(maxNumberOfPlans), 
+    : _maxNumberOfPlans(maxNumberOfPlans),
       _runOnlyRequiredRules(false),
       _useNewDistribute(false) {}
 
-void Optimizer::disableRules(ExecutionPlan* plan,
-                             std::function<bool(OptimizerRule const&)> const& predicate) {
+void Optimizer::disableRules(
+    ExecutionPlan* plan,
+    std::function<bool(OptimizerRule const&)> const& predicate) {
   for (auto& it : _rules) {
     auto const& rule = OptimizerRulesFeature::ruleByIndex(it);
     if (predicate(rule)) {
@@ -59,7 +60,6 @@ bool Optimizer::runOnlyRequiredRules(size_t extraPlans) const {
 // @brief add a plan to the optimizer
 void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan,
                         OptimizerRule const& rule, bool wasModified) {
-
   auto it = _currentRule;
   TRI_ASSERT(it != _rules.end());
   // move it to the next rule to be processed in the next iteration
@@ -73,9 +73,9 @@ void Optimizer::addPlanAndRerun(std::unique_ptr<ExecutionPlan> plan,
   addPlanInternal(std::move(plan), rule, wasModified, it);
 }
 
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-class NoSubqueryChecker : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+class NoSubqueryChecker
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   bool before(ExecutionNode* node) override {
     TRI_ASSERT(node->getType() != ExecutionNode::SUBQUERY);
     return false;
@@ -84,7 +84,8 @@ class NoSubqueryChecker : public WalkerWorker<ExecutionNode, WalkerUniqueness::N
 
 // Check the plan for inconsistencies, like more than one parent or dependency,
 // or mismatching parents and dependencies in adjacent nodes.
-class PlanChecker : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+class PlanChecker
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
   explicit PlanChecker(ExecutionPlan& plan) : _plan{plan} {}
 
@@ -95,7 +96,9 @@ class PlanChecker : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUniq
     switch (node->getType()) {
       case ExecutionNode::RETURN:
         if (node->getParents().size() != 0) {
-          errors.emplace_back() << "#parents == " << node->getParents().size() << " at [" << node->id() << "] " << node->getTypeString();
+          errors.emplace_back()
+              << "#parents == " << node->getParents().size() << " at ["
+              << node->id() << "] " << node->getTypeString();
           ok = false;
         }
         break;
@@ -107,13 +110,17 @@ class PlanChecker : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUniq
       case ExecutionNode::GATHER:
       case ExecutionNode::REMOTESINGLE:
         if (node->getParents().size() > 1) {
-          errors.emplace_back() << "#parents == " << node->getParents().size() << " at [" << node->id() << "] " << node->getTypeString();
+          errors.emplace_back()
+              << "#parents == " << node->getParents().size() << " at ["
+              << node->id() << "] " << node->getTypeString();
           ok = false;
         }
         break;
       default:
         if (node->getParents().size() != 1) {
-          errors.emplace_back() << "#parents == " << node->getParents().size() << " at [" << node->id() << "] " << node->getTypeString();
+          errors.emplace_back()
+              << "#parents == " << node->getParents().size() << " at ["
+              << node->id() << "] " << node->getTypeString();
           ok = false;
         }
         break;
@@ -121,13 +128,17 @@ class PlanChecker : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUniq
     switch (node->getType()) {
       case ExecutionNode::SINGLETON:
         if (node->getDependencies().size() != 0) {
-          errors.emplace_back() << "#dependencies == " << node->getDependencies().size() << " at [" << node->id() << "] " << node->getTypeString();
+          errors.emplace_back()
+              << "#dependencies == " << node->getDependencies().size()
+              << " at [" << node->id() << "] " << node->getTypeString();
           ok = false;
         }
         break;
       default:
         if (node->getDependencies().size() != 1) {
-          errors.emplace_back() << "#dependencies == " << node->getDependencies().size() << " at [" << node->id() << "] " << node->getTypeString();
+          errors.emplace_back()
+              << "#dependencies == " << node->getDependencies().size()
+              << " at [" << node->id() << "] " << node->getTypeString();
           ok = false;
         }
         break;
@@ -135,16 +146,19 @@ class PlanChecker : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUniq
 
     auto isDepOf = [](ExecutionNode const* node, ExecutionNode const* parent) {
       auto const& deps = parent->getDependencies();
-      return std::any_of(deps.begin(), deps.end(), [&](auto it) { return it == node; });
+      return std::any_of(deps.begin(), deps.end(),
+                         [&](auto it) { return it == node; });
     };
     auto isParentOf = [](ExecutionNode const* node, ExecutionNode const* dep) {
       auto const& parents = dep->getParents();
-      return std::any_of(parents.begin(), parents.end(), [&](auto it) { return it == node; });
+      return std::any_of(parents.begin(), parents.end(),
+                         [&](auto it) { return it == node; });
     };
 
     for (auto const& parent : node->getParents()) {
       if (!isDepOf(node, parent)) {
-        errors.emplace_back() << "!isDepOf(" << node->id() << ", " << parent->id() << ")";
+        errors.emplace_back()
+            << "!isDepOf(" << node->id() << ", " << parent->id() << ")";
         errors.emplace_back() << "  node is a " << node->getTypeString();
         errors.emplace_back() << "  parent is a " << parent->getTypeString();
         ok = false;
@@ -152,7 +166,8 @@ class PlanChecker : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUniq
     }
     for (auto const& dep : node->getDependencies()) {
       if (!isParentOf(node, dep)) {
-        errors.emplace_back() << "!isParentOf(" << dep->id() << ", " << node->id() << ")";
+        errors.emplace_back()
+            << "!isParentOf(" << dep->id() << ", " << node->id() << ")";
         errors.emplace_back() << "  dependency is a " << dep->getTypeString();
         errors.emplace_back() << "  node is a " << node->getTypeString();
         ok = false;
@@ -162,7 +177,8 @@ class PlanChecker : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUniq
     if (!ok) {
       LOG_TOPIC("d45f8", ERR, arangodb::Logger::AQL) << "Inconsistent plan:";
       _plan.show();
-      LOG_TOPIC("c14a2", ERR, arangodb::Logger::AQL) << "encountered the following error(s):";
+      LOG_TOPIC("c14a2", ERR, arangodb::Logger::AQL)
+          << "encountered the following error(s):";
       for (auto const& err : errors) {
         LOG_TOPIC("17a18", ERR, arangodb::Logger::AQL) << err.str();
       }
@@ -176,9 +192,9 @@ class PlanChecker : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUniq
   ExecutionPlan& _plan;
 };
 
-#endif // ARANGODB_ENABLE_MAINTAINER_MODE
+#endif  // ARANGODB_ENABLE_MAINTAINER_MODE
 
-  // @brief add a plan to the optimizer
+// @brief add a plan to the optimizer
 void Optimizer::addPlanInternal(std::unique_ptr<ExecutionPlan> plan,
                                 OptimizerRule const& rule, bool wasModified,
                                 RuleDatabase::iterator const& nextRule) {
@@ -188,7 +204,7 @@ void Optimizer::addPlanInternal(std::unique_ptr<ExecutionPlan> plan,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto checker = PlanChecker{*plan};
   plan->root()->walk(checker);
-#endif // ARANGODB_ENABLE_MAINTAINER_MODE
+#endif  // ARANGODB_ENABLE_MAINTAINER_MODE
 
   plan->setValidity(true);
 
@@ -212,15 +228,18 @@ void Optimizer::addPlanInternal(std::unique_ptr<ExecutionPlan> plan,
   }
 }
 
-void Optimizer::initializeRules(ExecutionPlan* plan, QueryOptions const& queryOptions) {
+void Optimizer::initializeRules(ExecutionPlan* plan,
+                                QueryOptions const& queryOptions) {
   if (ADB_LIKELY(_rules.empty())) {
     auto const& rules = OptimizerRulesFeature::rules();
     _rules.reserve(rules.size());
 
-    TRI_ASSERT(std::is_sorted(rules.begin(), rules.end(), [](OptimizerRule const& lhs, OptimizerRule const& rhs) {
-      return lhs.level < rhs.level;
-    }));
-  
+    TRI_ASSERT(
+        std::is_sorted(rules.begin(), rules.end(),
+                       [](OptimizerRule const& lhs, OptimizerRule const& rhs) {
+                         return lhs.level < rhs.level;
+                       }));
+
     int index = -1;
     for (auto& rule : OptimizerRulesFeature::rules()) {
       // insert position of rule inside OptimizerRulesFeature::_rules
@@ -249,14 +268,15 @@ void Optimizer::initializeRules(ExecutionPlan* plan, QueryOptions const& queryOp
 
 // @brief the actual optimization
 void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
-                            QueryOptions const& queryOptions, bool estimateAllPlans) {
+                            QueryOptions const& queryOptions,
+                            bool estimateAllPlans) {
   _runOnlyRequiredRules = false;
   ExecutionPlan* initialPlan = plan.get();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto checker = PlanChecker{*plan};
   plan->root()->walk(checker);
-#endif // ARANGODB_ENABLE_MAINTAINER_MODE
+#endif  // ARANGODB_ENABLE_MAINTAINER_MODE
 
   initializeRules(initialPlan, queryOptions);
 
@@ -295,16 +315,17 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         // skip over rules if we should
         // however, we don't want to skip those rules that will not create
         // additional plans
-        
-        // TODO: this is here only temporarily while rebuild cluster query
+
+        // TODO: this is here only temporarily while rebuilding cluster query
         // optimizer rules!
-        bool disabled = (_useNewDistribute && 
-                         rule.isClusterOnly() && 
-                         rule.name != "distribute-query" && 
-                         rule.name != "insert-distribute-calculations" && 
-                         rule.name != "optimize-cluster-single-document-operations");
+        bool disabled =
+            (_useNewDistribute && rule.isClusterOnly() &&
+             rule.name != "distribute-query" &&
+             rule.name != "insert-distribute-calculations" &&
+             rule.name != "optimize-cluster-single-document-operations");
         disabled |= p->isDisabledRule(rule.level);
-        disabled |= (_runOnlyRequiredRules && rule.canCreateAdditionalPlans() && rule.canBeDisabled());
+        disabled |= (_runOnlyRequiredRules && rule.canCreateAdditionalPlans() &&
+                     rule.canBeDisabled());
 
         if (disabled) {
           // we picked a disabled rule or we have reached the max number of
@@ -331,19 +352,21 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         if (queryOptions.getProfileLevel() >= ProfileLevel::Blocks) {
           // run rule with tracing optimizer rule execution time
           if (_stats.executionTimes == nullptr) {
-            // allocate the map lazily, so we can save the initial memory allocation
-            // in case tracing is disabled.
-            _stats.executionTimes = std::make_unique<std::unordered_map<int, double>>();
+            // allocate the map lazily, so we can save the initial memory
+            // allocation in case tracing is disabled.
+            _stats.executionTimes =
+                std::make_unique<std::unordered_map<int, double>>();
           }
           TRI_ASSERT(_stats.executionTimes != nullptr);
 
           double time = TRI_microtime();
           rule.func(this, std::move(p), rule);
           time = TRI_microtime() - time;
-          auto [it, inserted] = _stats.executionTimes->try_emplace(rule.level, time);
+          auto [it, inserted] =
+              _stats.executionTimes->try_emplace(rule.level, time);
           if (!inserted) {
-            // a rule may have been executed before already. in this case, just add to the
-            // already tracked time
+            // a rule may have been executed before already. in this case, just
+            // add to the already tracked time
             (*it).second += time;
           }
         } else {
@@ -380,9 +403,9 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
   TRI_ASSERT(_plans.size() >= 1);
 
   finalizePlans();
-  
+
   estimateCosts(queryOptions, estimateAllPlans);
-  
+
   LOG_TOPIC("5b5f6", TRACE, Logger::FIXME)
       << "optimization ends with " << _plans.size() << " plans";
 }
@@ -394,17 +417,19 @@ void Optimizer::finalizePlans() {
     if (plan.first->isAsyncPrefetchEnabled()) {
       enableAsyncPrefetching(*plan.first);
     }
-    
+
     plan.first->findVarUsage();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     NoSubqueryChecker checker;
     plan.first->root()->walk(checker);
-#endif // ARANGODB_ENABLE_MAINTAINER_MODE
+#endif  // ARANGODB_ENABLE_MAINTAINER_MODE
   }
 }
 
-void Optimizer::estimateCosts(QueryOptions const& queryOptions, bool estimateAllPlans) {
-  if (estimateAllPlans || _plans.size() > 1 || queryOptions.profile >= ProfileLevel::Blocks) {
+void Optimizer::estimateCosts(QueryOptions const& queryOptions,
+                              bool estimateAllPlans) {
+  if (estimateAllPlans || _plans.size() > 1 ||
+      queryOptions.profile >= ProfileLevel::Blocks) {
     // if profiling is turned on, we must do the cost estimation here
     // because the cost estimation must be done while the transaction
     // is still running
@@ -419,7 +444,8 @@ void Optimizer::estimateCosts(QueryOptions const& queryOptions, bool estimateAll
       // only sort plans when necessary
       std::sort(_plans.list.begin(), _plans.list.end(),
                 [](PlanList::Entry const& a, PlanList::Entry const& b) -> bool {
-                  return a.first->getCost().estimatedCost < b.first->getCost().estimatedCost;
+                  return a.first->getCost().estimatedCost <
+                         b.first->getCost().estimatedCost;
                 });
     }
   }
@@ -478,7 +504,7 @@ void Optimizer::enableRule(ExecutionPlan* plan, std::string_view name) {
     enableRule(plan, OptimizerRulesFeature::translateRule(name));
   }
 }
-    
+
 void Optimizer::Stats::toVelocyPack(velocypack::Builder& b) const {
   velocypack::ObjectBuilder guard(&b, true);
   b.add("rulesExecuted", velocypack::Value(rulesExecuted));
@@ -488,7 +514,8 @@ void Optimizer::Stats::toVelocyPack(velocypack::Builder& b) const {
   if (executionTimes != nullptr) {
     b.add("rules", velocypack::Value(velocypack::ValueType::Object));
     for (auto const& it : *executionTimes) {
-      b.add(OptimizerRulesFeature::translateRule(it.first), velocypack::Value(it.second));
+      b.add(OptimizerRulesFeature::translateRule(it.first),
+            velocypack::Value(it.second));
     }
     b.close();
   }

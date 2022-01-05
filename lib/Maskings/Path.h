@@ -48,4 +48,3 @@ class Path {
 };
 }  // namespace maskings
 }  // namespace arangodb
-

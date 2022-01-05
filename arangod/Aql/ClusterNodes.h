@@ -72,20 +72,22 @@ class RemoteNode final : public DistributeConsumerNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final { return REMOTE; }
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    return cloneHelper(std::make_unique<RemoteNode>(plan, _id, _vocbase, _server,
-                                                    getDistributeId(), _queryId),
-                       withDependencies, withProperties);
+    return cloneHelper(
+        std::make_unique<RemoteNode>(plan, _id, _vocbase, _server,
+                                     getDistributeId(), _queryId),
+        withDependencies, withProperties);
   }
 
   /// @brief estimateCost
@@ -113,8 +115,9 @@ class RemoteNode final : public DistributeConsumerNode {
 
  protected:
   /// @brief export to VelocyPack
-  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
-  
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override final;
+
  private:
   /// @brief the underlying database
   TRI_vocbase_t* _vocbase;
@@ -139,13 +142,14 @@ class ScatterNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override { return SCATTER; }
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -160,8 +164,10 @@ class ScatterNode : public ExecutionNode {
 
   void addClient(DistributeConsumerNode const* client) {
     auto const& distId = client->getDistributeId();
-    // We cannot add the same distributeId twice, data is delivered exactly once for each id
-    TRI_ASSERT(std::find(_clients.begin(), _clients.end(), distId) == _clients.end());
+    // We cannot add the same distributeId twice, data is delivered exactly once
+    // for each id
+    TRI_ASSERT(std::find(_clients.begin(), _clients.end(), distId) ==
+               _clients.end());
     _clients.emplace_back(distId);
   }
 
@@ -178,8 +184,9 @@ class ScatterNode : public ExecutionNode {
 
  protected:
   /// @brief export to VelocyPack
-  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override;
-  
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override;
+
   void writeClientsToVelocyPack(velocypack::Builder& builder) const;
   bool readClientsFromVelocyPack(velocypack::Slice base);
 
@@ -195,7 +202,8 @@ class ScatterNode : public ExecutionNode {
 };
 
 /// @brief class DistributeNode
-class DistributeNode final : public ScatterNode, public CollectionAccessingNode {
+class DistributeNode final : public ScatterNode,
+                             public CollectionAccessingNode {
   friend class ExecutionBlock;
 
   /// @brief constructor with an id
@@ -208,19 +216,21 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
 
   /// @brief return the type of the node
   NodeType getType() const override final { return DISTRIBUTE; }
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
-  
-  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
+
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
+                            replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -242,7 +252,8 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
 
  protected:
   /// @brief export to VelocyPack
-  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override final;
 
  private:
   /// @brief the variable we must inspect to know where to distribute
@@ -263,11 +274,7 @@ class GatherNode final : public ExecutionNode {
  public:
   enum class SortMode : uint32_t { MinElement, Heap, Default };
 
-  enum class Parallelism : uint8_t {
-    Undefined = 0,
-    Serial = 2,
-    Parallel = 4
-  };
+  enum class Parallelism : uint8_t { Undefined = 0, Serial = 2, Parallel = 4 };
 
   /// @brief inspect dependencies starting from a specified 'node'
   /// and return first corresponding collection within
@@ -275,8 +282,8 @@ class GatherNode final : public ExecutionNode {
   static Collection const* findCollection(GatherNode const& node) noexcept;
 
   /// @returns sort mode for the specified number of shards
-  static SortMode evaluateSortMode(size_t numberOfShards,
-                                   size_t shardsRequiredForHeapMerge = 5) noexcept;
+  static SortMode evaluateSortMode(
+      size_t numberOfShards, size_t shardsRequiredForHeapMerge = 5) noexcept;
 
   static Parallelism evaluateParallelism(Collection const& collection) noexcept;
 
@@ -289,13 +296,14 @@ class GatherNode final : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final { return GATHER; }
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto other = std::make_unique<GatherNode>(plan, _id, _sortmode, _parallelism);
+    auto other =
+        std::make_unique<GatherNode>(plan, _id, _sortmode, _parallelism);
     other->setConstrainedSortLimit(constrainedSortLimit());
     return cloneHelper(std::move(other), withDependencies, withProperties);
   }
@@ -303,12 +311,14 @@ class GatherNode final : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
-  
-  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
+
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
+                            replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -330,13 +340,12 @@ class GatherNode final : public ExecutionNode {
 
   void setParallelism(Parallelism value);
 
-  Parallelism parallelism() const noexcept {
-    return _parallelism;
-  }
+  Parallelism parallelism() const noexcept { return _parallelism; }
 
- protected: 
+ protected:
   /// @brief export to VelocyPack
-  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override final;
 
  private:
   /// @brief the underlying database
@@ -358,13 +367,15 @@ class GatherNode final : public ExecutionNode {
 };
 
 /// @brief class RemoteNode
-class SingleRemoteOperationNode final : public ExecutionNode, public CollectionAccessingNode {
+class SingleRemoteOperationNode final : public ExecutionNode,
+                                        public CollectionAccessingNode {
   friend class ExecutionBlock;
   friend class SingleRemoteOperationBlock;
   /// @brief constructor with an id
  public:
-  SingleRemoteOperationNode(ExecutionPlan* plan, ExecutionNodeId id, NodeType mode,
-                            bool replaceIndexNode, std::string const& key,
+  SingleRemoteOperationNode(ExecutionPlan* plan, ExecutionNodeId id,
+                            NodeType mode, bool replaceIndexNode,
+                            std::string const& key,
                             aql::Collection const* collection,
                             ModificationOptions const& options,
                             Variable const* update, Variable const* out,
@@ -372,7 +383,8 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
 
   // We probably do not need this, because the rule will only be used on the
   // coordinator
-  SingleRemoteOperationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+  SingleRemoteOperationNode(ExecutionPlan* plan,
+                            arangodb::velocypack::Slice const& base)
       : ExecutionNode(plan, base), CollectionAccessingNode(plan, base) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_NOT_IMPLEMENTED,
@@ -381,22 +393,21 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
 
   /// @brief return the type of the node
   NodeType getType() const override final { return REMOTESINGLE; }
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto n =
-        std::make_unique<SingleRemoteOperationNode>(plan, _id, _mode, _replaceIndexNode,
-                                                    _key, collection(), _options,
-                                                    _inVariable, _outVariable,
-                                                    _outVariableOld, _outVariableNew);
+    auto n = std::make_unique<SingleRemoteOperationNode>(
+        plan, _id, _mode, _replaceIndexNode, _key, collection(), _options,
+        _inVariable, _outVariable, _outVariableOld, _outVariableNew);
     CollectionAccessingNode::cloneInto(*n);
     return cloneHelper(std::move(n), withDependencies, withProperties);
   }
@@ -412,9 +423,10 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
 
   std::string const& key() const { return _key; }
 
- protected: 
+ protected:
   /// @brief export to VelocyPack
-  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override final;
 
  private:
   // whether we replaced an index node
@@ -439,4 +451,3 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
 
 }  // namespace aql
 }  // namespace arangodb
-

@@ -27,7 +27,7 @@
 
 namespace arangodb::metrics {
 
-template <typename Derived, typename Scale>
+template<typename Derived, typename Scale>
 class HistogramBuilder : public GenericBuilder<Derived> {
  public:
   using MetricT = Histogram<decltype(Scale::scale())>;
@@ -35,7 +35,8 @@ class HistogramBuilder : public GenericBuilder<Derived> {
     return "histogram";
   }
   [[nodiscard]] std::shared_ptr<Metric> build() const final {
-    return std::make_shared<MetricT>(Scale::scale(), this->_name, this->_help, this->_labels);
+    return std::make_shared<MetricT>(Scale::scale(), this->_name, this->_help,
+                                     this->_labels);
   }
 };
 

@@ -48,7 +48,8 @@ std::unique_ptr<AqlTransaction> AqlTransaction::create(
         std::move(inaccessibleCollections));
   }
 #endif
-  return std::make_unique<AqlTransaction>(transactionContext, collections, options);
+  return std::make_unique<AqlTransaction>(transactionContext, collections,
+                                          options);
 }
 
 AqlTransaction::AqlTransaction(
@@ -60,12 +61,11 @@ AqlTransaction::AqlTransaction(
   }
 }
 
-  /// protected so we can create different subclasses
+/// protected so we can create different subclasses
 AqlTransaction::AqlTransaction(
     std::shared_ptr<transaction::Context> const& transactionContext,
-    aql::Collections const& collections,
-    transaction::Options const& options)
-    : transaction::Methods(transactionContext, options) { 
+    aql::Collections const& collections, transaction::Options const& options)
+    : transaction::Methods(transactionContext, options) {
   TRI_ASSERT(state() != nullptr);
   if (options.isIntermediateCommitEnabled()) {
     addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);

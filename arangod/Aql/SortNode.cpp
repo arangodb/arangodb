@@ -67,7 +67,7 @@ SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
       _elements(elements),
       _stable(stable),
       _limit(VelocyPackHelper::getNumericValue<size_t>(base, "limit", 0)) {}
-  
+
 ExecutionLocation SortNode::getAllowedLocation() const {
   return ExecutionLocation(ExecutionLocation::LocationType::REQUIRES_CONTEXT);
 }
@@ -110,7 +110,8 @@ bool SortNode::simplify(ExecutionPlan* plan) {
     if (setter != nullptr) {
       if (setter->getType() == ExecutionNode::CALCULATION) {
         // variable introduced by a calculation
-        auto expression = ExecutionNode::castTo<CalculationNode*>(setter)->expression();
+        auto expression =
+            ExecutionNode::castTo<CalculationNode*>(setter)->expression();
 
         if (expression->isConstant()) {
           // constant expression, remove it!
@@ -127,8 +128,8 @@ bool SortNode::simplify(ExecutionPlan* plan) {
 }
 
 /// @brief returns all sort information
-SortInformation SortNode::getSortInformation(ExecutionPlan* plan,
-                                             arangodb::basics::StringBuffer* buffer) const {
+SortInformation SortNode::getSortInformation(
+    ExecutionPlan* plan, arangodb::basics::StringBuffer* buffer) const {
   SortInformation result;
 
   auto const& elms = elements();
@@ -144,7 +145,8 @@ SortInformation SortNode::getSortInformation(ExecutionPlan* plan,
 
     if (setter->getType() == ExecutionNode::CALCULATION) {
       // variable introduced by a calculation
-      auto expression = ExecutionNode::castTo<CalculationNode*>(setter)->expression();
+      auto expression =
+          ExecutionNode::castTo<CalculationNode*>(setter)->expression();
 
       if (!expression->isDeterministic()) {
         result.isDeterministic = false;
@@ -162,9 +164,9 @@ SortInformation SortNode::getSortInformation(ExecutionPlan* plan,
         result.isValid = false;
         return result;
       }
-      result.criteria.emplace_back(
-          std::make_tuple(const_cast<ExecutionNode const*>(setter),
-                          std::string(buffer->c_str(), buffer->length()), (*it).ascending));
+      result.criteria.emplace_back(std::make_tuple(
+          const_cast<ExecutionNode const*>(setter),
+          std::string(buffer->c_str(), buffer->length()), (*it).ascending));
       buffer->reset();
     } else {
       // use variable only. note that we cannot use the variable's name as it is
@@ -181,7 +183,8 @@ SortInformation SortNode::getSortInformation(ExecutionPlan* plan,
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SortNode::createBlock(
-    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -195,18 +198,15 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
     inputRegs.emplace(id);
   }
   auto registerInfos = createRegisterInfos(std::move(inputRegs), {});
-  auto executorInfos =
-      SortExecutorInfos(registerInfos.numberOfInputRegisters(),
-                        registerInfos.numberOfOutputRegisters(),
-                        registerInfos.registersToClear(), std::move(sortRegs),
-                        _limit, engine.itemBlockManager(),
-                        &engine.getQuery().vpackOptions(),
-                        engine.getQuery().resourceMonitor(),
-                        _stable);
+  auto executorInfos = SortExecutorInfos(
+      registerInfos.numberOfInputRegisters(),
+      registerInfos.numberOfOutputRegisters(), registerInfos.registersToClear(),
+      std::move(sortRegs), _limit, engine.itemBlockManager(),
+      &engine.getQuery().vpackOptions(), engine.getQuery().resourceMonitor(),
+      _stable);
   if (sorterType() == SorterType::Standard) {
-    return std::make_unique<ExecutionBlockImpl<SortExecutor>>(&engine, this,
-                                                              std::move(registerInfos),
-                                                              std::move(executorInfos));
+    return std::make_unique<ExecutionBlockImpl<SortExecutor>>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else {
     return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -219,18 +219,21 @@ CostEstimate SortNode::estimateCost() const {
   if (estimate.estimatedNrItems <= 3) {
     estimate.estimatedCost += estimate.estimatedNrItems;
   } else {
-    estimate.estimatedCost += estimate.estimatedNrItems *
-                              std::log2(static_cast<double>(estimate.estimatedNrItems));
+    estimate.estimatedCost +=
+        estimate.estimatedNrItems *
+        std::log2(static_cast<double>(estimate.estimatedNrItems));
   }
   return estimate;
 }
 
-void SortNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+void SortNode::replaceVariables(
+    std::unordered_map<VariableId, Variable const*> const& replacements) {
   for (auto& variable : _elements) {
     variable.var = Variable::replace(variable.var, replacements);
   }
 }
 
 SortNode::SorterType SortNode::sorterType() const {
-  return (!isStable() && _limit > 0) ? SorterType::ConstrainedHeap : SorterType::Standard;
+  return (!isStable() && _limit > 0) ? SorterType::ConstrainedHeap
+                                     : SorterType::Standard;
 }

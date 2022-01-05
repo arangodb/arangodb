@@ -40,7 +40,7 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
  public:
   RestIndexHandler(application_features::ApplicationServer&, GeneralRequest*,
                    GeneralResponse*);
-  
+
   ~RestIndexHandler();
 
  public:
@@ -70,4 +70,3 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
   CreateInBackgroundData _createInBackgroundData;
 };
 }  // namespace arangodb
-

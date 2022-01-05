@@ -49,4 +49,3 @@ static_assert(sizeof(ServerId) == sizeof(ServerId::BaseType),
 }  // namespace arangodb
 
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::ServerId)
-

@@ -53,8 +53,8 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
     arangodb::graph::EdgeDocumentToken _edge;
     bool _done;
 
-    Step(std::string_view vert, std::string_view pred, 
-         double weig, EdgeDocumentToken&& edge);
+    Step(std::string_view vert, std::string_view pred, double weig,
+         EdgeDocumentToken&& edge);
 
     double weight() const { return _weight; }
 
@@ -73,7 +73,9 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   /// @brief our specialization of the priority queue
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef arangodb::graph::ShortestPathPriorityQueue<std::string_view, Step, double> PQueue;
+  typedef arangodb::graph::ShortestPathPriorityQueue<std::string_view, Step,
+                                                     double>
+      PQueue;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief information for each thread
@@ -90,8 +92,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   class Searcher {
    public:
     Searcher(AttributeWeightShortestPathFinder* pathFinder, ThreadInfo& myInfo,
-             ThreadInfo& peerInfo, std::string_view start,
-             bool backward);
+             ThreadInfo& peerInfo, std::string_view start, bool backward);
 
    public:
     //////////////////////////////////////////////////////////////////////////////
@@ -119,15 +120,18 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
     ThreadInfo& _peerInfo;
     std::string_view _start;
     bool _backward;
-    /// @brief temp value, which is used only in Searcher::oneStep() and recycled.
+    /// @brief temp value, which is used only in Searcher::oneStep() and
+    /// recycled.
     std::vector<std::unique_ptr<Step>> _neighbors;
   };
 
   // -----------------------------------------------------------------------------
 
-  AttributeWeightShortestPathFinder(AttributeWeightShortestPathFinder const&) = delete;
+  AttributeWeightShortestPathFinder(AttributeWeightShortestPathFinder const&) =
+      delete;
 
-  AttributeWeightShortestPathFinder& operator=(AttributeWeightShortestPathFinder const&) = delete;
+  AttributeWeightShortestPathFinder& operator=(
+      AttributeWeightShortestPathFinder const&) = delete;
   AttributeWeightShortestPathFinder() = delete;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -152,12 +156,10 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   bool shortestPath(arangodb::velocypack::Slice start,
                     arangodb::velocypack::Slice target,
                     arangodb::graph::ShortestPathResult& result) override;
-  
- private:
 
-  void inserter(std::vector<std::unique_ptr<Step>>& result,
-                std::string_view s, std::string_view t, 
-                double currentWeight,
+ private:
+  void inserter(std::vector<std::unique_ptr<Step>>& result, std::string_view s,
+                std::string_view t, double currentWeight,
                 graph::EdgeDocumentToken&& edge);
 
   void expandVertex(bool backward, std::string_view source,
@@ -194,15 +196,14 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
 
   bool _intermediateSet;
   std::string_view _intermediate;
-  
+
   /// @brief temporary value, which is going to be populate in  inserter,
   /// and recycled between calls
   std::unordered_map<std::string_view, size_t> _candidates;
-  
+
   std::unique_ptr<EdgeCursor> _forwardCursor;
   std::unique_ptr<EdgeCursor> _backwardCursor;
 };
 
 }  // namespace graph
 }  // namespace arangodb
-

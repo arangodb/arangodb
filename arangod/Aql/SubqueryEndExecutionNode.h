@@ -37,13 +37,13 @@ class SubqueryEndNode : public ExecutionNode {
  public:
   SubqueryEndNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
-  SubqueryEndNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* inVariable,
-                  Variable const* outVariable);
+  SubqueryEndNode(ExecutionPlan* plan, ExecutionNodeId id,
+                  Variable const* inVariable, Variable const* outVariable);
 
   CostEstimate estimateCost() const override final;
 
   NodeType getType() const override final { return SUBQUERY_END; }
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   Variable const* inVariable() const { return _inVariable; }
@@ -52,7 +52,8 @@ class SubqueryEndNode : public ExecutionNode {
 
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
@@ -77,7 +78,8 @@ class SubqueryEndNode : public ExecutionNode {
   bool isModificationNode() const override;
 
  protected:
-  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override final;
 
  private:
   Variable const* _inVariable;
@@ -86,4 +88,3 @@ class SubqueryEndNode : public ExecutionNode {
 
 }  // namespace aql
 }  // namespace arangodb
-
