@@ -479,6 +479,12 @@ function indexHintDisableIndexSuite() {
           [ `FOR doc IN ${cn} ${option} FILTER doc.value1 == 123 RETURN doc`, 'value1', [], false ],
           [ `FOR doc IN ${cn} ${option} FILTER doc.value1 == 123 RETURN doc.value1`, 'value1', ['value1'], true ],
           [ `FOR doc IN ${cn} ${option} FILTER doc.value1 == 123 RETURN doc.value2`, 'value1', ['value2'], false ],
+          [ `FOR doc IN ${cn} ${option} SORT doc._key RETURN doc._key`, 'primary', ['_key'], true ],
+          [ `FOR doc IN ${cn} ${option} SORT doc._key RETURN 1`, 'primary', [], false ],
+          [ `FOR doc IN ${cn} ${option} SORT doc._key DESC RETURN doc._key`, 'primary', ['_key'], true ],
+          [ `FOR doc IN ${cn} ${option} SORT doc._key DESC RETURN 1`, 'primary', [], false ],
+          [ `FOR doc IN ${cn} ${option} SORT doc.value1 RETURN doc.value1`, 'value1', ['value1'], true ],
+          [ `FOR doc IN ${cn} ${option} SORT doc.value1 RETURN doc.value2`, 'value1', ['value2'], false ],
         ];
 
         queries.forEach((query) => {
@@ -491,17 +497,17 @@ function indexHintDisableIndexSuite() {
             // expect EnumerateCollectionNode
             assertEqual(0, nodes.filter((node) => node.type === 'IndexNode').length);
             let ns = nodes.filter((node) => node.type === 'EnumerateCollectionNode');
-            assertEqual(1, ns.length);
+            assertEqual(1, ns.length, query);
             node = ns[0];
           } else {
             // expect IndexNode
             assertEqual(0, nodes.filter((node) => node.type === 'EnumerateCollectionNode').length);
             let ns = nodes.filter((node) => node.type === 'IndexNode');
-            assertEqual(1, ns.length);
+            assertEqual(1, ns.length, query);
             node = ns[0];
-            assertEqual(1, node.indexes.length);
-            assertEqual(query[1], node.indexes[0].name);
-            assertEqual(query[3], node.indexCoversProjections);
+            assertEqual(1, node.indexes.length, query);
+            assertEqual(query[1], node.indexes[0].name, query);
+            assertEqual(query[3], node.indexCoversProjections, query);
           }
           assertEqual(query[2], node.projections);
         });
@@ -518,6 +524,12 @@ function indexHintDisableIndexSuite() {
         [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } FILTER doc.value1 == 123 RETURN doc`, [] ],
         [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } FILTER doc.value1 == 123 RETURN doc.value1`, ['value1'] ],
         [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } FILTER doc.value1 == 123 RETURN doc.value2`, ['value1', 'value2'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc._key RETURN doc._key`, ['_key'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc._key RETURN 1`, ['_key'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc._key DESC RETURN doc._key`, ['_key'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc._key DESC RETURN 1`, ['_key'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc.value1 RETURN doc.value1`, ['value1'] ],
+        [ `FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc.value1 RETURN doc.value2`, ['value1', 'value2'] ],
       ];
 
       queries.forEach((query) => {
@@ -526,9 +538,9 @@ function indexHintDisableIndexSuite() {
 
         assertEqual(0, nodes.filter((node) => node.type === 'IndexNode').length);
         let ns = nodes.filter((node) => node.type === 'EnumerateCollectionNode');
-        assertEqual(1, ns.length);
+        assertEqual(1, ns.length, query);
         let node = ns[0];
-        assertEqual(query[1], node.projections.sort());
+        assertEqual(query[1], node.projections.sort(), query);
       });
     },
 
