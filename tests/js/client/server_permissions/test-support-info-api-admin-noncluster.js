@@ -35,9 +35,8 @@ const jwtSecret = 'abc123';
 
 if (getOptions === true) {
   return {
-    'server.harden': 'false',
     'server.authentication': 'true',
-    'server.support-info-api': "hardened",
+    'server.support-info-api': "admin",
     'server.jwt-secret': jwtSecret,
     'runSetup': true
   };
@@ -76,7 +75,7 @@ function testSuite() {
         auth: {
           username: "test_rw",
           password: "testi"
-        },
+        }
       });
       assertEqual(200, res.status);
       assertTrue(res.json.hasOwnProperty("deployment"));
@@ -88,7 +87,7 @@ function testSuite() {
         auth: {
           username: "test_ro",
           password: "testi"
-        },
+        }
       });
       assertEqual(403, res.status);
     },
