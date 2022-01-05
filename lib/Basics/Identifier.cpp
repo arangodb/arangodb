@@ -31,9 +31,7 @@ namespace arangodb::basics {
 
 Identifier::BaseType Identifier::id() const noexcept { return _id; }
 
-Identifier::BaseType const* Identifier::data() const noexcept {
-  return &_id;
-}
+Identifier::BaseType const* Identifier::data() const noexcept { return &_id; }
 
 Identifier::operator bool() const noexcept { return _id != 0; }
 
