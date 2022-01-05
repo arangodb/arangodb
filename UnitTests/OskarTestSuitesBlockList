@@ -4,3 +4,4 @@ upgrade_data_3.4.*
 upgrade_data_3.5.*
 audit
 dfdb
+replication2_client

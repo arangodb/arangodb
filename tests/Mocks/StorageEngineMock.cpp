@@ -42,7 +42,6 @@
 #include "Indexes/IndexIterator.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RestServer/FlushFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
@@ -1933,22 +1932,6 @@ arangodb::Result StorageEngineMock::flushWal(bool waitForSync,
                                              bool waitForCollector) {
   TRI_ASSERT(false);
   return arangodb::Result();
-}
-
-auto StorageEngineMock::createReplicatedLog(TRI_vocbase_t& vocbase,
-                                            arangodb::replication2::LogId id)
-    -> arangodb::ResultT<
-        std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>> {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-auto StorageEngineMock::dropReplicatedLog(
-    TRI_vocbase_t& vocbase,
-    std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> const&
-        ptr) -> arangodb::Result {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 TransactionCollectionMock::TransactionCollectionMock(
