@@ -1290,6 +1290,7 @@ static auto reportCurrentReplicatedLogLocal(
 
 static auto reportCurrentReplicatedLogLeader(
     replication2::replicated_log::QuickLogStatus const& status,
+    ServerID const& serverId,
     replication2::agency::LogCurrent::Leader const* currentLeader)
     -> std::optional<replication2::agency::LogCurrent::Leader> {
   TRI_ASSERT(status.role ==
@@ -1309,6 +1310,7 @@ static auto reportCurrentReplicatedLogLeader(
     if (requiresUpdate) {
       replication2::agency::LogCurrent::Leader leader;
       leader.term = *status.getCurrentTerm();
+      leader.serverId = serverId;
       leader.committedParticipantsConfig = *status.committedParticipantsConfig;
       return leader;
     }
@@ -1403,6 +1405,7 @@ static void reportCurrentReplicatedLog(
     replication2::replicated_log::QuickLogStatus const& status, VPackSlice cur,
     replication2::LogId id, std::string const& dbName,
     std::string const& serverId) {
+  using namespace replication2::agency;
   auto logContext =
       LoggerContext{Logger::MAINTENANCE}.with<logContextKeyLogId>(id);
   auto localTerm = status.getCurrentTerm();
@@ -1414,26 +1417,29 @@ static void reportCurrentReplicatedLog(
     return;
   }
 
-  auto currentSlice = cur.get(cluster::paths::aliases::current()
-                                  ->replicatedLogs()
-                                  ->database(dbName)
-                                  ->log(to_string(id))
-                                  ->vec());
-  if (currentSlice.isNone()) {
-    return;
-  }
   // load current into memory
-  auto current = replication2::agency::LogCurrent::fromVelocyPack(currentSlice);
+  auto current = std::invoke([&]() -> std::optional<LogCurrent> {
+    auto currentSlice = cur.get(cluster::paths::aliases::current()
+                                    ->replicatedLogs()
+                                    ->database(dbName)
+                                    ->log(to_string(id))
+                                    ->vec());
+    if (currentSlice.isNone()) {
+      return std::nullopt;
+    }
+    return LogCurrent::fromVelocyPack(currentSlice);
+  });
 
   {
-    auto localState =
-        std::invoke([&]() -> replication2::agency::LogCurrentLocalState const* {
-          if (auto iter = current.localState.find(serverId);
-              iter != std::end(current.localState)) {
-            return &iter->second;
-          }
-          return nullptr;
-        });
+    auto localState = std::invoke([&]() -> LogCurrentLocalState const* {
+      if (current.has_value()) {
+        if (auto iter = current->localState.find(serverId);
+            iter != std::end(current->localState)) {
+          return &iter->second;
+        }
+      }
+      return nullptr;
+    });
 
     if (auto result = reportCurrentReplicatedLogLocal(status, localState);
         result.has_value()) {
@@ -1446,12 +1452,15 @@ static void reportCurrentReplicatedLog(
     if (status.role == replication2::replicated_log::ParticipantRole::kLeader) {
       auto currentLeader =
           std::invoke([&]() -> replication2::agency::LogCurrent::Leader const* {
-            if (current.leader.has_value()) {
-              return &current.leader.value();
+            if (current.has_value()) {
+              if (current->leader.has_value()) {
+                return &current->leader.value();
+              }
             }
             return nullptr;
           });
-      if (auto result = reportCurrentReplicatedLogLeader(status, currentLeader);
+      if (auto result =
+              reportCurrentReplicatedLogLeader(status, serverId, currentLeader);
           result.has_value()) {
         writeUpdateReplicatedLogLeader(report, id, dbName, *localTerm, *result);
       }

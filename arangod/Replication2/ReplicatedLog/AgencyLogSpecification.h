@@ -134,6 +134,7 @@ struct LogCurrent {
   std::optional<LogCurrentSupervision> supervision;
 
   struct Leader {
+    ParticipantId serverId;
     LogTerm term;
     ParticipantsConfig committedParticipantsConfig;
 
