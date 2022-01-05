@@ -3473,9 +3473,9 @@ TEST_P(format_test_case_with_encryption, columnstore_read_write_wrong_encryption
     {
       auto [id, handle] = writer->push_column(
           info, [](auto&){return irs::string_ref::NIL;});
-      handle(0).write_byte(0);
       handle(1).write_byte(1);
       handle(2).write_byte(2);
+      handle(3).write_byte(3);
     }
 
     const std::set<irs::type_info::type_id> features;
