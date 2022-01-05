@@ -94,6 +94,24 @@ auto methods::updateTermSpecificationTrx(arangodb::agency::envelope envelope,
       .end();
 }
 
+auto methods::updateParticipantsConfigTrx(arangodb::agency::envelope envelope,
+                                          DatabaseID const& database, LogId id,
+                                          ParticipantsConfig const& participantsConfig,
+                                          ParticipantsConfig const& prevConfig)
+    -> arangodb::agency::envelope {
+  auto const logPath =
+      paths::plan()->replicatedLogs()->database(database)->log(to_string(id));
+
+  return envelope.write()
+      .emplace_object(
+          logPath->str(), [&](VPackBuilder& builder) { participantsConfig.toVelocyPack(builder); })
+      .inc(paths::plan()->version()->str())
+      .precs()
+      .isNotEmpty(logPath->str())
+      .isEqual(logPath->participantsConfig()->str(), prevConfig.generation)
+      .end();
+}
+
 auto methods::updateTermSpecification(DatabaseID const& database, LogId id,
                                       LogPlanTermSpecification const& spec,
                                       std::optional<LogTerm> prevTerm)

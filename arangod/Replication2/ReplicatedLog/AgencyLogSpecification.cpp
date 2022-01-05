@@ -46,12 +46,6 @@ auto LogPlanTermSpecification::toVelocyPack(VPackBuilder& builder) const
     -> void {
   VPackObjectBuilder ob(&builder);
   builder.add(StaticStrings::Term, VPackValue(term.value));
-  {
-    VPackObjectBuilder ob2(&builder, StaticStrings::Participants);
-    for (auto const& [p, l] : participants) {
-      builder.add(p, VPackSlice::emptyObjectSlice());
-    }
-  }
 
   builder.add(VPackValue(StaticStrings::Config));
   config.toVelocyPack(builder);
@@ -67,11 +61,9 @@ LogPlanTermSpecification::LogPlanTermSpecification(from_velocypack_t,
                                                    VPackSlice slice)
     : term(slice.get(StaticStrings::Term).extract<LogTerm>()),
       config(slice.get(StaticStrings::Config)) {
-  for (auto const& [key, value] :
-       VPackObjectIterator(slice.get(StaticStrings::Participants))) {
-    TRI_ASSERT(value.isEmptyObject());
-    participants.emplace(ParticipantId{key.copyString()}, Participant{});
-  }
+  // Participants were moved to LogPlanSpecification. This assertion can be
+  // removed after the transition is complete.
+  TRI_ASSERT(slice.get(StaticStrings::Participants).isNone());
   if (auto leaders = slice.get(StaticStrings::Leader); !leaders.isNone()) {
     leader = Leader{leaders.get(StaticStrings::ServerId).copyString(),
                     leaders.get(StaticStrings::RebootId).extract<RebootId>()};
@@ -103,13 +95,10 @@ LogPlanSpecification::LogPlanSpecification(from_velocypack_t, VPackSlice slice)
   }
 }
 
-LogPlanTermSpecification::LogPlanTermSpecification(
-    LogTerm term, LogConfig config, std::optional<Leader> leader,
-    std::unordered_map<ParticipantId, Participant> participants)
-    : term(term),
-      config(config),
-      leader(std::move(leader)),
-      participants(std::move(participants)) {}
+LogPlanTermSpecification::LogPlanTermSpecification(LogTerm term,
+                                                   LogConfig config,
+                                                   std::optional<Leader> leader)
+    : term(term), config(config), leader(std::move(leader)) {}
 
 LogPlanSpecification::LogPlanSpecification(
     LogId id, std::optional<LogPlanTermSpecification> term, LogConfig config)

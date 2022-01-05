@@ -47,6 +47,7 @@
 #include "Replication2/AgencyMethods.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
@@ -2581,7 +2582,25 @@ void Supervision::checkReplicatedLogs() {
                     return {};
                   });
 
+      auto checkParticipantsResult =
+          checkReplicatedLogParticipants(dbName, spec, info);
       auto checkResult = checkReplicatedLog(dbName, spec, current, info);
+      TRI_ASSERT(  // holds(ParticipantsConfig) =>
+                   // holds(LogPlanTermSpecification)
+          !std::holds_alternative<replication2::ParticipantsConfig>(
+              checkParticipantsResult) ||
+          std::holds_alternative<LogPlanTermSpecification>(checkResult));
+      envelope = std::visit(
+          overload{
+              [&, &dbName = dbName](
+                  replication2::ParticipantsConfig const& participantsConfig) {
+                return arangodb::replication2::agency::methods::
+                    updateParticipantsConfigTrx(std::move(envelope), dbName,
+                                                spec.id, participantsConfig, spec.participantsConfig);
+              },
+              [&](std::monostate) { return std::move(envelope); },
+          },
+          std::move(checkParticipantsResult));
       envelope = std::visit(
           overload{
               [&, &dbName = dbName](LogPlanTermSpecification const& newSpec) {
