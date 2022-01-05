@@ -3,6 +3,10 @@ devel
 
 * Fixed potentially undefined behavior for exit code of arangodump.
 
+* ignore SIG_HUP etc. on client tools.
+
+* Fixed undefined behaviour for exit codes of arangodump 
+
 * Extend timeouts for caching collection counts and index selectivity estimates
   on coordinators from 15s/90s to 180s. This change will cause less requests to
   be made from coordinators to DB servers to refresh info about collection
