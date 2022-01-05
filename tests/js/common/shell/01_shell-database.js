@@ -28,10 +28,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var internal = require("internal");
-var arangodb = require("@arangodb");
-var ERRORS = arangodb.errors;
+const jsunity = require("jsunity");
+const internal = require("internal");
+const arangodb = require("@arangodb");
+const ERRORS = arangodb.errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: database methods
@@ -55,9 +55,6 @@ function DatabaseSuite () {
       } catch (err) {
         // ignore
       }
-
-      // trigger GC to remove databases physically
-      internal.wait(0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -571,92 +568,6 @@ function DatabaseSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test _createDatabase function
-////////////////////////////////////////////////////////////////////////////////
-
-    testCreateDatabaseReplicationFactorGreaterWriteConcern : function () {
-      if (!internal.isCluster()) {
-        return;
-      }
-
-      try {
-        internal.db._dropDatabase("UnitTestsDatabase");
-      } catch (err) {
-      }
-
-      [
-        [1, 2],
-        [1, 3],
-        [2, 3],
-      ].forEach((data) => {
-        let [replicationFactor, writeConcern] = data;
-        try {
-          internal.db._createDatabase("UnitTestsDatabase", { replicationFactor, writeConcern });
-          fail();
-        } catch (err) {
-          assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
-        } finally {
-          try {
-            internal.db._dropDatabase("UnitTestsDatabase");
-          } catch (err) {
-          }
-        }
-      });
-    },
-    
-    testCreateDatabaseReplicationFactorGreaterDBServers : function () {
-      if (!internal.isCluster()) {
-        return;
-      }
-
-      try {
-        internal.db._dropDatabase("UnitTestsDatabase");
-      } catch (err) {
-      }
-
-      try {
-        internal.db._createDatabase("UnitTestsDatabase", { replicationFactor: 10, writeConcern: 10 });
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
-      } finally {
-        try {
-          internal.db._dropDatabase("UnitTestsDatabase");
-        } catch (err) {
-        }
-      }
-    },
-
-    testCreateDatabaseReplicationFactorWriteConcernPairs : function () {
-      if (!internal.isCluster()) {
-        return;
-      }
-
-      try {
-        internal.db._dropDatabase("UnitTestsDatabase");
-      } catch (err) {
-      }
-
-      [
-        [1, 1],
-        [2, 1],
-        [2, 2],
-        [3, 1],
-        [3, 2],
-      ].forEach((data) => {
-        let [replicationFactor, writeConcern] = data;
-        try {
-          internal.db._createDatabase("UnitTestsDatabase", { replicationFactor, writeConcern });
-        } finally {
-          try {
-            internal.db._dropDatabase("UnitTestsDatabase");
-          } catch (err) {
-          }
-        }
-      });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test _useDatabase function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -826,11 +737,80 @@ function DatabaseSuite () {
   };
 }
 
+function DatabaseWriteConcernSuite () {
+  'use strict';
+  const cn = "UnitTestsDatabase";
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+  return {
+
+    setUp : function () {
+      try {
+        internal.db._dropDatabase(cn);
+      } catch (err) {
+        // ignore
+      }
+    },
+
+    tearDown : function () {
+      try {
+        internal.db._dropDatabase(cn);
+      } catch (err) {
+        // ignore
+      }
+    },
+
+    testCreateDatabaseReplicationFactorGreaterWriteConcern : function () {
+      [
+        [1, 2],
+        [1, 3],
+        [2, 3],
+      ].forEach((data) => {
+        let [replicationFactor, writeConcern] = data;
+        try {
+          internal.db._createDatabase(cn, { replicationFactor, writeConcern });
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+        }
+      });
+    },
+    
+    testCreateDatabaseReplicationFactorGreaterDBServers : function () {
+      try {
+        internal.db._createDatabase(cn, { replicationFactor: 10, writeConcern: 10 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+    },
+
+    testCreateDatabaseReplicationFactorWriteConcernPairs : function () {
+      [
+        [1, 1],
+        [2, 1],
+        [2, 2],
+        [3, 1],
+        [3, 2],
+      ].forEach((data) => {
+        let [replicationFactor, writeConcern] = data;
+        internal.db._createDatabase(cn, { replicationFactor, writeConcern });
+        try {
+          internal.db._useDatabase(cn);
+          assertEqual(replicationFactor, internal.db._properties().replicationFactor);
+          assertEqual(writeConcern, internal.db._properties().writeConcern);
+        } finally {
+          internal.db._useDatabase("_system");
+        }
+        internal.db._dropDatabase(cn);
+      });
+    },
+
+  };
+}
 
 jsunity.run(DatabaseSuite);
+if (internal.isCluster()) {
+  jsunity.run(DatabaseWriteConcernSuite);
+}
 
 return jsunity.done();
