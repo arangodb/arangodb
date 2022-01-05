@@ -1,6 +1,9 @@
 devel
 -----
 
+* BTS-707: rename "hardened" option value for `--server.support-info-api`
+  startup option to "admin".
+
 * Extend timeouts for caching collection counts and index selectivity estimates
   on coordinators from 15s/90s to 180s. This change will cause less requests to
   be made from coordinators to DB servers to refresh info about collection
