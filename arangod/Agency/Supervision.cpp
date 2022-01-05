@@ -2596,7 +2596,8 @@ void Supervision::checkReplicatedLogs() {
                   replication2::ParticipantsConfig const& participantsConfig) {
                 return arangodb::replication2::agency::methods::
                     updateParticipantsConfigTrx(std::move(envelope), dbName,
-                                                spec.id, participantsConfig, spec.participantsConfig);
+                                                spec.id, participantsConfig,
+                                                spec.participantsConfig);
               },
               [&](std::monostate) { return std::move(envelope); },
           },
