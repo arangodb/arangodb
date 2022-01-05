@@ -57,7 +57,7 @@ class ClusterSelectivityEstimates {
   // whether or not a thread is currently updating the estimates
   std::atomic<bool> _updating;
 
-  static constexpr double defaultTtl = 90.0;
+  static constexpr double defaultTtl = 180.0;
   static constexpr double systemCollectionTtl = 900.0;
 };
 
