@@ -45,6 +45,7 @@ std::string const TypeSimple("simple");
 std::string const FieldContainer("indexHint");
 std::string const FieldForced("forced");
 std::string const FieldHint("hint");
+std::string const FieldLookahead("lookahead");
 std::string const FieldType("type");
 
 arangodb::aql::IndexHint::HintType fromTypeName(std::string const& typeName) {
@@ -84,11 +85,21 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) : IndexHint() {
 
           if (value->isStringValue()) {
             // indexHint: string
+            if (_type == HintType::Disabled) {
+              // disableIndex vs. indexHint is contradicting...
+              ExecutionPlan::invalidOptionAttribute(
+                  query, "contradicting", "FOR", name.data(), name.size());
+            }
             _type = HintType::Simple;
             _hint.simple.emplace_back(value->getStringValue(),
                                       value->getStringLength());
           } else if (value->type == AstNodeType::NODE_TYPE_ARRAY) {
             // indexHint: string: array
+            if (_type == HintType::Disabled) {
+              // disableIndex vs. indexHint is contradicting...
+              ExecutionPlan::invalidOptionAttribute(
+                  query, "contradicting", "FOR", name.data(), name.size());
+            }
             _type = HintType::Simple;
             for (size_t j = 0; j < value->numMembers(); j++) {
               AstNode const* member = value->getMember(j);
@@ -105,7 +116,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) : IndexHint() {
 
           if (value->isBoolValue()) {
             // forceIndexHint: bool
-            _forced = value->value.value._bool;
+            _forced = value->getBoolValue();
             handled = true;
           }
         } else if (name == arangodb::StaticStrings::IndexHintDisableIndex) {
@@ -114,11 +125,11 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) : IndexHint() {
 
           if (value->isBoolValue()) {
             // disableIndex: bool
-            if (value->value.value._bool) {
-              // disableIndex: true
+            if (value->getBoolValue()) {
+              // disableIndex: true. this will disable all index hints
               _type = HintType::Disabled;
               if (!_hint.simple.empty()) {
-                // a particular index was already requested
+                // disableIndex vs. indexHint is contradicting...
                 ExecutionPlan::invalidOptionAttribute(
                     query, "contradicting", "FOR", name.data(), name.size());
                 _hint.simple.clear();
@@ -129,6 +140,17 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) : IndexHint() {
           }
         } else if (name == arangodb::StaticStrings::IndexHintMaxProjections) {
           // maxProjections is a valid attribute, but handled elsewhere
+          handled = true;
+        } else if (name == ::FieldLookahead) {
+          TRI_ASSERT(child->numMembers() > 0);
+          AstNode const* value = child->getMember(0);
+
+          if (value->isIntValue()) {
+            _lookahead = value->getIntValue();
+          } else {
+            ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
+                                                  name.data(), name.size());
+          }
           handled = true;
         }
 
@@ -147,10 +169,12 @@ IndexHint::IndexHint(VPackSlice slice) : IndexHint() {
   // are not available, so we need to be careful when reading them
   VPackSlice s = slice.get(::FieldContainer);
   if (s.isObject()) {
-    _type = ::fromTypeName(
-        basics::VelocyPackHelper::getStringValue(s, ::FieldType, ""));
     _forced =
         basics::VelocyPackHelper::getBooleanValue(s, ::FieldForced, false);
+    _lookahead = basics::VelocyPackHelper::getNumericValue(s, ::FieldLookahead,
+                                                           _lookahead);
+    _type = ::fromTypeName(
+        basics::VelocyPackHelper::getStringValue(s, ::FieldType, ""));
   }
 
   if (_type != HintType::Illegal && _type != HintType::None) {
@@ -195,6 +219,7 @@ void IndexHint::toVelocyPack(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   VPackObjectBuilder guard(&builder, ::FieldContainer);
   builder.add(::FieldForced, VPackValue(_forced));
+  builder.add(::FieldLookahead, VPackValue(_lookahead));
   builder.add(::FieldType, VPackValue(typeName()));
   if (_type == HintType::Simple) {
     VPackArrayBuilder hintGuard(&builder, ::FieldHint);

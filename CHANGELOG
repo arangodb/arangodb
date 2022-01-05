@@ -30,6 +30,10 @@ devel
   The default value for `maxProjections` is `5`, which is compatible with the
   previous hard-coded default value.
 
+* When creating a new database the value of the write concern has to be smaller
+  or equal to the replication factor. Otherwise an error message will be displayed
+  and no database will be created.
+  
 * Fixed BTS-693: Sort-limit rule now always ensures proper LIMIT node placement
   to avoid possible invalid results in the fullCount data.
 

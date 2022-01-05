@@ -58,9 +58,12 @@ class IndexHint {
   std::string typeName() const;
   std::string toString() const;
 
+  size_t getLookahead() const noexcept { return _lookahead; }
+
  private:
   HintType _type;
   bool _forced;
+  size_t _lookahead = 1;
 
   // actual hint is a recursive structure, with the data type determined by the
   // _type above; in the case of a nested IndexHint, the value of isForced() is
