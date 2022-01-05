@@ -23,7 +23,9 @@
 
 #include "PlanSnippet.h"
 
+#include "Aql/Aggregator.h"
 #include "Aql/ClusterNodes.h"
+#include "Aql/CollectNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
 #include "Aql/ExecutionPlan.h"
@@ -34,6 +36,7 @@
 #include "Aql/ShortestPathNode.h"
 #include "Aql/TraversalNode.h"
 #include "Basics/debugging.h"
+#include "Basics/StringBuffer.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
@@ -374,7 +377,7 @@ ExecutionNodeId PlanSnippet::DistributionInput::targetId() const {
   return _distributeOnNode->id();
 }
 
-PlanSnippet::GatherOutput::GatherOutput() {}
+PlanSnippet::GatherOutput::GatherOutput() : _collect{nullptr}, _elements{} {}
 
 ExecutionNode* PlanSnippet::GatherOutput::createGatherNode(
     ExecutionPlan* plan) const {
@@ -386,12 +389,159 @@ ExecutionNode* PlanSnippet::GatherOutput::createGatherNode(
   return gatherNode;
 }
 
+ExecutionNode* PlanSnippet::GatherOutput::eventuallyCreateCollectNode(
+    ExecutionPlan* plan) {
+  if (_collect == nullptr) {
+    // Nothing to collect, no need to create another Collect
+    return nullptr;
+  }
+  switch (_collect->aggregationMethod()) {
+    case CollectOptions::CollectMethod::DISTINCT: {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+      break;
+    }
+    case CollectOptions::CollectMethod::COUNT: {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+      break;
+    }
+    case CollectOptions::CollectMethod::UNDEFINED:
+    case CollectOptions::CollectMethod::HASH:
+    case CollectOptions::CollectMethod::SORTED: {
+      // clone a COLLECT v1 = expr, v2 = expr ... operation from the
+      // coordinator to the DB server(s), and leave an aggregate COLLECT
+      // node on the coordinator for total aggregation
+
+      // The original optimizer rule did exclude Collects without
+      // output variables.
+      TRI_ASSERT(!_collect->hasOutVariable());
+      std::vector<AggregateVarInfo> dbServerAggVars;
+      for (auto const& it : _collect->aggregateVariables()) {
+        std::string_view func = Aggregator::pushToDBServerAs(it.type);
+        // Original code does not optimize here, this is not possible at this
+        // place
+        // TODO: CHECK we can never create a Collect statement triggering this
+        // assert
+        TRI_ASSERT(!func.empty());
+        auto outVariable =
+            plan->getAst()->variables()->createTemporaryVariable();
+        dbServerAggVars.emplace_back(
+            AggregateVarInfo{outVariable, it.inVar, std::string(func)});
+      }
+
+      // create new group variables
+      auto const& groupVars = _collect->groupVariables();
+      std::vector<GroupVarInfo> outVars;
+      outVars.reserve(groupVars.size());
+      std::unordered_map<Variable const*, Variable const*> replacements;
+
+      for (auto const& it : groupVars) {
+        // create new out variables
+        auto out = plan->getAst()->variables()->createTemporaryVariable();
+        replacements.try_emplace(it.inVar, out);
+        outVars.emplace_back(GroupVarInfo{out, it.inVar});
+      }
+
+      auto dbCollectNode = plan->createNode<CollectNode>(
+          plan, plan->nextId(), _collect->getOptions(), outVars,
+          dbServerAggVars, nullptr, nullptr, std::vector<Variable const*>(),
+          _collect->variableMap(), false);
+      dbCollectNode->aggregationMethod(_collect->aggregationMethod());
+      dbCollectNode->specialized();
+
+      std::vector<GroupVarInfo> copy;
+      size_t i = 0;
+      for (GroupVarInfo const& it : _collect->groupVariables()) {
+        // replace input variables
+        copy.emplace_back(GroupVarInfo{/*outVar*/ it.outVar,
+                                       /*inVar*/ outVars[i].outVar});
+        ++i;
+      }
+      _collect->groupVariables(copy);
+
+      size_t j = 0;
+      for (AggregateVarInfo& it : _collect->aggregateVariables()) {
+        it.inVar = dbServerAggVars[j].outVar;
+        it.type = Aggregator::runOnCoordinatorAs(it.type);
+        ++j;
+      }
+
+      bool removeGatherNodeSort = (dbCollectNode->aggregationMethod() !=
+                                   CollectOptions::CollectMethod::SORTED);
+
+      // in case we need to keep the sortedness of the GatherNode,
+      // we may need to replace some variable references in it due
+      // to the changes we made to the COLLECT node
+      if (!removeGatherNodeSort && !replacements.empty()) {
+        adjustSortElements(plan, replacements);
+      }
+      return dbCollectNode;
+    }
+  }
+}
+
+void PlanSnippet::GatherOutput::adjustSortElements(
+    ExecutionPlan* plan,
+    std::unordered_map<arangodb::aql::Variable const*,
+                       arangodb::aql::Variable const*> const& replacements) {
+  std::string cmp;
+  arangodb::basics::StringBuffer buffer(128, false);
+  for (auto& it : _elements) {
+    // replace variables
+    auto it2 = replacements.find(it.var);
+
+    if (it2 != replacements.end()) {
+      // match with our replacement table
+      it.var = (*it2).second;
+      it.attributePath.clear();
+    } else {
+      // no match. now check all our replacements and compare how
+      // their sources are actually calculated (e.g. #2 may mean
+      // "foo.bar")
+      cmp = it.toString();
+      for (auto const& it3 : replacements) {
+        auto setter = plan->getVarSetBy(it3.first->id);
+        if (setter == nullptr ||
+            setter->getType() != ExecutionNode::CALCULATION) {
+          continue;
+        }
+        auto* expr = arangodb::aql::ExecutionNode::castTo<
+                         arangodb::aql::CalculationNode const*>(setter)
+                         ->expression();
+        try {
+          // stringifying an expression may fail with "too long" error
+          buffer.clear();
+          expr->stringify(&buffer);
+          if (cmp.size() == buffer.size() &&
+              cmp.compare(0, cmp.size(), buffer.c_str(), buffer.size()) == 0) {
+            // finally a match!
+            it.var = it3.second;
+            it.attributePath.clear();
+            break;
+          }
+        } catch (...) {
+        }
+      }
+    }
+  }
+}
+
 bool PlanSnippet::GatherOutput::tryAndIncludeSortNode(SortNode const* sort) {
+  if (_collect != nullptr) {
+    // If we have taken a collect, we cannot
+    // take another SORT afterwards.
+    return false;
+  }
   // Can include the Sort
   // TODO: Performance note, we copy the elements once here, we did not do this
   // before
   _elements = sort->elements();
   return true;
+}
+
+void PlanSnippet::GatherOutput::memorizeCollect(CollectNode* collect) {
+  // We cannot pass a second collect that we still need to react on.
+  TRI_ASSERT(_collect == nullptr);
+  _collect = collect;
 }
 
 GatherNode::SortMode PlanSnippet::GatherOutput::getGatherSortMode() const {
@@ -628,17 +778,24 @@ bool PlanSnippet::tryJoinBelow(ExecutionNode* node) {
         // We can include and adapt this sort node, so join it.
         _last = node;
         didJoin = true;
-        break;
       }
+      break;
     }
-
+    case ExecutionNode::COLLECT: {
+      // We can NEVER include the collect itself.
+      // But we need can optimize by doing a pre-collect
+      // on the DBServer already.
+      // So memorize the collect!
+      auto collect = ExecutionNode::castTo<CollectNode*>(node);
+      _gatherOutput.memorizeCollect(collect);
+      break;
+    }
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::INDEX:
     case ExecutionNode::INSERT:
     case ExecutionNode::REMOVE:
     case ExecutionNode::UPDATE:
-    case ExecutionNode::REPLACE:
-    case ExecutionNode::COLLECT: {
+    case ExecutionNode::REPLACE: {
       // Nodes that cannot be joined, and do have effect on Sharding
       break;
     }
@@ -752,6 +909,7 @@ void PlanSnippet::insertCommunicationNodes() {
     // Use Remote to go back to Coordinator
     // On coordinator deploy a GatherNode, to merge data back into single
     // stream.
+    addCollectBelow();
     addRemoteBelow();
     addGatherBelow();
   }
@@ -798,6 +956,15 @@ void PlanSnippet::addRemoteBelow() {
   TRI_ASSERT(remoteNode);
   plan->insertAfter(_last, remoteNode);
   _last = remoteNode;
+}
+
+void PlanSnippet::addCollectBelow() {
+  auto* plan = _topMost->plan();
+  auto collectNode = _gatherOutput.eventuallyCreateCollectNode(plan);
+  if (collectNode != nullptr) {
+    plan->insertAfter(_last, collectNode);
+    _last = collectNode;
+  }
 }
 
 void PlanSnippet::addGatherBelow() {

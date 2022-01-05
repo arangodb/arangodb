@@ -24,6 +24,8 @@
 
 #include "Aql/Query.h"
 #include "Aql/ClusterNodes.h"
+#include "Aql/CollectNode.h"
+#include "Aql/SortNode.h"
 #include "Transaction/StandaloneContext.h"
 #include "Basics/VelocyPackHelper.h"
 
@@ -522,47 +524,62 @@ TEST_F(DistributeQueryRuleTest, distributed_collect) {
     FOR x IN collection
       COLLECT val = x.value
       RETURN val)aql";
-  auto plan = explainQuery(queryString);
+  auto plan = optimizeQuery(queryString);
 
-  auto planSlice = plan->slice();
-  ASSERT_TRUE(planSlice.hasKey("nodes"));
-  planSlice = planSlice.get("nodes");
-  LOG_DEVEL << nodeNames(planSlice);
+  LOG_DEVEL << nodeNames(*plan);
   assertNodesMatch(
-      planSlice, {"SingletonNode", "EnumerateCollectionNode", "CalculationNode",
-                  "CollectNode", "RemoteNode", "GatherNode", "CollectNode",
-                  "SortNode", "ReturnNode"});
-  auto dbServerCollect = planSlice.at(3);
-  auto gatherNode = planSlice.at(5);
-  auto coordinatorCollect = planSlice.at(6);
-  // TODO Why is there a SORT node?
-  auto sort = planSlice.at(7);
-  LOG_DEVEL << dbServerCollect.toJson();
-  LOG_DEVEL << gatherNode.toJson();
-  LOG_DEVEL << coordinatorCollect.toJson();
-  LOG_DEVEL << sort.toJson();
-  {
-    // TODO assert In Variable in DBServer
-    // TODO assert Out Variable in DBServer
-    // TODO assert collectOptions
-    // TODO assert parallelism
-    ASSERT_TRUE(dbServerCollect.isObject());
-    ASSERT_TRUE(coordinatorCollect.isObject());
-    // Assert that the OutVariable of the DBServer is the inVariable or
-    // Coordinator
-    auto dbServerCollectOut =
-        dbServerCollect.get("groups").at(0).get("outVariable");
-    auto coordinatorCollectIn =
-        coordinatorCollect.get("groups").at(0).get("inVariable");
-    EXPECT_TRUE(basics::VelocyPackHelper::equal(dbServerCollectOut,
-                                                coordinatorCollectIn, false));
-  }
+      *plan, {"SingletonNode", "EnumerateCollectionNode", "CalculationNode",
+              "CollectNode", "RemoteNode", "GatherNode", "CollectNode",
+              "SortNode", "ReturnNode"});
+  bool hasSeenCoordinator = false;
+  VarSet coordinatorIn;
+  std::vector<Variable const*> coordinatorOut;
 
-  ASSERT_TRUE(gatherNode.isObject());
-  EXPECT_EQ(gatherNode.get("sortmode").copyString(), "unset");
-  auto sortBy = gatherNode.get("elements");
-  ASSERT_TRUE(sortBy.isArray());
-  ASSERT_EQ(sortBy.length(), 0);
+  // TODO assert collectOptions
+  // TODO assert parallelism
+  matchNodesOfType<CollectNode>(
+      plan.get(), ExecutionNode::NodeType::COLLECT,
+      [&](CollectNode const* collect) {
+        if (!hasSeenCoordinator) {
+          // We visit bottom to top, so first we see
+          // the coordinator one.
+          hasSeenCoordinator = true;
+          collect->getVariablesUsedHere(coordinatorIn);
+          coordinatorOut = collect->getVariablesSetHere();
+          // We can only have One output variable for this query (val)
+          ASSERT_EQ(coordinatorOut.size(), 1);
+        } else {
+          for (auto const v : collect->getVariablesSetHere()) {
+            // The coordinator needs to collect on all DBServers out Variables
+            EXPECT_NE(coordinatorIn.find(v), coordinatorIn.end())
+                << "Did not collect on variable: " << v->name;
+          }
+        }
+        EXPECT_FALSE(collect->isDistinctCommand());
+        EXPECT_TRUE(collect->isSpecialized());
+        EXPECT_TRUE(collect->isSpecialized());
+        EXPECT_EQ(collect->aggregationMethod(),
+                  CollectOptions::CollectMethod::HASH);
+      });
+  matchNodesOfType<GatherNode>(
+      plan.get(), ExecutionNode::NodeType::GATHER,
+      [](GatherNode const* gather) {
+        EXPECT_EQ(gather->sortMode(), GatherNode::SortMode::MinElement);
+        EXPECT_EQ(gather->parallelism(), GatherNode::Parallelism::Parallel);
+        auto sortBy = gather->elements();
+        //  Gather is not sorting
+        ASSERT_EQ(sortBy.size(), 0);
+      });
+  matchNodesOfType<SortNode>(plan.get(), ExecutionNode::NodeType::SORT,
+                             [&coordinatorOut](SortNode const* sort) {
+                               auto sortBy = sort->elements();
+                               ASSERT_EQ(sortBy.size(), 1);
+                               auto sortElement = sortBy.at(0);
+                               EXPECT_EQ(sortElement.var, coordinatorOut.at(0));
+                               EXPECT_TRUE(sortElement.ascending);
+                               // No attribute path given
+                               EXPECT_TRUE(sortElement.attributePath.empty());
+                             });
 }
 
 TEST_F(DistributeQueryRuleTest, distributed_subquery_dbserver) {

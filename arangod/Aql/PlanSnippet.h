@@ -31,6 +31,7 @@
 namespace arangodb {
 namespace aql {
 class ExecutionNode;
+class CollectNode;
 class SortNode;
 struct Variable;
 
@@ -64,10 +65,20 @@ class PlanSnippet {
 
     bool tryAndIncludeSortNode(SortNode const* sort);
 
+    void memorizeCollect(CollectNode* collect);
+
+    ExecutionNode* eventuallyCreateCollectNode(ExecutionPlan* plan);
+
    private:
     GatherNode::SortMode getGatherSortMode() const;
     GatherNode::Parallelism getGatherParallelism() const;
 
+    void adjustSortElements(
+        ExecutionPlan* plan,
+        std::unordered_map<arangodb::aql::Variable const*,
+                           arangodb::aql::Variable const*> const& replacements);
+
+    aql::CollectNode* _collect;
     arangodb::aql::SortElementVector _elements;
   };
 
@@ -106,6 +117,8 @@ class PlanSnippet {
   void addDistributeAbove();
 
   void addRemoteBelow();
+
+  void addCollectBelow();
 
   void addGatherBelow();
 
