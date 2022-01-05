@@ -148,13 +148,13 @@ auto checkLeaderHealth(Log const& log, ParticipantsHealth const& health)
 auto tryLeadershipElection(Log const& log, ParticipantsHealth const& health)
     -> std::unique_ptr<Action> {
   // Check whether there are enough participants to reach a quorum
-  if (log.plan.participants.set.size() + 1 <
+  if (log.plan.participants.set.size() + 1 <=
       log.plan.termSpec.config.writeConcern) {
     return std::make_unique<ImpossibleCampaignAction>(
         /* TODO: should we have an error message? */);
   }
 
-  TRI_ASSERT(log.plan.participants.set.size() + 1 >=
+  TRI_ASSERT(log.plan.participants.set.size() + 1 >
              log.plan.termSpec.config.writeConcern);
 
   auto const requiredNumberOfOKParticipants =
