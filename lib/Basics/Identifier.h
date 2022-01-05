@@ -54,22 +54,22 @@ class Identifier {
   explicit operator bool() const noexcept;
 
   /// @brief check if two identifiers are equal
-  bool operator==(Identifier const& other) const;
+  bool operator==(Identifier const& other) const noexcept;
 
   /// @brief check if two identifiers are equal
-  bool operator!=(Identifier const& other) const;
+  bool operator!=(Identifier const& other) const noexcept;
 
   /// @brief check if this identifier is less than another
-  bool operator<(Identifier const& other) const;
+  bool operator<(Identifier const& other) const noexcept;
 
   /// @brief check if this identifier is at most another
-  bool operator<=(Identifier const& other) const;
+  bool operator<=(Identifier const& other) const noexcept;
 
   /// @brief check if this identifier is greater than another
-  bool operator>(Identifier const& other) const;
+  bool operator>(Identifier const& other) const noexcept;
 
   /// @brief check if this identifier is at least another
-  bool operator>=(Identifier const& other) const;
+  bool operator>=(Identifier const& other) const noexcept;
 
  private:
   BaseType _id;
@@ -87,18 +87,18 @@ std::ostream& operator<<(std::ostream& s, arangodb::basics::Identifier const& i)
   template <>                                                 \
   struct hash<T> {                                            \
     inline size_t operator()(T const& value) const noexcept { \
-      return value.id();                                      \
+      return std::hash<typename T::BaseType>{}(value.id());   \
     }                                                         \
   };                                                          \
   }  // namespace std
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::basics::Identifier)
 
-#define DECLARE_EQUAL_FOR_IDENTIFIER(T)                                      \
-  namespace std {                                                            \
-  template <>                                                                \
-  struct equal_to<T> {                                                       \
-    bool operator()(T const& lhs, T const& rhs) const { return lhs == rhs; } \
-  };                                                                         \
+#define DECLARE_EQUAL_FOR_IDENTIFIER(T)                                                \
+  namespace std {                                                                      \
+  template <>                                                                          \
+  struct equal_to<T> {                                                                 \
+    bool operator()(T const& lhs, T const& rhs) const  noexcept { return lhs == rhs; } \
+  };                                                                                   \
   }  // namespace std
 DECLARE_EQUAL_FOR_IDENTIFIER(arangodb::basics::Identifier)
 
