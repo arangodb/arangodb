@@ -571,6 +571,92 @@ function DatabaseSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test _createDatabase function
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateDatabaseReplicationFactorGreaterWriteConcern : function () {
+      if (!internal.isCluster()) {
+        return;
+      }
+
+      try {
+        internal.db._dropDatabase("UnitTestsDatabase");
+      } catch (err) {
+      }
+
+      [
+        [1, 2],
+        [1, 3],
+        [2, 3],
+      ].forEach((data) => {
+        let [replicationFactor, writeConcern] = data;
+        try {
+          internal.db._createDatabase("UnitTestsDatabase", { replicationFactor, writeConcern });
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+        } finally {
+          try {
+            internal.db._dropDatabase("UnitTestsDatabase");
+          } catch (err) {
+          }
+        }
+      });
+    },
+    
+    testCreateDatabaseReplicationFactorGreaterDBServers : function () {
+      if (!internal.isCluster()) {
+        return;
+      }
+
+      try {
+        internal.db._dropDatabase("UnitTestsDatabase");
+      } catch (err) {
+      }
+
+      try {
+        internal.db._createDatabase("UnitTestsDatabase", { replicationFactor: 10, writeConcern: 10 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      } finally {
+        try {
+          internal.db._dropDatabase("UnitTestsDatabase");
+        } catch (err) {
+        }
+      }
+    },
+
+    testCreateDatabaseReplicationFactorWriteConcernPairs : function () {
+      if (!internal.isCluster()) {
+        return;
+      }
+
+      try {
+        internal.db._dropDatabase("UnitTestsDatabase");
+      } catch (err) {
+      }
+
+      [
+        [1, 1],
+        [2, 1],
+        [2, 2],
+        [3, 1],
+        [3, 2],
+      ].forEach((data) => {
+        let [replicationFactor, writeConcern] = data;
+        try {
+          internal.db._createDatabase("UnitTestsDatabase", { replicationFactor, writeConcern });
+        } finally {
+          try {
+            internal.db._dropDatabase("UnitTestsDatabase");
+          } catch (err) {
+          }
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test _useDatabase function
 ////////////////////////////////////////////////////////////////////////////////
 
