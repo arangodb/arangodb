@@ -214,7 +214,7 @@ char const* name(int signal) {
   }
 }
 
-void maskAllSignals() {
+void maskAllSignalsServer() {
 #ifdef TRI_HAVE_POSIX_THREADS
   sigset_t all;
   sigfillset(&all);
@@ -223,6 +223,20 @@ void maskAllSignals() {
   sigdelset(&all, SIGILL);
   sigdelset(&all, SIGFPE);
   sigdelset(&all, SIGABRT);
+  pthread_sigmask(SIG_SETMASK, &all, nullptr);
+#endif
+}
+
+void maskAllSignalsClient() {
+#ifdef TRI_HAVE_POSIX_THREADS
+  sigset_t all;
+  sigfillset(&all);
+  sigdelset(&all, SIGSEGV);
+  sigdelset(&all, SIGBUS);
+  sigdelset(&all, SIGILL);
+  sigdelset(&all, SIGFPE);
+  sigdelset(&all, SIGABRT);
+  sigdelset(&all, SIGINT);
   pthread_sigmask(SIG_SETMASK, &all, nullptr);
 #endif
 }

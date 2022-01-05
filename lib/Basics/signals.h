@@ -39,7 +39,8 @@ bool isDeadly(int signal);
 /// @brief return the name for a signal
 char const* name(int signal);
 
-void maskAllSignals();
+void maskAllSignalsServer();
+void maskAllSignalsClient();
 void unmaskAllSignals();
 
 }  // namespace signals
