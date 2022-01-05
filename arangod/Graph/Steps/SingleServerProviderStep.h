@@ -88,7 +88,8 @@ class SingleServerProviderStep
   Edge const& getEdge() const { return _edge; }
 
   std::string toString() const {
-    return "<Step><Vertex>: " + _vertex.getID().toString() +  ", <Edge>: " + std::to_string(_edge.getID().localDocumentId().id());
+    return "<Step><Vertex>: " + _vertex.getID().toString() +
+           ", <Edge>: " + std::to_string(_edge.getID().localDocumentId().id());
   }
   bool isProcessable() const { return !isLooseEnd(); }
   bool isLooseEnd() const { return false; }

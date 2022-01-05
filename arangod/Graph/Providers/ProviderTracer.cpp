@@ -149,16 +149,18 @@ transaction::Methods* ProviderTracer<ProviderImpl>::trx() {
 template<class ProviderImpl>
 void ProviderTracer<ProviderImpl>::prepareContext(aql::InputAqlItemRow input) {
   double start = TRI_microtime();
-  auto sg = arangodb::scopeGuard(
-      [&]() noexcept { _stats["prepareContext"].addTiming(TRI_microtime() - start); });
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["prepareContext"].addTiming(TRI_microtime() - start);
+  });
   _impl.prepareContext(input);
 }
 
 template<class ProviderImpl>
 void ProviderTracer<ProviderImpl>::unPrepareContext() {
   double start = TRI_microtime();
-  auto sg = arangodb::scopeGuard(
-      [&]() noexcept { _stats["unPrepareContext"].addTiming(TRI_microtime() - start); });
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["unPrepareContext"].addTiming(TRI_microtime() - start);
+  });
   _impl.unPrepareContext();
 }
 
@@ -172,4 +174,5 @@ template class ::arangodb::graph::ProviderTracer<
     arangodb::graph::SingleServerProvider<enterprise::SmartGraphStep>>;
 #endif
 
-template class ::arangodb::graph::ProviderTracer<arangodb::graph::ClusterProvider>;
+template class ::arangodb::graph::ProviderTracer<
+    arangodb::graph::ClusterProvider>;
