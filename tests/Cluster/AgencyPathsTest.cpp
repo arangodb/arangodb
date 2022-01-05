@@ -397,7 +397,7 @@ static_assert(!std::is_constructible<Root::Arango::Supervision::Health::Server, 
 static_assert(!std::is_constructible<Root::Arango::Target::MapUniqueToShortId::Server, Root::Arango::Target::MapUniqueToShortId, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database, Root::Arango::Plan::ReplicatedLogs, DatabaseID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log, Root::Arango::Plan::ReplicatedLogs::Database, std::string>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::ParticipantsConfig::Participants::Server, Root::Arango::Plan::ReplicatedLogs::Database::Log::CurrentTerm::Participants, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::ParticipantsConfig::Participants::Server, Root::Arango::Plan::ReplicatedLogs::Database::Log::ParticipantsConfig::Participants, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
 
 #endif
 // clang-format on
