@@ -180,7 +180,7 @@ auto replicatedLogAction(Log const&, ParticipantsHealth const&)
     -> std::unique_ptr<Action>;
 
 struct PlanAction {
-  enum class ActionType { AddParticipantAction };
+  enum class ActionType { AddParticipantAction, RemoveParticipantAction };
   virtual void execute() = 0;
   virtual ActionType type() const = 0;
   virtual void toVelocyPack(VPackBuilder& builder) const = 0;
@@ -189,7 +189,7 @@ struct PlanAction {
 
 struct AddParticipantAction : PlanAction {
   AddParticipantAction(ParticipantId participant) : _pid(participant){};
-  void execute() override{};
+  void execute() override;
   ActionType type() const override {
     return PlanAction::ActionType::AddParticipantAction;
   };
@@ -198,6 +198,22 @@ struct AddParticipantAction : PlanAction {
   ParticipantId _pid;
 };
 
-auto checkPlan(Log const& log) -> std::unique_ptr<PlanAction>;
+struct RemoveParticipantAction : PlanAction {
+  RemoveParticipantAction(ParticipantId participant) : _pid(participant){};
+  void execute() override{};
+  ActionType type() const override {
+    return PlanAction::ActionType::RemoveParticipantAction;
+  };
+  void toVelocyPack(VPackBuilder& builder) const override;
+
+  ParticipantId _pid;
+};
+
+auto checkParticipantAddedToTarget(Log const& log, State const& state)
+    -> std::unique_ptr<PlanAction>;
+auto checkParticipantRemovedFromTarget(Log const& log, State const& state)
+    -> std::unique_ptr<PlanAction>;
+auto checkSnapshotReady(Log const& log, State const& state)
+    -> std::unique_ptr<PlanAction>;
 
 }  // namespace arangodb::replication2::replicated_state

@@ -250,18 +250,15 @@ auto replicatedLogAction(Log const& log, ParticipantsHealth const& health)
   return nullptr;
 }
 
-// External forces can modif Target/ReplicatedState; for instance
+// External forces can modify Target/ReplicatedState; for instance
 // add/remove participants to/from Target/ReplicatedState or change flags in
 // participants
-//
-// This function reacts to discrepancies between Target/ReplicatedState
-auto checkTarget(Log const& log, State const& state)
-    -> std::unique_ptr<PlanAction> {
-  // external forces can add/remove participants to/from target
-  // or change flags in participants; we need to detect
-  // discrepancies between target and plan and add
-  // them to the plan
 
+// This function checks whether a participant was added to
+// Target/ReplicatedState by checking whether there is a participant
+// in Target/ReplicatedState that is not in Plan/ReplicatedState
+auto checkParticipantAddedToTarget(Log const& log, State const& state)
+    -> std::unique_ptr<PlanAction> {
   auto const& tps = state.target.participants;
   auto const& pps = state.plan.participants;
 
@@ -269,19 +266,50 @@ auto checkTarget(Log const& log, State const& state)
   // if so, add it to Plan.
   for (auto const& [pid, _] : tps) {
     if (!pps.contains(pid)) {
-      // Add participant to target, but excluded
+      //
+      // Add participant (excluded) to log/target; we are acting as
+      // client of the replicated log
+      //
+      // Add participant to state/plan
+      //
       return std::make_unique<AddParticipantAction>(pid);
     }
   }
+  return nullptr;
+}
 
-  // Find if there is a participant in Plan that is not in Target;
-  // if so, remove it from Plan.
-  for (auto const& pid : pps.set) {
+void AddParticipantAction::execute() {
+  // create an agency transaction that
+  //  * adds _pid to log/target (do we have some procedure to do that?)
+  //  * adds _pid to state/plan
+}
+
+// This function checks whether any of the participants that was awaiting a
+// snapshot that is now ready
+auto checkSnapshotReady(Log const& log, State const& state)
+    -> std::unique_ptr<PlanAction> {
+  return nullptr;
+}
+
+// This function checks whether a participant was removed from
+// Target/ReplicatedState
+auto checkParticipantRemovedFromTarget(Log const& log, State const& state)
+    -> std::unique_ptr<PlanAction> {
+  TRI_ASSERT(false) << " THIS FUNCTION IS A STUB AND NOT READY FOR USE YET";
+
+  auto const& tps = state.target.participants;
+  auto const& pps = state.plan.participants;
+
+  // Find if there is an participant in Plan that is not in Target;
+  // if so, remove it
+  for (auto const& [pid, _] : pps) {
     if (!tps.contains(pid)) {
-      return std::unique_ptr<PlanAction>{};
+      // Remove participant from log/target; there's a whole
+      // phase-out malarky that I  have to understand first
+      // so this is very much TODO.
+      return std::make_unique<RemoveParticipantAction>(pid);
     }
   }
-
   return nullptr;
 }
 
