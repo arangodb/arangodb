@@ -1055,6 +1055,8 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
   }
 
   //FIXME(gnusi)
+  // We can't use AssertIndex() to check the
+  // whole index because column headers don't match
   //AssertIndex();
 
   reader = open_reader();
