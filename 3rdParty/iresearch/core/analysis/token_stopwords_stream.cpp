@@ -56,7 +56,7 @@ bool hex_decode(std::string& buf, VPackStringRef value) {
   if (value.length() & 1) {
     IR_FRMT_WARN(
       "Invalid size for hex-encoded value while HEX decoding masked token: %s",
-      value.toString().c_str());
+      std::string{value}.c_str());
 
     return false;
   }
