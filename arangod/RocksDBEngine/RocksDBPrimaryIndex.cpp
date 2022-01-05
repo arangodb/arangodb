@@ -672,7 +672,6 @@ Result RocksDBPrimaryIndex::probeKey(transaction::Methods& trx,
 
   bool const lock =
       !RocksDBTransactionState::toState(&trx)->isOnlyExclusiveTransaction();
-  IndexOperationMode mode = options.indexOperationMode;
 
   transaction::StringLeaser leased(&trx);
   rocksdb::PinnableSlice ps(leased.get());
