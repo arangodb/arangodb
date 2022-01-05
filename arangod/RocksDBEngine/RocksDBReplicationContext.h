@@ -194,7 +194,7 @@ class RocksDBReplicationContext {
   // creating a new iterator if one does not exist for this collection
   DumpResult dumpVPack(TRI_vocbase_t& vocbase, std::string const& cname,
                        velocypack::Buffer<uint8_t>& buffer, uint64_t chunkSize,
-                       bool useEnvelope);
+                       bool useEnvelope, bool singleArray);
 
   // ==================== Incremental Sync ===========================
 
