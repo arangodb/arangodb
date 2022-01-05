@@ -5,3 +5,4 @@ upgrade_data_3.5.*
 audit
 dfdb
 replication2_client
+replication2_server
