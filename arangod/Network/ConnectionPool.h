@@ -150,8 +150,8 @@ class ConnectionPool final {
 
 class ConnectionPtr {
  public:
-  ConnectionPtr(std::shared_ptr<ConnectionPool::Context>&);
-  ConnectionPtr(ConnectionPtr&&);
+  ConnectionPtr(std::shared_ptr<ConnectionPool::Context> context);
+  ConnectionPtr(ConnectionPtr&& ctx) noexcept;
   ConnectionPtr(ConnectionPtr const&) = delete;
   ~ConnectionPtr();
 

@@ -168,11 +168,15 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
   // Updates the flags of the participants.
   auto updateParticipantsConfig(
-      std::shared_ptr<ParticipantsConfig const> config) -> LogIndex;
+      std::shared_ptr<ParticipantsConfig const> config,
+      std::size_t previousGeneration,
+      std::unordered_map<ParticipantId, std::shared_ptr<AbstractFollower>>
+          additionalFollowers,
+      std::vector<ParticipantId> const& followersToRemove) -> LogIndex;
 
-  // Returns [acceptedConfig.generation, committedConfig.generation]
+  // Returns [acceptedConfig.generation, committedConfig.?generation]
   auto getParticipantConfigGenerations() const noexcept
-      -> std::pair<std::size_t, std::size_t>;
+      -> std::pair<std::size_t, std::optional<std::size_t>>;
 
  protected:
   // Use the named constructor construct() to create a leader!
@@ -328,9 +332,10 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     CommitFailReason _lastCommitFailReason;
 
     // active - that is currently used to check for committed entries
-    std::shared_ptr<ParticipantsConfig const> activeParticipantConfig;
+    std::shared_ptr<ParticipantsConfig const> activeParticipantsConfig;
     // committed - latest active config that has committed at least one entry
-    std::shared_ptr<ParticipantsConfig const> committedParticipantConfig;
+    // Note that this will be nullptr until leadership is established!
+    std::shared_ptr<ParticipantsConfig const> committedParticipantsConfig;
   };
 
   LoggerContext const _logContext;
@@ -346,7 +351,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   // a single mutex.
   Guarded<GuardedLeaderData> _guardedLeaderData;
 
-  void establishLeadership();
+  void establishLeadership(std::shared_ptr<ParticipantsConfig const> config);
 
   [[nodiscard]] static auto instantiateFollowers(
       LoggerContext const&,

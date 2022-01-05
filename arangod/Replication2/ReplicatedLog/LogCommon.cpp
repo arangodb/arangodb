@@ -277,8 +277,11 @@ auto replication2::operator<<(std::ostream& os, TermIndexPair pair)
 LogConfig::LogConfig(VPackSlice slice) {
   waitForSync = slice.get(StaticStrings::WaitForSyncString).extract<bool>();
   writeConcern = slice.get(StaticStrings::WriteConcern).extract<std::size_t>();
-  softWriteConcern =
-      slice.get(StaticStrings::SoftWriteConcern).extract<std::size_t>();
+  if (auto sw = slice.get(StaticStrings::SoftWriteConcern); !sw.isNone()) {
+    softWriteConcern = sw.extract<std::size_t>();
+  } else {
+    softWriteConcern = writeConcern;
+  }
   replicationFactor =
       slice.get(StaticStrings::ReplicationFactor).extract<std::size_t>();
 }
