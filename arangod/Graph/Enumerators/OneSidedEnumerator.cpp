@@ -306,7 +306,7 @@ auto OneSidedEnumerator<Configuration>::setValidatorContext(
   _provider.prepareContext(inputRow);
 
   if (validatorUsesPrune()) {
-  _validator.setPruneContext(inputRow);
+    _validator.setPruneContext(inputRow);
   }
 
   if (validatorUsesPostFilter()) {
@@ -315,8 +315,7 @@ auto OneSidedEnumerator<Configuration>::setValidatorContext(
 }
 
 template<class Configuration>
-auto OneSidedEnumerator<Configuration>::unprepareValidatorContext()
-    -> void {
+auto OneSidedEnumerator<Configuration>::unprepareValidatorContext() -> void {
   _provider.unPrepareContext();
 
   if (validatorUsesPrune()) {
