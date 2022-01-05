@@ -821,7 +821,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
       EXPECT_TRUE(docs->next());
       EXPECT_EQ(docs->value(), columnValues->seek(docs->value()));
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
-                  irs::to_string<irs::string_ref>(value.c_str()));
+                  irs::to_string<irs::string_ref>(value->value.c_str()));
     }
     EXPECT_FALSE(docs->next());
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
