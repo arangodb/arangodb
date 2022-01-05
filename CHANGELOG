@@ -1,6 +1,9 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* BTS-707: rename "hardened" option value for `--server.support-info-api`
+  startup option to "admin".
+
 * APM-78: Added startup security option `--foxx.allow-install-from-remote` to
   allow installing Foxx apps from remote URLs other than Github. The option is
   turned off by default.
