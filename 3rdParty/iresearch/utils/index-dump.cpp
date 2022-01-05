@@ -100,8 +100,8 @@ int dump(
 
     for (auto columns = segment.columns(); columns->next();) {
       auto& meta = columns->value();
-      stream << "Column id=" << meta.id
-             << " name=" << meta.name
+      stream << "Column id=" << meta.id()
+             << " name=" << meta.name()
              << std::endl;
 
       auto visitor = [&stream](irs::doc_id_t doc, const irs::bytes_ref& value) {
@@ -111,7 +111,7 @@ int dump(
         return true;
       };
 
-      auto column = segment.column_reader(meta.id);
+      auto column = segment.column(meta.id());
       column->visit(visitor);
     }
     ++i;

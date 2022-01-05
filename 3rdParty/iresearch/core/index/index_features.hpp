@@ -24,9 +24,10 @@
 #define IRESEARCH_INDEX_FEATURES_H
 
 #include <functional>
-#include <map>
 
+#include "index/column_info.hpp"
 #include "utils/bit_utils.hpp"
+#include "utils/range.hpp"
 #include "utils/type_info.hpp"
 
 namespace iresearch {
@@ -80,12 +81,25 @@ FORCE_INLINE bool is_subset_of(
   return lhs == (lhs & rhs);
 }
 
-using feature_handler_f = void(*)(
-  const field_stats&,
-  doc_id_t,
-  std::function<column_output&(doc_id_t)>&);
+struct feature_writer {
+  using ptr = memory::managed_ptr<feature_writer>;
 
-using field_features_t = std::map<type_info::type_id, feature_handler_f>;
+  virtual ~feature_writer() = default;
+
+  virtual void write(
+      const field_stats& stats,
+      doc_id_t doc,
+      std::function<column_output&(doc_id_t)>& writer) = 0;
+
+  virtual void write(data_output& out, bytes_ref value) = 0;
+
+  virtual void finish(bstring& out) = 0;
+};
+
+using feature_writer_factory_t = feature_writer::ptr(*)(range<const bytes_ref>);
+
+using feature_info_provider_t = std::function<
+    std::pair<column_info, feature_writer_factory_t>(type_info::type_id)>;
 
 }
 

@@ -96,7 +96,7 @@ constexpr frozen::unordered_set<irs::string_ref, 6> LEGACY_FORMATS{
   "1_0", "1_1", "1_2", "1_2simd", "1_3simd", "1_3" };
 
 // norm features supported by old format
-constexpr std::array<irs::type_info::type_id, 1> LEGACY_TEXT_FEATURES{ irs::type<irs::norm>::id()  };
+constexpr std::array<irs::type_info::type_id, 1> LEGACY_TEXT_FEATURES{ irs::type<irs::Norm>::id()  };
 // fixed length norm
 constexpr std::array<irs::type_info::type_id, 1> TEXT_FEATURES{ irs::type<irs::norm2>::id()  };
 constexpr std::array<irs::type_info::type_id, 1> NUMERIC_FEATURES{ irs::type<irs::granularity_prefix>::id() };
@@ -394,7 +394,7 @@ int put(
 
   irs::index_writer::init_options opts;
   opts.features[irs::type<irs::granularity_prefix>::id()] = nullptr;
-  opts.features[irs::type<irs::norm>::id()] = &irs::norm::compute;
+  opts.features[irs::type<irs::Norm>::id()] = &irs::Norm::compute;
   opts.segment_pool_size = indexer_threads;
   opts.segment_memory_max = segment_mem_max;
   opts.feature_column_info = [](irs::type_info::type_id) {

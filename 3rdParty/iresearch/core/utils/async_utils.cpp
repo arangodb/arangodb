@@ -349,7 +349,6 @@ void thread_pool::worker_impl(std::unique_lock<std::mutex>& lock,
         lock.unlock();
         try {
           fn();
-          fn = {};
         } catch (const std::bad_alloc&) {
           fprintf(stderr, "Failed to allocate memory while executing task");
         } catch (const std::exception& e) {
@@ -357,6 +356,7 @@ void thread_pool::worker_impl(std::unique_lock<std::mutex>& lock,
         } catch (...) {
           IR_FRMT_ERROR("Failed to execute task");
         }
+        fn = nullptr;
         lock.lock();
         continue;
       }

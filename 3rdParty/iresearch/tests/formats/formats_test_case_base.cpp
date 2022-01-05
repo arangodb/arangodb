@@ -26,7 +26,60 @@
 #include "index/norm.hpp"
 #include "utils/lz4compression.hpp"
 
+namespace {
+
+bool visit(const irs::column_reader& reader,
+           const std::function<bool(irs::doc_id_t, irs::bytes_ref)>& visitor) {
+  auto it = reader.iterator(true);
+
+  irs::payload dummy;
+  auto* doc = irs::get<irs::document>(*it);
+  if (!doc) {
+    return false;
+  }
+  auto* payload = irs::get<irs::payload>(*it);
+  if (!payload) {
+    payload = &dummy;
+  }
+
+  while (it->next()) {
+    if (!visitor(doc->value, payload->value)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+}
+
 namespace tests {
+
+irs::columnstore_writer::column_finalizer_f column_finalizer(
+    uint32_t value,
+    irs::string_ref name = irs::string_ref::NIL) {
+  return [value, name](irs::bstring& out) {
+    EXPECT_TRUE(out.empty());
+    out.resize(sizeof(value));
+    auto* p = out.data();
+    irs::write(p, value);
+    return name;
+  };
+}
+
+irs::column_info format_test_case::lz4_column_info() const noexcept {
+  return {
+      irs::type<irs::compression::lz4>::get(),
+      irs::compression::options{},
+      bool(dir().attributes().encryption()) };
+}
+
+irs::column_info format_test_case::none_column_info() const noexcept {
+  return {
+      irs::type<irs::compression::lz4>::get(),
+      irs::compression::options{},
+      bool(dir().attributes().encryption()) };
+}
 
 TEST_P(format_test_case, directory_artifact_cleaner) {
   tests::json_doc_generator gen{
@@ -331,11 +384,8 @@ TEST_P(format_test_case, fields_seek_ge) {
 
   // add segment
   {
-    irs::index_writer::init_options opts;
-    opts.features.emplace(irs::type<irs::granularity_prefix>::id(), nullptr);
-
     numeric_field_generator gen(75, 7000, 2);
-    add_segment(gen, irs::OM_CREATE, opts);
+    add_segment(gen, irs::OM_CREATE);
   }
 
   auto reader = open_reader();
@@ -590,7 +640,7 @@ TEST_P(format_test_case, fields_read_write) {
   // define field
   irs::field_meta field;
   field.name = "field";
-  field.features[irs::type<irs::norm>::id()] = 5;
+  field.features[irs::type<irs::Norm>::id()] = 5;
 
   irs::feature_set_t features;
   for (auto& feature : field.features) {
@@ -1064,11 +1114,8 @@ TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
   {
     auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), seg);
-    auto column = writer->push_column({
-      irs::type<irs::compression::lz4>::get(),
-      irs::compression::options(),
-      bool(dir().attributes().encryption())
-    });
+    auto column = writer->push_column(lz4_column_info(),
+                                      column_finalizer(42));
     column_id = column.first;
     auto& column_handler = column.second;
 
@@ -1096,28 +1143,25 @@ TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
 
   // read documents
   {
-    irs::bytes_ref actual_value;
+    auto reader = codec()->get_columnstore_reader();
+    ASSERT_TRUE(reader->prepare(dir(), seg));
 
-    // check 1st segment
-    {
-      auto reader = codec()->get_columnstore_reader();
-      ASSERT_TRUE(reader->prepare(dir(), seg));
+    auto column = reader->column(column_id);
+    ASSERT_NE(nullptr, column);
+    auto values = column->iterator(false);
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
 
-      auto column = reader->column(column_id);
-      ASSERT_NE(nullptr, column);
-      auto values = column->values();
+    irs::doc_id_t id = 0;
 
-      irs::doc_id_t id = 0;
-      ASSERT_FALSE(values(0, actual_value));
-
-      for (++id; id < seg.docs_count; ++id) {
-        if (id == 1025) {
-          // gap
-          ASSERT_FALSE(values(id, actual_value));
-        } else {
-          ASSERT_TRUE(values(id, actual_value));
-          ASSERT_EQ(payload, actual_value);
-        }
+    for (++id; id < seg.docs_count; ++id) {
+      if (id == 1025) {
+        // gap
+        ASSERT_EQ(id + 1, values->seek(id));
+      } else {
+        ASSERT_EQ(id, values->seek(id));
+        ASSERT_EQ(payload, actual_value->value);
       }
     }
   }
@@ -1133,11 +1177,8 @@ TEST_P(format_test_case, columns_rw_dense_mask) {
   {
     auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), seg);
-    auto column = writer->push_column({
-      irs::type<irs::compression::lz4>::get(),
-      irs::compression::options(),
-      bool(dir().attributes().encryption())
-    });
+    auto column = writer->push_column(lz4_column_info(),
+                                      column_finalizer(42));
     column_id = column.first;
     auto& column_handler = column.second;
 
@@ -1155,21 +1196,19 @@ TEST_P(format_test_case, columns_rw_dense_mask) {
 
   // read documents
   {
-    irs::bytes_ref actual_value;
+    auto reader_1 = codec()->get_columnstore_reader();
+    ASSERT_TRUE(reader_1->prepare(dir(), seg));
 
-    // check 1st segment
-    {
-      auto reader_1 = codec()->get_columnstore_reader();
-      ASSERT_TRUE(reader_1->prepare(dir(), seg));
+    auto column = reader_1->column(column_id);
+    ASSERT_NE(nullptr, column);
+    auto values = column->iterator(false);
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
 
-      auto column = reader_1->column(column_id);
-      ASSERT_NE(nullptr, column);
-      auto values = column->values();
-
-      for (irs::doc_id_t id = 0; id < seg.docs_count; ) {
-        ASSERT_TRUE(values(++id, actual_value));
-        ASSERT_TRUE(actual_value.null());
-      }
+    for (irs::doc_id_t id = 0; id < seg.docs_count; ) {
+      ++id;
+      ASSERT_EQ(id, values->seek(id));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
     }
   }
 }
@@ -1185,11 +1224,8 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
     auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), segment);
 
-    auto column = writer->push_column({
-      irs::type<irs::compression::lz4>::get(),
-      irs::compression::options(),
-      bool(dir().attributes().encryption())
-    });
+    auto column = writer->push_column(lz4_column_info(),
+                                      column_finalizer(42));
 
     id = column.first;
     auto& handle = column.second;
@@ -1212,7 +1248,6 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
   // - random read (not cached)
   // - iterate (cached)
   {
-    irs::bytes_ref actual_value;
     auto reader = codec()->get_columnstore_reader();
     ASSERT_TRUE(reader->prepare(dir(), segment));
 
@@ -1220,32 +1255,31 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
     {
       auto column = reader->column(id);
       ASSERT_NE(nullptr, column);
-      auto mask = column->values();
-      ASSERT_FALSE(mask(0, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_FALSE(mask(1, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_FALSE(mask(1, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_TRUE(mask(4, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_FALSE(mask(6, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_TRUE(mask(8, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_TRUE(mask(9, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_FALSE(mask(irs::doc_limits::eof(), actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_TRUE(mask(2, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
+      auto values = column->iterator(false);
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(2, values->seek(1));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(2, values->seek(2));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(4, values->seek(4));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(8, values->seek(6));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(8, values->seek(8));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(9, values->seek(9));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_TRUE(irs::doc_limits::eof(values->seek(irs::doc_limits::eof())));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
     }
 
     // seek over field values (cached)
     {
       auto column = reader->column(id);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator();
+      auto it = column->iterator(false);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1274,7 +1308,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
         if (payload) {
           // if attribute is present, payload value has
           // to be always empty for mask column
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+          ASSERT_TRUE(payload->value.null());
         }
       }
 
@@ -1283,7 +1317,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       if (payload) {
         // if attribute is present, payload value has
         // to be always empty for mask column
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        ASSERT_TRUE(payload->value.null());
       }
     }
 
@@ -1291,7 +1325,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
     {
       auto column = reader->column(id);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator();
+      auto it = column->iterator(false);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1299,7 +1333,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
         // if attribute is present, payload value has
         // to be always empty for mask column
         ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        ASSERT_TRUE(payload->value.null());
       }
 
       std::vector<irs::doc_id_t> expected_values = {
@@ -1312,7 +1346,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
         if (payload) {
           // if attribute is present, payload value has
           // to be always empty for mask column
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+          ASSERT_TRUE(payload->value.null());
         }
       }
 
@@ -1322,7 +1356,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       if (payload) {
         // if attribute is present, payload value has
         // to be always empty for mask column
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        ASSERT_TRUE(payload->value.null());
       }
     }
   }
@@ -1332,7 +1366,6 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
   // - random read (cached)
   // - iterate (cached)
   {
-    irs::bytes_ref actual_value;
     auto reader = codec()->get_columnstore_reader();
     ASSERT_TRUE(reader->prepare(dir(), segment));
 
@@ -1340,7 +1373,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       // iterate over field values (not cached)
       auto column = reader->column(id);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator();
+      auto it = column->iterator(false);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1361,7 +1394,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
         if (payload) {
           // if attribute is present, payload value has
           // to be always empty for mask column
-          ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+          ASSERT_TRUE(payload->value.null());
         }
       }
 
@@ -1371,38 +1404,39 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       if (payload) {
         // if attribute is present, payload value has
         // to be always empty for mask column
-        ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
+        ASSERT_TRUE(payload->value.null());
       }
     }
 
-    // read field values (cached)
+    // read field values (potentially cached)
     {
       auto column = reader->column(id);
       ASSERT_NE(nullptr, column);
-      auto mask = column->values();
-      ASSERT_FALSE(mask(0, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_FALSE(mask(1, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_FALSE(mask(1, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_TRUE(mask(4, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_FALSE(mask(6, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_TRUE(mask(8, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_TRUE(mask(9, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_TRUE(mask(2, actual_value));
-      ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
+      auto values = column->iterator(false);
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(2, values->seek(1));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(2, values->seek(2));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(4, values->seek(4));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(8, values->seek(6));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(8, values->seek(8));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_EQ(9, values->seek(9));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
+      ASSERT_TRUE(irs::doc_limits::eof(values->seek(irs::doc_limits::eof())));
+      ASSERT_TRUE(!actual_value || actual_value->value.null());
     }
 
     // iterate over field values (cached)
     {
       auto column = reader->column(id);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator();
+      auto it = column->iterator(false);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1462,9 +1496,9 @@ TEST_P(format_test_case, columns_rw_empty) {
     auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), meta0);
 
-    column0_id = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) }).first;
+    column0_id = writer->push_column(lz4_column_info(), column_finalizer(42)).first;
     ASSERT_EQ(0, column0_id);
-    column1_id = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) }).first;
+    column1_id = writer->push_column(lz4_column_info(), column_finalizer(43)).first;
     ASSERT_EQ(1, column1_id);
 
     irs::flush_state state;
@@ -1533,11 +1567,8 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
         );
 
         if (res.second) {
-          res.first->second = writer->push_column({
-            irs::type<irs::compression::lz4>::get(),
-            irs::compression::options(),
-            bool(dir().attributes().encryption())
-          });
+          res.first->second = writer->push_column(lz4_column_info(),
+                                                  column_finalizer(42));
         }
 
         auto& column = res.first->second.second;
@@ -1566,30 +1597,33 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
 
   // read documents
   {
-    irs::bytes_ref actual_value;
+    auto reader_1 = codec()->get_columnstore_reader();
+    ASSERT_TRUE(reader_1->prepare(dir(), seg));
 
-    // check 1st segment
-    {
-      auto reader_1 = codec()->get_columnstore_reader();
-      ASSERT_TRUE(reader_1->prepare(dir(), seg));
+    auto id_column = reader_1->column(columns["id"].first);
+    ASSERT_NE(nullptr, id_column);
 
-      auto id_column = reader_1->column(columns["id"].first);
-      ASSERT_NE(nullptr, id_column);
-      auto id_values = id_column->values();
+    auto id_values = id_column->iterator(false);
+    ASSERT_NE(nullptr, id_values);
+    auto* id_payload = irs::get<irs::payload>(*id_values);
+    ASSERT_NE(nullptr, id_payload);
 
-      auto name_column = reader_1->column(columns["name"].first);
-      ASSERT_NE(nullptr, name_column);
-      auto name_values = name_column->values();
+    auto name_column = reader_1->column(columns["name"].first);
+    ASSERT_NE(nullptr, name_column);
 
-      gen.reset();
-      irs::doc_id_t i = 0;
-      for (const document* doc; i < seg.docs_count && (doc = gen.next());) {
-        ++i;
-        ASSERT_TRUE(id_values(i, actual_value));
-        ASSERT_EQ(doc->stored.get<tests::string_field>(0).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
-        ASSERT_TRUE(name_values(i, actual_value));
-        ASSERT_EQ(doc->stored.get<tests::string_field>(1).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
-      }
+    auto name_values = name_column->iterator(false);
+    ASSERT_NE(nullptr, name_values);
+    auto* name_payload = irs::get<irs::payload>(*name_values);
+    ASSERT_NE(nullptr, name_payload);
+
+    gen.reset();
+    irs::doc_id_t i = 0;
+    for (const document* doc; i < seg.docs_count && (doc = gen.next());) {
+      ++i;
+      ASSERT_EQ(i, id_values->seek(i));
+      ASSERT_EQ(doc->stored.get<tests::string_field>(0).value(), irs::to_string<irs::string_ref>(id_payload->value.c_str()));
+      ASSERT_EQ(i, name_values->seek(i));
+      ASSERT_EQ(doc->stored.get<tests::string_field>(1).value(), irs::to_string<irs::string_ref>(name_payload->value.c_str()));
     }
   }
 }
@@ -1618,11 +1652,8 @@ TEST_P(format_test_case, columns_rw_big_document) {
     auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), segment);
 
-    auto column = writer->push_column({
-      irs::type<irs::compression::lz4>::get(),
-      irs::compression::options(),
-      bool(dir().attributes().encryption())
-    });
+    auto column = writer->push_column(lz4_column_info(),
+                                      column_finalizer(42));
     id = column.first;
 
     {
@@ -1656,26 +1687,27 @@ TEST_P(format_test_case, columns_rw_big_document) {
 
     // random access
     {
-      irs::bytes_ref actual_value;
-
       stream.clear(); // clear eof flag if set
       stream.seekg(0, stream.beg); // seek to the beginning of the file
 
       auto column = reader->column(id);
       ASSERT_NE(nullptr, column);
-      auto values = column->values();
+      auto values = column->iterator(false);
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
 
       std::memset(field.buf, 0, sizeof field.buf); // clear buffer
       stream.read(field.buf, sizeof field.buf);
       ASSERT_TRUE(bool(stream));
-      ASSERT_TRUE(values(1, actual_value));
-      ASSERT_EQ(irs::string_ref(field.buf, sizeof field.buf), irs::ref_cast<char>(actual_value));
+      ASSERT_EQ(1, values->seek(1));
+      ASSERT_EQ(irs::string_ref(field.buf, sizeof field.buf), irs::ref_cast<char>(actual_value->value));
 
       std::memset(field.buf, 0, sizeof field.buf); // clear buffer
       stream.read(field.buf, sizeof field.buf);
       ASSERT_TRUE(bool(stream));
-      ASSERT_TRUE(values(2, actual_value));
-      ASSERT_EQ(irs::string_ref(field.buf, sizeof field.buf), irs::ref_cast<char>(actual_value));
+      ASSERT_EQ(2, values->seek(2));
+      ASSERT_EQ(irs::string_ref(field.buf, sizeof field.buf), irs::ref_cast<char>(actual_value->value));
     }
 
     // iterator "next"
@@ -1685,7 +1717,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
 
       auto column = reader->column(id);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator();
+      auto it = column->iterator(false);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1717,7 +1749,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
 
       auto column = reader->column(id);
       ASSERT_NE(nullptr, column);
-      auto it = column->iterator();
+      auto it = column->iterator(false);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -1791,7 +1823,8 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
         );
 
         if (res.second) {
-          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
+          res.first->second = writer->push_column(lz4_column_info(),
+                                                  column_finalizer(42));
         }
 
         auto& column = res.first->second.second;
@@ -1821,13 +1854,13 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
       ++id;
       for (auto& field : doc->stored) {
         const auto res = columns_2.emplace(
-          std::piecewise_construct,
-          std::forward_as_tuple(std::string(field.name())),
-          std::forward_as_tuple()
-        );
+            std::piecewise_construct,
+            std::forward_as_tuple(std::string(field.name())),
+            std::forward_as_tuple());
 
         if (res.second) {
-          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
+          res.first->second = writer->push_column(lz4_column_info(),
+                                                  column_finalizer(42));
         }
 
         auto& column = res.first->second.second;
@@ -1861,7 +1894,8 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
         );
 
         if (res.second) {
-          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
+          res.first->second = writer->push_column(lz4_column_info(),
+                                                  column_finalizer(42));
         }
 
         auto& column = res.first->second.second;
@@ -1884,8 +1918,6 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
   // read documents
   {
-    irs::bytes_ref actual_value;
-
     // check 1st segment
     {
       auto reader_1 = codec()->get_columnstore_reader();
@@ -1893,20 +1925,28 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
       auto id_column = reader_1->column(columns_1["id"].first);
       ASSERT_NE(nullptr, id_column);
-      auto id_values = id_column->values();
+      auto id_values = id_column->iterator(false);
+      ASSERT_NE(nullptr, id_values);
+      auto* id_payload = irs::get<irs::payload>(*id_values);
+      ASSERT_NE(nullptr, id_payload);
 
       auto name_column = reader_1->column(columns_1["name"].first);
       ASSERT_NE(nullptr, name_column);
-      auto name_values = name_column->values();
+      auto name_values = name_column->iterator(false);
+      ASSERT_NE(nullptr, name_values);
+      auto* name_payload = irs::get<irs::payload>(*name_values);
+      ASSERT_NE(nullptr, name_payload);
 
       gen.reset();
       irs::doc_id_t i = 0;
       for (const document* doc; i < seg_1.docs_count && (doc = gen.next());) {
         ++i;
-        ASSERT_TRUE(id_values(i, actual_value));
-        ASSERT_EQ(doc->stored.get<tests::string_field>(0).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
-        ASSERT_TRUE(name_values(i, actual_value));
-        ASSERT_EQ(doc->stored.get<tests::string_field>(1).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
+        ASSERT_EQ(i, id_values->seek(i));
+        ASSERT_EQ(doc->stored.get<tests::string_field>(0).value(),
+                  irs::to_string<irs::string_ref>(id_payload->value.c_str()));
+        ASSERT_EQ(i, name_values->seek(i));
+        ASSERT_EQ(doc->stored.get<tests::string_field>(1).value(),
+                  irs::to_string<irs::string_ref>(name_payload->value.c_str()));
       }
 
       // check 2nd segment (same as 1st)
@@ -1915,22 +1955,30 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
       auto id_column_2 = reader_2->column(columns_2["id"].first);
       ASSERT_NE(nullptr, id_column_2);
-      auto id_values_2 = id_column_2->values();
+      auto id_values_2 = id_column_2->iterator(false);
+      ASSERT_NE(nullptr, id_values_2);
+      auto* id_payload_2 = irs::get<irs::payload>(*id_values_2);
+      ASSERT_NE(nullptr, id_payload_2);
 
       auto name_column_2 = reader_2->column(columns_2["name"].first);
       ASSERT_NE(nullptr, name_column_2);
-      auto name_values_2 = name_column_2->values();
+      auto name_values_2 = name_column_2->iterator(false);
+      ASSERT_NE(nullptr, name_values_2);
+      auto* name_payload_2 = irs::get<irs::payload>(*name_values_2);
+      ASSERT_NE(nullptr, name_payload_2);
 
       // check for equality
-      irs::bytes_ref value;
-      for (irs::doc_id_t i = 0, count = seg_2.docs_count; i < count;) {
+      gen.reset();
+
+      const document* doc;
+      for (irs::doc_id_t i = 0, count = seg_2.docs_count; i < count && (doc = gen.next());) {
         ++i;
-        ASSERT_TRUE(id_values(i, value));
-        ASSERT_TRUE(id_values_2(i, actual_value));
-        ASSERT_EQ(value, actual_value);
-        ASSERT_TRUE(name_values(i, value));
-        ASSERT_TRUE(name_values_2(i, actual_value));
-        ASSERT_EQ(value, actual_value);
+        ASSERT_EQ(i, id_values_2->seek(i));
+        ASSERT_EQ(doc->stored.get<tests::string_field>(0).value(),
+                  irs::to_string<irs::string_ref>(id_payload_2->value.c_str()));
+        ASSERT_EQ(i, name_values_2->seek(i));
+        ASSERT_EQ(doc->stored.get<tests::string_field>(1).value(),
+                  irs::to_string<irs::string_ref>(name_payload_2->value.c_str()));
       }
     }
 
@@ -1941,19 +1989,27 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
       auto id_column = reader->column(columns_3["id"].first);
       ASSERT_NE(nullptr, id_column);
-      auto id_values = id_column->values();
+      auto id_values = id_column->iterator(false);
+      ASSERT_NE(nullptr, id_values);
+      auto* id_payload = irs::get<irs::payload>(*id_values);
+      ASSERT_NE(nullptr, id_payload);
 
       auto name_column = reader->column(columns_3["name"].first);
       ASSERT_NE(nullptr, name_column);
-      auto name_values = name_column->values();
+      auto name_values = name_column->iterator(false);
+      ASSERT_NE(nullptr, name_values);
+      auto* name_payload = irs::get<irs::payload>(*name_values);
+      ASSERT_NE(nullptr, name_payload);
 
       irs::doc_id_t i = 0;
       for (const document* doc; i < seg_3.docs_count && (doc = gen.next());) {
         ++i;
-        ASSERT_TRUE(id_values(i, actual_value));
-        ASSERT_EQ(doc->stored.get<tests::string_field>(0).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
-        ASSERT_TRUE(name_values(i, actual_value));
-        ASSERT_EQ(doc->stored.get<tests::string_field>(1).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
+        ASSERT_EQ(i, id_values->seek(i));
+        ASSERT_EQ(doc->stored.get<tests::string_field>(0).value(),
+                  irs::to_string<irs::string_ref>(id_payload->value.c_str()));
+        ASSERT_EQ(i, name_values->seek(i));
+        ASSERT_EQ(doc->stored.get<tests::string_field>(1).value(),
+                  irs::to_string<irs::string_ref>(name_payload->value.c_str()));
       }
     }
   }
@@ -2055,7 +2111,8 @@ TEST_P(format_test_case, columns_rw_typed) {
         );
 
         if (res.second) {
-          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
+          res.first->second = writer->push_column(lz4_column_info(),
+                                                  column_finalizer(42));
         }
 
         auto& column = res.first->second.second;
@@ -2081,9 +2138,8 @@ TEST_P(format_test_case, columns_rw_typed) {
     auto reader = codec()->get_columnstore_reader();
     ASSERT_TRUE(reader->prepare(dir(), meta));
 
-    std::unordered_map<std::string, irs::columnstore_reader::values_reader_f> readers;
+    std::unordered_map<std::string, irs::doc_iterator::ptr> readers;
 
-    irs::bytes_ref actual_value;
     irs::bytes_ref_input in;
     irs::doc_id_t i = 0;
     size_t value_id = 0;
@@ -2094,19 +2150,21 @@ TEST_P(format_test_case, columns_rw_typed) {
         auto& expected_field = values[value_id++];
         const std::string name(expected_field.name);
         const auto res = readers.emplace(
-          std::piecewise_construct,
-          std::forward_as_tuple(name),
-          std::forward_as_tuple()
-        );
+            std::piecewise_construct,
+            std::forward_as_tuple(name),
+            std::forward_as_tuple());
 
         if (res.second) {
           auto column = reader->column(columns[name].first);
           ASSERT_NE(nullptr, column);
-          res.first->second = column->values();
+          res.first->second = column->iterator(false);
         }
 
-        auto& column_reader = res.first->second;
-        ASSERT_TRUE(column_reader(i, actual_value)); in.reset(actual_value);
+        auto& column_iterator = *res.first->second;
+        auto* actual_value = irs::get<irs::payload>(column_iterator);
+        ASSERT_NE(nullptr, actual_value);
+        ASSERT_EQ(i, column_iterator.seek(i));
+        in.reset(actual_value->value);
 
         switch (expected_field.type) {
           case Value::Type::String: {
@@ -2146,17 +2204,16 @@ TEST_P(format_test_case, columns_rw_typed) {
         auto& expected_field = values[value_id++];
         const std::string name(expected_field.name);
         const auto res = readers.emplace(
-          std::piecewise_construct,
-          std::forward_as_tuple(name),
-          std::forward_as_tuple()
-        );
+            std::piecewise_construct,
+            std::forward_as_tuple(name),
+            std::forward_as_tuple());
 
         if (res.second) {
           auto column = reader->column(columns[name].first);
           ASSERT_NE(nullptr, column);
 
           auto& it = res.first->second;
-          it = column->iterator();
+          it = column->iterator(false);
 
           auto* payload = irs::get<irs::payload>(*it);
           ASSERT_FALSE(!payload);
@@ -2230,7 +2287,7 @@ TEST_P(format_test_case, columns_rw_typed) {
           ASSERT_NE(nullptr, column);
 
           auto& it = res.first->second;
-          it = column->iterator();
+          it = column->iterator(false);
           auto* payload = irs::get<irs::payload>(*it);
           ASSERT_FALSE(!payload);
           ASSERT_EQ(irs::doc_limits::invalid(), it->value());
@@ -2296,9 +2353,8 @@ TEST_P(format_test_case, columns_issue700) {
     ASSERT_NE(nullptr, writer);
     writer->prepare(dir(), meta);
 
-    auto dense_fixed_offset_column = writer->push_column({
-      irs::type<irs::compression::none>::get(),
-      {}, false });
+    auto dense_fixed_offset_column = writer->push_column(none_column_info(),
+                                                         column_finalizer(42));
 
     ASSERT_EQ(0, dense_fixed_offset_column.first);
     ASSERT_TRUE(dense_fixed_offset_column.second);
@@ -2358,8 +2414,9 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
     auto writer = codec()->get_columnstore_writer(false);
     writer->prepare(dir(), meta0);
 
-    dense_fixed_offset_column = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
-    sparse_fixed_offset_column = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
+    dense_fixed_offset_column = writer->push_column(lz4_column_info(), {});
+    sparse_fixed_offset_column = writer->push_column(lz4_column_info(),
+                                                     column_finalizer(42));
 
     irs::doc_id_t doc = irs::doc_limits::min();
 
@@ -2413,7 +2470,7 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
 
     // check iterator
     {
-      auto it = column->iterator();
+      auto it = column->iterator(false);
       auto* payload = irs::get<irs::payload>(*it);
 
       for (auto& expected_value : expected_values) {
@@ -2429,7 +2486,8 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
     {
       auto expected_value = expected_values.begin();
 
-      const auto res = column->visit([&expected_value](irs::doc_id_t actual_doc, const irs::bytes_ref& actual_value) {
+      const auto res = visit(*column,
+                             [&expected_value](irs::doc_id_t actual_doc, const irs::bytes_ref& actual_value) {
         if (expected_value->first != actual_doc) {
           return false;
         }
@@ -2446,17 +2504,6 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
       ASSERT_TRUE(res);
 
       ASSERT_EQ(expected_values.end(), expected_value);
-    }
-
-    // random read
-    {
-      irs::bytes_ref actual_value;
-      auto values = column->values();
-
-      for (auto& expected_value : expected_values) {
-        ASSERT_TRUE(values(expected_value.first, actual_value));
-        ASSERT_EQ(expected_value.second, actual_value);
-      }
     }
   }
 
@@ -2475,7 +2522,7 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
 
     // check iterator
     {
-      auto it = column->iterator();
+      auto it = column->iterator(false);
       auto* payload = irs::get<irs::payload>(*it);
 
       for (auto& expected_value : expected_values) {
@@ -2491,32 +2538,23 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
     {
       auto expected_value = expected_values.begin();
 
-      ASSERT_TRUE(column->visit([&expected_value](irs::doc_id_t actual_doc, const irs::bytes_ref& actual_value) {
-        if (expected_value->first != actual_doc) {
-          return false;
-        }
+      ASSERT_TRUE(
+        visit(*column, [&expected_value](irs::doc_id_t actual_doc,
+                                         irs::bytes_ref actual_value) {
+          if (expected_value->first != actual_doc) {
+            return false;
+          }
 
-        if (expected_value->second != actual_value) {
-          return false;
-        }
+          if (expected_value->second != actual_value) {
+            return false;
+          }
 
-        ++expected_value;
+          ++expected_value;
 
-        return true;
+          return true;
       }));
 
       ASSERT_EQ(expected_values.end(), expected_value);
-    }
-
-    // random read
-    {
-      irs::bytes_ref actual_value;
-      auto values = column->values();
-
-      for (auto& expected_value : expected_values) {
-        ASSERT_TRUE(values(expected_value.first, actual_value));
-        ASSERT_EQ(expected_value.second, actual_value);
-      }
     }
   }
 }
@@ -2560,26 +2598,26 @@ TEST_P(format_test_case, columns_rw) {
   {
     writer->prepare(dir(), meta0);
 
-    auto field0 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
+    auto field0 = writer->push_column(lz4_column_info(), {});
     segment0_field0_id = field0.first;
     auto& field0_writer = field0.second;
     ASSERT_EQ(0, segment0_field0_id);
-    auto field1 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
+    auto field1 = writer->push_column(lz4_column_info(), {});
     segment0_field1_id = field1.first;
     auto& field1_writer = field1.second;
     ASSERT_EQ(1, segment0_field1_id);
-    auto empty_field = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) }); // gap between filled columns
+    auto empty_field = writer->push_column(lz4_column_info(), {}); // gap between filled columns
     segment0_empty_column_id = empty_field.first;
     ASSERT_EQ(2, segment0_empty_column_id);
-    auto field2 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
+    auto field2 = writer->push_column(lz4_column_info(), {});
     segment0_field2_id = field2.first;
     auto& field2_writer = field2.second;
     ASSERT_EQ(3, segment0_field2_id);
-    auto field3 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
+    auto field3 = writer->push_column(lz4_column_info(), {});
     segment0_field3_id = field3.first;
     [[maybe_unused]] auto& field3_writer = field3.second;
     ASSERT_EQ(4, segment0_field3_id);
-    auto field4 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
+    auto field4 = writer->push_column(lz4_column_info(), {});
     segment0_field4_id = field4.first;
     auto& field4_writer = field4.second;
     ASSERT_EQ(5, segment0_field4_id);
@@ -2664,15 +2702,15 @@ TEST_P(format_test_case, columns_rw) {
   {
     writer->prepare(dir(), meta1);
 
-    auto field0 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
+    auto field0 = writer->push_column(lz4_column_info(), {});
     segment1_field0_id = field0.first;
     auto& field0_writer = field0.second;
     ASSERT_EQ(0, segment1_field0_id);
-    auto field1 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
+    auto field1 = writer->push_column(lz4_column_info(), {});
     segment1_field1_id = field1.first;
     auto& field1_writer = field1.second;
     ASSERT_EQ(1, segment1_field1_id);
-    auto field2 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(dir().attributes().encryption()) });
+    auto field2 = writer->push_column(lz4_column_info(), {});
     segment1_field2_id = field2.first;
     auto& field2_writer = field2.second;
     ASSERT_EQ(2, segment1_field2_id);
@@ -2734,14 +2772,15 @@ TEST_P(format_test_case, columns_rw) {
 
     // check field4
     {
-      irs::bytes_ref actual_value;
       auto column_reader = reader->column(segment0_field4_id);
       ASSERT_NE(nullptr, column_reader);
-      auto column = column_reader->values();
+      auto column = column_reader->iterator(false);
+      ASSERT_NE(nullptr, column);
+      auto* actual_value = irs::get<irs::payload>(*column);
+      ASSERT_NE(nullptr, actual_value);
 
-      ASSERT_FALSE(column((std::numeric_limits<irs::doc_id_t>::min)(), actual_value)); // check doc==min, column==field4
-      ASSERT_TRUE(column(1, actual_value)); // check doc==1, column==field4
-      ASSERT_EQ("field4_doc_min", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      ASSERT_EQ(1, column->seek(1)); // check doc==1, column==field4
+      ASSERT_EQ("field4_doc_min", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
     }
 
     // visit field0 values (not cached)
@@ -2752,7 +2791,7 @@ TEST_P(format_test_case, columns_rw) {
         {"field0_doc33", 33}
       };
 
-      auto visitor = [&expected_values] (irs::doc_id_t doc, const irs::bytes_ref& value) {
+      auto visitor = [&expected_values] (irs::doc_id_t doc, irs::bytes_ref value) {
         const auto actual_value = irs::to_string<irs::string_ref>(value.c_str());
 
         auto it = expected_values.find(actual_value);
@@ -2772,7 +2811,7 @@ TEST_P(format_test_case, columns_rw) {
 
       auto column = reader->column(segment0_field0_id);
       ASSERT_NE(nullptr, column);
-      ASSERT_TRUE(column->visit(visitor));
+      ASSERT_TRUE(visit(*column, visitor));
       ASSERT_TRUE(expected_values.empty());
     }
 
@@ -2785,7 +2824,7 @@ TEST_P(format_test_case, columns_rw) {
       };
 
       size_t calls_count = 0;
-      auto visitor = [&expected_values, &calls_count] (irs::doc_id_t doc, const irs::bytes_ref& in) {
+      auto visitor = [&expected_values, &calls_count] (irs::doc_id_t doc, irs::bytes_ref in) {
         ++calls_count;
 
         if (calls_count > 2) {
@@ -2812,7 +2851,7 @@ TEST_P(format_test_case, columns_rw) {
 
       auto column = reader->column(segment0_field0_id);
       ASSERT_NE(nullptr, column);
-      ASSERT_FALSE(column->visit(visitor));
+      ASSERT_FALSE(visit(*column, visitor));
       ASSERT_FALSE(expected_values.empty());
       ASSERT_EQ(1, expected_values.size());
       ASSERT_NE(expected_values.end(), expected_values.find("field0_doc33"));
@@ -2820,27 +2859,35 @@ TEST_P(format_test_case, columns_rw) {
 
     // check field0
     {
-      irs::bytes_ref actual_value;
       auto column_reader = reader->column(segment0_field0_id);
       ASSERT_NE(nullptr, column_reader);
-      auto column = column_reader->values();
 
       // read (not cached)
       {
-        ASSERT_TRUE(column(1, actual_value)); // check doc==1, column==field0
-        ASSERT_EQ("field0_doc0", irs::to_string<irs::string_ref>(actual_value.c_str()));
-        ASSERT_FALSE(column(5, actual_value)); // doc without value in field0
-        ASSERT_TRUE(column(33, actual_value)); // check doc==33, column==field0
-        ASSERT_EQ("field0_doc33", irs::to_string<irs::string_ref>(actual_value.c_str()));
+        auto column = column_reader->iterator(false);
+        ASSERT_NE(nullptr, column);
+        auto* actual_value = irs::get<irs::payload>(*column);
+        ASSERT_NE(nullptr, actual_value);
+
+        ASSERT_EQ(1, column->seek(1)); // check doc==1, column==field0
+        ASSERT_EQ("field0_doc0", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+        ASSERT_EQ(33, column->seek(5)); // doc without value in field0
+        ASSERT_EQ(33, column->seek(33)); // check doc==33, column==field0
+        ASSERT_EQ("field0_doc33", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       }
 
       // read (cached)
       {
-        ASSERT_TRUE(column(1, actual_value)); // check doc==0, column==field0
-        ASSERT_EQ("field0_doc0", irs::to_string<irs::string_ref>(actual_value.c_str()));
-        ASSERT_FALSE(column(5, actual_value)); // doc without value in field0
-        ASSERT_TRUE(column(33, actual_value)); // check doc==33, column==field0
-        ASSERT_EQ("field0_doc33", irs::to_string<irs::string_ref>(actual_value.c_str()));
+        auto column = column_reader->iterator(false);
+        ASSERT_NE(nullptr, column);
+        auto* actual_value = irs::get<irs::payload>(*column);
+        ASSERT_NE(nullptr, actual_value);
+
+        ASSERT_EQ(1, column->seek(1)); // check doc==0, column==field0
+        ASSERT_EQ("field0_doc0", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+        ASSERT_EQ(33, column->seek(5)); // doc without value in field0
+        ASSERT_EQ(33, column->seek(33)); // check doc==33, column==field0
+        ASSERT_EQ("field0_doc33", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
       }
     }
 
@@ -2872,7 +2919,7 @@ TEST_P(format_test_case, columns_rw) {
 
       auto column_reader = reader->column(segment0_field0_id);
       ASSERT_NE(nullptr, column_reader);
-      ASSERT_TRUE(column_reader->visit(visitor));
+      ASSERT_TRUE(visit(*column_reader, visitor));
       ASSERT_TRUE(expected_values.empty());
     }
 
@@ -2880,7 +2927,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment0_field0_id);
       ASSERT_NE(nullptr, column_reader);
-      auto it = column_reader->iterator();
+      auto it = column_reader->iterator(false);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -2913,7 +2960,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment0_field0_id);
       ASSERT_NE(nullptr, column_reader);
-      auto it = column_reader->iterator();
+      auto it = column_reader->iterator(false);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -2944,7 +2991,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment0_field1_id);
       ASSERT_NE(nullptr, column_reader);
-      auto it = column_reader->iterator();
+      auto it = column_reader->iterator(false);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -2980,7 +3027,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment0_field1_id);
       ASSERT_NE(nullptr, column_reader);
-      auto it = column_reader->iterator();
+      auto it = column_reader->iterator(false);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3015,30 +3062,31 @@ TEST_P(format_test_case, columns_rw) {
 
     // check field1 (multiple values per document - cached)
     {
-      irs::bytes_ref actual_value;
       irs::bytes_ref_input in;
       auto column_reader = reader->column(segment0_field1_id);
       ASSERT_NE(nullptr, column_reader);
-      auto column = column_reader->values();
+      auto column = column_reader->iterator(false);
+      ASSERT_NE(nullptr, column);
+      auto* actual_value = irs::get<irs::payload>(*column);
+      ASSERT_NE(nullptr, actual_value);
 
       // read compound column value
       // check doc==0, column==field1
-      ASSERT_TRUE(column(1, actual_value)); in.reset(actual_value);
+      ASSERT_EQ(1, column->seek(1));
+      in.reset(actual_value->value);
       ASSERT_EQ("field1_doc0", irs::read_string<std::string>(in));
       ASSERT_EQ("field1_doc0_1", irs::read_string<std::string>(in));
 
-      ASSERT_FALSE(column(2, actual_value));
+      ASSERT_EQ(12, column->seek(2));
 
       // read overwritten compund value
       // check doc==12, column==field1
-      ASSERT_TRUE(column(12, actual_value)); in.reset(actual_value);
+      ASSERT_EQ(12, column->seek(12));
+      in.reset(actual_value->value);
       ASSERT_EQ("field1_doc12_1", irs::read_string<std::string>(in));
       ASSERT_EQ("field1_doc12_2", irs::read_string<std::string>(in));
 
-      ASSERT_FALSE(column(13, actual_value));
-
-      // read by invalid key
-      ASSERT_FALSE(column(irs::doc_limits::eof(), actual_value));
+      ASSERT_TRUE(irs::doc_limits::eof(column->seek(13)));
     }
 
     // visit empty column
@@ -3051,7 +3099,7 @@ TEST_P(format_test_case, columns_rw) {
 
       auto column_reader = reader->column(segment0_empty_column_id);
       ASSERT_NE(nullptr, column_reader);
-      ASSERT_TRUE(column_reader->visit(visitor));
+      ASSERT_TRUE(visit(*column_reader, visitor));
       ASSERT_EQ(0, calls_count);
     }
 
@@ -3059,7 +3107,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment0_empty_column_id);
       ASSERT_NE(nullptr, column_reader);
-      auto it = column_reader->iterator();
+      auto it = column_reader->iterator(false);
       ASSERT_NE(nullptr, it);
 
       ASSERT_TRUE(!irs::get<irs::payload>(*it));
@@ -3098,7 +3146,7 @@ TEST_P(format_test_case, columns_rw) {
 
       auto column_reader = reader->column(segment0_field2_id);
       ASSERT_NE(nullptr, column_reader);
-      ASSERT_TRUE(column_reader->visit(visitor));
+      ASSERT_TRUE(visit(*column_reader, visitor));
       ASSERT_TRUE(expected_values.empty());
     }
 
@@ -3106,7 +3154,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment0_field2_id);
       ASSERT_NE(nullptr, column_reader);
-      auto it = column_reader->iterator();
+      auto it = column_reader->iterator(false);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3137,7 +3185,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment0_field2_id);
       ASSERT_NE(nullptr, column_reader);
-      auto it = column_reader->iterator();
+      auto it = column_reader->iterator(false);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3166,7 +3214,6 @@ TEST_P(format_test_case, columns_rw) {
 
   // read columns values from segment _2
   {
-    irs::bytes_ref actual_value;
     auto reader = codec()->get_columnstore_reader();
     ASSERT_TRUE(reader->prepare(dir(), meta1));
 
@@ -3179,7 +3226,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment1_field0_id);
       ASSERT_NE(nullptr, column_reader);
-      auto it = column_reader->iterator();
+      auto it = column_reader->iterator(false);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3211,7 +3258,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment1_field0_id);
       ASSERT_NE(nullptr, column_reader);
-      auto it = column_reader->iterator();
+      auto it = column_reader->iterator(false);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3245,20 +3292,21 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto column_reader = reader->column(segment1_field0_id);
       ASSERT_NE(nullptr, column_reader);
-      auto column = column_reader->values();
-      ASSERT_TRUE(column(1, actual_value)); // check doc==1, column==field0
-      ASSERT_EQ("segment_2_field1_doc0", irs::to_string<irs::string_ref>(actual_value.c_str()));
-      ASSERT_TRUE(column(12, actual_value)); // check doc==12, column==field1
-      ASSERT_EQ("segment_2_field1_doc12", irs::to_string<irs::string_ref>(actual_value.c_str()));
-      ASSERT_FALSE(column(5, actual_value)); // doc without value in field0
-      ASSERT_EQ("segment_2_field1_doc12", irs::to_string<irs::string_ref>(actual_value.c_str()));
+      auto column = column_reader->iterator(false);
+      ASSERT_NE(nullptr, column);
+      auto* actual_value = irs::get<irs::payload>(*column);
+      ASSERT_NE(nullptr, actual_value);
+      ASSERT_EQ(1, column->seek(1)); // check doc==1, column==field0
+      ASSERT_EQ("segment_2_field1_doc0", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
+      ASSERT_EQ(12, column->seek(12)); // check doc==12, column==field1
+      ASSERT_EQ("segment_2_field1_doc12", irs::to_string<irs::string_ref>(actual_value->value.c_str()));
     }
 
     // iterate over field0 values (cached)
     {
       auto column_reader = reader->column(segment1_field0_id);
       ASSERT_NE(nullptr, column_reader);
-      auto it = column_reader->iterator();
+      auto it = column_reader->iterator(false);
       ASSERT_NE(nullptr, it);
 
       auto* payload = irs::get<irs::payload>(*it);
@@ -3285,84 +3333,6 @@ TEST_P(format_test_case, columns_rw) {
       ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
-  }
-}
-
-TEST_P(format_test_case, columns_meta_rw) {
-  // write meta
-  {
-    auto writer = codec()->get_column_meta_writer();
-    irs::segment_meta meta0;
-    irs::segment_meta meta1;
-
-    meta0.name = "_1";
-    meta1.name = "_2";
-
-    // write segment _1
-    writer->prepare(dir(), meta0);
-    writer->write("_1_column1", 1);
-    writer->write("_1_column2", 2);
-    writer->write("_1_column0", 0);
-    writer->flush();
-
-    // write segment _2
-    writer->prepare(dir(), meta1);
-    writer->write("_2_column2", 2);
-    writer->write("_2_column1", 1);
-    writer->write("_2_column0", 0);
-    writer->flush();
-  }
-
-  // read meta from segment _1
-  {
-    auto reader = codec()->get_column_meta_reader();
-    size_t actual_count = 0;
-    irs::field_id actual_max_id = 0;
-    irs::segment_meta seg_meta;
-
-    seg_meta.name = "_1";
-
-    ASSERT_TRUE(reader->prepare(dir(), seg_meta, actual_count, actual_max_id));
-    ASSERT_EQ(3, actual_count);
-    ASSERT_EQ(2, actual_max_id);
-
-    irs::column_meta meta;
-    ASSERT_TRUE(reader->read(meta));
-    ASSERT_EQ("_1_column1", meta.name);
-    ASSERT_EQ(1, meta.id);
-    ASSERT_TRUE(reader->read(meta));
-    ASSERT_EQ("_1_column2", meta.name);
-    ASSERT_EQ(2, meta.id);
-    ASSERT_TRUE(reader->read(meta));
-    ASSERT_EQ("_1_column0", meta.name);
-    ASSERT_EQ(0, meta.id);
-    ASSERT_FALSE(reader->read(meta));
-  }
-
-  // read meta from segment _2
-  {
-    auto reader = codec()->get_column_meta_reader();
-    size_t actual_count = 0;
-    irs::field_id actual_max_id = 0;
-    irs::segment_meta seg_meta;
-
-    seg_meta.name = "_2";
-
-    ASSERT_TRUE(reader->prepare(dir(), seg_meta, actual_count, actual_max_id));
-    ASSERT_EQ(3, actual_count);
-    ASSERT_EQ(2, actual_max_id);
-
-    irs::column_meta meta;
-    ASSERT_TRUE(reader->read(meta));
-    ASSERT_EQ("_2_column2", meta.name);
-    ASSERT_EQ(2, meta.id);
-    ASSERT_TRUE(reader->read(meta));
-    ASSERT_EQ("_2_column1", meta.name);
-    ASSERT_EQ(1, meta.id);
-    ASSERT_TRUE(reader->read(meta));
-    ASSERT_EQ("_2_column0", meta.name);
-    ASSERT_EQ(0, meta.id);
-    ASSERT_FALSE(reader->read(meta));
   }
 }
 
@@ -3475,6 +3445,295 @@ TEST_P(format_test_case, format_utils_header_footer) {
     auto stream = dir().open("empty_file", irs::IOAdvice::NORMAL);
     ASSERT_NE(nullptr, stream);
     ASSERT_THROW(irs::format_utils::check_header(*stream, "invalid", 41, 43), irs::index_error);
+  }
+}
+
+TEST_P(format_test_case_with_encryption, columnstore_read_write_wrong_encryption) {
+  if (!supports_encryption()) {
+    return;
+  }
+
+  ASSERT_NE(nullptr, dir().attributes().encryption());
+
+  irs::segment_meta meta;
+  meta.name = "_1";
+
+  // write meta
+  {
+    auto writer = codec()->get_columnstore_writer(false);
+    irs::segment_meta meta1;
+
+    const irs::column_info info {
+        irs::type<irs::compression::none>::get(),
+        {}, true };
+
+    // write segment _1
+    writer->prepare(dir(), meta);
+
+    {
+      auto [id, handle] = writer->push_column(
+          info, [](auto&){return irs::string_ref::NIL;});
+      handle(0).write_byte(0);
+      handle(1).write_byte(1);
+      handle(2).write_byte(2);
+    }
+
+    const std::set<irs::type_info::type_id> features;
+
+    irs::flush_state state;
+    state.dir = &dir();
+    state.docmap = nullptr;
+    state.features = &features;
+    state.name = meta.name;
+    state.doc_count = 3;
+    state.index_features = irs::IndexFeatures::NONE;
+
+    writer->commit(state);
+  }
+
+  auto reader = codec()->get_columnstore_reader();
+  ASSERT_NE(nullptr, reader);
+
+  // replace encryption (hack)
+  // can't open encrypted index without encryption
+  dir().attributes() = irs::directory_attributes{ 0, nullptr };
+  ASSERT_THROW(reader->prepare(dir(), meta), irs::index_error);
+
+  // can't open encrypted index with wrong encryption
+  dir().attributes() = irs::directory_attributes{
+    0, std::make_unique<tests::rot13_encryption>(6) };
+  ASSERT_THROW(reader->prepare(dir(), meta), irs::index_error);
+}
+
+TEST_P(format_test_case_with_encryption, read_zero_block_encryption) {
+  if (!supports_encryption()) {
+    return;
+  }
+
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
+
+  tests::document const* doc1 = gen.next();
+
+  // replace encryption
+  ASSERT_NE(nullptr, dir().attributes().encryption());
+
+  // write segment with format10
+  {
+    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+    ASSERT_NE(nullptr, writer);
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    ASSERT_TRUE(writer->commit());
+  }
+
+  // replace encryption
+  dir().attributes() = irs::directory_attributes{
+    0, std::make_unique<tests::rot13_encryption>(6) };
+
+  // can't open encrypted index without encryption
+  ASSERT_THROW(irs::directory_reader::open(dir()), irs::index_error);
+}
+
+TEST_P(format_test_case_with_encryption, fields_read_write_wrong_encryption) {
+  if (!supports_encryption()) {
+    return;
+  }
+
+  // create sorted && unsorted terms
+  typedef std::set<irs::bytes_ref> sorted_terms_t;
+  typedef std::vector<irs::bytes_ref> unsorted_terms_t;
+  sorted_terms_t sorted_terms;
+  unsorted_terms_t unsorted_terms;
+
+  tests::json_doc_generator gen(
+    resource("fst_prefixes.json"),
+    [&sorted_terms, &unsorted_terms] (
+        tests::document& doc,
+        const std::string& name,
+        const tests::json_doc_generator::json_value& data) {
+      doc.insert(std::make_shared<tests::string_field>(
+        name, data.str));
+
+      auto ref = irs::ref_cast<irs::byte_type>((doc.indexed.end() - 1).as<tests::string_field>().value());
+      sorted_terms.emplace(ref);
+      unsorted_terms.emplace_back(ref);
+  });
+
+  // define field
+  irs::field_meta field;
+  field.name = "field";
+  field.features[irs::type<irs::Norm>::id()] = 5;
+
+  ASSERT_NE(nullptr, dir().attributes().encryption());
+
+  // write fields
+  {
+    const irs::feature_set_t features{irs::type<irs::Norm>::id()};
+
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = 100;
+    state.name = "segment_name";
+    state.features = &features;
+
+    // should use sorted terms on write
+    tests::format_test_case::terms<sorted_terms_t::iterator> terms(
+      sorted_terms.begin(), sorted_terms.end());
+
+    auto writer = codec()->get_field_writer(false);
+    ASSERT_NE(nullptr, writer);
+    writer->prepare(state);
+    writer->write(field.name, field.index_features, field.features, terms);
+    writer->end();
+  }
+
+  irs::segment_meta meta;
+  meta.name = "segment_name";
+  irs::document_mask docs_mask;
+
+  auto reader = codec()->get_field_reader();
+  ASSERT_NE(nullptr, reader);
+
+  // can't open encrypted index without encryption
+  dir().attributes() = irs::directory_attributes{ 0, nullptr };
+  ASSERT_THROW(reader->prepare(dir(), meta, docs_mask), irs::index_error);
+
+  // can't open encrypted index with wrong encryption
+  dir().attributes() = irs::directory_attributes{
+    0, std::make_unique<tests::rot13_encryption>(6) };
+  ASSERT_THROW(reader->prepare(dir(), meta, docs_mask), irs::index_error);
+}
+
+TEST_P(format_test_case_with_encryption, open_ecnrypted_with_wrong_encryption) {
+  if (!supports_encryption()) {
+    return;
+  }
+
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
+
+  tests::document const* doc1 = gen.next();
+
+  ASSERT_NE(nullptr, dir().attributes().encryption());
+
+  {
+    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+    ASSERT_NE(nullptr, writer);
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()));
+
+    ASSERT_TRUE(writer->commit());
+  }
+
+  // can't open encrypted index with wrong encryption
+  dir().attributes() = irs::directory_attributes{
+    0, std::make_unique<tests::rot13_encryption>(6) };
+  ASSERT_THROW(irs::directory_reader::open(dir()), irs::index_error);
+}
+
+TEST_P(format_test_case_with_encryption, open_ecnrypted_with_non_encrypted) {
+  if (!supports_encryption()) {
+    return;
+  }
+
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
+
+  tests::document const* doc1 = gen.next();
+
+  ASSERT_NE(nullptr, dir().attributes().encryption());
+
+  {
+    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+    ASSERT_NE(nullptr, writer);
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    ASSERT_TRUE(writer->commit());
+  }
+
+  // remove encryption
+  dir().attributes() = irs::directory_attributes{ 0, nullptr };
+
+  // can't open encrypted index without encryption
+  ASSERT_THROW(irs::directory_reader::open(dir()), irs::index_error);
+}
+
+TEST_P(format_test_case_with_encryption, open_non_ecnrypted_with_encrypted) {
+  if (!supports_encryption()) {
+    return;
+  }
+
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
+
+  tests::document const* doc1 = gen.next();
+
+  dir().attributes() = irs::directory_attributes{ 0, nullptr };
+
+  // write segment with format11
+  {
+    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+    ASSERT_NE(nullptr, writer);
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()));
+
+    ASSERT_TRUE(writer->commit());
+  }
+
+  // add cipher
+  dir().attributes() = irs::directory_attributes{
+    0, std::make_unique<tests::rot13_encryption>(7) };
+
+  // check index
+  auto index = irs::directory_reader::open(dir());
+  ASSERT_TRUE(index);
+  ASSERT_EQ(1, index->size());
+  ASSERT_EQ(1, index->docs_count());
+  ASSERT_EQ(1, index->live_docs_count());
+
+  // check segment 0
+  {
+    auto& segment = index[0];
+    ASSERT_EQ(1, segment.size());
+    ASSERT_EQ(1, segment.docs_count());
+    ASSERT_EQ(1, segment.live_docs_count());
+
+    std::unordered_set<irs::string_ref> expectedName = { "A" };
+    const auto* column = segment.column("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->iterator(false);
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
+    ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
+    ASSERT_TRUE(termItr->next());
+
+    for (auto docsItr = termItr->postings(irs::IndexFeatures::NONE); docsItr->next();) {
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value->value.c_str())));
+    }
+
+    ASSERT_TRUE(expectedName.empty());
   }
 }
 

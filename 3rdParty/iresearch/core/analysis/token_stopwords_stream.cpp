@@ -24,7 +24,6 @@
 #include "token_stopwords_stream.hpp"
 
 #include <cctype> // for std::isspace(...)
-#include <string_view>
 
 #include "velocypack/Slice.h"
 #include "velocypack/Builder.h"
@@ -53,16 +52,16 @@ constexpr char HEX_DECODE_MAP[256] = {
   16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 240 - 255
 };
 
-bool hex_decode(std::string& buf, std::string_view value) {
+bool hex_decode(std::string& buf, VPackStringRef value) {
   if (value.length() & 1) {
     IR_FRMT_WARN(
       "Invalid size for hex-encoded value while HEX decoding masked token: %s",
-      std::string(value).c_str());
+      value.toString().c_str());
 
     return false;
   }
 
-  buf.reserve(buf.size() + value.length() / 2);
+  buf.reserve(buf.size() + value.length()/2);
 
   for (size_t i = 0, count = value.length(); i < count; i += 2) {
     auto hi = HEX_DECODE_MAP[size_t(value[i])];
@@ -94,7 +93,7 @@ irs::analysis::analyzer::ptr construct(const VPackArrayIterator& mask, bool hex)
       return nullptr;
     }
     std::string token;
-    auto value = (*itr).stringView();
+    auto value = (*itr).stringRef();
     if (!hex) {
       tokens.emplace(std::string(value.data(), value.length())); // interpret verbatim
     } else if (hex_decode(token, value)) {
@@ -107,8 +106,8 @@ irs::analysis::analyzer::ptr construct(const VPackArrayIterator& mask, bool hex)
     std::move(tokens));
 }
 
-constexpr std::string_view STOPWORDS_PARAM_NAME {"stopwords"};
-constexpr std::string_view HEX_PARAM_NAME {"hex"};
+constexpr VPackStringRef STOPWORDS_PARAM_NAME {"stopwords"};
+constexpr VPackStringRef HEX_PARAM_NAME {"hex"};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
