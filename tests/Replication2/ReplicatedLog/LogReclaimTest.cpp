@@ -20,6 +20,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/types.h"
 #include "TestHelper.h"
 
@@ -46,8 +47,11 @@ TEST_F(ReplicatedLogTest, reclaim_leader_after_term_change) {
     EXPECT_TRUE(quorum.hasException());
     try {
       quorum.throwIfFailed();
-    } catch (basics::Exception const& ex) {
-      EXPECT_EQ(ex.code(), TRI_ERROR_REPLICATION_LEADER_CHANGE);
+    } catch (ParticipantResignedException const& ex) {
+      EXPECT_EQ(ex.code(),
+                TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+    } catch (std::exception const& e) {
+      ADD_FAILURE() << "unexpected exception: " << e.what();
     } catch (...) {
       ADD_FAILURE() << "unexpected exception";
     }
@@ -77,8 +81,9 @@ TEST_F(ReplicatedLogTest, reclaim_follower_after_term_change) {
         EXPECT_TRUE(quorum.hasException());
         try {
           quorum.throwIfFailed();
-        } catch (basics::Exception const& ex) {
-          EXPECT_EQ(ex.code(), TRI_ERROR_REPLICATION_LEADER_CHANGE);
+        } catch (ParticipantResignedException const& ex) {
+          EXPECT_EQ(ex.code(),
+                    TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
         } catch (std::exception const& e) {
           ADD_FAILURE() << "unexpected exception: " << e.what();
         } catch (...) {
