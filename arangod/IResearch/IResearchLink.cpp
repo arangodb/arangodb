@@ -303,7 +303,8 @@ uint64_t computeAvg(std::atomic<uint64_t>& timeNum, uint64_t newTime) {
 template<typename NormType>
 auto getIndexFeatures() {
   return [](irs::type_info::type_id id) {
-    TRI_ASSERT(irs::type<NormType>::id() == id);
+    TRI_ASSERT(irs::type<NormType>::id() == id ||
+               irs::type<irs::granularity_prefix>::id() == id);
 
     const irs::column_info info{
         irs::type<irs::compression::none>::get(), {}, false};
