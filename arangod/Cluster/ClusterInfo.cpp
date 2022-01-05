@@ -54,9 +54,6 @@
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
-#include "Replication2/AgencyCollectionSpecification.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/MetricsFeature.h"
@@ -815,17 +812,6 @@ ClusterInfo::createCollectionObject(arangodb::velocypack::Slice data,
   return std::make_shared<LogicalCollection>(vocbase, data, true);
 }
 
-struct ClusterInfo::NewStuffByDatabase {
-  using ReplicatedLogsMap = std::unordered_map<
-      replication2::LogId,
-      std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
-  ReplicatedLogsMap replicatedLogs;
-  using CollectionGroupMap = std::unordered_map<
-      replication2::agency::CollectionGroupId,
-      std::shared_ptr<replication2::agency::CollectionGroup const>>;
-  CollectionGroupMap collectionGroups;
-};
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about our plan
 /// Usually one does not have to call this directly.
@@ -1456,52 +1442,6 @@ void ClusterInfo::loadPlan() {
     }
     newCollections.insert_or_assign(std::move(databaseName),
                                     std::move(databaseCollections));
-  }
-
-  // And now for replicated logs
-  for (auto const& [databaseName, query] : changeSet.dbs) {
-    if (databaseName.empty()) {
-      continue;
-    }
-
-    auto stuff = std::make_shared<NewStuffByDatabase>();
-    {
-      auto replicatedLogsPaths = cluster::paths::aliases::plan()
-                                     ->replicatedLogs()
-                                     ->database(databaseName)
-                                     ->vec();
-
-      auto logsSlice = query->slice()[0].get(replicatedLogsPaths);
-      if (!logsSlice.isNone()) {
-        NewStuffByDatabase::ReplicatedLogsMap newLogs;
-        for (auto const& [idString, logSlice] :
-             VPackObjectIterator(logsSlice)) {
-          auto spec =
-              std::make_shared<replication2::agency::LogPlanSpecification>(
-                  replication2::agency::from_velocypack, logSlice);
-          newLogs.emplace(spec->id, spec);
-        }
-        stuff->replicatedLogs = std::move(newLogs);
-      }
-    }
-
-    {
-      auto collectionGroupsPath = std::initializer_list<std::string_view>{
-          AgencyCommHelper::path(), "Plan", "CollectionGroups", databaseName};
-      auto groupsSlice = query->slice()[0].get(collectionGroupsPath);
-      if (!groupsSlice.isNone()) {
-        NewStuffByDatabase::CollectionGroupMap groups;
-        for (auto const& [idString, groupSlice] :
-             VPackObjectIterator(groupsSlice)) {
-          auto spec = std::make_shared<replication2::agency::CollectionGroup>(
-              groupSlice);
-          groups.emplace(spec->id, spec);
-        }
-        stuff->collectionGroups = std::move(groups);
-      }
-    }
-
-    newStuffByDatabase[databaseName] = std::move(stuff);
   }
 
   if (isCoordinator) {
@@ -5976,26 +5916,6 @@ CollectionID ClusterInfo::getCollectionNameForShard(ShardID const& shardId) {
     return it->second;
   }
   return StaticStrings::Empty;
-}
-
-auto ClusterInfo::getReplicatedLogLeader(DatabaseID const& database,
-                                         replication2::LogId id) const
-    -> std::optional<ServerID> {
-  READ_LOCKER(readLocker, _planProt.lock);
-
-  if (auto it = _newStuffByDatabase.find(database);
-      it != std::end(_newStuffByDatabase)) {
-    if (auto it2 = it->second->replicatedLogs.find(id);
-        it2 != std::end(it->second->replicatedLogs)) {
-      if (auto const& term = it2->second->currentTerm) {
-        if (auto const& leader = term->leader) {
-          return leader->serverId;
-        }
-      }
-    }
-  }
-
-  return std::nullopt;
 }
 
 arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {

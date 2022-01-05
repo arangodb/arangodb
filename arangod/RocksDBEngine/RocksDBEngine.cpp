@@ -73,7 +73,6 @@
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
-#include "RocksDBEngine/RocksDBPersistedLog.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
@@ -1124,24 +1123,6 @@ void RocksDBEngine::start() {
   TRI_ASSERT(_db != nullptr);
   _settingsManager = std::make_unique<RocksDBSettingsManager>(*this);
   _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
-
-  struct SchedulerExecutor : RocksDBLogPersistor::Executor {
-    explicit SchedulerExecutor(
-        arangodb::application_features::ApplicationServer& server)
-        : _scheduler(server.getFeature<SchedulerFeature>().SCHEDULER) {}
-
-    void operator()(fu2::unique_function<void() noexcept> func) override {
-      _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func));
-    }
-
-    Scheduler* _scheduler;
-  };
-
-  _logPersistor = std::make_shared<RocksDBLogPersistor>(
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::ReplicatedLogs),
-      _db->GetRootDB(), std::make_shared<SchedulerExecutor>(server()));
-
   _settingsManager->retrieveInitialValues();
 
   double const counterSyncSeconds = 2.5;
@@ -2872,36 +2853,6 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     throw;
   }
 
-  // scan the database path for replicated logs
-  try {
-    VPackBuilder builder;
-    getReplicatedLogs(*vocbase, builder);
-
-    VPackSlice const slice = builder.slice();
-    TRI_ASSERT(slice.isArray());
-
-    for (VPackSlice it : VPackArrayIterator(slice)) {
-      // we found a log that is still active
-      TRI_ASSERT(!it.get("id").isNone());
-
-      auto logId = arangodb::replication2::LogId{
-          it.get(StaticStrings::DataSourcePlanId).getNumericValue<uint64_t>()};
-      auto objectId =
-          it.get(StaticStrings::ObjectId).getNumericValue<uint64_t>();
-      auto log =
-          std::make_shared<RocksDBPersistedLog>(logId, objectId, _logPersistor);
-      StorageEngine::registerReplicatedLog(*vocbase, logId, log);
-    }
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("554b1", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: " << ex.what();
-    throw;
-  } catch (...) {
-    LOG_TOPIC("5933d", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: unknown exception";
-    throw;
-  }
-
   // scan the database path for collections
   try {
     VPackBuilder builder;
@@ -3568,52 +3519,6 @@ void RocksDBEngine::checkMissingShaFiles(std::string const& pathname,
   if (_shaListener != nullptr) {
     _shaListener->checkMissingShaFiles(pathname, requireAge);
   }
-}
-
-auto RocksDBEngine::dropReplicatedLog(
-    TRI_vocbase_t& vocbase,
-    std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> const&
-        log) -> Result {
-  auto key = RocksDBKey{};
-  key.constructReplicatedLog(vocbase.id(), log->id());
-
-  auto s = _db->Delete(rocksdb::WriteOptions{},
-                       RocksDBColumnFamilyManager::get(
-                           RocksDBColumnFamilyManager::Family::Definitions),
-                       key.string());
-  return rocksutils::convertStatus(s);
-}
-
-auto RocksDBEngine::createReplicatedLog(TRI_vocbase_t& vocbase,
-                                        arangodb::replication2::LogId logId)
-    -> ResultT<
-        std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>> {
-  auto key = RocksDBKey{};
-  key.constructReplicatedLog(vocbase.id(), logId);
-
-  auto objectId = TRI_NewTickServer();
-
-  VPackBuilder valueBuilder;
-  {
-    VPackObjectBuilder ob(&valueBuilder);
-    valueBuilder.add(StaticStrings::DataSourceId, VPackValue(logId.id()));
-    valueBuilder.add(StaticStrings::DataSourcePlanId, VPackValue(logId.id()));
-    valueBuilder.add(StaticStrings::ObjectId, VPackValue(objectId));
-  }
-  auto value = RocksDBValue::ReplicatedLog(valueBuilder.slice());
-
-  rocksdb::WriteOptions opts;
-  auto s = _db->GetRootDB()->Put(
-      opts,
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::Definitions),
-      key.string(), value.string());
-  if (s.ok()) {
-    return {
-        std::make_shared<RocksDBPersistedLog>(logId, objectId, _logPersistor)};
-  }
-
-  return rocksutils::convertStatus(s);
 }
 
 }  // namespace arangodb

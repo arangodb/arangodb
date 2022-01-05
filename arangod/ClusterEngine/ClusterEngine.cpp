@@ -38,7 +38,6 @@
 #include "ClusterEngine/ClusterV8Functions.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "Transaction/Context.h"
@@ -313,21 +312,6 @@ void ClusterEngine::waitForEstimatorSync(
   // If test `shell-cluster-collection-selectivity.js` fails consider increasing
   // timeout
   std::this_thread::sleep_for(std::chrono::seconds(5));
-}
-
-auto ClusterEngine::createReplicatedLog(TRI_vocbase_t&,
-                                        arangodb::replication2::LogId)
-    -> ResultT<
-        std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>> {
-  return {TRI_ERROR_NOT_IMPLEMENTED};
-}
-
-auto ClusterEngine::dropReplicatedLog(
-    TRI_vocbase_t&,
-    std::shared_ptr<
-        arangodb::replication2::replicated_log::PersistedLog> const&)
-    -> Result {
-  return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
 // -----------------------------------------------------------------------------

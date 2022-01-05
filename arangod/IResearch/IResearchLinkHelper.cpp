@@ -547,8 +547,9 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
     if (!state._result.ok()) {
       error
           .append(error.empty() ? "" : ", ")  // separator
-          .append(collectionsToLock[state._collectionsToLockOffset])  // collection
-                                                                      // name
+          .append(
+              collectionsToLock[state._collectionsToLockOffset])  // collection
+                                                                  // name
           .append(": ")
           .append(std::to_string(
               static_cast<int>(state._result.errorNumber())))  // error code
