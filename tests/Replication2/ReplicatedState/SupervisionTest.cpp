@@ -25,7 +25,7 @@
 
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/LeaderStateMachine.h"
+#include "Replication2/ReplicatedState/Supervision.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2::agency;

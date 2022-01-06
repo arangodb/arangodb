@@ -19,7 +19,7 @@
 ///
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
-#include "LeaderStateMachine.h"
+#include "Supervision.h"
 
 #include "Replication2/ReplicatedState/AgencySpecificationLog.h"
 #include "Replication2/ReplicatedState/AgencySpecificationState.h"
