@@ -43,9 +43,11 @@
 
 namespace {
 
-std::string ensureGuid(std::string&& guid, arangodb::DataSourceId id,
-                       arangodb::DataSourceId planId, std::string const& name,
-                       bool isSystem) {
+[[maybe_unused]] std::string ensureGuid(std::string&& guid,
+                                        arangodb::DataSourceId id,
+                                        arangodb::DataSourceId planId,
+                                        std::string const& name,
+                                        bool isSystem) {
   if (!guid.empty()) {
     return std::move(guid);
   }
@@ -85,8 +87,8 @@ std::string ensureGuid(std::string&& guid, arangodb::DataSourceId id,
   return std::move(guid);
 }
 
-arangodb::DataSourceId ensureId(TRI_vocbase_t& vocbase,
-                                arangodb::DataSourceId id) {
+[[maybe_unused]] arangodb::DataSourceId ensureId(TRI_vocbase_t& vocbase,
+                                                 arangodb::DataSourceId id) {
   if (id) {
     return id;
   }
@@ -115,7 +117,7 @@ arangodb::DataSourceId ensureId(TRI_vocbase_t& vocbase,
   return id;
 }
 
-bool readIsSystem(arangodb::velocypack::Slice definition) {
+[[maybe_unused]] bool readIsSystem(arangodb::velocypack::Slice definition) {
   if (!definition.isObject()) {
     return false;
   }
@@ -141,23 +143,14 @@ arangodb::velocypack::ValuePair toValuePair(std::string const& value) {
       &value[0], value.size(), arangodb::velocypack::ValueType::String);
 }
 
-template<typename DataSource>
-typename std::enable_if<
-    std::is_same<DataSource, arangodb::LogicalCollection>::value,
-    arangodb::LogicalDataSource::Category>::type constexpr determineCategory() {
-  return arangodb::LogicalDataSource::Category::kCollection;
-}
-
-template<typename DataSource>
-typename std::enable_if<
-    std::is_same<DataSource, arangodb::LogicalView>::value,
-    arangodb::LogicalDataSource::Category>::type constexpr determineCategory() {
-  return arangodb::LogicalDataSource::Category::kView;
-}
-
 }  // namespace
 
 namespace arangodb {
+
+static_assert(LogicalDataSource::Category::kCollection ==
+              LogicalCollection::category());
+static_assert(LogicalDataSource::Category::kView ==
+              arangodb::LogicalView::category());
 
 /*static*/ LogicalDataSource::Type const& LogicalDataSource::Type::emplace(
     std::string_view name) {
@@ -175,38 +168,11 @@ namespace arangodb {
   return itr.first->second;
 }
 
-// collection-specific template instantiations for LogicalDataSource
-template<>
-LogicalDataSource::LogicalDataSource(LogicalCollection const& self,
-                                     Type const& type, TRI_vocbase_t& vocbase,
-                                     DataSourceId id, std::string&& guid,
-                                     DataSourceId planId, std::string&& name,
-                                     bool system, bool deleted);
-
-template<>
-LogicalDataSource::LogicalDataSource(LogicalCollection const& self,
-                                     Type const& type, TRI_vocbase_t& vocbase,
-                                     velocypack::Slice definition);
-
-// view-specific template instantiations for LogicalDataSource
-template<>
-LogicalDataSource::LogicalDataSource(LogicalView const& self, Type const& type,
-                                     TRI_vocbase_t& vocbase, DataSourceId id,
-                                     std::string&& guid, DataSourceId planId,
-                                     std::string&& name, bool system,
-                                     bool deleted);
-
-template<>
-LogicalDataSource::LogicalDataSource(LogicalView const& self, Type const& type,
-                                     TRI_vocbase_t& vocbase,
-                                     velocypack::Slice definition);
-
-template<class DataSource>
-LogicalDataSource::LogicalDataSource(DataSource const& self, Type const& type,
+LogicalDataSource::LogicalDataSource(Category category, Type const& type,
                                      TRI_vocbase_t& vocbase,
                                      velocypack::Slice definition)
     : LogicalDataSource(
-          self, type, vocbase,
+          category, type, vocbase,
           DataSourceId{basics::VelocyPackHelper::extractIdValue(definition)},
           basics::VelocyPackHelper::getStringValue(
               definition, StaticStrings::DataSourceGuid, ""),
@@ -214,12 +180,11 @@ LogicalDataSource::LogicalDataSource(DataSource const& self, Type const& type,
               definition.get(StaticStrings::DataSourcePlanId))},
           basics::VelocyPackHelper::getStringValue(
               definition, StaticStrings::DataSourceName, ""),
-          readIsSystem(definition), determineCategory<DataSource>(),
+          readIsSystem(definition),
           basics::VelocyPackHelper::getBooleanValue(
               definition, StaticStrings::DataSourceDeleted, false)) {}
 
-template<class DataSource>
-LogicalDataSource::LogicalDataSource(DataSource const& self, Type const& type,
+LogicalDataSource::LogicalDataSource(Category category, Type const& type,
                                      TRI_vocbase_t& vocbase, DataSourceId id,
                                      std::string&& guid, DataSourceId planId,
                                      std::string&& name, bool system,
@@ -231,7 +196,7 @@ LogicalDataSource::LogicalDataSource(DataSource const& self, Type const& type,
       _planId(planId ? planId : _id),
       _guid(ensureGuid(std::move(guid), _id, _planId, _name, system)),
       _deleted(deleted),
-      _category(determineCategory<DataSource>()),
+      _category(category),
       _system(system) {
   TRI_ASSERT(_id);
   TRI_ASSERT(!_guid.empty());

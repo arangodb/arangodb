@@ -109,6 +109,8 @@ class LogicalView : public LogicalDataSource {
 #endif
   }
 
+  constexpr static Category category() noexcept { return Category::kView; }
+
   using LogicalDataSource::properties;
 
   //////////////////////////////////////////////////////////////////////////////

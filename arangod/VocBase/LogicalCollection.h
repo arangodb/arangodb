@@ -85,6 +85,10 @@ class LogicalCollection : public LogicalDataSource {
 
   enum class Version { v30 = 5, v31 = 6, v33 = 7, v34 = 8, v37 = 9 };
 
+  constexpr static Category category() noexcept {
+    return Category::kCollection;
+  }
+
   /*
    * @brief Available types of internal validators. These validators
    * are managed by the database, and bound to features of collections.
