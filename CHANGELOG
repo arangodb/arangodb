@@ -1,5 +1,5 @@
-v3.9.0 (XXXX-XX-XX)
--------------------
+v3.9.0-beta.1 (2022-01-06)
+--------------------------
 
 * Fixed ES-1025: fixed a performance regression caused by different hash
   calculation for primitive types like `uint64_t` and new the `Identifier`
