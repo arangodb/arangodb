@@ -929,36 +929,26 @@ TEST_P(format_10_test_case, postings_seek) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        format specific test cases
-// -----------------------------------------------------------------------------
+const auto kTestValues =
+    ::testing::Combine(
+      ::testing::Values(
+        &tests::directory<&tests::memory_directory>,
+        &tests::directory<&tests::fs_directory>,
+        &tests::directory<&tests::mmap_directory>),
+      ::testing::Values("1_0"));
 
+// 1.0 specific tests
 INSTANTIATE_TEST_SUITE_P(
-  format_10_test,
-  format_10_test_case,
-  ::testing::Combine(
-    ::testing::Values(
-      &tests::directory<&tests::memory_directory>,
-      &tests::directory<&tests::fs_directory>,
-      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values("1_0")),
-  format_10_test_case::to_string
-);
+    format_10_test,
+    format_10_test_case,
+    kTestValues,
+    format_10_test_case::to_string);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                generic test cases
-// -----------------------------------------------------------------------------
-
+// Generic tests
 INSTANTIATE_TEST_SUITE_P(
-  format_10_test,
-  format_test_case,
-  ::testing::Combine(
-    ::testing::Values(
-      &tests::directory<&tests::memory_directory>,
-      &tests::directory<&tests::fs_directory>,
-      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values("1_0")),
-  format_test_case::to_string
-);
+    format_10_test,
+    format_test_case,
+    kTestValues,
+    format_test_case::to_string);
 
 }

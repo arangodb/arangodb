@@ -1,8 +1,8 @@
-// A Bison parser, made by GNU Bison 3.0.4.
+// A Bison parser, made by GNU Bison 3.5.1.
 
 // Skeleton interface for Bison GLR parsers in C++
 
-// Copyright (C) 2002-2015 Free Software Foundation, Inc.
+// Copyright (C) 2002-2015, 2018-2020 Free Software Foundation, Inc.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -32,10 +32,13 @@
 
 // C++ GLR parser skeleton written by Akim Demaille.
 
-#ifndef YY_YY_PARSER_HH_INCLUDED
-# define YY_YY_PARSER_HH_INCLUDED
-// //                    "%code requires" blocks.
-#line 39 "/home/user/git-root/arangodb-iresearch/3rdParty/iresearch/core/iql/parser.yy" // glr.cc:329
+// Undocumented macros, especially those whose name start with YY_,
+// are private implementation details.  Do not rely on them.
+
+#ifndef YY_YY_IQL_PARSER_HH_INCLUDED
+# define YY_YY_IQL_PARSER_HH_INCLUDED
+// "%code requires" blocks.
+#line 39 "/home/gnusi/git/iresearch/core/iql/parser.yy"
 
   #define YYSTYPE size_t
 
@@ -69,22 +72,151 @@
     #define YYDEBUG 1
   #endif
 
-#line 73 "parser.hh" // glr.cc:329
+#line 76 "iql/parser.hh"
 
-
+#include <iostream>
 #include <stdexcept>
 #include <string>
-#include <iostream>
-#include "location.hh"
+
+#if defined __cplusplus
+# define YY_CPLUSPLUS __cplusplus
+#else
+# define YY_CPLUSPLUS 199711L
+#endif
+
+// Support move semantics when possible.
+#if 201103L <= YY_CPLUSPLUS
+# define YY_MOVE           std::move
+# define YY_MOVE_OR_COPY   move
+# define YY_MOVE_REF(Type) Type&&
+# define YY_RVREF(Type)    Type&&
+# define YY_COPY(Type)     Type
+#else
+# define YY_MOVE
+# define YY_MOVE_OR_COPY   copy
+# define YY_MOVE_REF(Type) Type&
+# define YY_RVREF(Type)    const Type&
+# define YY_COPY(Type)     const Type&
+#endif
+
+// Support noexcept when possible.
+#if 201103L <= YY_CPLUSPLUS
+# define YY_NOEXCEPT noexcept
+# define YY_NOTHROW
+#else
+# define YY_NOEXCEPT
+# define YY_NOTHROW throw ()
+#endif
+
+// Support constexpr when possible.
+#if 201703 <= YY_CPLUSPLUS
+# define YY_CONSTEXPR constexpr
+#else
+# define YY_CONSTEXPR
+#endif
+# include "location.hh"
+
+
+#ifndef YY_ATTRIBUTE_PURE
+# if defined __GNUC__ && 2 < __GNUC__ + (96 <= __GNUC_MINOR__)
+#  define YY_ATTRIBUTE_PURE __attribute__ ((__pure__))
+# else
+#  define YY_ATTRIBUTE_PURE
+# endif
+#endif
+
+#ifndef YY_ATTRIBUTE_UNUSED
+# if defined __GNUC__ && 2 < __GNUC__ + (7 <= __GNUC_MINOR__)
+#  define YY_ATTRIBUTE_UNUSED __attribute__ ((__unused__))
+# else
+#  define YY_ATTRIBUTE_UNUSED
+# endif
+#endif
+
+/* Suppress unused-variable warnings by "using" E.  */
+#if ! defined lint || defined __GNUC__
+# define YYUSE(E) ((void) (E))
+#else
+# define YYUSE(E) /* empty */
+#endif
+
+#if defined __GNUC__ && ! defined __ICC && 407 <= __GNUC__ * 100 + __GNUC_MINOR__
+/* Suppress an incorrect diagnostic about yylval being uninitialized.  */
+# define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN                            \
+    _Pragma ("GCC diagnostic push")                                     \
+    _Pragma ("GCC diagnostic ignored \"-Wuninitialized\"")              \
+    _Pragma ("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
+# define YY_IGNORE_MAYBE_UNINITIALIZED_END      \
+    _Pragma ("GCC diagnostic pop")
+#else
+# define YY_INITIAL_VALUE(Value) Value
+#endif
+#ifndef YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
+# define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
+# define YY_IGNORE_MAYBE_UNINITIALIZED_END
+#endif
+#ifndef YY_INITIAL_VALUE
+# define YY_INITIAL_VALUE(Value) /* Nothing. */
+#endif
+
+#if defined __cplusplus && defined __GNUC__ && ! defined __ICC && 6 <= __GNUC__
+# define YY_IGNORE_USELESS_CAST_BEGIN                          \
+    _Pragma ("GCC diagnostic push")                            \
+    _Pragma ("GCC diagnostic ignored \"-Wuseless-cast\"")
+# define YY_IGNORE_USELESS_CAST_END            \
+    _Pragma ("GCC diagnostic pop")
+#endif
+#ifndef YY_IGNORE_USELESS_CAST_BEGIN
+# define YY_IGNORE_USELESS_CAST_BEGIN
+# define YY_IGNORE_USELESS_CAST_END
+#endif
+
+# ifndef YY_NULLPTR
+#  if defined __cplusplus
+#   if 201103L <= __cplusplus
+#    define YY_NULLPTR nullptr
+#   else
+#    define YY_NULLPTR 0
+#   endif
+#  else
+#   define YY_NULLPTR ((void*)0)
+#  endif
+# endif
+
+// This skeleton is based on C, yet compiles it as C++.
+// So expect warnings about C style casts.
+#if defined __clang__ && 306 <= __clang_major__ * 100 + __clang_minor__
+# pragma clang diagnostic ignored "-Wold-style-cast"
+#elif defined __GNUC__ && 406 <= __GNUC__ * 100 + __GNUC_MINOR__
+# pragma GCC diagnostic ignored "-Wold-style-cast"
+#endif
+
+// On MacOS, PTRDIFF_MAX is defined as long long, which Clang's
+// -pedantic reports as being a C++11 extension.
+#if defined __APPLE__ && YY_CPLUSPLUS < 201103L \
+    && defined __clang__ && 4 <= __clang_major__
+# pragma clang diagnostic ignored "-Wc++11-long-long"
+#endif
+
+// Whether we are compiled with exception support.
+#ifndef YY_EXCEPTIONS
+# if defined __GNUC__ && !defined __EXCEPTIONS
+#  define YY_EXCEPTIONS 0
+# else
+#  define YY_EXCEPTIONS 1
+# endif
+#endif
 
 /* Debug traces.  */
 #ifndef YYDEBUG
 # define YYDEBUG 0
 #endif
 
-#line 31 "/home/user/git-root/arangodb-iresearch/3rdParty/iresearch/core/iql/parser.yy" // glr.cc:329
+#line 31 "/home/gnusi/git/iresearch/core/iql/parser.yy"
 namespace iresearch { namespace iql {
-#line 88 "parser.hh" // glr.cc:329
+#line 218 "iql/parser.hh"
+
+
 
 
   /// A Bison parser.
@@ -103,7 +235,18 @@ namespace iresearch { namespace iql {
     /// Syntax errors thrown from user actions.
     struct syntax_error : std::runtime_error
     {
-      syntax_error (const location_type& l, const std::string& m);
+      syntax_error (const location_type& l, const std::string& m)
+        : std::runtime_error (m)
+        , location (l)
+      {}
+
+      syntax_error (const syntax_error& s)
+        : std::runtime_error (s.what ())
+        , location (s.location)
+      {}
+
+      ~syntax_error () YY_NOEXCEPT YY_NOTHROW;
+
       location_type location;
     };
 
@@ -154,105 +297,22 @@ namespace iresearch { namespace iql {
     enum { empty_symbol = -2 };
 
     /// Internal symbol number for tokens (subsumed by symbol_number_type).
-    typedef unsigned char token_number_type;
-
-    /// A complete symbol.
-    ///
-    /// Expects its Base type to provide access to the symbol type
-    /// via type_get().
-    ///
-    /// Provide access to semantic value and location.
-    template <typename Base>
-    struct basic_symbol : Base
-    {
-      /// Alias to Base.
-      typedef Base super_type;
-
-      /// Default constructor.
-      basic_symbol ();
-
-      /// Copy constructor.
-      basic_symbol (const basic_symbol& other);
-
-      /// Constructor for valueless symbols.
-      basic_symbol (typename Base::kind_type t,
-                    const location_type& l);
-
-      /// Constructor for symbols with semantic value.
-      basic_symbol (typename Base::kind_type t,
-                    const semantic_type& v,
-                    const location_type& l);
-
-      /// Destroy the symbol.
-      ~basic_symbol ();
-
-      /// Destroy contents, and record that is empty.
-      void clear ();
-
-      /// Whether empty.
-      bool empty () const;
-
-      /// Destructive move, \a s is emptied into this.
-      void move (basic_symbol& s);
-
-      /// The semantic value.
-      semantic_type value;
-
-      /// The location.
-      location_type location;
-
-    private:
-      /// Assignment operator.
-      basic_symbol& operator= (const basic_symbol& other);
-    };
-
-    /// Type access provider for token (enum) based symbols.
-    struct by_type
-    {
-      /// Default constructor.
-      by_type ();
-
-      /// Copy constructor.
-      by_type (const by_type& other);
-
-      /// The symbol type as needed by the constructor.
-      typedef token_type kind_type;
-
-      /// Constructor from (external) token numbers.
-      by_type (kind_type t);
-
-      /// Record that this symbol is empty.
-      void clear ();
-
-      /// Steal the symbol type from \a that.
-      void move (by_type& that);
-
-      /// The (internal) type number (corresponding to \a type).
-      /// \a empty when empty.
-      symbol_number_type type_get () const;
-
-      /// The token.
-      token_type token () const;
-
-      /// The symbol type.
-      /// \a empty_symbol when empty.
-      /// An int, not token_number_type, to be able to store empty_symbol.
-      int type;
-    };
-
-    /// "External" symbols: returned by the scanner.
-    typedef basic_symbol<by_type> symbol_type;
-
+    typedef signed char token_number_type;
 
 
     /// Build a parser object.
     parser (iresearch::iql::context& ctx_yyarg);
     virtual ~parser ();
 
+    /// Parse.  An alias for parse ().
+    /// \returns  0 iff parsing succeeded.
+    int operator() ();
+
     /// Parse.
     /// \returns  0 iff parsing succeeded.
     virtual int parse ();
 
+#if YYDEBUG
     /// The current debugging stream.
     std::ostream& debug_stream () const;
     /// Set the current debugging stream.
@@ -264,8 +324,8 @@ namespace iresearch { namespace iql {
     debug_level_type debug_level () const;
     /// Set the current debugging level.
     void set_debug_level (debug_level_type l);
+#endif
 
-  public:
     /// Report a syntax error.
     /// \param loc    where the syntax error is found.
     /// \param msg    a description of the syntax error.
@@ -306,11 +366,12 @@ namespace iresearch { namespace iql {
 # define YYLTYPE iresearch::iql::parser::location_type
 #endif
 
-#line 31 "/home/user/git-root/arangodb-iresearch/3rdParty/iresearch/core/iql/parser.yy" // glr.cc:329
+#line 31 "/home/gnusi/git/iresearch/core/iql/parser.yy"
 } } // iresearch::iql
-#line 312 "parser.hh" // glr.cc:329
-// //                    "%code provides" blocks.
-#line 76 "/home/user/git-root/arangodb-iresearch/3rdParty/iresearch/core/iql/parser.yy" // glr.cc:329
+#line 372 "iql/parser.hh"
+
+// "%code provides" blocks.
+#line 76 "/home/gnusi/git/iresearch/core/iql/parser.yy"
 
   // ALWAYS!!! define YYDEBUG 1 for the length of the header so as to avoid
   // alignment issues when linkning without YYDEBUG agains a library that was
@@ -373,7 +434,7 @@ namespace iresearch { namespace iql {
     }
   }
 
-#line 377 "parser.hh" // glr.cc:329
+#line 438 "iql/parser.hh"
 
 
-#endif // !YY_YY_PARSER_HH_INCLUDED
+#endif // !YY_YY_IQL_PARSER_HH_INCLUDED

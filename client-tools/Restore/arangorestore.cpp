@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+#include "Basics/signals.h"
 #include "Basics/directories.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -52,6 +53,7 @@ int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
     ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
+    arangodb::signals::maskAllSignalsClient();
     context.installHup();
 
     std::shared_ptr<options::ProgramOptions> options(
@@ -59,7 +61,7 @@ int main(int argc, char* argv[]) {
             argv[0], "Usage: arangorestore [<options>]",
             "For more information use:", BIN_DIRECTORY));
     ApplicationServer server(options, BIN_DIRECTORY);
-    int ret;
+    int ret = EXIT_SUCCESS;
 
     server.addFeature<BasicFeaturePhaseClient>();
     server.addFeature<CommunicationFeaturePhase>();

@@ -35,27 +35,27 @@ Identifier::BaseType const* Identifier::data() const noexcept { return &_id; }
 
 Identifier::operator bool() const noexcept { return _id != 0; }
 
-bool Identifier::operator==(Identifier const& other) const {
+bool Identifier::operator==(Identifier const& other) const noexcept {
   return _id == other._id;
 }
 
-bool Identifier::operator!=(Identifier const& other) const {
+bool Identifier::operator!=(Identifier const& other) const noexcept {
   return !(operator==(other));
 }
 
-bool Identifier::operator<(Identifier const& other) const {
+bool Identifier::operator<(Identifier const& other) const noexcept {
   return _id < other._id;
 }
 
-bool Identifier::operator<=(Identifier const& other) const {
+bool Identifier::operator<=(Identifier const& other) const noexcept {
   return _id <= other._id;
 }
 
-bool Identifier::operator>(Identifier const& other) const {
+bool Identifier::operator>(Identifier const& other) const noexcept {
   return _id > other._id;
 }
 
-bool Identifier::operator>=(Identifier const& other) const {
+bool Identifier::operator>=(Identifier const& other) const noexcept {
   return _id >= other._id;
 }
 

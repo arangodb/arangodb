@@ -849,8 +849,16 @@ class postings_writer final: public postings_writer_base {
 #endif
 
 template<typename FormatTraits, bool VolatileAttributes>
-irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::write(irs::doc_iterator& docs) {
+irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::write(
+    irs::doc_iterator& docs) {
   REGISTER_TIMER_DETAILED();
+
+  auto* doc = irs::get<document>(docs);
+
+  if (!doc) {
+    assert(false);
+    throw illegal_argument{"'document' attribute is missing"};
+  }
 
   if constexpr (VolatileAttributes) {
     auto* subscription = irs::get<attribute_provider_change>(docs);
@@ -868,7 +876,7 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
   begin_term();
 
   while (docs.next()) {
-    const auto did = docs.value();
+    const auto did = doc->value;
     assert(doc_limits::valid(did));
 
     begin_doc<FormatTraits>(did, freq_);
@@ -2466,217 +2474,6 @@ bool document_mask_reader::read(
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                      columnstore
-// ----------------------------------------------------------------------------
-
-namespace columns {
-
-template<typename T, typename M>
-std::string file_name(const M& meta); // forward declaration
-
-template<typename T, typename M>
-void file_name(std::string& buf, const M& meta); // forward declaration
-
-class meta_writer final : public irs::column_meta_writer {
- public:
-  static constexpr string_ref FORMAT_NAME = "iresearch_10_columnmeta";
-  static constexpr string_ref FORMAT_EXT = "cm";
-
-  static constexpr int32_t FORMAT_MIN = 0;
-  static constexpr int32_t FORMAT_MAX = 1;
-
-  explicit meta_writer(int32_t version) noexcept
-    : version_(version) {
-    assert(version >= FORMAT_MIN && version <= FORMAT_MAX);
-  }
-
-  virtual void prepare(directory& dir, const segment_meta& meta) override;
-  virtual void write(const std::string& name, field_id id) override;
-  virtual void flush() override;
-
- private:
-  encryption::stream::ptr out_cipher_;
-  index_output::ptr out_;
-  size_t count_{}; // number of written objects
-  field_id max_id_{}; // the highest column id written (optimization for vector resize on read to highest id)
-  int32_t version_;
-}; // meta_writer
-
-template<>
-std::string file_name<column_meta_writer, segment_meta>(
-    const segment_meta& meta) {
-  return irs::file_name(meta.name, columns::meta_writer::FORMAT_EXT);
-}
-
-void meta_writer::prepare(directory& dir, const segment_meta& meta) {
-  auto filename = file_name<column_meta_writer>(meta);
-
-  out_ = dir.create(filename);
-
-  if (!out_) {
-    throw io_error(string_utils::to_string(
-      "Failed to create file, path: %s", filename.c_str()));
-  }
-
-  format_utils::write_header(*out_, FORMAT_NAME, version_);
-
-  if (version_ > FORMAT_MIN) {
-    bstring enc_header;
-    auto* enc = dir.attributes().encryption();
-
-    if (irs::encrypt(filename, *out_, enc, enc_header, out_cipher_)) {
-      assert(out_cipher_ && out_cipher_->block_size());
-
-      const auto blocks_in_buffer = math::div_ceil64(
-        DEFAULT_ENCRYPTION_BUFFER_SIZE,
-        out_cipher_->block_size());
-
-      out_ = index_output::make<encrypted_output>(
-        std::move(out_),
-        *out_cipher_,
-        blocks_in_buffer);
-    }
-  }
-}
-
-void meta_writer::write(const std::string& name, field_id id) {
-  assert(out_);
-  out_->write_vlong(id);
-  write_string(*out_, name);
-  ++count_;
-  max_id_ = std::max(max_id_, id);
-}
-
-void meta_writer::flush() {
-  assert(out_);
-
-  if (out_cipher_) {
-    auto& out = static_cast<encrypted_output&>(*out_);
-    out.flush();
-    out_ = out.release();
-  }
-
-  out_->write_long(count_); // write total number of written objects
-  out_->write_long(max_id_); // write highest column id written
-  format_utils::write_footer(*out_);
-  out_.reset();
-  count_ = 0;
-}
-
-class meta_reader final : public irs::column_meta_reader {
- public:
-  virtual bool prepare(
-    const directory& dir,
-    const segment_meta& meta,
-    size_t& count,
-    field_id& max_id) override;
-  virtual bool read(column_meta& column) override;
-
- private:
-  encryption::stream::ptr in_cipher_;
-  index_input::ptr in_;
-  size_t count_{0};
-  field_id max_id_{0};
-}; // meta_writer
-
-bool meta_reader::prepare(
-    const directory& dir,
-    const segment_meta& meta,
-    size_t& count,
-    field_id& max_id) {
-  const auto filename = file_name<column_meta_writer>(meta);
-
-  bool exists;
-
-  if (!dir.exists(exists, filename)) {
-    throw io_error(string_utils::to_string(
-      "failed to check existence of file, path: %s",
-      filename.c_str()));
-  }
-
-  if (!exists) {
-    // column meta is optional
-    return false;
-  }
-
-  in_ = dir.open(
-    filename, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
-
-  if (!in_) {
-    throw io_error(string_utils::to_string(
-      "failed to open file, path: %s",
-      filename.c_str()));
-  }
-
-  const auto checksum = format_utils::checksum(*in_);
-
-  constexpr const size_t FOOTER_LEN =
-      sizeof(uint64_t) // count
-    + sizeof(field_id) // max id
-    + format_utils::FOOTER_LEN;
-
-  // seek to start of meta footer (before count and max_id)
-  in_->seek(in_->length() - FOOTER_LEN);
-  count = in_->read_long(); // read number of objects to read
-  max_id = in_->read_long(); // read highest column id written
-
-  if (max_id >= std::numeric_limits<size_t>::max()) {
-    throw index_error(string_utils::to_string(
-      "invalid max column id: " IR_UINT64_T_SPECIFIER ", path: %s",
-      max_id, filename.c_str()));
-  }
-
-  format_utils::check_footer(*in_, checksum);
-
-  in_->seek(0);
-
-  const auto version = format_utils::check_header(
-    *in_,
-    meta_writer::FORMAT_NAME,
-    meta_writer::FORMAT_MIN,
-    meta_writer::FORMAT_MAX);
-
-  if (version > meta_writer::FORMAT_MIN) {
-    encryption* enc = dir.attributes().encryption();
-
-    if (irs::decrypt(filename, *in_, enc, in_cipher_)) {
-      assert(in_cipher_ && in_cipher_->block_size());
-
-      const auto blocks_in_buffer = math::div_ceil64(
-        DEFAULT_ENCRYPTION_BUFFER_SIZE,
-        in_cipher_->block_size());
-
-      in_ = memory::make_unique<encrypted_input>(
-        std::move(in_),
-        *in_cipher_,
-        blocks_in_buffer,
-        FOOTER_LEN);
-    }
-  }
-
-  count_ = count;
-  max_id_ = max_id;
-  return true;
-}
-
-bool meta_reader::read(column_meta& column) {
-  if (!count_) {
-    return false;
-  }
-
-  const auto id = in_->read_vlong();
-
-  assert(id <= max_id_);
-  column.name = read_string<std::string>(*in_);
-  column.id = id;
-  --count_;
-
-  return true;
-}
-
-} // columns
-
-// ----------------------------------------------------------------------------
 // --SECTION--                                                  postings_reader
 // ----------------------------------------------------------------------------
 
@@ -3049,9 +2846,6 @@ class format10 : public irs::version10::format {
   virtual field_writer::ptr get_field_writer(bool consolidation) const override;
   virtual field_reader::ptr get_field_reader() const override final;
 
-  virtual column_meta_writer::ptr get_column_meta_writer() const override;
-  virtual column_meta_reader::ptr get_column_meta_reader() const override final;
-
   virtual columnstore_writer::ptr get_columnstore_writer(bool consolidation) const override;
   virtual columnstore_reader::ptr get_columnstore_reader() const override;
 
@@ -3117,17 +2911,9 @@ field_reader::ptr format10::get_field_reader() const  {
   return burst_trie::make_reader(get_postings_reader());
 }
 
-column_meta_writer::ptr format10::get_column_meta_writer() const {
-  return memory::make_unique<columns::meta_writer>(
-    int32_t(columns::meta_writer::FORMAT_MIN));
-}
-
-column_meta_reader::ptr format10::get_column_meta_reader() const {
-  return memory::make_unique<columns::meta_reader>();
-}
-
 columnstore_writer::ptr format10::get_columnstore_writer(bool /*consolidation*/) const {
-  return columnstore::make_writer(columnstore::Version::MIN);
+  return columnstore::make_writer(columnstore::Version::MIN,
+                                  columnstore::ColumnMetaVersion::MIN);
 }
 
 columnstore_reader::ptr format10::get_columnstore_reader() const {
@@ -3174,7 +2960,7 @@ class format11 : public format10 {
 
   virtual segment_meta_writer::ptr get_segment_meta_writer() const override final;
 
-  virtual column_meta_writer::ptr get_column_meta_writer() const override final;
+  virtual columnstore_writer::ptr get_columnstore_writer(bool /*consolidation*/) const override;
 
  protected:
   explicit format11(const irs::type_info& type) noexcept
@@ -3203,9 +2989,9 @@ segment_meta_writer::ptr format11::get_segment_meta_writer() const {
   return memory::to_managed<irs::segment_meta_writer, false>(&INSTANCE);
 }
 
-column_meta_writer::ptr format11::get_column_meta_writer() const {
-  return memory::make_unique<columns::meta_writer>(
-    int32_t(columns::meta_writer::FORMAT_MAX));
+columnstore_writer::ptr format11::get_columnstore_writer(bool /*consolidation*/) const {
+  return columnstore::make_writer(columnstore::Version::MIN,
+                                  columnstore::ColumnMetaVersion::MAX);
 }
 
 /*static*/ irs::format::ptr format11::make() {
@@ -3229,7 +3015,7 @@ class format12 : public format11 {
   format12() noexcept : format11(irs::type<format12>::get()) { }
 
   virtual columnstore_writer::ptr get_columnstore_writer(
-    bool /*consolidation*/) const override;
+      bool /*consolidation*/) const override;
 
  protected:
   explicit format12(const irs::type_info& type) noexcept
@@ -3241,7 +3027,8 @@ const ::format12 FORMAT12_INSTANCE;
 
 columnstore_writer::ptr format12::get_columnstore_writer(
     bool /*consolidation*/) const {
-  return columnstore::make_writer(columnstore::Version::MAX);
+  return columnstore::make_writer(columnstore::Version::MAX,
+                                  columnstore::ColumnMetaVersion::MAX);
 }
 
 /*static*/ irs::format::ptr format12::make() {
@@ -3333,7 +3120,7 @@ irs::field_writer::ptr format14::get_field_writer(bool consolidation) const {
 
 columnstore_writer::ptr format14::get_columnstore_writer(
     bool consolidation) const {
-  return columnstore2::make_writer(columnstore2::Version::MIN, consolidation);
+  return columnstore2::make_writer(columnstore2::Version::kMin, consolidation);
 }
 
 columnstore_reader::ptr format14::get_columnstore_reader() const {
@@ -3502,7 +3289,7 @@ irs::field_writer::ptr format14simd::get_field_writer(bool consolidation) const 
 
 columnstore_writer::ptr format14simd::get_columnstore_writer(
     bool consolidation) const {
-  return columnstore2::make_writer(columnstore2::Version::MIN, consolidation);
+  return columnstore2::make_writer(columnstore2::Version::kMin, consolidation);
 }
 
 columnstore_reader::ptr format14simd::get_columnstore_reader() const {
