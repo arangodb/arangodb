@@ -63,12 +63,13 @@
 /* Pull parsers.  */
 #define YYPULL 1
 
+
 /* Substitute the variable and function names.  */
-#define yyparse Aqlparse
-#define yylex Aqllex
-#define yyerror Aqlerror
-#define yydebug Aqldebug
-#define yynerrs Aqlnerrs
+#define yyparse         Aqlparse
+#define yylex           Aqllex
+#define yyerror         Aqlerror
+#define yydebug         Aqldebug
+#define yynerrs         Aqlnerrs
 
 /* First part of user prologue.  */
 #line 9 "Aql/grammar.y"
@@ -93,6 +94,7 @@
 #include "Aql/Quantifier.h"
 #include "Aql/QueryContext.h"
 #include "Aql/types.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Graph/ShortestPathType.h"
@@ -101,228 +103,229 @@
 
 #include <velocypack/StringRef.h>
 
-#line 107 "Aql/grammar.cpp"
 
-#ifndef YY_CAST
-#ifdef __cplusplus
-#define YY_CAST(Type, Val) static_cast<Type>(Val)
-#define YY_REINTERPRET_CAST(Type, Val) reinterpret_cast<Type>(Val)
-#else
-#define YY_CAST(Type, Val) ((Type)(Val))
-#define YY_REINTERPRET_CAST(Type, Val) ((Type)(Val))
-#endif
-#endif
-#ifndef YY_NULLPTR
-#if defined __cplusplus
-#if 201103L <= __cplusplus
-#define YY_NULLPTR nullptr
-#else
-#define YY_NULLPTR 0
-#endif
-#else
-#define YY_NULLPTR ((void*)0)
-#endif
-#endif
+#line 108 "Aql/grammar.cpp"
+
+# ifndef YY_CAST
+#  ifdef __cplusplus
+#   define YY_CAST(Type, Val) static_cast<Type> (Val)
+#   define YY_REINTERPRET_CAST(Type, Val) reinterpret_cast<Type> (Val)
+#  else
+#   define YY_CAST(Type, Val) ((Type) (Val))
+#   define YY_REINTERPRET_CAST(Type, Val) ((Type) (Val))
+#  endif
+# endif
+# ifndef YY_NULLPTR
+#  if defined __cplusplus
+#   if 201103L <= __cplusplus
+#    define YY_NULLPTR nullptr
+#   else
+#    define YY_NULLPTR 0
+#   endif
+#  else
+#   define YY_NULLPTR ((void*)0)
+#  endif
+# endif
 
 #include "grammar.hpp"
 /* Symbol kind.  */
-enum yysymbol_kind_t {
+enum yysymbol_kind_t
+{
   YYSYMBOL_YYEMPTY = -2,
-  YYSYMBOL_YYEOF = 0,                    /* "end of query string"  */
-  YYSYMBOL_YYerror = 1,                  /* error  */
-  YYSYMBOL_YYUNDEF = 2,                  /* "invalid token"  */
-  YYSYMBOL_T_FOR = 3,                    /* "FOR declaration"  */
-  YYSYMBOL_T_LET = 4,                    /* "LET declaration"  */
-  YYSYMBOL_T_FILTER = 5,                 /* "FILTER declaration"  */
-  YYSYMBOL_T_RETURN = 6,                 /* "RETURN declaration"  */
-  YYSYMBOL_T_COLLECT = 7,                /* "COLLECT declaration"  */
-  YYSYMBOL_T_SORT = 8,                   /* "SORT declaration"  */
-  YYSYMBOL_T_LIMIT = 9,                  /* "LIMIT declaration"  */
-  YYSYMBOL_T_WINDOW = 10,                /* "WINDOW declaration"  */
-  YYSYMBOL_T_ASC = 11,                   /* "ASC keyword"  */
-  YYSYMBOL_T_DESC = 12,                  /* "DESC keyword"  */
-  YYSYMBOL_T_IN = 13,                    /* "IN keyword"  */
-  YYSYMBOL_T_WITH = 14,                  /* "WITH keyword"  */
-  YYSYMBOL_T_INTO = 15,                  /* "INTO keyword"  */
-  YYSYMBOL_T_AGGREGATE = 16,             /* "AGGREGATE keyword"  */
-  YYSYMBOL_T_GRAPH = 17,                 /* "GRAPH keyword"  */
-  YYSYMBOL_T_SHORTEST_PATH = 18,         /* "SHORTEST_PATH keyword"  */
-  YYSYMBOL_T_K_SHORTEST_PATHS = 19,      /* "K_SHORTEST_PATHS keyword"  */
-  YYSYMBOL_T_K_PATHS = 20,               /* "K_PATHS keyword"  */
-  YYSYMBOL_T_DISTINCT = 21,              /* "DISTINCT modifier"  */
-  YYSYMBOL_T_REMOVE = 22,                /* "REMOVE command"  */
-  YYSYMBOL_T_INSERT = 23,                /* "INSERT command"  */
-  YYSYMBOL_T_UPDATE = 24,                /* "UPDATE command"  */
-  YYSYMBOL_T_REPLACE = 25,               /* "REPLACE command"  */
-  YYSYMBOL_T_UPSERT = 26,                /* "UPSERT command"  */
-  YYSYMBOL_T_NULL = 27,                  /* "null"  */
-  YYSYMBOL_T_TRUE = 28,                  /* "true"  */
-  YYSYMBOL_T_FALSE = 29,                 /* "false"  */
-  YYSYMBOL_T_STRING = 30,                /* "identifier"  */
-  YYSYMBOL_T_QUOTED_STRING = 31,         /* "quoted string"  */
-  YYSYMBOL_T_INTEGER = 32,               /* "integer number"  */
-  YYSYMBOL_T_DOUBLE = 33,                /* "number"  */
-  YYSYMBOL_T_PARAMETER = 34,             /* "bind parameter"  */
-  YYSYMBOL_T_DATA_SOURCE_PARAMETER = 35, /* "bind data source parameter"  */
-  YYSYMBOL_T_ASSIGN = 36,                /* "assignment"  */
-  YYSYMBOL_T_NOT = 37,                   /* "not operator"  */
-  YYSYMBOL_T_AND = 38,                   /* "and operator"  */
-  YYSYMBOL_T_OR = 39,                    /* "or operator"  */
-  YYSYMBOL_T_REGEX_MATCH = 40,           /* "~= operator"  */
-  YYSYMBOL_T_REGEX_NON_MATCH = 41,       /* "~! operator"  */
-  YYSYMBOL_T_EQ = 42,                    /* "== operator"  */
-  YYSYMBOL_T_NE = 43,                    /* "!= operator"  */
-  YYSYMBOL_T_LT = 44,                    /* "< operator"  */
-  YYSYMBOL_T_GT = 45,                    /* "> operator"  */
-  YYSYMBOL_T_LE = 46,                    /* "<= operator"  */
-  YYSYMBOL_T_GE = 47,                    /* ">= operator"  */
-  YYSYMBOL_T_LIKE = 48,                  /* "like operator"  */
-  YYSYMBOL_T_PLUS = 49,                  /* "+ operator"  */
-  YYSYMBOL_T_MINUS = 50,                 /* "- operator"  */
-  YYSYMBOL_T_TIMES = 51,                 /* "* operator"  */
-  YYSYMBOL_T_DIV = 52,                   /* "/ operator"  */
-  YYSYMBOL_T_MOD = 53,                   /* "% operator"  */
-  YYSYMBOL_T_QUESTION = 54,              /* "?"  */
-  YYSYMBOL_T_COLON = 55,                 /* ":"  */
-  YYSYMBOL_T_SCOPE = 56,                 /* "::"  */
-  YYSYMBOL_T_RANGE = 57,                 /* ".."  */
-  YYSYMBOL_T_COMMA = 58,                 /* ","  */
-  YYSYMBOL_T_OPEN = 59,                  /* "("  */
-  YYSYMBOL_T_CLOSE = 60,                 /* ")"  */
-  YYSYMBOL_T_OBJECT_OPEN = 61,           /* "{"  */
-  YYSYMBOL_T_OBJECT_CLOSE = 62,          /* "}"  */
-  YYSYMBOL_T_ARRAY_OPEN = 63,            /* "["  */
-  YYSYMBOL_T_ARRAY_CLOSE = 64,           /* "]"  */
-  YYSYMBOL_T_OUTBOUND = 65,              /* "outbound modifier"  */
-  YYSYMBOL_T_INBOUND = 66,               /* "inbound modifier"  */
-  YYSYMBOL_T_ANY = 67,                   /* "any modifier"  */
-  YYSYMBOL_T_ALL = 68,                   /* "all modifier"  */
-  YYSYMBOL_T_NONE = 69,                  /* "none modifier"  */
-  YYSYMBOL_UMINUS = 70,                  /* UMINUS  */
-  YYSYMBOL_UPLUS = 71,                   /* UPLUS  */
-  YYSYMBOL_UNEGATION = 72,               /* UNEGATION  */
-  YYSYMBOL_FUNCCALL = 73,                /* FUNCCALL  */
-  YYSYMBOL_REFERENCE = 74,               /* REFERENCE  */
-  YYSYMBOL_INDEXED = 75,                 /* INDEXED  */
-  YYSYMBOL_EXPANSION = 76,               /* EXPANSION  */
-  YYSYMBOL_77_ = 77,                     /* '.'  */
-  YYSYMBOL_YYACCEPT = 78,                /* $accept  */
-  YYSYMBOL_optional_prune_variable = 79, /* optional_prune_variable  */
-  YYSYMBOL_with_collection = 80,         /* with_collection  */
-  YYSYMBOL_with_collection_list = 81,    /* with_collection_list  */
-  YYSYMBOL_optional_with = 82,           /* optional_with  */
-  YYSYMBOL_83_1 = 83,                    /* $@1  */
-  YYSYMBOL_queryStart = 84,              /* queryStart  */
-  YYSYMBOL_query = 85,                   /* query  */
-  YYSYMBOL_final_statement = 86,         /* final_statement  */
-  YYSYMBOL_optional_statement_block_statements =
-      87, /* optional_statement_block_statements  */
-  YYSYMBOL_statement_block_statement = 88,   /* statement_block_statement  */
-  YYSYMBOL_more_output_variables = 89,       /* more_output_variables  */
-  YYSYMBOL_for_output_variables = 90,        /* for_output_variables  */
-  YYSYMBOL_prune_and_options = 91,           /* prune_and_options  */
-  YYSYMBOL_traversal_graph_info = 92,        /* traversal_graph_info  */
-  YYSYMBOL_shortest_path_graph_info = 93,    /* shortest_path_graph_info  */
+  YYSYMBOL_YYEOF = 0,                      /* "end of query string"  */
+  YYSYMBOL_YYerror = 1,                    /* error  */
+  YYSYMBOL_YYUNDEF = 2,                    /* "invalid token"  */
+  YYSYMBOL_T_FOR = 3,                      /* "FOR declaration"  */
+  YYSYMBOL_T_LET = 4,                      /* "LET declaration"  */
+  YYSYMBOL_T_FILTER = 5,                   /* "FILTER declaration"  */
+  YYSYMBOL_T_RETURN = 6,                   /* "RETURN declaration"  */
+  YYSYMBOL_T_COLLECT = 7,                  /* "COLLECT declaration"  */
+  YYSYMBOL_T_SORT = 8,                     /* "SORT declaration"  */
+  YYSYMBOL_T_LIMIT = 9,                    /* "LIMIT declaration"  */
+  YYSYMBOL_T_WINDOW = 10,                  /* "WINDOW declaration"  */
+  YYSYMBOL_T_ASC = 11,                     /* "ASC keyword"  */
+  YYSYMBOL_T_DESC = 12,                    /* "DESC keyword"  */
+  YYSYMBOL_T_IN = 13,                      /* "IN keyword"  */
+  YYSYMBOL_T_WITH = 14,                    /* "WITH keyword"  */
+  YYSYMBOL_T_INTO = 15,                    /* "INTO keyword"  */
+  YYSYMBOL_T_AGGREGATE = 16,               /* "AGGREGATE keyword"  */
+  YYSYMBOL_T_GRAPH = 17,                   /* "GRAPH keyword"  */
+  YYSYMBOL_T_SHORTEST_PATH = 18,           /* "SHORTEST_PATH keyword"  */
+  YYSYMBOL_T_K_SHORTEST_PATHS = 19,        /* "K_SHORTEST_PATHS keyword"  */
+  YYSYMBOL_T_K_PATHS = 20,                 /* "K_PATHS keyword"  */
+  YYSYMBOL_T_DISTINCT = 21,                /* "DISTINCT modifier"  */
+  YYSYMBOL_T_REMOVE = 22,                  /* "REMOVE command"  */
+  YYSYMBOL_T_INSERT = 23,                  /* "INSERT command"  */
+  YYSYMBOL_T_UPDATE = 24,                  /* "UPDATE command"  */
+  YYSYMBOL_T_REPLACE = 25,                 /* "REPLACE command"  */
+  YYSYMBOL_T_UPSERT = 26,                  /* "UPSERT command"  */
+  YYSYMBOL_T_NULL = 27,                    /* "null"  */
+  YYSYMBOL_T_TRUE = 28,                    /* "true"  */
+  YYSYMBOL_T_FALSE = 29,                   /* "false"  */
+  YYSYMBOL_T_STRING = 30,                  /* "identifier"  */
+  YYSYMBOL_T_QUOTED_STRING = 31,           /* "quoted string"  */
+  YYSYMBOL_T_INTEGER = 32,                 /* "integer number"  */
+  YYSYMBOL_T_DOUBLE = 33,                  /* "number"  */
+  YYSYMBOL_T_PARAMETER = 34,               /* "bind parameter"  */
+  YYSYMBOL_T_DATA_SOURCE_PARAMETER = 35,   /* "bind data source parameter"  */
+  YYSYMBOL_T_ASSIGN = 36,                  /* "assignment"  */
+  YYSYMBOL_T_NOT = 37,                     /* "not operator"  */
+  YYSYMBOL_T_AND = 38,                     /* "and operator"  */
+  YYSYMBOL_T_OR = 39,                      /* "or operator"  */
+  YYSYMBOL_T_REGEX_MATCH = 40,             /* "~= operator"  */
+  YYSYMBOL_T_REGEX_NON_MATCH = 41,         /* "~! operator"  */
+  YYSYMBOL_T_EQ = 42,                      /* "== operator"  */
+  YYSYMBOL_T_NE = 43,                      /* "!= operator"  */
+  YYSYMBOL_T_LT = 44,                      /* "< operator"  */
+  YYSYMBOL_T_GT = 45,                      /* "> operator"  */
+  YYSYMBOL_T_LE = 46,                      /* "<= operator"  */
+  YYSYMBOL_T_GE = 47,                      /* ">= operator"  */
+  YYSYMBOL_T_LIKE = 48,                    /* "like operator"  */
+  YYSYMBOL_T_PLUS = 49,                    /* "+ operator"  */
+  YYSYMBOL_T_MINUS = 50,                   /* "- operator"  */
+  YYSYMBOL_T_TIMES = 51,                   /* "* operator"  */
+  YYSYMBOL_T_DIV = 52,                     /* "/ operator"  */
+  YYSYMBOL_T_MOD = 53,                     /* "% operator"  */
+  YYSYMBOL_T_QUESTION = 54,                /* "?"  */
+  YYSYMBOL_T_COLON = 55,                   /* ":"  */
+  YYSYMBOL_T_SCOPE = 56,                   /* "::"  */
+  YYSYMBOL_T_RANGE = 57,                   /* ".."  */
+  YYSYMBOL_T_COMMA = 58,                   /* ","  */
+  YYSYMBOL_T_OPEN = 59,                    /* "("  */
+  YYSYMBOL_T_CLOSE = 60,                   /* ")"  */
+  YYSYMBOL_T_OBJECT_OPEN = 61,             /* "{"  */
+  YYSYMBOL_T_OBJECT_CLOSE = 62,            /* "}"  */
+  YYSYMBOL_T_ARRAY_OPEN = 63,              /* "["  */
+  YYSYMBOL_T_ARRAY_CLOSE = 64,             /* "]"  */
+  YYSYMBOL_T_OUTBOUND = 65,                /* "outbound modifier"  */
+  YYSYMBOL_T_INBOUND = 66,                 /* "inbound modifier"  */
+  YYSYMBOL_T_ANY = 67,                     /* "any modifier"  */
+  YYSYMBOL_T_ALL = 68,                     /* "all modifier"  */
+  YYSYMBOL_T_NONE = 69,                    /* "none modifier"  */
+  YYSYMBOL_UMINUS = 70,                    /* UMINUS  */
+  YYSYMBOL_UPLUS = 71,                     /* UPLUS  */
+  YYSYMBOL_UNEGATION = 72,                 /* UNEGATION  */
+  YYSYMBOL_FUNCCALL = 73,                  /* FUNCCALL  */
+  YYSYMBOL_REFERENCE = 74,                 /* REFERENCE  */
+  YYSYMBOL_INDEXED = 75,                   /* INDEXED  */
+  YYSYMBOL_EXPANSION = 76,                 /* EXPANSION  */
+  YYSYMBOL_77_ = 77,                       /* '.'  */
+  YYSYMBOL_YYACCEPT = 78,                  /* $accept  */
+  YYSYMBOL_optional_prune_variable = 79,   /* optional_prune_variable  */
+  YYSYMBOL_with_collection = 80,           /* with_collection  */
+  YYSYMBOL_with_collection_list = 81,      /* with_collection_list  */
+  YYSYMBOL_optional_with = 82,             /* optional_with  */
+  YYSYMBOL_83_1 = 83,                      /* $@1  */
+  YYSYMBOL_queryStart = 84,                /* queryStart  */
+  YYSYMBOL_query = 85,                     /* query  */
+  YYSYMBOL_final_statement = 86,           /* final_statement  */
+  YYSYMBOL_optional_statement_block_statements = 87, /* optional_statement_block_statements  */
+  YYSYMBOL_statement_block_statement = 88, /* statement_block_statement  */
+  YYSYMBOL_more_output_variables = 89,     /* more_output_variables  */
+  YYSYMBOL_for_output_variables = 90,      /* for_output_variables  */
+  YYSYMBOL_prune_and_options = 91,         /* prune_and_options  */
+  YYSYMBOL_traversal_graph_info = 92,      /* traversal_graph_info  */
+  YYSYMBOL_shortest_path_graph_info = 93,  /* shortest_path_graph_info  */
   YYSYMBOL_k_shortest_paths_graph_info = 94, /* k_shortest_paths_graph_info  */
-  YYSYMBOL_k_paths_graph_info = 95,          /* k_paths_graph_info  */
-  YYSYMBOL_for_statement = 96,               /* for_statement  */
-  YYSYMBOL_97_2 = 97,                        /* $@2  */
-  YYSYMBOL_98_3 = 98,                        /* $@3  */
-  YYSYMBOL_filter_statement = 99,            /* filter_statement  */
-  YYSYMBOL_let_statement = 100,              /* let_statement  */
-  YYSYMBOL_let_list = 101,                   /* let_list  */
-  YYSYMBOL_let_element = 102,                /* let_element  */
-  YYSYMBOL_count_into = 103,                 /* count_into  */
-  YYSYMBOL_collect_variable_list = 104,      /* collect_variable_list  */
-  YYSYMBOL_105_4 = 105,                      /* $@4  */
-  YYSYMBOL_collect_statement = 106,          /* collect_statement  */
-  YYSYMBOL_collect_list = 107,               /* collect_list  */
-  YYSYMBOL_collect_element = 108,            /* collect_element  */
-  YYSYMBOL_collect_optional_into = 109,      /* collect_optional_into  */
-  YYSYMBOL_variable_list = 110,              /* variable_list  */
-  YYSYMBOL_keep = 111,                       /* keep  */
-  YYSYMBOL_112_5 = 112,                      /* $@5  */
-  YYSYMBOL_aggregate = 113,                  /* aggregate  */
-  YYSYMBOL_114_6 = 114,                      /* $@6  */
-  YYSYMBOL_aggregate_list = 115,             /* aggregate_list  */
-  YYSYMBOL_aggregate_element = 116,          /* aggregate_element  */
-  YYSYMBOL_aggregate_function_call = 117,    /* aggregate_function_call  */
-  YYSYMBOL_118_7 = 118,                      /* $@7  */
-  YYSYMBOL_sort_statement = 119,             /* sort_statement  */
-  YYSYMBOL_120_8 = 120,                      /* $@8  */
-  YYSYMBOL_sort_list = 121,                  /* sort_list  */
-  YYSYMBOL_sort_element = 122,               /* sort_element  */
-  YYSYMBOL_sort_direction = 123,             /* sort_direction  */
-  YYSYMBOL_limit_statement = 124,            /* limit_statement  */
-  YYSYMBOL_window_statement = 125,           /* window_statement  */
-  YYSYMBOL_return_statement = 126,           /* return_statement  */
-  YYSYMBOL_in_or_into_collection = 127,      /* in_or_into_collection  */
-  YYSYMBOL_remove_statement = 128,           /* remove_statement  */
-  YYSYMBOL_insert_statement = 129,           /* insert_statement  */
-  YYSYMBOL_update_parameters = 130,          /* update_parameters  */
-  YYSYMBOL_update_statement = 131,           /* update_statement  */
-  YYSYMBOL_replace_parameters = 132,         /* replace_parameters  */
-  YYSYMBOL_replace_statement = 133,          /* replace_statement  */
-  YYSYMBOL_update_or_replace = 134,          /* update_or_replace  */
-  YYSYMBOL_upsert_statement = 135,           /* upsert_statement  */
-  YYSYMBOL_136_9 = 136,                      /* $@9  */
-  YYSYMBOL_137_10 = 137,                     /* $@10  */
-  YYSYMBOL_quantifier = 138,                 /* quantifier  */
-  YYSYMBOL_distinct_expression = 139,        /* distinct_expression  */
-  YYSYMBOL_140_11 = 140,                     /* $@11  */
-  YYSYMBOL_expression = 141,                 /* expression  */
-  YYSYMBOL_function_name = 142,              /* function_name  */
-  YYSYMBOL_function_call = 143,              /* function_call  */
-  YYSYMBOL_144_12 = 144,                     /* $@12  */
-  YYSYMBOL_145_13 = 145,                     /* $@13  */
-  YYSYMBOL_operator_unary = 146,             /* operator_unary  */
-  YYSYMBOL_operator_binary = 147,            /* operator_binary  */
-  YYSYMBOL_operator_ternary = 148,           /* operator_ternary  */
-  YYSYMBOL_optional_function_call_arguments =
-      149,                            /* optional_function_call_arguments  */
-  YYSYMBOL_expression_or_query = 150, /* expression_or_query  */
-  YYSYMBOL_151_14 = 151,              /* $@14  */
-  YYSYMBOL_function_arguments_list = 152,    /* function_arguments_list  */
-  YYSYMBOL_compound_value = 153,             /* compound_value  */
-  YYSYMBOL_array = 154,                      /* array  */
-  YYSYMBOL_155_15 = 155,                     /* $@15  */
-  YYSYMBOL_optional_array_elements = 156,    /* optional_array_elements  */
-  YYSYMBOL_array_elements_list = 157,        /* array_elements_list  */
-  YYSYMBOL_array_element = 158,              /* array_element  */
-  YYSYMBOL_for_options = 159,                /* for_options  */
-  YYSYMBOL_options = 160,                    /* options  */
-  YYSYMBOL_object = 161,                     /* object  */
-  YYSYMBOL_162_16 = 162,                     /* $@16  */
-  YYSYMBOL_optional_object_elements = 163,   /* optional_object_elements  */
-  YYSYMBOL_object_elements_list = 164,       /* object_elements_list  */
-  YYSYMBOL_object_element = 165,             /* object_element  */
-  YYSYMBOL_array_filter_operator = 166,      /* array_filter_operator  */
-  YYSYMBOL_optional_array_filter = 167,      /* optional_array_filter  */
-  YYSYMBOL_optional_array_limit = 168,       /* optional_array_limit  */
-  YYSYMBOL_optional_array_return = 169,      /* optional_array_return  */
-  YYSYMBOL_graph_collection = 170,           /* graph_collection  */
-  YYSYMBOL_graph_collection_list = 171,      /* graph_collection_list  */
-  YYSYMBOL_graph_subject = 172,              /* graph_subject  */
-  YYSYMBOL_173_17 = 173,                     /* $@17  */
-  YYSYMBOL_graph_direction = 174,            /* graph_direction  */
-  YYSYMBOL_graph_direction_steps = 175,      /* graph_direction_steps  */
-  YYSYMBOL_reference = 176,                  /* reference  */
-  YYSYMBOL_177_18 = 177,                     /* $@18  */
-  YYSYMBOL_178_19 = 178,                     /* $@19  */
-  YYSYMBOL_simple_value = 179,               /* simple_value  */
-  YYSYMBOL_numeric_value = 180,              /* numeric_value  */
-  YYSYMBOL_value_literal = 181,              /* value_literal  */
+  YYSYMBOL_k_paths_graph_info = 95,        /* k_paths_graph_info  */
+  YYSYMBOL_for_statement = 96,             /* for_statement  */
+  YYSYMBOL_97_2 = 97,                      /* $@2  */
+  YYSYMBOL_98_3 = 98,                      /* $@3  */
+  YYSYMBOL_filter_statement = 99,          /* filter_statement  */
+  YYSYMBOL_let_statement = 100,            /* let_statement  */
+  YYSYMBOL_let_list = 101,                 /* let_list  */
+  YYSYMBOL_let_element = 102,              /* let_element  */
+  YYSYMBOL_count_into = 103,               /* count_into  */
+  YYSYMBOL_collect_variable_list = 104,    /* collect_variable_list  */
+  YYSYMBOL_105_4 = 105,                    /* $@4  */
+  YYSYMBOL_collect_statement = 106,        /* collect_statement  */
+  YYSYMBOL_collect_list = 107,             /* collect_list  */
+  YYSYMBOL_collect_element = 108,          /* collect_element  */
+  YYSYMBOL_collect_optional_into = 109,    /* collect_optional_into  */
+  YYSYMBOL_variable_list = 110,            /* variable_list  */
+  YYSYMBOL_keep = 111,                     /* keep  */
+  YYSYMBOL_112_5 = 112,                    /* $@5  */
+  YYSYMBOL_aggregate = 113,                /* aggregate  */
+  YYSYMBOL_114_6 = 114,                    /* $@6  */
+  YYSYMBOL_aggregate_list = 115,           /* aggregate_list  */
+  YYSYMBOL_aggregate_element = 116,        /* aggregate_element  */
+  YYSYMBOL_aggregate_function_call = 117,  /* aggregate_function_call  */
+  YYSYMBOL_118_7 = 118,                    /* $@7  */
+  YYSYMBOL_sort_statement = 119,           /* sort_statement  */
+  YYSYMBOL_120_8 = 120,                    /* $@8  */
+  YYSYMBOL_sort_list = 121,                /* sort_list  */
+  YYSYMBOL_sort_element = 122,             /* sort_element  */
+  YYSYMBOL_sort_direction = 123,           /* sort_direction  */
+  YYSYMBOL_limit_statement = 124,          /* limit_statement  */
+  YYSYMBOL_window_statement = 125,         /* window_statement  */
+  YYSYMBOL_return_statement = 126,         /* return_statement  */
+  YYSYMBOL_in_or_into_collection = 127,    /* in_or_into_collection  */
+  YYSYMBOL_remove_statement = 128,         /* remove_statement  */
+  YYSYMBOL_insert_statement = 129,         /* insert_statement  */
+  YYSYMBOL_update_parameters = 130,        /* update_parameters  */
+  YYSYMBOL_update_statement = 131,         /* update_statement  */
+  YYSYMBOL_replace_parameters = 132,       /* replace_parameters  */
+  YYSYMBOL_replace_statement = 133,        /* replace_statement  */
+  YYSYMBOL_update_or_replace = 134,        /* update_or_replace  */
+  YYSYMBOL_upsert_statement = 135,         /* upsert_statement  */
+  YYSYMBOL_136_9 = 136,                    /* $@9  */
+  YYSYMBOL_137_10 = 137,                   /* $@10  */
+  YYSYMBOL_quantifier = 138,               /* quantifier  */
+  YYSYMBOL_distinct_expression = 139,      /* distinct_expression  */
+  YYSYMBOL_140_11 = 140,                   /* $@11  */
+  YYSYMBOL_expression = 141,               /* expression  */
+  YYSYMBOL_function_name = 142,            /* function_name  */
+  YYSYMBOL_function_call = 143,            /* function_call  */
+  YYSYMBOL_144_12 = 144,                   /* $@12  */
+  YYSYMBOL_145_13 = 145,                   /* $@13  */
+  YYSYMBOL_operator_unary = 146,           /* operator_unary  */
+  YYSYMBOL_operator_binary = 147,          /* operator_binary  */
+  YYSYMBOL_operator_ternary = 148,         /* operator_ternary  */
+  YYSYMBOL_optional_function_call_arguments = 149, /* optional_function_call_arguments  */
+  YYSYMBOL_expression_or_query = 150,      /* expression_or_query  */
+  YYSYMBOL_151_14 = 151,                   /* $@14  */
+  YYSYMBOL_function_arguments_list = 152,  /* function_arguments_list  */
+  YYSYMBOL_compound_value = 153,           /* compound_value  */
+  YYSYMBOL_array = 154,                    /* array  */
+  YYSYMBOL_155_15 = 155,                   /* $@15  */
+  YYSYMBOL_optional_array_elements = 156,  /* optional_array_elements  */
+  YYSYMBOL_array_elements_list = 157,      /* array_elements_list  */
+  YYSYMBOL_array_element = 158,            /* array_element  */
+  YYSYMBOL_for_options = 159,              /* for_options  */
+  YYSYMBOL_options = 160,                  /* options  */
+  YYSYMBOL_object = 161,                   /* object  */
+  YYSYMBOL_162_16 = 162,                   /* $@16  */
+  YYSYMBOL_optional_object_elements = 163, /* optional_object_elements  */
+  YYSYMBOL_object_elements_list = 164,     /* object_elements_list  */
+  YYSYMBOL_object_element = 165,           /* object_element  */
+  YYSYMBOL_array_filter_operator = 166,    /* array_filter_operator  */
+  YYSYMBOL_optional_array_filter = 167,    /* optional_array_filter  */
+  YYSYMBOL_optional_array_limit = 168,     /* optional_array_limit  */
+  YYSYMBOL_optional_array_return = 169,    /* optional_array_return  */
+  YYSYMBOL_graph_collection = 170,         /* graph_collection  */
+  YYSYMBOL_graph_collection_list = 171,    /* graph_collection_list  */
+  YYSYMBOL_graph_subject = 172,            /* graph_subject  */
+  YYSYMBOL_173_17 = 173,                   /* $@17  */
+  YYSYMBOL_graph_direction = 174,          /* graph_direction  */
+  YYSYMBOL_graph_direction_steps = 175,    /* graph_direction_steps  */
+  YYSYMBOL_reference = 176,                /* reference  */
+  YYSYMBOL_177_18 = 177,                   /* $@18  */
+  YYSYMBOL_178_19 = 178,                   /* $@19  */
+  YYSYMBOL_simple_value = 179,             /* simple_value  */
+  YYSYMBOL_numeric_value = 180,            /* numeric_value  */
+  YYSYMBOL_value_literal = 181,            /* value_literal  */
   YYSYMBOL_in_or_into_collection_name = 182, /* in_or_into_collection_name  */
-  YYSYMBOL_bind_parameter = 183,             /* bind_parameter  */
-  YYSYMBOL_bind_parameter_datasource_expected =
-      184,                            /* bind_parameter_datasource_expected  */
-  YYSYMBOL_object_element_name = 185, /* object_element_name  */
-  YYSYMBOL_variable_name = 186        /* variable_name  */
+  YYSYMBOL_bind_parameter = 183,           /* bind_parameter  */
+  YYSYMBOL_bind_parameter_datasource_expected = 184, /* bind_parameter_datasource_expected  */
+  YYSYMBOL_object_element_name = 185,      /* object_element_name  */
+  YYSYMBOL_variable_name = 186             /* variable_name  */
 };
 typedef enum yysymbol_kind_t yysymbol_kind_t;
 
+
 /* Second part of user prologue.  */
-#line 50 "Aql/grammar.y"
+#line 51 "Aql/grammar.y"
+
 
 using namespace arangodb::aql;
 
@@ -331,67 +334,67 @@ using namespace arangodb::aql;
 /// @brief forward for lexer function defined in Aql/tokens.ll
 int Aqllex(YYSTYPE*, YYLTYPE*, void*);
 
-/// @brief register parse error (this will also abort the currently running
-/// query)
-void Aqlerror(YYLTYPE* locp, arangodb::aql::Parser* parser,
+/// @brief register parse error (this will also abort the currently running query)
+void Aqlerror(YYLTYPE* locp,
+              arangodb::aql::Parser* parser,
               char const* message) {
-  parser->registerParseError(TRI_ERROR_QUERY_PARSE, message, locp->first_line,
-                             locp->first_column);
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, message, locp->first_line, locp->first_column);
 }
 
 namespace {
 
-AstNode* buildShortestPathInfo(Parser* parser, char const* seperator,
-                               AstNode* direction, AstNode* startNode,
-                               AstNode* endNode, AstNode* graph,
-                               AstNode* options, YYLTYPE const& yyloc) {
+AstNode* buildShortestPathInfo(Parser* parser,
+                               char const* seperator,
+                               AstNode* direction,
+                               AstNode* startNode,
+                               AstNode* endNode,
+                               AstNode* graph,
+                               AstNode* options,
+                               YYLTYPE const& yyloc) {
   if (!TRI_CaseEqualString(seperator, "TO")) {
-    parser->registerParseError(TRI_ERROR_QUERY_PARSE,
-                               "unexpected qualifier '%s', expecting 'TO'",
-                               seperator, yyloc.first_line, yyloc.first_column);
+    parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'TO'", seperator, yyloc.first_line, yyloc.first_column);
   }
   auto infoNode = parser->ast()->createNodeArray();
   infoNode->addMember(direction);
   infoNode->addMember(startNode);
   infoNode->addMember(endNode);
   infoNode->addMember(graph);
-
+  
   auto opts = parser->ast()->createNodeOptions(options);
   TRI_ASSERT(opts != nullptr);
   infoNode->addMember(opts);
   return infoNode;
 }
 
-void checkOutVariables(Parser* parser, AstNode const* variableNamesNode,
+void checkOutVariables(Parser* parser,
+                       AstNode const* variableNamesNode,
                        size_t minVariables, size_t maxVariables,
-                       char const* errorMessage, YYLTYPE const& yyloc) {
+                       char const* errorMessage,
+                       YYLTYPE const& yyloc) {
   TRI_ASSERT(variableNamesNode != nullptr);
   TRI_ASSERT(variableNamesNode->type == NODE_TYPE_ARRAY);
   if (variableNamesNode->numMembers() < minVariables ||
       variableNamesNode->numMembers() > maxVariables) {
-    parser->registerParseError(TRI_ERROR_QUERY_PARSE, errorMessage,
-                               yyloc.first_line, yyloc.first_column);
+    parser->registerParseError(TRI_ERROR_QUERY_PARSE, errorMessage, yyloc.first_line, yyloc.first_column);
   }
 }
 
-void validateOptions(Parser* parser, AstNode const* node, int line,
-                     int column) {
+void validateOptions(Parser* parser, AstNode const* node,
+                     int line, int column) {
   TRI_ASSERT(node != nullptr);
   if (!node->isObject()) {
-    parser->registerParseError(TRI_ERROR_QUERY_PARSE,
-                               "'OPTIONS' have to be an object", line, column);
+    parser->registerParseError(TRI_ERROR_QUERY_PARSE, "'OPTIONS' have to be an object", line, column);
   }
   if (!node->isConstant()) {
-    parser->registerParseError(
-        TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS,
-        "'OPTIONS' have to be known at query compile time", line, column);
+    parser->registerParseError(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS, "'OPTIONS' have to be known at query compile time", line, column);
   }
 }
 
 /// @brief check if any of the variables used in the INTO expression were
 /// introduced by the COLLECT itself, in which case it would fail
-void checkIntoVariables(Parser* parser, AstNode const* expression, int line,
-                        int column, VarSet const& variablesIntroduced) {
+void checkIntoVariables(Parser* parser, AstNode const* expression,
+                        int line, int column,
+                        VarSet const& variablesIntroduced) {
   if (expression == nullptr) {
     return;
   }
@@ -401,10 +404,8 @@ void checkIntoVariables(Parser* parser, AstNode const* expression, int line,
 
   for (auto const& it : varsInAssignment) {
     if (variablesIntroduced.find(it) != variablesIntroduced.end()) {
-      std::string msg("use of COLLECT variable '" + it->name +
-                      "' inside same COLLECT's INTO expression");
-      parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
-                                 msg.c_str(), it->name.c_str(), line, column);
+      std::string msg("use of COLLECT variable '" + it->name + "' inside same COLLECT's INTO expression");
+      parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, msg.c_str(), it->name.c_str(), line, column);
       return;
     }
   }
@@ -412,7 +413,8 @@ void checkIntoVariables(Parser* parser, AstNode const* expression, int line,
 
 /// @brief register variables in the scope
 void registerAssignVariables(Parser* parser, arangodb::aql::Scopes* scopes,
-                             int line, int column, VarSet& variablesIntroduced,
+                             int line, int column,
+                             VarSet& variablesIntroduced,
                              AstNode const* vars) {
   size_t const n = vars->numMembers();
 
@@ -430,18 +432,18 @@ void registerAssignVariables(Parser* parser, arangodb::aql::Scopes* scopes,
 }
 
 /// @brief validate the aggregate variables expressions
-bool validateAggregates(Parser* parser, AstNode const* aggregates, int line,
-                        int column) {
+bool validateAggregates(Parser* parser, AstNode const* aggregates,
+                        int line, int column) {
   VarSet variablesIntroduced{};
   VarSet varsInAssignment{};
-
+  
   size_t const n = aggregates->numMembers();
   for (size_t i = 0; i < n; ++i) {
     auto member = aggregates->getMemberUnchecked(i);
 
     if (member != nullptr) {
       TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
-
+      
       // keep track of the variable for our assignment
       auto v = static_cast<Variable*>(member->getMember(0)->getData());
       variablesIntroduced.emplace(v);
@@ -450,32 +452,27 @@ bool validateAggregates(Parser* parser, AstNode const* aggregates, int line,
       if (func->type != NODE_TYPE_FCALL) {
         // aggregate expression must be a function call
         char const* error = "aggregate expression must be a function call";
-        parser->registerParseError(TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION,
-                                   error, line, column);
+        parser->registerParseError(TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION, error, line, column);
         return false;
-      } else {
+      }
+      else {
         auto f = static_cast<arangodb::aql::Function*>(func->getData());
         if (!Aggregator::isValid(f->name)) {
           // aggregate expression must be a call to MIN|MAX|LENGTH...
           char const* error = "unknown aggregate function used";
-          parser->registerParseError(
-              TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION, error, line,
-              column);
+          parser->registerParseError(TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION, error, line, column);
           return false;
         }
       }
-
-      // check if any of the assignment refers to a variable introduced by this
-      // very same COLLECT, e.g. COLLECT aggregate x = .., y = x
+      
+      // check if any of the assignment refers to a variable introduced by this very
+      // same COLLECT, e.g. COLLECT aggregate x = .., y = x
       varsInAssignment.clear();
       Ast::getReferencedVariables(member->getMember(1), varsInAssignment);
       for (auto const& it : varsInAssignment) {
         if (variablesIntroduced.find(it) != variablesIntroduced.end()) {
-          std::string msg("use of COLLECT variable '" + it->name +
-                          "' inside same COLLECT");
-          parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
-                                     msg.c_str(), it->name.c_str(), line,
-                                     column);
+          std::string msg("use of COLLECT variable '" + it->name + "' inside same COLLECT");
+          parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, msg.c_str(), it->name.c_str(), line, column);
           return false;
         }
       }
@@ -485,21 +482,19 @@ bool validateAggregates(Parser* parser, AstNode const* aggregates, int line,
   return true;
 }
 
+
 /// @brief validate the WINDOW specification
-bool validateWindowSpec(Parser* parser, AstNode const* spec, int line,
-                        int column) {
+bool validateWindowSpec(Parser* parser, AstNode const* spec,
+                        int line, int column) {
   bool preceding = false;
   bool following = false;
-
+  
   size_t const n = spec->numMembers();
   if (n == 0) {
-    parser->registerParseError(
-        TRI_ERROR_QUERY_PARSE,
-        "At least one WINDOW bound must be specified ('preceding'/'following')",
-        line, column);
+    parser->registerParseError(TRI_ERROR_QUERY_PARSE, "At least one WINDOW bound must be specified ('preceding'/'following')", line, column);
     return false;
   }
-
+  
   for (size_t i = 0; i < n; ++i) {
     auto member = spec->getMemberUnchecked(i);
 
@@ -511,22 +506,18 @@ bool validateWindowSpec(Parser* parser, AstNode const* spec, int line,
         attr = &preceding;
       } else if (name == "following") {
         attr = &following;
-      } else {
-        char const* error =
-            "Invalid WINDOW attribute '%s'; only \"preceding\" and "
-            "\"following\" are supported";
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, error, name.c_str(),
-                                   line, column);
+      } else  {
+        char const* error = "Invalid WINDOW attribute '%s'; only \"preceding\" and \"following\" are supported";
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, error, name.c_str(), line, column);
         return false;
       }
-
+      
       if (*attr) {
         char const* error = "WINDOW attribute '%s' is specified multiple times";
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, error, name.c_str(),
-                                   line, column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, error, name.c_str(), line, column);
         return false;
       }
-
+      
       // mark this attribute as "seen"
       *attr = true;
     }
@@ -541,6 +532,7 @@ bool startCollectScope(arangodb::aql::Scopes* scopes) {
       scopes->type() == arangodb::aql::AQL_SCOPE_SUBQUERY) {
     return false;
   }
+
 
   // end the active scopes
   scopes->endNested();
@@ -557,8 +549,7 @@ AstNode const* getIntoVariable(Parser* parser, AstNode const* node) {
 
   if (node->type == NODE_TYPE_VALUE) {
     // node is a string containing the variable name
-    return parser->ast()->createNodeVariable(node->getStringValue(),
-                                             node->getStringLength(), true);
+    return parser->ast()->createNodeVariable(node->getStringValue(), node->getStringLength(), true);
   }
 
   // node is an array with the variable name as the first member
@@ -567,8 +558,7 @@ AstNode const* getIntoVariable(Parser* parser, AstNode const* node) {
 
   auto v = node->getMember(0);
   TRI_ASSERT(v->type == NODE_TYPE_VALUE);
-  return parser->ast()->createNodeVariable(v->getStringValue(),
-                                           v->getStringLength(), true);
+  return parser->ast()->createNodeVariable(v->getStringValue(), v->getStringLength(), true);
 }
 
 /// @brief get the INTO variable = expression stored in a node (may not exist)
@@ -589,20 +579,20 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
   for (size_t i = 0; i < names->numMembers(); ++i) {
     AstNode* variableNameNode = names->getMemberUnchecked(i);
     TRI_ASSERT(variableNameNode->isStringValue());
-    AstNode* variableNode = parser->ast()->createNodeVariable(
-        variableNameNode->getStringValue(), variableNameNode->getStringLength(),
-        true);
+    AstNode* variableNode = parser->ast()->createNodeVariable(variableNameNode->getStringValue(), variableNameNode->getStringLength(), true);
     wrapperNode->addMember(variableNode);
   }
   return wrapperNode;
 }
 
-}  // namespace
+} // namespace
 
-#line 591 "Aql/grammar.cpp"
+
+#line 592 "Aql/grammar.cpp"
+
 
 #ifdef short
-#undef short
+# undef short
 #endif
 
 /* On compilers that do not define __PTRDIFF_MAX__ etc., make sure
@@ -610,11 +600,11 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
    so that the code can choose integer types of a good width.  */
 
 #ifndef __PTRDIFF_MAX__
-#include <limits.h> /* INFRINGES ON USER NAME SPACE */
-#if defined __STDC_VERSION__ && 199901 <= __STDC_VERSION__
-#include <stdint.h> /* INFRINGES ON USER NAME SPACE */
-#define YY_STDINT_H
-#endif
+# include <limits.h> /* INFRINGES ON USER NAME SPACE */
+# if defined __STDC_VERSION__ && 199901 <= __STDC_VERSION__
+#  include <stdint.h> /* INFRINGES ON USER NAME SPACE */
+#  define YY_STDINT_H
+# endif
 #endif
 
 /* Narrow types that promote to a signed type and that can represent a
@@ -644,16 +634,16 @@ typedef short yytype_int16;
    (aka HP-UX 11i v2) only through the end of 2022; see Table 2 of
    <https://h20195.www2.hpe.com/V2/getpdf.aspx/4AA4-7673ENW.pdf>.  */
 #ifdef __hpux
-#undef UINT_LEAST8_MAX
-#undef UINT_LEAST16_MAX
-#define UINT_LEAST8_MAX 255
-#define UINT_LEAST16_MAX 65535
+# undef UINT_LEAST8_MAX
+# undef UINT_LEAST16_MAX
+# define UINT_LEAST8_MAX 255
+# define UINT_LEAST16_MAX 65535
 #endif
 
 #if defined __UINT_LEAST8_MAX__ && __UINT_LEAST8_MAX__ <= __INT_MAX__
 typedef __UINT_LEAST8_TYPE__ yytype_uint8;
-#elif (!defined __UINT_LEAST8_MAX__ && defined YY_STDINT_H && \
-       UINT_LEAST8_MAX <= INT_MAX)
+#elif (!defined __UINT_LEAST8_MAX__ && defined YY_STDINT_H \
+       && UINT_LEAST8_MAX <= INT_MAX)
 typedef uint_least8_t yytype_uint8;
 #elif !defined __UINT_LEAST8_MAX__ && UCHAR_MAX <= INT_MAX
 typedef unsigned char yytype_uint8;
@@ -663,8 +653,8 @@ typedef short yytype_uint8;
 
 #if defined __UINT_LEAST16_MAX__ && __UINT_LEAST16_MAX__ <= __INT_MAX__
 typedef __UINT_LEAST16_TYPE__ yytype_uint16;
-#elif (!defined __UINT_LEAST16_MAX__ && defined YY_STDINT_H && \
-       UINT_LEAST16_MAX <= INT_MAX)
+#elif (!defined __UINT_LEAST16_MAX__ && defined YY_STDINT_H \
+       && UINT_LEAST16_MAX <= INT_MAX)
 typedef uint_least16_t yytype_uint16;
 #elif !defined __UINT_LEAST16_MAX__ && USHRT_MAX <= INT_MAX
 typedef unsigned short yytype_uint16;
@@ -673,40 +663,42 @@ typedef int yytype_uint16;
 #endif
 
 #ifndef YYPTRDIFF_T
-#if defined __PTRDIFF_TYPE__ && defined __PTRDIFF_MAX__
-#define YYPTRDIFF_T __PTRDIFF_TYPE__
-#define YYPTRDIFF_MAXIMUM __PTRDIFF_MAX__
-#elif defined PTRDIFF_MAX
-#ifndef ptrdiff_t
-#include <stddef.h> /* INFRINGES ON USER NAME SPACE */
-#endif
-#define YYPTRDIFF_T ptrdiff_t
-#define YYPTRDIFF_MAXIMUM PTRDIFF_MAX
-#else
-#define YYPTRDIFF_T long
-#define YYPTRDIFF_MAXIMUM LONG_MAX
-#endif
+# if defined __PTRDIFF_TYPE__ && defined __PTRDIFF_MAX__
+#  define YYPTRDIFF_T __PTRDIFF_TYPE__
+#  define YYPTRDIFF_MAXIMUM __PTRDIFF_MAX__
+# elif defined PTRDIFF_MAX
+#  ifndef ptrdiff_t
+#   include <stddef.h> /* INFRINGES ON USER NAME SPACE */
+#  endif
+#  define YYPTRDIFF_T ptrdiff_t
+#  define YYPTRDIFF_MAXIMUM PTRDIFF_MAX
+# else
+#  define YYPTRDIFF_T long
+#  define YYPTRDIFF_MAXIMUM LONG_MAX
+# endif
 #endif
 
 #ifndef YYSIZE_T
-#ifdef __SIZE_TYPE__
-#define YYSIZE_T __SIZE_TYPE__
-#elif defined size_t
-#define YYSIZE_T size_t
-#elif defined __STDC_VERSION__ && 199901 <= __STDC_VERSION__
-#include <stddef.h> /* INFRINGES ON USER NAME SPACE */
-#define YYSIZE_T size_t
-#else
-#define YYSIZE_T unsigned
-#endif
+# ifdef __SIZE_TYPE__
+#  define YYSIZE_T __SIZE_TYPE__
+# elif defined size_t
+#  define YYSIZE_T size_t
+# elif defined __STDC_VERSION__ && 199901 <= __STDC_VERSION__
+#  include <stddef.h> /* INFRINGES ON USER NAME SPACE */
+#  define YYSIZE_T size_t
+# else
+#  define YYSIZE_T unsigned
+# endif
 #endif
 
-#define YYSIZE_MAXIMUM                                                   \
-  YY_CAST(YYPTRDIFF_T,                                                   \
-          (YYPTRDIFF_MAXIMUM < YY_CAST(YYSIZE_T, -1) ? YYPTRDIFF_MAXIMUM \
-                                                     : YY_CAST(YYSIZE_T, -1)))
+#define YYSIZE_MAXIMUM                                  \
+  YY_CAST (YYPTRDIFF_T,                                 \
+           (YYPTRDIFF_MAXIMUM < YY_CAST (YYSIZE_T, -1)  \
+            ? YYPTRDIFF_MAXIMUM                         \
+            : YY_CAST (YYSIZE_T, -1)))
 
-#define YYSIZEOF(X) YY_CAST(YYPTRDIFF_T, sizeof(X))
+#define YYSIZEOF(X) YY_CAST (YYPTRDIFF_T, sizeof (X))
+
 
 /* Stored state numbers (used for stacks). */
 typedef yytype_int16 yy_state_t;
@@ -715,470 +707,374 @@ typedef yytype_int16 yy_state_t;
 typedef int yy_state_fast_t;
 
 #ifndef YY_
-#if defined YYENABLE_NLS && YYENABLE_NLS
-#if ENABLE_NLS
-#include <libintl.h> /* INFRINGES ON USER NAME SPACE */
-#define YY_(Msgid) dgettext("bison-runtime", Msgid)
-#endif
-#endif
-#ifndef YY_
-#define YY_(Msgid) Msgid
-#endif
+# if defined YYENABLE_NLS && YYENABLE_NLS
+#  if ENABLE_NLS
+#   include <libintl.h> /* INFRINGES ON USER NAME SPACE */
+#   define YY_(Msgid) dgettext ("bison-runtime", Msgid)
+#  endif
+# endif
+# ifndef YY_
+#  define YY_(Msgid) Msgid
+# endif
 #endif
 
+
 #ifndef YY_ATTRIBUTE_PURE
-#if defined __GNUC__ && 2 < __GNUC__ + (96 <= __GNUC_MINOR__)
-#define YY_ATTRIBUTE_PURE __attribute__((__pure__))
-#else
-#define YY_ATTRIBUTE_PURE
-#endif
+# if defined __GNUC__ && 2 < __GNUC__ + (96 <= __GNUC_MINOR__)
+#  define YY_ATTRIBUTE_PURE __attribute__ ((__pure__))
+# else
+#  define YY_ATTRIBUTE_PURE
+# endif
 #endif
 
 #ifndef YY_ATTRIBUTE_UNUSED
-#if defined __GNUC__ && 2 < __GNUC__ + (7 <= __GNUC_MINOR__)
-#define YY_ATTRIBUTE_UNUSED __attribute__((__unused__))
-#else
-#define YY_ATTRIBUTE_UNUSED
-#endif
+# if defined __GNUC__ && 2 < __GNUC__ + (7 <= __GNUC_MINOR__)
+#  define YY_ATTRIBUTE_UNUSED __attribute__ ((__unused__))
+# else
+#  define YY_ATTRIBUTE_UNUSED
+# endif
 #endif
 
 /* Suppress unused-variable warnings by "using" E.  */
-#if !defined lint || defined __GNUC__
-#define YY_USE(E) ((void)(E))
+#if ! defined lint || defined __GNUC__
+# define YY_USE(E) ((void) (E))
 #else
-#define YY_USE(E) /* empty */
+# define YY_USE(E) /* empty */
 #endif
 
-#if defined __GNUC__ && !defined __ICC && 407 <= __GNUC__ * 100 + __GNUC_MINOR__
+#if defined __GNUC__ && ! defined __ICC && 407 <= __GNUC__ * 100 + __GNUC_MINOR__
 /* Suppress an incorrect diagnostic about yylval being uninitialized.  */
-#define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN                 \
-  _Pragma("GCC diagnostic push")                            \
-      _Pragma("GCC diagnostic ignored \"-Wuninitialized\"") \
-          _Pragma("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
-#define YY_IGNORE_MAYBE_UNINITIALIZED_END _Pragma("GCC diagnostic pop")
+# define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN                            \
+    _Pragma ("GCC diagnostic push")                                     \
+    _Pragma ("GCC diagnostic ignored \"-Wuninitialized\"")              \
+    _Pragma ("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
+# define YY_IGNORE_MAYBE_UNINITIALIZED_END      \
+    _Pragma ("GCC diagnostic pop")
 #else
-#define YY_INITIAL_VALUE(Value) Value
+# define YY_INITIAL_VALUE(Value) Value
 #endif
 #ifndef YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
-#define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
-#define YY_IGNORE_MAYBE_UNINITIALIZED_END
+# define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
+# define YY_IGNORE_MAYBE_UNINITIALIZED_END
 #endif
 #ifndef YY_INITIAL_VALUE
-#define YY_INITIAL_VALUE(Value) /* Nothing. */
+# define YY_INITIAL_VALUE(Value) /* Nothing. */
 #endif
 
-#if defined __cplusplus && defined __GNUC__ && !defined __ICC && 6 <= __GNUC__
-#define YY_IGNORE_USELESS_CAST_BEGIN \
-  _Pragma("GCC diagnostic push")     \
-      _Pragma("GCC diagnostic ignored \"-Wuseless-cast\"")
-#define YY_IGNORE_USELESS_CAST_END _Pragma("GCC diagnostic pop")
+#if defined __cplusplus && defined __GNUC__ && ! defined __ICC && 6 <= __GNUC__
+# define YY_IGNORE_USELESS_CAST_BEGIN                          \
+    _Pragma ("GCC diagnostic push")                            \
+    _Pragma ("GCC diagnostic ignored \"-Wuseless-cast\"")
+# define YY_IGNORE_USELESS_CAST_END            \
+    _Pragma ("GCC diagnostic pop")
 #endif
 #ifndef YY_IGNORE_USELESS_CAST_BEGIN
-#define YY_IGNORE_USELESS_CAST_BEGIN
-#define YY_IGNORE_USELESS_CAST_END
+# define YY_IGNORE_USELESS_CAST_BEGIN
+# define YY_IGNORE_USELESS_CAST_END
 #endif
 
-#define YY_ASSERT(E) ((void)(0 && (E)))
+
+#define YY_ASSERT(E) ((void) (0 && (E)))
 
 #if 1
 
 /* The parser invokes alloca or malloc; define the necessary symbols.  */
 
-#ifdef YYSTACK_USE_ALLOCA
-#if YYSTACK_USE_ALLOCA
-#ifdef __GNUC__
-#define YYSTACK_ALLOC __builtin_alloca
-#elif defined __BUILTIN_VA_ARG_INCR
-#include <alloca.h> /* INFRINGES ON USER NAME SPACE */
-#elif defined _AIX
-#define YYSTACK_ALLOC __alloca
-#elif defined _MSC_VER
-#include <malloc.h> /* INFRINGES ON USER NAME SPACE */
-#define alloca _alloca
-#else
-#define YYSTACK_ALLOC alloca
-#if !defined _ALLOCA_H && !defined EXIT_SUCCESS
-#include <stdlib.h> /* INFRINGES ON USER NAME SPACE */
-/* Use EXIT_SUCCESS as a witness for stdlib.h.  */
-#ifndef EXIT_SUCCESS
-#define EXIT_SUCCESS 0
-#endif
-#endif
-#endif
-#endif
-#endif
+# ifdef YYSTACK_USE_ALLOCA
+#  if YYSTACK_USE_ALLOCA
+#   ifdef __GNUC__
+#    define YYSTACK_ALLOC __builtin_alloca
+#   elif defined __BUILTIN_VA_ARG_INCR
+#    include <alloca.h> /* INFRINGES ON USER NAME SPACE */
+#   elif defined _AIX
+#    define YYSTACK_ALLOC __alloca
+#   elif defined _MSC_VER
+#    include <malloc.h> /* INFRINGES ON USER NAME SPACE */
+#    define alloca _alloca
+#   else
+#    define YYSTACK_ALLOC alloca
+#    if ! defined _ALLOCA_H && ! defined EXIT_SUCCESS
+#     include <stdlib.h> /* INFRINGES ON USER NAME SPACE */
+      /* Use EXIT_SUCCESS as a witness for stdlib.h.  */
+#     ifndef EXIT_SUCCESS
+#      define EXIT_SUCCESS 0
+#     endif
+#    endif
+#   endif
+#  endif
+# endif
 
-#ifdef YYSTACK_ALLOC
-/* Pacify GCC's 'empty if-body' warning.  */
-#define YYSTACK_FREE(Ptr) \
-  do { /* empty */        \
-    ;                     \
-  } while (0)
-#ifndef YYSTACK_ALLOC_MAXIMUM
-/* The OS might guarantee only one guard page at the bottom of the stack,
-   and a page size can be as small as 4096 bytes.  So we cannot safely
-   invoke alloca (N) if N exceeds 4096.  Use a slightly smaller number
-   to allow for a few compiler-allocated temporary stack slots.  */
-#define YYSTACK_ALLOC_MAXIMUM 4032 /* reasonable circa 2006 */
-#endif
-#else
-#define YYSTACK_ALLOC YYMALLOC
-#define YYSTACK_FREE YYFREE
-#ifndef YYSTACK_ALLOC_MAXIMUM
-#define YYSTACK_ALLOC_MAXIMUM YYSIZE_MAXIMUM
-#endif
-#if (defined __cplusplus && !defined EXIT_SUCCESS && \
-     !((defined YYMALLOC || defined malloc) &&       \
-       (defined YYFREE || defined free)))
-#include <stdlib.h> /* INFRINGES ON USER NAME SPACE */
-#ifndef EXIT_SUCCESS
-#define EXIT_SUCCESS 0
-#endif
-#endif
-#ifndef YYMALLOC
-#define YYMALLOC malloc
-#if !defined malloc && !defined EXIT_SUCCESS
-void* malloc(YYSIZE_T); /* INFRINGES ON USER NAME SPACE */
-#endif
-#endif
-#ifndef YYFREE
-#define YYFREE free
-#if !defined free && !defined EXIT_SUCCESS
-void free(void*);       /* INFRINGES ON USER NAME SPACE */
-#endif
-#endif
-#endif
+# ifdef YYSTACK_ALLOC
+   /* Pacify GCC's 'empty if-body' warning.  */
+#  define YYSTACK_FREE(Ptr) do { /* empty */; } while (0)
+#  ifndef YYSTACK_ALLOC_MAXIMUM
+    /* The OS might guarantee only one guard page at the bottom of the stack,
+       and a page size can be as small as 4096 bytes.  So we cannot safely
+       invoke alloca (N) if N exceeds 4096.  Use a slightly smaller number
+       to allow for a few compiler-allocated temporary stack slots.  */
+#   define YYSTACK_ALLOC_MAXIMUM 4032 /* reasonable circa 2006 */
+#  endif
+# else
+#  define YYSTACK_ALLOC YYMALLOC
+#  define YYSTACK_FREE YYFREE
+#  ifndef YYSTACK_ALLOC_MAXIMUM
+#   define YYSTACK_ALLOC_MAXIMUM YYSIZE_MAXIMUM
+#  endif
+#  if (defined __cplusplus && ! defined EXIT_SUCCESS \
+       && ! ((defined YYMALLOC || defined malloc) \
+             && (defined YYFREE || defined free)))
+#   include <stdlib.h> /* INFRINGES ON USER NAME SPACE */
+#   ifndef EXIT_SUCCESS
+#    define EXIT_SUCCESS 0
+#   endif
+#  endif
+#  ifndef YYMALLOC
+#   define YYMALLOC malloc
+#   if ! defined malloc && ! defined EXIT_SUCCESS
+void *malloc (YYSIZE_T); /* INFRINGES ON USER NAME SPACE */
+#   endif
+#  endif
+#  ifndef YYFREE
+#   define YYFREE free
+#   if ! defined free && ! defined EXIT_SUCCESS
+void free (void *); /* INFRINGES ON USER NAME SPACE */
+#   endif
+#  endif
+# endif
 #endif /* 1 */
 
-#if (!defined yyoverflow &&                                \
-     (!defined __cplusplus ||                              \
-      (defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL && \
-       defined YYSTYPE_IS_TRIVIAL && YYSTYPE_IS_TRIVIAL)))
+#if (! defined yyoverflow \
+     && (! defined __cplusplus \
+         || (defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL \
+             && defined YYSTYPE_IS_TRIVIAL && YYSTYPE_IS_TRIVIAL)))
 
 /* A type that is properly aligned for any stack member.  */
-union yyalloc {
+union yyalloc
+{
   yy_state_t yyss_alloc;
   YYSTYPE yyvs_alloc;
   YYLTYPE yyls_alloc;
 };
 
 /* The size of the maximum gap between one aligned stack and the next.  */
-#define YYSTACK_GAP_MAXIMUM (YYSIZEOF(union yyalloc) - 1)
+# define YYSTACK_GAP_MAXIMUM (YYSIZEOF (union yyalloc) - 1)
 
 /* The size of an array large to enough to hold all stacks, each with
    N elements.  */
-#define YYSTACK_BYTES(N)                                                  \
-  ((N) * (YYSIZEOF(yy_state_t) + YYSIZEOF(YYSTYPE) + YYSIZEOF(YYLTYPE)) + \
-   2 * YYSTACK_GAP_MAXIMUM)
+# define YYSTACK_BYTES(N) \
+     ((N) * (YYSIZEOF (yy_state_t) + YYSIZEOF (YYSTYPE) \
+             + YYSIZEOF (YYLTYPE)) \
+      + 2 * YYSTACK_GAP_MAXIMUM)
 
-#define YYCOPY_NEEDED 1
+# define YYCOPY_NEEDED 1
 
 /* Relocate STACK from its old location to the new one.  The
    local variables YYSIZE and YYSTACKSIZE give the old and new number of
    elements in the stack, and YYPTR gives the new location of the
    stack.  Advance YYPTR to a properly aligned location for the next
    stack.  */
-#define YYSTACK_RELOCATE(Stack_alloc, Stack)                           \
-  do {                                                                 \
-    YYPTRDIFF_T yynewbytes;                                            \
-    YYCOPY(&yyptr->Stack_alloc, Stack, yysize);                        \
-    Stack = &yyptr->Stack_alloc;                                       \
-    yynewbytes = yystacksize * YYSIZEOF(*Stack) + YYSTACK_GAP_MAXIMUM; \
-    yyptr += yynewbytes / YYSIZEOF(*yyptr);                            \
-  } while (0)
+# define YYSTACK_RELOCATE(Stack_alloc, Stack)                           \
+    do                                                                  \
+      {                                                                 \
+        YYPTRDIFF_T yynewbytes;                                         \
+        YYCOPY (&yyptr->Stack_alloc, Stack, yysize);                    \
+        Stack = &yyptr->Stack_alloc;                                    \
+        yynewbytes = yystacksize * YYSIZEOF (*Stack) + YYSTACK_GAP_MAXIMUM; \
+        yyptr += yynewbytes / YYSIZEOF (*yyptr);                        \
+      }                                                                 \
+    while (0)
 
 #endif
 
 #if defined YYCOPY_NEEDED && YYCOPY_NEEDED
 /* Copy COUNT objects from SRC to DST.  The source and destination do
    not overlap.  */
-#ifndef YYCOPY
-#if defined __GNUC__ && 1 < __GNUC__
-#define YYCOPY(Dst, Src, Count) \
-  __builtin_memcpy(Dst, Src, YY_CAST(YYSIZE_T, (Count)) * sizeof(*(Src)))
-#else
-#define YYCOPY(Dst, Src, Count)                                  \
-  do {                                                           \
-    YYPTRDIFF_T yyi;                                             \
-    for (yyi = 0; yyi < (Count); yyi++) (Dst)[yyi] = (Src)[yyi]; \
-  } while (0)
-#endif
-#endif
+# ifndef YYCOPY
+#  if defined __GNUC__ && 1 < __GNUC__
+#   define YYCOPY(Dst, Src, Count) \
+      __builtin_memcpy (Dst, Src, YY_CAST (YYSIZE_T, (Count)) * sizeof (*(Src)))
+#  else
+#   define YYCOPY(Dst, Src, Count)              \
+      do                                        \
+        {                                       \
+          YYPTRDIFF_T yyi;                      \
+          for (yyi = 0; yyi < (Count); yyi++)   \
+            (Dst)[yyi] = (Src)[yyi];            \
+        }                                       \
+      while (0)
+#  endif
+# endif
 #endif /* !YYCOPY_NEEDED */
 
 /* YYFINAL -- State number of the termination state.  */
-#define YYFINAL 7
+#define YYFINAL  7
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST 1657
+#define YYLAST   1657
 
 /* YYNTOKENS -- Number of terminals.  */
-#define YYNTOKENS 78
+#define YYNTOKENS  78
 /* YYNNTS -- Number of nonterminals.  */
-#define YYNNTS 109
+#define YYNNTS  109
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES 254
+#define YYNRULES  254
 /* YYNSTATES -- Number of states.  */
-#define YYNSTATES 429
+#define YYNSTATES  429
 
 /* YYMAXUTOK -- Last valid token kind.  */
-#define YYMAXUTOK 331
+#define YYMAXUTOK   331
+
 
 /* YYTRANSLATE(TOKEN-NUM) -- Symbol number corresponding to TOKEN-NUM
    as returned by yylex, with out-of-bounds checking.  */
-#define YYTRANSLATE(YYX)                            \
-  (0 <= (YYX) && (YYX) <= YYMAXUTOK                 \
-       ? YY_CAST(yysymbol_kind_t, yytranslate[YYX]) \
-       : YYSYMBOL_YYUNDEF)
+#define YYTRANSLATE(YYX)                                \
+  (0 <= (YYX) && (YYX) <= YYMAXUTOK                     \
+   ? YY_CAST (yysymbol_kind_t, yytranslate[YYX])        \
+   : YYSYMBOL_YYUNDEF)
 
 /* YYTRANSLATE[TOKEN-NUM] -- Symbol number corresponding to TOKEN-NUM
    as returned by yylex.  */
-static const yytype_int8 yytranslate[] = {
-    0,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
-    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
-    2,  2,  2,  2,  2,  2,  2,  2,  77, 2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
-    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
-    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
-    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
-    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
-    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
-    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
-    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
-    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
-    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
-    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,
-    2,  2,  2,  2,  2,  2,  2,  2,  2,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
-    11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
-    30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
-    49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67,
-    68, 69, 70, 71, 72, 73, 74, 75, 76};
+static const yytype_int8 yytranslate[] =
+{
+       0,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,    77,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     1,     2,     3,     4,
+       5,     6,     7,     8,     9,    10,    11,    12,    13,    14,
+      15,    16,    17,    18,    19,    20,    21,    22,    23,    24,
+      25,    26,    27,    28,    29,    30,    31,    32,    33,    34,
+      35,    36,    37,    38,    39,    40,    41,    42,    43,    44,
+      45,    46,    47,    48,    49,    50,    51,    52,    53,    54,
+      55,    56,    57,    58,    59,    60,    61,    62,    63,    64,
+      65,    66,    67,    68,    69,    70,    71,    72,    73,    74,
+      75,    76
+};
 
 #if YYDEBUG
-/* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
-static const yytype_int16 yyrline[] = {
-    0,    498,  498,  504,  514,  517,  523,  527,  531,  538,  540,  540,
-    552,  557,  562,  564,  567,  570,  573,  576,  582,  584,  589,  591,
-    593,  595,  597,  599,  601,  603,  605,  607,  609,  611,  616,  623,
-    630,  636,  643,  665,  686,  699,  705,  711,  717,  717,  768,  768,
-    802,  814,  826,  841,  849,  854,  856,  861,  868,  878,  878,  889,
-    899,  912,  936,  992,  1011, 1038, 1040, 1045, 1052, 1055, 1058, 1067,
-    1079, 1094, 1094, 1108, 1108, 1118, 1120, 1125, 1132, 1132, 1143, 1143,
-    1154, 1157, 1163, 1169, 1172, 1175, 1178, 1184, 1189, 1196, 1211, 1229,
-    1237, 1240, 1246, 1256, 1266, 1274, 1285, 1290, 1298, 1309, 1314, 1317,
-    1323, 1327, 1323, 1394, 1397, 1400, 1406, 1406, 1416, 1422, 1425, 1428,
-    1431, 1434, 1437, 1443, 1446, 1459, 1459, 1468, 1468, 1478, 1481, 1484,
-    1490, 1493, 1496, 1499, 1502, 1505, 1508, 1511, 1514, 1517, 1520, 1523,
-    1526, 1529, 1532, 1535, 1542, 1549, 1555, 1561, 1567, 1574, 1577, 1580,
-    1583, 1586, 1589, 1592, 1595, 1599, 1603, 1610, 1613, 1619, 1621, 1626,
-    1629, 1629, 1645, 1648, 1654, 1657, 1663, 1663, 1672, 1674, 1676, 1681,
-    1683, 1688, 1694, 1697, 1721, 1740, 1743, 1757, 1757, 1766, 1768, 1770,
-    1775, 1777, 1782, 1796, 1800, 1809, 1816, 1819, 1825, 1828, 1834, 1837,
-    1840, 1846, 1849, 1855, 1858, 1861, 1865, 1871, 1875, 1882, 1888, 1888,
-    1897, 1901, 1905, 1914, 1917, 1920, 1926, 1929, 1935, 1967, 1970, 1973,
-    1977, 1987, 1987, 2000, 2015, 2029, 2043, 2043, 2086, 2089, 2095, 2099,
-    2106, 2109, 2112, 2115, 2118, 2124, 2128, 2132, 2142, 2149, 2155, 2162,
-    2168, 2171, 2176};
+  /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
+static const yytype_int16 yyrline[] =
+{
+       0,   499,   499,   505,   515,   518,   524,   528,   532,   539,
+     541,   541,   553,   558,   563,   565,   568,   571,   574,   577,
+     583,   585,   590,   592,   594,   596,   598,   600,   602,   604,
+     606,   608,   610,   612,   617,   624,   631,   637,   644,   666,
+     687,   700,   706,   712,   718,   718,   769,   769,   803,   815,
+     827,   842,   850,   855,   857,   862,   869,   879,   879,   890,
+     900,   913,   937,   993,  1012,  1039,  1041,  1046,  1053,  1056,
+    1059,  1068,  1080,  1095,  1095,  1109,  1109,  1119,  1121,  1126,
+    1133,  1133,  1144,  1144,  1155,  1158,  1164,  1170,  1173,  1176,
+    1179,  1185,  1190,  1197,  1212,  1230,  1238,  1241,  1247,  1257,
+    1267,  1275,  1286,  1291,  1299,  1310,  1315,  1318,  1324,  1328,
+    1324,  1397,  1400,  1403,  1409,  1409,  1419,  1425,  1428,  1431,
+    1434,  1437,  1440,  1446,  1449,  1462,  1462,  1471,  1471,  1481,
+    1484,  1487,  1493,  1496,  1499,  1502,  1505,  1508,  1511,  1514,
+    1517,  1520,  1523,  1526,  1529,  1532,  1535,  1538,  1545,  1552,
+    1558,  1564,  1570,  1577,  1580,  1583,  1586,  1589,  1592,  1595,
+    1598,  1602,  1606,  1613,  1616,  1622,  1624,  1629,  1632,  1632,
+    1648,  1651,  1657,  1660,  1666,  1666,  1675,  1677,  1679,  1684,
+    1686,  1691,  1697,  1700,  1724,  1743,  1746,  1760,  1760,  1769,
+    1771,  1773,  1778,  1780,  1785,  1799,  1803,  1812,  1819,  1822,
+    1828,  1831,  1837,  1840,  1843,  1849,  1852,  1858,  1861,  1864,
+    1868,  1874,  1878,  1885,  1891,  1891,  1900,  1904,  1908,  1917,
+    1920,  1923,  1929,  1932,  1938,  1970,  1973,  1976,  1980,  1990,
+    1990,  2003,  2018,  2032,  2046,  2046,  2089,  2092,  2098,  2102,
+    2109,  2112,  2115,  2118,  2121,  2127,  2131,  2135,  2145,  2152,
+    2158,  2165,  2171,  2174,  2179
+};
 #endif
 
 /** Accessing symbol of state STATE.  */
-#define YY_ACCESSING_SYMBOL(State) YY_CAST(yysymbol_kind_t, yystos[State])
+#define YY_ACCESSING_SYMBOL(State) YY_CAST (yysymbol_kind_t, yystos[State])
 
 #if 1
 /* The user-facing name of the symbol whose (internal) number is
    YYSYMBOL.  No bounds checking.  */
-static const char* yysymbol_name(yysymbol_kind_t yysymbol) YY_ATTRIBUTE_UNUSED;
+static const char *yysymbol_name (yysymbol_kind_t yysymbol) YY_ATTRIBUTE_UNUSED;
 
 /* YYTNAME[SYMBOL-NUM] -- String name of the symbol SYMBOL-NUM.
    First, the terminals, then, starting at YYNTOKENS, nonterminals.  */
-static const char* const yytname[] = {"\"end of query string\"",
-                                      "error",
-                                      "\"invalid token\"",
-                                      "\"FOR declaration\"",
-                                      "\"LET declaration\"",
-                                      "\"FILTER declaration\"",
-                                      "\"RETURN declaration\"",
-                                      "\"COLLECT declaration\"",
-                                      "\"SORT declaration\"",
-                                      "\"LIMIT declaration\"",
-                                      "\"WINDOW declaration\"",
-                                      "\"ASC keyword\"",
-                                      "\"DESC keyword\"",
-                                      "\"IN keyword\"",
-                                      "\"WITH keyword\"",
-                                      "\"INTO keyword\"",
-                                      "\"AGGREGATE keyword\"",
-                                      "\"GRAPH keyword\"",
-                                      "\"SHORTEST_PATH keyword\"",
-                                      "\"K_SHORTEST_PATHS keyword\"",
-                                      "\"K_PATHS keyword\"",
-                                      "\"DISTINCT modifier\"",
-                                      "\"REMOVE command\"",
-                                      "\"INSERT command\"",
-                                      "\"UPDATE command\"",
-                                      "\"REPLACE command\"",
-                                      "\"UPSERT command\"",
-                                      "\"null\"",
-                                      "\"true\"",
-                                      "\"false\"",
-                                      "\"identifier\"",
-                                      "\"quoted string\"",
-                                      "\"integer number\"",
-                                      "\"number\"",
-                                      "\"bind parameter\"",
-                                      "\"bind data source parameter\"",
-                                      "\"assignment\"",
-                                      "\"not operator\"",
-                                      "\"and operator\"",
-                                      "\"or operator\"",
-                                      "\"~= operator\"",
-                                      "\"~! operator\"",
-                                      "\"== operator\"",
-                                      "\"!= operator\"",
-                                      "\"< operator\"",
-                                      "\"> operator\"",
-                                      "\"<= operator\"",
-                                      "\">= operator\"",
-                                      "\"like operator\"",
-                                      "\"+ operator\"",
-                                      "\"- operator\"",
-                                      "\"* operator\"",
-                                      "\"/ operator\"",
-                                      "\"% operator\"",
-                                      "\"?\"",
-                                      "\":\"",
-                                      "\"::\"",
-                                      "\"..\"",
-                                      "\",\"",
-                                      "\"(\"",
-                                      "\")\"",
-                                      "\"{\"",
-                                      "\"}\"",
-                                      "\"[\"",
-                                      "\"]\"",
-                                      "\"outbound modifier\"",
-                                      "\"inbound modifier\"",
-                                      "\"any modifier\"",
-                                      "\"all modifier\"",
-                                      "\"none modifier\"",
-                                      "UMINUS",
-                                      "UPLUS",
-                                      "UNEGATION",
-                                      "FUNCCALL",
-                                      "REFERENCE",
-                                      "INDEXED",
-                                      "EXPANSION",
-                                      "'.'",
-                                      "$accept",
-                                      "optional_prune_variable",
-                                      "with_collection",
-                                      "with_collection_list",
-                                      "optional_with",
-                                      "$@1",
-                                      "queryStart",
-                                      "query",
-                                      "final_statement",
-                                      "optional_statement_block_statements",
-                                      "statement_block_statement",
-                                      "more_output_variables",
-                                      "for_output_variables",
-                                      "prune_and_options",
-                                      "traversal_graph_info",
-                                      "shortest_path_graph_info",
-                                      "k_shortest_paths_graph_info",
-                                      "k_paths_graph_info",
-                                      "for_statement",
-                                      "$@2",
-                                      "$@3",
-                                      "filter_statement",
-                                      "let_statement",
-                                      "let_list",
-                                      "let_element",
-                                      "count_into",
-                                      "collect_variable_list",
-                                      "$@4",
-                                      "collect_statement",
-                                      "collect_list",
-                                      "collect_element",
-                                      "collect_optional_into",
-                                      "variable_list",
-                                      "keep",
-                                      "$@5",
-                                      "aggregate",
-                                      "$@6",
-                                      "aggregate_list",
-                                      "aggregate_element",
-                                      "aggregate_function_call",
-                                      "$@7",
-                                      "sort_statement",
-                                      "$@8",
-                                      "sort_list",
-                                      "sort_element",
-                                      "sort_direction",
-                                      "limit_statement",
-                                      "window_statement",
-                                      "return_statement",
-                                      "in_or_into_collection",
-                                      "remove_statement",
-                                      "insert_statement",
-                                      "update_parameters",
-                                      "update_statement",
-                                      "replace_parameters",
-                                      "replace_statement",
-                                      "update_or_replace",
-                                      "upsert_statement",
-                                      "$@9",
-                                      "$@10",
-                                      "quantifier",
-                                      "distinct_expression",
-                                      "$@11",
-                                      "expression",
-                                      "function_name",
-                                      "function_call",
-                                      "$@12",
-                                      "$@13",
-                                      "operator_unary",
-                                      "operator_binary",
-                                      "operator_ternary",
-                                      "optional_function_call_arguments",
-                                      "expression_or_query",
-                                      "$@14",
-                                      "function_arguments_list",
-                                      "compound_value",
-                                      "array",
-                                      "$@15",
-                                      "optional_array_elements",
-                                      "array_elements_list",
-                                      "array_element",
-                                      "for_options",
-                                      "options",
-                                      "object",
-                                      "$@16",
-                                      "optional_object_elements",
-                                      "object_elements_list",
-                                      "object_element",
-                                      "array_filter_operator",
-                                      "optional_array_filter",
-                                      "optional_array_limit",
-                                      "optional_array_return",
-                                      "graph_collection",
-                                      "graph_collection_list",
-                                      "graph_subject",
-                                      "$@17",
-                                      "graph_direction",
-                                      "graph_direction_steps",
-                                      "reference",
-                                      "$@18",
-                                      "$@19",
-                                      "simple_value",
-                                      "numeric_value",
-                                      "value_literal",
-                                      "in_or_into_collection_name",
-                                      "bind_parameter",
-                                      "bind_parameter_datasource_expected",
-                                      "object_element_name",
-                                      "variable_name",
-                                      YY_NULLPTR};
+static const char *const yytname[] =
+{
+  "\"end of query string\"", "error", "\"invalid token\"",
+  "\"FOR declaration\"", "\"LET declaration\"", "\"FILTER declaration\"",
+  "\"RETURN declaration\"", "\"COLLECT declaration\"",
+  "\"SORT declaration\"", "\"LIMIT declaration\"",
+  "\"WINDOW declaration\"", "\"ASC keyword\"", "\"DESC keyword\"",
+  "\"IN keyword\"", "\"WITH keyword\"", "\"INTO keyword\"",
+  "\"AGGREGATE keyword\"", "\"GRAPH keyword\"",
+  "\"SHORTEST_PATH keyword\"", "\"K_SHORTEST_PATHS keyword\"",
+  "\"K_PATHS keyword\"", "\"DISTINCT modifier\"", "\"REMOVE command\"",
+  "\"INSERT command\"", "\"UPDATE command\"", "\"REPLACE command\"",
+  "\"UPSERT command\"", "\"null\"", "\"true\"", "\"false\"",
+  "\"identifier\"", "\"quoted string\"", "\"integer number\"",
+  "\"number\"", "\"bind parameter\"", "\"bind data source parameter\"",
+  "\"assignment\"", "\"not operator\"", "\"and operator\"",
+  "\"or operator\"", "\"~= operator\"", "\"~! operator\"",
+  "\"== operator\"", "\"!= operator\"", "\"< operator\"", "\"> operator\"",
+  "\"<= operator\"", "\">= operator\"", "\"like operator\"",
+  "\"+ operator\"", "\"- operator\"", "\"* operator\"", "\"/ operator\"",
+  "\"% operator\"", "\"?\"", "\":\"", "\"::\"", "\"..\"", "\",\"", "\"(\"",
+  "\")\"", "\"{\"", "\"}\"", "\"[\"", "\"]\"", "\"outbound modifier\"",
+  "\"inbound modifier\"", "\"any modifier\"", "\"all modifier\"",
+  "\"none modifier\"", "UMINUS", "UPLUS", "UNEGATION", "FUNCCALL",
+  "REFERENCE", "INDEXED", "EXPANSION", "'.'", "$accept",
+  "optional_prune_variable", "with_collection", "with_collection_list",
+  "optional_with", "$@1", "queryStart", "query", "final_statement",
+  "optional_statement_block_statements", "statement_block_statement",
+  "more_output_variables", "for_output_variables", "prune_and_options",
+  "traversal_graph_info", "shortest_path_graph_info",
+  "k_shortest_paths_graph_info", "k_paths_graph_info", "for_statement",
+  "$@2", "$@3", "filter_statement", "let_statement", "let_list",
+  "let_element", "count_into", "collect_variable_list", "$@4",
+  "collect_statement", "collect_list", "collect_element",
+  "collect_optional_into", "variable_list", "keep", "$@5", "aggregate",
+  "$@6", "aggregate_list", "aggregate_element", "aggregate_function_call",
+  "$@7", "sort_statement", "$@8", "sort_list", "sort_element",
+  "sort_direction", "limit_statement", "window_statement",
+  "return_statement", "in_or_into_collection", "remove_statement",
+  "insert_statement", "update_parameters", "update_statement",
+  "replace_parameters", "replace_statement", "update_or_replace",
+  "upsert_statement", "$@9", "$@10", "quantifier", "distinct_expression",
+  "$@11", "expression", "function_name", "function_call", "$@12", "$@13",
+  "operator_unary", "operator_binary", "operator_ternary",
+  "optional_function_call_arguments", "expression_or_query", "$@14",
+  "function_arguments_list", "compound_value", "array", "$@15",
+  "optional_array_elements", "array_elements_list", "array_element",
+  "for_options", "options", "object", "$@16", "optional_object_elements",
+  "object_elements_list", "object_element", "array_filter_operator",
+  "optional_array_filter", "optional_array_limit", "optional_array_return",
+  "graph_collection", "graph_collection_list", "graph_subject", "$@17",
+  "graph_direction", "graph_direction_steps", "reference", "$@18", "$@19",
+  "simple_value", "numeric_value", "value_literal",
+  "in_or_into_collection_name", "bind_parameter",
+  "bind_parameter_datasource_expected", "object_element_name",
+  "variable_name", YY_NULLPTR
+};
 
-static const char* yysymbol_name(yysymbol_kind_t yysymbol) {
+static const char *
+yysymbol_name (yysymbol_kind_t yysymbol)
+{
   return yytname[yysymbol];
 }
 #endif
@@ -1186,468 +1082,642 @@ static const char* yysymbol_name(yysymbol_kind_t yysymbol) {
 #ifdef YYPRINT
 /* YYTOKNUM[NUM] -- (External) token number corresponding to the
    (internal) symbol number NUM (which must be that of a token).  */
-static const yytype_int16 yytoknum[] = {
-    0,   256, 257, 258, 259, 260, 261, 262, 263, 264, 265, 266, 267,
-    268, 269, 270, 271, 272, 273, 274, 275, 276, 277, 278, 279, 280,
-    281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293,
-    294, 295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306,
-    307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 319,
-    320, 321, 322, 323, 324, 325, 326, 327, 328, 329, 330, 331, 46};
+static const yytype_int16 yytoknum[] =
+{
+       0,   256,   257,   258,   259,   260,   261,   262,   263,   264,
+     265,   266,   267,   268,   269,   270,   271,   272,   273,   274,
+     275,   276,   277,   278,   279,   280,   281,   282,   283,   284,
+     285,   286,   287,   288,   289,   290,   291,   292,   293,   294,
+     295,   296,   297,   298,   299,   300,   301,   302,   303,   304,
+     305,   306,   307,   308,   309,   310,   311,   312,   313,   314,
+     315,   316,   317,   318,   319,   320,   321,   322,   323,   324,
+     325,   326,   327,   328,   329,   330,   331,    46
+};
 #endif
 
 #define YYPACT_NINF (-370)
 
-#define yypact_value_is_default(Yyn) ((Yyn) == YYPACT_NINF)
+#define yypact_value_is_default(Yyn) \
+  ((Yyn) == YYPACT_NINF)
 
 #define YYTABLE_NINF (-255)
 
-#define yytable_value_is_error(Yyn) 0
+#define yytable_value_is_error(Yyn) \
+  0
 
-/* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
-   STATE-NUM.  */
-static const yytype_int16 yypact[] = {
-    27,   -370, -370, 36,   141,  -370, 414,  -370, -370, -370, -370, -370,
-    4,    -370, 16,   16,   1520, 124,  170,  -370, 1520, 1520, 1520, 1520,
-    1520, 1520, -370, -370, -370, -370, -370, -370, 116,  -370, -370, -370,
-    -370, -370, 21,   26,   37,   64,   65,   141,  -370, -370, -1,   45,
-    -370, 9,    -370, 40,   -370, -370, -370, -26,  -370, -370, -370, -370,
-    -370, 1520, 12,   1520, 1520, 1520, -370, -370, 1188, 35,   -370, -370,
-    -370, -370, -370, -370, -370, 63,   -370, -370, -370, -370, -370, 1188,
-    42,   -370, 68,   16,   106,  1520, 682,  724,  112,  767,  767,  -370,
-    507,  -370, 552,  1520, 16,   68,   104,  106,  -370, 16,   1368, 16,
-    1520, -370, -370, -370, -370, 809,  -370, 22,   1520, 1520, 2,    1520,
-    1520, 1520, 1520, 1520, 1520, 1520, 1520, 1520, 1520, 1520, 1520, 1520,
-    1520, 1520, 1520, 1409, 1520, 99,   109,  131,  120,  119,  -370, 1446,
-    147,  1520, 164,  16,   132,  -370, 137,  -370, 161,  68,   149,  -370,
-    420,  1520, 132,  -370, 1557, 39,   68,   68,   1520, 68,   1520, 68,
-    1188, 169,  -370, 132,  68,   -370, 68,   -370, -370, -370, -370, -370,
-    -370, -370, -370, 594,  194,  1314, -370, 1188, 1483, -370, 165,  181,
-    -370, 191,  1520, 186,  173,  -370, 196,  1188, 185,  207,  -370, 177,
-    1520, 1520, 1520, 1520, 1271, 1230, 1337, 1337, 1337, 1337, 190,  190,
-    190,  190,  1337, 211,  211,  -370, -370, -370, 1520, 851,  237,  239,
-    254,  255,  1520, 1520, 1520, 1520, 1520, 1520, 1520, -370, 1483, -370,
-    894,  226,  -370, -370, 1188, 16,   220,  -370, 245,  -370, 16,   1520,
-    -370, 1520, -370, -370, -370, -370, -370, -370, 1188, 112,  250,  343,
-    386,  -370, -370, -370, -370, -370, -370, -370, 767,  -370, 767,  -370,
-    259,  1520, 16,   -370, -370, 268,  157,  269,  -370, 1520, 1520, 1520,
-    462,  1188, 224,  -370, -370, 242,  -370, 1520, 936,  -370, 22,   1520,
-    -370, 1520, 177,  1337, 1337, 1337, 1188, 1520, 1520, 1520, 1520, 177,
-    1337, 1337, 190,  190,  190,  190,  241,  -370, -370, 297,  -370, 16,
-    273,  -370, 1188, -370, -370, 68,   68,   1520, 1188, 246,  -370, 1594,
-    -370, 1520, -370, 978,  1020, 1062, 108,  -370, 247,  -370, 176,  -370,
-    -370, -370, 1520, 1188, 252,  -370, 1188, -370, 1188, 177,  177,  177,
-    -370, 1520, 303,  -370, -370, -370, 43,   -370, -370, 640,  16,   -5,
-    283,  1188, 278,  1104, 1520, 1520, 1520, -370, -370, -370, -370, -370,
-    -370, -370, 1520, 1188, 1520, 310,  -370, -370, -370, 1520, -370, 132,
-    1520, 1520, 462,  462,  462,  -6,   1188, 1146, 1520, 253,  1483, 767,
-    -370, 1188, 1188, 68,   68,   68,   -370, 260,  1520, 1188, -370, 262,
-    68,   -370, -370, -370, -6,   1188, -370, -370, -370};
+  /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
+     STATE-NUM.  */
+static const yytype_int16 yypact[] =
+{
+      27,  -370,  -370,    36,   141,  -370,   414,  -370,  -370,  -370,
+    -370,  -370,     4,  -370,    16,    16,  1520,   124,   170,  -370,
+    1520,  1520,  1520,  1520,  1520,  1520,  -370,  -370,  -370,  -370,
+    -370,  -370,   116,  -370,  -370,  -370,  -370,  -370,    21,    26,
+      37,    64,    65,   141,  -370,  -370,    -1,    45,  -370,     9,
+    -370,    40,  -370,  -370,  -370,   -26,  -370,  -370,  -370,  -370,
+    -370,  1520,    12,  1520,  1520,  1520,  -370,  -370,  1188,    35,
+    -370,  -370,  -370,  -370,  -370,  -370,  -370,    63,  -370,  -370,
+    -370,  -370,  -370,  1188,    42,  -370,    68,    16,   106,  1520,
+     682,   724,   112,   767,   767,  -370,   507,  -370,   552,  1520,
+      16,    68,   104,   106,  -370,    16,  1368,    16,  1520,  -370,
+    -370,  -370,  -370,   809,  -370,    22,  1520,  1520,     2,  1520,
+    1520,  1520,  1520,  1520,  1520,  1520,  1520,  1520,  1520,  1520,
+    1520,  1520,  1520,  1520,  1520,  1409,  1520,    99,   109,   131,
+     120,   119,  -370,  1446,   147,  1520,   164,    16,   132,  -370,
+     137,  -370,   161,    68,   149,  -370,   420,  1520,   132,  -370,
+    1557,    39,    68,    68,  1520,    68,  1520,    68,  1188,   169,
+    -370,   132,    68,  -370,    68,  -370,  -370,  -370,  -370,  -370,
+    -370,  -370,  -370,   594,   194,  1314,  -370,  1188,  1483,  -370,
+     165,   181,  -370,   191,  1520,   186,   173,  -370,   196,  1188,
+     185,   207,  -370,   177,  1520,  1520,  1520,  1520,  1271,  1230,
+    1337,  1337,  1337,  1337,   190,   190,   190,   190,  1337,   211,
+     211,  -370,  -370,  -370,  1520,   851,   237,   239,   254,   255,
+    1520,  1520,  1520,  1520,  1520,  1520,  1520,  -370,  1483,  -370,
+     894,   226,  -370,  -370,  1188,    16,   220,  -370,   245,  -370,
+      16,  1520,  -370,  1520,  -370,  -370,  -370,  -370,  -370,  -370,
+    1188,   112,   250,   343,   386,  -370,  -370,  -370,  -370,  -370,
+    -370,  -370,   767,  -370,   767,  -370,   259,  1520,    16,  -370,
+    -370,   268,   157,   269,  -370,  1520,  1520,  1520,   462,  1188,
+     224,  -370,  -370,   242,  -370,  1520,   936,  -370,    22,  1520,
+    -370,  1520,   177,  1337,  1337,  1337,  1188,  1520,  1520,  1520,
+    1520,   177,  1337,  1337,   190,   190,   190,   190,   241,  -370,
+    -370,   297,  -370,    16,   273,  -370,  1188,  -370,  -370,    68,
+      68,  1520,  1188,   246,  -370,  1594,  -370,  1520,  -370,   978,
+    1020,  1062,   108,  -370,   247,  -370,   176,  -370,  -370,  -370,
+    1520,  1188,   252,  -370,  1188,  -370,  1188,   177,   177,   177,
+    -370,  1520,   303,  -370,  -370,  -370,    43,  -370,  -370,   640,
+      16,    -5,   283,  1188,   278,  1104,  1520,  1520,  1520,  -370,
+    -370,  -370,  -370,  -370,  -370,  -370,  1520,  1188,  1520,   310,
+    -370,  -370,  -370,  1520,  -370,   132,  1520,  1520,   462,   462,
+     462,    -6,  1188,  1146,  1520,   253,  1483,   767,  -370,  1188,
+    1188,    68,    68,    68,  -370,   260,  1520,  1188,  -370,   262,
+      68,  -370,  -370,  -370,    -6,  1188,  -370,  -370,  -370
+};
 
-/* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
-   Performed when YYTABLE does not specify something else to do.  Zero
-   means the default is an error.  */
-static const yytype_uint8 yydefact[] = {
-    9,   10,  20,  0,   0,   12,  0,   1,   4,   251, 250, 6,   11,  5,   0,
-    0,   0,   0,   57,  82,  0,   0,   0,   0,   0,   0,   108, 13,  21,  22,
-    24,  23,  68,  25,  26,  27,  28,  14,  29,  30,  31,  32,  33,  0,   8,
-    254, 36,  0,   34,  52,  53,  0,   242, 243, 244, 224, 240, 238, 239, 249,
-    248, 0,   0,   0,   0,   229, 187, 174, 51,  0,   227, 117, 118, 119, 225,
-    172, 173, 121, 241, 120, 226, 114, 95,  116, 0,   75,  185, 0,   68,  0,
-    91,  0,   173, 0,   0,   102, 0,   105, 0,   0,   0,   185, 185, 68,  7,
-    0,   0,   0,   0,   131, 127, 129, 130, 0,   20,  189, 176, 0,   0,   0,
-    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-    0,   0,   112, 111, 113, 0,   0,   125, 0,   0,   0,   0,   0,   0,   59,
-    58,  65,  0,   185, 83,  84,  87,  0,   0,   93,  0,   0,   185, 185, 0,
-    185, 0,   185, 109, 69,  60,  73,  185, 63,  185, 35,  219, 220, 221, 46,
-    48,  49,  50,  44,  222, 0,   54,  55,  168, 228, 0,   194, 253, 0,   0,
-    0,   190, 192, 0,   181, 0,   177, 179, 145, 0,   0,   0,   0,   133, 132,
-    151, 152, 139, 140, 141, 142, 143, 144, 150, 134, 135, 136, 137, 138, 0,
-    0,   122, 0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   124, 168, 198,
-    0,   234, 231, 232, 115, 0,   76,  77,  0,   186, 0,   0,   61,  0,   88,
-    89,  86,  90,  236, 237, 92,  0,   224, 240, 248, 96,  245, 246, 247, 97,
-    98,  99,  0,   100, 0,   103, 0,   0,   0,   64,  62,  37,  221, 182, 223,
-    0,   0,   0,   0,   167, 0,   170, 20,  166, 230, 0,   0,   188, 191, 0,
-    175, 178, 146, 148, 149, 147, 164, 0,   0,   0,   0,   159, 153, 154, 155,
-    156, 157, 158, 0,   233, 199, 200, 56,  0,   0,   66,  67,  85,  94,  185,
-    185, 0,   70,  74,  71,  0,   47,  0,   45,  0,   0,   0,   0,   207, 213,
-    40,  0,   208, 128, 169, 168, 196, 0,   193, 195, 180, 163, 161, 160, 162,
-    126, 0,   202, 78,  123, 79,  0,   101, 104, 0,   0,   224, 38,  2,   0,
-    183, 0,   0,   0,   218, 217, 216, 214, 209, 210, 171, 0,   201, 0,   205,
-    80,  106, 107, 0,   72,  0,   0,   0,   0,   0,   0,   0,   197, 203, 0,
-    0,   168, 0,   39,  3,   184, 185, 185, 185, 211, 215, 0,   206, 235, 0,
-    185, 41,  42,  43,  0,   204, 81,  110, 212};
+  /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
+     Performed when YYTABLE does not specify something else to do.  Zero
+     means the default is an error.  */
+static const yytype_uint8 yydefact[] =
+{
+       9,    10,    20,     0,     0,    12,     0,     1,     4,   251,
+     250,     6,    11,     5,     0,     0,     0,     0,    57,    82,
+       0,     0,     0,     0,     0,     0,   108,    13,    21,    22,
+      24,    23,    68,    25,    26,    27,    28,    14,    29,    30,
+      31,    32,    33,     0,     8,   254,    36,     0,    34,    52,
+      53,     0,   242,   243,   244,   224,   240,   238,   239,   249,
+     248,     0,     0,     0,     0,   229,   187,   174,    51,     0,
+     227,   117,   118,   119,   225,   172,   173,   121,   241,   120,
+     226,   114,    95,   116,     0,    75,   185,     0,    68,     0,
+      91,     0,   173,     0,     0,   102,     0,   105,     0,     0,
+       0,   185,   185,    68,     7,     0,     0,     0,     0,   131,
+     127,   129,   130,     0,    20,   189,   176,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,   112,   111,   113,
+       0,     0,   125,     0,     0,     0,     0,     0,     0,    59,
+      58,    65,     0,   185,    83,    84,    87,     0,     0,    93,
+       0,     0,   185,   185,     0,   185,     0,   185,   109,    69,
+      60,    73,   185,    63,   185,    35,   219,   220,   221,    46,
+      48,    49,    50,    44,   222,     0,    54,    55,   168,   228,
+       0,   194,   253,     0,     0,     0,   190,   192,     0,   181,
+       0,   177,   179,   145,     0,     0,     0,     0,   133,   132,
+     151,   152,   139,   140,   141,   142,   143,   144,   150,   134,
+     135,   136,   137,   138,     0,     0,   122,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,   124,   168,   198,
+       0,   234,   231,   232,   115,     0,    76,    77,     0,   186,
+       0,     0,    61,     0,    88,    89,    86,    90,   236,   237,
+      92,     0,   224,   240,   248,    96,   245,   246,   247,    97,
+      98,    99,     0,   100,     0,   103,     0,     0,     0,    64,
+      62,    37,   221,   182,   223,     0,     0,     0,     0,   167,
+       0,   170,    20,   166,   230,     0,     0,   188,   191,     0,
+     175,   178,   146,   148,   149,   147,   164,     0,     0,     0,
+       0,   159,   153,   154,   155,   156,   157,   158,     0,   233,
+     199,   200,    56,     0,     0,    66,    67,    85,    94,   185,
+     185,     0,    70,    74,    71,     0,    47,     0,    45,     0,
+       0,     0,     0,   207,   213,    40,     0,   208,   128,   169,
+     168,   196,     0,   193,   195,   180,   163,   161,   160,   162,
+     126,     0,   202,    78,   123,    79,     0,   101,   104,     0,
+       0,   224,    38,     2,     0,   183,     0,     0,     0,   218,
+     217,   216,   214,   209,   210,   171,     0,   201,     0,   205,
+      80,   106,   107,     0,    72,     0,     0,     0,     0,     0,
+       0,     0,   197,   203,     0,     0,   168,     0,    39,     3,
+     184,   185,   185,   185,   211,   215,     0,   206,   235,     0,
+     185,    41,    42,    43,     0,   204,    81,   110,   212
+};
 
-/* YYPGOTO[NTERM-NUM].  */
-static const yytype_int16 yypgoto[] = {
-    -370, -370, 1,    -370, -370, -370, -370, -100, -370, -370, -370,
-    -370, -370, -370, -370, -370, -370, -370, -370, -370, -370, -370,
-    -370, -370, 213,  292,  -370, -370, -370, -370, 75,   -63,  -370,
-    -370, -370, -29,  -370, -370, 6,    -370, -370, -370, -370, -370,
-    77,   -370, -370, -370, -370, -76,  -370, -370, -370, -370, -370,
-    -370, -370, -370, -370, -370, -370, -370, -370, -16,  8,    -370,
-    -370, -370, -370, -370, -370, -226, -17,  -370, -370, -370, -370,
-    -370, -370, -370, 33,   -370, -85,  -11,  -370, -370, -370, 38,
-    -370, -370, -370, -370, -369, -370, -103, -370, -87,  -370, -370,
-    -370, -370, -370, -370, 182,  178,  -133, 23,   -370, -12};
+  /* YYPGOTO[NTERM-NUM].  */
+static const yytype_int16 yypgoto[] =
+{
+    -370,  -370,     1,  -370,  -370,  -370,  -370,  -100,  -370,  -370,
+    -370,  -370,  -370,  -370,  -370,  -370,  -370,  -370,  -370,  -370,
+    -370,  -370,  -370,  -370,   213,   292,  -370,  -370,  -370,  -370,
+      75,   -63,  -370,  -370,  -370,   -29,  -370,  -370,     6,  -370,
+    -370,  -370,  -370,  -370,    77,  -370,  -370,  -370,  -370,   -76,
+    -370,  -370,  -370,  -370,  -370,  -370,  -370,  -370,  -370,  -370,
+    -370,  -370,  -370,   -16,     8,  -370,  -370,  -370,  -370,  -370,
+    -370,  -226,   -17,  -370,  -370,  -370,  -370,  -370,  -370,  -370,
+      33,  -370,   -85,   -11,  -370,  -370,  -370,    38,  -370,  -370,
+    -370,  -370,  -369,  -370,  -103,  -370,   -87,  -370,  -370,  -370,
+    -370,  -370,  -370,   182,   178,  -133,    23,  -370,   -12
+};
 
-/* YYDEFGOTO[NTERM-NUM].  */
-static const yytype_int16 yydefgoto[] = {
-    0,   372, 11,  12,  2,   4,   3,   5,   27,  6,   28,  46,  47,  336,
-    179, 180, 181, 182, 29,  283, 281, 30,  31,  49,  50,  86,  32,  87,
-    33,  150, 151, 102, 333, 172, 278, 88,  147, 246, 247, 365, 406, 34,
-    89,  154, 155, 256, 35,  36,  37,  162, 38,  39,  95,  40,  97,  41,
-    393, 42,  99,  276, 140, 82,  145, 289, 69,  70,  238, 188, 71,  72,
-    73,  290, 291, 292, 293, 74,  75,  116, 200, 201, 202, 338, 149, 76,
-    115, 195, 196, 197, 241, 362, 389, 405, 344, 415, 345, 401, 346, 185,
-    77,  114, 321, 257, 78,  79,  265, 80,  347, 198, 51};
+  /* YYDEFGOTO[NTERM-NUM].  */
+static const yytype_int16 yydefgoto[] =
+{
+       0,   372,    11,    12,     2,     4,     3,     5,    27,     6,
+      28,    46,    47,   336,   179,   180,   181,   182,    29,   283,
+     281,    30,    31,    49,    50,    86,    32,    87,    33,   150,
+     151,   102,   333,   172,   278,    88,   147,   246,   247,   365,
+     406,    34,    89,   154,   155,   256,    35,    36,    37,   162,
+      38,    39,    95,    40,    97,    41,   393,    42,    99,   276,
+     140,    82,   145,   289,    69,    70,   238,   188,    71,    72,
+      73,   290,   291,   292,   293,    74,    75,   116,   200,   201,
+     202,   338,   149,    76,   115,   195,   196,   197,   241,   362,
+     389,   405,   344,   415,   345,   401,   346,   185,    77,   114,
+     321,   257,    78,    79,   265,    80,   347,   198,    51
+};
 
-/* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
-   positive, shift that token.  If negative, reduce the rule whose
-   number is the opposite.  If YYTABLE_NINF, syntax error.  */
-static const yytype_int16 yytable[] = {
-    68,   83,   48,   103,  90,   91,   93,   94,   96,   98,   92,   243,
-    318,  44,   190,  204,  170,  173,  163,  184,  165,  -15,  167,  259,
-    343,  153,  -16,  13,   9,    10,   -123, -254, 414,  -123, 8,    13,
-    7,    -17,  9,    10,   174,  1,    205,  206,  104,  109,  45,   111,
-    112,  113,  207,  -123, 191,  192,  -123, 428,  193,  105,  106,  176,
-    177,  178,  43,   159,  -18,  -19,  13,   107,  252,  266,  267,  110,
-    146,  156,  268,  152,  108,  270,  271,  -15,  273,  -15,  275,  168,
-    -16,  194,  -16,  279,  169,  280,  183,  141,  187,  175,  142,  -17,
-    284,  -17,  148,  141,  199,  203,  390,  208,  209,  210,  211,  212,
-    213,  214,  215,  216,  217,  218,  219,  220,  221,  222,  223,  225,
-    226,  100,  -18,  -19,  -18,  -19,  143,  240,  85,   244,  84,   100,
-    85,   230,  171,  248,  227,  249,  379,  380,  144,  260,  59,   60,
-    203,  81,   228,  261,  272,  237,  274,  52,   53,   54,   55,   56,
-    57,   58,   59,   60,   249,  61,   231,  232,  233,  234,  235,  236,
-    229,  288,  -112, 8,    62,   63,   64,   9,    10,   242,  296,  245,
-    419,  59,   60,   65,   84,   66,   85,   67,   302,  303,  304,  305,
-    349,  66,   227,  250,  329,  251,  330,  -112, -112, -112, -112, -112,
-    -112, 277,  383,  253,  306,  381,  59,   60,   285,  384,  311,  312,
-    313,  314,  315,  316,  317,  125,  126,  127,  128,  294,  130,  131,
-    132,  133,  134,  298,  328,  322,  136,  326,  -252, 156,  152,  130,
-    131,  132,  133,  134,  367,  368,  295,  136,  297,  300,  -245, 299,
-    308,  -245, -245, -245, -245, -245, -245, -245, -245, 332,  132,  133,
-    134,  301,  334,  309,  310,  339,  340,  341,  -245, -245, -245, -245,
-    -245, 320,  323,  351,  -245, 324,  331,  354,  348,  199,  130,  131,
-    132,  133,  134,  356,  357,  358,  359,  411,  412,  413,  335,  337,
-    350,  360,  361,  364,  370,  382,  -123, 386,  -245, -123, -245, 248,
-    388,  395,  396,  369,  404,  418,  424,  373,  186,  375,  426,  374,
-    101,  325,  421,  422,  423,  363,  327,  420,  366,  385,  355,  427,
-    353,  0,    258,  269,  0,    0,    0,    -246, 0,    387,  -246, -246,
-    -246, -246, -246, -246, -246, -246, 0,    0,    0,    0,    394,  0,
-    398,  399,  400,  0,    0,    -246, -246, -246, -246, -246, 402,  0,
-    403,  -246, 0,    0,    0,    407,  0,    0,    409,  410,  0,    0,
-    408,  0,    -247, 0,    417,  -247, -247, -247, -247, -247, -247, -247,
-    -247, 0,    0,    0,    425,  -246, 0,    -246, 0,    0,    0,    0,
-    -247, -247, -247, -247, -247, 0,    0,    0,    -247, 14,   15,   16,
-    17,   18,   19,   20,   21,   0,    0,    0,    0,    0,    0,    254,
-    255,  117,  0,    0,    22,   23,   24,   25,   26,   0,    0,    0,
-    -247, 0,    -247, 52,   53,   54,   0,    56,   57,   58,   59,   60,
-    0,    118,  119,  120,  121,  122,  123,  124,  125,  126,  127,  128,
-    129,  130,  131,  132,  133,  134,  135,  117,  0,    136,  0,    342,
-    0,    0,    0,    0,    0,    0,    0,    137,  138,  139,  0,    0,
-    343,  0,    0,    0,    9,    10,   0,    118,  119,  120,  121,  122,
-    123,  124,  125,  126,  127,  128,  129,  130,  131,  132,  133,  134,
-    135,  0,    0,    136,  160,  164,  161,  0,    0,    0,    0,    176,
-    177,  282,  138,  139,  0,    0,    0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    118,  119,  120,  121,  122,  123,  124,  125,
-    126,  127,  128,  129,  130,  131,  132,  133,  134,  135,  0,    0,
-    136,  160,  166,  161,  0,    0,    0,    0,    0,    0,    137,  138,
-    139,  0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    0,    118,  119,  120,  121,  122,  123,  124,  125,  126,  127,  128,
-    129,  130,  131,  132,  133,  134,  135,  117,  0,    136,  0,    0,
-    0,    0,    0,    0,    0,    0,    0,    137,  138,  139,  0,    0,
-    0,    0,    0,    0,    0,    0,    0,    118,  119,  120,  121,  122,
-    123,  124,  125,  126,  127,  128,  129,  130,  131,  132,  133,  134,
-    135,  0,    0,    136,  0,    117,  0,    0,    0,    0,    0,    176,
-    177,  282,  138,  139,  391,  392,  0,    0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    118,  119,  120,  121,  122,  123,  124,
-    125,  126,  127,  128,  129,  130,  131,  132,  133,  134,  135,  117,
-    0,    136,  0,    0,    0,    0,    0,    0,    0,    0,    0,    137,
-    138,  139,  0,    0,    0,    0,    0,    0,    0,    0,    0,    118,
-    119,  120,  121,  122,  123,  124,  125,  126,  127,  128,  129,  130,
-    131,  132,  133,  134,  135,  117,  158,  136,  157,  0,    0,    0,
-    0,    0,    0,    0,    0,    137,  138,  139,  0,    0,    0,    0,
-    0,    0,    0,    0,    0,    118,  119,  120,  121,  122,  123,  124,
-    125,  126,  127,  128,  129,  130,  131,  132,  133,  134,  135,  0,
-    160,  136,  161,  0,    0,    0,    0,    0,    0,    0,    0,    137,
-    138,  139,  0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    118,  119,  120,  121,  122,  123,  124,  125,  126,  127,  128,  129,
-    130,  131,  132,  133,  134,  135,  117,  0,    136,  0,    0,    0,
-    0,    0,    0,    0,    0,    0,    137,  138,  139,  0,    0,    0,
-    0,    0,    0,    0,    0,    0,    118,  119,  120,  121,  122,  123,
-    124,  125,  126,  127,  128,  129,  130,  131,  132,  133,  134,  135,
-    117,  0,    136,  0,    0,    189,  0,    0,    0,    0,    0,    0,
-    137,  138,  139,  0,    0,    0,    0,    0,    0,    0,    0,    0,
-    118,  119,  120,  121,  122,  123,  124,  125,  126,  127,  128,  129,
-    130,  131,  132,  133,  134,  135,  307,  117,  136,  0,    0,    0,
-    0,    0,    0,    0,    0,    0,    137,  138,  139,  0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    118,  119,  120,  121,  122,
-    123,  124,  125,  126,  127,  128,  129,  130,  131,  132,  133,  134,
-    135,  117,  0,    136,  0,    0,    0,    0,    0,    0,    319,  0,
-    0,    137,  138,  139,  0,    0,    0,    0,    0,    0,    0,    0,
-    0,    118,  119,  120,  121,  122,  123,  124,  125,  126,  127,  128,
-    129,  130,  131,  132,  133,  134,  135,  117,  0,    136,  0,    0,
-    0,    0,    0,    0,    352,  0,    0,    137,  138,  139,  0,    0,
-    376,  0,    0,    0,    0,    0,    0,    118,  119,  120,  121,  122,
-    123,  124,  125,  126,  127,  128,  129,  130,  131,  132,  133,  134,
-    135,  117,  0,    136,  0,    0,    0,    0,    0,    0,    0,    0,
-    0,    137,  138,  139,  0,    0,    377,  0,    0,    0,    0,    0,
-    0,    118,  119,  120,  121,  122,  123,  124,  125,  126,  127,  128,
-    129,  130,  131,  132,  133,  134,  135,  117,  0,    136,  0,    0,
-    0,    0,    0,    0,    0,    0,    0,    137,  138,  139,  0,    0,
-    378,  0,    0,    0,    0,    0,    0,    118,  119,  120,  121,  122,
-    123,  124,  125,  126,  127,  128,  129,  130,  131,  132,  133,  134,
-    135,  117,  0,    136,  0,    0,    0,    0,    0,    0,    0,    0,
-    0,    137,  138,  139,  0,    0,    397,  0,    0,    0,    0,    0,
-    0,    118,  119,  120,  121,  122,  123,  124,  125,  126,  127,  128,
-    129,  130,  131,  132,  133,  134,  135,  117,  0,    136,  0,    0,
-    0,    0,    0,    0,    0,    0,    0,    137,  138,  139,  0,    0,
-    0,    0,    0,    0,    0,    0,    0,    118,  119,  120,  121,  122,
-    123,  124,  125,  126,  127,  128,  129,  130,  131,  132,  133,  134,
-    135,  117,  0,    136,  416,  0,    0,    0,    0,    0,    0,    0,
-    0,    137,  138,  139,  0,    0,    0,    0,    0,    0,    0,    0,
-    0,    118,  119,  120,  121,  122,  123,  124,  125,  126,  127,  128,
-    129,  130,  131,  132,  133,  134,  135,  117,  0,    136,  0,    0,
-    0,    0,    0,    0,    0,    0,    0,    137,  138,  139,  0,    0,
-    0,    0,    0,    0,    0,    0,    0,    118,  119,  0,    121,  122,
-    123,  124,  125,  126,  127,  128,  129,  130,  131,  132,  133,  134,
-    117,  0,    0,    136,  0,    0,    0,    0,    0,    0,    0,    0,
-    0,    137,  138,  139,  0,    0,    0,    0,    0,    0,    0,    0,
-    118,  0,    0,    121,  122,  123,  124,  125,  126,  127,  128,  129,
-    130,  131,  132,  133,  134,  0,    0,    0,    136,  0,    0,    0,
-    0,    286,  287,  0,    0,    0,    137,  138,  139,  52,   53,   54,
-    55,   56,   57,   58,   59,   60,   117,  61,   0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    62,   63,   64,   0,    0,    0,
-    0,    0,    0,    0,    0,    65,   118,  66,   0,    67,   0,    0,
-    0,    125,  126,  127,  128,  0,    130,  131,  132,  133,  134,  0,
-    0,    0,    136,  52,   53,   54,   55,   56,   57,   58,   59,   60,
-    0,    61,   0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-    62,   63,   64,   0,    0,    0,    0,    0,    0,    0,    0,    65,
-    0,    66,   0,    67,   0,    176,  177,  178,  52,   53,   54,   55,
-    56,   57,   58,   59,   60,   0,    61,   0,    0,    0,    0,    0,
-    0,    0,    0,    0,    0,    62,   63,   64,   0,    0,    0,    0,
-    224,  0,    0,    0,    65,   0,    66,   0,    67,   52,   53,   54,
-    55,   56,   57,   58,   59,   60,   0,    61,   0,    0,    0,    0,
-    0,    0,    0,    0,    0,    0,    62,   63,   64,   239,  0,    0,
-    0,    0,    0,    0,    0,    65,   0,    66,   0,    67,   52,   53,
-    54,   55,   56,   57,   58,   59,   60,   0,    61,   0,    0,    0,
-    0,    0,    0,    0,    0,    0,    0,    62,   63,   64,   0,    0,
-    0,    0,    0,    0,    0,    0,    65,   -165, 66,   0,    67,   52,
-    53,   54,   55,   56,   57,   58,   59,   60,   0,    61,   0,    0,
-    0,    0,    0,    0,    0,    0,    0,    0,    62,   63,   64,   0,
-    0,    0,    0,    0,    0,    0,    0,    65,   0,    66,   0,    67,
-    52,   53,   54,   262,  263,  57,   58,   59,   264,  0,    61,   0,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    62,   63,   64,
-    0,    0,    0,    0,    0,    0,    0,    0,    65,   0,    66,   0,
-    67,   52,   53,   54,   371,  56,   57,   58,   59,   60,   0,    61,
-    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    62,   63,
-    64,   0,    0,    0,    0,    0,    0,    0,    0,    65,   0,    66,
-    0,    67};
+  /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
+     positive, shift that token.  If negative, reduce the rule whose
+     number is the opposite.  If YYTABLE_NINF, syntax error.  */
+static const yytype_int16 yytable[] =
+{
+      68,    83,    48,   103,    90,    91,    93,    94,    96,    98,
+      92,   243,   318,    44,   190,   204,   170,   173,   163,   184,
+     165,   -15,   167,   259,   343,   153,   -16,    13,     9,    10,
+    -123,  -254,   414,  -123,     8,    13,     7,   -17,     9,    10,
+     174,     1,   205,   206,   104,   109,    45,   111,   112,   113,
+     207,  -123,   191,   192,  -123,   428,   193,   105,   106,   176,
+     177,   178,    43,   159,   -18,   -19,    13,   107,   252,   266,
+     267,   110,   146,   156,   268,   152,   108,   270,   271,   -15,
+     273,   -15,   275,   168,   -16,   194,   -16,   279,   169,   280,
+     183,   141,   187,   175,   142,   -17,   284,   -17,   148,   141,
+     199,   203,   390,   208,   209,   210,   211,   212,   213,   214,
+     215,   216,   217,   218,   219,   220,   221,   222,   223,   225,
+     226,   100,   -18,   -19,   -18,   -19,   143,   240,    85,   244,
+      84,   100,    85,   230,   171,   248,   227,   249,   379,   380,
+     144,   260,    59,    60,   203,    81,   228,   261,   272,   237,
+     274,    52,    53,    54,    55,    56,    57,    58,    59,    60,
+     249,    61,   231,   232,   233,   234,   235,   236,   229,   288,
+    -112,     8,    62,    63,    64,     9,    10,   242,   296,   245,
+     419,    59,    60,    65,    84,    66,    85,    67,   302,   303,
+     304,   305,   349,    66,   227,   250,   329,   251,   330,  -112,
+    -112,  -112,  -112,  -112,  -112,   277,   383,   253,   306,   381,
+      59,    60,   285,   384,   311,   312,   313,   314,   315,   316,
+     317,   125,   126,   127,   128,   294,   130,   131,   132,   133,
+     134,   298,   328,   322,   136,   326,  -252,   156,   152,   130,
+     131,   132,   133,   134,   367,   368,   295,   136,   297,   300,
+    -245,   299,   308,  -245,  -245,  -245,  -245,  -245,  -245,  -245,
+    -245,   332,   132,   133,   134,   301,   334,   309,   310,   339,
+     340,   341,  -245,  -245,  -245,  -245,  -245,   320,   323,   351,
+    -245,   324,   331,   354,   348,   199,   130,   131,   132,   133,
+     134,   356,   357,   358,   359,   411,   412,   413,   335,   337,
+     350,   360,   361,   364,   370,   382,  -123,   386,  -245,  -123,
+    -245,   248,   388,   395,   396,   369,   404,   418,   424,   373,
+     186,   375,   426,   374,   101,   325,   421,   422,   423,   363,
+     327,   420,   366,   385,   355,   427,   353,     0,   258,   269,
+       0,     0,     0,  -246,     0,   387,  -246,  -246,  -246,  -246,
+    -246,  -246,  -246,  -246,     0,     0,     0,     0,   394,     0,
+     398,   399,   400,     0,     0,  -246,  -246,  -246,  -246,  -246,
+     402,     0,   403,  -246,     0,     0,     0,   407,     0,     0,
+     409,   410,     0,     0,   408,     0,  -247,     0,   417,  -247,
+    -247,  -247,  -247,  -247,  -247,  -247,  -247,     0,     0,     0,
+     425,  -246,     0,  -246,     0,     0,     0,     0,  -247,  -247,
+    -247,  -247,  -247,     0,     0,     0,  -247,    14,    15,    16,
+      17,    18,    19,    20,    21,     0,     0,     0,     0,     0,
+       0,   254,   255,   117,     0,     0,    22,    23,    24,    25,
+      26,     0,     0,     0,  -247,     0,  -247,    52,    53,    54,
+       0,    56,    57,    58,    59,    60,     0,   118,   119,   120,
+     121,   122,   123,   124,   125,   126,   127,   128,   129,   130,
+     131,   132,   133,   134,   135,   117,     0,   136,     0,   342,
+       0,     0,     0,     0,     0,     0,     0,   137,   138,   139,
+       0,     0,   343,     0,     0,     0,     9,    10,     0,   118,
+     119,   120,   121,   122,   123,   124,   125,   126,   127,   128,
+     129,   130,   131,   132,   133,   134,   135,     0,     0,   136,
+     160,   164,   161,     0,     0,     0,     0,   176,   177,   282,
+     138,   139,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,   118,   119,   120,   121,   122,   123,
+     124,   125,   126,   127,   128,   129,   130,   131,   132,   133,
+     134,   135,     0,     0,   136,   160,   166,   161,     0,     0,
+       0,     0,     0,     0,   137,   138,   139,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,   118,
+     119,   120,   121,   122,   123,   124,   125,   126,   127,   128,
+     129,   130,   131,   132,   133,   134,   135,   117,     0,   136,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,   137,
+     138,   139,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,   118,   119,   120,   121,   122,   123,   124,   125,   126,
+     127,   128,   129,   130,   131,   132,   133,   134,   135,     0,
+       0,   136,     0,   117,     0,     0,     0,     0,     0,   176,
+     177,   282,   138,   139,   391,   392,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,   118,   119,   120,
+     121,   122,   123,   124,   125,   126,   127,   128,   129,   130,
+     131,   132,   133,   134,   135,   117,     0,   136,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,   137,   138,   139,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,   118,
+     119,   120,   121,   122,   123,   124,   125,   126,   127,   128,
+     129,   130,   131,   132,   133,   134,   135,   117,   158,   136,
+     157,     0,     0,     0,     0,     0,     0,     0,     0,   137,
+     138,   139,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,   118,   119,   120,   121,   122,   123,   124,   125,   126,
+     127,   128,   129,   130,   131,   132,   133,   134,   135,     0,
+     160,   136,   161,     0,     0,     0,     0,     0,     0,     0,
+       0,   137,   138,   139,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,   118,   119,   120,   121,   122,   123,
+     124,   125,   126,   127,   128,   129,   130,   131,   132,   133,
+     134,   135,   117,     0,   136,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,   137,   138,   139,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,   118,   119,   120,   121,
+     122,   123,   124,   125,   126,   127,   128,   129,   130,   131,
+     132,   133,   134,   135,   117,     0,   136,     0,     0,   189,
+       0,     0,     0,     0,     0,     0,   137,   138,   139,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,   118,   119,
+     120,   121,   122,   123,   124,   125,   126,   127,   128,   129,
+     130,   131,   132,   133,   134,   135,   307,   117,   136,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,   137,   138,
+     139,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,   118,   119,   120,   121,   122,   123,   124,   125,   126,
+     127,   128,   129,   130,   131,   132,   133,   134,   135,   117,
+       0,   136,     0,     0,     0,     0,     0,     0,   319,     0,
+       0,   137,   138,   139,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,   118,   119,   120,   121,   122,   123,   124,
+     125,   126,   127,   128,   129,   130,   131,   132,   133,   134,
+     135,   117,     0,   136,     0,     0,     0,     0,     0,     0,
+     352,     0,     0,   137,   138,   139,     0,     0,   376,     0,
+       0,     0,     0,     0,     0,   118,   119,   120,   121,   122,
+     123,   124,   125,   126,   127,   128,   129,   130,   131,   132,
+     133,   134,   135,   117,     0,   136,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,   137,   138,   139,     0,     0,
+     377,     0,     0,     0,     0,     0,     0,   118,   119,   120,
+     121,   122,   123,   124,   125,   126,   127,   128,   129,   130,
+     131,   132,   133,   134,   135,   117,     0,   136,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,   137,   138,   139,
+       0,     0,   378,     0,     0,     0,     0,     0,     0,   118,
+     119,   120,   121,   122,   123,   124,   125,   126,   127,   128,
+     129,   130,   131,   132,   133,   134,   135,   117,     0,   136,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,   137,
+     138,   139,     0,     0,   397,     0,     0,     0,     0,     0,
+       0,   118,   119,   120,   121,   122,   123,   124,   125,   126,
+     127,   128,   129,   130,   131,   132,   133,   134,   135,   117,
+       0,   136,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,   137,   138,   139,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,   118,   119,   120,   121,   122,   123,   124,
+     125,   126,   127,   128,   129,   130,   131,   132,   133,   134,
+     135,   117,     0,   136,   416,     0,     0,     0,     0,     0,
+       0,     0,     0,   137,   138,   139,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,   118,   119,   120,   121,   122,
+     123,   124,   125,   126,   127,   128,   129,   130,   131,   132,
+     133,   134,   135,   117,     0,   136,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,   137,   138,   139,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,   118,   119,     0,
+     121,   122,   123,   124,   125,   126,   127,   128,   129,   130,
+     131,   132,   133,   134,   117,     0,     0,   136,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,   137,   138,   139,
+       0,     0,     0,     0,     0,     0,     0,     0,   118,     0,
+       0,   121,   122,   123,   124,   125,   126,   127,   128,   129,
+     130,   131,   132,   133,   134,     0,     0,     0,   136,     0,
+       0,     0,     0,   286,   287,     0,     0,     0,   137,   138,
+     139,    52,    53,    54,    55,    56,    57,    58,    59,    60,
+     117,    61,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,    62,    63,    64,     0,     0,     0,     0,     0,
+       0,     0,     0,    65,   118,    66,     0,    67,     0,     0,
+       0,   125,   126,   127,   128,     0,   130,   131,   132,   133,
+     134,     0,     0,     0,   136,    52,    53,    54,    55,    56,
+      57,    58,    59,    60,     0,    61,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,    62,    63,    64,     0,
+       0,     0,     0,     0,     0,     0,     0,    65,     0,    66,
+       0,    67,     0,   176,   177,   178,    52,    53,    54,    55,
+      56,    57,    58,    59,    60,     0,    61,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,    62,    63,    64,
+       0,     0,     0,     0,   224,     0,     0,     0,    65,     0,
+      66,     0,    67,    52,    53,    54,    55,    56,    57,    58,
+      59,    60,     0,    61,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,    62,    63,    64,   239,     0,     0,
+       0,     0,     0,     0,     0,    65,     0,    66,     0,    67,
+      52,    53,    54,    55,    56,    57,    58,    59,    60,     0,
+      61,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,    62,    63,    64,     0,     0,     0,     0,     0,     0,
+       0,     0,    65,  -165,    66,     0,    67,    52,    53,    54,
+      55,    56,    57,    58,    59,    60,     0,    61,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,    62,    63,
+      64,     0,     0,     0,     0,     0,     0,     0,     0,    65,
+       0,    66,     0,    67,    52,    53,    54,   262,   263,    57,
+      58,    59,   264,     0,    61,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,    62,    63,    64,     0,     0,
+       0,     0,     0,     0,     0,     0,    65,     0,    66,     0,
+      67,    52,    53,    54,   371,    56,    57,    58,    59,    60,
+       0,    61,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,    62,    63,    64,     0,     0,     0,     0,     0,
+       0,     0,     0,    65,     0,    66,     0,    67
+};
 
-static const yytype_int16 yycheck[] = {
-    16,  17,  14,  32,  20,  21,  22,  23,  24,  25,  21,  144, 238, 12,  114,
-    13,  101, 102, 94,  106, 96,  0,   98,  156, 30,  88,  0,   4,   34,  35,
-    56,  36,  401, 59,  30,  12,  0,   0,   34,  35,  103, 14,  40,  41,  43,
-    61,  30,  63,  64,  65,  48,  56,  30,  31,  59,  424, 34,  58,  13,  65,
-    66,  67,  58,  92,  0,   0,   43,  58,  153, 30,  31,  59,  30,  89,  35,
-    87,  36,  162, 163, 58,  165, 60,  167, 99,  58,  63,  60,  172, 100, 174,
-    106, 56,  108, 105, 59,  58,  183, 60,  30,  56,  116, 117, 59,  119, 120,
-    121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135,
-    136, 15,  58,  58,  60,  60,  63,  143, 16,  145, 14,  15,  16,  13,  30,
-    147, 37,  148, 30,  31,  77,  157, 34,  35,  160, 21,  37,  158, 164, 30,
-    166, 27,  28,  29,  30,  31,  32,  33,  34,  35,  171, 37,  42,  43,  44,
-    45,  46,  47,  37,  185, 13,  30,  48,  49,  50,  34,  35,  30,  194, 15,
-    406, 34,  35,  59,  14,  61,  16,  63,  204, 205, 206, 207, 292, 61,  37,
-    58,  272, 36,  274, 42,  43,  44,  45,  46,  47,  36,  30,  58,  224, 342,
-    34,  35,  18,  346, 230, 231, 232, 233, 234, 235, 236, 44,  45,  46,  47,
-    60,  49,  50,  51,  52,  53,  58,  261, 245, 57,  251, 55,  253, 250, 49,
-    50,  51,  52,  53,  329, 330, 55,  57,  62,  64,  0,   55,  13,  3,   4,
-    5,   6,   7,   8,   9,   10,  277, 51,  52,  53,  58,  278, 13,  13,  285,
-    286, 287, 22,  23,  24,  25,  26,  51,  58,  295, 30,  36,  23,  299, 60,
-    301, 49,  50,  51,  52,  53,  307, 308, 309, 310, 398, 399, 400, 30,  30,
-    58,  60,  5,   30,  58,  58,  56,  55,  58,  59,  60,  323, 9,   30,  36,
-    331, 6,   64,  58,  335, 107, 337, 60,  335, 32,  250, 411, 412, 413, 323,
-    253, 407, 324, 350, 301, 420, 298, -1,  156, 161, -1,  -1,  -1,  0,   -1,
-    361, 3,   4,   5,   6,   7,   8,   9,   10,  -1,  -1,  -1,  -1,  370, -1,
-    376, 377, 378, -1,  -1,  22,  23,  24,  25,  26,  386, -1,  388, 30,  -1,
-    -1,  -1,  393, -1,  -1,  396, 397, -1,  -1,  395, -1,  0,   -1,  404, 3,
-    4,   5,   6,   7,   8,   9,   10,  -1,  -1,  -1,  416, 58,  -1,  60,  -1,
-    -1,  -1,  -1,  22,  23,  24,  25,  26,  -1,  -1,  -1,  30,  3,   4,   5,
-    6,   7,   8,   9,   10,  -1,  -1,  -1,  -1,  -1,  -1,  11,  12,  13,  -1,
-    -1,  22,  23,  24,  25,  26,  -1,  -1,  -1,  58,  -1,  60,  27,  28,  29,
-    -1,  31,  32,  33,  34,  35,  -1,  37,  38,  39,  40,  41,  42,  43,  44,
-    45,  46,  47,  48,  49,  50,  51,  52,  53,  54,  13,  -1,  57,  -1,  17,
-    -1,  -1,  -1,  -1,  -1,  -1,  -1,  67,  68,  69,  -1,  -1,  30,  -1,  -1,
-    -1,  34,  35,  -1,  37,  38,  39,  40,  41,  42,  43,  44,  45,  46,  47,
-    48,  49,  50,  51,  52,  53,  54,  -1,  -1,  57,  13,  14,  15,  -1,  -1,
-    -1,  -1,  65,  66,  67,  68,  69,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-    -1,  -1,  -1,  -1,  37,  38,  39,  40,  41,  42,  43,  44,  45,  46,  47,
-    48,  49,  50,  51,  52,  53,  54,  -1,  -1,  57,  13,  14,  15,  -1,  -1,
-    -1,  -1,  -1,  -1,  67,  68,  69,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-    -1,  -1,  -1,  -1,  37,  38,  39,  40,  41,  42,  43,  44,  45,  46,  47,
-    48,  49,  50,  51,  52,  53,  54,  13,  -1,  57,  -1,  -1,  -1,  -1,  -1,
-    -1,  -1,  -1,  -1,  67,  68,  69,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-    -1,  37,  38,  39,  40,  41,  42,  43,  44,  45,  46,  47,  48,  49,  50,
-    51,  52,  53,  54,  -1,  -1,  57,  -1,  13,  -1,  -1,  -1,  -1,  -1,  65,
-    66,  67,  68,  69,  24,  25,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-    -1,  -1,  37,  38,  39,  40,  41,  42,  43,  44,  45,  46,  47,  48,  49,
-    50,  51,  52,  53,  54,  13,  -1,  57,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-    -1,  -1,  67,  68,  69,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  37,
-    38,  39,  40,  41,  42,  43,  44,  45,  46,  47,  48,  49,  50,  51,  52,
-    53,  54,  13,  14,  57,  58,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  67,
-    68,  69,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  37,  38,  39,  40,
-    41,  42,  43,  44,  45,  46,  47,  48,  49,  50,  51,  52,  53,  54,  -1,
-    13,  57,  15,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  67,  68,  69,  -1,
-    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  37,  38,  39,  40,  41,  42,
-    43,  44,  45,  46,  47,  48,  49,  50,  51,  52,  53,  54,  13,  -1,  57,
-    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  67,  68,  69,  -1,  -1,  -1,
-    -1,  -1,  -1,  -1,  -1,  -1,  37,  38,  39,  40,  41,  42,  43,  44,  45,
-    46,  47,  48,  49,  50,  51,  52,  53,  54,  13,  -1,  57,  -1,  -1,  60,
-    -1,  -1,  -1,  -1,  -1,  -1,  67,  68,  69,  -1,  -1,  -1,  -1,  -1,  -1,
-    -1,  -1,  -1,  37,  38,  39,  40,  41,  42,  43,  44,  45,  46,  47,  48,
-    49,  50,  51,  52,  53,  54,  55,  13,  57,  -1,  -1,  -1,  -1,  -1,  -1,
-    -1,  -1,  -1,  67,  68,  69,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-    -1,  37,  38,  39,  40,  41,  42,  43,  44,  45,  46,  47,  48,  49,  50,
-    51,  52,  53,  54,  13,  -1,  57,  -1,  -1,  -1,  -1,  -1,  -1,  64,  -1,
-    -1,  67,  68,  69,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  37,  38,
-    39,  40,  41,  42,  43,  44,  45,  46,  47,  48,  49,  50,  51,  52,  53,
-    54,  13,  -1,  57,  -1,  -1,  -1,  -1,  -1,  -1,  64,  -1,  -1,  67,  68,
-    69,  -1,  -1,  30,  -1,  -1,  -1,  -1,  -1,  -1,  37,  38,  39,  40,  41,
-    42,  43,  44,  45,  46,  47,  48,  49,  50,  51,  52,  53,  54,  13,  -1,
-    57,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  67,  68,  69,  -1,  -1,
-    30,  -1,  -1,  -1,  -1,  -1,  -1,  37,  38,  39,  40,  41,  42,  43,  44,
-    45,  46,  47,  48,  49,  50,  51,  52,  53,  54,  13,  -1,  57,  -1,  -1,
-    -1,  -1,  -1,  -1,  -1,  -1,  -1,  67,  68,  69,  -1,  -1,  30,  -1,  -1,
-    -1,  -1,  -1,  -1,  37,  38,  39,  40,  41,  42,  43,  44,  45,  46,  47,
-    48,  49,  50,  51,  52,  53,  54,  13,  -1,  57,  -1,  -1,  -1,  -1,  -1,
-    -1,  -1,  -1,  -1,  67,  68,  69,  -1,  -1,  30,  -1,  -1,  -1,  -1,  -1,
-    -1,  37,  38,  39,  40,  41,  42,  43,  44,  45,  46,  47,  48,  49,  50,
-    51,  52,  53,  54,  13,  -1,  57,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-    -1,  67,  68,  69,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  37,  38,
-    39,  40,  41,  42,  43,  44,  45,  46,  47,  48,  49,  50,  51,  52,  53,
-    54,  13,  -1,  57,  58,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  67,  68,
-    69,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  37,  38,  39,  40,  41,
-    42,  43,  44,  45,  46,  47,  48,  49,  50,  51,  52,  53,  54,  13,  -1,
-    57,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  67,  68,  69,  -1,  -1,
-    -1,  -1,  -1,  -1,  -1,  -1,  -1,  37,  38,  -1,  40,  41,  42,  43,  44,
-    45,  46,  47,  48,  49,  50,  51,  52,  53,  13,  -1,  -1,  57,  -1,  -1,
-    -1,  -1,  -1,  -1,  -1,  -1,  -1,  67,  68,  69,  -1,  -1,  -1,  -1,  -1,
-    -1,  -1,  -1,  37,  -1,  -1,  40,  41,  42,  43,  44,  45,  46,  47,  48,
-    49,  50,  51,  52,  53,  -1,  -1,  -1,  57,  -1,  -1,  -1,  -1,  19,  20,
-    -1,  -1,  -1,  67,  68,  69,  27,  28,  29,  30,  31,  32,  33,  34,  35,
-    13,  37,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  48,  49,  50,
-    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  59,  37,  61,  -1,  63,  -1,  -1,
-    -1,  44,  45,  46,  47,  -1,  49,  50,  51,  52,  53,  -1,  -1,  -1,  57,
-    27,  28,  29,  30,  31,  32,  33,  34,  35,  -1,  37,  -1,  -1,  -1,  -1,
-    -1,  -1,  -1,  -1,  -1,  -1,  48,  49,  50,  -1,  -1,  -1,  -1,  -1,  -1,
-    -1,  -1,  59,  -1,  61,  -1,  63,  -1,  65,  66,  67,  27,  28,  29,  30,
-    31,  32,  33,  34,  35,  -1,  37,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-    -1,  -1,  48,  49,  50,  -1,  -1,  -1,  -1,  55,  -1,  -1,  -1,  59,  -1,
-    61,  -1,  63,  27,  28,  29,  30,  31,  32,  33,  34,  35,  -1,  37,  -1,
-    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  48,  49,  50,  51,  -1,  -1,
-    -1,  -1,  -1,  -1,  -1,  59,  -1,  61,  -1,  63,  27,  28,  29,  30,  31,
-    32,  33,  34,  35,  -1,  37,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-    -1,  48,  49,  50,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  59,  60,  61,
-    -1,  63,  27,  28,  29,  30,  31,  32,  33,  34,  35,  -1,  37,  -1,  -1,
-    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  48,  49,  50,  -1,  -1,  -1,  -1,
-    -1,  -1,  -1,  -1,  59,  -1,  61,  -1,  63,  27,  28,  29,  30,  31,  32,
-    33,  34,  35,  -1,  37,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-    48,  49,  50,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  59,  -1,  61,  -1,
-    63,  27,  28,  29,  30,  31,  32,  33,  34,  35,  -1,  37,  -1,  -1,  -1,
-    -1,  -1,  -1,  -1,  -1,  -1,  -1,  48,  49,  50,  -1,  -1,  -1,  -1,  -1,
-    -1,  -1,  -1,  59,  -1,  61,  -1,  63};
+static const yytype_int16 yycheck[] =
+{
+      16,    17,    14,    32,    20,    21,    22,    23,    24,    25,
+      21,   144,   238,    12,   114,    13,   101,   102,    94,   106,
+      96,     0,    98,   156,    30,    88,     0,     4,    34,    35,
+      56,    36,   401,    59,    30,    12,     0,     0,    34,    35,
+     103,    14,    40,    41,    43,    61,    30,    63,    64,    65,
+      48,    56,    30,    31,    59,   424,    34,    58,    13,    65,
+      66,    67,    58,    92,     0,     0,    43,    58,   153,    30,
+      31,    59,    30,    89,    35,    87,    36,   162,   163,    58,
+     165,    60,   167,    99,    58,    63,    60,   172,   100,   174,
+     106,    56,   108,   105,    59,    58,   183,    60,    30,    56,
+     116,   117,    59,   119,   120,   121,   122,   123,   124,   125,
+     126,   127,   128,   129,   130,   131,   132,   133,   134,   135,
+     136,    15,    58,    58,    60,    60,    63,   143,    16,   145,
+      14,    15,    16,    13,    30,   147,    37,   148,    30,    31,
+      77,   157,    34,    35,   160,    21,    37,   158,   164,    30,
+     166,    27,    28,    29,    30,    31,    32,    33,    34,    35,
+     171,    37,    42,    43,    44,    45,    46,    47,    37,   185,
+      13,    30,    48,    49,    50,    34,    35,    30,   194,    15,
+     406,    34,    35,    59,    14,    61,    16,    63,   204,   205,
+     206,   207,   292,    61,    37,    58,   272,    36,   274,    42,
+      43,    44,    45,    46,    47,    36,    30,    58,   224,   342,
+      34,    35,    18,   346,   230,   231,   232,   233,   234,   235,
+     236,    44,    45,    46,    47,    60,    49,    50,    51,    52,
+      53,    58,   261,   245,    57,   251,    55,   253,   250,    49,
+      50,    51,    52,    53,   329,   330,    55,    57,    62,    64,
+       0,    55,    13,     3,     4,     5,     6,     7,     8,     9,
+      10,   277,    51,    52,    53,    58,   278,    13,    13,   285,
+     286,   287,    22,    23,    24,    25,    26,    51,    58,   295,
+      30,    36,    23,   299,    60,   301,    49,    50,    51,    52,
+      53,   307,   308,   309,   310,   398,   399,   400,    30,    30,
+      58,    60,     5,    30,    58,    58,    56,    55,    58,    59,
+      60,   323,     9,    30,    36,   331,     6,    64,    58,   335,
+     107,   337,    60,   335,    32,   250,   411,   412,   413,   323,
+     253,   407,   324,   350,   301,   420,   298,    -1,   156,   161,
+      -1,    -1,    -1,     0,    -1,   361,     3,     4,     5,     6,
+       7,     8,     9,    10,    -1,    -1,    -1,    -1,   370,    -1,
+     376,   377,   378,    -1,    -1,    22,    23,    24,    25,    26,
+     386,    -1,   388,    30,    -1,    -1,    -1,   393,    -1,    -1,
+     396,   397,    -1,    -1,   395,    -1,     0,    -1,   404,     3,
+       4,     5,     6,     7,     8,     9,    10,    -1,    -1,    -1,
+     416,    58,    -1,    60,    -1,    -1,    -1,    -1,    22,    23,
+      24,    25,    26,    -1,    -1,    -1,    30,     3,     4,     5,
+       6,     7,     8,     9,    10,    -1,    -1,    -1,    -1,    -1,
+      -1,    11,    12,    13,    -1,    -1,    22,    23,    24,    25,
+      26,    -1,    -1,    -1,    58,    -1,    60,    27,    28,    29,
+      -1,    31,    32,    33,    34,    35,    -1,    37,    38,    39,
+      40,    41,    42,    43,    44,    45,    46,    47,    48,    49,
+      50,    51,    52,    53,    54,    13,    -1,    57,    -1,    17,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    67,    68,    69,
+      -1,    -1,    30,    -1,    -1,    -1,    34,    35,    -1,    37,
+      38,    39,    40,    41,    42,    43,    44,    45,    46,    47,
+      48,    49,    50,    51,    52,    53,    54,    -1,    -1,    57,
+      13,    14,    15,    -1,    -1,    -1,    -1,    65,    66,    67,
+      68,    69,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    37,    38,    39,    40,    41,    42,
+      43,    44,    45,    46,    47,    48,    49,    50,    51,    52,
+      53,    54,    -1,    -1,    57,    13,    14,    15,    -1,    -1,
+      -1,    -1,    -1,    -1,    67,    68,    69,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    37,
+      38,    39,    40,    41,    42,    43,    44,    45,    46,    47,
+      48,    49,    50,    51,    52,    53,    54,    13,    -1,    57,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    67,
+      68,    69,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    37,    38,    39,    40,    41,    42,    43,    44,    45,
+      46,    47,    48,    49,    50,    51,    52,    53,    54,    -1,
+      -1,    57,    -1,    13,    -1,    -1,    -1,    -1,    -1,    65,
+      66,    67,    68,    69,    24,    25,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    37,    38,    39,
+      40,    41,    42,    43,    44,    45,    46,    47,    48,    49,
+      50,    51,    52,    53,    54,    13,    -1,    57,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    67,    68,    69,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    37,
+      38,    39,    40,    41,    42,    43,    44,    45,    46,    47,
+      48,    49,    50,    51,    52,    53,    54,    13,    14,    57,
+      58,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    67,
+      68,    69,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    37,    38,    39,    40,    41,    42,    43,    44,    45,
+      46,    47,    48,    49,    50,    51,    52,    53,    54,    -1,
+      13,    57,    15,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    67,    68,    69,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    37,    38,    39,    40,    41,    42,
+      43,    44,    45,    46,    47,    48,    49,    50,    51,    52,
+      53,    54,    13,    -1,    57,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    67,    68,    69,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    37,    38,    39,    40,
+      41,    42,    43,    44,    45,    46,    47,    48,    49,    50,
+      51,    52,    53,    54,    13,    -1,    57,    -1,    -1,    60,
+      -1,    -1,    -1,    -1,    -1,    -1,    67,    68,    69,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    37,    38,
+      39,    40,    41,    42,    43,    44,    45,    46,    47,    48,
+      49,    50,    51,    52,    53,    54,    55,    13,    57,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    67,    68,
+      69,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    37,    38,    39,    40,    41,    42,    43,    44,    45,
+      46,    47,    48,    49,    50,    51,    52,    53,    54,    13,
+      -1,    57,    -1,    -1,    -1,    -1,    -1,    -1,    64,    -1,
+      -1,    67,    68,    69,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    37,    38,    39,    40,    41,    42,    43,
+      44,    45,    46,    47,    48,    49,    50,    51,    52,    53,
+      54,    13,    -1,    57,    -1,    -1,    -1,    -1,    -1,    -1,
+      64,    -1,    -1,    67,    68,    69,    -1,    -1,    30,    -1,
+      -1,    -1,    -1,    -1,    -1,    37,    38,    39,    40,    41,
+      42,    43,    44,    45,    46,    47,    48,    49,    50,    51,
+      52,    53,    54,    13,    -1,    57,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    67,    68,    69,    -1,    -1,
+      30,    -1,    -1,    -1,    -1,    -1,    -1,    37,    38,    39,
+      40,    41,    42,    43,    44,    45,    46,    47,    48,    49,
+      50,    51,    52,    53,    54,    13,    -1,    57,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    67,    68,    69,
+      -1,    -1,    30,    -1,    -1,    -1,    -1,    -1,    -1,    37,
+      38,    39,    40,    41,    42,    43,    44,    45,    46,    47,
+      48,    49,    50,    51,    52,    53,    54,    13,    -1,    57,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    67,
+      68,    69,    -1,    -1,    30,    -1,    -1,    -1,    -1,    -1,
+      -1,    37,    38,    39,    40,    41,    42,    43,    44,    45,
+      46,    47,    48,    49,    50,    51,    52,    53,    54,    13,
+      -1,    57,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    67,    68,    69,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    37,    38,    39,    40,    41,    42,    43,
+      44,    45,    46,    47,    48,    49,    50,    51,    52,    53,
+      54,    13,    -1,    57,    58,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    67,    68,    69,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    37,    38,    39,    40,    41,
+      42,    43,    44,    45,    46,    47,    48,    49,    50,    51,
+      52,    53,    54,    13,    -1,    57,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    67,    68,    69,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    37,    38,    -1,
+      40,    41,    42,    43,    44,    45,    46,    47,    48,    49,
+      50,    51,    52,    53,    13,    -1,    -1,    57,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    67,    68,    69,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    37,    -1,
+      -1,    40,    41,    42,    43,    44,    45,    46,    47,    48,
+      49,    50,    51,    52,    53,    -1,    -1,    -1,    57,    -1,
+      -1,    -1,    -1,    19,    20,    -1,    -1,    -1,    67,    68,
+      69,    27,    28,    29,    30,    31,    32,    33,    34,    35,
+      13,    37,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    48,    49,    50,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    59,    37,    61,    -1,    63,    -1,    -1,
+      -1,    44,    45,    46,    47,    -1,    49,    50,    51,    52,
+      53,    -1,    -1,    -1,    57,    27,    28,    29,    30,    31,
+      32,    33,    34,    35,    -1,    37,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    48,    49,    50,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    59,    -1,    61,
+      -1,    63,    -1,    65,    66,    67,    27,    28,    29,    30,
+      31,    32,    33,    34,    35,    -1,    37,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    48,    49,    50,
+      -1,    -1,    -1,    -1,    55,    -1,    -1,    -1,    59,    -1,
+      61,    -1,    63,    27,    28,    29,    30,    31,    32,    33,
+      34,    35,    -1,    37,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    48,    49,    50,    51,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    59,    -1,    61,    -1,    63,
+      27,    28,    29,    30,    31,    32,    33,    34,    35,    -1,
+      37,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    48,    49,    50,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    59,    60,    61,    -1,    63,    27,    28,    29,
+      30,    31,    32,    33,    34,    35,    -1,    37,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    48,    49,
+      50,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    59,
+      -1,    61,    -1,    63,    27,    28,    29,    30,    31,    32,
+      33,    34,    35,    -1,    37,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    48,    49,    50,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    59,    -1,    61,    -1,
+      63,    27,    28,    29,    30,    31,    32,    33,    34,    35,
+      -1,    37,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    48,    49,    50,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    59,    -1,    61,    -1,    63
+};
 
-/* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
-   symbol of state STATE-NUM.  */
-static const yytype_uint8 yystos[] = {
-    0,   14,  82,  84,  83,  85,  87,  0,   30,  34,  35,  80,  81,  184, 3,
-    4,   5,   6,   7,   8,   9,   10,  22,  23,  24,  25,  26,  86,  88,  96,
-    99,  100, 104, 106, 119, 124, 125, 126, 128, 129, 131, 133, 135, 58,  80,
-    30,  89,  90,  186, 101, 102, 186, 27,  28,  29,  30,  31,  32,  33,  34,
-    35,  37,  48,  49,  50,  59,  61,  63,  141, 142, 143, 146, 147, 148, 153,
-    154, 161, 176, 180, 181, 183, 21,  139, 141, 14,  16,  103, 105, 113, 120,
-    141, 141, 161, 141, 141, 130, 141, 132, 141, 136, 15,  103, 109, 113, 80,
-    58,  13,  58,  36,  141, 59,  141, 141, 141, 177, 162, 155, 13,  37,  38,
-    39,  40,  41,  42,  43,  44,  45,  46,  47,  48,  49,  50,  51,  52,  53,
-    54,  57,  67,  68,  69,  138, 56,  59,  63,  77,  140, 30,  114, 30,  160,
-    107, 108, 186, 109, 121, 122, 141, 58,  14,  113, 13,  15,  127, 127, 14,
-    127, 14,  127, 141, 186, 160, 30,  111, 160, 109, 186, 65,  66,  67,  92,
-    93,  94,  95,  141, 174, 175, 102, 141, 145, 60,  85,  30,  31,  34,  63,
-    163, 164, 165, 185, 141, 156, 157, 158, 141, 13,  40,  41,  48,  141, 141,
-    141, 141, 141, 141, 141, 141, 141, 141, 141, 141, 141, 141, 141, 141, 55,
-    141, 141, 37,  37,  37,  13,  42,  43,  44,  45,  46,  47,  30,  144, 51,
-    141, 166, 30,  183, 141, 15,  115, 116, 186, 161, 58,  36,  160, 58,  11,
-    12,  123, 179, 181, 183, 141, 161, 30,  31,  35,  182, 30,  31,  35,  182,
-    160, 160, 141, 160, 141, 160, 137, 36,  112, 160, 160, 98,  67,  97,  174,
-    18,  19,  20,  141, 141, 149, 150, 151, 152, 60,  55,  141, 62,  58,  55,
-    64,  58,  141, 141, 141, 141, 141, 55,  13,  13,  13,  141, 141, 141, 141,
-    141, 141, 141, 149, 64,  51,  178, 186, 58,  36,  108, 141, 122, 113, 127,
-    127, 23,  141, 110, 186, 30,  91,  30,  159, 141, 141, 141, 17,  30,  170,
-    172, 174, 184, 60,  85,  58,  141, 64,  165, 141, 158, 141, 141, 141, 141,
-    60,  5,   167, 116, 30,  117, 142, 160, 160, 141, 58,  30,  79,  141, 186,
-    141, 30,  30,  30,  30,  31,  183, 58,  30,  183, 150, 55,  141, 9,   168,
-    59,  24,  25,  134, 186, 30,  36,  30,  141, 141, 141, 173, 141, 141, 6,
-    169, 118, 141, 161, 141, 141, 172, 172, 172, 170, 171, 58,  141, 64,  149,
-    127, 160, 160, 160, 58,  141, 60,  160, 170};
+  /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
+     symbol of state STATE-NUM.  */
+static const yytype_uint8 yystos[] =
+{
+       0,    14,    82,    84,    83,    85,    87,     0,    30,    34,
+      35,    80,    81,   184,     3,     4,     5,     6,     7,     8,
+       9,    10,    22,    23,    24,    25,    26,    86,    88,    96,
+      99,   100,   104,   106,   119,   124,   125,   126,   128,   129,
+     131,   133,   135,    58,    80,    30,    89,    90,   186,   101,
+     102,   186,    27,    28,    29,    30,    31,    32,    33,    34,
+      35,    37,    48,    49,    50,    59,    61,    63,   141,   142,
+     143,   146,   147,   148,   153,   154,   161,   176,   180,   181,
+     183,    21,   139,   141,    14,    16,   103,   105,   113,   120,
+     141,   141,   161,   141,   141,   130,   141,   132,   141,   136,
+      15,   103,   109,   113,    80,    58,    13,    58,    36,   141,
+      59,   141,   141,   141,   177,   162,   155,    13,    37,    38,
+      39,    40,    41,    42,    43,    44,    45,    46,    47,    48,
+      49,    50,    51,    52,    53,    54,    57,    67,    68,    69,
+     138,    56,    59,    63,    77,   140,    30,   114,    30,   160,
+     107,   108,   186,   109,   121,   122,   141,    58,    14,   113,
+      13,    15,   127,   127,    14,   127,    14,   127,   141,   186,
+     160,    30,   111,   160,   109,   186,    65,    66,    67,    92,
+      93,    94,    95,   141,   174,   175,   102,   141,   145,    60,
+      85,    30,    31,    34,    63,   163,   164,   165,   185,   141,
+     156,   157,   158,   141,    13,    40,    41,    48,   141,   141,
+     141,   141,   141,   141,   141,   141,   141,   141,   141,   141,
+     141,   141,   141,   141,    55,   141,   141,    37,    37,    37,
+      13,    42,    43,    44,    45,    46,    47,    30,   144,    51,
+     141,   166,    30,   183,   141,    15,   115,   116,   186,   161,
+      58,    36,   160,    58,    11,    12,   123,   179,   181,   183,
+     141,   161,    30,    31,    35,   182,    30,    31,    35,   182,
+     160,   160,   141,   160,   141,   160,   137,    36,   112,   160,
+     160,    98,    67,    97,   174,    18,    19,    20,   141,   141,
+     149,   150,   151,   152,    60,    55,   141,    62,    58,    55,
+      64,    58,   141,   141,   141,   141,   141,    55,    13,    13,
+      13,   141,   141,   141,   141,   141,   141,   141,   149,    64,
+      51,   178,   186,    58,    36,   108,   141,   122,   113,   127,
+     127,    23,   141,   110,   186,    30,    91,    30,   159,   141,
+     141,   141,    17,    30,   170,   172,   174,   184,    60,    85,
+      58,   141,    64,   165,   141,   158,   141,   141,   141,   141,
+      60,     5,   167,   116,    30,   117,   142,   160,   160,   141,
+      58,    30,    79,   141,   186,   141,    30,    30,    30,    30,
+      31,   183,    58,    30,   183,   150,    55,   141,     9,   168,
+      59,    24,    25,   134,   186,    30,    36,    30,   141,   141,
+     141,   173,   141,   141,     6,   169,   118,   141,   161,   141,
+     141,   172,   172,   172,   170,   171,    58,   141,    64,   149,
+     127,   160,   160,   160,    58,   141,    60,   160,   170
+};
 
-/* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
-static const yytype_uint8 yyr1[] = {
-    0,   78,  79,  79,  80,  80,  81,  81,  81,  82,  83,  82,  84,  85,  86,
-    86,  86,  86,  86,  86,  87,  87,  88,  88,  88,  88,  88,  88,  88,  88,
-    88,  88,  88,  88,  89,  89,  90,  91,  91,  91,  92,  93,  94,  95,  97,
-    96,  98,  96,  96,  96,  96,  99,  100, 101, 101, 102, 103, 105, 104, 106,
-    106, 106, 106, 106, 106, 107, 107, 108, 109, 109, 109, 110, 110, 112, 111,
-    114, 113, 115, 115, 116, 118, 117, 120, 119, 121, 121, 122, 123, 123, 123,
-    123, 124, 124, 125, 125, 126, 127, 127, 128, 129, 130, 130, 131, 132, 132,
-    133, 134, 134, 136, 137, 135, 138, 138, 138, 140, 139, 139, 141, 141, 141,
-    141, 141, 141, 142, 142, 144, 143, 145, 143, 146, 146, 146, 147, 147, 147,
-    147, 147, 147, 147, 147, 147, 147, 147, 147, 147, 147, 147, 147, 147, 147,
-    147, 147, 147, 147, 147, 147, 147, 147, 147, 147, 147, 147, 147, 148, 148,
-    149, 149, 150, 151, 150, 152, 152, 153, 153, 155, 154, 156, 156, 156, 157,
-    157, 158, 159, 159, 159, 160, 160, 162, 161, 163, 163, 163, 164, 164, 165,
-    165, 165, 165, 166, 166, 167, 167, 168, 168, 168, 169, 169, 170, 170, 170,
-    170, 171, 171, 172, 173, 172, 172, 172, 172, 174, 174, 174, 175, 175, 176,
-    176, 176, 176, 176, 177, 176, 176, 176, 176, 178, 176, 179, 179, 180, 180,
-    181, 181, 181, 181, 181, 182, 182, 182, 183, 183, 184, 184, 185, 185, 186};
+  /* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
+static const yytype_uint8 yyr1[] =
+{
+       0,    78,    79,    79,    80,    80,    81,    81,    81,    82,
+      83,    82,    84,    85,    86,    86,    86,    86,    86,    86,
+      87,    87,    88,    88,    88,    88,    88,    88,    88,    88,
+      88,    88,    88,    88,    89,    89,    90,    91,    91,    91,
+      92,    93,    94,    95,    97,    96,    98,    96,    96,    96,
+      96,    99,   100,   101,   101,   102,   103,   105,   104,   106,
+     106,   106,   106,   106,   106,   107,   107,   108,   109,   109,
+     109,   110,   110,   112,   111,   114,   113,   115,   115,   116,
+     118,   117,   120,   119,   121,   121,   122,   123,   123,   123,
+     123,   124,   124,   125,   125,   126,   127,   127,   128,   129,
+     130,   130,   131,   132,   132,   133,   134,   134,   136,   137,
+     135,   138,   138,   138,   140,   139,   139,   141,   141,   141,
+     141,   141,   141,   142,   142,   144,   143,   145,   143,   146,
+     146,   146,   147,   147,   147,   147,   147,   147,   147,   147,
+     147,   147,   147,   147,   147,   147,   147,   147,   147,   147,
+     147,   147,   147,   147,   147,   147,   147,   147,   147,   147,
+     147,   147,   147,   148,   148,   149,   149,   150,   151,   150,
+     152,   152,   153,   153,   155,   154,   156,   156,   156,   157,
+     157,   158,   159,   159,   159,   160,   160,   162,   161,   163,
+     163,   163,   164,   164,   165,   165,   165,   165,   166,   166,
+     167,   167,   168,   168,   168,   169,   169,   170,   170,   170,
+     170,   171,   171,   172,   173,   172,   172,   172,   172,   174,
+     174,   174,   175,   175,   176,   176,   176,   176,   176,   177,
+     176,   176,   176,   176,   178,   176,   179,   179,   180,   180,
+     181,   181,   181,   181,   181,   182,   182,   182,   183,   183,
+     184,   184,   185,   185,   186
+};
 
-/* YYR2[YYN] -- Number of symbols on the right hand side of rule YYN.  */
-static const yytype_int8 yyr2[] = {
-    0, 2, 1, 3, 1, 1, 1, 3, 2, 0, 0, 3, 2, 2, 1,  1, 1, 1, 1, 1, 0, 2, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1, 0, 2,  4, 3, 7, 7, 7, 0, 6, 0, 6,
-    4, 4, 4, 2, 2, 1, 3, 3, 4, 0, 3, 3, 3, 4, 4,  3, 4, 1, 3, 3, 0, 2, 4, 1,
-    3, 0, 3, 0, 3, 1, 3, 3, 0, 5, 0, 3, 1, 3, 2,  0, 1, 1, 1, 2, 4, 3, 5, 2,
-    2, 2, 4, 4, 3, 5, 2, 3, 5, 2, 1, 1, 0, 0, 10, 1, 1, 1, 0, 3, 1, 1, 1, 1,
-    1, 1, 3, 1, 3, 0, 5, 0, 5, 2, 2, 2, 3, 3, 3,  3, 3, 3, 3, 3, 3, 3, 3, 3,
-    3, 3, 4, 4, 4, 4, 3, 3, 3, 4, 4, 4, 4, 4, 4,  4, 5, 5, 5, 5, 4, 0, 1, 1,
-    0, 2, 1, 3, 1, 1, 0, 4, 0, 1, 2, 1, 3, 1, 0,  2, 4, 0, 2, 0, 4, 0, 1, 2,
-    1, 3, 1, 3, 3, 5, 1, 2, 0, 2, 0, 2, 4, 0, 2,  1, 1, 2, 2, 1, 3, 1, 0, 4,
-    2, 2, 2, 1, 1, 1, 1, 2, 1, 1, 1, 1, 3, 0, 4,  3, 3, 4, 0, 8, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+  /* YYR2[YYN] -- Number of symbols on the right hand side of rule YYN.  */
+static const yytype_int8 yyr2[] =
+{
+       0,     2,     1,     3,     1,     1,     1,     3,     2,     0,
+       0,     3,     2,     2,     1,     1,     1,     1,     1,     1,
+       0,     2,     1,     1,     1,     1,     1,     1,     1,     1,
+       1,     1,     1,     1,     1,     3,     1,     0,     2,     4,
+       3,     7,     7,     7,     0,     6,     0,     6,     4,     4,
+       4,     2,     2,     1,     3,     3,     4,     0,     3,     3,
+       3,     4,     4,     3,     4,     1,     3,     3,     0,     2,
+       4,     1,     3,     0,     3,     0,     3,     1,     3,     3,
+       0,     5,     0,     3,     1,     3,     2,     0,     1,     1,
+       1,     2,     4,     3,     5,     2,     2,     2,     4,     4,
+       3,     5,     2,     3,     5,     2,     1,     1,     0,     0,
+      10,     1,     1,     1,     0,     3,     1,     1,     1,     1,
+       1,     1,     3,     1,     3,     0,     5,     0,     5,     2,
+       2,     2,     3,     3,     3,     3,     3,     3,     3,     3,
+       3,     3,     3,     3,     3,     3,     4,     4,     4,     4,
+       3,     3,     3,     4,     4,     4,     4,     4,     4,     4,
+       5,     5,     5,     5,     4,     0,     1,     1,     0,     2,
+       1,     3,     1,     1,     0,     4,     0,     1,     2,     1,
+       3,     1,     0,     2,     4,     0,     2,     0,     4,     0,
+       1,     2,     1,     3,     1,     3,     3,     5,     1,     2,
+       0,     2,     0,     2,     4,     0,     2,     1,     1,     2,
+       2,     1,     3,     1,     0,     4,     2,     2,     2,     1,
+       1,     1,     1,     2,     1,     1,     1,     1,     3,     0,
+       4,     3,     3,     4,     0,     8,     1,     1,     1,     1,
+       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
+       1,     1,     1,     1,     1
+};
+
 
 enum { YYENOMEM = -2 };
 
-#define yyerrok (yyerrstatus = 0)
-#define yyclearin (yychar = YYEMPTY)
+#define yyerrok         (yyerrstatus = 0)
+#define yyclearin       (yychar = YYEMPTY)
 
-#define YYACCEPT goto yyacceptlab
-#define YYABORT goto yyabortlab
-#define YYERROR goto yyerrorlab
+#define YYACCEPT        goto yyacceptlab
+#define YYABORT         goto yyabortlab
+#define YYERROR         goto yyerrorlab
 
-#define YYRECOVERING() (!!yyerrstatus)
 
-#define YYBACKUP(Token, Value)                                       \
-  do                                                                 \
-    if (yychar == YYEMPTY) {                                         \
-      yychar = (Token);                                              \
-      yylval = (Value);                                              \
-      YYPOPSTACK(yylen);                                             \
-      yystate = *yyssp;                                              \
-      goto yybackup;                                                 \
-    } else {                                                         \
-      yyerror(&yylloc, parser, YY_("syntax error: cannot back up")); \
-      YYERROR;                                                       \
-    }                                                                \
+#define YYRECOVERING()  (!!yyerrstatus)
+
+#define YYBACKUP(Token, Value)                                    \
+  do                                                              \
+    if (yychar == YYEMPTY)                                        \
+      {                                                           \
+        yychar = (Token);                                         \
+        yylval = (Value);                                         \
+        YYPOPSTACK (yylen);                                       \
+        yystate = *yyssp;                                         \
+        goto yybackup;                                            \
+      }                                                           \
+    else                                                          \
+      {                                                           \
+        yyerror (&yylloc, parser, YY_("syntax error: cannot back up")); \
+        YYERROR;                                                  \
+      }                                                           \
   while (0)
 
 /* Backward compatibility with an undocumented macro.
@@ -1659,116 +1729,138 @@ enum { YYENOMEM = -2 };
    the previous symbol: RHS[0] (always defined).  */
 
 #ifndef YYLLOC_DEFAULT
-#define YYLLOC_DEFAULT(Current, Rhs, N)                                        \
-  do                                                                           \
-    if (N) {                                                                   \
-      (Current).first_line = YYRHSLOC(Rhs, 1).first_line;                      \
-      (Current).first_column = YYRHSLOC(Rhs, 1).first_column;                  \
-      (Current).last_line = YYRHSLOC(Rhs, N).last_line;                        \
-      (Current).last_column = YYRHSLOC(Rhs, N).last_column;                    \
-    } else {                                                                   \
-      (Current).first_line = (Current).last_line = YYRHSLOC(Rhs, 0).last_line; \
-      (Current).first_column = (Current).last_column =                         \
-          YYRHSLOC(Rhs, 0).last_column;                                        \
-    }                                                                          \
-  while (0)
+# define YYLLOC_DEFAULT(Current, Rhs, N)                                \
+    do                                                                  \
+      if (N)                                                            \
+        {                                                               \
+          (Current).first_line   = YYRHSLOC (Rhs, 1).first_line;        \
+          (Current).first_column = YYRHSLOC (Rhs, 1).first_column;      \
+          (Current).last_line    = YYRHSLOC (Rhs, N).last_line;         \
+          (Current).last_column  = YYRHSLOC (Rhs, N).last_column;       \
+        }                                                               \
+      else                                                              \
+        {                                                               \
+          (Current).first_line   = (Current).last_line   =              \
+            YYRHSLOC (Rhs, 0).last_line;                                \
+          (Current).first_column = (Current).last_column =              \
+            YYRHSLOC (Rhs, 0).last_column;                              \
+        }                                                               \
+    while (0)
 #endif
 
 #define YYRHSLOC(Rhs, K) ((Rhs)[K])
 
+
 /* Enable debugging if requested.  */
 #if YYDEBUG
 
-#ifndef YYFPRINTF
-#include <stdio.h> /* INFRINGES ON USER NAME SPACE */
-#define YYFPRINTF fprintf
-#endif
+# ifndef YYFPRINTF
+#  include <stdio.h> /* INFRINGES ON USER NAME SPACE */
+#  define YYFPRINTF fprintf
+# endif
 
-#define YYDPRINTF(Args)          \
-  do {                           \
-    if (yydebug) YYFPRINTF Args; \
-  } while (0)
+# define YYDPRINTF(Args)                        \
+do {                                            \
+  if (yydebug)                                  \
+    YYFPRINTF Args;                             \
+} while (0)
+
 
 /* YY_LOCATION_PRINT -- Print the location on the stream.
    This macro was not mandated originally: define only if we know
    we won't break user code: when these are the locations we know.  */
 
-#ifndef YY_LOCATION_PRINT
-#if defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL
+# ifndef YY_LOCATION_PRINT
+#  if defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL
 
 /* Print *YYLOCP on YYO.  Private, do not rely on its existence. */
 
 YY_ATTRIBUTE_UNUSED
-static int yy_location_print_(FILE* yyo, YYLTYPE const* const yylocp) {
+static int
+yy_location_print_ (FILE *yyo, YYLTYPE const * const yylocp)
+{
   int res = 0;
   int end_col = 0 != yylocp->last_column ? yylocp->last_column - 1 : 0;
-  if (0 <= yylocp->first_line) {
-    res += YYFPRINTF(yyo, "%d", yylocp->first_line);
-    if (0 <= yylocp->first_column)
-      res += YYFPRINTF(yyo, ".%d", yylocp->first_column);
-  }
-  if (0 <= yylocp->last_line) {
-    if (yylocp->first_line < yylocp->last_line) {
-      res += YYFPRINTF(yyo, "-%d", yylocp->last_line);
-      if (0 <= end_col) res += YYFPRINTF(yyo, ".%d", end_col);
-    } else if (0 <= end_col && yylocp->first_column < end_col)
-      res += YYFPRINTF(yyo, "-%d", end_col);
-  }
+  if (0 <= yylocp->first_line)
+    {
+      res += YYFPRINTF (yyo, "%d", yylocp->first_line);
+      if (0 <= yylocp->first_column)
+        res += YYFPRINTF (yyo, ".%d", yylocp->first_column);
+    }
+  if (0 <= yylocp->last_line)
+    {
+      if (yylocp->first_line < yylocp->last_line)
+        {
+          res += YYFPRINTF (yyo, "-%d", yylocp->last_line);
+          if (0 <= end_col)
+            res += YYFPRINTF (yyo, ".%d", end_col);
+        }
+      else if (0 <= end_col && yylocp->first_column < end_col)
+        res += YYFPRINTF (yyo, "-%d", end_col);
+    }
   return res;
-}
+ }
 
-#define YY_LOCATION_PRINT(File, Loc) yy_location_print_(File, &(Loc))
+#   define YY_LOCATION_PRINT(File, Loc)          \
+  yy_location_print_ (File, &(Loc))
 
-#else
-#define YY_LOCATION_PRINT(File, Loc) ((void)0)
-#endif
-#endif /* !defined YY_LOCATION_PRINT */
+#  else
+#   define YY_LOCATION_PRINT(File, Loc) ((void) 0)
+#  endif
+# endif /* !defined YY_LOCATION_PRINT */
 
-#define YY_SYMBOL_PRINT(Title, Kind, Value, Location)         \
-  do {                                                        \
-    if (yydebug) {                                            \
-      YYFPRINTF(stderr, "%s ", Title);                        \
-      yy_symbol_print(stderr, Kind, Value, Location, parser); \
-      YYFPRINTF(stderr, "\n");                                \
-    }                                                         \
-  } while (0)
+
+# define YY_SYMBOL_PRINT(Title, Kind, Value, Location)                    \
+do {                                                                      \
+  if (yydebug)                                                            \
+    {                                                                     \
+      YYFPRINTF (stderr, "%s ", Title);                                   \
+      yy_symbol_print (stderr,                                            \
+                  Kind, Value, Location, parser); \
+      YYFPRINTF (stderr, "\n");                                           \
+    }                                                                     \
+} while (0)
+
 
 /*-----------------------------------.
 | Print this symbol's value on YYO.  |
 `-----------------------------------*/
 
-static void yy_symbol_value_print(FILE* yyo, yysymbol_kind_t yykind,
-                                  YYSTYPE const* const yyvaluep,
-                                  YYLTYPE const* const yylocationp,
-                                  arangodb::aql::Parser* parser) {
-  FILE* yyoutput = yyo;
-  YY_USE(yyoutput);
-  YY_USE(yylocationp);
-  YY_USE(parser);
-  if (!yyvaluep) return;
-#ifdef YYPRINT
-  if (yykind < YYNTOKENS) YYPRINT(yyo, yytoknum[yykind], *yyvaluep);
-#endif
+static void
+yy_symbol_value_print (FILE *yyo,
+                       yysymbol_kind_t yykind, YYSTYPE const * const yyvaluep, YYLTYPE const * const yylocationp, arangodb::aql::Parser* parser)
+{
+  FILE *yyoutput = yyo;
+  YY_USE (yyoutput);
+  YY_USE (yylocationp);
+  YY_USE (parser);
+  if (!yyvaluep)
+    return;
+# ifdef YYPRINT
+  if (yykind < YYNTOKENS)
+    YYPRINT (yyo, yytoknum[yykind], *yyvaluep);
+# endif
   YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
-  YY_USE(yykind);
+  YY_USE (yykind);
   YY_IGNORE_MAYBE_UNINITIALIZED_END
 }
+
 
 /*---------------------------.
 | Print this symbol on YYO.  |
 `---------------------------*/
 
-static void yy_symbol_print(FILE* yyo, yysymbol_kind_t yykind,
-                            YYSTYPE const* const yyvaluep,
-                            YYLTYPE const* const yylocationp,
-                            arangodb::aql::Parser* parser) {
-  YYFPRINTF(yyo, "%s %s (", yykind < YYNTOKENS ? "token" : "nterm",
-            yysymbol_name(yykind));
+static void
+yy_symbol_print (FILE *yyo,
+                 yysymbol_kind_t yykind, YYSTYPE const * const yyvaluep, YYLTYPE const * const yylocationp, arangodb::aql::Parser* parser)
+{
+  YYFPRINTF (yyo, "%s %s (",
+             yykind < YYNTOKENS ? "token" : "nterm", yysymbol_name (yykind));
 
-  YY_LOCATION_PRINT(yyo, *yylocationp);
-  YYFPRINTF(yyo, ": ");
-  yy_symbol_value_print(yyo, yykind, yyvaluep, yylocationp, parser);
-  YYFPRINTF(yyo, ")");
+  YY_LOCATION_PRINT (yyo, *yylocationp);
+  YYFPRINTF (yyo, ": ");
+  yy_symbol_value_print (yyo, yykind, yyvaluep, yylocationp, parser);
+  YYFPRINTF (yyo, ")");
 }
 
 /*------------------------------------------------------------------.
@@ -1776,59 +1868,70 @@ static void yy_symbol_print(FILE* yyo, yysymbol_kind_t yykind,
 | TOP (included).                                                   |
 `------------------------------------------------------------------*/
 
-static void yy_stack_print(yy_state_t* yybottom, yy_state_t* yytop) {
-  YYFPRINTF(stderr, "Stack now");
-  for (; yybottom <= yytop; yybottom++) {
-    int yybot = *yybottom;
-    YYFPRINTF(stderr, " %d", yybot);
-  }
-  YYFPRINTF(stderr, "\n");
+static void
+yy_stack_print (yy_state_t *yybottom, yy_state_t *yytop)
+{
+  YYFPRINTF (stderr, "Stack now");
+  for (; yybottom <= yytop; yybottom++)
+    {
+      int yybot = *yybottom;
+      YYFPRINTF (stderr, " %d", yybot);
+    }
+  YYFPRINTF (stderr, "\n");
 }
 
-#define YY_STACK_PRINT(Bottom, Top)               \
-  do {                                            \
-    if (yydebug) yy_stack_print((Bottom), (Top)); \
-  } while (0)
+# define YY_STACK_PRINT(Bottom, Top)                            \
+do {                                                            \
+  if (yydebug)                                                  \
+    yy_stack_print ((Bottom), (Top));                           \
+} while (0)
+
 
 /*------------------------------------------------.
 | Report that the YYRULE is going to be reduced.  |
 `------------------------------------------------*/
 
-static void yy_reduce_print(yy_state_t* yyssp, YYSTYPE* yyvsp, YYLTYPE* yylsp,
-                            int yyrule, arangodb::aql::Parser* parser) {
+static void
+yy_reduce_print (yy_state_t *yyssp, YYSTYPE *yyvsp, YYLTYPE *yylsp,
+                 int yyrule, arangodb::aql::Parser* parser)
+{
   int yylno = yyrline[yyrule];
   int yynrhs = yyr2[yyrule];
   int yyi;
-  YYFPRINTF(stderr, "Reducing stack by rule %d (line %d):\n", yyrule - 1,
-            yylno);
+  YYFPRINTF (stderr, "Reducing stack by rule %d (line %d):\n",
+             yyrule - 1, yylno);
   /* The symbols being reduced.  */
-  for (yyi = 0; yyi < yynrhs; yyi++) {
-    YYFPRINTF(stderr, "   $%d = ", yyi + 1);
-    yy_symbol_print(stderr, YY_ACCESSING_SYMBOL(+yyssp[yyi + 1 - yynrhs]),
-                    &yyvsp[(yyi + 1) - (yynrhs)],
-                    &(yylsp[(yyi + 1) - (yynrhs)]), parser);
-    YYFPRINTF(stderr, "\n");
-  }
+  for (yyi = 0; yyi < yynrhs; yyi++)
+    {
+      YYFPRINTF (stderr, "   $%d = ", yyi + 1);
+      yy_symbol_print (stderr,
+                       YY_ACCESSING_SYMBOL (+yyssp[yyi + 1 - yynrhs]),
+                       &yyvsp[(yyi + 1) - (yynrhs)],
+                       &(yylsp[(yyi + 1) - (yynrhs)]), parser);
+      YYFPRINTF (stderr, "\n");
+    }
 }
 
-#define YY_REDUCE_PRINT(Rule)                                        \
-  do {                                                               \
-    if (yydebug) yy_reduce_print(yyssp, yyvsp, yylsp, Rule, parser); \
-  } while (0)
+# define YY_REDUCE_PRINT(Rule)          \
+do {                                    \
+  if (yydebug)                          \
+    yy_reduce_print (yyssp, yyvsp, yylsp, Rule, parser); \
+} while (0)
 
 /* Nonzero means print parse trace.  It is left uninitialized so that
    multiple parsers can coexist.  */
 int yydebug;
 #else /* !YYDEBUG */
-#define YYDPRINTF(Args) ((void)0)
-#define YY_SYMBOL_PRINT(Title, Kind, Value, Location)
-#define YY_STACK_PRINT(Bottom, Top)
-#define YY_REDUCE_PRINT(Rule)
+# define YYDPRINTF(Args) ((void) 0)
+# define YY_SYMBOL_PRINT(Title, Kind, Value, Location)
+# define YY_STACK_PRINT(Bottom, Top)
+# define YY_REDUCE_PRINT(Rule)
 #endif /* !YYDEBUG */
+
 
 /* YYINITDEPTH -- initial size of the parser's stacks.  */
 #ifndef YYINITDEPTH
-#define YYINITDEPTH 200
+# define YYINITDEPTH 200
 #endif
 
 /* YYMAXDEPTH -- maximum size the stacks can grow to (effective only
@@ -1839,14 +1942,16 @@ int yydebug;
    evaluated with infinite-precision integer arithmetic.  */
 
 #ifndef YYMAXDEPTH
-#define YYMAXDEPTH 10000
+# define YYMAXDEPTH 10000
 #endif
 
+
 /* Context of a parse error.  */
-typedef struct {
-  yy_state_t* yyssp;
+typedef struct
+{
+  yy_state_t *yyssp;
   yysymbol_kind_t yytoken;
-  YYLTYPE* yylloc;
+  YYLTYPE *yylloc;
 } yypcontext_t;
 
 /* Put in YYARG at most YYARGN of the expected tokens given the
@@ -1855,63 +1960,77 @@ typedef struct {
    be less than YYNTOKENS).  Return YYENOMEM on memory exhaustion.
    Return 0 if there are more than YYARGN expected tokens, yet fill
    YYARG up to YYARGN. */
-static int yypcontext_expected_tokens(const yypcontext_t* yyctx,
-                                      yysymbol_kind_t yyarg[], int yyargn) {
+static int
+yypcontext_expected_tokens (const yypcontext_t *yyctx,
+                            yysymbol_kind_t yyarg[], int yyargn)
+{
   /* Actual size of YYARG. */
   int yycount = 0;
   int yyn = yypact[+*yyctx->yyssp];
-  if (!yypact_value_is_default(yyn)) {
-    /* Start YYX at -YYN if negative to avoid negative indexes in
-       YYCHECK.  In other words, skip the first -YYN actions for
-       this state because they are default actions.  */
-    int yyxbegin = yyn < 0 ? -yyn : 0;
-    /* Stay within bounds of both yycheck and yytname.  */
-    int yychecklim = YYLAST - yyn + 1;
-    int yyxend = yychecklim < YYNTOKENS ? yychecklim : YYNTOKENS;
-    int yyx;
-    for (yyx = yyxbegin; yyx < yyxend; ++yyx)
-      if (yycheck[yyx + yyn] == yyx && yyx != YYSYMBOL_YYerror &&
-          !yytable_value_is_error(yytable[yyx + yyn])) {
-        if (!yyarg)
-          ++yycount;
-        else if (yycount == yyargn)
-          return 0;
-        else
-          yyarg[yycount++] = YY_CAST(yysymbol_kind_t, yyx);
-      }
-  }
-  if (yyarg && yycount == 0 && 0 < yyargn) yyarg[0] = YYSYMBOL_YYEMPTY;
+  if (!yypact_value_is_default (yyn))
+    {
+      /* Start YYX at -YYN if negative to avoid negative indexes in
+         YYCHECK.  In other words, skip the first -YYN actions for
+         this state because they are default actions.  */
+      int yyxbegin = yyn < 0 ? -yyn : 0;
+      /* Stay within bounds of both yycheck and yytname.  */
+      int yychecklim = YYLAST - yyn + 1;
+      int yyxend = yychecklim < YYNTOKENS ? yychecklim : YYNTOKENS;
+      int yyx;
+      for (yyx = yyxbegin; yyx < yyxend; ++yyx)
+        if (yycheck[yyx + yyn] == yyx && yyx != YYSYMBOL_YYerror
+            && !yytable_value_is_error (yytable[yyx + yyn]))
+          {
+            if (!yyarg)
+              ++yycount;
+            else if (yycount == yyargn)
+              return 0;
+            else
+              yyarg[yycount++] = YY_CAST (yysymbol_kind_t, yyx);
+          }
+    }
+  if (yyarg && yycount == 0 && 0 < yyargn)
+    yyarg[0] = YYSYMBOL_YYEMPTY;
   return yycount;
 }
 
+
+
+
 #ifndef yystrlen
-#if defined __GLIBC__ && defined _STRING_H
-#define yystrlen(S) (YY_CAST(YYPTRDIFF_T, strlen(S)))
-#else
+# if defined __GLIBC__ && defined _STRING_H
+#  define yystrlen(S) (YY_CAST (YYPTRDIFF_T, strlen (S)))
+# else
 /* Return the length of YYSTR.  */
-static YYPTRDIFF_T yystrlen(const char* yystr) {
+static YYPTRDIFF_T
+yystrlen (const char *yystr)
+{
   YYPTRDIFF_T yylen;
-  for (yylen = 0; yystr[yylen]; yylen++) continue;
+  for (yylen = 0; yystr[yylen]; yylen++)
+    continue;
   return yylen;
 }
-#endif
+# endif
 #endif
 
 #ifndef yystpcpy
-#if defined __GLIBC__ && defined _STRING_H && defined _GNU_SOURCE
-#define yystpcpy stpcpy
-#else
+# if defined __GLIBC__ && defined _STRING_H && defined _GNU_SOURCE
+#  define yystpcpy stpcpy
+# else
 /* Copy YYSRC to YYDEST, returning the address of the terminating '\0' in
    YYDEST.  */
-static char* yystpcpy(char* yydest, const char* yysrc) {
-  char* yyd = yydest;
-  const char* yys = yysrc;
+static char *
+yystpcpy (char *yydest, const char *yysrc)
+{
+  char *yyd = yydest;
+  const char *yys = yysrc;
 
-  while ((*yyd++ = *yys++) != '\0') continue;
+  while ((*yyd++ = *yys++) != '\0')
+    continue;
 
   return yyd - 1;
 }
-#endif
+# endif
 #endif
 
 #ifndef yytnamerr
@@ -1922,43 +2041,53 @@ static char* yystpcpy(char* yydest, const char* yysrc) {
    backslash-backslash).  YYSTR is taken from yytname.  If YYRES is
    null, do not copy; instead, return the length of what the result
    would have been.  */
-static YYPTRDIFF_T yytnamerr(char* yyres, const char* yystr) {
-  if (*yystr == '"') {
-    YYPTRDIFF_T yyn = 0;
-    char const* yyp = yystr;
-    for (;;) switch (*++yyp) {
-        case '\'':
-        case ',':
-          goto do_not_strip_quotes;
-
-        case '\\':
-          if (*++yyp != '\\')
+static YYPTRDIFF_T
+yytnamerr (char *yyres, const char *yystr)
+{
+  if (*yystr == '"')
+    {
+      YYPTRDIFF_T yyn = 0;
+      char const *yyp = yystr;
+      for (;;)
+        switch (*++yyp)
+          {
+          case '\'':
+          case ',':
             goto do_not_strip_quotes;
-          else
-            goto append;
 
-        append:
-        default:
-          if (yyres) yyres[yyn] = *yyp;
-          yyn++;
-          break;
+          case '\\':
+            if (*++yyp != '\\')
+              goto do_not_strip_quotes;
+            else
+              goto append;
 
-        case '"':
-          if (yyres) yyres[yyn] = '\0';
-          return yyn;
-      }
-  do_not_strip_quotes:;
-  }
+          append:
+          default:
+            if (yyres)
+              yyres[yyn] = *yyp;
+            yyn++;
+            break;
+
+          case '"':
+            if (yyres)
+              yyres[yyn] = '\0';
+            return yyn;
+          }
+    do_not_strip_quotes: ;
+    }
 
   if (yyres)
-    return yystpcpy(yyres, yystr) - yyres;
+    return yystpcpy (yyres, yystr) - yyres;
   else
-    return yystrlen(yystr);
+    return yystrlen (yystr);
 }
 #endif
 
-static int yy_syntax_error_arguments(const yypcontext_t* yyctx,
-                                     yysymbol_kind_t yyarg[], int yyargn) {
+
+static int
+yy_syntax_error_arguments (const yypcontext_t *yyctx,
+                           yysymbol_kind_t yyarg[], int yyargn)
+{
   /* Actual size of YYARG. */
   int yycount = 0;
   /* There are many possibilities here to consider:
@@ -1984,17 +2113,19 @@ static int yy_syntax_error_arguments(const yypcontext_t* yyctx,
        one exception: it will still contain any token that will not be
        accepted due to an error action in a later state.
   */
-  if (yyctx->yytoken != YYSYMBOL_YYEMPTY) {
-    int yyn;
-    if (yyarg) yyarg[yycount] = yyctx->yytoken;
-    ++yycount;
-    yyn = yypcontext_expected_tokens(yyctx, yyarg ? yyarg + 1 : yyarg,
-                                     yyargn - 1);
-    if (yyn == YYENOMEM)
-      return YYENOMEM;
-    else
-      yycount += yyn;
-  }
+  if (yyctx->yytoken != YYSYMBOL_YYEMPTY)
+    {
+      int yyn;
+      if (yyarg)
+        yyarg[yycount] = yyctx->yytoken;
+      ++yycount;
+      yyn = yypcontext_expected_tokens (yyctx,
+                                        yyarg ? yyarg + 1 : yyarg, yyargn - 1);
+      if (yyn == YYENOMEM)
+        return YYENOMEM;
+      else
+        yycount += yyn;
+    }
   return yycount;
 }
 
@@ -2006,11 +2137,13 @@ static int yy_syntax_error_arguments(const yypcontext_t* yyctx,
    not large enough to hold the message.  In that case, also set
    *YYMSG_ALLOC to the required number of bytes.  Return YYENOMEM if the
    required number of bytes is too large to store.  */
-static int yysyntax_error(YYPTRDIFF_T* yymsg_alloc, char** yymsg,
-                          const yypcontext_t* yyctx) {
+static int
+yysyntax_error (YYPTRDIFF_T *yymsg_alloc, char **yymsg,
+                const yypcontext_t *yyctx)
+{
   enum { YYARGS_MAX = 5 };
   /* Internationalized format string. */
-  const char* yyformat = YY_NULLPTR;
+  const char *yyformat = YY_NULLPTR;
   /* Arguments of yyformat: reported tokens (one for the "unexpected",
      one per "expected"). */
   yysymbol_kind_t yyarg[YYARGS_MAX];
@@ -2018,135 +2151,150 @@ static int yysyntax_error(YYPTRDIFF_T* yymsg_alloc, char** yymsg,
   YYPTRDIFF_T yysize = 0;
 
   /* Actual size of YYARG. */
-  int yycount = yy_syntax_error_arguments(yyctx, yyarg, YYARGS_MAX);
-  if (yycount == YYENOMEM) return YYENOMEM;
+  int yycount = yy_syntax_error_arguments (yyctx, yyarg, YYARGS_MAX);
+  if (yycount == YYENOMEM)
+    return YYENOMEM;
 
-  switch (yycount) {
-#define YYCASE_(N, S) \
-  case N:             \
-    yyformat = S;     \
-    break
+  switch (yycount)
+    {
+#define YYCASE_(N, S)                       \
+      case N:                               \
+        yyformat = S;                       \
+        break
     default: /* Avoid compiler warnings. */
       YYCASE_(0, YY_("syntax error"));
       YYCASE_(1, YY_("syntax error, unexpected %s"));
       YYCASE_(2, YY_("syntax error, unexpected %s, expecting %s"));
       YYCASE_(3, YY_("syntax error, unexpected %s, expecting %s or %s"));
       YYCASE_(4, YY_("syntax error, unexpected %s, expecting %s or %s or %s"));
-      YYCASE_(
-          5,
-          YY_("syntax error, unexpected %s, expecting %s or %s or %s or %s"));
+      YYCASE_(5, YY_("syntax error, unexpected %s, expecting %s or %s or %s or %s"));
 #undef YYCASE_
-  }
+    }
 
   /* Compute error message size.  Don't count the "%s"s, but reserve
      room for the terminator.  */
-  yysize = yystrlen(yyformat) - 2 * yycount + 1;
+  yysize = yystrlen (yyformat) - 2 * yycount + 1;
   {
     int yyi;
-    for (yyi = 0; yyi < yycount; ++yyi) {
-      YYPTRDIFF_T yysize1 = yysize + yytnamerr(YY_NULLPTR, yytname[yyarg[yyi]]);
-      if (yysize <= yysize1 && yysize1 <= YYSTACK_ALLOC_MAXIMUM)
-        yysize = yysize1;
-      else
-        return YYENOMEM;
-    }
+    for (yyi = 0; yyi < yycount; ++yyi)
+      {
+        YYPTRDIFF_T yysize1
+          = yysize + yytnamerr (YY_NULLPTR, yytname[yyarg[yyi]]);
+        if (yysize <= yysize1 && yysize1 <= YYSTACK_ALLOC_MAXIMUM)
+          yysize = yysize1;
+        else
+          return YYENOMEM;
+      }
   }
 
-  if (*yymsg_alloc < yysize) {
-    *yymsg_alloc = 2 * yysize;
-    if (!(yysize <= *yymsg_alloc && *yymsg_alloc <= YYSTACK_ALLOC_MAXIMUM))
-      *yymsg_alloc = YYSTACK_ALLOC_MAXIMUM;
-    return -1;
-  }
+  if (*yymsg_alloc < yysize)
+    {
+      *yymsg_alloc = 2 * yysize;
+      if (! (yysize <= *yymsg_alloc
+             && *yymsg_alloc <= YYSTACK_ALLOC_MAXIMUM))
+        *yymsg_alloc = YYSTACK_ALLOC_MAXIMUM;
+      return -1;
+    }
 
   /* Avoid sprintf, as that infringes on the user's name space.
      Don't have undefined behavior even if the translation
      produced a string with the wrong number of "%s"s.  */
   {
-    char* yyp = *yymsg;
+    char *yyp = *yymsg;
     int yyi = 0;
     while ((*yyp = *yyformat) != '\0')
-      if (*yyp == '%' && yyformat[1] == 's' && yyi < yycount) {
-        yyp += yytnamerr(yyp, yytname[yyarg[yyi++]]);
-        yyformat += 2;
-      } else {
-        ++yyp;
-        ++yyformat;
-      }
+      if (*yyp == '%' && yyformat[1] == 's' && yyi < yycount)
+        {
+          yyp += yytnamerr (yyp, yytname[yyarg[yyi++]]);
+          yyformat += 2;
+        }
+      else
+        {
+          ++yyp;
+          ++yyformat;
+        }
   }
   return 0;
 }
+
 
 /*-----------------------------------------------.
 | Release the memory associated to this symbol.  |
 `-----------------------------------------------*/
 
-static void yydestruct(const char* yymsg, yysymbol_kind_t yykind,
-                       YYSTYPE* yyvaluep, YYLTYPE* yylocationp,
-                       arangodb::aql::Parser* parser) {
-  YY_USE(yyvaluep);
-  YY_USE(yylocationp);
-  YY_USE(parser);
-  if (!yymsg) yymsg = "Deleting";
-  YY_SYMBOL_PRINT(yymsg, yykind, yyvaluep, yylocationp);
+static void
+yydestruct (const char *yymsg,
+            yysymbol_kind_t yykind, YYSTYPE *yyvaluep, YYLTYPE *yylocationp, arangodb::aql::Parser* parser)
+{
+  YY_USE (yyvaluep);
+  YY_USE (yylocationp);
+  YY_USE (parser);
+  if (!yymsg)
+    yymsg = "Deleting";
+  YY_SYMBOL_PRINT (yymsg, yykind, yyvaluep, yylocationp);
 
   YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
-  YY_USE(yykind);
+  YY_USE (yykind);
   YY_IGNORE_MAYBE_UNINITIALIZED_END
 }
+
+
+
+
+
 
 /*----------.
 | yyparse.  |
 `----------*/
 
-int yyparse(arangodb::aql::Parser* parser) {
-  /* Lookahead token kind.  */
-  int yychar;
+int
+yyparse (arangodb::aql::Parser* parser)
+{
+/* Lookahead token kind.  */
+int yychar;
 
-  /* The semantic value of the lookahead symbol.  */
-  /* Default value used for initialization, for pacifying older GCCs
-     or non-GCC compilers.  */
-  YY_INITIAL_VALUE(static YYSTYPE yyval_default;)
-  YYSTYPE yylval YY_INITIAL_VALUE(= yyval_default);
 
-  /* Location data for the lookahead symbol.  */
-  static YYLTYPE yyloc_default
-#if defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL
-      = { 1,
-          1,
-          1,
-          1 }
-#endif
-  ;
-  YYLTYPE yylloc = yyloc_default;
+/* The semantic value of the lookahead symbol.  */
+/* Default value used for initialization, for pacifying older GCCs
+   or non-GCC compilers.  */
+YY_INITIAL_VALUE (static YYSTYPE yyval_default;)
+YYSTYPE yylval YY_INITIAL_VALUE (= yyval_default);
 
-  /* Number of syntax errors so far.  */
-  int yynerrs = 0;
+/* Location data for the lookahead symbol.  */
+static YYLTYPE yyloc_default
+# if defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL
+  = { 1, 1, 1, 1 }
+# endif
+;
+YYLTYPE yylloc = yyloc_default;
 
-  yy_state_fast_t yystate = 0;
-  /* Number of tokens to shift before error messages enabled.  */
-  int yyerrstatus = 0;
+    /* Number of syntax errors so far.  */
+    int yynerrs = 0;
 
-  /* Refer to the stacks through separate pointers, to allow yyoverflow
-     to reallocate them elsewhere.  */
+    yy_state_fast_t yystate = 0;
+    /* Number of tokens to shift before error messages enabled.  */
+    int yyerrstatus = 0;
 
-  /* Their size.  */
-  YYPTRDIFF_T yystacksize = YYINITDEPTH;
+    /* Refer to the stacks through separate pointers, to allow yyoverflow
+       to reallocate them elsewhere.  */
 
-  /* The state stack: array, bottom, top.  */
-  yy_state_t yyssa[YYINITDEPTH];
-  yy_state_t* yyss = yyssa;
-  yy_state_t* yyssp = yyss;
+    /* Their size.  */
+    YYPTRDIFF_T yystacksize = YYINITDEPTH;
 
-  /* The semantic value stack: array, bottom, top.  */
-  YYSTYPE yyvsa[YYINITDEPTH];
-  YYSTYPE* yyvs = yyvsa;
-  YYSTYPE* yyvsp = yyvs;
+    /* The state stack: array, bottom, top.  */
+    yy_state_t yyssa[YYINITDEPTH];
+    yy_state_t *yyss = yyssa;
+    yy_state_t *yyssp = yyss;
 
-  /* The location stack: array, bottom, top.  */
-  YYLTYPE yylsa[YYINITDEPTH];
-  YYLTYPE* yyls = yylsa;
-  YYLTYPE* yylsp = yyls;
+    /* The semantic value stack: array, bottom, top.  */
+    YYSTYPE yyvsa[YYINITDEPTH];
+    YYSTYPE *yyvs = yyvsa;
+    YYSTYPE *yyvsp = yyvs;
+
+    /* The location stack: array, bottom, top.  */
+    YYLTYPE yylsa[YYINITDEPTH];
+    YYLTYPE *yyls = yylsa;
+    YYLTYPE *yylsp = yyls;
 
   int yyn;
   /* The return value of yyparse.  */
@@ -2163,20 +2311,21 @@ int yyparse(arangodb::aql::Parser* parser) {
 
   /* Buffer for error messages, and its allocated size.  */
   char yymsgbuf[128];
-  char* yymsg = yymsgbuf;
+  char *yymsg = yymsgbuf;
   YYPTRDIFF_T yymsg_alloc = sizeof yymsgbuf;
 
-#define YYPOPSTACK(N) (yyvsp -= (N), yyssp -= (N), yylsp -= (N))
+#define YYPOPSTACK(N)   (yyvsp -= (N), yyssp -= (N), yylsp -= (N))
 
   /* The number of symbols on the RHS of the reduced rule.
      Keep to zero when no symbol should be popped.  */
   int yylen = 0;
 
-  YYDPRINTF((stderr, "Starting parse\n"));
+  YYDPRINTF ((stderr, "Starting parse\n"));
 
   yychar = YYEMPTY; /* Cause a token to be read.  */
   yylsp[0] = yylloc;
   goto yysetstate;
+
 
 /*------------------------------------------------------------.
 | yynewstate -- push a new state, which is found in yystate.  |
@@ -2186,81 +2335,91 @@ yynewstate:
      have just been pushed.  So pushing a state here evens the stacks.  */
   yyssp++;
 
+
 /*--------------------------------------------------------------------.
 | yysetstate -- set current state (the top of the stack) to yystate.  |
 `--------------------------------------------------------------------*/
 yysetstate:
-  YYDPRINTF((stderr, "Entering state %d\n", yystate));
-  YY_ASSERT(0 <= yystate && yystate < YYNSTATES);
+  YYDPRINTF ((stderr, "Entering state %d\n", yystate));
+  YY_ASSERT (0 <= yystate && yystate < YYNSTATES);
   YY_IGNORE_USELESS_CAST_BEGIN
-  *yyssp = YY_CAST(yy_state_t, yystate);
+  *yyssp = YY_CAST (yy_state_t, yystate);
   YY_IGNORE_USELESS_CAST_END
-  YY_STACK_PRINT(yyss, yyssp);
+  YY_STACK_PRINT (yyss, yyssp);
 
   if (yyss + yystacksize - 1 <= yyssp)
 #if !defined yyoverflow && !defined YYSTACK_RELOCATE
     goto yyexhaustedlab;
 #else
-  {
-    /* Get the current used size of the three stacks, in elements.  */
-    YYPTRDIFF_T yysize = yyssp - yyss + 1;
-
-#if defined yyoverflow
     {
-      /* Give user a chance to reallocate the stack.  Use copies of
-         these so that the &'s don't force the real ones into
-         memory.  */
-      yy_state_t* yyss1 = yyss;
-      YYSTYPE* yyvs1 = yyvs;
-      YYLTYPE* yyls1 = yyls;
+      /* Get the current used size of the three stacks, in elements.  */
+      YYPTRDIFF_T yysize = yyssp - yyss + 1;
 
-      /* Each stack pointer address is followed by the size of the
-         data in use in that stack, in bytes.  This used to be a
-         conditional around just the two extra args, but that might
-         be undefined if yyoverflow is a macro.  */
-      yyoverflow(YY_("memory exhausted"), &yyss1, yysize * YYSIZEOF(*yyssp),
-                 &yyvs1, yysize * YYSIZEOF(*yyvsp), &yyls1,
-                 yysize * YYSIZEOF(*yylsp), &yystacksize);
-      yyss = yyss1;
-      yyvs = yyvs1;
-      yyls = yyls1;
+# if defined yyoverflow
+      {
+        /* Give user a chance to reallocate the stack.  Use copies of
+           these so that the &'s don't force the real ones into
+           memory.  */
+        yy_state_t *yyss1 = yyss;
+        YYSTYPE *yyvs1 = yyvs;
+        YYLTYPE *yyls1 = yyls;
+
+        /* Each stack pointer address is followed by the size of the
+           data in use in that stack, in bytes.  This used to be a
+           conditional around just the two extra args, but that might
+           be undefined if yyoverflow is a macro.  */
+        yyoverflow (YY_("memory exhausted"),
+                    &yyss1, yysize * YYSIZEOF (*yyssp),
+                    &yyvs1, yysize * YYSIZEOF (*yyvsp),
+                    &yyls1, yysize * YYSIZEOF (*yylsp),
+                    &yystacksize);
+        yyss = yyss1;
+        yyvs = yyvs1;
+        yyls = yyls1;
+      }
+# else /* defined YYSTACK_RELOCATE */
+      /* Extend the stack our own way.  */
+      if (YYMAXDEPTH <= yystacksize)
+        goto yyexhaustedlab;
+      yystacksize *= 2;
+      if (YYMAXDEPTH < yystacksize)
+        yystacksize = YYMAXDEPTH;
+
+      {
+        yy_state_t *yyss1 = yyss;
+        union yyalloc *yyptr =
+          YY_CAST (union yyalloc *,
+                   YYSTACK_ALLOC (YY_CAST (YYSIZE_T, YYSTACK_BYTES (yystacksize))));
+        if (! yyptr)
+          goto yyexhaustedlab;
+        YYSTACK_RELOCATE (yyss_alloc, yyss);
+        YYSTACK_RELOCATE (yyvs_alloc, yyvs);
+        YYSTACK_RELOCATE (yyls_alloc, yyls);
+#  undef YYSTACK_RELOCATE
+        if (yyss1 != yyssa)
+          YYSTACK_FREE (yyss1);
+      }
+# endif
+
+      yyssp = yyss + yysize - 1;
+      yyvsp = yyvs + yysize - 1;
+      yylsp = yyls + yysize - 1;
+
+      YY_IGNORE_USELESS_CAST_BEGIN
+      YYDPRINTF ((stderr, "Stack size increased to %ld\n",
+                  YY_CAST (long, yystacksize)));
+      YY_IGNORE_USELESS_CAST_END
+
+      if (yyss + yystacksize - 1 <= yyssp)
+        YYABORT;
     }
-#else /* defined YYSTACK_RELOCATE */
-    /* Extend the stack our own way.  */
-    if (YYMAXDEPTH <= yystacksize) goto yyexhaustedlab;
-    yystacksize *= 2;
-    if (YYMAXDEPTH < yystacksize) yystacksize = YYMAXDEPTH;
-
-    {
-      yy_state_t* yyss1 = yyss;
-      union yyalloc* yyptr =
-          YY_CAST(union yyalloc*,
-                  YYSTACK_ALLOC(YY_CAST(YYSIZE_T, YYSTACK_BYTES(yystacksize))));
-      if (!yyptr) goto yyexhaustedlab;
-      YYSTACK_RELOCATE(yyss_alloc, yyss);
-      YYSTACK_RELOCATE(yyvs_alloc, yyvs);
-      YYSTACK_RELOCATE(yyls_alloc, yyls);
-#undef YYSTACK_RELOCATE
-      if (yyss1 != yyssa) YYSTACK_FREE(yyss1);
-    }
-#endif
-
-    yyssp = yyss + yysize - 1;
-    yyvsp = yyvs + yysize - 1;
-    yylsp = yyls + yysize - 1;
-
-    YY_IGNORE_USELESS_CAST_BEGIN
-    YYDPRINTF(
-        (stderr, "Stack size increased to %ld\n", YY_CAST(long, yystacksize)));
-    YY_IGNORE_USELESS_CAST_END
-
-    if (yyss + yystacksize - 1 <= yyssp) YYABORT;
-  }
 #endif /* !defined yyoverflow && !defined YYSTACK_RELOCATE */
 
-  if (yystate == YYFINAL) YYACCEPT;
+  if (yystate == YYFINAL)
+    YYACCEPT;
 
   goto yybackup;
+
 
 /*-----------.
 | yybackup.  |
@@ -2271,51 +2430,62 @@ yybackup:
 
   /* First try to decide what to do without reference to lookahead token.  */
   yyn = yypact[yystate];
-  if (yypact_value_is_default(yyn)) goto yydefault;
+  if (yypact_value_is_default (yyn))
+    goto yydefault;
 
   /* Not known => get a lookahead token if don't already have one.  */
 
   /* YYCHAR is either empty, or end-of-input, or a valid lookahead.  */
-  if (yychar == YYEMPTY) {
-    YYDPRINTF((stderr, "Reading a token\n"));
-    yychar = yylex(&yylval, &yylloc, scanner);
-  }
+  if (yychar == YYEMPTY)
+    {
+      YYDPRINTF ((stderr, "Reading a token\n"));
+      yychar = yylex (&yylval, &yylloc, scanner);
+    }
 
-  if (yychar <= T_END) {
-    yychar = T_END;
-    yytoken = YYSYMBOL_YYEOF;
-    YYDPRINTF((stderr, "Now at end of input.\n"));
-  } else if (yychar == YYerror) {
-    /* The scanner already issued an error message, process directly
-       to error recovery.  But do not keep the error token as
-       lookahead, it is too special and may lead us to an endless
-       loop in error recovery. */
-    yychar = YYUNDEF;
-    yytoken = YYSYMBOL_YYerror;
-    yyerror_range[1] = yylloc;
-    goto yyerrlab1;
-  } else {
-    yytoken = YYTRANSLATE(yychar);
-    YY_SYMBOL_PRINT("Next token is", yytoken, &yylval, &yylloc);
-  }
+  if (yychar <= T_END)
+    {
+      yychar = T_END;
+      yytoken = YYSYMBOL_YYEOF;
+      YYDPRINTF ((stderr, "Now at end of input.\n"));
+    }
+  else if (yychar == YYerror)
+    {
+      /* The scanner already issued an error message, process directly
+         to error recovery.  But do not keep the error token as
+         lookahead, it is too special and may lead us to an endless
+         loop in error recovery. */
+      yychar = YYUNDEF;
+      yytoken = YYSYMBOL_YYerror;
+      yyerror_range[1] = yylloc;
+      goto yyerrlab1;
+    }
+  else
+    {
+      yytoken = YYTRANSLATE (yychar);
+      YY_SYMBOL_PRINT ("Next token is", yytoken, &yylval, &yylloc);
+    }
 
   /* If the proper action on seeing token YYTOKEN is to reduce or to
      detect an error, take that action.  */
   yyn += yytoken;
-  if (yyn < 0 || YYLAST < yyn || yycheck[yyn] != yytoken) goto yydefault;
+  if (yyn < 0 || YYLAST < yyn || yycheck[yyn] != yytoken)
+    goto yydefault;
   yyn = yytable[yyn];
-  if (yyn <= 0) {
-    if (yytable_value_is_error(yyn)) goto yyerrlab;
-    yyn = -yyn;
-    goto yyreduce;
-  }
+  if (yyn <= 0)
+    {
+      if (yytable_value_is_error (yyn))
+        goto yyerrlab;
+      yyn = -yyn;
+      goto yyreduce;
+    }
 
   /* Count tokens shifted since error; after three, turn off error
      status.  */
-  if (yyerrstatus) yyerrstatus--;
+  if (yyerrstatus)
+    yyerrstatus--;
 
   /* Shift the lookahead token.  */
-  YY_SYMBOL_PRINT("Shifting", yytoken, &yylval, &yylloc);
+  YY_SYMBOL_PRINT ("Shifting", yytoken, &yylval, &yylloc);
   yystate = yyn;
   YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
   *++yyvsp = yylval;
@@ -2326,13 +2496,16 @@ yybackup:
   yychar = YYEMPTY;
   goto yynewstate;
 
+
 /*-----------------------------------------------------------.
 | yydefault -- do the default action for the current state.  |
 `-----------------------------------------------------------*/
 yydefault:
   yyn = yydefact[yystate];
-  if (yyn == 0) goto yyerrlab;
+  if (yyn == 0)
+    goto yyerrlab;
   goto yyreduce;
+
 
 /*-----------------------------.
 | yyreduce -- do a reduction.  |
@@ -2349,316 +2522,310 @@ yyreduce:
      users should not rely upon it.  Assigning to YYVAL
      unconditionally makes the parser a bit smaller, and it avoids a
      GCC warning that YYVAL may be used uninitialized.  */
-  yyval = yyvsp[1 - yylen];
+  yyval = yyvsp[1-yylen];
 
   /* Default location. */
-  YYLLOC_DEFAULT(yyloc, (yylsp - yylen), yylen);
+  YYLLOC_DEFAULT (yyloc, (yylsp - yylen), yylen);
   yyerror_range[1] = yyloc;
-  YY_REDUCE_PRINT(yyn);
-  switch (yyn) {
-    case 2: /* optional_prune_variable: expression  */
-#line 498 "Aql/grammar.y"
+  YY_REDUCE_PRINT (yyn);
+  switch (yyn)
     {
+  case 2: /* optional_prune_variable: expression  */
+#line 499 "Aql/grammar.y"
+               {
       AstNode* node = parser->ast()->createNodeArray();
       node->addMember(parser->ast()->createNodeNop());
       node->addMember((yyvsp[0].node));
       (yyval.node) = node;
     }
-#line 2541 "Aql/grammar.cpp"
+#line 2542 "Aql/grammar.cpp"
     break;
 
-    case 3: /* optional_prune_variable: variable_name "assignment" expression */
-#line 504 "Aql/grammar.y"
-    {
+  case 3: /* optional_prune_variable: variable_name "assignment" expression  */
+#line 505 "Aql/grammar.y"
+                                      {
       AstNode* node = parser->ast()->createNodeArray();
-      AstNode* variableNode = parser->ast()->createNodeLet(
-          (yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node),
-          true);
+      AstNode* variableNode = parser->ast()->createNodeLet((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node), true);
       node->addMember(variableNode);
       node->addMember((yyvsp[0].node));
-      (yyval.node) = node;
-    }
-#line 2553 "Aql/grammar.cpp"
+      (yyval.node) = node;    
+  }
+#line 2554 "Aql/grammar.cpp"
     break;
 
-    case 4: /* with_collection: "identifier"  */
-#line 514 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeValueString(
-          (yyvsp[0].strval).value, (yyvsp[0].strval).length);
+  case 4: /* with_collection: "identifier"  */
+#line 515 "Aql/grammar.y"
+             {
+      (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 2561 "Aql/grammar.cpp"
+#line 2562 "Aql/grammar.cpp"
     break;
 
-    case 5: /* with_collection: bind_parameter_datasource_expected  */
-#line 517 "Aql/grammar.y"
-    {
+  case 5: /* with_collection: bind_parameter_datasource_expected  */
+#line 518 "Aql/grammar.y"
+                                       {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 2569 "Aql/grammar.cpp"
+#line 2570 "Aql/grammar.cpp"
     break;
 
-    case 6: /* with_collection_list: with_collection  */
-#line 523 "Aql/grammar.y"
-    {
-      auto node = static_cast<AstNode*>(parser->peekStack());
-      node->addMember((yyvsp[0].node));
-    }
-#line 2578 "Aql/grammar.cpp"
+  case 6: /* with_collection_list: with_collection  */
+#line 524 "Aql/grammar.y"
+                     {
+       auto node = static_cast<AstNode*>(parser->peekStack());
+       node->addMember((yyvsp[0].node));
+     }
+#line 2579 "Aql/grammar.cpp"
     break;
 
-    case 7: /* with_collection_list: with_collection_list "," with_collection */
-#line 527 "Aql/grammar.y"
-    {
-      auto node = static_cast<AstNode*>(parser->peekStack());
-      node->addMember((yyvsp[0].node));
-    }
-#line 2587 "Aql/grammar.cpp"
+  case 7: /* with_collection_list: with_collection_list "," with_collection  */
+#line 528 "Aql/grammar.y"
+                                                  {
+       auto node = static_cast<AstNode*>(parser->peekStack());
+       node->addMember((yyvsp[0].node));
+     }
+#line 2588 "Aql/grammar.cpp"
     break;
 
-    case 8: /* with_collection_list: with_collection_list with_collection  */
-#line 531 "Aql/grammar.y"
-    {
-      auto node = static_cast<AstNode*>(parser->peekStack());
-      node->addMember((yyvsp[0].node));
-    }
-#line 2596 "Aql/grammar.cpp"
+  case 8: /* with_collection_list: with_collection_list with_collection  */
+#line 532 "Aql/grammar.y"
+                                          {
+       auto node = static_cast<AstNode*>(parser->peekStack());
+       node->addMember((yyvsp[0].node));
+     }
+#line 2597 "Aql/grammar.cpp"
     break;
 
-    case 9: /* optional_with: %empty  */
-#line 538 "Aql/grammar.y"
-    {
-    }
-#line 2603 "Aql/grammar.cpp"
+  case 9: /* optional_with: %empty  */
+#line 539 "Aql/grammar.y"
+                 {
+     }
+#line 2604 "Aql/grammar.cpp"
     break;
 
-    case 10: /* $@1: %empty  */
-#line 540 "Aql/grammar.y"
-    {
+  case 10: /* $@1: %empty  */
+#line 541 "Aql/grammar.y"
+            {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
-    }
-#line 2612 "Aql/grammar.cpp"
+     }
+#line 2613 "Aql/grammar.cpp"
     break;
 
-    case 11: /* optional_with: "WITH keyword" $@1 with_collection_list  */
-#line 543 "Aql/grammar.y"
-    {
+  case 11: /* optional_with: "WITH keyword" $@1 with_collection_list  */
+#line 544 "Aql/grammar.y"
+                            {
       auto node = static_cast<AstNode*>(parser->popStack());
       auto const& resolver = parser->query().resolver();
       auto withNode = parser->ast()->createNodeWithCollections(node, resolver);
       parser->ast()->addOperation(withNode);
-    }
-#line 2623 "Aql/grammar.cpp"
+     }
+#line 2624 "Aql/grammar.cpp"
     break;
 
-    case 12: /* queryStart: optional_with query  */
-#line 552 "Aql/grammar.y"
-    {
+  case 12: /* queryStart: optional_with query  */
+#line 553 "Aql/grammar.y"
+                        {
     }
-#line 2630 "Aql/grammar.cpp"
+#line 2631 "Aql/grammar.cpp"
     break;
 
-    case 13: /* query: optional_statement_block_statements final_statement  */
-#line 557 "Aql/grammar.y"
-    {
+  case 13: /* query: optional_statement_block_statements final_statement  */
+#line 558 "Aql/grammar.y"
+                                                        {
     }
-#line 2637 "Aql/grammar.cpp"
+#line 2638 "Aql/grammar.cpp"
     break;
 
-    case 14: /* final_statement: return_statement  */
-#line 562 "Aql/grammar.y"
-    {
+  case 14: /* final_statement: return_statement  */
+#line 563 "Aql/grammar.y"
+                     {
     }
-#line 2644 "Aql/grammar.cpp"
+#line 2645 "Aql/grammar.cpp"
     break;
 
-    case 15: /* final_statement: remove_statement  */
-#line 564 "Aql/grammar.y"
-    {
+  case 15: /* final_statement: remove_statement  */
+#line 565 "Aql/grammar.y"
+                     {
       parser->ast()->scopes()->endNested();
     }
-#line 2652 "Aql/grammar.cpp"
+#line 2653 "Aql/grammar.cpp"
     break;
 
-    case 16: /* final_statement: insert_statement  */
-#line 567 "Aql/grammar.y"
-    {
+  case 16: /* final_statement: insert_statement  */
+#line 568 "Aql/grammar.y"
+                     {
       parser->ast()->scopes()->endNested();
     }
-#line 2660 "Aql/grammar.cpp"
+#line 2661 "Aql/grammar.cpp"
     break;
 
-    case 17: /* final_statement: update_statement  */
-#line 570 "Aql/grammar.y"
-    {
+  case 17: /* final_statement: update_statement  */
+#line 571 "Aql/grammar.y"
+                     {
       parser->ast()->scopes()->endNested();
     }
-#line 2668 "Aql/grammar.cpp"
+#line 2669 "Aql/grammar.cpp"
     break;
 
-    case 18: /* final_statement: replace_statement  */
-#line 573 "Aql/grammar.y"
-    {
+  case 18: /* final_statement: replace_statement  */
+#line 574 "Aql/grammar.y"
+                      {
       parser->ast()->scopes()->endNested();
     }
-#line 2676 "Aql/grammar.cpp"
+#line 2677 "Aql/grammar.cpp"
     break;
 
-    case 19: /* final_statement: upsert_statement  */
-#line 576 "Aql/grammar.y"
-    {
+  case 19: /* final_statement: upsert_statement  */
+#line 577 "Aql/grammar.y"
+                     {
       parser->ast()->scopes()->endNested();
     }
-#line 2684 "Aql/grammar.cpp"
+#line 2685 "Aql/grammar.cpp"
     break;
 
-    case 20: /* optional_statement_block_statements: %empty  */
-#line 582 "Aql/grammar.y"
-    {
+  case 20: /* optional_statement_block_statements: %empty  */
+#line 583 "Aql/grammar.y"
+                {
     }
-#line 2691 "Aql/grammar.cpp"
+#line 2692 "Aql/grammar.cpp"
     break;
 
-    case 21: /* optional_statement_block_statements:
-                optional_statement_block_statements statement_block_statement */
-#line 584 "Aql/grammar.y"
-    {
+  case 21: /* optional_statement_block_statements: optional_statement_block_statements statement_block_statement  */
+#line 585 "Aql/grammar.y"
+                                                                  {
     }
-#line 2698 "Aql/grammar.cpp"
+#line 2699 "Aql/grammar.cpp"
     break;
 
-    case 22: /* statement_block_statement: for_statement  */
-#line 589 "Aql/grammar.y"
-    {
+  case 22: /* statement_block_statement: for_statement  */
+#line 590 "Aql/grammar.y"
+                  {
     }
-#line 2705 "Aql/grammar.cpp"
+#line 2706 "Aql/grammar.cpp"
     break;
 
-    case 23: /* statement_block_statement: let_statement  */
-#line 591 "Aql/grammar.y"
-    {
+  case 23: /* statement_block_statement: let_statement  */
+#line 592 "Aql/grammar.y"
+                  {
     }
-#line 2712 "Aql/grammar.cpp"
+#line 2713 "Aql/grammar.cpp"
     break;
 
-    case 24: /* statement_block_statement: filter_statement  */
-#line 593 "Aql/grammar.y"
-    {
+  case 24: /* statement_block_statement: filter_statement  */
+#line 594 "Aql/grammar.y"
+                     {
     }
-#line 2719 "Aql/grammar.cpp"
+#line 2720 "Aql/grammar.cpp"
     break;
 
-    case 25: /* statement_block_statement: collect_statement  */
-#line 595 "Aql/grammar.y"
-    {
+  case 25: /* statement_block_statement: collect_statement  */
+#line 596 "Aql/grammar.y"
+                      {
     }
-#line 2726 "Aql/grammar.cpp"
+#line 2727 "Aql/grammar.cpp"
     break;
 
-    case 26: /* statement_block_statement: sort_statement  */
-#line 597 "Aql/grammar.y"
-    {
+  case 26: /* statement_block_statement: sort_statement  */
+#line 598 "Aql/grammar.y"
+                   {
     }
-#line 2733 "Aql/grammar.cpp"
+#line 2734 "Aql/grammar.cpp"
     break;
 
-    case 27: /* statement_block_statement: limit_statement  */
-#line 599 "Aql/grammar.y"
-    {
+  case 27: /* statement_block_statement: limit_statement  */
+#line 600 "Aql/grammar.y"
+                    {
     }
-#line 2740 "Aql/grammar.cpp"
+#line 2741 "Aql/grammar.cpp"
     break;
 
-    case 28: /* statement_block_statement: window_statement  */
-#line 601 "Aql/grammar.y"
-    {
+  case 28: /* statement_block_statement: window_statement  */
+#line 602 "Aql/grammar.y"
+                     {
     }
-#line 2747 "Aql/grammar.cpp"
+#line 2748 "Aql/grammar.cpp"
     break;
 
-    case 29: /* statement_block_statement: remove_statement  */
-#line 603 "Aql/grammar.y"
-    {
+  case 29: /* statement_block_statement: remove_statement  */
+#line 604 "Aql/grammar.y"
+                     {
     }
-#line 2754 "Aql/grammar.cpp"
+#line 2755 "Aql/grammar.cpp"
     break;
 
-    case 30: /* statement_block_statement: insert_statement  */
-#line 605 "Aql/grammar.y"
-    {
+  case 30: /* statement_block_statement: insert_statement  */
+#line 606 "Aql/grammar.y"
+                     {
     }
-#line 2761 "Aql/grammar.cpp"
+#line 2762 "Aql/grammar.cpp"
     break;
 
-    case 31: /* statement_block_statement: update_statement  */
-#line 607 "Aql/grammar.y"
-    {
+  case 31: /* statement_block_statement: update_statement  */
+#line 608 "Aql/grammar.y"
+                     {
     }
-#line 2768 "Aql/grammar.cpp"
+#line 2769 "Aql/grammar.cpp"
     break;
 
-    case 32: /* statement_block_statement: replace_statement  */
-#line 609 "Aql/grammar.y"
-    {
+  case 32: /* statement_block_statement: replace_statement  */
+#line 610 "Aql/grammar.y"
+                      {
     }
-#line 2775 "Aql/grammar.cpp"
+#line 2776 "Aql/grammar.cpp"
     break;
 
-    case 33: /* statement_block_statement: upsert_statement  */
-#line 611 "Aql/grammar.y"
-    {
+  case 33: /* statement_block_statement: upsert_statement  */
+#line 612 "Aql/grammar.y"
+                     {
     }
-#line 2782 "Aql/grammar.cpp"
+#line 2783 "Aql/grammar.cpp"
     break;
 
-    case 34: /* more_output_variables: variable_name  */
-#line 616 "Aql/grammar.y"
-    {
+  case 34: /* more_output_variables: variable_name  */
+#line 617 "Aql/grammar.y"
+                  {
       auto wrapperNode = parser->ast()->createNodeArray();
       parser->pushArray(wrapperNode);
       // This is guaranteed to be called on the first variable
-      AstNode* node = parser->ast()->createNodeValueString(
-          (yyvsp[0].strval).value, (yyvsp[0].strval).length);
+      AstNode* node = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       parser->pushArrayElement(node);
     }
-#line 2794 "Aql/grammar.cpp"
+#line 2795 "Aql/grammar.cpp"
     break;
 
-    case 35: /* more_output_variables: more_output_variables "," variable_name
-              */
-#line 623 "Aql/grammar.y"
-    {
-      AstNode* node = parser->ast()->createNodeValueString(
-          (yyvsp[0].strval).value, (yyvsp[0].strval).length);
+  case 35: /* more_output_variables: more_output_variables "," variable_name  */
+#line 624 "Aql/grammar.y"
+                                                  {
+      AstNode* node = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       parser->pushArrayElement(node);
     }
-#line 2803 "Aql/grammar.cpp"
+#line 2804 "Aql/grammar.cpp"
     break;
 
-    case 36: /* for_output_variables: more_output_variables  */
-#line 630 "Aql/grammar.y"
-    {
+  case 36: /* for_output_variables: more_output_variables  */
+#line 631 "Aql/grammar.y"
+                          {
       (yyval.node) = parser->popArray();
     }
-#line 2811 "Aql/grammar.cpp"
+#line 2812 "Aql/grammar.cpp"
     break;
 
-    case 37: /* prune_and_options: %empty  */
-#line 636 "Aql/grammar.y"
-    {
+  case 37: /* prune_and_options: %empty  */
+#line 637 "Aql/grammar.y"
+                                                   {
       auto node = static_cast<AstNode*>(parser->peekStack());
       // Prune
       node->addMember(parser->ast()->createNodeNop());
       // Options
       node->addMember(parser->ast()->createNodeNop());
     }
-#line 2823 "Aql/grammar.cpp"
+#line 2824 "Aql/grammar.cpp"
     break;
 
-    case 38: /* prune_and_options: "identifier" optional_prune_variable  */
-#line 643 "Aql/grammar.y"
-    {
+  case 38: /* prune_and_options: "identifier" optional_prune_variable  */
+#line 644 "Aql/grammar.y"
+                                       {
       auto node = static_cast<AstNode*>(parser->peekStack());
       if (TRI_CaseEqualString((yyvsp[-1].strval).value, "PRUNE")) {
         /* Only Prune */
@@ -2671,60 +2838,44 @@ yyreduce:
         const auto* optionsArgument = (yyvsp[0].node)->getMember(1);
         /* Only Options */
         TRI_ASSERT(optionsArgument != nullptr);
-        ::validateOptions(parser, optionsArgument, yylloc.first_line,
-                          yylloc.first_column);
+        ::validateOptions(parser, optionsArgument, yylloc.first_line, yylloc.first_column);
         // Prune
         node->addMember(parser->ast()->createNodeNop());
         // Options
         node->addMember(optionsArgument);
       } else {
-        parser->registerParseError(
-            TRI_ERROR_QUERY_PARSE,
-            "unexpected qualifier '%s', expecting 'PRUNE' or 'OPTIONS'",
-            {(yyvsp[-1].strval).value, (yyvsp[-1].strval).length},
-            yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'PRUNE' or 'OPTIONS'", {(yyvsp[-1].strval).value, (yyvsp[-1].strval).length}, yylloc.first_line, yylloc.first_column);
       }
     }
-#line 2850 "Aql/grammar.cpp"
+#line 2851 "Aql/grammar.cpp"
     break;
 
-    case 39: /* prune_and_options: "identifier" optional_prune_variable
-                "identifier" object  */
-#line 665 "Aql/grammar.y"
-    {
+  case 39: /* prune_and_options: "identifier" optional_prune_variable "identifier" object  */
+#line 666 "Aql/grammar.y"
+                                                       {
       /* prune and options */
       auto node = static_cast<AstNode*>(parser->peekStack());
       if (!TRI_CaseEqualString((yyvsp[-3].strval).value, "PRUNE")) {
-        parser->registerParseError(
-            TRI_ERROR_QUERY_PARSE,
-            "unexpected qualifier '%s', expecting 'PRUNE'",
-            {(yyvsp[-3].strval).value, (yyvsp[-3].strval).length},
-            yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'PRUNE'", {(yyvsp[-3].strval).value, (yyvsp[-3].strval).length}, yylloc.first_line, yylloc.first_column);
       }
       TRI_ASSERT((yyvsp[-2].node) != nullptr);
       if (!TRI_CaseEqualString((yyvsp[-1].strval).value, "OPTIONS")) {
-        parser->registerParseError(
-            TRI_ERROR_QUERY_PARSE,
-            "unexpected qualifier '%s', expecting 'OPTIONS'",
-            {(yyvsp[-1].strval).value, (yyvsp[-1].strval).length},
-            yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", {(yyvsp[-1].strval).value, (yyvsp[-1].strval).length}, yylloc.first_line, yylloc.first_column);
       }
       TRI_ASSERT((yyvsp[0].node) != nullptr);
-      ::validateOptions(parser, (yyvsp[0].node), yylloc.first_line,
-                        yylloc.first_column);
+      ::validateOptions(parser, (yyvsp[0].node), yylloc.first_line, yylloc.first_column);
 
       // Prune
       node->addMember((yyvsp[-2].node));
       // Options
       node->addMember((yyvsp[0].node));
     }
-#line 2873 "Aql/grammar.cpp"
+#line 2874 "Aql/grammar.cpp"
     break;
 
-    case 40: /* traversal_graph_info: graph_direction_steps expression
-                graph_subject  */
-#line 686 "Aql/grammar.y"
-    {
+  case 40: /* traversal_graph_info: graph_direction_steps expression graph_subject  */
+#line 687 "Aql/grammar.y"
+                                                   {
       auto infoNode = parser->ast()->createNodeArray();
       // Direction
       infoNode->addMember((yyvsp[-2].node));
@@ -2734,72 +2885,53 @@ yyreduce:
       infoNode->addMember((yyvsp[0].node));
       (yyval.node) = infoNode;
     }
-#line 2888 "Aql/grammar.cpp"
+#line 2889 "Aql/grammar.cpp"
     break;
 
-    case 41: /* shortest_path_graph_info: graph_direction "SHORTEST_PATH
-                keyword" expression "identifier" expression graph_subject
-                options  */
-#line 699 "Aql/grammar.y"
-    {
-      (yyval.node) = ::buildShortestPathInfo(
-          parser, (yyvsp[-3].strval).value,
-          parser->ast()->createNodeDirection((yyvsp[-6].intval), 1),
-          (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node),
-          yyloc);
+  case 41: /* shortest_path_graph_info: graph_direction "SHORTEST_PATH keyword" expression "identifier" expression graph_subject options  */
+#line 700 "Aql/grammar.y"
+                                                                                         {
+      (yyval.node) = ::buildShortestPathInfo(parser, (yyvsp[-3].strval).value, parser->ast()->createNodeDirection((yyvsp[-6].intval), 1), (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node), yyloc);
     }
-#line 2896 "Aql/grammar.cpp"
+#line 2897 "Aql/grammar.cpp"
     break;
 
-    case 42: /* k_shortest_paths_graph_info: graph_direction_steps
-                "K_SHORTEST_PATHS keyword" expression "identifier" expression
-                graph_subject options  */
-#line 705 "Aql/grammar.y"
-    {
-      (yyval.node) = ::buildShortestPathInfo(
-          parser, (yyvsp[-3].strval).value, (yyvsp[-6].node), (yyvsp[-4].node),
-          (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node), yyloc);
+  case 42: /* k_shortest_paths_graph_info: graph_direction_steps "K_SHORTEST_PATHS keyword" expression "identifier" expression graph_subject options  */
+#line 706 "Aql/grammar.y"
+                                                                                                  {
+      (yyval.node) = ::buildShortestPathInfo(parser, (yyvsp[-3].strval).value, (yyvsp[-6].node), (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node), yyloc);
     }
-#line 2904 "Aql/grammar.cpp"
+#line 2905 "Aql/grammar.cpp"
     break;
 
-    case 43: /* k_paths_graph_info: graph_direction_steps "K_PATHS keyword"
-                expression "identifier" expression graph_subject options  */
-#line 711 "Aql/grammar.y"
-    {
-      (yyval.node) = ::buildShortestPathInfo(
-          parser, (yyvsp[-3].strval).value, (yyvsp[-6].node), (yyvsp[-4].node),
-          (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node), yyloc);
+  case 43: /* k_paths_graph_info: graph_direction_steps "K_PATHS keyword" expression "identifier" expression graph_subject options  */
+#line 712 "Aql/grammar.y"
+                                                                                         {
+      (yyval.node) = ::buildShortestPathInfo(parser, (yyvsp[-3].strval).value, (yyvsp[-6].node), (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node), yyloc);
     }
-#line 2912 "Aql/grammar.cpp"
+#line 2913 "Aql/grammar.cpp"
     break;
 
-    case 44: /* $@2: %empty  */
-#line 717 "Aql/grammar.y"
-    {
+  case 44: /* $@2: %empty  */
+#line 718 "Aql/grammar.y"
+                                               {
       AstNode* variablesNode = static_cast<AstNode*>((yyvsp[-2].node));
-      ::checkOutVariables(
-          parser, variablesNode, 1, 1,
-          "Collections and views FOR loops only allow a single return variable",
-          yyloc);
+      ::checkOutVariables(parser, variablesNode, 1, 1, "Collections and views FOR loops only allow a single return variable", yyloc);
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       // now create an out variable for the FOR statement
       // this prepares us to handle the optional SEARCH condition, which may
       // or may not refer to the FOR's variable
       AstNode* variableNameNode = variablesNode->getMemberUnchecked(0);
       TRI_ASSERT(variableNameNode->isStringValue());
-      AstNode* variableNode = parser->ast()->createNodeVariable(
-          variableNameNode->getStringValue(),
-          variableNameNode->getStringLength(), true);
+      AstNode* variableNode = parser->ast()->createNodeVariable(variableNameNode->getStringValue(), variableNameNode->getStringLength(), true);
       parser->pushStack(variableNode);
     }
-#line 2929 "Aql/grammar.cpp"
+#line 2930 "Aql/grammar.cpp"
     break;
 
-    case 45: /* for_statement: "FOR declaration" for_output_variables "IN
-                keyword" expression $@2 for_options  */
-#line 728 "Aql/grammar.y"
-    {
+  case 45: /* for_statement: "FOR declaration" for_output_variables "IN keyword" expression $@2 for_options  */
+#line 729 "Aql/grammar.y"
+                  {
       // now we can handle the optional SEARCH condition and OPTIONS.
       AstNode* variableNode = static_cast<AstNode*>(parser->popStack());
 
@@ -2826,52 +2958,43 @@ yyreduce:
 
       if (search != nullptr) {
         // we got a SEARCH clause. this is always a view.
-        node = parser->ast()->createNodeForView(variable, (yyvsp[-2].node),
-                                                search, options);
+        node = parser->ast()->createNodeForView(variable, (yyvsp[-2].node), search, options);
 
         if ((yyvsp[-2].node)->type != NODE_TYPE_PARAMETER_DATASOURCE &&
             (yyvsp[-2].node)->type != NODE_TYPE_VIEW &&
             (yyvsp[-2].node)->type != NODE_TYPE_COLLECTION) {
-          parser->registerParseError(TRI_ERROR_QUERY_PARSE,
-                                     "SEARCH condition used on non-view",
-                                     yylloc.first_line, yylloc.first_column);
+          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "SEARCH condition used on non-view", yylloc.first_line, yylloc.first_column);
         }
       } else {
-        node =
-            parser->ast()->createNodeFor(variable, (yyvsp[-2].node), options);
+        node = parser->ast()->createNodeFor(variable, (yyvsp[-2].node), options);
       }
 
       parser->ast()->addOperation(node);
     }
-#line 2974 "Aql/grammar.cpp"
+#line 2975 "Aql/grammar.cpp"
     break;
 
-    case 46: /* $@3: %empty  */
-#line 768 "Aql/grammar.y"
-    {
+  case 46: /* $@3: %empty  */
+#line 769 "Aql/grammar.y"
+                                                         {
       // Traversal
       auto variableNamesNode = static_cast<AstNode*>((yyvsp[-2].node));
-      ::checkOutVariables(
-          parser, variableNamesNode, 1, 3,
-          "Traversals only have one, two or three return variables", yyloc);
+      ::checkOutVariables(parser, variableNamesNode, 1, 3, "Traversals only have one, two or three return variables", yyloc);
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
-      auto variablesNode =
-          ::transformOutputVariables(parser, variableNamesNode);
+      auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>((yyvsp[0].node));
       TRI_ASSERT(graphInfoNode != nullptr);
       TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
       parser->pushStack(variablesNode);
       parser->pushStack(graphInfoNode);
-      // This stack push/pop magic is necessary to allow v, e, and p in the
-      // prune condition
+      // This stack push/pop magic is necessary to allow v, e, and p in the prune condition
     }
-#line 2992 "Aql/grammar.cpp"
+#line 2993 "Aql/grammar.cpp"
     break;
 
-    case 47: /* for_statement: "FOR declaration" for_output_variables "IN
-                keyword" traversal_graph_info $@3 prune_and_options  */
-#line 780 "Aql/grammar.y"
-    {
+  case 47: /* for_statement: "FOR declaration" for_output_variables "IN keyword" traversal_graph_info $@3 prune_and_options  */
+#line 781 "Aql/grammar.y"
+                        {
       auto graphInfoNode = static_cast<AstNode*>(parser->popStack());
       auto variablesNode = static_cast<AstNode*>(parser->popStack());
 
@@ -2880,278 +3003,224 @@ yyreduce:
       if (prune->type == NODE_TYPE_ARRAY) {
         TRI_ASSERT(prune->numMembers() == 2);
         Ast::traverseReadOnly(prune->getMember(1), [&](AstNode const* node) {
-          if (node->type == NODE_TYPE_REFERENCE &&
-              node->hasFlag(AstNodeFlagType::FLAG_SUBQUERY_REFERENCE)) {
-            parser->registerParseError(
-                TRI_ERROR_QUERY_PARSE,
-                "prune condition must not use a subquery", yylloc.first_line,
-                yylloc.first_column);
+          if (node->type == NODE_TYPE_REFERENCE && node->hasFlag(AstNodeFlagType::FLAG_SUBQUERY_REFERENCE)) {
+            parser->registerParseError(TRI_ERROR_QUERY_PARSE, "prune condition must not use a subquery", yylloc.first_line, yylloc.first_column);
           }
         });
         graphInfoNode->changeMember(3, prune->getMember(1));
       }
-      auto node =
-          parser->ast()->createNodeTraversal(variablesNode, graphInfoNode);
+      auto node = parser->ast()->createNodeTraversal(variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
-      if (prune->type == NODE_TYPE_ARRAY &&
-          prune->getMember(0)->type != NODE_TYPE_NOP) {
+      if(prune->type == NODE_TYPE_ARRAY && prune->getMember(0)->type != NODE_TYPE_NOP) {
         auto pruneLetVariableName = prune->getMember(0);
         parser->ast()->addOperation(pruneLetVariableName);
       }
     }
-#line 3019 "Aql/grammar.cpp"
+#line 3020 "Aql/grammar.cpp"
     break;
 
-    case 48: /* for_statement: "FOR declaration" for_output_variables "IN
-                keyword" shortest_path_graph_info  */
-#line 802 "Aql/grammar.y"
-    {
+  case 48: /* for_statement: "FOR declaration" for_output_variables "IN keyword" shortest_path_graph_info  */
+#line 803 "Aql/grammar.y"
+                                                             {
       // Shortest Path
       auto variableNamesNode = static_cast<AstNode*>((yyvsp[-2].node));
-      ::checkOutVariables(parser, variableNamesNode, 1, 2,
-                          "SHORTEST_PATH only has one or two return variables",
-                          yyloc);
+      ::checkOutVariables(parser, variableNamesNode, 1, 2, "SHORTEST_PATH only has one or two return variables", yyloc);
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
-      auto variablesNode =
-          ::transformOutputVariables(parser, variableNamesNode);
+      auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>((yyvsp[0].node));
       TRI_ASSERT(graphInfoNode != nullptr);
       TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
-      auto node =
-          parser->ast()->createNodeShortestPath(variablesNode, graphInfoNode);
+      auto node = parser->ast()->createNodeShortestPath(variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
     }
-#line 3036 "Aql/grammar.cpp"
+#line 3037 "Aql/grammar.cpp"
     break;
 
-    case 49: /* for_statement: "FOR declaration" for_output_variables "IN
-                keyword" k_shortest_paths_graph_info  */
-#line 814 "Aql/grammar.y"
-    {
+  case 49: /* for_statement: "FOR declaration" for_output_variables "IN keyword" k_shortest_paths_graph_info  */
+#line 815 "Aql/grammar.y"
+                                                                {
       // K Shortest Paths
       auto variableNamesNode = static_cast<AstNode*>((yyvsp[-2].node));
-      ::checkOutVariables(parser, variableNamesNode, 1, 1,
-                          "K_SHORTEST_PATHS only has one return variable",
-                          yyloc);
+      ::checkOutVariables(parser, variableNamesNode, 1, 1, "K_SHORTEST_PATHS only has one return variable", yyloc);
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
-      auto variablesNode =
-          ::transformOutputVariables(parser, variableNamesNode);
+      auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>((yyvsp[0].node));
       TRI_ASSERT(graphInfoNode != nullptr);
       TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
-      auto node = parser->ast()->createNodeKShortestPaths(
-          arangodb::graph::ShortestPathType::Type::KShortestPaths,
-          variablesNode, graphInfoNode);
+      auto node = parser->ast()->createNodeKShortestPaths(arangodb::graph::ShortestPathType::Type::KShortestPaths, variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
     }
-#line 3053 "Aql/grammar.cpp"
+#line 3054 "Aql/grammar.cpp"
     break;
 
-    case 50: /* for_statement: "FOR declaration" for_output_variables "IN
-                keyword" k_paths_graph_info  */
-#line 826 "Aql/grammar.y"
-    {
+  case 50: /* for_statement: "FOR declaration" for_output_variables "IN keyword" k_paths_graph_info  */
+#line 827 "Aql/grammar.y"
+                                                       {
       // K Paths
       auto variableNamesNode = static_cast<AstNode*>((yyvsp[-2].node));
-      ::checkOutVariables(parser, variableNamesNode, 1, 1,
-                          "K_PATHS only has one return variable", yyloc);
+      ::checkOutVariables(parser, variableNamesNode, 1, 1, "K_PATHS only has one return variable", yyloc);
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
-      auto variablesNode =
-          ::transformOutputVariables(parser, variableNamesNode);
+      auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>((yyvsp[0].node));
       TRI_ASSERT(graphInfoNode != nullptr);
       TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
-      auto node = parser->ast()->createNodeKShortestPaths(
-          arangodb::graph::ShortestPathType::Type::KPaths, variablesNode,
-          graphInfoNode);
+      auto node = parser->ast()->createNodeKShortestPaths(arangodb::graph::ShortestPathType::Type::KPaths, variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
     }
-#line 3070 "Aql/grammar.cpp"
+#line 3071 "Aql/grammar.cpp"
     break;
 
-    case 51: /* filter_statement: "FILTER declaration" expression  */
-#line 841 "Aql/grammar.y"
-    {
+  case 51: /* filter_statement: "FILTER declaration" expression  */
+#line 842 "Aql/grammar.y"
+                        {
       // operand is a reference. can use it directly
       auto node = parser->ast()->createNodeFilter((yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3080 "Aql/grammar.cpp"
+#line 3081 "Aql/grammar.cpp"
     break;
 
-    case 52: /* let_statement: "LET declaration" let_list  */
-#line 849 "Aql/grammar.y"
-    {
+  case 52: /* let_statement: "LET declaration" let_list  */
+#line 850 "Aql/grammar.y"
+                   {
     }
-#line 3087 "Aql/grammar.cpp"
+#line 3088 "Aql/grammar.cpp"
     break;
 
-    case 53: /* let_list: let_element  */
-#line 854 "Aql/grammar.y"
-    {
+  case 53: /* let_list: let_element  */
+#line 855 "Aql/grammar.y"
+                {
     }
-#line 3094 "Aql/grammar.cpp"
+#line 3095 "Aql/grammar.cpp"
     break;
 
-    case 54: /* let_list: let_list "," let_element  */
-#line 856 "Aql/grammar.y"
-    {
+  case 54: /* let_list: let_list "," let_element  */
+#line 857 "Aql/grammar.y"
+                                 {
     }
-#line 3101 "Aql/grammar.cpp"
+#line 3102 "Aql/grammar.cpp"
     break;
 
-    case 55: /* let_element: variable_name "assignment" expression  */
-#line 861 "Aql/grammar.y"
-    {
-      auto node = parser->ast()->createNodeLet((yyvsp[-2].strval).value,
-                                               (yyvsp[-2].strval).length,
-                                               (yyvsp[0].node), true);
+  case 55: /* let_element: variable_name "assignment" expression  */
+#line 862 "Aql/grammar.y"
+                                      {
+      auto node = parser->ast()->createNodeLet((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node), true);
       parser->ast()->addOperation(node);
     }
-#line 3110 "Aql/grammar.cpp"
+#line 3111 "Aql/grammar.cpp"
     break;
 
-    case 56: /* count_into: "WITH keyword" "identifier" "INTO keyword"
-                variable_name  */
-#line 868 "Aql/grammar.y"
-    {
+  case 56: /* count_into: "WITH keyword" "identifier" "INTO keyword" variable_name  */
+#line 869 "Aql/grammar.y"
+                                         {
       if (!TRI_CaseEqualString((yyvsp[-2].strval).value, "COUNT")) {
-        parser->registerParseError(
-            TRI_ERROR_QUERY_PARSE,
-            "unexpected qualifier '%s', expecting 'COUNT'",
-            {(yyvsp[-2].strval).value, (yyvsp[-2].strval).length},
-            yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'COUNT'", {(yyvsp[-2].strval).value, (yyvsp[-2].strval).length}, yylloc.first_line, yylloc.first_column);
       }
 
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 3122 "Aql/grammar.cpp"
+#line 3123 "Aql/grammar.cpp"
     break;
 
-    case 57: /* $@4: %empty  */
-#line 878 "Aql/grammar.y"
-    {
+  case 57: /* $@4: %empty  */
+#line 879 "Aql/grammar.y"
+              {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 3131 "Aql/grammar.cpp"
+#line 3132 "Aql/grammar.cpp"
     break;
 
-    case 58: /* collect_variable_list: "COLLECT declaration" $@4 collect_list */
-#line 881 "Aql/grammar.y"
-    {
+  case 58: /* collect_variable_list: "COLLECT declaration" $@4 collect_list  */
+#line 882 "Aql/grammar.y"
+                   {
       auto list = static_cast<AstNode*>(parser->popStack());
       TRI_ASSERT(list != nullptr);
       (yyval.node) = list;
     }
-#line 3141 "Aql/grammar.cpp"
+#line 3142 "Aql/grammar.cpp"
     break;
 
-    case 59: /* collect_statement: "COLLECT declaration" count_into options  */
-#line 889 "Aql/grammar.y"
-    {
+  case 59: /* collect_statement: "COLLECT declaration" count_into options  */
+#line 890 "Aql/grammar.y"
+                                 {
       /* COLLECT WITH COUNT INTO var OPTIONS ... */
       auto scopes = parser->ast()->scopes();
 
       ::startCollectScope(scopes);
 
       // in the AST this is transformed to COLLECT AGGREGATE var = COUNT()
-      auto node = parser->ast()->createNodeCollectCount(
-          parser->ast()->createNodeArray(), (yyvsp[-1].strval).value,
-          (yyvsp[-1].strval).length, (yyvsp[0].node));
+      auto node = parser->ast()->createNodeCollectCount(parser->ast()->createNodeArray(), (yyvsp[-1].strval).value, (yyvsp[-1].strval).length, (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3156 "Aql/grammar.cpp"
+#line 3157 "Aql/grammar.cpp"
     break;
 
-    case 60: /* collect_statement: collect_variable_list count_into options  */
-#line 899 "Aql/grammar.y"
-    {
+  case 60: /* collect_statement: collect_variable_list count_into options  */
+#line 900 "Aql/grammar.y"
+                                             {
       /* COLLECT var = expr WITH COUNT INTO var OPTIONS ... */
       auto scopes = parser->ast()->scopes();
 
       if (::startCollectScope(scopes)) {
         VarSet variables{};
-        ::registerAssignVariables(parser, scopes, yylloc.first_line,
-                                  yylloc.first_column, variables,
-                                  (yyvsp[-2].node));
+        ::registerAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variables, (yyvsp[-2].node));
       }
 
-      // in the AST this is transformed to COLLECT var = expr AGGREGATE var =
-      // COUNT()
-      auto node = parser->ast()->createNodeCollectCount(
-          (yyvsp[-2].node), (yyvsp[-1].strval).value, (yyvsp[-1].strval).length,
-          (yyvsp[0].node));
+      // in the AST this is transformed to COLLECT var = expr AGGREGATE var = COUNT()
+      auto node = parser->ast()->createNodeCollectCount((yyvsp[-2].node), (yyvsp[-1].strval).value, (yyvsp[-1].strval).length, (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3174 "Aql/grammar.cpp"
+#line 3175 "Aql/grammar.cpp"
     break;
 
-    case 61: /* collect_statement: "COLLECT declaration" aggregate
-                collect_optional_into options  */
-#line 912 "Aql/grammar.y"
-    {
+  case 61: /* collect_statement: "COLLECT declaration" aggregate collect_optional_into options  */
+#line 913 "Aql/grammar.y"
+                                                      {
       /* AGGREGATE var = expr OPTIONS ... */
       VarSet variablesIntroduced{};
       auto scopes = parser->ast()->scopes();
 
       if (::startCollectScope(scopes)) {
-        ::registerAssignVariables(parser, scopes, yylloc.first_line,
-                                  yylloc.first_column, variablesIntroduced,
-                                  (yyvsp[-2].node));
+        ::registerAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variablesIntroduced, (yyvsp[-2].node));
       }
 
       // validate aggregates
-      if (!::validateAggregates(parser, (yyvsp[-2].node), yylloc.first_line,
-                                yylloc.first_column)) {
+      if (!::validateAggregates(parser, (yyvsp[-2].node), yylloc.first_line, yylloc.first_column)) {
         YYABORT;
       }
 
-      if ((yyvsp[-1].node) != nullptr &&
-          (yyvsp[-1].node)->type == NODE_TYPE_ARRAY) {
-        ::checkIntoVariables(parser, (yyvsp[-1].node)->getMember(1),
-                             yylloc.first_line, yylloc.first_column,
-                             variablesIntroduced);
+      if ((yyvsp[-1].node) != nullptr && (yyvsp[-1].node)->type == NODE_TYPE_ARRAY) {
+        ::checkIntoVariables(parser, (yyvsp[-1].node)->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
       AstNode const* into = ::getIntoVariable(parser, (yyvsp[-1].node));
       AstNode const* intoExpression = ::getIntoExpression((yyvsp[-1].node));
 
-      auto node = parser->ast()->createNodeCollect(
-          parser->ast()->createNodeArray(), (yyvsp[-2].node), into,
-          intoExpression, nullptr, (yyvsp[0].node));
+      auto node = parser->ast()->createNodeCollect(parser->ast()->createNodeArray(), (yyvsp[-2].node), into, intoExpression, nullptr, (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3203 "Aql/grammar.cpp"
+#line 3204 "Aql/grammar.cpp"
     break;
 
-    case 62: /* collect_statement: collect_variable_list aggregate
-                collect_optional_into options  */
-#line 936 "Aql/grammar.y"
-    {
+  case 62: /* collect_statement: collect_variable_list aggregate collect_optional_into options  */
+#line 937 "Aql/grammar.y"
+                                                                  {
       /* COLLECT var = expr AGGREGATE var = expr OPTIONS ... */
       VarSet variablesIntroduced{};
       auto scopes = parser->ast()->scopes();
 
       if (::startCollectScope(scopes)) {
-        ::registerAssignVariables(parser, scopes, yylloc.first_line,
-                                  yylloc.first_column, variablesIntroduced,
-                                  (yyvsp[-3].node));
-        ::registerAssignVariables(parser, scopes, yylloc.first_line,
-                                  yylloc.first_column, variablesIntroduced,
-                                  (yyvsp[-2].node));
+        ::registerAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variablesIntroduced, (yyvsp[-3].node));
+        ::registerAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variablesIntroduced, (yyvsp[-2].node));
       }
 
-      if (!::validateAggregates(parser, (yyvsp[-2].node), yylloc.first_line,
-                                yylloc.first_column)) {
+      if (!::validateAggregates(parser, (yyvsp[-2].node), yylloc.first_line, yylloc.first_column)) {
         YYABORT;
       }
 
-      if ((yyvsp[-1].node) != nullptr &&
-          (yyvsp[-1].node)->type == NODE_TYPE_ARRAY) {
-        ::checkIntoVariables(parser, (yyvsp[-1].node)->getMember(1),
-                             yylloc.first_line, yylloc.first_column,
-                             variablesIntroduced);
+      if ((yyvsp[-1].node) != nullptr && (yyvsp[-1].node)->type == NODE_TYPE_ARRAY) {
+        ::checkIntoVariables(parser, (yyvsp[-1].node)->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
       // note all group variables
@@ -3162,8 +3231,7 @@ yyreduce:
 
         if (member != nullptr) {
           TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
-          groupVars.emplace(
-              static_cast<Variable const*>(member->getMember(0)->getData()));
+          groupVars.emplace(static_cast<Variable const*>(member->getMember(0)->getData()));
         }
       }
 
@@ -3179,10 +3247,8 @@ yyreduce:
 
           for (auto& it : groupVars) {
             if (variablesUsed.find(it) != variablesUsed.end()) {
-              parser->registerParseError(
-                  TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
-                  "use of unknown variable '%s' in AGGREGATE expression",
-                  it->name.c_str(), yylloc.first_line, yylloc.first_column);
+              parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
+                "use of unknown variable '%s' in AGGREGATE expression", it->name.c_str(), yylloc.first_line, yylloc.first_column);
               break;
             }
           }
@@ -3192,581 +3258,510 @@ yyreduce:
       AstNode const* into = ::getIntoVariable(parser, (yyvsp[-1].node));
       AstNode const* intoExpression = ::getIntoExpression((yyvsp[-1].node));
 
-      auto node = parser->ast()->createNodeCollect(
-          (yyvsp[-3].node), (yyvsp[-2].node), into, intoExpression, nullptr,
-          (yyvsp[0].node));
+      auto node = parser->ast()->createNodeCollect((yyvsp[-3].node), (yyvsp[-2].node), into, intoExpression, nullptr, (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3264 "Aql/grammar.cpp"
+#line 3265 "Aql/grammar.cpp"
     break;
 
-    case 63: /* collect_statement: collect_variable_list collect_optional_into
-                options  */
-#line 992 "Aql/grammar.y"
-    {
+  case 63: /* collect_statement: collect_variable_list collect_optional_into options  */
+#line 993 "Aql/grammar.y"
+                                                        {
       /* COLLECT var = expr INTO var OPTIONS ... */
       VarSet variablesIntroduced{};
       auto scopes = parser->ast()->scopes();
 
       if (::startCollectScope(scopes)) {
-        ::registerAssignVariables(parser, scopes, yylloc.first_line,
-                                  yylloc.first_column, variablesIntroduced,
-                                  (yyvsp[-2].node));
+        ::registerAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variablesIntroduced, (yyvsp[-2].node));
       }
 
-      if ((yyvsp[-1].node) != nullptr &&
-          (yyvsp[-1].node)->type == NODE_TYPE_ARRAY) {
-        ::checkIntoVariables(parser, (yyvsp[-1].node)->getMember(1),
-                             yylloc.first_line, yylloc.first_column,
-                             variablesIntroduced);
+      if ((yyvsp[-1].node) != nullptr && (yyvsp[-1].node)->type == NODE_TYPE_ARRAY) {
+        ::checkIntoVariables(parser, (yyvsp[-1].node)->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
       AstNode const* into = ::getIntoVariable(parser, (yyvsp[-1].node));
       AstNode const* intoExpression = ::getIntoExpression((yyvsp[-1].node));
 
-      auto node = parser->ast()->createNodeCollect(
-          (yyvsp[-2].node), parser->ast()->createNodeArray(), into,
-          intoExpression, nullptr, (yyvsp[0].node));
+      auto node = parser->ast()->createNodeCollect((yyvsp[-2].node), parser->ast()->createNodeArray(), into, intoExpression, nullptr, (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3288 "Aql/grammar.cpp"
+#line 3289 "Aql/grammar.cpp"
     break;
 
-    case 64: /* collect_statement: collect_variable_list collect_optional_into
-                keep options  */
-#line 1011 "Aql/grammar.y"
-    {
+  case 64: /* collect_statement: collect_variable_list collect_optional_into keep options  */
+#line 1012 "Aql/grammar.y"
+                                                             {
       /* COLLECT var = expr INTO var KEEP ... OPTIONS ... */
       VarSet variablesIntroduced{};
       auto scopes = parser->ast()->scopes();
 
       if (::startCollectScope(scopes)) {
-        ::registerAssignVariables(parser, scopes, yylloc.first_line,
-                                  yylloc.first_column, variablesIntroduced,
-                                  (yyvsp[-3].node));
+        ::registerAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variablesIntroduced, (yyvsp[-3].node));
       }
 
-      if ((yyvsp[-2].node) == nullptr && (yyvsp[-1].node) != nullptr) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE,
-                                   "use of 'KEEP' without 'INTO'",
-                                   yylloc.first_line, yylloc.first_column);
+      if ((yyvsp[-2].node) == nullptr &&
+          (yyvsp[-1].node) != nullptr) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of 'KEEP' without 'INTO'", yylloc.first_line, yylloc.first_column);
       }
 
-      if ((yyvsp[-2].node) != nullptr &&
-          (yyvsp[-2].node)->type == NODE_TYPE_ARRAY) {
-        ::checkIntoVariables(parser, (yyvsp[-2].node)->getMember(1),
-                             yylloc.first_line, yylloc.first_column,
-                             variablesIntroduced);
+      if ((yyvsp[-2].node) != nullptr && (yyvsp[-2].node)->type == NODE_TYPE_ARRAY) {
+        ::checkIntoVariables(parser, (yyvsp[-2].node)->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
       AstNode const* into = ::getIntoVariable(parser, (yyvsp[-2].node));
       AstNode const* intoExpression = ::getIntoExpression((yyvsp[-2].node));
 
-      auto node = parser->ast()->createNodeCollect(
-          (yyvsp[-3].node), parser->ast()->createNodeArray(), into,
-          intoExpression, (yyvsp[-1].node), (yyvsp[0].node));
+      auto node = parser->ast()->createNodeCollect((yyvsp[-3].node), parser->ast()->createNodeArray(), into, intoExpression, (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3317 "Aql/grammar.cpp"
+#line 3318 "Aql/grammar.cpp"
     break;
 
-    case 65: /* collect_list: collect_element  */
-#line 1038 "Aql/grammar.y"
-    {
+  case 65: /* collect_list: collect_element  */
+#line 1039 "Aql/grammar.y"
+                    {
     }
-#line 3324 "Aql/grammar.cpp"
+#line 3325 "Aql/grammar.cpp"
     break;
 
-    case 66: /* collect_list: collect_list "," collect_element  */
-#line 1040 "Aql/grammar.y"
-    {
+  case 66: /* collect_list: collect_list "," collect_element  */
+#line 1041 "Aql/grammar.y"
+                                         {
     }
-#line 3331 "Aql/grammar.cpp"
+#line 3332 "Aql/grammar.cpp"
     break;
 
-    case 67: /* collect_element: variable_name "assignment" expression  */
-#line 1045 "Aql/grammar.y"
-    {
-      auto node = parser->ast()->createNodeAssign(
-          (yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
+  case 67: /* collect_element: variable_name "assignment" expression  */
+#line 1046 "Aql/grammar.y"
+                                      {
+      auto node = parser->ast()->createNodeAssign((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
       parser->pushArrayElement(node);
     }
-#line 3340 "Aql/grammar.cpp"
+#line 3341 "Aql/grammar.cpp"
     break;
 
-    case 68: /* collect_optional_into: %empty  */
-#line 1052 "Aql/grammar.y"
-    {
+  case 68: /* collect_optional_into: %empty  */
+#line 1053 "Aql/grammar.y"
+                {
       (yyval.node) = nullptr;
     }
-#line 3348 "Aql/grammar.cpp"
+#line 3349 "Aql/grammar.cpp"
     break;
 
-    case 69: /* collect_optional_into: "INTO keyword" variable_name  */
-#line 1055 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeValueString(
-          (yyvsp[0].strval).value, (yyvsp[0].strval).length);
+  case 69: /* collect_optional_into: "INTO keyword" variable_name  */
+#line 1056 "Aql/grammar.y"
+                         {
+      (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 3356 "Aql/grammar.cpp"
+#line 3357 "Aql/grammar.cpp"
     break;
 
-    case 70: /* collect_optional_into: "INTO keyword" variable_name "assignment"
-                expression  */
-#line 1058 "Aql/grammar.y"
-    {
+  case 70: /* collect_optional_into: "INTO keyword" variable_name "assignment" expression  */
+#line 1059 "Aql/grammar.y"
+                                             {
       auto node = parser->ast()->createNodeArray();
-      node->addMember(parser->ast()->createNodeValueString(
-          (yyvsp[-2].strval).value, (yyvsp[-2].strval).length));
+      node->addMember(parser->ast()->createNodeValueString((yyvsp[-2].strval).value, (yyvsp[-2].strval).length));
       node->addMember((yyvsp[0].node));
       (yyval.node) = node;
     }
-#line 3367 "Aql/grammar.cpp"
+#line 3368 "Aql/grammar.cpp"
     break;
 
-    case 71: /* variable_list: variable_name  */
-#line 1067 "Aql/grammar.y"
-    {
-      if (!parser->ast()->scopes()->existsVariable((yyvsp[0].strval).value,
-                                                   (yyvsp[0].strval).length)) {
-        parser->registerParseError(
-            TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP",
-            {(yyvsp[0].strval).value, (yyvsp[0].strval).length},
-            yylloc.first_line, yylloc.first_column);
+  case 71: /* variable_list: variable_name  */
+#line 1068 "Aql/grammar.y"
+                  {
+      if (! parser->ast()->scopes()->existsVariable((yyvsp[0].strval).value, (yyvsp[0].strval).length)) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", {(yyvsp[0].strval).value, (yyvsp[0].strval).length}, yylloc.first_line, yylloc.first_column);
       }
 
-      auto node = parser->ast()->createNodeReference((yyvsp[0].strval).value,
-                                                     (yyvsp[0].strval).length);
+      auto node = parser->ast()->createNodeReference((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       TRI_ASSERT(node != nullptr);
 
-      // indicate the this node is a reference to the variable name, not the
-      // variable value
+      // indicate the this node is a reference to the variable name, not the variable value
       node->setFlag(FLAG_KEEP_VARIABLENAME);
       parser->pushArrayElement(node);
     }
-#line 3384 "Aql/grammar.cpp"
+#line 3385 "Aql/grammar.cpp"
     break;
 
-    case 72: /* variable_list: variable_list "," variable_name  */
-#line 1079 "Aql/grammar.y"
-    {
-      if (!parser->ast()->scopes()->existsVariable((yyvsp[0].strval).value,
-                                                   (yyvsp[0].strval).length)) {
-        parser->registerParseError(
-            TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP",
-            {(yyvsp[0].strval).value, (yyvsp[0].strval).length},
-            yylloc.first_line, yylloc.first_column);
+  case 72: /* variable_list: variable_list "," variable_name  */
+#line 1080 "Aql/grammar.y"
+                                        {
+      if (! parser->ast()->scopes()->existsVariable((yyvsp[0].strval).value, (yyvsp[0].strval).length)) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", {(yyvsp[0].strval).value, (yyvsp[0].strval).length}, yylloc.first_line, yylloc.first_column);
       }
 
-      auto node = parser->ast()->createNodeReference((yyvsp[0].strval).value,
-                                                     (yyvsp[0].strval).length);
+      auto node = parser->ast()->createNodeReference((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       TRI_ASSERT(node != nullptr);
 
-      // indicate the this node is a reference to the variable name, not the
-      // variable value
+      // indicate the this node is a reference to the variable name, not the variable value
       node->setFlag(FLAG_KEEP_VARIABLENAME);
       parser->pushArrayElement(node);
     }
-#line 3401 "Aql/grammar.cpp"
+#line 3402 "Aql/grammar.cpp"
     break;
 
-    case 73: /* $@5: %empty  */
-#line 1094 "Aql/grammar.y"
-    {
+  case 73: /* $@5: %empty  */
+#line 1095 "Aql/grammar.y"
+             {
       if (!TRI_CaseEqualString((yyvsp[0].strval).value, "KEEP")) {
-        parser->registerParseError(
-            TRI_ERROR_QUERY_PARSE,
-            "unexpected qualifier '%s', expecting 'KEEP'",
-            {(yyvsp[0].strval).value, (yyvsp[0].strval).length},
-            yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'KEEP'", {(yyvsp[0].strval).value, (yyvsp[0].strval).length}, yylloc.first_line, yylloc.first_column);
       }
 
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 3414 "Aql/grammar.cpp"
+#line 3415 "Aql/grammar.cpp"
     break;
 
-    case 74: /* keep: "identifier" $@5 variable_list  */
-#line 1101 "Aql/grammar.y"
-    {
+  case 74: /* keep: "identifier" $@5 variable_list  */
+#line 1102 "Aql/grammar.y"
+                    {
       auto list = static_cast<AstNode*>(parser->popStack());
       (yyval.node) = list;
     }
-#line 3423 "Aql/grammar.cpp"
+#line 3424 "Aql/grammar.cpp"
     break;
 
-    case 75: /* $@6: %empty  */
-#line 1108 "Aql/grammar.y"
-    {
+  case 75: /* $@6: %empty  */
+#line 1109 "Aql/grammar.y"
+                {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 3432 "Aql/grammar.cpp"
+#line 3433 "Aql/grammar.cpp"
     break;
 
-    case 76: /* aggregate: "AGGREGATE keyword" $@6 aggregate_list  */
-#line 1111 "Aql/grammar.y"
-    {
+  case 76: /* aggregate: "AGGREGATE keyword" $@6 aggregate_list  */
+#line 1112 "Aql/grammar.y"
+                     {
       auto list = static_cast<AstNode*>(parser->popStack());
       (yyval.node) = list;
     }
-#line 3441 "Aql/grammar.cpp"
+#line 3442 "Aql/grammar.cpp"
     break;
 
-    case 77: /* aggregate_list: aggregate_element  */
-#line 1118 "Aql/grammar.y"
-    {
+  case 77: /* aggregate_list: aggregate_element  */
+#line 1119 "Aql/grammar.y"
+                      {
     }
-#line 3448 "Aql/grammar.cpp"
+#line 3449 "Aql/grammar.cpp"
     break;
 
-    case 78: /* aggregate_list: aggregate_list "," aggregate_element  */
-#line 1120 "Aql/grammar.y"
-    {
+  case 78: /* aggregate_list: aggregate_list "," aggregate_element  */
+#line 1121 "Aql/grammar.y"
+                                             {
     }
-#line 3455 "Aql/grammar.cpp"
+#line 3456 "Aql/grammar.cpp"
     break;
 
-    case 79: /* aggregate_element: variable_name "assignment"
-                aggregate_function_call  */
-#line 1125 "Aql/grammar.y"
-    {
-      auto node = parser->ast()->createNodeAssign(
-          (yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
+  case 79: /* aggregate_element: variable_name "assignment" aggregate_function_call  */
+#line 1126 "Aql/grammar.y"
+                                                   {
+      auto node = parser->ast()->createNodeAssign((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
       parser->pushArrayElement(node);
     }
-#line 3464 "Aql/grammar.cpp"
+#line 3465 "Aql/grammar.cpp"
     break;
 
-    case 80: /* $@7: %empty  */
-#line 1132 "Aql/grammar.y"
-    {
+  case 80: /* $@7: %empty  */
+#line 1133 "Aql/grammar.y"
+                         {
       parser->pushStack((yyvsp[-1].strval).value);
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 3474 "Aql/grammar.cpp"
+#line 3475 "Aql/grammar.cpp"
     break;
 
-    case 81: /* aggregate_function_call: function_name "(" $@7
-                optional_function_call_arguments ")"  */
-#line 1136 "Aql/grammar.y"
-    {
+  case 81: /* aggregate_function_call: function_name "(" $@7 optional_function_call_arguments ")"  */
+#line 1137 "Aql/grammar.y"
+                                                              {
       auto list = static_cast<AstNode const*>(parser->popStack());
-      (yyval.node) = parser->ast()->createNodeAggregateFunctionCall(
-          static_cast<char const*>(parser->popStack()), list);
+      (yyval.node) = parser->ast()->createNodeAggregateFunctionCall(static_cast<char const*>(parser->popStack()), list);
     }
-#line 3483 "Aql/grammar.cpp"
+#line 3484 "Aql/grammar.cpp"
     break;
 
-    case 82: /* $@8: %empty  */
-#line 1143 "Aql/grammar.y"
-    {
+  case 82: /* $@8: %empty  */
+#line 1144 "Aql/grammar.y"
+           {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 3492 "Aql/grammar.cpp"
+#line 3493 "Aql/grammar.cpp"
     break;
 
-    case 83: /* sort_statement: "SORT declaration" $@8 sort_list  */
-#line 1146 "Aql/grammar.y"
-    {
+  case 83: /* sort_statement: "SORT declaration" $@8 sort_list  */
+#line 1147 "Aql/grammar.y"
+                {
       auto list = static_cast<AstNode const*>(parser->popStack());
       auto node = parser->ast()->createNodeSort(list);
       parser->ast()->addOperation(node);
     }
-#line 3502 "Aql/grammar.cpp"
+#line 3503 "Aql/grammar.cpp"
     break;
 
-    case 84: /* sort_list: sort_element  */
-#line 1154 "Aql/grammar.y"
-    {
+  case 84: /* sort_list: sort_element  */
+#line 1155 "Aql/grammar.y"
+                 {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 3510 "Aql/grammar.cpp"
+#line 3511 "Aql/grammar.cpp"
     break;
 
-    case 85: /* sort_list: sort_list "," sort_element  */
-#line 1157 "Aql/grammar.y"
-    {
+  case 85: /* sort_list: sort_list "," sort_element  */
+#line 1158 "Aql/grammar.y"
+                                   {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 3518 "Aql/grammar.cpp"
+#line 3519 "Aql/grammar.cpp"
     break;
 
-    case 86: /* sort_element: expression sort_direction  */
-#line 1163 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeSortElement((yyvsp[-1].node),
-                                                          (yyvsp[0].node));
+  case 86: /* sort_element: expression sort_direction  */
+#line 1164 "Aql/grammar.y"
+                              {
+      (yyval.node) = parser->ast()->createNodeSortElement((yyvsp[-1].node), (yyvsp[0].node));
     }
-#line 3526 "Aql/grammar.cpp"
+#line 3527 "Aql/grammar.cpp"
     break;
 
-    case 87: /* sort_direction: %empty  */
-#line 1169 "Aql/grammar.y"
-    {
+  case 87: /* sort_direction: %empty  */
+#line 1170 "Aql/grammar.y"
+                {
       (yyval.node) = parser->ast()->createNodeValueBool(true);
     }
-#line 3534 "Aql/grammar.cpp"
+#line 3535 "Aql/grammar.cpp"
     break;
 
-    case 88: /* sort_direction: "ASC keyword"  */
-#line 1172 "Aql/grammar.y"
-    {
+  case 88: /* sort_direction: "ASC keyword"  */
+#line 1173 "Aql/grammar.y"
+          {
       (yyval.node) = parser->ast()->createNodeValueBool(true);
     }
-#line 3542 "Aql/grammar.cpp"
+#line 3543 "Aql/grammar.cpp"
     break;
 
-    case 89: /* sort_direction: "DESC keyword"  */
-#line 1175 "Aql/grammar.y"
-    {
+  case 89: /* sort_direction: "DESC keyword"  */
+#line 1176 "Aql/grammar.y"
+           {
       (yyval.node) = parser->ast()->createNodeValueBool(false);
     }
-#line 3550 "Aql/grammar.cpp"
+#line 3551 "Aql/grammar.cpp"
     break;
 
-    case 90: /* sort_direction: simple_value  */
-#line 1178 "Aql/grammar.y"
-    {
+  case 90: /* sort_direction: simple_value  */
+#line 1179 "Aql/grammar.y"
+                 {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3558 "Aql/grammar.cpp"
+#line 3559 "Aql/grammar.cpp"
     break;
 
-    case 91: /* limit_statement: "LIMIT declaration" expression  */
-#line 1184 "Aql/grammar.y"
-    {
+  case 91: /* limit_statement: "LIMIT declaration" expression  */
+#line 1185 "Aql/grammar.y"
+                       {
       auto offset = parser->ast()->createNodeValueInt(0);
       auto node = parser->ast()->createNodeLimit(offset, (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3568 "Aql/grammar.cpp"
+#line 3569 "Aql/grammar.cpp"
     break;
 
-    case 92: /* limit_statement: "LIMIT declaration" expression "," expression
-              */
-#line 1189 "Aql/grammar.y"
-    {
-      auto node =
-          parser->ast()->createNodeLimit((yyvsp[-2].node), (yyvsp[0].node));
+  case 92: /* limit_statement: "LIMIT declaration" expression "," expression  */
+#line 1190 "Aql/grammar.y"
+                                          {
+      auto node = parser->ast()->createNodeLimit((yyvsp[-2].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3577 "Aql/grammar.cpp"
+#line 3578 "Aql/grammar.cpp"
     break;
 
-    case 93: /* window_statement: "WINDOW declaration" object aggregate  */
-#line 1196 "Aql/grammar.y"
-    {
+  case 93: /* window_statement: "WINDOW declaration" object aggregate  */
+#line 1197 "Aql/grammar.y"
+                              {
       /* WINDOW {preceding:2, following:2} AGGREGATE x = AVG(x) */
-
+      
       // validate aggregates
-      if (!::validateAggregates(parser, (yyvsp[0].node), yylloc.first_line,
-                                yylloc.first_column)) {
+      if (!::validateAggregates(parser, (yyvsp[0].node), yylloc.first_line, yylloc.first_column)) {
         YYABORT;
       }
-
-      if (!::validateWindowSpec(parser, (yyvsp[-1].node), yylloc.first_line,
-                                yylloc.first_column)) {
+      
+      if (!::validateWindowSpec(parser, (yyvsp[-1].node), yylloc.first_line, yylloc.first_column)) {
         YYABORT;
       }
-
-      auto node = parser->ast()->createNodeWindow(/*spec*/ (yyvsp[-1].node),
-                                                  /*range*/ nullptr,
-                                                  /*aggrs*/ (yyvsp[0].node));
+      
+      auto node = parser->ast()->createNodeWindow(/*spec*/(yyvsp[-1].node), /*range*/nullptr, /*aggrs*/(yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3597 "Aql/grammar.cpp"
+#line 3598 "Aql/grammar.cpp"
     break;
 
-    case 94: /* window_statement: "WINDOW declaration" expression "WITH keyword"
-                object aggregate  */
-#line 1211 "Aql/grammar.y"
-    {
-      /* WINDOW rangeVar WITH {preceding:"1d", following:"1d"} AGGREGATE x =
-       * AVG(x) */
-
-      // validate aggregates
-      if (!::validateAggregates(parser, (yyvsp[0].node), yylloc.first_line,
-                                yylloc.first_column)) {
-        YYABORT;
-      }
-
-      if (!::validateWindowSpec(parser, (yyvsp[-1].node), yylloc.first_line,
-                                yylloc.first_column)) {
-        YYABORT;
-      }
-
-      auto node = parser->ast()->createNodeWindow(/*spec*/ (yyvsp[-1].node),
-                                                  /*range*/ (yyvsp[-3].node),
-                                                  /*aggrs*/ (yyvsp[0].node));
-      parser->ast()->addOperation(node);
+  case 94: /* window_statement: "WINDOW declaration" expression "WITH keyword" object aggregate  */
+#line 1212 "Aql/grammar.y"
+                                                {
+    /* WINDOW rangeVar WITH {preceding:"1d", following:"1d"} AGGREGATE x = AVG(x) */
+    
+    // validate aggregates
+    if (!::validateAggregates(parser, (yyvsp[0].node), yylloc.first_line, yylloc.first_column)) {
+      YYABORT;
     }
-#line 3617 "Aql/grammar.cpp"
+    
+    if (!::validateWindowSpec(parser, (yyvsp[-1].node), yylloc.first_line, yylloc.first_column)) {
+      YYABORT;
+    }
+    
+    auto node = parser->ast()->createNodeWindow(/*spec*/(yyvsp[-1].node), /*range*/(yyvsp[-3].node), /*aggrs*/(yyvsp[0].node));
+    parser->ast()->addOperation(node);
+  }
+#line 3618 "Aql/grammar.cpp"
     break;
 
-    case 95: /* return_statement: "RETURN declaration" distinct_expression  */
-#line 1229 "Aql/grammar.y"
-    {
+  case 95: /* return_statement: "RETURN declaration" distinct_expression  */
+#line 1230 "Aql/grammar.y"
+                                 {
       auto node = parser->ast()->createNodeReturn((yyvsp[0].node));
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
     }
-#line 3627 "Aql/grammar.cpp"
+#line 3628 "Aql/grammar.cpp"
     break;
 
-    case 96: /* in_or_into_collection: "IN keyword" in_or_into_collection_name
-              */
-#line 1237 "Aql/grammar.y"
-    {
+  case 96: /* in_or_into_collection: "IN keyword" in_or_into_collection_name  */
+#line 1238 "Aql/grammar.y"
+                                    {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3635 "Aql/grammar.cpp"
+#line 3636 "Aql/grammar.cpp"
     break;
 
-    case 97: /* in_or_into_collection: "INTO keyword" in_or_into_collection_name
-              */
-#line 1240 "Aql/grammar.y"
-    {
-      (yyval.node) = (yyvsp[0].node);
-    }
-#line 3643 "Aql/grammar.cpp"
+  case 97: /* in_or_into_collection: "INTO keyword" in_or_into_collection_name  */
+#line 1241 "Aql/grammar.y"
+                                      {
+       (yyval.node) = (yyvsp[0].node);
+     }
+#line 3644 "Aql/grammar.cpp"
     break;
 
-    case 98: /* remove_statement: "REMOVE command" expression
-                in_or_into_collection options  */
-#line 1246 "Aql/grammar.y"
-    {
+  case 98: /* remove_statement: "REMOVE command" expression in_or_into_collection options  */
+#line 1247 "Aql/grammar.y"
+                                                      {
       if (!parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
       }
-      auto node = parser->ast()->createNodeRemove(
-          (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
+      auto node = parser->ast()->createNodeRemove((yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3655 "Aql/grammar.cpp"
+#line 3656 "Aql/grammar.cpp"
     break;
 
-    case 99: /* insert_statement: "INSERT command" expression
-                in_or_into_collection options  */
-#line 1256 "Aql/grammar.y"
-    {
+  case 99: /* insert_statement: "INSERT command" expression in_or_into_collection options  */
+#line 1257 "Aql/grammar.y"
+                                                      {
       if (!parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
       }
-      auto node = parser->ast()->createNodeInsert(
-          (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
+      auto node = parser->ast()->createNodeInsert((yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3667 "Aql/grammar.cpp"
+#line 3668 "Aql/grammar.cpp"
     break;
 
-    case 100: /* update_parameters: expression in_or_into_collection options  */
-#line 1266 "Aql/grammar.y"
-    {
+  case 100: /* update_parameters: expression in_or_into_collection options  */
+#line 1267 "Aql/grammar.y"
+                                             {
       if (!parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
       }
 
-      AstNode* node = parser->ast()->createNodeUpdate(
-          nullptr, (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
+      AstNode* node = parser->ast()->createNodeUpdate(nullptr, (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3680 "Aql/grammar.cpp"
+#line 3681 "Aql/grammar.cpp"
     break;
 
-    case 101: /* update_parameters: expression "WITH keyword" expression
-                 in_or_into_collection options  */
-#line 1274 "Aql/grammar.y"
-    {
+  case 101: /* update_parameters: expression "WITH keyword" expression in_or_into_collection options  */
+#line 1275 "Aql/grammar.y"
+                                                               {
       if (!parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
       }
 
-      AstNode* node =
-          parser->ast()->createNodeUpdate((yyvsp[-4].node), (yyvsp[-2].node),
-                                          (yyvsp[-1].node), (yyvsp[0].node));
+      AstNode* node = parser->ast()->createNodeUpdate((yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3693 "Aql/grammar.cpp"
+#line 3694 "Aql/grammar.cpp"
     break;
 
-    case 102: /* update_statement: "UPDATE command" update_parameters  */
-#line 1285 "Aql/grammar.y"
-    {
+  case 102: /* update_statement: "UPDATE command" update_parameters  */
+#line 1286 "Aql/grammar.y"
+                               {
     }
-#line 3700 "Aql/grammar.cpp"
+#line 3701 "Aql/grammar.cpp"
     break;
 
-    case 103: /* replace_parameters: expression in_or_into_collection options */
-#line 1290 "Aql/grammar.y"
-    {
+  case 103: /* replace_parameters: expression in_or_into_collection options  */
+#line 1291 "Aql/grammar.y"
+                                             {
       if (!parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
       }
 
-      AstNode* node = parser->ast()->createNodeReplace(
-          nullptr, (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
+      AstNode* node = parser->ast()->createNodeReplace(nullptr, (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3713 "Aql/grammar.cpp"
+#line 3714 "Aql/grammar.cpp"
     break;
 
-    case 104: /* replace_parameters: expression "WITH keyword" expression
-                 in_or_into_collection options  */
-#line 1298 "Aql/grammar.y"
-    {
+  case 104: /* replace_parameters: expression "WITH keyword" expression in_or_into_collection options  */
+#line 1299 "Aql/grammar.y"
+                                                               {
       if (!parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
       }
 
-      AstNode* node =
-          parser->ast()->createNodeReplace((yyvsp[-4].node), (yyvsp[-2].node),
-                                           (yyvsp[-1].node), (yyvsp[0].node));
+      AstNode* node = parser->ast()->createNodeReplace((yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3726 "Aql/grammar.cpp"
+#line 3727 "Aql/grammar.cpp"
     break;
 
-    case 105: /* replace_statement: "REPLACE command" replace_parameters  */
-#line 1309 "Aql/grammar.y"
-    {
+  case 105: /* replace_statement: "REPLACE command" replace_parameters  */
+#line 1310 "Aql/grammar.y"
+                                 {
     }
-#line 3733 "Aql/grammar.cpp"
+#line 3734 "Aql/grammar.cpp"
     break;
 
-    case 106: /* update_or_replace: "UPDATE command"  */
-#line 1314 "Aql/grammar.y"
-    {
+  case 106: /* update_or_replace: "UPDATE command"  */
+#line 1315 "Aql/grammar.y"
+             {
       (yyval.intval) = static_cast<int64_t>(NODE_TYPE_UPDATE);
     }
-#line 3741 "Aql/grammar.cpp"
+#line 3742 "Aql/grammar.cpp"
     break;
 
-    case 107: /* update_or_replace: "REPLACE command"  */
-#line 1317 "Aql/grammar.y"
-    {
+  case 107: /* update_or_replace: "REPLACE command"  */
+#line 1318 "Aql/grammar.y"
+              {
       (yyval.intval) = static_cast<int64_t>(NODE_TYPE_REPLACE);
     }
-#line 3749 "Aql/grammar.cpp"
+#line 3750 "Aql/grammar.cpp"
     break;
 
-    case 108: /* $@9: %empty  */
-#line 1323 "Aql/grammar.y"
-    {
-      // reserve a variable named "$OLD", we might need it in the update
-      // expression and in a later return thing
-      parser->pushStack(parser->ast()->createNodeVariable(
-          TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD), true));
+  case 108: /* $@9: %empty  */
+#line 1324 "Aql/grammar.y"
+             {
+      // reserve a variable named "$OLD", we might need it in the update expression
+      // and in a later return thing
+      parser->pushStack(parser->ast()->createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD), true));
     }
-#line 3759 "Aql/grammar.cpp"
+#line 3760 "Aql/grammar.cpp"
     break;
 
-    case 109: /* $@10: %empty  */
-#line 1327 "Aql/grammar.y"
-    {
+  case 109: /* $@10: %empty  */
+#line 1328 "Aql/grammar.y"
+                 {
       AstNode* variableNode = static_cast<AstNode*>(parser->popStack());
 
       auto scopes = parser->ast()->scopes();
@@ -3776,13 +3771,10 @@ yyreduce:
 
       scopes->start(arangodb::aql::AQL_SCOPE_FOR);
       std::string const variableName = parser->ast()->variables()->nextName();
-      auto forNode = parser->ast()->createNodeForUpsert(
-          variableName.c_str(), variableName.size(),
-          parser->ast()->createNodeArray(), false);
+      auto forNode = parser->ast()->createNodeForUpsert(variableName.c_str(), variableName.size(), parser->ast()->createNodeArray(), false);
       parser->ast()->addOperation(forNode);
 
-      auto filterNode = parser->ast()->createNodeUpsertFilter(
-          parser->ast()->createNodeReference(variableName), (yyvsp[0].node));
+      auto filterNode = parser->ast()->createNodeUpsertFilter(parser->ast()->createNodeReference(variableName), (yyvsp[0].node));
       parser->ast()->addOperation(filterNode);
 
       auto offsetValue = parser->ast()->createNodeValueInt(0);
@@ -3799,40 +3791,33 @@ yyreduce:
       scopes->endCurrent();
 
       std::string const subqueryName = parser->ast()->variables()->nextName();
-      auto subQuery = parser->ast()->createNodeLet(
-          subqueryName.c_str(), subqueryName.size(), subqueryNode, false);
+      auto subQuery = parser->ast()->createNodeLet(subqueryName.c_str(), subqueryName.size(), subqueryNode, false);
       parser->ast()->addOperation(subQuery);
 
       auto index = parser->ast()->createNodeValueInt(0);
-      auto firstDoc = parser->ast()->createNodeLet(
-          variableNode,
-          parser->ast()->createNodeIndexedAccess(
-              parser->ast()->createNodeReference(subqueryName), index));
+      auto firstDoc = parser->ast()->createNodeLet(variableNode, parser->ast()->createNodeIndexedAccess(parser->ast()->createNodeReference(subqueryName), index));
       parser->ast()->addOperation(firstDoc);
 
       parser->pushStack(forNode);
     }
-#line 3803 "Aql/grammar.cpp"
+#line 3804 "Aql/grammar.cpp"
     break;
 
-    case 110: /* upsert_statement: "UPSERT command" $@9 expression $@10 "INSERT
-                 command" expression update_or_replace expression
-                 in_or_into_collection options  */
-#line 1365 "Aql/grammar.y"
-    {
+  case 110: /* upsert_statement: "UPSERT command" $@9 expression $@10 "INSERT command" expression update_or_replace expression in_or_into_collection options  */
+#line 1366 "Aql/grammar.y"
+                                                                                     {
       AstNode* forNode = static_cast<AstNode*>(parser->popStack());
       forNode->changeMember(1, (yyvsp[-1].node));
       auto* forOptionsNode = parser->ast()->createNodeObject();
       auto* upsertOptionsNode = parser->ast()->createNodeObject();
-      if ((yyvsp[0].node) != nullptr &&
-          (yyvsp[0].node)->type == NODE_TYPE_OBJECT) {
+      if ((yyvsp[0].node) != nullptr && (yyvsp[0].node)->type == NODE_TYPE_OBJECT) {
         for (size_t i = 0; i < (yyvsp[0].node)->numMembers(); ++i) {
           auto nodeMember = (yyvsp[0].node)->getMember(i);
           if (nodeMember->type == NODE_TYPE_OBJECT_ELEMENT) {
-            arangodb::velocypack::StringRef nodeMemberName =
-                nodeMember->getStringRef();
-            if (nodeMemberName == "indexHint" ||
-                nodeMemberName == "forceIndexHint") {
+            arangodb::velocypack::StringRef nodeMemberName = nodeMember->getStringRef();
+            if (nodeMemberName == arangodb::StaticStrings::IndexHintOption || 
+                nodeMemberName == arangodb::StaticStrings::IndexHintOptionForce ||
+                nodeMemberName == arangodb::StaticStrings::IndexHintDisableIndex) {
               forOptionsNode->addMember(nodeMember);
             } else {
               upsertOptionsNode->addMember(nodeMember);
@@ -3845,132 +3830,124 @@ yyreduce:
         YYABORT;
       }
 
-      auto node = parser->ast()->createNodeUpsert(
-          static_cast<AstNodeType>((yyvsp[-3].intval)),
-          parser->ast()->createNodeReference(
-              TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD)),
-          (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node),
-          upsertOptionsNode);
+      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>((yyvsp[-3].intval)), parser->ast()->createNodeReference(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD)), (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), upsertOptionsNode);
       parser->ast()->addOperation(node);
     }
-#line 3834 "Aql/grammar.cpp"
+#line 3837 "Aql/grammar.cpp"
     break;
 
-    case 111: /* quantifier: "all modifier"  */
-#line 1394 "Aql/grammar.y"
-    {
+  case 111: /* quantifier: "all modifier"  */
+#line 1397 "Aql/grammar.y"
+          {
       (yyval.node) = parser->ast()->createNodeQuantifier(Quantifier::ALL);
     }
-#line 3842 "Aql/grammar.cpp"
+#line 3845 "Aql/grammar.cpp"
     break;
 
-    case 112: /* quantifier: "any modifier"  */
-#line 1397 "Aql/grammar.y"
-    {
+  case 112: /* quantifier: "any modifier"  */
+#line 1400 "Aql/grammar.y"
+          {
       (yyval.node) = parser->ast()->createNodeQuantifier(Quantifier::ANY);
     }
-#line 3850 "Aql/grammar.cpp"
+#line 3853 "Aql/grammar.cpp"
     break;
 
-    case 113: /* quantifier: "none modifier"  */
-#line 1400 "Aql/grammar.y"
-    {
+  case 113: /* quantifier: "none modifier"  */
+#line 1403 "Aql/grammar.y"
+           {
       (yyval.node) = parser->ast()->createNodeQuantifier(Quantifier::NONE);
     }
-#line 3858 "Aql/grammar.cpp"
+#line 3861 "Aql/grammar.cpp"
     break;
 
-    case 114: /* $@11: %empty  */
-#line 1406 "Aql/grammar.y"
-    {
+  case 114: /* $@11: %empty  */
+#line 1409 "Aql/grammar.y"
+               {
       auto const scopeType = parser->ast()->scopes()->type();
 
-      if (scopeType == AQL_SCOPE_MAIN || scopeType == AQL_SCOPE_SUBQUERY) {
-        parser->registerParseError(
-            TRI_ERROR_QUERY_PARSE,
-            "cannot use DISTINCT modifier on top-level query element",
-            yylloc.first_line, yylloc.first_column);
+      if (scopeType == AQL_SCOPE_MAIN ||
+          scopeType == AQL_SCOPE_SUBQUERY) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "cannot use DISTINCT modifier on top-level query element", yylloc.first_line, yylloc.first_column);
       }
     }
-#line 3871 "Aql/grammar.cpp"
+#line 3874 "Aql/grammar.cpp"
     break;
 
-    case 115: /* distinct_expression: "DISTINCT modifier" $@11 expression  */
-#line 1413 "Aql/grammar.y"
-    {
+  case 115: /* distinct_expression: "DISTINCT modifier" $@11 expression  */
+#line 1416 "Aql/grammar.y"
+                 {
       (yyval.node) = parser->ast()->createNodeDistinct((yyvsp[0].node));
     }
-#line 3879 "Aql/grammar.cpp"
+#line 3882 "Aql/grammar.cpp"
     break;
 
-    case 116: /* distinct_expression: expression  */
-#line 1416 "Aql/grammar.y"
-    {
+  case 116: /* distinct_expression: expression  */
+#line 1419 "Aql/grammar.y"
+               {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3887 "Aql/grammar.cpp"
+#line 3890 "Aql/grammar.cpp"
     break;
 
-    case 117: /* expression: operator_unary  */
-#line 1422 "Aql/grammar.y"
-    {
-      (yyval.node) = (yyvsp[0].node);
-    }
-#line 3895 "Aql/grammar.cpp"
-    break;
-
-    case 118: /* expression: operator_binary  */
+  case 117: /* expression: operator_unary  */
 #line 1425 "Aql/grammar.y"
-    {
+                   {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3903 "Aql/grammar.cpp"
+#line 3898 "Aql/grammar.cpp"
     break;
 
-    case 119: /* expression: operator_ternary  */
+  case 118: /* expression: operator_binary  */
 #line 1428 "Aql/grammar.y"
-    {
+                    {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3911 "Aql/grammar.cpp"
+#line 3906 "Aql/grammar.cpp"
     break;
 
-    case 120: /* expression: value_literal  */
+  case 119: /* expression: operator_ternary  */
 #line 1431 "Aql/grammar.y"
-    {
+                     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3919 "Aql/grammar.cpp"
+#line 3914 "Aql/grammar.cpp"
     break;
 
-    case 121: /* expression: reference  */
+  case 120: /* expression: value_literal  */
 #line 1434 "Aql/grammar.y"
-    {
+                  {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 3927 "Aql/grammar.cpp"
+#line 3922 "Aql/grammar.cpp"
     break;
 
-    case 122: /* expression: expression ".." expression  */
+  case 121: /* expression: reference  */
 #line 1437 "Aql/grammar.y"
-    {
-      (yyval.node) =
-          parser->ast()->createNodeRange((yyvsp[-2].node), (yyvsp[0].node));
+              {
+      (yyval.node) = (yyvsp[0].node);
     }
-#line 3935 "Aql/grammar.cpp"
+#line 3930 "Aql/grammar.cpp"
     break;
 
-    case 123: /* function_name: "identifier"  */
-#line 1443 "Aql/grammar.y"
-    {
+  case 122: /* expression: expression ".." expression  */
+#line 1440 "Aql/grammar.y"
+                                  {
+      (yyval.node) = parser->ast()->createNodeRange((yyvsp[-2].node), (yyvsp[0].node));
+    }
+#line 3938 "Aql/grammar.cpp"
+    break;
+
+  case 123: /* function_name: "identifier"  */
+#line 1446 "Aql/grammar.y"
+             {
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 3943 "Aql/grammar.cpp"
+#line 3946 "Aql/grammar.cpp"
     break;
 
-    case 124: /* function_name: function_name "::" "identifier"  */
-#line 1446 "Aql/grammar.y"
-    {
+  case 124: /* function_name: function_name "::" "identifier"  */
+#line 1449 "Aql/grammar.y"
+                                   {
       std::string temp((yyvsp[-2].strval).value, (yyvsp[-2].strval).length);
       temp.append("::");
       temp.append((yyvsp[0].strval).value, (yyvsp[0].strval).length);
@@ -3980,585 +3957,513 @@ yyreduce:
       (yyval.strval).value = p;
       (yyval.strval).length = temp.size();
     }
-#line 3958 "Aql/grammar.cpp"
+#line 3961 "Aql/grammar.cpp"
     break;
 
-    case 125: /* $@12: %empty  */
-#line 1459 "Aql/grammar.y"
-    {
+  case 125: /* $@12: %empty  */
+#line 1462 "Aql/grammar.y"
+                         {
       parser->pushStack((yyvsp[-1].strval).value);
 
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 3969 "Aql/grammar.cpp"
+#line 3972 "Aql/grammar.cpp"
     break;
 
-    case 126: /* function_call: function_name "(" $@12
-                 optional_function_call_arguments ")"  */
-#line 1464 "Aql/grammar.y"
-    {
+  case 126: /* function_call: function_name "(" $@12 optional_function_call_arguments ")"  */
+#line 1467 "Aql/grammar.y"
+                                                              {
       auto list = static_cast<AstNode const*>(parser->popStack());
-      (yyval.node) = parser->ast()->createNodeFunctionCall(
-          static_cast<char const*>(parser->popStack()), list, false);
+      (yyval.node) = parser->ast()->createNodeFunctionCall(static_cast<char const*>(parser->popStack()), list, false);
     }
-#line 3978 "Aql/grammar.cpp"
+#line 3981 "Aql/grammar.cpp"
     break;
 
-    case 127: /* $@13: %empty  */
-#line 1468 "Aql/grammar.y"
-    {
+  case 127: /* $@13: %empty  */
+#line 1471 "Aql/grammar.y"
+                  {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 3987 "Aql/grammar.cpp"
+#line 3990 "Aql/grammar.cpp"
     break;
 
-    case 128: /* function_call: "like operator" "(" $@13
-                 optional_function_call_arguments ")"  */
-#line 1471 "Aql/grammar.y"
-    {
+  case 128: /* function_call: "like operator" "(" $@13 optional_function_call_arguments ")"  */
+#line 1474 "Aql/grammar.y"
+                                                              {
       auto list = static_cast<AstNode const*>(parser->popStack());
-      (yyval.node) = parser->ast()->createNodeFunctionCall(
-          TRI_CHAR_LENGTH_PAIR("LIKE"), list, false);
+      (yyval.node) = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("LIKE"), list, false);
     }
-#line 3996 "Aql/grammar.cpp"
+#line 3999 "Aql/grammar.cpp"
     break;
 
-    case 129: /* operator_unary: "+ operator" expression  */
-#line 1478 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->optimizeUnaryOperatorArithmetic(
-          parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_PLUS,
-                                                 (yyvsp[0].node)));
-    }
-#line 4004 "Aql/grammar.cpp"
-    break;
-
-    case 130: /* operator_unary: "- operator" expression  */
+  case 129: /* operator_unary: "+ operator" expression  */
 #line 1481 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->optimizeUnaryOperatorArithmetic(
-          parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_MINUS,
-                                                 (yyvsp[0].node)));
+                                  {
+      (yyval.node) = parser->ast()->optimizeUnaryOperatorArithmetic(parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_PLUS, (yyvsp[0].node)));
     }
-#line 4012 "Aql/grammar.cpp"
+#line 4007 "Aql/grammar.cpp"
     break;
 
-    case 131: /* operator_unary: "not operator" expression  */
+  case 130: /* operator_unary: "- operator" expression  */
 #line 1484 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeUnaryOperator(
-          NODE_TYPE_OPERATOR_UNARY_NOT, (yyvsp[0].node));
+                                    {
+      (yyval.node) = parser->ast()->optimizeUnaryOperatorArithmetic(parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_MINUS, (yyvsp[0].node)));
     }
-#line 4020 "Aql/grammar.cpp"
+#line 4015 "Aql/grammar.cpp"
     break;
 
-    case 132: /* operator_binary: expression "or operator" expression  */
-#line 1490 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(
-          NODE_TYPE_OPERATOR_BINARY_OR, (yyvsp[-2].node), (yyvsp[0].node));
+  case 131: /* operator_unary: "not operator" expression  */
+#line 1487 "Aql/grammar.y"
+                                     {
+      (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, (yyvsp[0].node));
     }
-#line 4028 "Aql/grammar.cpp"
+#line 4023 "Aql/grammar.cpp"
     break;
 
-    case 133: /* operator_binary: expression "and operator" expression  */
+  case 132: /* operator_binary: expression "or operator" expression  */
 #line 1493 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(
-          NODE_TYPE_OPERATOR_BINARY_AND, (yyvsp[-2].node), (yyvsp[0].node));
+                               {
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_OR, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4036 "Aql/grammar.cpp"
+#line 4031 "Aql/grammar.cpp"
     break;
 
-    case 134: /* operator_binary: expression "+ operator" expression  */
+  case 133: /* operator_binary: expression "and operator" expression  */
 #line 1496 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(
-          NODE_TYPE_OPERATOR_BINARY_PLUS, (yyvsp[-2].node), (yyvsp[0].node));
+                                {
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4044 "Aql/grammar.cpp"
+#line 4039 "Aql/grammar.cpp"
     break;
 
-    case 135: /* operator_binary: expression "- operator" expression  */
+  case 134: /* operator_binary: expression "+ operator" expression  */
 #line 1499 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(
-          NODE_TYPE_OPERATOR_BINARY_MINUS, (yyvsp[-2].node), (yyvsp[0].node));
+                                 {
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_PLUS, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4052 "Aql/grammar.cpp"
+#line 4047 "Aql/grammar.cpp"
     break;
 
-    case 136: /* operator_binary: expression "* operator" expression  */
+  case 135: /* operator_binary: expression "- operator" expression  */
 #line 1502 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(
-          NODE_TYPE_OPERATOR_BINARY_TIMES, (yyvsp[-2].node), (yyvsp[0].node));
+                                  {
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_MINUS, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4060 "Aql/grammar.cpp"
+#line 4055 "Aql/grammar.cpp"
     break;
 
-    case 137: /* operator_binary: expression "/ operator" expression  */
+  case 136: /* operator_binary: expression "* operator" expression  */
 #line 1505 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(
-          NODE_TYPE_OPERATOR_BINARY_DIV, (yyvsp[-2].node), (yyvsp[0].node));
+                                  {
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_TIMES, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4068 "Aql/grammar.cpp"
+#line 4063 "Aql/grammar.cpp"
     break;
 
-    case 138: /* operator_binary: expression "% operator" expression  */
+  case 137: /* operator_binary: expression "/ operator" expression  */
 #line 1508 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(
-          NODE_TYPE_OPERATOR_BINARY_MOD, (yyvsp[-2].node), (yyvsp[0].node));
+                                {
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_DIV, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4076 "Aql/grammar.cpp"
+#line 4071 "Aql/grammar.cpp"
     break;
 
-    case 139: /* operator_binary: expression "== operator" expression  */
+  case 138: /* operator_binary: expression "% operator" expression  */
 #line 1511 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(
-          NODE_TYPE_OPERATOR_BINARY_EQ, (yyvsp[-2].node), (yyvsp[0].node));
+                                {
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_MOD, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4084 "Aql/grammar.cpp"
+#line 4079 "Aql/grammar.cpp"
     break;
 
-    case 140: /* operator_binary: expression "!= operator" expression  */
+  case 139: /* operator_binary: expression "== operator" expression  */
 #line 1514 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(
-          NODE_TYPE_OPERATOR_BINARY_NE, (yyvsp[-2].node), (yyvsp[0].node));
+                               {
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4092 "Aql/grammar.cpp"
+#line 4087 "Aql/grammar.cpp"
     break;
 
-    case 141: /* operator_binary: expression "< operator" expression  */
+  case 140: /* operator_binary: expression "!= operator" expression  */
 #line 1517 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(
-          NODE_TYPE_OPERATOR_BINARY_LT, (yyvsp[-2].node), (yyvsp[0].node));
+                               {
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NE, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4100 "Aql/grammar.cpp"
+#line 4095 "Aql/grammar.cpp"
     break;
 
-    case 142: /* operator_binary: expression "> operator" expression  */
+  case 141: /* operator_binary: expression "< operator" expression  */
 #line 1520 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(
-          NODE_TYPE_OPERATOR_BINARY_GT, (yyvsp[-2].node), (yyvsp[0].node));
+                               {
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_LT, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4108 "Aql/grammar.cpp"
+#line 4103 "Aql/grammar.cpp"
     break;
 
-    case 143: /* operator_binary: expression "<= operator" expression  */
+  case 142: /* operator_binary: expression "> operator" expression  */
 #line 1523 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(
-          NODE_TYPE_OPERATOR_BINARY_LE, (yyvsp[-2].node), (yyvsp[0].node));
+                               {
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GT, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4116 "Aql/grammar.cpp"
+#line 4111 "Aql/grammar.cpp"
     break;
 
-    case 144: /* operator_binary: expression ">= operator" expression  */
+  case 143: /* operator_binary: expression "<= operator" expression  */
 #line 1526 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(
-          NODE_TYPE_OPERATOR_BINARY_GE, (yyvsp[-2].node), (yyvsp[0].node));
+                               {
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_LE, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4124 "Aql/grammar.cpp"
+#line 4119 "Aql/grammar.cpp"
     break;
 
-    case 145: /* operator_binary: expression "IN keyword" expression  */
+  case 144: /* operator_binary: expression ">= operator" expression  */
 #line 1529 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(
-          NODE_TYPE_OPERATOR_BINARY_IN, (yyvsp[-2].node), (yyvsp[0].node));
+                               {
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GE, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4132 "Aql/grammar.cpp"
+#line 4127 "Aql/grammar.cpp"
     break;
 
-    case 146: /* operator_binary: expression "not operator" "IN keyword"
-                 expression  */
+  case 145: /* operator_binary: expression "IN keyword" expression  */
 #line 1532 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(
-          NODE_TYPE_OPERATOR_BINARY_NIN, (yyvsp[-3].node), (yyvsp[0].node));
+                               {
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4140 "Aql/grammar.cpp"
+#line 4135 "Aql/grammar.cpp"
     break;
 
-    case 147: /* operator_binary: expression "not operator" "like operator"
-                 expression  */
+  case 146: /* operator_binary: expression "not operator" "IN keyword" expression  */
 #line 1535 "Aql/grammar.y"
-    {
+                                     {
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, (yyvsp[-3].node), (yyvsp[0].node));
+    }
+#line 4143 "Aql/grammar.cpp"
+    break;
+
+  case 147: /* operator_binary: expression "not operator" "like operator" expression  */
+#line 1538 "Aql/grammar.y"
+                                       {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember((yyvsp[-3].node));
       arguments->addMember((yyvsp[0].node));
-      AstNode* expression = parser->ast()->createNodeFunctionCall(
-          TRI_CHAR_LENGTH_PAIR("LIKE"), arguments, false);
-      (yyval.node) = parser->ast()->createNodeUnaryOperator(
-          NODE_TYPE_OPERATOR_UNARY_NOT, expression);
+      AstNode* expression = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("LIKE"), arguments, false);
+      (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, expression);
     }
-#line 4152 "Aql/grammar.cpp"
+#line 4155 "Aql/grammar.cpp"
     break;
 
-    case 148: /* operator_binary: expression "not operator" "~= operator"
-                 expression  */
-#line 1542 "Aql/grammar.y"
-    {
+  case 148: /* operator_binary: expression "not operator" "~= operator" expression  */
+#line 1545 "Aql/grammar.y"
+                                              {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember((yyvsp[-3].node));
       arguments->addMember((yyvsp[0].node));
-      AstNode* expression = parser->ast()->createNodeFunctionCall(
-          TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments, false);
-      (yyval.node) = parser->ast()->createNodeUnaryOperator(
-          NODE_TYPE_OPERATOR_UNARY_NOT, expression);
+      AstNode* expression = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments, false);
+      (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, expression);
     }
-#line 4164 "Aql/grammar.cpp"
+#line 4167 "Aql/grammar.cpp"
     break;
 
-    case 149: /* operator_binary: expression "not operator" "~! operator"
-                 expression  */
-#line 1549 "Aql/grammar.y"
-    {
+  case 149: /* operator_binary: expression "not operator" "~! operator" expression  */
+#line 1552 "Aql/grammar.y"
+                                                  {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember((yyvsp[-3].node));
       arguments->addMember((yyvsp[0].node));
-      (yyval.node) = parser->ast()->createNodeFunctionCall(
-          TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments, false);
+      (yyval.node) = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments, false);
     }
-#line 4175 "Aql/grammar.cpp"
+#line 4178 "Aql/grammar.cpp"
     break;
 
-    case 150: /* operator_binary: expression "like operator" expression  */
-#line 1555 "Aql/grammar.y"
-    {
+  case 150: /* operator_binary: expression "like operator" expression  */
+#line 1558 "Aql/grammar.y"
+                                 {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember((yyvsp[-2].node));
       arguments->addMember((yyvsp[0].node));
-      (yyval.node) = parser->ast()->createNodeFunctionCall(
-          TRI_CHAR_LENGTH_PAIR("LIKE"), arguments, false);
+      (yyval.node) = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("LIKE"), arguments, false);
     }
-#line 4186 "Aql/grammar.cpp"
+#line 4189 "Aql/grammar.cpp"
     break;
 
-    case 151: /* operator_binary: expression "~= operator" expression  */
-#line 1561 "Aql/grammar.y"
-    {
+  case 151: /* operator_binary: expression "~= operator" expression  */
+#line 1564 "Aql/grammar.y"
+                                        {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember((yyvsp[-2].node));
       arguments->addMember((yyvsp[0].node));
-      (yyval.node) = parser->ast()->createNodeFunctionCall(
-          TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments, false);
+      (yyval.node) = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments, false);
     }
-#line 4197 "Aql/grammar.cpp"
+#line 4200 "Aql/grammar.cpp"
     break;
 
-    case 152: /* operator_binary: expression "~! operator" expression  */
-#line 1567 "Aql/grammar.y"
-    {
+  case 152: /* operator_binary: expression "~! operator" expression  */
+#line 1570 "Aql/grammar.y"
+                                            {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember((yyvsp[-2].node));
       arguments->addMember((yyvsp[0].node));
-      AstNode* node = parser->ast()->createNodeFunctionCall(
-          TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments, false);
-      (yyval.node) = parser->ast()->createNodeUnaryOperator(
-          NODE_TYPE_OPERATOR_UNARY_NOT, node);
+      AstNode* node = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments, false);
+      (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, node);
     }
-#line 4209 "Aql/grammar.cpp"
+#line 4212 "Aql/grammar.cpp"
     break;
 
-    case 153: /* operator_binary: expression quantifier "== operator" expression
-               */
-#line 1574 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(
-          NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ, (yyvsp[-3].node), (yyvsp[0].node),
-          (yyvsp[-2].node));
-    }
-#line 4217 "Aql/grammar.cpp"
-    break;
-
-    case 154: /* operator_binary: expression quantifier "!= operator" expression
-               */
+  case 153: /* operator_binary: expression quantifier "== operator" expression  */
 #line 1577 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(
-          NODE_TYPE_OPERATOR_BINARY_ARRAY_NE, (yyvsp[-3].node), (yyvsp[0].node),
-          (yyvsp[-2].node));
+                                          {
+      (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 4225 "Aql/grammar.cpp"
+#line 4220 "Aql/grammar.cpp"
     break;
 
-    case 155: /* operator_binary: expression quantifier "< operator" expression
-               */
+  case 154: /* operator_binary: expression quantifier "!= operator" expression  */
 #line 1580 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(
-          NODE_TYPE_OPERATOR_BINARY_ARRAY_LT, (yyvsp[-3].node), (yyvsp[0].node),
-          (yyvsp[-2].node));
+                                          {
+      (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NE, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 4233 "Aql/grammar.cpp"
+#line 4228 "Aql/grammar.cpp"
     break;
 
-    case 156: /* operator_binary: expression quantifier "> operator" expression
-               */
+  case 155: /* operator_binary: expression quantifier "< operator" expression  */
 #line 1583 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(
-          NODE_TYPE_OPERATOR_BINARY_ARRAY_GT, (yyvsp[-3].node), (yyvsp[0].node),
-          (yyvsp[-2].node));
+                                          {
+      (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_LT, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 4241 "Aql/grammar.cpp"
+#line 4236 "Aql/grammar.cpp"
     break;
 
-    case 157: /* operator_binary: expression quantifier "<= operator" expression
-               */
+  case 156: /* operator_binary: expression quantifier "> operator" expression  */
 #line 1586 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(
-          NODE_TYPE_OPERATOR_BINARY_ARRAY_LE, (yyvsp[-3].node), (yyvsp[0].node),
-          (yyvsp[-2].node));
+                                          {
+      (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_GT, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 4249 "Aql/grammar.cpp"
+#line 4244 "Aql/grammar.cpp"
     break;
 
-    case 158: /* operator_binary: expression quantifier ">= operator" expression
-               */
+  case 157: /* operator_binary: expression quantifier "<= operator" expression  */
 #line 1589 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(
-          NODE_TYPE_OPERATOR_BINARY_ARRAY_GE, (yyvsp[-3].node), (yyvsp[0].node),
-          (yyvsp[-2].node));
+                                          {
+      (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_LE, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 4257 "Aql/grammar.cpp"
+#line 4252 "Aql/grammar.cpp"
     break;
 
-    case 159: /* operator_binary: expression quantifier "IN keyword" expression
-               */
+  case 158: /* operator_binary: expression quantifier ">= operator" expression  */
 #line 1592 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(
-          NODE_TYPE_OPERATOR_BINARY_ARRAY_IN, (yyvsp[-3].node), (yyvsp[0].node),
-          (yyvsp[-2].node));
+                                          {
+      (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_GE, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 4265 "Aql/grammar.cpp"
+#line 4260 "Aql/grammar.cpp"
     break;
 
-    case 160: /* operator_binary: expression "all modifier" "not operator" "IN
-                 keyword" expression  */
+  case 159: /* operator_binary: expression quantifier "IN keyword" expression  */
 #line 1595 "Aql/grammar.y"
-    {
+                                          {
+      (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
+    }
+#line 4268 "Aql/grammar.cpp"
+    break;
+
+  case 160: /* operator_binary: expression "all modifier" "not operator" "IN keyword" expression  */
+#line 1598 "Aql/grammar.y"
+                                           {
       auto quantifier = parser->ast()->createNodeQuantifier(Quantifier::ALL);
-      (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(
-          NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, (yyvsp[-4].node),
-          (yyvsp[0].node), quantifier);
+      (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, (yyvsp[-4].node), (yyvsp[0].node), quantifier);
     }
-#line 4274 "Aql/grammar.cpp"
+#line 4277 "Aql/grammar.cpp"
     break;
 
-    case 161: /* operator_binary: expression "any modifier" "not operator" "IN
-                 keyword" expression  */
-#line 1599 "Aql/grammar.y"
-    {
+  case 161: /* operator_binary: expression "any modifier" "not operator" "IN keyword" expression  */
+#line 1602 "Aql/grammar.y"
+                                           {
       auto quantifier = parser->ast()->createNodeQuantifier(Quantifier::ANY);
-      (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(
-          NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, (yyvsp[-4].node),
-          (yyvsp[0].node), quantifier);
+      (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, (yyvsp[-4].node), (yyvsp[0].node), quantifier);
     }
-#line 4283 "Aql/grammar.cpp"
+#line 4286 "Aql/grammar.cpp"
     break;
 
-    case 162: /* operator_binary: expression "none modifier" "not operator" "IN
-                 keyword" expression  */
-#line 1603 "Aql/grammar.y"
-    {
+  case 162: /* operator_binary: expression "none modifier" "not operator" "IN keyword" expression  */
+#line 1606 "Aql/grammar.y"
+                                            {
       auto quantifier = parser->ast()->createNodeQuantifier(Quantifier::NONE);
-      (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(
-          NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, (yyvsp[-4].node),
-          (yyvsp[0].node), quantifier);
+      (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, (yyvsp[-4].node), (yyvsp[0].node), quantifier);
     }
-#line 4292 "Aql/grammar.cpp"
+#line 4295 "Aql/grammar.cpp"
     break;
 
-    case 163: /* operator_ternary: expression "?" expression ":" expression  */
-#line 1610 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeTernaryOperator(
-          (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[0].node));
-    }
-#line 4300 "Aql/grammar.cpp"
-    break;
-
-    case 164: /* operator_ternary: expression "?" ":" expression  */
+  case 163: /* operator_ternary: expression "?" expression ":" expression  */
 #line 1613 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeTernaryOperator((yyvsp[-3].node),
-                                                              (yyvsp[0].node));
+                                                        {
+      (yyval.node) = parser->ast()->createNodeTernaryOperator((yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4308 "Aql/grammar.cpp"
+#line 4303 "Aql/grammar.cpp"
     break;
 
-    case 165: /* optional_function_call_arguments: %empty  */
-#line 1619 "Aql/grammar.y"
-    {
+  case 164: /* operator_ternary: expression "?" ":" expression  */
+#line 1616 "Aql/grammar.y"
+                                             {
+      (yyval.node) = parser->ast()->createNodeTernaryOperator((yyvsp[-3].node), (yyvsp[0].node));
     }
-#line 4315 "Aql/grammar.cpp"
+#line 4311 "Aql/grammar.cpp"
     break;
 
-    case 166: /* optional_function_call_arguments: function_arguments_list  */
-#line 1621 "Aql/grammar.y"
-    {
+  case 165: /* optional_function_call_arguments: %empty  */
+#line 1622 "Aql/grammar.y"
+                {
     }
-#line 4322 "Aql/grammar.cpp"
+#line 4318 "Aql/grammar.cpp"
     break;
 
-    case 167: /* expression_or_query: expression  */
-#line 1626 "Aql/grammar.y"
-    {
+  case 166: /* optional_function_call_arguments: function_arguments_list  */
+#line 1624 "Aql/grammar.y"
+                            {
+    }
+#line 4325 "Aql/grammar.cpp"
+    break;
+
+  case 167: /* expression_or_query: expression  */
+#line 1629 "Aql/grammar.y"
+               {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4330 "Aql/grammar.cpp"
+#line 4333 "Aql/grammar.cpp"
     break;
 
-    case 168: /* $@14: %empty  */
-#line 1629 "Aql/grammar.y"
+  case 168: /* $@14: %empty  */
+#line 1632 "Aql/grammar.y"
     {
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
     }
-#line 4339 "Aql/grammar.cpp"
+#line 4342 "Aql/grammar.cpp"
     break;
 
-    case 169: /* expression_or_query: $@14 query  */
-#line 1632 "Aql/grammar.y"
-    {
+  case 169: /* expression_or_query: $@14 query  */
+#line 1635 "Aql/grammar.y"
+            {
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
 
       std::string const variableName = parser->ast()->variables()->nextName();
-      auto subQuery = parser->ast()->createNodeLet(
-          variableName.c_str(), variableName.size(), node, false);
+      auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), variableName.size(), node, false);
       parser->ast()->addOperation(subQuery);
 
       (yyval.node) = parser->ast()->createNodeSubqueryReference(variableName);
     }
-#line 4354 "Aql/grammar.cpp"
+#line 4357 "Aql/grammar.cpp"
     break;
 
-    case 170: /* function_arguments_list: expression_or_query  */
-#line 1645 "Aql/grammar.y"
-    {
-      parser->pushArrayElement((yyvsp[0].node));
-    }
-#line 4362 "Aql/grammar.cpp"
-    break;
-
-    case 171: /* function_arguments_list: function_arguments_list ","
-                 expression_or_query  */
+  case 170: /* function_arguments_list: expression_or_query  */
 #line 1648 "Aql/grammar.y"
-    {
+                        {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 4370 "Aql/grammar.cpp"
+#line 4365 "Aql/grammar.cpp"
     break;
 
-    case 172: /* compound_value: array  */
-#line 1654 "Aql/grammar.y"
-    {
-      (yyval.node) = (yyvsp[0].node);
+  case 171: /* function_arguments_list: function_arguments_list "," expression_or_query  */
+#line 1651 "Aql/grammar.y"
+                                                        {
+      parser->pushArrayElement((yyvsp[0].node));
     }
-#line 4378 "Aql/grammar.cpp"
+#line 4373 "Aql/grammar.cpp"
     break;
 
-    case 173: /* compound_value: object  */
+  case 172: /* compound_value: array  */
 #line 1657 "Aql/grammar.y"
-    {
+          {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4386 "Aql/grammar.cpp"
+#line 4381 "Aql/grammar.cpp"
     break;
 
-    case 174: /* $@15: %empty  */
-#line 1663 "Aql/grammar.y"
-    {
+  case 173: /* compound_value: object  */
+#line 1660 "Aql/grammar.y"
+           {
+      (yyval.node) = (yyvsp[0].node);
+    }
+#line 4389 "Aql/grammar.cpp"
+    break;
+
+  case 174: /* $@15: %empty  */
+#line 1666 "Aql/grammar.y"
+                 {
       auto node = parser->ast()->createNodeArray();
       parser->pushArray(node);
     }
-#line 4395 "Aql/grammar.cpp"
+#line 4398 "Aql/grammar.cpp"
     break;
 
-    case 175: /* array: "[" $@15 optional_array_elements "]"  */
-#line 1666 "Aql/grammar.y"
-    {
+  case 175: /* array: "[" $@15 optional_array_elements "]"  */
+#line 1669 "Aql/grammar.y"
+                                            {
       (yyval.node) = parser->popArray();
     }
-#line 4403 "Aql/grammar.cpp"
+#line 4406 "Aql/grammar.cpp"
     break;
 
-    case 176: /* optional_array_elements: %empty  */
-#line 1672 "Aql/grammar.y"
-    {
+  case 176: /* optional_array_elements: %empty  */
+#line 1675 "Aql/grammar.y"
+                {
     }
-#line 4410 "Aql/grammar.cpp"
+#line 4413 "Aql/grammar.cpp"
     break;
 
-    case 177: /* optional_array_elements: array_elements_list  */
-#line 1674 "Aql/grammar.y"
-    {
+  case 177: /* optional_array_elements: array_elements_list  */
+#line 1677 "Aql/grammar.y"
+                        {
     }
-#line 4417 "Aql/grammar.cpp"
+#line 4420 "Aql/grammar.cpp"
     break;
 
-    case 178: /* optional_array_elements: array_elements_list ","  */
-#line 1676 "Aql/grammar.y"
-    {
+  case 178: /* optional_array_elements: array_elements_list ","  */
+#line 1679 "Aql/grammar.y"
+                                {
     }
-#line 4424 "Aql/grammar.cpp"
+#line 4427 "Aql/grammar.cpp"
     break;
 
-    case 179: /* array_elements_list: array_element  */
-#line 1681 "Aql/grammar.y"
-    {
+  case 179: /* array_elements_list: array_element  */
+#line 1684 "Aql/grammar.y"
+                  {
     }
-#line 4431 "Aql/grammar.cpp"
+#line 4434 "Aql/grammar.cpp"
     break;
 
-    case 180: /* array_elements_list: array_elements_list "," array_element  */
-#line 1683 "Aql/grammar.y"
-    {
+  case 180: /* array_elements_list: array_elements_list "," array_element  */
+#line 1686 "Aql/grammar.y"
+                                              {
     }
-#line 4438 "Aql/grammar.cpp"
+#line 4441 "Aql/grammar.cpp"
     break;
 
-    case 181: /* array_element: expression  */
-#line 1688 "Aql/grammar.y"
-    {
+  case 181: /* array_element: expression  */
+#line 1691 "Aql/grammar.y"
+               {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 4446 "Aql/grammar.cpp"
+#line 4449 "Aql/grammar.cpp"
     break;
 
-    case 182: /* for_options: %empty  */
-#line 1694 "Aql/grammar.y"
-    {
+  case 182: /* for_options: %empty  */
+#line 1697 "Aql/grammar.y"
+                {
       (yyval.node) = nullptr;
     }
-#line 4454 "Aql/grammar.cpp"
+#line 4457 "Aql/grammar.cpp"
     break;
 
-    case 183: /* for_options: "identifier" expression  */
-#line 1697 "Aql/grammar.y"
-    {
+  case 183: /* for_options: "identifier" expression  */
+#line 1700 "Aql/grammar.y"
+                        {
       TRI_ASSERT((yyvsp[0].node) != nullptr);
       // we always return an array with two values: SEARCH and OPTIONS
       // as only one of these values will be set here, the other value is NOP
       auto node = parser->ast()->createNodeArray(2);
-      // only one extra qualifier. now we need to check if it is SEARCH or
-      // OPTIONS
+      // only one extra qualifier. now we need to check if it is SEARCH or OPTIONS
 
       if (TRI_CaseEqualString((yyvsp[-1].strval).value, "SEARCH")) {
         // found SEARCH
@@ -4567,14 +4472,9 @@ yyreduce:
       } else {
         // everything else must be OPTIONS
         if (!TRI_CaseEqualString((yyvsp[-1].strval).value, "OPTIONS")) {
-          parser->registerParseError(
-              TRI_ERROR_QUERY_PARSE,
-              "unexpected qualifier '%s', expecting 'SEARCH' or 'OPTIONS'",
-              {(yyvsp[-1].strval).value, (yyvsp[-1].strval).length},
-              yylloc.first_line, yylloc.first_column);
+          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' or 'OPTIONS'", {(yyvsp[-1].strval).value, (yyvsp[-1].strval).length}, yylloc.first_line, yylloc.first_column);
         }
-        ::validateOptions(parser, (yyvsp[0].node), yylloc.first_line,
-                          yylloc.first_column);
+        ::validateOptions(parser, (yyvsp[0].node), yylloc.first_line, yylloc.first_column);
 
         node->addMember(parser->ast()->createNodeNop());
         node->addMember((yyvsp[0].node));
@@ -4582,431 +4482,393 @@ yyreduce:
 
       (yyval.node) = node;
     }
-#line 4483 "Aql/grammar.cpp"
+#line 4486 "Aql/grammar.cpp"
     break;
 
-    case 184: /* for_options: "identifier" expression "identifier" expression */
-#line 1721 "Aql/grammar.y"
-    {
+  case 184: /* for_options: "identifier" expression "identifier" expression  */
+#line 1724 "Aql/grammar.y"
+                                            {
       TRI_ASSERT((yyvsp[-2].node) != nullptr);
       // two extra qualifiers. we expect them in the order: SEARCH, then OPTIONS
 
       if (!TRI_CaseEqualString((yyvsp[-3].strval).value, "SEARCH") ||
           !TRI_CaseEqualString((yyvsp[-1].strval).value, "OPTIONS")) {
-        parser->registerParseError(
-            TRI_ERROR_QUERY_PARSE,
-            "unexpected qualifier '%s', expecting 'SEARCH' and 'OPTIONS'",
-            {(yyvsp[-3].strval).value, (yyvsp[-3].strval).length},
-            yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' and 'OPTIONS'", {(yyvsp[-3].strval).value, (yyvsp[-3].strval).length}, yylloc.first_line, yylloc.first_column);
       }
-
-      ::validateOptions(parser, (yyvsp[0].node), yylloc.first_line,
-                        yylloc.first_column);
+     
+      ::validateOptions(parser, (yyvsp[0].node), yylloc.first_line, yylloc.first_column);
 
       auto node = parser->ast()->createNodeArray(2);
       node->addMember((yyvsp[-2].node));
       node->addMember((yyvsp[0].node));
       (yyval.node) = node;
     }
-#line 4504 "Aql/grammar.cpp"
+#line 4507 "Aql/grammar.cpp"
     break;
 
-    case 185: /* options: %empty  */
-#line 1740 "Aql/grammar.y"
-    {
+  case 185: /* options: %empty  */
+#line 1743 "Aql/grammar.y"
+                {
       (yyval.node) = nullptr;
     }
-#line 4512 "Aql/grammar.cpp"
+#line 4515 "Aql/grammar.cpp"
     break;
 
-    case 186: /* options: "identifier" object  */
-#line 1743 "Aql/grammar.y"
-    {
+  case 186: /* options: "identifier" object  */
+#line 1746 "Aql/grammar.y"
+                    {
       TRI_ASSERT((yyvsp[0].node) != nullptr);
 
       if (!TRI_CaseEqualString((yyvsp[-1].strval).value, "OPTIONS")) {
-        parser->registerParseError(
-            TRI_ERROR_QUERY_PARSE,
-            "unexpected qualifier '%s', expecting 'OPTIONS'",
-            {(yyvsp[-1].strval).value, (yyvsp[-1].strval).length},
-            yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", {(yyvsp[-1].strval).value, (yyvsp[-1].strval).length}, yylloc.first_line, yylloc.first_column);
       }
-
-      ::validateOptions(parser, (yyvsp[0].node), yylloc.first_line,
-                        yylloc.first_column);
+     
+      ::validateOptions(parser, (yyvsp[0].node), yylloc.first_line, yylloc.first_column);
 
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4528 "Aql/grammar.cpp"
+#line 4531 "Aql/grammar.cpp"
     break;
 
-    case 187: /* $@16: %empty  */
-#line 1757 "Aql/grammar.y"
-    {
+  case 187: /* $@16: %empty  */
+#line 1760 "Aql/grammar.y"
+                  {
       auto node = parser->ast()->createNodeObject();
       parser->pushStack(node);
     }
-#line 4537 "Aql/grammar.cpp"
+#line 4540 "Aql/grammar.cpp"
     break;
 
-    case 188: /* object: "{" $@16 optional_object_elements "}"  */
-#line 1760 "Aql/grammar.y"
-    {
+  case 188: /* object: "{" $@16 optional_object_elements "}"  */
+#line 1763 "Aql/grammar.y"
+                                              {
       (yyval.node) = static_cast<AstNode*>(parser->popStack());
     }
-#line 4545 "Aql/grammar.cpp"
+#line 4548 "Aql/grammar.cpp"
     break;
 
-    case 189: /* optional_object_elements: %empty  */
-#line 1766 "Aql/grammar.y"
-    {
+  case 189: /* optional_object_elements: %empty  */
+#line 1769 "Aql/grammar.y"
+                {
     }
-#line 4552 "Aql/grammar.cpp"
+#line 4555 "Aql/grammar.cpp"
     break;
 
-    case 190: /* optional_object_elements: object_elements_list  */
-#line 1768 "Aql/grammar.y"
-    {
+  case 190: /* optional_object_elements: object_elements_list  */
+#line 1771 "Aql/grammar.y"
+                         {
     }
-#line 4559 "Aql/grammar.cpp"
+#line 4562 "Aql/grammar.cpp"
     break;
 
-    case 191: /* optional_object_elements: object_elements_list ","  */
-#line 1770 "Aql/grammar.y"
-    {
+  case 191: /* optional_object_elements: object_elements_list ","  */
+#line 1773 "Aql/grammar.y"
+                                 {
     }
-#line 4566 "Aql/grammar.cpp"
+#line 4569 "Aql/grammar.cpp"
     break;
 
-    case 192: /* object_elements_list: object_element  */
-#line 1775 "Aql/grammar.y"
-    {
+  case 192: /* object_elements_list: object_element  */
+#line 1778 "Aql/grammar.y"
+                   {
     }
-#line 4573 "Aql/grammar.cpp"
+#line 4576 "Aql/grammar.cpp"
     break;
 
-    case 193: /* object_elements_list: object_elements_list "," object_element
-               */
-#line 1777 "Aql/grammar.y"
-    {
+  case 193: /* object_elements_list: object_elements_list "," object_element  */
+#line 1780 "Aql/grammar.y"
+                                                {
     }
-#line 4580 "Aql/grammar.cpp"
+#line 4583 "Aql/grammar.cpp"
     break;
 
-    case 194: /* object_element: "identifier"  */
-#line 1782 "Aql/grammar.y"
-    {
-      // attribute-name-only (comparable to JS enhanced object literals, e.g. {
-      // foo, bar })
+  case 194: /* object_element: "identifier"  */
+#line 1785 "Aql/grammar.y"
+             {
+      // attribute-name-only (comparable to JS enhanced object literals, e.g. { foo, bar })
       auto ast = parser->ast();
-      auto variable = ast->scopes()->getVariable(
-          (yyvsp[0].strval).value, (yyvsp[0].strval).length, true);
+      auto variable = ast->scopes()->getVariable((yyvsp[0].strval).value, (yyvsp[0].strval).length, true);
 
       if (variable == nullptr) {
         // variable does not exist
-        parser->registerParseError(
-            TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
-            "use of unknown variable '%s' in object literal",
-            {(yyvsp[0].strval).value, (yyvsp[0].strval).length},
-            yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, "use of unknown variable '%s' in object literal", {(yyvsp[0].strval).value, (yyvsp[0].strval).length}, yylloc.first_line, yylloc.first_column);
       }
 
       // create a reference to the variable
       auto node = ast->createNodeReference(variable);
-      parser->pushObjectElement((yyvsp[0].strval).value,
-                                (yyvsp[0].strval).length, node);
+      parser->pushObjectElement((yyvsp[0].strval).value, (yyvsp[0].strval).length, node);
     }
-#line 4599 "Aql/grammar.cpp"
+#line 4602 "Aql/grammar.cpp"
     break;
 
-    case 195: /* object_element: object_element_name ":" expression  */
-#line 1796 "Aql/grammar.y"
-    {
+  case 195: /* object_element: object_element_name ":" expression  */
+#line 1799 "Aql/grammar.y"
+                                           {
       // attribute-name : attribute-value
-      parser->pushObjectElement((yyvsp[-2].strval).value,
-                                (yyvsp[-2].strval).length, (yyvsp[0].node));
+      parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 4608 "Aql/grammar.cpp"
+#line 4611 "Aql/grammar.cpp"
     break;
 
-    case 196: /* object_element: "bind parameter" ":" expression  */
-#line 1800 "Aql/grammar.y"
-    {
+  case 196: /* object_element: "bind parameter" ":" expression  */
+#line 1803 "Aql/grammar.y"
+                                   {
       // bind-parameter : attribute-value
       if ((yyvsp[-2].strval).length < 1 || (yyvsp[-2].strval).value[0] == '@') {
-        parser->registerParseError(
-            TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
-            TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE).data(),
-            (yyvsp[-2].strval).value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE).data(), (yyvsp[-2].strval).value, yylloc.first_line, yylloc.first_column);
       }
 
-      auto param = parser->ast()->createNodeParameter(
-          (yyvsp[-2].strval).value, (yyvsp[-2].strval).length);
+      auto param = parser->ast()->createNodeParameter((yyvsp[-2].strval).value, (yyvsp[-2].strval).length);
       parser->pushObjectElement(param, (yyvsp[0].node));
     }
-#line 4622 "Aql/grammar.cpp"
+#line 4625 "Aql/grammar.cpp"
     break;
 
-    case 197: /* object_element: "[" expression "]" ":" expression  */
-#line 1809 "Aql/grammar.y"
-    {
+  case 197: /* object_element: "[" expression "]" ":" expression  */
+#line 1812 "Aql/grammar.y"
+                                                             {
       // [ attribute-name-expression ] : attribute-value
       parser->pushObjectElement((yyvsp[-3].node), (yyvsp[0].node));
     }
-#line 4631 "Aql/grammar.cpp"
+#line 4634 "Aql/grammar.cpp"
     break;
 
-    case 198: /* array_filter_operator: "* operator"  */
-#line 1816 "Aql/grammar.y"
-    {
+  case 198: /* array_filter_operator: "* operator"  */
+#line 1819 "Aql/grammar.y"
+            {
       (yyval.intval) = 1;
     }
-#line 4639 "Aql/grammar.cpp"
+#line 4642 "Aql/grammar.cpp"
     break;
 
-    case 199: /* array_filter_operator: array_filter_operator "* operator"  */
-#line 1819 "Aql/grammar.y"
-    {
+  case 199: /* array_filter_operator: array_filter_operator "* operator"  */
+#line 1822 "Aql/grammar.y"
+                                  {
       (yyval.intval) = (yyvsp[-1].intval) + 1;
     }
-#line 4647 "Aql/grammar.cpp"
+#line 4650 "Aql/grammar.cpp"
     break;
 
-    case 200: /* optional_array_filter: %empty  */
-#line 1825 "Aql/grammar.y"
-    {
-      (yyval.node) = nullptr;
-    }
-#line 4655 "Aql/grammar.cpp"
-    break;
-
-    case 201: /* optional_array_filter: "FILTER declaration" expression  */
+  case 200: /* optional_array_filter: %empty  */
 #line 1828 "Aql/grammar.y"
-    {
-      (yyval.node) = (yyvsp[0].node);
-    }
-#line 4663 "Aql/grammar.cpp"
-    break;
-
-    case 202: /* optional_array_limit: %empty  */
-#line 1834 "Aql/grammar.y"
-    {
+                {
       (yyval.node) = nullptr;
     }
-#line 4671 "Aql/grammar.cpp"
+#line 4658 "Aql/grammar.cpp"
     break;
 
-    case 203: /* optional_array_limit: "LIMIT declaration" expression  */
+  case 201: /* optional_array_filter: "FILTER declaration" expression  */
+#line 1831 "Aql/grammar.y"
+                        {
+      (yyval.node) = (yyvsp[0].node);
+    }
+#line 4666 "Aql/grammar.cpp"
+    break;
+
+  case 202: /* optional_array_limit: %empty  */
 #line 1837 "Aql/grammar.y"
-    {
-      (yyval.node) =
-          parser->ast()->createNodeArrayLimit(nullptr, (yyvsp[0].node));
-    }
-#line 4679 "Aql/grammar.cpp"
-    break;
-
-    case 204: /* optional_array_limit: "LIMIT declaration" expression ","
-                 expression  */
-#line 1840 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeArrayLimit((yyvsp[-2].node),
-                                                         (yyvsp[0].node));
-    }
-#line 4687 "Aql/grammar.cpp"
-    break;
-
-    case 205: /* optional_array_return: %empty  */
-#line 1846 "Aql/grammar.y"
-    {
+                {
       (yyval.node) = nullptr;
     }
-#line 4695 "Aql/grammar.cpp"
+#line 4674 "Aql/grammar.cpp"
     break;
 
-    case 206: /* optional_array_return: "RETURN declaration" expression  */
+  case 203: /* optional_array_limit: "LIMIT declaration" expression  */
+#line 1840 "Aql/grammar.y"
+                       {
+      (yyval.node) = parser->ast()->createNodeArrayLimit(nullptr, (yyvsp[0].node));
+    }
+#line 4682 "Aql/grammar.cpp"
+    break;
+
+  case 204: /* optional_array_limit: "LIMIT declaration" expression "," expression  */
+#line 1843 "Aql/grammar.y"
+                                          {
+      (yyval.node) = parser->ast()->createNodeArrayLimit((yyvsp[-2].node), (yyvsp[0].node));
+    }
+#line 4690 "Aql/grammar.cpp"
+    break;
+
+  case 205: /* optional_array_return: %empty  */
 #line 1849 "Aql/grammar.y"
-    {
+                {
+      (yyval.node) = nullptr;
+    }
+#line 4698 "Aql/grammar.cpp"
+    break;
+
+  case 206: /* optional_array_return: "RETURN declaration" expression  */
+#line 1852 "Aql/grammar.y"
+                        {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4703 "Aql/grammar.cpp"
+#line 4706 "Aql/grammar.cpp"
     break;
 
-    case 207: /* graph_collection: "identifier"  */
-#line 1855 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeValueString(
-          (yyvsp[0].strval).value, (yyvsp[0].strval).length);
-    }
-#line 4711 "Aql/grammar.cpp"
-    break;
-
-    case 208: /* graph_collection: bind_parameter_datasource_expected  */
+  case 207: /* graph_collection: "identifier"  */
 #line 1858 "Aql/grammar.y"
-    {
+             {
+      (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
+    }
+#line 4714 "Aql/grammar.cpp"
+    break;
+
+  case 208: /* graph_collection: bind_parameter_datasource_expected  */
+#line 1861 "Aql/grammar.y"
+                                       {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4719 "Aql/grammar.cpp"
+#line 4722 "Aql/grammar.cpp"
     break;
 
-    case 209: /* graph_collection: graph_direction "identifier"  */
-#line 1861 "Aql/grammar.y"
-    {
-      auto tmp = parser->ast()->createNodeValueString((yyvsp[0].strval).value,
-                                                      (yyvsp[0].strval).length);
-      (yyval.node) =
-          parser->ast()->createNodeCollectionDirection((yyvsp[-1].intval), tmp);
+  case 209: /* graph_collection: graph_direction "identifier"  */
+#line 1864 "Aql/grammar.y"
+                             {
+      auto tmp = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
+      (yyval.node) = parser->ast()->createNodeCollectionDirection((yyvsp[-1].intval), tmp);
     }
-#line 4728 "Aql/grammar.cpp"
+#line 4731 "Aql/grammar.cpp"
     break;
 
-    case 210: /* graph_collection: graph_direction bind_parameter  */
-#line 1865 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeCollectionDirection(
-          (yyvsp[-1].intval), (yyvsp[0].node));
+  case 210: /* graph_collection: graph_direction bind_parameter  */
+#line 1868 "Aql/grammar.y"
+                                   {
+      (yyval.node) = parser->ast()->createNodeCollectionDirection((yyvsp[-1].intval), (yyvsp[0].node));
     }
-#line 4736 "Aql/grammar.cpp"
+#line 4739 "Aql/grammar.cpp"
     break;
 
-    case 211: /* graph_collection_list: graph_collection  */
-#line 1871 "Aql/grammar.y"
-    {
-      auto node = static_cast<AstNode*>(parser->peekStack());
-      node->addMember((yyvsp[0].node));
-    }
-#line 4745 "Aql/grammar.cpp"
+  case 211: /* graph_collection_list: graph_collection  */
+#line 1874 "Aql/grammar.y"
+                      {
+       auto node = static_cast<AstNode*>(parser->peekStack());
+       node->addMember((yyvsp[0].node));
+     }
+#line 4748 "Aql/grammar.cpp"
     break;
 
-    case 212: /* graph_collection_list: graph_collection_list ","
-                 graph_collection  */
-#line 1875 "Aql/grammar.y"
-    {
-      auto node = static_cast<AstNode*>(parser->peekStack());
-      node->addMember((yyvsp[0].node));
-    }
-#line 4754 "Aql/grammar.cpp"
+  case 212: /* graph_collection_list: graph_collection_list "," graph_collection  */
+#line 1878 "Aql/grammar.y"
+                                                    {
+       auto node = static_cast<AstNode*>(parser->peekStack());
+       node->addMember((yyvsp[0].node));
+     }
+#line 4757 "Aql/grammar.cpp"
     break;
 
-    case 213: /* graph_subject: graph_collection  */
-#line 1882 "Aql/grammar.y"
-    {
+  case 213: /* graph_subject: graph_collection  */
+#line 1885 "Aql/grammar.y"
+                     {
       auto node = parser->ast()->createNodeArray();
       node->addMember((yyvsp[0].node));
       auto const& resolver = parser->query().resolver();
       (yyval.node) = parser->ast()->createNodeCollectionList(node, resolver);
     }
-#line 4765 "Aql/grammar.cpp"
+#line 4768 "Aql/grammar.cpp"
     break;
 
-    case 214: /* $@17: %empty  */
-#line 1888 "Aql/grammar.y"
-    {
+  case 214: /* $@17: %empty  */
+#line 1891 "Aql/grammar.y"
+                             {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
       node->addMember((yyvsp[-1].node));
     }
-#line 4775 "Aql/grammar.cpp"
+#line 4778 "Aql/grammar.cpp"
     break;
 
-    case 215: /* graph_subject: graph_collection "," $@17 graph_collection_list
-               */
-#line 1892 "Aql/grammar.y"
-    {
+  case 215: /* graph_subject: graph_collection "," $@17 graph_collection_list  */
+#line 1895 "Aql/grammar.y"
+                            {
       auto node = static_cast<AstNode*>(parser->popStack());
       auto const& resolver = parser->query().resolver();
       (yyval.node) = parser->ast()->createNodeCollectionList(node, resolver);
     }
-#line 4785 "Aql/grammar.cpp"
+#line 4788 "Aql/grammar.cpp"
     break;
 
-    case 216: /* graph_subject: "GRAPH keyword" bind_parameter  */
-#line 1897 "Aql/grammar.y"
-    {
+  case 216: /* graph_subject: "GRAPH keyword" bind_parameter  */
+#line 1900 "Aql/grammar.y"
+                           {
       // graph name
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4794 "Aql/grammar.cpp"
+#line 4797 "Aql/grammar.cpp"
     break;
 
-    case 217: /* graph_subject: "GRAPH keyword" "quoted string"  */
-#line 1901 "Aql/grammar.y"
-    {
+  case 217: /* graph_subject: "GRAPH keyword" "quoted string"  */
+#line 1904 "Aql/grammar.y"
+                            {
       // graph name
-      (yyval.node) = parser->ast()->createNodeValueString(
-          (yyvsp[0].strval).value, (yyvsp[0].strval).length);
+      (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 4803 "Aql/grammar.cpp"
+#line 4806 "Aql/grammar.cpp"
     break;
 
-    case 218: /* graph_subject: "GRAPH keyword" "identifier"  */
-#line 1905 "Aql/grammar.y"
-    {
+  case 218: /* graph_subject: "GRAPH keyword" "identifier"  */
+#line 1908 "Aql/grammar.y"
+                     {
       // graph name
-      (yyval.node) = parser->ast()->createNodeValueString(
-          (yyvsp[0].strval).value, (yyvsp[0].strval).length);
+      (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 4812 "Aql/grammar.cpp"
+#line 4815 "Aql/grammar.cpp"
     break;
 
-    case 219: /* graph_direction: "outbound modifier"  */
-#line 1914 "Aql/grammar.y"
-    {
+  case 219: /* graph_direction: "outbound modifier"  */
+#line 1917 "Aql/grammar.y"
+               {
       (yyval.intval) = 2;
     }
-#line 4820 "Aql/grammar.cpp"
+#line 4823 "Aql/grammar.cpp"
     break;
 
-    case 220: /* graph_direction: "inbound modifier"  */
-#line 1917 "Aql/grammar.y"
-    {
+  case 220: /* graph_direction: "inbound modifier"  */
+#line 1920 "Aql/grammar.y"
+              {
       (yyval.intval) = 1;
     }
-#line 4828 "Aql/grammar.cpp"
+#line 4831 "Aql/grammar.cpp"
     break;
 
-    case 221: /* graph_direction: "any modifier"  */
-#line 1920 "Aql/grammar.y"
-    {
+  case 221: /* graph_direction: "any modifier"  */
+#line 1923 "Aql/grammar.y"
+          {
       (yyval.intval) = 0;
     }
-#line 4836 "Aql/grammar.cpp"
+#line 4839 "Aql/grammar.cpp"
     break;
 
-    case 222: /* graph_direction_steps: graph_direction  */
-#line 1926 "Aql/grammar.y"
-    {
+  case 222: /* graph_direction_steps: graph_direction  */
+#line 1929 "Aql/grammar.y"
+                    {
       (yyval.node) = parser->ast()->createNodeDirection((yyvsp[0].intval), 1);
     }
-#line 4844 "Aql/grammar.cpp"
+#line 4847 "Aql/grammar.cpp"
     break;
 
-    case 223: /* graph_direction_steps: expression graph_direction  */
-#line 1929 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeDirection((yyvsp[0].intval),
-                                                        (yyvsp[-1].node));
+  case 223: /* graph_direction_steps: expression graph_direction  */
+#line 1932 "Aql/grammar.y"
+                                                {
+      (yyval.node) = parser->ast()->createNodeDirection((yyvsp[0].intval), (yyvsp[-1].node));
     }
-#line 4852 "Aql/grammar.cpp"
+#line 4855 "Aql/grammar.cpp"
     break;
 
-    case 224: /* reference: "identifier"  */
-#line 1935 "Aql/grammar.y"
-    {
+  case 224: /* reference: "identifier"  */
+#line 1938 "Aql/grammar.y"
+             {
       // variable or collection or view
       auto ast = parser->ast();
       AstNode* node = nullptr;
 
-      auto variable = ast->scopes()->getVariable(
-          (yyvsp[0].strval).value, (yyvsp[0].strval).length, true);
+      auto variable = ast->scopes()->getVariable((yyvsp[0].strval).value, (yyvsp[0].strval).length, true);
 
       if (variable == nullptr) {
         // variable does not exist
         // now try special variables
-        if (ast->scopes()->canUseCurrentVariable() &&
-            strcmp((yyvsp[0].strval).value, "CURRENT") == 0) {
+        if (ast->scopes()->canUseCurrentVariable() && strcmp((yyvsp[0].strval).value, "CURRENT") == 0) {
           variable = ast->scopes()->getCurrentVariable();
-        } else if (strcmp((yyvsp[0].strval).value, Variable::NAME_CURRENT) ==
-                   0) {
+        } else if (strcmp((yyvsp[0].strval).value, Variable::NAME_CURRENT) == 0) {
           variable = ast->scopes()->getCurrentVariable();
         }
       }
@@ -5019,160 +4881,145 @@ yyreduce:
       if (node == nullptr) {
         // variable not found. so it must have been a collection or view
         auto const& resolver = parser->query().resolver();
-        node = ast->createNodeDataSource(
-            resolver, (yyvsp[0].strval).value, (yyvsp[0].strval).length,
-            arangodb::AccessMode::Type::READ, true, false);
+        node = ast->createNodeDataSource(resolver, (yyvsp[0].strval).value, (yyvsp[0].strval).length, arangodb::AccessMode::Type::READ, true, false);
       }
 
       TRI_ASSERT(node != nullptr);
 
       (yyval.node) = node;
     }
-#line 4889 "Aql/grammar.cpp"
+#line 4892 "Aql/grammar.cpp"
     break;
 
-    case 225: /* reference: compound_value  */
-#line 1967 "Aql/grammar.y"
-    {
-      (yyval.node) = (yyvsp[0].node);
-    }
-#line 4897 "Aql/grammar.cpp"
-    break;
-
-    case 226: /* reference: bind_parameter  */
+  case 225: /* reference: compound_value  */
 #line 1970 "Aql/grammar.y"
-    {
+                   {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4905 "Aql/grammar.cpp"
+#line 4900 "Aql/grammar.cpp"
     break;
 
-    case 227: /* reference: function_call  */
+  case 226: /* reference: bind_parameter  */
 #line 1973 "Aql/grammar.y"
-    {
+                   {
+      (yyval.node) = (yyvsp[0].node);
+    }
+#line 4908 "Aql/grammar.cpp"
+    break;
+
+  case 227: /* reference: function_call  */
+#line 1976 "Aql/grammar.y"
+                  {
       TRI_ASSERT((yyvsp[0].node) != nullptr);
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4914 "Aql/grammar.cpp"
+#line 4917 "Aql/grammar.cpp"
     break;
 
-    case 228: /* reference: "(" expression ")"  */
-#line 1977 "Aql/grammar.y"
-    {
+  case 228: /* reference: "(" expression ")"  */
+#line 1980 "Aql/grammar.y"
+                              {
       if ((yyvsp[-1].node)->type == NODE_TYPE_EXPANSION) {
-        // create a dummy passthru node that reduces and evaluates the expansion
-        // first and the expansion on top of the stack won't be chained with any
-        // other expansions
+        // create a dummy passthru node that reduces and evaluates the expansion first
+        // and the expansion on top of the stack won't be chained with any other expansions
         (yyval.node) = parser->ast()->createNodePassthru((yyvsp[-1].node));
-      } else {
+      }
+      else {
         (yyval.node) = (yyvsp[-1].node);
       }
     }
-#line 4929 "Aql/grammar.cpp"
+#line 4932 "Aql/grammar.cpp"
     break;
 
-    case 229: /* $@18: %empty  */
-#line 1987 "Aql/grammar.y"
-    {
+  case 229: /* $@18: %empty  */
+#line 1990 "Aql/grammar.y"
+           {
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
     }
-#line 4938 "Aql/grammar.cpp"
+#line 4941 "Aql/grammar.cpp"
     break;
 
-    case 230: /* reference: "(" $@18 query ")"  */
-#line 1990 "Aql/grammar.y"
-    {
+  case 230: /* reference: "(" $@18 query ")"  */
+#line 1993 "Aql/grammar.y"
+                    {
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
 
       std::string const variableName = parser->ast()->variables()->nextName();
-      auto subQuery = parser->ast()->createNodeLet(
-          variableName.c_str(), variableName.size(), node, false);
+      auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), variableName.size(), node, false);
       parser->ast()->addOperation(subQuery);
 
       (yyval.node) = parser->ast()->createNodeSubqueryReference(variableName);
     }
-#line 4953 "Aql/grammar.cpp"
+#line 4956 "Aql/grammar.cpp"
     break;
 
-    case 231: /* reference: reference '.' "identifier"  */
-#line 2000 "Aql/grammar.y"
-    {
+  case 231: /* reference: reference '.' "identifier"  */
+#line 2003 "Aql/grammar.y"
+                                           {
       // named variable access, e.g. variable.reference
       if ((yyvsp[-2].node)->type == NODE_TYPE_EXPANSION) {
         // if left operand is an expansion already...
-        // dive into the expansion's right-hand child nodes for further
-        // expansion and patch the bottom-most one
-        auto current = const_cast<AstNode*>(
-            parser->ast()->findExpansionSubNode((yyvsp[-2].node)));
+        // dive into the expansion's right-hand child nodes for further expansion and
+        // patch the bottom-most one
+        auto current = const_cast<AstNode*>(parser->ast()->findExpansionSubNode((yyvsp[-2].node)));
         TRI_ASSERT(current->type == NODE_TYPE_EXPANSION);
-        current->changeMember(
-            1, parser->ast()->createNodeAttributeAccess(
-                   current->getMember(1), (yyvsp[0].strval).value,
-                   (yyvsp[0].strval).length));
+        current->changeMember(1, parser->ast()->createNodeAttributeAccess(current->getMember(1), (yyvsp[0].strval).value, (yyvsp[0].strval).length));
         (yyval.node) = (yyvsp[-2].node);
-      } else {
-        (yyval.node) = parser->ast()->createNodeAttributeAccess(
-            (yyvsp[-2].node), (yyvsp[0].strval).value,
-            (yyvsp[0].strval).length);
+      }
+      else {
+        (yyval.node) = parser->ast()->createNodeAttributeAccess((yyvsp[-2].node), (yyvsp[0].strval).value, (yyvsp[0].strval).length);
       }
     }
-#line 4973 "Aql/grammar.cpp"
+#line 4976 "Aql/grammar.cpp"
     break;
 
-    case 232: /* reference: reference '.' bind_parameter  */
-#line 2015 "Aql/grammar.y"
-    {
+  case 232: /* reference: reference '.' bind_parameter  */
+#line 2018 "Aql/grammar.y"
+                                                 {
       // named variable access, e.g. variable.@reference
       if ((yyvsp[-2].node)->type == NODE_TYPE_EXPANSION) {
         // if left operand is an expansion already...
         // patch the existing expansion
-        auto current = const_cast<AstNode*>(
-            parser->ast()->findExpansionSubNode((yyvsp[-2].node)));
+        auto current = const_cast<AstNode*>(parser->ast()->findExpansionSubNode((yyvsp[-2].node)));
         TRI_ASSERT(current->type == NODE_TYPE_EXPANSION);
-        current->changeMember(1, parser->ast()->createNodeBoundAttributeAccess(
-                                     current->getMember(1), (yyvsp[0].node)));
+        current->changeMember(1, parser->ast()->createNodeBoundAttributeAccess(current->getMember(1), (yyvsp[0].node)));
         (yyval.node) = (yyvsp[-2].node);
-      } else {
-        (yyval.node) = parser->ast()->createNodeBoundAttributeAccess(
-            (yyvsp[-2].node), (yyvsp[0].node));
+      }
+      else {
+        (yyval.node) = parser->ast()->createNodeBoundAttributeAccess((yyvsp[-2].node), (yyvsp[0].node));
       }
     }
-#line 4992 "Aql/grammar.cpp"
+#line 4995 "Aql/grammar.cpp"
     break;
 
-    case 233: /* reference: reference "[" expression "]"  */
-#line 2029 "Aql/grammar.y"
-    {
+  case 233: /* reference: reference "[" expression "]"  */
+#line 2032 "Aql/grammar.y"
+                                                                  {
       // indexed variable access, e.g. variable[index]
       if ((yyvsp[-3].node)->type == NODE_TYPE_EXPANSION) {
         // if left operand is an expansion already...
         // patch the existing expansion
-        auto current = const_cast<AstNode*>(
-            parser->ast()->findExpansionSubNode((yyvsp[-3].node)));
+        auto current = const_cast<AstNode*>(parser->ast()->findExpansionSubNode((yyvsp[-3].node)));
         TRI_ASSERT(current->type == NODE_TYPE_EXPANSION);
-        current->changeMember(1, parser->ast()->createNodeIndexedAccess(
-                                     current->getMember(1), (yyvsp[-1].node)));
+        current->changeMember(1, parser->ast()->createNodeIndexedAccess(current->getMember(1), (yyvsp[-1].node)));
         (yyval.node) = (yyvsp[-3].node);
-      } else {
-        (yyval.node) = parser->ast()->createNodeIndexedAccess((yyvsp[-3].node),
-                                                              (yyvsp[-1].node));
+      }
+      else {
+        (yyval.node) = parser->ast()->createNodeIndexedAccess((yyvsp[-3].node), (yyvsp[-1].node));
       }
     }
-#line 5011 "Aql/grammar.cpp"
+#line 5014 "Aql/grammar.cpp"
     break;
 
-    case 234: /* $@19: %empty  */
-#line 2043 "Aql/grammar.y"
-    {
-      // variable expansion, e.g. variable[*], with optional FILTER, LIMIT and
-      // RETURN clauses
-      if ((yyvsp[0].intval) > 1 &&
-          (yyvsp[-2].node)->type == NODE_TYPE_EXPANSION) {
-        // create a dummy passthru node that reduces and evaluates the expansion
-        // first and the expansion on top of the stack won't be chained with any
-        // other expansions
+  case 234: /* $@19: %empty  */
+#line 2046 "Aql/grammar.y"
+                                                 {
+      // variable expansion, e.g. variable[*], with optional FILTER, LIMIT and RETURN clauses
+      if ((yyvsp[0].intval) > 1 && (yyvsp[-2].node)->type == NODE_TYPE_EXPANSION) {
+        // create a dummy passthru node that reduces and evaluates the expansion first
+        // and the expansion on top of the stack won't be chained with any other expansions
         (yyvsp[-2].node) = parser->ast()->createNodePassthru((yyvsp[-2].node));
       }
 
@@ -5180,26 +5027,23 @@ yyreduce:
       std::string const nextName = parser->ast()->variables()->nextName() + "_";
 
       if ((yyvsp[-2].node)->type == NODE_TYPE_EXPANSION) {
-        auto iterator = parser->ast()->createNodeIterator(
-            nextName.c_str(), nextName.size(), (yyvsp[-2].node)->getMember(1));
+        auto iterator = parser->ast()->createNodeIterator(nextName.c_str(), nextName.size(), (yyvsp[-2].node)->getMember(1));
         parser->pushStack(iterator);
-      } else {
-        auto iterator = parser->ast()->createNodeIterator(
-            nextName.c_str(), nextName.size(), (yyvsp[-2].node));
+      }
+      else {
+        auto iterator = parser->ast()->createNodeIterator(nextName.c_str(), nextName.size(), (yyvsp[-2].node));
         parser->pushStack(iterator);
       }
 
       auto scopes = parser->ast()->scopes();
       scopes->stackCurrentVariable(scopes->getVariable(nextName));
     }
-#line 5039 "Aql/grammar.cpp"
+#line 5042 "Aql/grammar.cpp"
     break;
 
-    case 235: /* reference: reference "[" array_filter_operator $@19
-                 optional_array_filter optional_array_limit
-                 optional_array_return "]"  */
-#line 2065 "Aql/grammar.y"
-    {
+  case 235: /* reference: reference "[" array_filter_operator $@19 optional_array_filter optional_array_limit optional_array_return "]"  */
+#line 2068 "Aql/grammar.y"
+                                                                                                     {
       auto scopes = parser->ast()->scopes();
       scopes->unstackCurrentVariable();
 
@@ -5209,215 +5053,190 @@ yyreduce:
       auto variable = static_cast<Variable const*>(variableNode->getData());
 
       if ((yyvsp[-7].node)->type == NODE_TYPE_EXPANSION) {
-        auto expand = parser->ast()->createNodeExpansion(
-            (yyvsp[-5].intval), iterator,
-            parser->ast()->createNodeReference(variable->name),
-            (yyvsp[-3].node), (yyvsp[-2].node), (yyvsp[-1].node));
+        auto expand = parser->ast()->createNodeExpansion((yyvsp[-5].intval), iterator, parser->ast()->createNodeReference(variable->name), (yyvsp[-3].node), (yyvsp[-2].node), (yyvsp[-1].node));
         (yyvsp[-7].node)->changeMember(1, expand);
         (yyval.node) = (yyvsp[-7].node);
-      } else {
-        (yyval.node) = parser->ast()->createNodeExpansion(
-            (yyvsp[-5].intval), iterator,
-            parser->ast()->createNodeReference(variable->name),
-            (yyvsp[-3].node), (yyvsp[-2].node), (yyvsp[-1].node));
+      }
+      else {
+        (yyval.node) = parser->ast()->createNodeExpansion((yyvsp[-5].intval), iterator, parser->ast()->createNodeReference(variable->name), (yyvsp[-3].node), (yyvsp[-2].node), (yyvsp[-1].node));
       }
     }
-#line 5062 "Aql/grammar.cpp"
+#line 5065 "Aql/grammar.cpp"
     break;
 
-    case 236: /* simple_value: value_literal  */
-#line 2086 "Aql/grammar.y"
-    {
-      (yyval.node) = (yyvsp[0].node);
-    }
-#line 5070 "Aql/grammar.cpp"
-    break;
-
-    case 237: /* simple_value: bind_parameter  */
+  case 236: /* simple_value: value_literal  */
 #line 2089 "Aql/grammar.y"
-    {
+                  {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 5078 "Aql/grammar.cpp"
+#line 5073 "Aql/grammar.cpp"
     break;
 
-    case 238: /* numeric_value: "integer number"  */
-#line 2095 "Aql/grammar.y"
-    {
+  case 237: /* simple_value: bind_parameter  */
+#line 2092 "Aql/grammar.y"
+                   {
+      (yyval.node) = (yyvsp[0].node);
+    }
+#line 5081 "Aql/grammar.cpp"
+    break;
+
+  case 238: /* numeric_value: "integer number"  */
+#line 2098 "Aql/grammar.y"
+              {
       TRI_ASSERT((yyvsp[0].node) != nullptr);
       (yyval.node) = (yyvsp[0].node);
     }
-#line 5087 "Aql/grammar.cpp"
+#line 5090 "Aql/grammar.cpp"
     break;
 
-    case 239: /* numeric_value: "number"  */
-#line 2099 "Aql/grammar.y"
-    {
+  case 239: /* numeric_value: "number"  */
+#line 2102 "Aql/grammar.y"
+             {
       TRI_ASSERT((yyvsp[0].node) != nullptr);
       (yyval.node) = (yyvsp[0].node);
     }
-#line 5096 "Aql/grammar.cpp"
+#line 5099 "Aql/grammar.cpp"
     break;
 
-    case 240: /* value_literal: "quoted string"  */
-#line 2106 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeValueString(
-          (yyvsp[0].strval).value, (yyvsp[0].strval).length);
-    }
-#line 5104 "Aql/grammar.cpp"
-    break;
-
-    case 241: /* value_literal: numeric_value  */
+  case 240: /* value_literal: "quoted string"  */
 #line 2109 "Aql/grammar.y"
-    {
-      (yyval.node) = (yyvsp[0].node);
+                    {
+      (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 5112 "Aql/grammar.cpp"
+#line 5107 "Aql/grammar.cpp"
     break;
 
-    case 242: /* value_literal: "null"  */
+  case 241: /* value_literal: numeric_value  */
 #line 2112 "Aql/grammar.y"
-    {
+                  {
+      (yyval.node) = (yyvsp[0].node);
+    }
+#line 5115 "Aql/grammar.cpp"
+    break;
+
+  case 242: /* value_literal: "null"  */
+#line 2115 "Aql/grammar.y"
+           {
       (yyval.node) = parser->ast()->createNodeValueNull();
     }
-#line 5120 "Aql/grammar.cpp"
+#line 5123 "Aql/grammar.cpp"
     break;
 
-    case 243: /* value_literal: "true"  */
-#line 2115 "Aql/grammar.y"
-    {
+  case 243: /* value_literal: "true"  */
+#line 2118 "Aql/grammar.y"
+           {
       (yyval.node) = parser->ast()->createNodeValueBool(true);
     }
-#line 5128 "Aql/grammar.cpp"
+#line 5131 "Aql/grammar.cpp"
     break;
 
-    case 244: /* value_literal: "false"  */
-#line 2118 "Aql/grammar.y"
-    {
+  case 244: /* value_literal: "false"  */
+#line 2121 "Aql/grammar.y"
+            {
       (yyval.node) = parser->ast()->createNodeValueBool(false);
     }
-#line 5136 "Aql/grammar.cpp"
+#line 5139 "Aql/grammar.cpp"
     break;
 
-    case 245: /* in_or_into_collection_name: "identifier"  */
-#line 2124 "Aql/grammar.y"
-    {
+  case 245: /* in_or_into_collection_name: "identifier"  */
+#line 2127 "Aql/grammar.y"
+             {
       auto const& resolver = parser->query().resolver();
-      (yyval.node) = parser->ast()->createNodeCollection(
-          resolver, (yyvsp[0].strval).value, (yyvsp[0].strval).length,
-          arangodb::AccessMode::Type::WRITE);
+      (yyval.node) = parser->ast()->createNodeCollection(resolver, (yyvsp[0].strval).value, (yyvsp[0].strval).length, arangodb::AccessMode::Type::WRITE);
     }
-#line 5145 "Aql/grammar.cpp"
+#line 5148 "Aql/grammar.cpp"
     break;
 
-    case 246: /* in_or_into_collection_name: "quoted string"  */
-#line 2128 "Aql/grammar.y"
-    {
+  case 246: /* in_or_into_collection_name: "quoted string"  */
+#line 2131 "Aql/grammar.y"
+                    {
       auto const& resolver = parser->query().resolver();
-      (yyval.node) = parser->ast()->createNodeCollection(
-          resolver, (yyvsp[0].strval).value, (yyvsp[0].strval).length,
-          arangodb::AccessMode::Type::WRITE);
+      (yyval.node) = parser->ast()->createNodeCollection(resolver, (yyvsp[0].strval).value, (yyvsp[0].strval).length, arangodb::AccessMode::Type::WRITE);
     }
-#line 5154 "Aql/grammar.cpp"
+#line 5157 "Aql/grammar.cpp"
     break;
 
-    case 247: /* in_or_into_collection_name: "bind data source parameter"  */
-#line 2132 "Aql/grammar.y"
-    {
+  case 247: /* in_or_into_collection_name: "bind data source parameter"  */
+#line 2135 "Aql/grammar.y"
+                            {
       if ((yyvsp[0].strval).length < 2 || (yyvsp[0].strval).value[0] != '@') {
-        parser->registerParseError(
-            TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
-            TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE).data(),
-            (yyvsp[0].strval).value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE).data(), (yyvsp[0].strval).value, yylloc.first_line, yylloc.first_column);
       }
 
-      (yyval.node) = parser->ast()->createNodeParameterDatasource(
-          (yyvsp[0].strval).value, (yyvsp[0].strval).length);
+      (yyval.node) = parser->ast()->createNodeParameterDatasource((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 5166 "Aql/grammar.cpp"
+#line 5169 "Aql/grammar.cpp"
     break;
 
-    case 248: /* bind_parameter: "bind data source parameter"  */
-#line 2142 "Aql/grammar.y"
-    {
+  case 248: /* bind_parameter: "bind data source parameter"  */
+#line 2145 "Aql/grammar.y"
+                            {
       if ((yyvsp[0].strval).length < 2 || (yyvsp[0].strval).value[0] != '@') {
-        parser->registerParseError(
-            TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
-            TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE).data(),
-            (yyvsp[0].strval).value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE).data(), (yyvsp[0].strval).value, yylloc.first_line, yylloc.first_column);
       }
 
-      (yyval.node) = parser->ast()->createNodeParameterDatasource(
-          (yyvsp[0].strval).value, (yyvsp[0].strval).length);
+      (yyval.node) = parser->ast()->createNodeParameterDatasource((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 5178 "Aql/grammar.cpp"
+#line 5181 "Aql/grammar.cpp"
     break;
 
-    case 249: /* bind_parameter: "bind parameter"  */
-#line 2149 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeParameter(
-          (yyvsp[0].strval).value, (yyvsp[0].strval).length);
+  case 249: /* bind_parameter: "bind parameter"  */
+#line 2152 "Aql/grammar.y"
+                {
+      (yyval.node) = parser->ast()->createNodeParameter((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 5186 "Aql/grammar.cpp"
+#line 5189 "Aql/grammar.cpp"
     break;
 
-    case 250: /* bind_parameter_datasource_expected: "bind data source
-                 parameter"  */
-#line 2155 "Aql/grammar.y"
-    {
+  case 250: /* bind_parameter_datasource_expected: "bind data source parameter"  */
+#line 2158 "Aql/grammar.y"
+                            {
       if ((yyvsp[0].strval).length < 2 || (yyvsp[0].strval).value[0] != '@') {
-        parser->registerParseError(
-            TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
-            TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE).data(),
-            (yyvsp[0].strval).value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE).data(), (yyvsp[0].strval).value, yylloc.first_line, yylloc.first_column);
       }
 
-      (yyval.node) = parser->ast()->createNodeParameterDatasource(
-          (yyvsp[0].strval).value, (yyvsp[0].strval).length);
+      (yyval.node) = parser->ast()->createNodeParameterDatasource((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 5198 "Aql/grammar.cpp"
+#line 5201 "Aql/grammar.cpp"
     break;
 
-    case 251: /* bind_parameter_datasource_expected: "bind parameter"  */
-#line 2162 "Aql/grammar.y"
-    {
-      (yyval.node) = parser->ast()->createNodeParameterDatasource(
-          (yyvsp[0].strval).value, (yyvsp[0].strval).length);
+  case 251: /* bind_parameter_datasource_expected: "bind parameter"  */
+#line 2165 "Aql/grammar.y"
+                {
+      (yyval.node) = parser->ast()->createNodeParameterDatasource((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 5206 "Aql/grammar.cpp"
+#line 5209 "Aql/grammar.cpp"
     break;
 
-    case 252: /* object_element_name: "identifier"  */
-#line 2168 "Aql/grammar.y"
-    {
-      (yyval.strval) = (yyvsp[0].strval);
-    }
-#line 5214 "Aql/grammar.cpp"
-    break;
-
-    case 253: /* object_element_name: "quoted string"  */
+  case 252: /* object_element_name: "identifier"  */
 #line 2171 "Aql/grammar.y"
-    {
+             {
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 5222 "Aql/grammar.cpp"
+#line 5217 "Aql/grammar.cpp"
     break;
 
-    case 254: /* variable_name: "identifier"  */
-#line 2176 "Aql/grammar.y"
-    {
+  case 253: /* object_element_name: "quoted string"  */
+#line 2174 "Aql/grammar.y"
+                    {
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 5230 "Aql/grammar.cpp"
+#line 5225 "Aql/grammar.cpp"
     break;
 
-#line 5234 "Aql/grammar.cpp"
+  case 254: /* variable_name: "identifier"  */
+#line 2179 "Aql/grammar.y"
+             {
+      (yyval.strval) = (yyvsp[0].strval);
+    }
+#line 5233 "Aql/grammar.cpp"
+    break;
 
-    default:
-      break;
-  }
+
+#line 5237 "Aql/grammar.cpp"
+
+      default: break;
+    }
   /* User semantic actions sometimes alter yychar, and that requires
      that yytoken be updated with the new translation.  We take the
      approach of translating immediately before every use of yytoken.
@@ -5429,10 +5248,9 @@ yyreduce:
      case of YYERROR or YYBACKUP, subsequent parser actions might lead
      to an incorrect destructor call or verbose syntax error message
      before the lookahead is translated.  */
-  YY_SYMBOL_PRINT("-> $$ =", YY_CAST(yysymbol_kind_t, yyr1[yyn]), &yyval,
-                  &yyloc);
+  YY_SYMBOL_PRINT ("-> $$ =", YY_CAST (yysymbol_kind_t, yyr1[yyn]), &yyval, &yyloc);
 
-  YYPOPSTACK(yylen);
+  YYPOPSTACK (yylen);
   yylen = 0;
 
   *++yyvsp = yyval;
@@ -5445,11 +5263,12 @@ yyreduce:
     const int yylhs = yyr1[yyn] - YYNTOKENS;
     const int yyi = yypgoto[yylhs] + *yyssp;
     yystate = (0 <= yyi && yyi <= YYLAST && yycheck[yyi] == *yyssp
-                   ? yytable[yyi]
-                   : yydefgoto[yylhs]);
+               ? yytable[yyi]
+               : yydefgoto[yylhs]);
   }
 
   goto yynewstate;
+
 
 /*--------------------------------------.
 | yyerrlab -- here on detecting error.  |
@@ -5457,51 +5276,68 @@ yyreduce:
 yyerrlab:
   /* Make sure we have latest lookahead translation.  See comments at
      user semantic actions for why this is necessary.  */
-  yytoken = yychar == YYEMPTY ? YYSYMBOL_YYEMPTY : YYTRANSLATE(yychar);
+  yytoken = yychar == YYEMPTY ? YYSYMBOL_YYEMPTY : YYTRANSLATE (yychar);
   /* If not already recovering from an error, report this error.  */
-  if (!yyerrstatus) {
-    ++yynerrs;
+  if (!yyerrstatus)
     {
-      yypcontext_t yyctx = {yyssp, yytoken, &yylloc};
-      char const* yymsgp = YY_("syntax error");
-      int yysyntax_error_status;
-      yysyntax_error_status = yysyntax_error(&yymsg_alloc, &yymsg, &yyctx);
-      if (yysyntax_error_status == 0)
-        yymsgp = yymsg;
-      else if (yysyntax_error_status == -1) {
-        if (yymsg != yymsgbuf) YYSTACK_FREE(yymsg);
-        yymsg = YY_CAST(char*, YYSTACK_ALLOC(YY_CAST(YYSIZE_T, yymsg_alloc)));
-        if (yymsg) {
-          yysyntax_error_status = yysyntax_error(&yymsg_alloc, &yymsg, &yyctx);
+      ++yynerrs;
+      {
+        yypcontext_t yyctx
+          = {yyssp, yytoken, &yylloc};
+        char const *yymsgp = YY_("syntax error");
+        int yysyntax_error_status;
+        yysyntax_error_status = yysyntax_error (&yymsg_alloc, &yymsg, &yyctx);
+        if (yysyntax_error_status == 0)
           yymsgp = yymsg;
-        } else {
-          yymsg = yymsgbuf;
-          yymsg_alloc = sizeof yymsgbuf;
-          yysyntax_error_status = YYENOMEM;
-        }
+        else if (yysyntax_error_status == -1)
+          {
+            if (yymsg != yymsgbuf)
+              YYSTACK_FREE (yymsg);
+            yymsg = YY_CAST (char *,
+                             YYSTACK_ALLOC (YY_CAST (YYSIZE_T, yymsg_alloc)));
+            if (yymsg)
+              {
+                yysyntax_error_status
+                  = yysyntax_error (&yymsg_alloc, &yymsg, &yyctx);
+                yymsgp = yymsg;
+              }
+            else
+              {
+                yymsg = yymsgbuf;
+                yymsg_alloc = sizeof yymsgbuf;
+                yysyntax_error_status = YYENOMEM;
+              }
+          }
+        yyerror (&yylloc, parser, yymsgp);
+        if (yysyntax_error_status == YYENOMEM)
+          goto yyexhaustedlab;
       }
-      yyerror(&yylloc, parser, yymsgp);
-      if (yysyntax_error_status == YYENOMEM) goto yyexhaustedlab;
     }
-  }
 
   yyerror_range[1] = yylloc;
-  if (yyerrstatus == 3) {
-    /* If just tried and failed to reuse lookahead token after an
-       error, discard it.  */
+  if (yyerrstatus == 3)
+    {
+      /* If just tried and failed to reuse lookahead token after an
+         error, discard it.  */
 
-    if (yychar <= T_END) {
-      /* Return failure if at end of input.  */
-      if (yychar == T_END) YYABORT;
-    } else {
-      yydestruct("Error: discarding", yytoken, &yylval, &yylloc, parser);
-      yychar = YYEMPTY;
+      if (yychar <= T_END)
+        {
+          /* Return failure if at end of input.  */
+          if (yychar == T_END)
+            YYABORT;
+        }
+      else
+        {
+          yydestruct ("Error: discarding",
+                      yytoken, &yylval, &yylloc, parser);
+          yychar = YYEMPTY;
+        }
     }
-  }
 
   /* Else will try to reuse lookahead token after shifting the error
      token.  */
   goto yyerrlab1;
+
 
 /*---------------------------------------------------.
 | yyerrorlab -- error raised explicitly by YYERROR.  |
@@ -5509,43 +5345,50 @@ yyerrlab:
 yyerrorlab:
   /* Pacify compilers when the user code never invokes YYERROR and the
      label yyerrorlab therefore never appears in user code.  */
-  if (0) YYERROR;
+  if (0)
+    YYERROR;
 
   /* Do not reclaim the symbols of the rule whose action triggered
      this YYERROR.  */
-  YYPOPSTACK(yylen);
+  YYPOPSTACK (yylen);
   yylen = 0;
-  YY_STACK_PRINT(yyss, yyssp);
+  YY_STACK_PRINT (yyss, yyssp);
   yystate = *yyssp;
   goto yyerrlab1;
+
 
 /*-------------------------------------------------------------.
 | yyerrlab1 -- common code for both syntax error and YYERROR.  |
 `-------------------------------------------------------------*/
 yyerrlab1:
-  yyerrstatus = 3; /* Each real token shifted decrements this.  */
+  yyerrstatus = 3;      /* Each real token shifted decrements this.  */
 
   /* Pop stack until we find a state that shifts the error token.  */
-  for (;;) {
-    yyn = yypact[yystate];
-    if (!yypact_value_is_default(yyn)) {
-      yyn += YYSYMBOL_YYerror;
-      if (0 <= yyn && yyn <= YYLAST && yycheck[yyn] == YYSYMBOL_YYerror) {
-        yyn = yytable[yyn];
-        if (0 < yyn) break;
-      }
+  for (;;)
+    {
+      yyn = yypact[yystate];
+      if (!yypact_value_is_default (yyn))
+        {
+          yyn += YYSYMBOL_YYerror;
+          if (0 <= yyn && yyn <= YYLAST && yycheck[yyn] == YYSYMBOL_YYerror)
+            {
+              yyn = yytable[yyn];
+              if (0 < yyn)
+                break;
+            }
+        }
+
+      /* Pop the current state because it cannot handle the error token.  */
+      if (yyssp == yyss)
+        YYABORT;
+
+      yyerror_range[1] = *yylsp;
+      yydestruct ("Error: popping",
+                  YY_ACCESSING_SYMBOL (yystate), yyvsp, yylsp, parser);
+      YYPOPSTACK (1);
+      yystate = *yyssp;
+      YY_STACK_PRINT (yyss, yyssp);
     }
-
-    /* Pop the current state because it cannot handle the error token.  */
-    if (yyssp == yyss) YYABORT;
-
-    yyerror_range[1] = *yylsp;
-    yydestruct("Error: popping", YY_ACCESSING_SYMBOL(yystate), yyvsp, yylsp,
-               parser);
-    YYPOPSTACK(1);
-    yystate = *yyssp;
-    YY_STACK_PRINT(yyss, yyssp);
-  }
 
   YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
   *++yyvsp = yylval;
@@ -5553,13 +5396,14 @@ yyerrlab1:
 
   yyerror_range[2] = yylloc;
   ++yylsp;
-  YYLLOC_DEFAULT(*yylsp, yyerror_range, 2);
+  YYLLOC_DEFAULT (*yylsp, yyerror_range, 2);
 
   /* Shift the error token.  */
-  YY_SYMBOL_PRINT("Shifting", YY_ACCESSING_SYMBOL(yyn), yyvsp, yylsp);
+  YY_SYMBOL_PRINT ("Shifting", YY_ACCESSING_SYMBOL (yyn), yyvsp, yylsp);
 
   yystate = yyn;
   goto yynewstate;
+
 
 /*-------------------------------------.
 | yyacceptlab -- YYACCEPT comes here.  |
@@ -5568,6 +5412,7 @@ yyacceptlab:
   yyresult = 0;
   goto yyreturn;
 
+
 /*-----------------------------------.
 | yyabortlab -- YYABORT comes here.  |
 `-----------------------------------*/
@@ -5575,39 +5420,46 @@ yyabortlab:
   yyresult = 1;
   goto yyreturn;
 
+
 #if 1
 /*-------------------------------------------------.
 | yyexhaustedlab -- memory exhaustion comes here.  |
 `-------------------------------------------------*/
 yyexhaustedlab:
-  yyerror(&yylloc, parser, YY_("memory exhausted"));
+  yyerror (&yylloc, parser, YY_("memory exhausted"));
   yyresult = 2;
   goto yyreturn;
 #endif
+
 
 /*-------------------------------------------------------.
 | yyreturn -- parsing is finished, clean up and return.  |
 `-------------------------------------------------------*/
 yyreturn:
-  if (yychar != YYEMPTY) {
-    /* Make sure we have latest lookahead translation.  See comments at
-       user semantic actions for why this is necessary.  */
-    yytoken = YYTRANSLATE(yychar);
-    yydestruct("Cleanup: discarding lookahead", yytoken, &yylval, &yylloc,
-               parser);
-  }
+  if (yychar != YYEMPTY)
+    {
+      /* Make sure we have latest lookahead translation.  See comments at
+         user semantic actions for why this is necessary.  */
+      yytoken = YYTRANSLATE (yychar);
+      yydestruct ("Cleanup: discarding lookahead",
+                  yytoken, &yylval, &yylloc, parser);
+    }
   /* Do not reclaim the symbols of the rule whose action triggered
      this YYABORT or YYACCEPT.  */
-  YYPOPSTACK(yylen);
-  YY_STACK_PRINT(yyss, yyssp);
-  while (yyssp != yyss) {
-    yydestruct("Cleanup: popping", YY_ACCESSING_SYMBOL(+*yyssp), yyvsp, yylsp,
-               parser);
-    YYPOPSTACK(1);
-  }
+  YYPOPSTACK (yylen);
+  YY_STACK_PRINT (yyss, yyssp);
+  while (yyssp != yyss)
+    {
+      yydestruct ("Cleanup: popping",
+                  YY_ACCESSING_SYMBOL (+*yyssp), yyvsp, yylsp, parser);
+      YYPOPSTACK (1);
+    }
 #ifndef yyoverflow
-  if (yyss != yyssa) YYSTACK_FREE(yyss);
+  if (yyss != yyssa)
+    YYSTACK_FREE (yyss);
 #endif
-  if (yymsg != yymsgbuf) YYSTACK_FREE(yymsg);
+  if (yymsg != yymsgbuf)
+    YYSTACK_FREE (yymsg);
   return yyresult;
 }
+

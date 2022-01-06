@@ -27,6 +27,7 @@
 #include "Aql/Quantifier.h"
 #include "Aql/QueryContext.h"
 #include "Aql/types.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Graph/ShortestPathType.h"
@@ -1372,7 +1373,9 @@ upsert_statement:
           auto nodeMember = $10->getMember(i);
           if (nodeMember->type == NODE_TYPE_OBJECT_ELEMENT) {
             arangodb::velocypack::StringRef nodeMemberName = nodeMember->getStringRef();
-            if (nodeMemberName == "indexHint" || nodeMemberName == "forceIndexHint") {
+            if (nodeMemberName == arangodb::StaticStrings::IndexHintOption || 
+                nodeMemberName == arangodb::StaticStrings::IndexHintOptionForce ||
+                nodeMemberName == arangodb::StaticStrings::IndexHintDisableIndex) {
               forOptionsNode->addMember(nodeMember);
             } else {
               upsertOptionsNode->addMember(nodeMember);
