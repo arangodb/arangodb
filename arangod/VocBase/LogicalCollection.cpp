@@ -299,11 +299,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   decorateWithInternalValidators();
 }
 
-/*static*/ LogicalDataSource::Category const&
-LogicalCollection::category() noexcept {
-  static const Category category;
-
-  return category;
+/*static*/ LogicalDataSource::Category LogicalCollection::category() noexcept {
+  return LogicalDataSource::Category::kCollection;
 }
 
 Result LogicalCollection::updateSchema(VPackSlice schema) {

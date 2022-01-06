@@ -113,10 +113,8 @@ bool LogicalView::canUse(arangodb::auth::Level const& level) {
   */
 }
 
-/*static*/ LogicalDataSource::Category const& LogicalView::category() noexcept {
-  static const Category category;
-
-  return category;
+/*static*/ LogicalDataSource::Category LogicalView::category() noexcept {
+  return LogicalDataSource::Category::kView;
 }
 
 /*static*/ Result LogicalView::create(LogicalView::ptr& view,

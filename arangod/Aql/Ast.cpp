@@ -87,7 +87,7 @@ auto doNothingVisitor = [](AstNode const*) {};
  * @return The Category of this datasource (Collection or View), and a reference
  * to the translated name (cid => name if required).
  */
-LogicalDataSource::Category const* injectDataSourceInQuery(
+LogicalDataSource::Category injectDataSourceInQuery(
     Ast& ast, arangodb::CollectionNameResolver const& resolver,
     AccessMode::Type accessType, bool failIfDoesNotExist,
     std::string_view& nameRef) {
@@ -778,7 +778,7 @@ AstNode* Ast::createNodeDataSource(
   // will throw if validation fails
   validateDataSourceName(name, validateName);
   // this call may update name
-  LogicalCollection::Category const* category = injectDataSourceInQuery(
+  LogicalCollection::Category category = injectDataSourceInQuery(
       *this, resolver, accessType, failIfDoesNotExist, name);
 
   if (category == LogicalCollection::category()) {
@@ -803,7 +803,7 @@ AstNode* Ast::createNodeCollection(
   // will throw if validation fails
   validateDataSourceName(name, true);
   // this call may update name
-  LogicalCollection::Category const* category =
+  LogicalCollection::Category category =
       injectDataSourceInQuery(*this, resolver, accessType, false, name);
 
   if (category == LogicalCollection::category()) {
@@ -1391,7 +1391,7 @@ AstNode* Ast::createNodeWithCollections(
       std::string const name = c->getString();
       std::string_view nameRef(name);
       // this call may update nameRef, but it doesn't matter
-      LogicalDataSource::Category const* category = injectDataSourceInQuery(
+      LogicalDataSource::Category category = injectDataSourceInQuery(
           *this, resolver, AccessMode::Type::READ, false, nameRef);
       if (category == LogicalCollection::category()) {
         _query.collections().add(name, AccessMode::Type::READ,
@@ -1411,7 +1411,7 @@ AstNode* Ast::createNodeWithCollections(
 
             for (auto const& n : names) {
               std::string_view shardsNameRef(n);
-              LogicalDataSource::Category const* shardsCategory =
+              LogicalDataSource::Category shardsCategory =
                   injectDataSourceInQuery(*this, resolver,
                                           AccessMode::Type::READ, false,
                                           shardsNameRef);
@@ -1443,7 +1443,7 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
   auto ss = ServerState::instance();
   auto doTheAdd = [&](std::string const& name) {
     std::string_view nameRef(name);
-    LogicalDataSource::Category const* category = injectDataSourceInQuery(
+    LogicalDataSource::Category category = injectDataSourceInQuery(
         *this, resolver, AccessMode::Type::READ, false, nameRef);
     if (category == LogicalCollection::category()) {
       if (ss->isCoordinator()) {
@@ -1457,7 +1457,7 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
 
           for (auto const& n : names) {
             std::string_view shardsNameRef(n);
-            LogicalDataSource::Category const* shardsCategory =
+            LogicalDataSource::Category shardsCategory =
                 injectDataSourceInQuery(*this, resolver, AccessMode::Type::READ,
                                         false, shardsNameRef);
             TRI_ASSERT(shardsCategory == LogicalCollection::category());

@@ -45,26 +45,9 @@ class Builder;  // forward declaration
 ////////////////////////////////////////////////////////////////////////////////
 class LogicalDataSource {
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief singleton marker identifying the logical data-source category
-  ///        each category is identity-compared for equivalence
-  ///        e.g. static Category const& LogicalCollection::category()
-  ///             static Category const& LogicalView::category()
-  //////////////////////////////////////////////////////////////////////////////
-  class Category final {
-   public:
-    Category() = default;
-    Category(Category const&) = delete;
-    Category(Category&&) = delete;
-    Category& operator=(Category const&) = delete;
-    Category& operator=(Category&&) = delete;
-    bool operator==(Category const& other) const noexcept {
-      return this == &other;
-    }
-    bool operator!=(Category const& other) const noexcept {
-      return this != &other;
-    }
-    operator Category const *() const noexcept { return this; }
+  enum class Category {
+    kCollection = 1,
+    kView = 2,
   };
 
   //////////////////////////////////////////////////////////////////////////////

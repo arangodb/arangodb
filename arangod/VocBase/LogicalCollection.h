@@ -105,7 +105,7 @@ class LogicalCollection : public LogicalDataSource {
   };
 
   /// @brief the category representing a logical collection
-  static Category const& category() noexcept;
+  static Category category() noexcept;
 
   /// @brief hard-coded minimum version number for collections
   static constexpr Version minimumVersion() { return Version::v30; }
