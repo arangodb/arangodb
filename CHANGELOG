@@ -1,6 +1,11 @@
 devel
 -----
 
+
+* Fixed potentially undefined behavior for exit code of arangodump.
+
+* Ignore signals such as SIGPIPE in client tools.
+
 * Fixed potentially undefined behavior for exit code of arangodump.
 
 * BTS-707: rename "hardened" option value for `--server.support-info-api`
