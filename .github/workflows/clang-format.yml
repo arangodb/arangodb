@@ -12,7 +12,6 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - timeout-minutes: 10
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
