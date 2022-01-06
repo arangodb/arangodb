@@ -602,6 +602,13 @@ Result ShardingInfo::validateShardsAndReplicationFactor(
                     cl.clusterInfo().getCurrentDBServers().size()) {
               return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
             }
+
+            if (replicationFactorSlice.isNumber() &&
+                writeConcern > replicationFactorSlice.getNumber<int64_t>()) {
+              return Result(
+                  TRI_ERROR_BAD_PARAMETER,
+                  "writeConcern must not be higher than replicationFactor");
+            }
           }
         }
       }
