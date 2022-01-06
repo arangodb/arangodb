@@ -1001,7 +1001,7 @@ IResearchViewNode::IResearchViewNode(
       _scorers(std::move(scorers)) {
   TRI_ASSERT(_view);
   TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
-  TRI_ASSERT(LogicalView::category() == _view->category());
+  TRI_ASSERT(LogicalDataSource::Category::kView == _view->category());
 
   auto* ast = plan.getAst();
 

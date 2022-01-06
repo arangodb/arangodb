@@ -110,7 +110,7 @@ LogicalDataSource::Category injectDataSourceInQuery(
     ast.query().collections().add(name, accessType,
                                   aql::Collection::Hint::None);
 
-    return LogicalCollection::category();
+    return LogicalDataSource::Category::kCollection;
   }
 
   // query actual name from datasource... this may be different to the
@@ -126,7 +126,7 @@ LogicalDataSource::Category injectDataSourceInQuery(
     nameRef = std::string_view(p, dataSourceName.size());
   }
 
-  if (dataSource->category() == LogicalCollection::category()) {
+  if (dataSource->category() == LogicalDataSource::Category::kCollection) {
     // it's a collection!
     // add datasource to query
     aql::Collection::Hint hint = aql::Collection::Hint::Collection;
@@ -138,7 +138,7 @@ LogicalDataSource::Category injectDataSourceInQuery(
       ast.query().collections().add(name, accessType,
                                     hint);  // Add collection by ID as well
     }
-  } else if (dataSource->category() == LogicalView::category()) {
+  } else if (dataSource->category() == LogicalDataSource::Category::kView) {
     // it's a view!
     // add views to the collection list
     // to register them with transaction as well
@@ -781,10 +781,10 @@ AstNode* Ast::createNodeDataSource(
   LogicalCollection::Category category = injectDataSourceInQuery(
       *this, resolver, accessType, failIfDoesNotExist, name);
 
-  if (category == LogicalCollection::category()) {
+  if (category == LogicalDataSource::Category::kCollection) {
     return createNodeCollectionNoValidation(name, accessType);
   }
-  if (category == LogicalView::category()) {
+  if (category == LogicalDataSource::Category::kView) {
     AstNode* node = createNode(NODE_TYPE_VIEW);
     node->setStringValue(name.data(), name.size());
     return node;
@@ -806,7 +806,7 @@ AstNode* Ast::createNodeCollection(
   LogicalCollection::Category category =
       injectDataSourceInQuery(*this, resolver, accessType, false, name);
 
-  if (category == LogicalCollection::category()) {
+  if (category == LogicalDataSource::Category::kCollection) {
     // add collection to query
     _query.collections().add(std::string(name), accessType,
                              Collection::Hint::Collection);
@@ -1393,7 +1393,7 @@ AstNode* Ast::createNodeWithCollections(
       // this call may update nameRef, but it doesn't matter
       LogicalDataSource::Category category = injectDataSourceInQuery(
           *this, resolver, AccessMode::Type::READ, false, nameRef);
-      if (category == LogicalCollection::category()) {
+      if (category == LogicalDataSource::Category::kCollection) {
         _query.collections().add(name, AccessMode::Type::READ,
                                  Collection::Hint::Collection);
 
@@ -1415,7 +1415,8 @@ AstNode* Ast::createNodeWithCollections(
                   injectDataSourceInQuery(*this, resolver,
                                           AccessMode::Type::READ, false,
                                           shardsNameRef);
-              TRI_ASSERT(shardsCategory == LogicalCollection::category());
+              TRI_ASSERT(shardsCategory ==
+                         LogicalDataSource::Category::kCollection);
             }
           }
         }
@@ -1445,7 +1446,7 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
     std::string_view nameRef(name);
     LogicalDataSource::Category category = injectDataSourceInQuery(
         *this, resolver, AccessMode::Type::READ, false, nameRef);
-    if (category == LogicalCollection::category()) {
+    if (category == LogicalDataSource::Category::kCollection) {
       if (ss->isCoordinator()) {
         auto& ci = _query.vocbase()
                        .server()
@@ -1460,7 +1461,8 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
             LogicalDataSource::Category shardsCategory =
                 injectDataSourceInQuery(*this, resolver, AccessMode::Type::READ,
                                         false, shardsNameRef);
-            TRI_ASSERT(shardsCategory == LogicalCollection::category());
+            TRI_ASSERT(shardsCategory ==
+                       LogicalDataSource::Category::kCollection);
           }
         }  // else { TODO Should we really not react? }
       }

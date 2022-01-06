@@ -160,11 +160,10 @@ namespace arangodb {
   return itr.first->second;
 }
 
-LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
-                                     TRI_vocbase_t& vocbase,
-                                     velocypack::Slice const& definition)
+LogicalDataSource::LogicalDataSource(Type const& type, TRI_vocbase_t& vocbase,
+                                     velocypack::Slice definition)
     : LogicalDataSource(
-          category, type, vocbase,
+          type, vocbase,
           DataSourceId{basics::VelocyPackHelper::extractIdValue(definition)},
           basics::VelocyPackHelper::getStringValue(
               definition, StaticStrings::DataSourceGuid, ""),
@@ -176,13 +175,11 @@ LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
           basics::VelocyPackHelper::getBooleanValue(
               definition, StaticStrings::DataSourceDeleted, false)) {}
 
-LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
-                                     TRI_vocbase_t& vocbase, DataSourceId id,
-                                     std::string&& guid, DataSourceId planId,
-                                     std::string&& name, bool system,
-                                     bool deleted)
+LogicalDataSource::LogicalDataSource(Type const& type, TRI_vocbase_t& vocbase,
+                                     DataSourceId id, std::string&& guid,
+                                     DataSourceId planId, std::string&& name,
+                                     bool system, bool deleted)
     : _name(std::move(name)),
-      _category(category),
       _type(type),
       _vocbase(vocbase),
       _id(ensureId(vocbase, id)),
