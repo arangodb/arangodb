@@ -8,6 +8,7 @@ import { ContextMenu, MiniMap, Toolbar } from '@antv/graphin-components';
 import { useFetch } from './useFetch';
 import { Cell, Grid } from "../../components/pure-css/grid";
 import AqlEditor from './AqlEditor';
+import { JsonEditor as Editor } from 'jsoneditor-react';
 import CollectionLoader from './CollectionLoader';
 import {
   TagFilled,
@@ -866,6 +867,7 @@ const DataGraph = () => {
                 <h1>Edit Node</h1>
                 <p>Really edit node: {editNode}</p>
                 <p>Edit node (object): {JSON.stringify(selectedNodeData, null, 2)}</p>
+                <Editor value={selectedNodeData} onChange={() => console.log('Data in jsoneditor changed')} mode={'code'} history={true}/>
               </EditNodeModal>
             </>
           }
