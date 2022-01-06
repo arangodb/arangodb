@@ -29,6 +29,7 @@
 #include "Aql/QueryContext.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
+#include "Aql/InputAqlItemRow.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
@@ -216,6 +217,14 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
 }
 
 void MockGraphProvider::prepareIndexExpressions(aql::Ast* ast) {
+  // Nothing to do here. We do not have any special index conditions
+}
+
+void MockGraphProvider::prepareContext(aql::InputAqlItemRow input) {
+  // Nothing to do here. We do not have any special index conditions
+}
+
+void MockGraphProvider::unPrepareContext() {
   // Nothing to do here. We do not have any special index conditions
 }
 

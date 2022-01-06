@@ -248,6 +248,8 @@ class MockGraphProvider {
                         arangodb::velocypack::Builder& builder);
 
   void prepareIndexExpressions(aql::Ast* ast);
+  void prepareContext(aql::InputAqlItemRow input);
+  void unPrepareContext();
 
   [[nodiscard]] transaction::Methods* trx();
 
