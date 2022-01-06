@@ -37,7 +37,9 @@ const {
     replicatedLogDeletePlan,
     createTermSpecification,
     replicatedLogIsReady,
-    dbservers
+    dbservers,
+    nextUniqueLogId,
+    registerAgencyTestBegin, registerAgencyTestEnd,
 } = helper;
 
 const database = '_system'; // TODO change to something else
@@ -100,13 +102,6 @@ const replicatedLogLeaderElectionFailed = function (database, logId, term, serve
 
 const replicatedLogSuite = function () {
 
-    const nextLogId = (function () {
-        let logId = 100;
-        return function () {
-            return logId++;
-        };
-    }());
-
     const targetConfig = {
         writeConcern: 2,
         softWriteConcern: 2,
@@ -156,9 +151,11 @@ const replicatedLogSuite = function () {
 
     return {
         setUpAll, tearDownAll,
+        setUp: registerAgencyTestBegin,
+        tearDown: registerAgencyTestEnd,
 
         testCheckSimpleFailover: function () {
-            const logId = nextLogId();
+            const logId = nextUniqueLogId();
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
             const leader = servers[0];
             const term = 1;

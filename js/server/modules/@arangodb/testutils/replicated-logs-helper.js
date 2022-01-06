@@ -184,6 +184,18 @@ const continueServer = function (serverId) {
     }
 };
 
+const nextUniqueLogId = function() {
+    return parseInt(global.ArangoClusterInfo.uniqid());
+};
+
+const registerAgencyTestBegin = function (testName) {
+    global.ArangoAgency.set(`Testing/${testName}/Begin`, (new Date()).toISOString());
+};
+
+const registerAgencyTestEnd = function (testName) {
+    global.ArangoAgency.set(`Testing/${testName}/End`, (new Date()).toISOString());
+};
+
 exports.waitFor = waitFor;
 exports.readAgencyValueAt = readAgencyValueAt;
 exports.createTermSpecification = createTermSpecification;
@@ -197,3 +209,6 @@ exports.replicatedLogDeletePlan = replicatedLogDeletePlan;
 exports.replicatedLogIsReady = replicatedLogIsReady;
 exports.stopServer = stopServer;
 exports.continueServer = continueServer;
+exports.nextUniqueLogId = nextUniqueLogId;
+exports.registerAgencyTestBegin = registerAgencyTestBegin;
+exports.registerAgencyTestEnd = registerAgencyTestEnd;

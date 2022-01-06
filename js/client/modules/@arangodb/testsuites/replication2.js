@@ -77,6 +77,8 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   for (const [key, value] of Object.entries(functionsDocumentation)) {
     fnDocs[key] = value;
   }
+  defaultFns.push('replication2_client');
+  defaultFns.push('replication2_server');
   for (let i = 0; i < optionsDocumentation.length; i++) {
     optionsDoc.push(optionsDocumentation[i]);
   }

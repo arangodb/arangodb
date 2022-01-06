@@ -35,7 +35,9 @@ const {
     replicatedLogSetPlanTerm,
     createTermSpecification,
     replicatedLogIsReady,
-    dbservers
+    dbservers,
+    nextUniqueLogId,
+    registerAgencyTestBegin, registerAgencyTestEnd
 } = require("@arangodb/testutils/replicated-logs-helper");
 
 const database = 'ReplLogsMaintenanceTest';
@@ -99,13 +101,6 @@ const replicatedLogParticipantsFlag = function (logId, flags, generation = undef
 
 const replicatedLogSuite = function () {
 
-    const nextLogId = (function () {
-        let logId = 100;
-        return function () {
-            return logId++;
-        };
-    }());
-
     const targetConfig = {
         writeConcern: 2,
         softWriteConcern: 2,
@@ -130,15 +125,17 @@ const replicatedLogSuite = function () {
                 if (!databaseExisted) {
                     db._dropDatabase(database);
                 }
-            }
+            },
         };
     }());
 
     return {
         setUpAll, tearDownAll,
+        setUp: registerAgencyTestBegin,
+        tearDown: registerAgencyTestEnd,
 
         testCreateReplicatedLog: function () {
-            const logId = nextLogId();
+            const logId = nextUniqueLogId();
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
             const leader = servers[0];
             const term = 1;
@@ -155,7 +152,7 @@ const replicatedLogSuite = function () {
         },
 
         testCreateReplicatedLogWithoutLeader: function () {
-            const logId = nextLogId();
+            const logId = nextUniqueLogId();
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
             const term = 1;
             replicatedLogSetPlan(database, logId, {
@@ -171,7 +168,7 @@ const replicatedLogSuite = function () {
         },
 
         testAddParticipantFlag: function () {
-            const logId = nextLogId();
+            const logId = nextUniqueLogId();
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
             const leader = servers[0];
             const term = 1;
@@ -197,7 +194,7 @@ const replicatedLogSuite = function () {
         },
 
         testUpdateTermInPlanLog: function () {
-            const logId = nextLogId();
+            const logId = nextUniqueLogId();
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
             const leader = servers[0];
             const term = 1;
@@ -217,7 +214,7 @@ const replicatedLogSuite = function () {
         },
 
         testUpdateTermInPlanLogWithNewLeader: function () {
-            const logId = nextLogId();
+            const logId = nextUniqueLogId();
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
             const leader = servers[0];
             const term = 1;
@@ -237,7 +234,7 @@ const replicatedLogSuite = function () {
         },
 
         testUpdateTermAddParticipant: function () {
-            const logId = nextLogId();
+            const logId = nextUniqueLogId();
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
             const leader = servers[0];
             const remaining = _.difference(dbservers, servers);
@@ -258,7 +255,7 @@ const replicatedLogSuite = function () {
         },
 
         testUpdateTermRemoveParticipant: function () {
-            const logId = nextLogId();
+            const logId = nextUniqueLogId();
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
             const remaining = _.difference(dbservers, servers);
             const toBeRemoved = _.sample(remaining);
