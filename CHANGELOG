@@ -3,7 +3,7 @@ devel
 
 * Fixed potentially undefined behavior for exit code of arangodump.
 
-* ignore SIG_HUP etc. on client tools.
+* Ignore signals such as SIGPIPE in client tools.
 
 * Extend timeouts for caching collection counts and index selectivity estimates
   on coordinators from 15s/90s to 180s. This change will cause less requests to
