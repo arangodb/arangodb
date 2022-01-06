@@ -64,7 +64,7 @@ int main(int argc, char* argv[]) {
             argv[0], "Usage: arangoimport [<options>]",
             "For more information use:", BIN_DIRECTORY));
     ApplicationServer server(options, BIN_DIRECTORY);
-    int ret;
+    int ret = EXIT_SUCCESS;
 
     server.addFeature<BasicFeaturePhaseClient>();
     server.addFeature<CommunicationFeaturePhase>();
