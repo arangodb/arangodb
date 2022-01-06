@@ -104,9 +104,6 @@ class LogicalCollection : public LogicalDataSource {
     SatToSmartEdge = 16,
   };
 
-  /// @brief the category representing a logical collection
-  Category category() const noexcept override;
-
   /// @brief hard-coded minimum version number for collections
   static constexpr Version minimumVersion() { return Version::v30; }
   /// @brief current version for collections

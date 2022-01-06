@@ -54,7 +54,8 @@ namespace arangodb {
 // The Slice contains the part of the plan that
 // is relevant for this view
 LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice definition)
-    : LogicalDataSource(LogicalDataSource::Type::emplace(
+    : LogicalDataSource(*this,
+                        LogicalDataSource::Type::emplace(
                             arangodb::basics::VelocyPackHelper::getStringView(
                                 definition, StaticStrings::DataSourceType,
                                 std::string_view())),
@@ -110,10 +111,6 @@ bool LogicalView::canUse(arangodb::auth::Level const& level) {
   view
        );
   */
-}
-
-LogicalDataSource::Category LogicalView::category() const noexcept {
-  return LogicalDataSource::Category::kView;
 }
 
 /*static*/ Result LogicalView::create(LogicalView::ptr& view,

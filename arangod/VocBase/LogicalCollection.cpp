@@ -143,6 +143,7 @@ arangodb::LogicalDataSource::Type const& readType(
 LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
                                      bool isAStub)
     : LogicalDataSource(
+          *this,
           ::readType(info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN),
           vocbase, DataSourceId{Helper::extractIdValue(info)},
           ::readGloballyUniqueId(info),
@@ -296,10 +297,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 
   prepareIndexes(info.get("indexes"));
   decorateWithInternalValidators();
-}
-
-LogicalDataSource::Category LogicalCollection::category() const noexcept {
-  return LogicalDataSource::Category::kCollection;
 }
 
 Result LogicalCollection::updateSchema(VPackSlice schema) {

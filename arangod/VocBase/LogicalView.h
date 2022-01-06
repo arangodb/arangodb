@@ -132,11 +132,6 @@ class LogicalView : public LogicalDataSource {
   bool canUse(arangodb::auth::Level const& level);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief the category representing a logical view
-  //////////////////////////////////////////////////////////////////////////////
-  Category category() const noexcept override;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a new view according to a definition
   /// @param view out-param for created view on success
   ///        on success non-null, on failure undefined
