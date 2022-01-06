@@ -252,7 +252,6 @@ void maskAllSignals() {
   }
 }
 
-
 void unmaskAllSignals() {
 #ifdef TRI_HAVE_POSIX_THREADS
   sigset_t all;
