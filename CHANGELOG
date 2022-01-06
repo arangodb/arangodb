@@ -31,6 +31,10 @@ devel
   The default value for `maxProjections` is `5`, which is compatible with the
   previous hard-coded default value.
 
+* Fixed potentially undefined behavior for exit code of arangodump.
+
+* Ignore signals such as SIGPIPE in client tools.
+
 * Fixed ES-1025: fixed a performance regression caused by different hash
   calculation for primitive types like `uint64_t` and new the `Identifier`
   wrapper and derived types.
