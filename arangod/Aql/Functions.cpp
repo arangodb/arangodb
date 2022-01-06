@@ -8714,6 +8714,64 @@ AqlValue Functions::DateFormat(ExpressionContext* expressionContext,
       arangodb::basics::formatDate(aqlFormatString.slice().copyString(), tp));
 }
 
+AqlValue Functions::ShardId(ExpressionContext* expressionContext,
+                            AstNode const&,
+                            VPackFunctionParameters const& parameters) {
+  // Expecting 2 parameters
+  // 0 : collection name or id
+  // 1 : {shardKey1 : k1, shardKey2: k2, ..., shardKeyn: kn}
+  auto const col = extractFunctionParameterValue(parameters, 0).slice();
+  auto const keys = extractFunctionParameterValue(parameters, 1).slice();
+
+  if (!col.isString()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "first parameter to SHARD_ID must be a string");
+  }
+  if (!keys.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "second parameter to SHARD_ID must be an object");
+  }
+
+  auto& vocbase = expressionContext->trx().vocbase();
+  auto role = ServerState::instance()->getRole();
+  std::shared_ptr<LogicalCollection> collection;
+  auto const colName = col.copyString();
+  auto const& dbName = vocbase.name();
+  auto const cluster = role == ServerState::ROLE_COORDINATOR ||
+                       role == ServerState::ROLE_DBSERVER;
+
+  if (cluster) {
+    auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+    collection = ci.getCollection(dbName, colName);
+  } else {  // single server, agents, active failover try to not break cluster
+            // ready code
+    methods::Collections::lookup(vocbase, colName, collection);
+  }
+
+  if (collection == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        "could not find collection: " + colName + " in database " + dbName);
+  }
+
+  std::string shardId;
+  if (cluster) {
+    auto const errorCode = collection->getResponsibleShard(keys, true, shardId);
+    if (errorCode != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          errorCode, "could not find shard for document by shard keys " +
+                         keys.toJson() + " in " + colName);
+    }
+  } else {  // Agents, single server, AFO return the collection name in favour
+            // of AQL universality
+    shardId = colName;
+  }
+
+  return AqlValue{shardId};
+}
+
 /// @brief function DECODE_REV
 AqlValue Functions::DecodeRev(ExpressionContext* expressionContext,
                               AstNode const&,

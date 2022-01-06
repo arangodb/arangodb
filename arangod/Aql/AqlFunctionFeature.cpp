@@ -471,6 +471,10 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"PARSE_IDENTIFIER", ".", flags, &Functions::ParseIdentifier});
   add({"IS_SAME_COLLECTION", ".h,.h", flags, &Functions::IsSameCollection});
   add({"DECODE_REV", ".", flags, &Functions::DecodeRev});
+  add({"SHARD_ID", ".,.",
+       Function::makeFlags(FF::CanRunOnDBServerCluster,
+                           FF::CanRunOnDBServerOneShard),
+       &Functions::ShardId});
 
   // only function without a C++ implementation
   add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable),
