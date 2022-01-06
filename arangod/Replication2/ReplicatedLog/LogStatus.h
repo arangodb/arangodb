@@ -46,8 +46,10 @@ struct QuickLogStatus {
   bool leadershipEstablished{false};
 
   // The following make sense only for a leader.
-  std::shared_ptr<ParticipantsConfig const> activeParticipantConfig{};
-  std::shared_ptr<ParticipantsConfig const> committedParticipantConfig{};
+  std::shared_ptr<ParticipantsConfig const> activeParticipantsConfig{};
+  // Note that committedParticipantsConfig will be nullptr until leadership has
+  // been established!
+  std::shared_ptr<ParticipantsConfig const> committedParticipantsConfig{};
 
   [[nodiscard]] auto getCurrentTerm() const noexcept -> std::optional<LogTerm>;
   [[nodiscard]] auto getLocalStatistics() const noexcept
@@ -81,8 +83,8 @@ struct LeaderStatus {
   // now() - insertTP of last uncommitted entry
   std::chrono::duration<double, std::milli> commitLagMS;
   CommitFailReason lastCommitStatus;
-  ParticipantsConfig activeParticipantConfig;
-  ParticipantsConfig committedParticipantConfig;
+  ParticipantsConfig activeParticipantsConfig;
+  std::optional<ParticipantsConfig> committedParticipantsConfig;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> LeaderStatus;

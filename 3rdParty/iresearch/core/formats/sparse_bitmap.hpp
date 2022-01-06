@@ -55,10 +55,10 @@ class sparse_bitmap_writer {
  public:
   using value_type = doc_id_t; // for compatibility with back_inserter
 
-  static constexpr uint32_t BLOCK_SIZE = 1 << 16;
-  static constexpr uint32_t NUM_BLOCKS = BLOCK_SIZE / bits_required<size_t>();
+  static constexpr uint32_t kBlockSize = 1 << 16;
+  static constexpr uint32_t kNumBlocks = kBlockSize / bits_required<size_t>();
 
-  static_assert(math::is_power2(BLOCK_SIZE));
+  static_assert(math::is_power2(kBlockSize));
 
   struct block {
     doc_id_t index;
@@ -71,27 +71,27 @@ class sparse_bitmap_writer {
   }
 
   void push_back(doc_id_t value) {
-    static_assert(math::is_power2(BLOCK_SIZE));
+    static_assert(math::is_power2(kBlockSize));
     assert(doc_limits::valid(value));
     assert(!doc_limits::eof(value));
 
-    const uint32_t block = value / BLOCK_SIZE;
+    const uint32_t block = value / kBlockSize;
 
     if (block != block_) {
       flush(block_);
       block_ = block;
     }
 
-    set(value % BLOCK_SIZE);
+    set(value % kBlockSize);
   }
 
   bool erase(doc_id_t value) noexcept {
-    if ((value / BLOCK_SIZE) < block_) {
+    if ((value / kBlockSize) < block_) {
       // value is already flushed
       return false;
     }
 
-    reset(value % BLOCK_SIZE);
+    reset(value % kBlockSize);
     return true;
   }
 
@@ -114,14 +114,14 @@ class sparse_bitmap_writer {
   }
 
   FORCE_INLINE void set(doc_id_t value) noexcept {
-    assert(value < BLOCK_SIZE);
+    assert(value < kBlockSize);
 
     irs::set_bit(bits_[value / bits_required<size_t>()],
                  value % bits_required<size_t>());
   }
 
   FORCE_INLINE void reset(doc_id_t value) noexcept {
-    assert(value < BLOCK_SIZE);
+    assert(value < kBlockSize);
 
     irs::unset_bit(bits_[value / bits_required<size_t>()],
                    value % bits_required<size_t>());
@@ -143,7 +143,7 @@ class sparse_bitmap_writer {
 
   index_output* out_;
   uint64_t origin_;
-  size_t bits_[NUM_BLOCKS]{};
+  size_t bits_[kNumBlocks]{};
   std::vector<block> block_index_;
   uint32_t popcnt_{};
   uint32_t block_{}; // last flushed block

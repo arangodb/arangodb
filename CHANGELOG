@@ -3,6 +3,15 @@ devel
 
 * APM-292: Added new AQL function SHARD_ID.
 
+* BTS-707: rename "hardened" option value for `--server.support-info-api`
+  startup option to "admin".
+
+* Extend timeouts for caching collection counts and index selectivity estimates
+  on coordinators from 15s/90s to 180s. This change will cause less requests to
+  be made from coordinators to DB servers to refresh info about collection
+  counts and index estimates as part of AQL queries. The cached info is used in
+  cluster query execution plans only and is not required to be fully up-to-date.
+
 * When creating a new database the value of the write concern has to be smaller
   or equal to the replication factor. Otherwise an error message will be displayed
   and no database will be created.
