@@ -1,3 +1,6 @@
+#ifndef IRESEARCH_VERSION_DEFINES_HPP
+#define IRESEARCH_VERSION_DEFINES_HPP
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -21,5 +24,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+// clang-format off
+
 #cmakedefine IResearch_int_version ${IResearch_int_version}
 #cmakedefine IResearch_version "${IResearch_version}"
+
+// clang-format on
+
+#endif  // IRESEARCH_VERSION_DEFINES_HPP

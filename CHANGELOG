@@ -27,8 +27,63 @@ devel
 
   The maximum number of attributes to store in `storedValues` is 32.
 
+* Added `disableIndex` index hint for AQL FOR loops. This index hint disables
+  the usage of any index (except geo or full text indexes) and will cause a
+  full scan over the collection.
+  In some circumstances a full scan can be more efficient than an index scan,
+  for example if the index scan produces many matches (close to the number of
+  documents in the collection) and the index is not fully covering the query.
+  The `disableIndex` hint can be given per FOR loop in the query, e.g.:
+
+      FOR doc IN collection OPTIONS { disableIndex: true } 
+        RETURN doc.value
+
+  The default value of `disableIndex` is `false`.
+  In case a different index hint is provided, `disableIndex: true` takes
+  precendence and produces a warning about the ambiguous settings.
+
+* Added `maxProjections` hint for AQL FOR loops. This hint can be used to set
+  the maximum number of document attributes that are taken into account for
+  using projections.
+
+  For example, in the following query, no projections will be used because the
+  number of potential projection attributes (`value1`, value2`, `value3`) is 
+  higher than the maximum number of projection attributes set via the
+  `maxProjections` option:
+
+      FOR doc IN collection OPTIONS { maxProjections: 2 } 
+        RETURN [ doc.value1, doc.value2, doc.value3 ]
+
+  The default value for `maxProjections` is `5`, which is compatible with the
+  previous hard-coded default value.
+
+* Fixed potentially undefined behavior for exit code of arangodump.
+
+* Ignore signals such as SIGPIPE in client tools.
+
+* Fixed ES-1025: fixed a performance regression caused by different hash
+  calculation for primitive types like `uint64_t` and new the `Identifier`
+  wrapper and derived types.
+
+* APM-292: Added new AQL function SHARD_ID.
+
+* BTS-707: rename "hardened" option value for `--server.support-info-api`
+  startup option to "admin".
+
+* Extend timeouts for caching collection counts and index selectivity estimates
+  on coordinators from 15s/90s to 180s. This change will cause less requests to
+  be made from coordinators to DB servers to refresh info about collection
+  counts and index estimates as part of AQL queries. The cached info is used in
+  cluster query execution plans only and is not required to be fully up-to-date.
+
+* When creating a new database the value of the write concern has to be smaller
+  or equal to the replication factor. Otherwise an error message will be displayed
+  and no database will be created.
+  
 * Fixed BTS-693: Sort-limit rule now always ensures proper LIMIT node placement
   to avoid possible invalid results in the fullCount data.
+
+* Added new AQL function SHARD_ID.
 
 * Updated OpenSSL to 1.1.1m and OpenLDAP to 2.6.0.
 

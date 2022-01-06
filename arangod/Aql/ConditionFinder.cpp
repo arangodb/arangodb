@@ -152,6 +152,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
         // will clear out usedIndexes
         IndexIteratorOptions opts;
         opts.ascending = !descending;
+        opts.lookahead = node->hint().getLookahead();
         TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
@@ -168,6 +169,8 @@ bool ConditionFinder::before(ExecutionNode* en) {
               // copy over the read-own-writes flag from EnumerateCollectionNode
               // to IndexNode
               idx->setCanReadOwnWrites(node->canReadOwnWrites());
+              // copy max number of projections
+              idx->setMaxProjections(node->maxProjections());
               return idx;
             }));
       }
