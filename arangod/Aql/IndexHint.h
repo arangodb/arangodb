@@ -40,17 +40,19 @@ class QueryContext;
 /// @brief container for index hint information
 class IndexHint {
  public:
-  enum HintType : uint8_t { Illegal, None, Simple };
+  // there is an important distinction between None and Disabled here:
+  //   None = no index hint set
+  //   Disabled = no index must be used!
+  enum HintType : uint8_t { Illegal, None, Simple, Disabled };
 
  public:
   explicit IndexHint();
   explicit IndexHint(QueryContext& query, AstNode const* node);
-  explicit IndexHint(arangodb::velocypack::Slice const& slice);
+  explicit IndexHint(arangodb::velocypack::Slice slice);
 
- public:
-  HintType type() const;
-  bool isForced() const;
-  std::vector<std::string> const& hint() const;
+  HintType type() const noexcept;
+  bool isForced() const noexcept;
+  std::vector<std::string> const& hint() const noexcept;
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   std::string typeName() const;
