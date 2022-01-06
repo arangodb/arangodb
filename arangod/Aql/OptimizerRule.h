@@ -340,7 +340,7 @@ struct OptimizerRule {
     // needs to take into account query distribution across cluster nodes
     // for index
     lateDocumentMaterializationRule,
-    
+
     // distribute a query in the cluster
     distributeQueryRule,
 
@@ -361,6 +361,13 @@ struct OptimizerRule {
 #endif
 
   static_assert(scatterInClusterRule < parallelizeGatherRule);
+
+  static_assert(moveCalculationsUpRule < applySortLimitRule,
+                "sort-limit adds/moves limit nodes. And calculations should "
+                "not be moved up after that.");
+  static_assert(moveCalculationsUpRule2 < applySortLimitRule,
+                "sort-limit adds/moves limit nodes. And calculations should "
+                "not be moved up after that.");
 
   std::string_view name;
   RuleFunction func;

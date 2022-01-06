@@ -110,7 +110,7 @@ class WindowNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief calculate the aggregate registers

@@ -24,10 +24,10 @@
 
 #include <iostream>
 
-
 namespace arangodb {
 namespace aql {
-auto operator<<(std::ostream& out, ExecutionLocation const& location) -> std::ostream& {
+auto operator<<(std::ostream& out, ExecutionLocation const& location)
+    -> std::ostream& {
   switch (location._location) {
     case ExecutionLocation::LocationType::ANYWHERE:
       out << "anywhere";
@@ -50,5 +50,5 @@ auto operator<<(std::ostream& out, ExecutionLocation const& location) -> std::os
   }
   return out;
 }
-}
-}
+}  // namespace aql
+}  // namespace arangodb

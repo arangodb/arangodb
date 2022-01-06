@@ -232,11 +232,12 @@ class MockClusterServer
       VPackSlice additionalProperties = VPackSlice{VPackSlice::nullSlice()});
 #endif
 
-  void buildCollectionProperties(VPackBuilder& props,
-                                 std::string const& collectionName,
-                                 std::string const& cid, TRI_col_type_e type,
-                                 std::vector<std::pair<std::string, std::string>> const& shardNameToServerNamePairs,
-                                 VPackSlice additionalProperties);
+  void buildCollectionProperties(
+      VPackBuilder& props, std::string const& collectionName,
+      std::string const& cid, TRI_col_type_e type,
+      std::vector<std::pair<std::string, std::string>> const&
+          shardNameToServerNamePairs,
+      VPackSlice additionalProperties);
 
   void injectCollectionToAgency(std::string const& dbName, VPackBuilder& velocy,
                                 DataSourceId const& planId,

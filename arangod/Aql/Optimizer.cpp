@@ -37,7 +37,7 @@
 using namespace arangodb::aql;
 
 Optimizer::Optimizer(size_t maxNumberOfPlans)
-    : _maxNumberOfPlans(maxNumberOfPlans), 
+    : _maxNumberOfPlans(maxNumberOfPlans),
       _runOnlyRequiredRules(false),
       _useNewDistribute(false) {}
 
@@ -315,16 +315,17 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         // skip over rules if we should
         // however, we don't want to skip those rules that will not create
         // additional plans
-        
-        // TODO: this is here only temporarily while rebuild cluster query
+
+        // TODO: this is here only temporarily while rebuilding cluster query
         // optimizer rules!
-        bool disabled = (_useNewDistribute && 
-                         rule.isClusterOnly() && 
-                         rule.name != "distribute-query" && 
-                         rule.name != "insert-distribute-calculations" && 
-                         rule.name != "optimize-cluster-single-document-operations");
+        bool disabled =
+            (_useNewDistribute && rule.isClusterOnly() &&
+             rule.name != "distribute-query" &&
+             rule.name != "insert-distribute-calculations" &&
+             rule.name != "optimize-cluster-single-document-operations");
         disabled |= p->isDisabledRule(rule.level);
-        disabled |= (_runOnlyRequiredRules && rule.canCreateAdditionalPlans() && rule.canBeDisabled());
+        disabled |= (_runOnlyRequiredRules && rule.canCreateAdditionalPlans() &&
+                     rule.canBeDisabled());
 
         if (disabled) {
           // we picked a disabled rule or we have reached the max number of

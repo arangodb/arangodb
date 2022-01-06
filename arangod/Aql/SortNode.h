@@ -71,7 +71,7 @@ class SortNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final { return SORT; }
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief whether or not the sort is stable

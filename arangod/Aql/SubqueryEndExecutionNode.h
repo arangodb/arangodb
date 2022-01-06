@@ -43,7 +43,7 @@ class SubqueryEndNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   NodeType getType() const override final { return SUBQUERY_END; }
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   Variable const* inVariable() const { return _inVariable; }

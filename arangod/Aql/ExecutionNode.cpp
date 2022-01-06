@@ -1564,10 +1564,6 @@ EnumerateCollectionNode::EnumerateCollectionNode(
       _random(base.get("random").getBoolean()),
       _hint(base) {}
 
-ExecutionLocation EnumerateCollectionNode::getAllowedLocation() const {
-  return ExecutionLocation(ExecutionLocation::LocationType::DBSERVER);
-}
-
 EnumerateCollectionNode::EnumerateCollectionNode(
     ExecutionPlan* plan, ExecutionNodeId id, aql::Collection const* collection,
     Variable const* outVariable, bool random, IndexHint const& hint)
@@ -1577,6 +1573,9 @@ EnumerateCollectionNode::EnumerateCollectionNode(
       _random(random),
       _hint(hint) {}
 
+ExecutionLocation EnumerateCollectionNode::getAllowedLocation() const {
+  return ExecutionLocation(ExecutionLocation::LocationType::DBSERVER);
+}
 
 ExecutionNode::NodeType EnumerateCollectionNode::getType() const {
   return ENUMERATE_COLLECTION;
@@ -1842,9 +1841,6 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  // Fullcount must only be enabled on the last limit node on the main level
-  TRI_ASSERT(!_fullCount || !isInSubquery());
-
   auto registerInfos = createRegisterInfos({}, {});
 
   auto executorInfos = LimitExecutorInfos(_offset, _limit, _fullCount);
@@ -1902,7 +1898,7 @@ ExecutionNode* LimitNode::clone(ExecutionPlan* plan, bool withDependencies,
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-void LimitNode::setFullCount() { _fullCount = true; }
+void LimitNode::setFullCount(bool enable) { _fullCount = enable; }
 
 bool LimitNode::fullCount() const noexcept { return _fullCount; }
 
@@ -1938,15 +1934,17 @@ ExecutionLocation CalculationNode::getAllowedLocation() const {
     // some expression we cannot run on a DB server
     return ExecutionLocation(ExecutionLocation::LocationType::COORDINATOR);
   }
-  // Those two functions are special, they sometimes need to be executed on Coordinator
-  // Sometimes they are fine to be executed on DBServer, it depends on the context
+  // Those two functions are special, they sometimes need to be executed on
+  // Coordinator Sometimes they are fine to be executed on DBServer, it depends
+  // on the context
   auto expr = _expression->node();
   TRI_ASSERT(expr != nullptr);
   if (expr->type == NODE_TYPE_FCALL) {
     auto func = static_cast<Function const*>(expr->getData());
     if (func->name == "MAKE_DISTRIBUTE_INPUT" ||
         func->name == "MAKE_DISTRIBUTE_GRAPH_INPUT") {
-      return ExecutionLocation(ExecutionLocation::LocationType::REQUIRES_CONTEXT);
+      return ExecutionLocation(
+          ExecutionLocation::LocationType::REQUIRES_CONTEXT);
     }
   }
   return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);

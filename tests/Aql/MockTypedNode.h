@@ -40,7 +40,8 @@ class MockTypedNode : public ::arangodb::aql::ExecutionNode {
   // return mocked type
   NodeType getType() const override final;
 
-  [[nodiscard]] arangodb::aql::ExecutionLocation getAllowedLocation() const override;
+  [[nodiscard]] arangodb::aql::ExecutionLocation getAllowedLocation()
+      const override;
 
   // Necessary overrides, all not implemented:
 

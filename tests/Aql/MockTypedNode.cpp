@@ -58,7 +58,7 @@ void MockTypedNode::doToVelocyPack(arangodb::velocypack::Builder&,
 }
 
 ExecutionNode::NodeType MockTypedNode::getType() const { return _mockedType; }
-  
+
 [[nodiscard]] ExecutionLocation MockTypedNode::getAllowedLocation() const {
   // TODO: we may want to override this later
   return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);

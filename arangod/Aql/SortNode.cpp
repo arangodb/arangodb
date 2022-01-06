@@ -67,7 +67,7 @@ SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
       _elements(elements),
       _stable(stable),
       _limit(VelocyPackHelper::getNumericValue<size_t>(base, "limit", 0)) {}
-  
+
 ExecutionLocation SortNode::getAllowedLocation() const {
   return ExecutionLocation(ExecutionLocation::LocationType::REQUIRES_CONTEXT);
 }

@@ -238,13 +238,14 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
                                                ConnectionPool::Bucket& bucket,
                                                bool& isFromPool) {
   using namespace std::chrono;
-  const milliseconds ttl(_config.idleConnectionMilli);
-
-  std::lock_guard<std::mutex> guard(bucket.mutex);
+  milliseconds const ttl(_config.idleConnectionMilli);
 
   auto start = steady_clock::now();
-
   isFromPool = true;  // Will revert for new collections
+
+  // exclusively lock the bucket
+  std::unique_lock<std::mutex> guard(bucket.mutex);
+
   for (std::shared_ptr<Context>& c : bucket.list) {
     if (c->fuerte->state() == fuerte::Connection::State::Closed ||
         (start - c->lastLeased) > ttl) {
@@ -287,8 +288,6 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
   }
 
   ++_connectionsCreated;
-  isFromPool = false;
-
   // no free connection found, so we add one
   LOG_TOPIC("2d6ab", DEBUG, Logger::COMMUNICATION)
       << "creating connection to " << endpoint << " bucket size  "
@@ -301,17 +300,22 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
   auto c =
       std::make_shared<Context>(createConnection(builder), now, 1 /* leases*/);
   bucket.list.push_back(c);
+
+  guard.unlock();
+  // continue without the bucket lock
+
+  isFromPool = false;
   _totalConnectionsInPool += 1;
   _leaseHistMSec.count(duration<float, std::micro>(now - start).count());
-  return {c};
+  return {std::move(c)};
 }
 
 ConnectionPool::Config const& ConnectionPool::config() const { return _config; }
 
-ConnectionPtr::ConnectionPtr(std::shared_ptr<ConnectionPool::Context>& ctx)
-    : _context{ctx} {}
+ConnectionPtr::ConnectionPtr(std::shared_ptr<ConnectionPool::Context> ctx)
+    : _context{std::move(ctx)} {}
 
-ConnectionPtr::ConnectionPtr(ConnectionPtr&& other)
+ConnectionPtr::ConnectionPtr(ConnectionPtr&& other) noexcept
     : _context(std::move(other._context)) {}
 
 ConnectionPtr::~ConnectionPtr() {

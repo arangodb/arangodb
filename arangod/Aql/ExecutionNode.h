@@ -616,7 +616,7 @@ class SingletonNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
@@ -660,7 +660,7 @@ class EnumerateCollectionNode : public ExecutionNode,
 
   /// @brief return the type of the node
   NodeType getType() const override final;
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
@@ -715,7 +715,7 @@ class EnumerateListNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
@@ -771,7 +771,7 @@ class LimitNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
@@ -788,7 +788,7 @@ class LimitNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief tell the node to fully count what it will limit
-  void setFullCount();
+  void setFullCount(bool enable = true);
 
   bool fullCount() const noexcept;
 
@@ -830,7 +830,7 @@ class CalculationNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
@@ -895,7 +895,7 @@ class SubqueryNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief invalidate the cost estimate for the node and its dependencies
@@ -970,7 +970,7 @@ class FilterNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override;
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
@@ -1036,7 +1036,7 @@ class ReturnNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief tell the node to count the returned values
@@ -1091,7 +1091,7 @@ class NoResultsNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
@@ -1125,7 +1125,7 @@ class AsyncNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final;
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
@@ -1159,7 +1159,7 @@ class MaterializeNode : public ExecutionNode {
  public:
   /// @brief return the type of the node
   NodeType getType() const override final { return ExecutionNode::MATERIALIZE; }
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock

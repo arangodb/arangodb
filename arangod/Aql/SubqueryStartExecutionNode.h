@@ -46,7 +46,7 @@ class SubqueryStartNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   NodeType getType() const override final { return SUBQUERY_START; }
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   std::unique_ptr<ExecutionBlock> createBlock(

@@ -43,7 +43,7 @@ class MutexNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final { return MUTEX; }
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock

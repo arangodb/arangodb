@@ -28,7 +28,14 @@ namespace arangodb {
 namespace aql {
 class ExecutionLocation {
  public:
-  enum LocationType { ANYWHERE, DBSERVER, COORDINATOR, SUBQUERY_START, SUBQUERY_END, REQUIRES_CONTEXT };
+  enum LocationType {
+    ANYWHERE,
+    DBSERVER,
+    COORDINATOR,
+    SUBQUERY_START,
+    SUBQUERY_END,
+    REQUIRES_CONTEXT
+  };
 
  public:
   ExecutionLocation(LocationType location) : _location(location) {}
@@ -43,9 +50,7 @@ class ExecutionLocation {
     return _location == LocationType::SUBQUERY_START;
   }
 
-  bool isSubqueryEnd() const {
-    return _location == LocationType::SUBQUERY_END;
-  }
+  bool isSubqueryEnd() const { return _location == LocationType::SUBQUERY_END; }
 
   /**
    * @brief A strict ExecutionLocation needs to be
@@ -54,7 +59,8 @@ class ExecutionLocation {
    * Node in the location planning.
    */
   bool isStrict() const {
-    return _location != LocationType::ANYWHERE && _location != LocationType::REQUIRES_CONTEXT;
+    return _location != LocationType::ANYWHERE &&
+           _location != LocationType::REQUIRES_CONTEXT;
   }
 
   /**
@@ -67,7 +73,8 @@ class ExecutionLocation {
     return _location == LocationType::REQUIRES_CONTEXT;
   }
 
-  friend auto operator<<(std::ostream& out, ExecutionLocation const& location) -> std::ostream&;
+  friend auto operator<<(std::ostream& out, ExecutionLocation const& location)
+      -> std::ostream&;
 
  private:
   LocationType _location;

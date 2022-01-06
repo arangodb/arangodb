@@ -110,7 +110,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final { return ENUMERATE_IRESEARCH_VIEW; }
-  
+
   [[nodiscard]] aql::ExecutionLocation getAllowedLocation() const override;
 
   /// @brief clone ExecutionNode recursively

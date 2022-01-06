@@ -107,7 +107,7 @@ class TraversalNode : public virtual GraphNode {
  public:
   /// @brief return the type of the node
   NodeType getType() const override final { return TRAVERSAL; }
-  
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,

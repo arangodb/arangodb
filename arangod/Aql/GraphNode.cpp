@@ -523,7 +523,7 @@ GraphNode::GraphNode(THIS_THROWS_WHEN_CALLED)
 ExecutionLocation GraphNode::getAllowedLocation() const {
   if (isLocalGraphNode()) {
     return ExecutionLocation(ExecutionLocation::LocationType::DBSERVER);
-  } 
+  }
   return ExecutionLocation(ExecutionLocation::LocationType::COORDINATOR);
 }
 

@@ -352,16 +352,16 @@ void OptimizerRulesFeature::addRules() {
   // fuse multiple adjacent filters into one
   registerRule("fuse-filters", fuseFiltersRule, OptimizerRule::fuseFiltersRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-  
-  registerRule("insert-distribute-calculations",
-               insertDistributeCalculationsRule,
-               OptimizerRule::insertDistributeCalculationsRule,
-               // TODO: the following flags must be fixed when activating the
-               // new distribution mechanism: the rule must be enabled by default
-               // and cannot be disabled, and must be cluster-only.
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::DisabledByDefault));
-                                       // OptimizerRule::Flags::ClusterOnly));
+
+  registerRule(
+      "insert-distribute-calculations", insertDistributeCalculationsRule,
+      OptimizerRule::insertDistributeCalculationsRule,
+      // TODO: the following flags must be fixed when activating the
+      // new distribution mechanism: the rule must be enabled by default
+      // and cannot be disabled, and must be cluster-only.
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                               OptimizerRule::Flags::DisabledByDefault));
+  // OptimizerRule::Flags::ClusterOnly));
 
 #ifdef USE_ENTERPRISE
   // must be the first cluster optimizer rule
@@ -492,18 +492,20 @@ void OptimizerRulesFeature::addRules() {
 
   // add the storage-engine specific rules
   addStorageEngineRules();
-  
+
   // distribute query in the cluster.
-  // currently does nothing, but in the future this will be the _one_ rule 
+  // currently does nothing, but in the future this will be the _one_ rule
   // to determine where (coord, db server) to carry out the individual parts
   // of the query and the shards that are required.
-  registerRule("distribute-query", distributeQueryRule, OptimizerRule::distributeQueryRule,
-               // TODO: the following flags must be fixed when activating the
-               // new distribution mechanism: the rule must be enabled by default
-               // and cannot be disabled, and must be cluster-only.
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::DisabledByDefault));
-                                        // OptimizerRule::Flags::ClusterOnly;
+  registerRule(
+      "distribute-query", distributeQueryRule,
+      OptimizerRule::distributeQueryRule,
+      // TODO: the following flags must be fixed when activating the
+      // new distribution mechanism: the rule must be enabled by default
+      // and cannot be disabled, and must be cluster-only.
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                               OptimizerRule::Flags::DisabledByDefault));
+  // OptimizerRule::Flags::ClusterOnly;
 
   // Splice subqueries
   //

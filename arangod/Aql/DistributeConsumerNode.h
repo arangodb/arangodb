@@ -50,7 +50,7 @@ class DistributeConsumerNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override { return DISTRIBUTE_CONSUMER; }
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock

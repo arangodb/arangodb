@@ -72,7 +72,7 @@ class RemoteNode final : public DistributeConsumerNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final { return REMOTE; }
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
@@ -142,7 +142,7 @@ class ScatterNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override { return SCATTER; }
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
@@ -216,7 +216,7 @@ class DistributeNode final : public ScatterNode,
 
   /// @brief return the type of the node
   NodeType getType() const override final { return DISTRIBUTE; }
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
@@ -296,7 +296,7 @@ class GatherNode final : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final { return GATHER; }
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief clone ExecutionNode recursively
@@ -393,7 +393,7 @@ class SingleRemoteOperationNode final : public ExecutionNode,
 
   /// @brief return the type of the node
   NodeType getType() const override final { return REMOTESINGLE; }
-  
+
   [[nodiscard]] ExecutionLocation getAllowedLocation() const override;
 
   /// @brief creates corresponding ExecutionBlock
