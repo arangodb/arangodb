@@ -30,8 +30,9 @@
 #include "velocypack/velocypack-aliases.h"
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
-#include "Replication2/ReplicatedState/AgencySpecificationLog.h"
+// #include "Replication2/ReplicatedState/AgencySpecificationLog.h"
 #include "Replication2/ReplicatedState/AgencySpecificationState.h"
 
 #include <chrono>
@@ -42,7 +43,16 @@
 namespace arangodb::replication2::replicated_state {
 
 using namespace arangodb::replication2;
+using namespace arangodb::replication2::agency;
 using namespace arangodb::replication2::replicated_state::agency;
+
+/* Transitional glue code  */
+struct Log {
+  LogCurrent current;
+  LogPlanSpecification plan;
+};
+using LogCurrentLocalStates =
+    std::unordered_map<ParticipantId, LogCurrentLocalState>;
 
 struct ParticipantHealth {
   RebootId rebootId;
@@ -104,7 +114,7 @@ auto operator<<(std::ostream& os, Action::ActionType const& action)
 auto operator<<(std::ostream& os, Action const& action) -> std::ostream&;
 
 struct UpdateTermAction : Action {
-  UpdateTermAction(agency::Log::Plan::TermSpecification const& newTerm)
+  UpdateTermAction(LogPlanTermSpecification const& newTerm)
       : _newTerm(newTerm){};
   void execute() override{};
   ActionType type() const override {
@@ -112,7 +122,7 @@ struct UpdateTermAction : Action {
   };
   void toVelocyPack(VPackBuilder& builder) const override;
 
-  agency::Log::Plan::TermSpecification _newTerm;
+  LogPlanTermSpecification _newTerm;
 };
 
 auto to_string(UpdateTermAction action) -> std::string;
@@ -129,7 +139,7 @@ struct SuccessfulLeaderElectionAction : Action {
 
   LeaderElectionCampaign _campaign;
   ParticipantId _newLeader;
-  agency::Log::Plan::TermSpecification _newTerm;
+  LogPlanTermSpecification _newTerm;
 };
 auto to_string(SuccessfulLeaderElectionAction action) -> std::string;
 auto operator<<(std::ostream& os, SuccessfulLeaderElectionAction const& action)
@@ -161,10 +171,10 @@ auto to_string(ImpossibleCampaignAction const& action) -> std::string;
 auto operator<<(std::ostream& os, ImpossibleCampaignAction const& action)
     -> std::ostream&;
 
-auto computeReason(agency::Log::Current::LocalState const& status, bool healthy,
+auto computeReason(LogCurrentLocalState const& status, bool healthy,
                    LogTerm term) -> LeaderElectionCampaign::Reason;
 
-auto runElectionCampaign(agency::Log::Current::LocalStates const& states,
+auto runElectionCampaign(LogCurrentLocalStates const& states,
                          ParticipantsHealth const& health, LogTerm term)
     -> LeaderElectionCampaign;
 

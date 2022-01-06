@@ -92,7 +92,7 @@ auto operator<<(std::ostream& os, Action::ActionType const& action)
   return os << to_string(action);
 }
 
-auto computeReason(Log::Current::LocalState const& status, bool healthy,
+auto computeReason(LogCurrentLocalState const& status, bool healthy,
                    LogTerm term) -> LeaderElectionCampaign::Reason {
   if (!healthy) {
     return LeaderElectionCampaign::Reason::ServerIll;
@@ -103,7 +103,7 @@ auto computeReason(Log::Current::LocalState const& status, bool healthy,
   }
 }
 
-auto runElectionCampaign(Log::Current::LocalStates const& states,
+auto runElectionCampaign(LogCurrentLocalStates const& states,
                          ParticipantsHealth const& health, LogTerm term)
     -> LeaderElectionCampaign {
   auto campaign = LeaderElectionCampaign{};
@@ -129,17 +129,17 @@ auto runElectionCampaign(Log::Current::LocalStates const& states,
 
 auto checkLeaderHealth(Log const& log, ParticipantsHealth const& health)
     -> std::unique_ptr<Action> {
-  if (health.isHealthy(log.plan.termSpec.leader->serverId) &&
-      health.validRebootId(log.plan.termSpec.leader->serverId,
-                           log.plan.termSpec.leader->rebootId)) {
+  if (health.isHealthy(log.plan.currentTerm->leader->serverId) &&
+      health.validRebootId(log.plan.currentTerm->leader->serverId,
+                           log.plan.currentTerm->leader->rebootId)) {
     // Current leader is all healthy so nothing to do.
     return nullptr;
   } else {
     // Leader is not healthy; start a new term
-    auto newTerm = log.plan.termSpec;
+    auto newTerm = *log.plan.currentTerm;
 
     newTerm.leader.reset();
-    newTerm.term = LogTerm{log.plan.termSpec.term.value + 1};
+    newTerm.term = LogTerm{log.plan.currentTerm->term.value + 1};
 
     return std::make_unique<UpdateTermAction>(newTerm);
   }
@@ -148,22 +148,22 @@ auto checkLeaderHealth(Log const& log, ParticipantsHealth const& health)
 auto tryLeadershipElection(Log const& log, ParticipantsHealth const& health)
     -> std::unique_ptr<Action> {
   // Check whether there are enough participants to reach a quorum
-  if (log.plan.participants.set.size() + 1 <=
-      log.plan.termSpec.config.writeConcern) {
+  if (log.plan.participantsConfig.participants.size() + 1 <=
+      log.plan.currentTerm->config.writeConcern) {
     return std::make_unique<ImpossibleCampaignAction>(
         /* TODO: should we have an error message? */);
   }
 
-  TRI_ASSERT(log.plan.participants.set.size() + 1 >
-             log.plan.termSpec.config.writeConcern);
+  TRI_ASSERT(log.plan.participantsConfig.participants.size() + 1 >
+             log.plan.currentTerm->config.writeConcern);
 
   auto const requiredNumberOfOKParticipants =
-      log.plan.participants.set.size() + 1 -
-      log.plan.termSpec.config.writeConcern;
+      log.plan.participantsConfig.participants.size() + 1 -
+      log.plan.currentTerm->config.writeConcern;
 
   // Find the participants that are healthy and that have the best LogTerm
-  auto const campaign = runElectionCampaign(log.current.localStates, health,
-                                            log.plan.termSpec.term);
+  auto const campaign = runElectionCampaign(log.current.localState, health,
+                                            log.plan.currentTerm->term);
 
   auto const numElectible = campaign.electibleLeaderSet.size();
 
@@ -193,12 +193,12 @@ auto tryLeadershipElection(Log const& log, ParticipantsHealth const& health)
     auto action = std::make_unique<SuccessfulLeaderElectionAction>();
 
     action->_campaign = campaign;
-    action->_newTerm = Log::Plan::TermSpecification{
-        .term = LogTerm{log.plan.termSpec.term.value + 1},
-        .leader =
-            Log::Plan::TermSpecification::Leader{.serverId = newLeader,
-                                                 .rebootId = newLeaderRebootId},
-        .config = log.plan.termSpec.config};
+    action->_newTerm = LogPlanTermSpecification(
+        LogTerm{log.plan.currentTerm->term.value + 1},
+        log.plan.currentTerm->config,
+        LogPlanTermSpecification::Leader{.serverId = newLeader,
+                                         .rebootId = newLeaderRebootId},
+        log.plan.currentTerm->participants);
     action->_newLeader = newLeader;
 
     return action;
@@ -213,7 +213,7 @@ auto tryLeadershipElection(Log const& log, ParticipantsHealth const& health)
 
 auto replicatedLogAction(Log const& log, ParticipantsHealth const& health)
     -> std::unique_ptr<Action> {
-  if (log.plan.termSpec.leader) {
+  if (log.plan.currentTerm->leader) {
     // We have a leader; we check that the leader is
     // healthy; if it is, there is nothing to do,
     // if it isn't we
