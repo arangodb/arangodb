@@ -423,7 +423,7 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
 
   double lastLogStamp = TRI_microtime();
 
-  constexpr uint64_t batchSize = 10000;
+  constexpr uint64_t batchSize = 10000; // todo (Roman) magic number
   while (cursor->nextDocument(cb, batchSize)) {
     if (_vocbaseGuard.database().server().isStopping()) {
       LOG_PREGEL("4355a", WARN) << "Aborting graph loading";

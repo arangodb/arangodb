@@ -46,12 +46,12 @@ using namespace arangodb::pregel;
       << "[job " << _config.executionNumber() << "] "
 
 #define MY_READ_LOCKER(obj, lock)                                              \
-  ReadLocker<ReadWriteLock> obj(&lock, arangodb::basics::LockerType::BLOCKING, \
+  ReadLocker<ReadWriteLock> obj(&(lock), arangodb::basics::LockerType::BLOCKING, \
                                 true, __FILE__, __LINE__)
 
 #define MY_WRITE_LOCKER(obj, lock) \
   WriteLocker<ReadWriteLock> obj(  \
-      &lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
+      &(lock), arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
 
 template<typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
@@ -280,7 +280,7 @@ void Worker<V, E, M>::receivedMessages(VPackSlice const& data) {
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
   // Only expect serial calls from the conductor.
-  // Lock to prevent malicous activity
+  // Lock to prevent malicious activity
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state != WorkerState::PREPARING) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -289,7 +289,7 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
   }
   LOG_PREGEL("d5e44", DEBUG) << "Starting GSS: " << data.toJson();
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
-  const uint64_t gss = (uint64_t)gssSlice.getUInt();
+  const auto gss = (uint64_t)gssSlice.getUInt();
   if (gss != _config.globalSuperstep()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Wrong GSS");
   }
@@ -335,7 +335,7 @@ void Worker<V, E, M>::_startProcessing() {
   size_t total = _graphStore->localVertexCount();
   size_t numSegments = _graphStore->numberVertexSegments();
 
-  if (total > 100000) {
+  if (total > 100000) { // todo (Roman) magic number
     _runningThreads = std::min<size_t>(_config.parallelism(), numSegments);
   } else {
     _runningThreads = 1;
@@ -552,7 +552,7 @@ void Worker<V, E, M>::_continueAsync() {
         _writeCache->containedMessageCount() == 0) {
       return;
     }
-    // avoid calling this method accidentially
+    // avoid calling this method accidentally
     _state = WorkerState::COMPUTING;
   }
 
@@ -576,7 +576,7 @@ void Worker<V, E, M>::_continueAsync() {
           MUTEX_LOCKER(guard, _commandMutex);
           // overwrite conductor values with local values
           _conductorAggregators->resetValues();
-          _conductorAggregators->aggregateValues(*_workerAggregators.get());
+          _conductorAggregators->aggregateValues(*_workerAggregators);
           _workerAggregators->resetValues();
           _startProcessing();
         }
@@ -610,7 +610,7 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
 
   _state = WorkerState::DONE;
   VPackSlice store = body.get(Utils::storeResultsKey);
-  if (store.isBool() && store.getBool() == true) {
+  if (store.isBool() && store.getBool()) {
     LOG_PREGEL("91264", DEBUG) << "Storing results";
     // tell graphstore to remove read locks
     _graphStore->_reports = &this->_reports;

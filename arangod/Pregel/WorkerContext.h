@@ -55,6 +55,9 @@ class WorkerContext {
 
   AggregatorHandler& getWriteAggregators() { return *_writeAggregators; }
 
+  /**
+   * Needed only in LRWorkerContext. TODO (Roman): move there?
+   */
   virtual void preApplication() {}
   virtual void preGlobalSuperstep(uint64_t gss) {}
   virtual void preGlobalSuperstepMasterMessage(VPackSlice msg) {}

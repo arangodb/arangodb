@@ -159,10 +159,22 @@ class Worker : public IWorker {
 
   // ====== called by rest handler =====
   void setupWorker() override;
+  /**
+   * Prepare a worker for the next global step.
+   */
   void prepareGlobalStep(VPackSlice const& data, VPackBuilder& result) override;
+  /**
+   * Also prepare a worker for the next global step. TODO (Roman) merge them
+   */
   void startGlobalStep(VPackSlice const& data) override;
   void cancelGlobalStep(VPackSlice const& data) override;
+  /**
+   * Parse messages, store new values.
+   */
   void receivedMessages(VPackSlice const& data) override;
+  /**
+   * This always (in the only one case) calls erasing workers from PregelFeature.
+   */
   void finalizeExecution(VPackSlice const& data,
                          std::function<void()> cb) override;
   void startRecovery(VPackSlice const& data) override;

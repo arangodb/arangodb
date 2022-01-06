@@ -118,6 +118,8 @@ struct StatsManager {
       stats.accumulate(pair.second);
     }
     stats.serializeValues(b);
+
+
   }
 
   /// Test if all messages were processed

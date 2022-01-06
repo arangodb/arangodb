@@ -167,7 +167,7 @@ void ArrayInCache<M>::mergeCache(WorkerConfig const& config,
     }
 
     randomized.erase(randomized.begin() + i);
-  } while (randomized.size() > 0);
+  } while (!randomized.empty());
 }
 
 template<typename M>
