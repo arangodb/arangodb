@@ -78,7 +78,8 @@ TEST(directory_reader_test, open_newest_index) {
       out = segments_file;
       return true;
     }
-    virtual void read(const irs::directory& dir, irs::index_meta& meta, const irs::string_ref& filename = irs::string_ref::NIL) override {
+    virtual void read(const irs::directory& /*dir*/, irs::index_meta& /*meta*/,
+                      const irs::string_ref& filename = irs::string_ref::NIL) override {
       read_file.assign(filename.c_str(), filename.size());
     };
     std::string segments_file;
@@ -98,8 +99,6 @@ TEST(directory_reader_test, open_newest_index) {
     virtual irs::document_mask_reader::ptr get_document_mask_reader() const override { return nullptr; }
     virtual irs::field_writer::ptr get_field_writer(bool) const override { return nullptr; }
     virtual irs::field_reader::ptr get_field_reader() const override { return nullptr; }
-    virtual irs::column_meta_writer::ptr get_column_meta_writer() const override { return nullptr; }
-    virtual irs::column_meta_reader::ptr get_column_meta_reader() const override { return nullptr; }
     virtual irs::columnstore_writer::ptr get_columnstore_writer(bool) const override { return nullptr; }
     virtual irs::columnstore_reader::ptr get_columnstore_reader() const override { return nullptr; }
   };
@@ -182,46 +181,37 @@ TEST(directory_reader_test, open) {
     // add first segment
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     writer->commit();
 
     // add second segment
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
-      doc5->stored.begin(), doc5->stored.end()
-    ));
+      doc5->stored.begin(), doc5->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc6->indexed.begin(), doc6->indexed.end(),
-      doc6->stored.begin(), doc6->stored.end()
-    ));
+      doc6->stored.begin(), doc6->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc7->indexed.begin(), doc7->indexed.end(),
-      doc7->stored.begin(), doc7->stored.end()
-    ));
+      doc7->stored.begin(), doc7->stored.end()));
     writer->commit();
 
     // add third segment
     ASSERT_TRUE(insert(*writer,
       doc8->indexed.begin(), doc8->indexed.end(),
-      doc8->stored.begin(), doc8->stored.end()
-    ));
+      doc8->stored.begin(), doc8->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc9->indexed.begin(), doc9->indexed.end(),
-      doc9->stored.begin(), doc9->stored.end()
-    ));
+      doc9->stored.begin(), doc9->stored.end()));
     writer->commit();
   }
 
@@ -237,8 +227,6 @@ TEST(directory_reader_test, open) {
   // check subreaders
   auto sub = rdr.begin();
 
-  irs::bytes_ref actual_value;
-
   // first segment
   {
     ASSERT_NE(rdr.end(), sub);
@@ -246,20 +234,23 @@ TEST(directory_reader_test, open) {
     ASSERT_EQ(3, sub->docs_count());
     ASSERT_EQ(3, sub->live_docs_count());
 
-    const auto* column = sub->column_reader("name");
+    const auto* column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
+    auto values = column->iterator(false);
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
 
     // read documents
-    ASSERT_TRUE(values(1, actual_value));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
-    ASSERT_TRUE(values(2, actual_value));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
-    ASSERT_TRUE(values(3, actual_value));
-    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
+    ASSERT_EQ(1, values->seek(1));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc1
+    ASSERT_EQ(2, values->seek(2));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc2
+    ASSERT_EQ(3, values->seek(3));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
 
     // read invalid document
-    ASSERT_FALSE(values(4, actual_value));
+    ASSERT_TRUE(irs::doc_limits::eof(values->seek(4)));
   }
 
   // second segment
@@ -270,22 +261,25 @@ TEST(directory_reader_test, open) {
     ASSERT_EQ(4, sub->docs_count());
     ASSERT_EQ(4, sub->live_docs_count());
 
-    const auto* column = sub->column_reader("name");
+    const auto* column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
+    auto values = column->iterator(false);
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
 
     // read documents
-    ASSERT_TRUE(values(1, actual_value));
-    ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
-    ASSERT_TRUE(values(2, actual_value));
-    ASSERT_EQ("E", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc5
-    ASSERT_TRUE(values(3, actual_value));
-    ASSERT_EQ("F", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc6
-    ASSERT_TRUE(values(4, actual_value));
-    ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc7
+    ASSERT_EQ(1, values->seek(1));
+    ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc4
+    ASSERT_EQ(2, values->seek(2));
+    ASSERT_EQ("E", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc5
+    ASSERT_EQ(3, values->seek(3));
+    ASSERT_EQ("F", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc6
+    ASSERT_EQ(4, values->seek(4));
+    ASSERT_EQ("G", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc7
 
     // read invalid document
-    ASSERT_FALSE(values(5, actual_value));
+    ASSERT_TRUE(irs::doc_limits::eof(values->seek(5)));
   }
 
   // third segment
@@ -296,18 +290,21 @@ TEST(directory_reader_test, open) {
     ASSERT_EQ(2, sub->docs_count());
     ASSERT_EQ(2, sub->live_docs_count());
 
-    const auto* column = sub->column_reader("name");
+    const auto* column = sub->column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
+    auto values = column->iterator(false);
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
 
     // read documents
-    ASSERT_TRUE(values(1, actual_value));
-    ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc8
-    ASSERT_TRUE(values(2, actual_value));
-    ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc9
+    ASSERT_EQ(1, values->seek(1));
+    ASSERT_EQ("H", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc8
+    ASSERT_EQ(2, values->seek(2));
+    ASSERT_EQ("I", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc9
 
     // read invalid document
-    ASSERT_FALSE(values(3, actual_value));
+    ASSERT_TRUE(irs::doc_limits::eof(values->seek(3)));
   }
 
   ++sub;
@@ -338,8 +335,8 @@ TEST(segment_reader_test, segment_reader_has) {
     reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
-    ASSERT_FALSE(irs::segment_reader::has<irs::columnstore_reader>(meta));
-    ASSERT_FALSE(irs::segment_reader::has<irs::document_mask_reader>(meta));
+    ASSERT_FALSE(irs::has_columnstore(meta));
+    ASSERT_FALSE(irs::has_removals(meta));
   }
 
   // has column store
@@ -357,8 +354,8 @@ TEST(segment_reader_test, segment_reader_has) {
     reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
-    ASSERT_TRUE(irs::segment_reader::has<irs::columnstore_reader>(meta));
-    ASSERT_FALSE(irs::segment_reader::has<irs::document_mask_reader>(meta));
+    ASSERT_TRUE(irs::has_columnstore(meta));
+    ASSERT_FALSE(irs::has_removals(meta));
   }
 
   // has document mask
@@ -380,8 +377,8 @@ TEST(segment_reader_test, segment_reader_has) {
     reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
-    ASSERT_FALSE(irs::segment_reader::has<irs::columnstore_reader>(meta));
-    ASSERT_TRUE(irs::segment_reader::has<irs::document_mask_reader>(meta));
+    ASSERT_FALSE(irs::has_columnstore(meta));
+    ASSERT_TRUE(irs::has_removals(meta));
   }
 
   // has all
@@ -404,8 +401,8 @@ TEST(segment_reader_test, segment_reader_has) {
     reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
-    ASSERT_TRUE(irs::segment_reader::has<irs::columnstore_reader>(meta));
-    ASSERT_TRUE(irs::segment_reader::has<irs::document_mask_reader>(meta));
+    ASSERT_TRUE(irs::has_columnstore(meta));
+    ASSERT_TRUE(irs::has_removals(meta));
   }
 }
 
@@ -433,10 +430,6 @@ TEST(segment_reader_test, open) {
   tests::document const* doc3 = gen.next();
   tests::document const* doc4 = gen.next();
   tests::document const* doc5 = gen.next();
-  tests::document const* doc6 = gen.next();
-  tests::document const* doc7 = gen.next();
-  tests::document const* doc8 = gen.next();
-  tests::document const* doc9 = gen.next(); 
 
   irs::memory_directory dir;
   auto codec_ptr = irs::formats::get("1_0");
@@ -448,24 +441,19 @@ TEST(segment_reader_test, open) {
     // add first segment
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
-      doc1->stored.begin(), doc1->stored.end()
-    ));
+      doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
-      doc2->stored.begin(), doc2->stored.end()
-    ));
+      doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc3->indexed.begin(), doc3->indexed.end(),
-      doc3->stored.begin(), doc3->stored.end()
-    ));
+      doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc4->indexed.begin(), doc4->indexed.end(),
-      doc4->stored.begin(), doc4->stored.end()
-    ));
+      doc4->stored.begin(), doc4->stored.end()));
     ASSERT_TRUE(insert(*writer,
       doc5->indexed.begin(), doc5->indexed.end(),
-      doc5->stored.begin(), doc5->stored.end()
-    ));
+      doc5->stored.begin(), doc5->stored.end()));
     writer->commit();
   }
 
@@ -484,26 +472,27 @@ TEST(segment_reader_test, open) {
     ASSERT_EQ(meta.docs_count, rdr.docs_count());
     ASSERT_EQ(meta.docs_count, rdr.live_docs_count());
 
-    irs::bytes_ref actual_value;
-
     auto& segment = *rdr.begin();
-    const auto* column = segment.column_reader("name");
+    const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
+    auto values = column->iterator(false);
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
 
     // read documents
-    ASSERT_TRUE(values(1, actual_value));
-    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc1
-    ASSERT_TRUE(values(2, actual_value));
-    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc2
-    ASSERT_TRUE(values(3, actual_value));
-    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
-    ASSERT_TRUE(values(4, actual_value));
-    ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc4
-    ASSERT_TRUE(values(5, actual_value));
-    ASSERT_EQ("E", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc5
+    ASSERT_EQ(1, values->seek(1));
+    ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc1
+    ASSERT_EQ(2, values->seek(2));
+    ASSERT_EQ("B", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc2
+    ASSERT_EQ(3, values->seek(3));
+    ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc3
+    ASSERT_EQ(4, values->seek(4));
+    ASSERT_EQ("D", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc4
+    ASSERT_EQ(5, values->seek(5));
+    ASSERT_EQ("E", irs::to_string<irs::string_ref>(actual_value->value.c_str())); // 'name' value in doc5
 
-    ASSERT_FALSE(values(6, actual_value)); // read invalid document
+    ASSERT_TRUE(irs::doc_limits::eof(values->seek(6))); // read invalid document
 
     // check iterators
     {
