@@ -705,7 +705,7 @@ function projectionsMaxProjectionsTestSuite () {
     testAdjustedMaxProjections : function () {
       let queries = [];
       [ 1, 2, 3, 5, 6, 10, 12 ].forEach((maxProjections) => {
-        for (let i = 1; i < 11; ++i) {
+        for (let i = 1; i < 14; ++i) {
           let fields = [];
           let projections = [];
           for (let j = 0; j < i; ++j) {
