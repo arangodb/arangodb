@@ -196,6 +196,10 @@ const registerAgencyTestEnd = function (testName) {
     global.ArangoAgency.set(`Testing/${testName}/End`, (new Date()).toISOString());
 };
 
+const testConfigurationString = function (basename, {writeConcern, softWriteConcern, replicationFactor, waitForSync}) {
+    return `${basename}-wc${writeConcern}-swc${softWriteConcern}-r${replicationFactor}${waitForSync ? "-ws" : ""}`;
+};
+
 exports.waitFor = waitFor;
 exports.readAgencyValueAt = readAgencyValueAt;
 exports.createTermSpecification = createTermSpecification;
@@ -212,3 +216,4 @@ exports.continueServer = continueServer;
 exports.nextUniqueLogId = nextUniqueLogId;
 exports.registerAgencyTestBegin = registerAgencyTestBegin;
 exports.registerAgencyTestEnd = registerAgencyTestEnd;
+exports.testConfigurationString = testConfigurationString;

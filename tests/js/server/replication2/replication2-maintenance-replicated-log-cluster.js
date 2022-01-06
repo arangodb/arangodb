@@ -1,4 +1,5 @@
 /*jshint strict: true */
+/*global assertTrue */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -36,7 +37,7 @@ const {
     createTermSpecification,
     replicatedLogIsReady,
     dbservers,
-    nextUniqueLogId,
+    nextUniqueLogId, testConfigurationString,
     registerAgencyTestBegin, registerAgencyTestEnd
 } = require("@arangodb/testutils/replicated-logs-helper");
 
@@ -78,7 +79,7 @@ const replicatedLogParticipantsFlag = function (logId, flags, generation = undef
         if (generation !== undefined) {
             if (current.leader.committedParticipantsConfig.generation < generation) {
                 return Error("Leader has not yet acked new generation; "
-                 + `found ${current.leader.committedParticipantsConfig.generation}, expected = ${generation}`);
+                    + `found ${current.leader.committedParticipantsConfig.generation}, expected = ${generation}`);
             }
         }
 
@@ -99,14 +100,7 @@ const replicatedLogParticipantsFlag = function (logId, flags, generation = undef
     };
 };
 
-const replicatedLogSuite = function () {
-
-    const targetConfig = {
-        writeConcern: 2,
-        softWriteConcern: 2,
-        replicationFactor: 3,
-        waitForSync: false,
-    };
+const replicatedLogSuite = function (targetConfig) {
 
     const {setUpAll, tearDownAll} = (function () {
         let previousDatabase, databaseExisted = true;
@@ -167,7 +161,41 @@ const replicatedLogSuite = function () {
             replicatedLogDeletePlan(database, logId);
         },
 
-        testAddParticipantFlag: function () {
+        testAddParticipantFlagForced: function () {
+            if (targetConfig.replicationFactor < 2) {
+                return;
+            }
+            const logId = nextUniqueLogId();
+            const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
+            const leader = servers[0];
+            const term = 1;
+            replicatedLogSetPlan(database, logId, {
+                id: logId,
+                targetConfig,
+                currentTerm: createTermSpecification(term, servers, targetConfig, leader),
+            });
+
+            // wait for all servers to have reported in current
+            waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
+
+            // now update the excluded flag for one participant
+            const follower = servers[1];
+            let newGeneration = replicatedLogUpdatePlanParticipantsFlags(database, logId, {[follower]: {forced: true}});
+            waitFor(replicatedLogParticipantsFlag(logId, {[follower]: {forced: true, excluded: false}}, newGeneration));
+
+            newGeneration = replicatedLogUpdatePlanParticipantsFlags(database, logId, {[follower]: null});
+            waitFor(replicatedLogParticipantGeneration(logId, newGeneration));
+
+            waitFor(replicatedLogParticipantsFlag(logId, {[follower]: null}, newGeneration));
+            replicatedLogDeletePlan(database, logId);
+        },
+
+        testAddParticipantFlagExcluded: function () {
+            // this test only works if not all servers are required for writeConcern
+            if (targetConfig.writeConcern >= targetConfig.replicationFactor || targetConfig.replicationFactor < 2) {
+                return;
+            }
+
             const logId = nextUniqueLogId();
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
             const leader = servers[0];
@@ -214,6 +242,9 @@ const replicatedLogSuite = function () {
         },
 
         testUpdateTermInPlanLogWithNewLeader: function () {
+            if (targetConfig.replicationFactor < 2) {
+                return;
+            }
             const logId = nextUniqueLogId();
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
             const leader = servers[0];
@@ -278,5 +309,66 @@ const replicatedLogSuite = function () {
     };
 };
 
-jsunity.run(replicatedLogSuite);
+const instantiateTestSuite = function (suite, config) {
+    const proto = suite(config);
+    const testName = (name) => testConfigurationString(name, config);
+    let object = {};
+    for (const [name, test] of Object.entries(proto)) {
+        if (["setUp", "tearDown", "setUpAll", "tearDownAll"].indexOf(name) !== -1) {
+            object[name] = test;
+        } else {
+            object[testName(name)] = test;
+        }
+    }
+    return function () {
+        return object;
+    };
+};
+
+
+const testConfigurations = [
+    {
+        writeConcern: 1,
+        softWriteConcern: 1,
+        replicationFactor: 1,
+        waitForSync: false,
+    },
+    {
+        writeConcern: 1,
+        softWriteConcern: 2,
+        replicationFactor: 3,
+        waitForSync: false,
+    },
+    {
+        writeConcern: 2,
+        softWriteConcern: 2,
+        replicationFactor: 3,
+        waitForSync: false,
+    },
+    {
+        writeConcern: 1,
+        softWriteConcern: 2,
+        replicationFactor: 4,
+        waitForSync: false,
+    },
+    {
+        writeConcern: 3,
+        softWriteConcern: 3,
+        replicationFactor: 4,
+        waitForSync: false,
+    },
+    {
+        writeConcern: 4,
+        softWriteConcern: 4,
+        replicationFactor: 4,
+        waitForSync: false,
+    }
+];
+
+
+
+for (const config of testConfigurations) {
+    jsunity.run(instantiateTestSuite(replicatedLogSuite, config));
+}
+
 return jsunity.done();

@@ -964,6 +964,10 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
     auto const quorum_data = std::make_shared<QuorumData>(
         newCommitIndex, _self._currentTerm, std::move(quorum));
     return updateCommitIndexLeader(newCommitIndex, quorum_data);
+  } else {
+    LOG_CTX("f8fd8", TRACE, _self._logContext)
+        << "Could not commit new entries, reason: "
+        << to_string(commitFailReason);
   }
   return {};
 }
