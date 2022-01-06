@@ -186,7 +186,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   irs::format::ptr get_codec() const;
 
   irs::directory& dir() const { return *dir_; }
-  irs::format::ptr codec() { return codec_; }
+  irs::format::ptr codec() const { return codec_; }
   const index_t& index() const { return index_; }
   index_t& index() { return index_; }
 

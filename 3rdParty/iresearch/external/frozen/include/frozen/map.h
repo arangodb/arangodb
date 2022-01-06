@@ -27,6 +27,7 @@
 #include "frozen/bits/basic_types.h"
 #include "frozen/bits/constexpr_assert.h"
 #include "frozen/bits/exceptions.h"
+#include "frozen/bits/type_traits.h"
 #include "frozen/bits/version.h"
 
 #include <utility>
@@ -48,10 +49,22 @@ public:
                            std::pair<Key, Value> const &other) const {
     return comparator_(std::get<0>(self), std::get<0>(other));
   }
+  template <class Key1, class Key2, class Value,
+            typename = bits::has_is_transparent_t<Comparator, Key1>>
+  constexpr int operator()(std::pair<Key1, Value> const &self,
+                           std::pair<Key2, Value> const &other) const {
+    return comparator_(std::get<0>(self), std::get<0>(other));
+  }
 
   template <class Key, class Value>
   constexpr int operator()(Key const &self_key,
                            std::pair<Key, Value> const &other) const {
+    return comparator_(self_key, std::get<0>(other));
+  }
+  template <class Key1, class Key2, class Value,
+            typename = bits::has_is_transparent_t<Comparator, Key1>>
+  constexpr int operator()(Key1 const &self_key,
+                           std::pair<Key2, Value> const &other) const {
     return comparator_(self_key, std::get<0>(other));
   }
 
@@ -60,9 +73,20 @@ public:
                            Key const &other_key) const {
     return comparator_(std::get<0>(self), other_key);
   }
+  template <class Key1, class Key2, class Value,
+            typename = bits::has_is_transparent_t<Comparator, Key1>>
+  constexpr int operator()(std::pair<Key1, Value> const &self,
+                           Key2 const &other_key) const {
+    return comparator_(std::get<0>(self), other_key);
+  }
 
   template <class Key>
   constexpr int operator()(Key const &self_key, Key const &other_key) const {
+    return comparator_(self_key, other_key);
+  }
+  template <class Key1, class Key2,
+            typename = bits::has_is_transparent_t<Comparator, Key1>>
+  constexpr int operator()(Key1 const &self_key, Key2 const &other_key) const {
     return comparator_(self_key, other_key);
   }
 };
@@ -82,15 +106,15 @@ public:
   using size_type = typename container_type::size_type;
   using difference_type = typename container_type::difference_type;
   using key_compare = decltype(less_than_);
+  using reference = typename container_type::reference;
   using const_reference = typename container_type::const_reference;
-  using reference = const_reference;
+  using pointer = typename container_type::pointer;
   using const_pointer = typename container_type::const_pointer;
-  using pointer = const_pointer;
+  using iterator = typename container_type::iterator;
   using const_iterator = typename container_type::const_iterator;
-  using iterator = const_iterator;
+  using reverse_iterator = typename container_type::reverse_iterator;
   using const_reverse_iterator =
       typename container_type::const_reverse_iterator;
-  using reverse_iterator = const_reverse_iterator;
 
 public:
   /* constructors */
@@ -110,22 +134,25 @@ public:
       : map{items, Compare{}} {}
 
   /* element access */
-  constexpr mapped_type at(Key const &key) const {
-    auto const where = lower_bound(key);
-    if (where != end())
-      return where->second;
-    else
-      FROZEN_THROW_OR_ABORT(std::out_of_range("invalid key"));
+  constexpr Value const& at(Key const &key) const {
+    return at_impl(*this, key);
+  }
+  constexpr Value& at(Key const &key) {
+    return at_impl(*this, key);
   }
 
   /* iterators */
+  constexpr iterator begin() { return items_.begin(); }
   constexpr const_iterator begin() const { return items_.begin(); }
   constexpr const_iterator cbegin() const { return items_.cbegin(); }
+  constexpr iterator end() { return items_.end(); }
   constexpr const_iterator end() const { return items_.end(); }
   constexpr const_iterator cend() const { return items_.cend(); }
 
+  constexpr reverse_iterator rbegin() { return items_.rbegin(); }
   constexpr const_reverse_iterator rbegin() const { return items_.rbegin(); }
   constexpr const_reverse_iterator crbegin() const { return items_.crbegin(); }
+  constexpr reverse_iterator rend() { return items_.rend(); }
   constexpr const_reverse_iterator rend() const { return items_.rend(); }
   constexpr const_reverse_iterator crend() const { return items_.crend(); }
 
@@ -139,42 +166,132 @@ public:
   constexpr std::size_t count(Key const &key) const {
     return bits::binary_search<N>(items_.begin(), key, less_than_);
   }
-
-  constexpr const_iterator find(Key const &key) const {
-    const_iterator where = lower_bound(key);
-    if ((where != end()) && !less_than_(key, *where))
-      return where;
-    else
-      return end();
+  template <class K,
+            typename = bits::has_is_transparent_t<Compare, K>>
+  constexpr std::size_t count(K const &key) const {
+    return bits::binary_search<N>(items_.begin(), key, less_than_);
   }
 
-  constexpr std::pair<const_iterator, const_iterator> equal_range(Key const &key) const {
-    auto const lower = lower_bound(key);
-    if (lower == end())
-      return {lower, lower};
-    else
-      return {lower, lower + 1};
+  constexpr const_iterator find(Key const &key) const {
+    return find_impl(*this, key);
+  }
+  constexpr iterator find(Key const &key) {
+    return find_impl(*this, key);
+  }
+  template <class K,
+            typename = bits::has_is_transparent_t<Compare, K>>
+  constexpr const_iterator find(K const &key) const {
+    return map::find_impl(*this, key);
+  }
+  template <class K,
+            typename = bits::has_is_transparent_t<Compare, K>>
+  constexpr iterator find(K const &key) {
+    return map::find_impl(*this, key);
+  }
+
+  constexpr std::pair<const_iterator, const_iterator>
+  equal_range(Key const &key) const {
+    return equal_range_impl(*this, key);
+  }
+  constexpr std::pair<iterator, iterator> equal_range(Key const &key) {
+    return equal_range_impl(*this, key);
+  }
+  template <class K,
+            typename = bits::has_is_transparent_t<Compare, K>>
+  constexpr std::pair<const_iterator, const_iterator>
+  equal_range(K const &key) const {
+    return equal_range_impl(*this, key);
+  }
+  template <class K,
+            typename = bits::has_is_transparent_t<Compare, K>>
+  constexpr std::pair<iterator, iterator> equal_range(K const &key) {
+    return equal_range_impl(*this, key);
   }
 
   constexpr const_iterator lower_bound(Key const &key) const {
-    auto const where = bits::lower_bound<N>(items_.begin(), key, less_than_);
-    if ((where != end()) && !less_than_(key, *where))
-      return where;
-    else
-      return end();
+    return lower_bound_impl(*this, key);
+  }
+  constexpr iterator lower_bound(Key const &key) {
+    return lower_bound_impl(*this, key);
+  }
+  template <class K,
+            typename = bits::has_is_transparent_t<Compare, K>>
+  constexpr const_iterator lower_bound(K const &key) const {
+    return lower_bound_impl(*this, key);
+  }
+  template <class K,
+            typename = bits::has_is_transparent_t<Compare, K>>
+  constexpr iterator lower_bound(K const &key) {
+    return lower_bound_impl(*this, key);
   }
 
   constexpr const_iterator upper_bound(Key const &key) const {
-    auto const where = bits::lower_bound<N>(items_.begin(), key, less_than_);
-    if ((where != end()) && !less_than_(key, *where))
-      return where + 1;
-    else
-      return end();
+    return upper_bound_impl(*this, key);
+  }
+  constexpr iterator upper_bound(Key const &key) {
+    return upper_bound_impl(*this, key);
+  }
+  template <class K,
+            typename = bits::has_is_transparent_t<Compare, K>>
+  constexpr const_iterator upper_bound(K const &key) const {
+    return upper_bound_impl(*this, key);
+  }
+  template <class K,
+            typename = bits::has_is_transparent_t<Compare, K>>
+  constexpr iterator upper_bound(K const &key) {
+    return upper_bound_impl(*this, key);
   }
 
   /* observers */
   constexpr key_compare key_comp() const { return less_than_; }
   constexpr key_compare value_comp() const { return less_than_; }
+
+ private:
+  template <class This, class K>
+  static inline constexpr auto& at_impl(This&& self, K const &key) {
+    auto where = self.lower_bound(key);
+    if (where != self.end())
+      return where->second;
+    else
+      FROZEN_THROW_OR_ABORT(std::out_of_range("unknown key"));
+  }
+
+  template <class This, class K>
+  static inline constexpr auto find_impl(This&& self, K const &key) {
+    auto where = self.lower_bound(key);
+    if ((where != self.end()) && !self.less_than_(key, *where))
+      return where;
+    else
+      return self.end();
+  }
+
+  template <class This, class K>
+  static inline constexpr auto equal_range_impl(This&& self, K const &key) {
+    auto lower = self.lower_bound(key);
+    using lower_t = decltype(lower);
+    if (lower == self.end())
+      return std::pair<lower_t, lower_t>{lower, lower};
+    else
+      return std::pair<lower_t, lower_t>{lower, lower + 1};
+  }
+
+  template <class This, class K>
+  static inline constexpr auto lower_bound_impl(This&& self, K const &key) -> decltype(self.end()) {
+    auto where = bits::lower_bound<N>(self.items_.begin(), key, self.less_than_);
+    if ((where != self.end()) && !self.less_than_(key, *where))
+      return where;
+    else
+      return self.end();
+  }
+
+  template <class This, class K>
+  static inline constexpr auto upper_bound_impl(This&& self, K const &key) -> decltype(self.end()) {
+    auto where = bits::lower_bound<N>(self.items_.begin(), key, self.less_than_);
+    if ((where != self.end()) && !self.less_than_(key, *where))
+      return where + 1;
+    else
+      return self.end();
+  }
 };
 
 template <class Key, class Value, class Compare>
@@ -189,14 +306,14 @@ public:
   using size_type = typename container_type::size_type;
   using difference_type = typename container_type::difference_type;
   using key_compare = decltype(less_than_);
+  using reference = typename container_type::reference;
   using const_reference = typename container_type::const_reference;
-  using reference = const_reference;
+  using pointer = typename container_type::pointer;
   using const_pointer = typename container_type::const_pointer;
-  using pointer = const_pointer;
-  using const_iterator = pointer;
   using iterator = pointer;
-  using const_reverse_iterator = pointer;
+  using const_iterator = const_pointer;
   using reverse_iterator = pointer;
+  using const_reverse_iterator = const_pointer;
 
 public:
   /* constructors */
@@ -210,15 +327,22 @@ public:
   constexpr mapped_type at(Key const &) const {
     FROZEN_THROW_OR_ABORT(std::out_of_range("invalid key"));
   }
+  constexpr mapped_type at(Key const &) {
+    FROZEN_THROW_OR_ABORT(std::out_of_range("invalid key"));
+  }
 
   /* iterators */
+  constexpr iterator begin() { return nullptr; }
   constexpr const_iterator begin() const { return nullptr; }
   constexpr const_iterator cbegin() const { return nullptr; }
+  constexpr iterator end() { return nullptr; }
   constexpr const_iterator end() const { return nullptr; }
   constexpr const_iterator cend() const { return nullptr; }
 
+  constexpr reverse_iterator rbegin() { return nullptr; }
   constexpr const_reverse_iterator rbegin() const { return nullptr; }
   constexpr const_reverse_iterator crbegin() const { return nullptr; }
+  constexpr reverse_iterator rend() { return nullptr; }
   constexpr const_reverse_iterator rend() const { return nullptr; }
   constexpr const_reverse_iterator crend() const { return nullptr; }
 
@@ -230,31 +354,78 @@ public:
   /* lookup */
 
   constexpr std::size_t count(Key const &) const { return 0; }
+  template <class K,
+            typename = bits::has_is_transparent_t<Compare, K>>
+  constexpr std::size_t count(K const &) const { return 0; }
 
   constexpr const_iterator find(Key const &) const { return end(); }
+  constexpr iterator find(Key const &) { return end(); }
+  template <class K,
+            typename = bits::has_is_transparent_t<Compare, K>>
+  constexpr const_iterator find(K const &) const { return end(); }
+  template <class K,
+            typename = bits::has_is_transparent_t<Compare, K>>
+  constexpr iterator find(K const &) { return end(); }
 
   constexpr std::pair<const_iterator, const_iterator>
-  equal_range(Key const &) const {
-    return {end(), end()};
-  }
+  equal_range(Key const &) const { return {end(), end()}; }
+  constexpr std::pair<iterator, iterator>
+  equal_range(Key const &) { return {end(), end()}; }
+  template <class K,
+            typename = bits::has_is_transparent_t<Compare, K>>
+  constexpr std::pair<const_iterator, const_iterator>
+  equal_range(K const &) const { return {end(), end()}; }
+  template <class K,
+            typename = bits::has_is_transparent_t<Compare, K>>
+  constexpr std::pair<iterator, iterator>
+  equal_range(K const &) { return {end(), end()}; }
 
   constexpr const_iterator lower_bound(Key const &) const { return end(); }
+  constexpr iterator lower_bound(Key const &) { return end(); }
+  template <class K,
+            typename = bits::has_is_transparent_t<Compare, K>>
+  constexpr const_iterator lower_bound(K const &) const { return end(); }
+  template <class K,
+            typename = bits::has_is_transparent_t<Compare, K>>
+  constexpr iterator lower_bound(K const &) { return end(); }
 
   constexpr const_iterator upper_bound(Key const &) const { return end(); }
+  constexpr iterator upper_bound(Key const &) { return end(); }
+  template <class K,
+            typename = bits::has_is_transparent_t<Compare, K>>
+  constexpr const_iterator upper_bound(K const &) const { return end(); }
+  template <class K,
+            typename = bits::has_is_transparent_t<Compare, K>>
+  constexpr iterator upper_bound(K const &) { return end(); }
 
   /* observers */
   constexpr key_compare key_comp() const { return less_than_; }
   constexpr key_compare value_comp() const { return less_than_; }
 };
 
-template <typename T, typename U>
+template <typename T, typename U, typename Compare = std::less<T>>
 constexpr auto make_map(bits::ignored_arg = {}/* for consistency with the initializer below for N = 0*/) {
-  return map<T, U, 0>{};
+  return map<T, U, 0, Compare>{};
 }
 
 template <typename T, typename U, std::size_t N>
 constexpr auto make_map(std::pair<T, U> const (&items)[N]) {
   return map<T, U, N>{items};
+}
+
+template <typename T, typename U, std::size_t N>
+constexpr auto make_map(std::array<std::pair<T, U>, N> const &items) {
+  return map<T, U, N>{items};
+}
+
+template <typename T, typename U, typename Compare, std::size_t N>
+constexpr auto make_map(std::pair<T, U> const (&items)[N]) {
+  return map<T, U, N, Compare>{items};
+}
+
+template <typename T, typename U, typename Compare, std::size_t N>
+constexpr auto make_map(std::array<std::pair<T, U>, N> const &items) {
+  return map<T, U, N, Compare>{items};
 }
 
 } // namespace frozen

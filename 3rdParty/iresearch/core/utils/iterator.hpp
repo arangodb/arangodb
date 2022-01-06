@@ -45,30 +45,30 @@ struct IRESEARCH_API_TEMPLATE iterator {
 };
 
 template<
-  typename Key,
-  typename Value,
-  typename Base,
-  typename Less = std::less<Key>
-> class iterator_adaptor
+    typename Key,
+    typename Value,
+    typename Iterator,
+    typename Base,
+    typename Less = std::less<Key>>
+class iterator_adaptor
     : public Base,
       private irs::compact<0, Less> {
  private:
   typedef irs::compact<0, Less> comparer_t;
 
  public:
-  typedef Value value_type;
+  typedef Iterator iterator_type;
   typedef Key key_type;
-  typedef const value_type* const_pointer;
-  typedef const value_type& const_reference;
+  typedef Value value_type;
+  typedef const value_type& const_reference ;
 
-  iterator_adaptor(
-      const_pointer begin,
-      const_pointer end,
-      const Less& less = Less())
+  iterator_adaptor(iterator_type begin,
+                   iterator_type end,
+                   const Less& less = Less())
     : comparer_t(less),
-      begin_(begin),
-      cur_(begin),
-      end_(end) {
+      begin_{begin},
+      cur_{begin},
+      end_{end} {
   }
 
   const_reference value() const noexcept override {
@@ -91,9 +91,9 @@ template<
   }
 
  private:
-  const_pointer begin_;
-  const_pointer cur_;
-  const_pointer end_;
+  iterator_type begin_;
+  iterator_type cur_;
+  iterator_type end_;
 }; // iterator_adaptor
 
 // ----------------------------------------------------------------------------

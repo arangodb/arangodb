@@ -92,6 +92,11 @@ option(SUPPRESS_EXTERNAL_WARNINGS "Suppress warnings originating in 3rd party co
 
 add_option_gprof(FALSE)
 
+# test for ARM
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*|arm64.*|ARM64.*|armv8.*|ARMV8.*)")
+  set(IS_ARM ON)
+endif()
+
 if (USE_VALGRIND)
   add_definitions(-DIRESEARCH_VALGRIND)
 endif()
@@ -114,10 +119,13 @@ if (MSVC)
   if (MSVC_BUILD_THREADS)
     set(CMAKE_C_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_C_FLAGS}")
     set(CMAKE_CXX_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_CXX_FLAGS}")
-  else ()
+  else()
     set(CMAKE_C_FLAGS "/MP ${CMAKE_C_FLAGS}")
     set(CMAKE_CXX_FLAGS "/MP ${CMAKE_CXX_FLAGS}")
   endif()
+elseif (NOT IS_ARM)
+  # allow 16 byte compare-exchange
+  add_compile_options(-mcx16)
 endif()
 
 ################################################################################
@@ -263,6 +271,14 @@ configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/tests/tests_config.hpp.in"
   "${CMAKE_CURRENT_BINARY_DIR}/tests/tests_config.hpp"
 )
+
+# copy pre-built files over to the build directory
+# this is required to avoid triggering file generation via bison
+set(IRESEARCH_PREBUILT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/prebuilt)
+file(GLOB_RECURSE IRESEARCH_PREBUILT_LIST RELATIVE "${IRESEARCH_PREBUILT_DIR}" FOLLOW_SYMLINKS "${IRESEARCH_PREBUILT_DIR}/*")
+foreach(ELEMENT ${IRESEARCH_PREBUILT_LIST})
+  configure_file("${IRESEARCH_PREBUILT_DIR}/${ELEMENT}" "${CMAKE_CURRENT_BINARY_DIR}/${ELEMENT}" COPYONLY)
+endforeach()
 
 add_subdirectory(external)
 add_subdirectory(core)
