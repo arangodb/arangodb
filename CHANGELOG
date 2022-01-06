@@ -1,6 +1,10 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* Fixed ES-1025: fixed a performance regression caused by different hash
+  calculation for primitive types like `uint64_t` and new the `Identifier`
+  wrapper and derived types.
+
 * BTS-707: rename "hardened" option value for `--server.support-info-api`
   startup option to "admin".
 
