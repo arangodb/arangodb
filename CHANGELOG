@@ -12,7 +12,7 @@ devel
   counts and index estimates as part of AQL queries. The cached info is used in
   cluster query execution plans only and is not required to be fully up-to-date.
 
-* ignore SIG_HUP etc. on client tools.
+* Ignore signals such as SIGPIPE in client tools.
 
 * Fixed undefined behaviour for exit codes of arangodump 
 
