@@ -64,6 +64,8 @@ function replication2Server(options) {
         'javascript.allow-external-process-control': 'true',
         'javascript.allow-port-testing': 'true',
         'javascript.allow-admin-execute': 'true',
+        'agency.supervision-grace-period': '3.0',
+        'agency.supervision-ok-threshold': '1.5',
       });
 }
 

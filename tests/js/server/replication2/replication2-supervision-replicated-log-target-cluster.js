@@ -63,7 +63,7 @@ const waitForReplicatedLogAvailable = function (id) {
     }
 };
 
-const replicatedLogLeaderElectionFailed = function (database, logId, term) {
+const replicatedLogLeaderElectionFailed = function (database, logId, term, servers) {
     return function () {
         let {current} = readReplicatedLogAgency(database, logId);
         if (current === undefined) {
@@ -78,6 +78,19 @@ const replicatedLogLeaderElectionFailed = function (database, logId, term) {
         if (election.term !== term) {
             return Error("supervision report not yet available for current term; "
                 + `found = ${election.term}; expected = ${term}`);
+        }
+
+        if (servers !== undefined) {
+            // wait for all specified servers to have the proper error code
+            for (let x of Object.keys(servers)) {
+                if (election.details[x] === undefined) {
+                    return Error(`server ${x} not in election result`);
+                }
+                let code = election.details[x].code;
+                if (code !== servers[x]) {
+                    return Error(`server ${x} reported with code ${code}, expected ${servers[x]}`);
+                }
+            }
         }
 
         return true;
@@ -165,6 +178,13 @@ const replicatedLogSuite = function () {
             // we should still be able to write
             {
                 let log = db._replicatedLog(logId);
+                // we have to insert two log entries here, reason:
+                // Even though servers[1] is stopped, it will receive the AppendEntries message for log index 1.
+                // It will stay in its tcp input queue. So when the server is continued below it will process
+                // this message. However, the leader sees this message as still in flight and thus will never
+                // send any updates again. By inserting yet another log entry, we can make sure that servers[2]
+                // is the only server that has received log index 2.
+                log.insert({foo: "bar"});
                 let quorum = log.insert({foo: "bar"});
                 assertTrue(quorum.result.quorum.quorum.indexOf(servers[1]) === -1);
             }
@@ -173,7 +193,11 @@ const replicatedLogSuite = function () {
             stopServer(leader);
 
             // since writeConcern is 2, there is no way a new leader can be elected
-            waitFor(replicatedLogLeaderElectionFailed(database, logId, term + 1));
+            waitFor(replicatedLogLeaderElectionFailed(database, logId, term + 1, {
+                [leader]: 1,
+                [servers[1]]: 1,
+                [servers[2]]: 0,
+            }));
 
             {
                 // check election result
@@ -188,9 +212,9 @@ const replicatedLogSuite = function () {
                 assertEqual(detail[servers[2]].code, 0);
             }
 
-            // now resume, servers[1] has to become leader, because it's the only server with log entry 1 available
+            // now resume, servers[2] has to become leader, because it's the only server with log entry 1 available
             continueServer(servers[1]);
-            waitFor(replicatedLogIsReady(database, logId, term + 2, [servers[1], servers[2]], servers[1]));
+            waitFor(replicatedLogIsReady(database, logId, term + 2, [servers[1], servers[2]], servers[2]));
 
             replicatedLogDeletePlan(database, logId);
         },
