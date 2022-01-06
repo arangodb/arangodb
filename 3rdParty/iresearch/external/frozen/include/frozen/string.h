@@ -25,30 +25,43 @@
 
 #include "frozen/bits/elsa.h"
 #include "frozen/bits/version.h"
+#include "frozen/bits/defines.h"
 
 #include <functional>
 
+#ifdef FROZEN_LETITGO_HAS_STRING_VIEW
+#include <string_view>
+#endif
+
 namespace frozen {
 
-class string {
-  char const *data_;
+template <typename _CharT>
+class basic_string {
+  using chr_t = _CharT;
+
+  chr_t const *data_;
   std::size_t size_;
 
 public:
   template <std::size_t N>
-  constexpr string(char const (&data)[N])
+  constexpr basic_string(chr_t const (&data)[N])
       : data_(data), size_(N - 1) {}
-  constexpr string(char const *data, std::size_t size)
+  constexpr basic_string(chr_t const *data, std::size_t size)
       : data_(data), size_(size) {}
 
-  constexpr string(const string &) noexcept = default;
-  constexpr string &operator=(const string &) noexcept = default;
+#ifdef FROZEN_LETITGO_HAS_STRING_VIEW
+  constexpr basic_string(std::basic_string_view<chr_t> data)
+      : data_(data.data()), size_(data.size()) {}
+#endif
+
+  constexpr basic_string(const basic_string &) noexcept = default;
+  constexpr basic_string &operator=(const basic_string &) noexcept = default;
 
   constexpr std::size_t size() const { return size_; }
 
-  constexpr char operator[](std::size_t i) const { return data_[i]; }
+  constexpr chr_t operator[](std::size_t i) const { return data_[i]; }
 
-  constexpr bool operator==(string other) const {
+  constexpr bool operator==(basic_string other) const {
     if (size_ != other.size_)
       return false;
     for (std::size_t i = 0; i < size_; ++i)
@@ -57,7 +70,7 @@ public:
     return true;
   }
 
-  constexpr bool operator<(const string &other) const {
+  constexpr bool operator<(const basic_string &other) const {
     unsigned i = 0;
     while (i < size() && i < other.size()) {
       if ((*this)[i] < other[i]) {
@@ -71,23 +84,34 @@ public:
     return size() < other.size();
   }
 
-  constexpr const char *data() const { return data_; }
+  constexpr const chr_t *data() const { return data_; }
 };
 
-template <> struct elsa<string> {
-  constexpr std::size_t operator()(string value) const {
+template <typename _CharT> struct elsa<basic_string<_CharT>> {
+  constexpr std::size_t operator()(basic_string<_CharT> value) const {
     std::size_t d = 5381;
     for (std::size_t i = 0; i < value.size(); ++i)
-      d = d * 33 + value[i];
+      d = d * 33 + static_cast<size_t>(value[i]);
     return d;
   }
-  constexpr std::size_t operator()(string value, std::size_t seed) const {
-    std::size_t d = seed;
+  // https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
+  // With the lowest bits removed, based on experimental setup.
+  constexpr std::size_t operator()(basic_string<_CharT> value, std::size_t seed) const {
+    std::size_t d =  (0x811c9dc5 ^ seed) * static_cast<size_t>(0x01000193);
     for (std::size_t i = 0; i < value.size(); ++i)
-      d = (d * 0x01000193) ^ value[i];
-    return d;
+      d = (d ^ static_cast<size_t>(value[i])) * static_cast<size_t>(0x01000193);
+    return d >> 8 ;
   }
 };
+
+using string = basic_string<char>;
+using wstring = basic_string<wchar_t>;
+using u16string = basic_string<char16_t>;
+using u32string = basic_string<char32_t>;
+
+#ifdef FROZEN_LETITGO_HAS_CHAR8T
+using u8string = basic_string<char8_t>;
+#endif
 
 namespace string_literals {
 
@@ -95,14 +119,32 @@ constexpr string operator"" _s(const char *data, std::size_t size) {
   return {data, size};
 }
 
+constexpr wstring operator"" _s(const wchar_t *data, std::size_t size) {
+  return {data, size};
+}
+
+constexpr u16string operator"" _s(const char16_t *data, std::size_t size) {
+  return {data, size};
+}
+
+constexpr u32string operator"" _s(const char32_t *data, std::size_t size) {
+  return {data, size};
+}
+
+#ifdef FROZEN_LETITGO_HAS_CHAR8T
+constexpr u8string operator"" _s(const char8_t *data, std::size_t size) {
+  return {data, size};
+}
+#endif
+
 } // namespace string_literals
 
 } // namespace frozen
 
 namespace std {
-template <> struct hash<frozen::string> {
-  size_t operator()(frozen::string s) const {
-    return frozen::elsa<frozen::string>{}(s);
+template <typename _CharT> struct hash<frozen::basic_string<_CharT>> {
+  size_t operator()(frozen::basic_string<_CharT> s) const {
+    return frozen::elsa<frozen::basic_string<_CharT>>{}(s);
   }
 };
 } // namespace std
