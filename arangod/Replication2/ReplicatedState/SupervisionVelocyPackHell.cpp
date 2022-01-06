@@ -21,9 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "Supervision.h"
 
-#include "Replication2/ReplicatedState/AgencySpecificationLog.h"
-#include "Replication2/ReplicatedState/AgencySpecificationState.h"
-
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-common.h"
 #include "velocypack/velocypack-aliases.h"
