@@ -3025,7 +3025,7 @@ void Features::visit(std::function<void(std::string_view)> visitor) const {
     visitor(irs::type<irs::position>::name());
   }
   if (FieldFeatures::NORM == (_fieldFeatures & FieldFeatures::NORM)) {
-    visitor(irs::type<irs::norm>::name());
+    visitor(irs::type<irs::Norm>::name());
   }
 }
 
@@ -3035,8 +3035,8 @@ std::vector<irs::type_info::type_id> Features::fieldFeatures(
     return {};
   }
 
-  return {version > LinkVersion::MIN ? irs::type<irs::norm2>::id()
-                                     : irs::type<irs::norm>::id()};
+  return {version > LinkVersion::MIN ? irs::type<irs::Norm2>::id()
+                                     : irs::type<irs::Norm>::id()};
 }
 
 bool Features::add(irs::string_ref featureName) {
@@ -3050,7 +3050,7 @@ bool Features::add(irs::string_ref featureName) {
     return true;
   }
 
-  if (featureName == irs::type<irs::norm>::name()) {
+  if (featureName == irs::type<irs::Norm>::name()) {
     _fieldFeatures |= FieldFeatures::NORM;
     return true;
   }
