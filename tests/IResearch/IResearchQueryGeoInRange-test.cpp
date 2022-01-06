@@ -198,9 +198,9 @@ TEST_P(IResearchQueryGeoInRangeTest, testGeoJson) {
     auto& segment = (*snapshot)[0];
 
     auto const columnName = mangleString("geometry", "mygeojson");
-    auto* columnReader = segment.column_reader(columnName);
+    auto* columnReader = segment.column(columnName);
     ASSERT_NE(nullptr, columnReader);
-    auto it = columnReader->iterator();
+    auto it = columnReader->iterator(false);
     ASSERT_NE(nullptr, it);
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_NE(nullptr, payload);
@@ -715,9 +715,9 @@ TEST_P(IResearchQueryGeoInRangeTest, testGeoPointArray) {
     auto& segment = (*snapshot)[0];
 
     auto const columnName = mangleString("geometry.coordinates", "mygeopoint");
-    auto* columnReader = segment.column_reader(columnName);
+    auto* columnReader = segment.column(columnName);
     ASSERT_NE(nullptr, columnReader);
-    auto it = columnReader->iterator();
+    auto it = columnReader->iterator(false);
     ASSERT_NE(nullptr, it);
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_NE(nullptr, payload);
@@ -1219,9 +1219,9 @@ TEST_P(IResearchQueryGeoInRangeTest, testGeoPointObject) {
     auto& segment = (*snapshot)[0];
 
     auto const columnName = mangleString("geometry", "mygeopoint");
-    auto* columnReader = segment.column_reader(columnName);
+    auto* columnReader = segment.column(columnName);
     ASSERT_NE(nullptr, columnReader);
-    auto it = columnReader->iterator();
+    auto it = columnReader->iterator(false);
     ASSERT_NE(nullptr, it);
     auto* payload = irs::get<irs::payload>(*it);
     ASSERT_NE(nullptr, payload);
