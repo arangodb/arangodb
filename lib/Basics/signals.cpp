@@ -214,6 +214,8 @@ char const* name(int signal) {
   }
 }
 
+bool isServer = true;
+
 void maskAllSignalsServer() {
 #ifdef TRI_HAVE_POSIX_THREADS
   sigset_t all;
@@ -228,6 +230,7 @@ void maskAllSignalsServer() {
 }
 
 void maskAllSignalsClient() {
+  isServer = false;
 #ifdef TRI_HAVE_POSIX_THREADS
   sigset_t all;
   sigfillset(&all);
@@ -240,6 +243,15 @@ void maskAllSignalsClient() {
   pthread_sigmask(SIG_SETMASK, &all, nullptr);
 #endif
 }
+
+void maskAllSignals() {
+  if (isServer) {
+    maskAllSignalsServer();
+  } else {
+    maskAllSignalsClient();
+  }
+}
+
 
 void unmaskAllSignals() {
 #ifdef TRI_HAVE_POSIX_THREADS

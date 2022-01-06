@@ -65,7 +65,7 @@ struct thread_data_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void* ThreadStarter(void* data) {
-  arangodb::signals::maskAllSignalsServer();
+  arangodb::signals::maskAllSignals();
 
   // this will automatically free the thread struct when leaving this function
   std::unique_ptr<thread_data_t> d(static_cast<thread_data_t*>(data));
