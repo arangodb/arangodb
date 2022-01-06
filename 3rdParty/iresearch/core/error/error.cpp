@@ -25,25 +25,13 @@
 
 namespace iresearch {
 
-// ----------------------------------------------------------------------------
-//                                                                   error_base
-// ----------------------------------------------------------------------------
-
 const char* error_base::what() const noexcept {
   return "An unspecified error has occured.";
 }
 
-// ----------------------------------------------------------------------------
-//                                                                not_supported
-// ----------------------------------------------------------------------------
-
 const char* not_supported::what() const noexcept {
   return "Operation not supported."; 
 }
-
-// ----------------------------------------------------------------------------
-//                                                           lock_obtain_failed
-// ----------------------------------------------------------------------------
 
 lock_obtain_failed::lock_obtain_failed(
     const irs::string_ref& filename /*= "" */
@@ -60,10 +48,6 @@ const char* lock_obtain_failed::what() const noexcept {
   return error_.c_str();
 }
 
-// ----------------------------------------------------------------------------
-//                                                               file_not_found
-// ----------------------------------------------------------------------------
-
 file_not_found::file_not_found(
     const irs::string_ref& filename /*= "" */
 ): error_("File not found") {
@@ -79,36 +63,12 @@ const char* file_not_found::what() const noexcept {
   return error_.c_str();
 }
 
-// ----------------------------------------------------------------------------
-//                                                              index_not_found
-// ----------------------------------------------------------------------------
-
 const char* index_not_found::what() const noexcept {
   return "No segments* file found.";
 }
 
-// ----------------------------------------------------------------------------
-//                                                               not_impl_error
-// ----------------------------------------------------------------------------
-
 const char* not_impl_error::what() const noexcept { 
   return "Not implemented."; 
-}
-
-// ----------------------------------------------------------------------------
-//                                                             illegal_argument
-// ----------------------------------------------------------------------------
-
-const char* illegal_argument::what() const noexcept{ 
-  return "Invalid argument."; 
-}
-
-// ----------------------------------------------------------------------------
-//                                                             illegal_argument
-// ----------------------------------------------------------------------------
-
-const char* illegal_state::what() const noexcept{
-  return "Illegal state."; 
 }
 
 } // namespace iresearch {
