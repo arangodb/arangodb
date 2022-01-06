@@ -1,6 +1,8 @@
 devel
 -----
 
+* APM-292: Added new AQL function SHARD_ID.
+
 * BTS-707: rename "hardened" option value for `--server.support-info-api`
   startup option to "admin".
 
@@ -16,6 +18,8 @@ devel
   
 * Fixed BTS-693: Sort-limit rule now always ensures proper LIMIT node placement
   to avoid possible invalid results in the fullCount data.
+
+* Added new AQL function SHARD_ID.
 
 * Updated OpenSSL to 1.1.1m and OpenLDAP to 2.6.0.
 
