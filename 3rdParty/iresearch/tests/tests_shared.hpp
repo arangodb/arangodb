@@ -32,7 +32,6 @@
 #include "shared.hpp"
 #include "utils/utf8_path.hpp"
 
-
 namespace cmdline {
 class parser;
 } // cmdline

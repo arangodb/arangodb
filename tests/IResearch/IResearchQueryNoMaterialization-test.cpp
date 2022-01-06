@@ -523,24 +523,25 @@ TEST_P(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
       while (col->next()) {
         auto const& val = col->value();
         ASSERT_TRUE(counter < columnsCount);
-        EXPECT_EQ(columns[counter], val.name);
+        EXPECT_EQ(columns[counter], val.name());
         if (5 == counter) {  // skip PK
           ++counter;
           continue;
         }
-        auto columnReader = segment.column_reader(val.id);
+        auto columnReader = segment.column(val.id());
         ASSERT_TRUE(columnReader);
-        auto valReader = columnReader->values();
+        auto valReader = columnReader->iterator(false);
         ASSERT_TRUE(valReader);
-        irs::bytes_ref value;  // column value
-        ASSERT_TRUE(valReader(doc->value(), value));
+        auto* value = irs::get<irs::payload>(*valReader);
+        ASSERT_TRUE(value);
+        ASSERT_EQ(doc->value(), valReader->seek(doc->value()));
         if (1 == counter) {  // foo
-          EXPECT_TRUE(value.null());
+          EXPECT_TRUE(value->value.null());
           ++counter;
           continue;
         }
-        size_t valueSize = value.size();
-        auto slice = VPackSlice(value.c_str());
+        size_t valueSize = value->value.size();
+        auto slice = VPackSlice(value->value.c_str());
         switch (counter) {
           case 0: {
             ASSERT_TRUE(slice.isString());
@@ -685,24 +686,25 @@ TEST_P(IResearchQueryNoMaterializationTest,
       while (col->next()) {
         auto const& val = col->value();
         ASSERT_TRUE(counter < columnsCount);
-        EXPECT_EQ(columns[counter], val.name);
+        EXPECT_EQ(columns[counter], val.name());
         if (5 == counter) {  // skip PK
           ++counter;
           continue;
         }
-        auto columnReader = segment.column_reader(val.id);
+        auto columnReader = segment.column(val.id());
         ASSERT_TRUE(columnReader);
-        auto valReader = columnReader->values();
+        auto valReader = columnReader->iterator(false);
         ASSERT_TRUE(valReader);
-        irs::bytes_ref value;  // column value
-        ASSERT_TRUE(valReader(doc->value(), value));
+        auto* value = irs::get<irs::payload>(*valReader);
+        ASSERT_TRUE(value);
+        ASSERT_EQ(doc->value(), valReader->seek(doc->value()));
         if (1 == counter) {  // foo
-          EXPECT_TRUE(value.null());
+          EXPECT_TRUE(value->value.null());
           ++counter;
           continue;
         }
-        size_t valueSize = value.size();
-        auto slice = VPackSlice(value.c_str());
+        size_t valueSize = value->value.size();
+        auto slice = VPackSlice(value->value.c_str());
         switch (counter) {
           case 0: {
             ASSERT_TRUE(slice.isString());

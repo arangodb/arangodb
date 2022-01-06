@@ -2278,7 +2278,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_features) {
         pool->features());
     ASSERT_EQ(irs::IndexFeatures::FREQ, pool->indexFeatures());
     irs::type_info::type_id const expectedFeatures[]{
-        irs::type<irs::norm>::id()};
+        irs::type<irs::Norm>::id()};
     ASSERT_EQ((irs::features_t{expectedFeatures, 1}), pool->fieldFeatures());
   }
 
@@ -2302,7 +2302,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_features) {
         pool->features());
     ASSERT_EQ(irs::IndexFeatures::FREQ, pool->indexFeatures());
     irs::type_info::type_id const expectedFeatures[]{
-        irs::type<irs::norm2>::id()};
+        irs::type<irs::Norm2>::id()};
     ASSERT_EQ((irs::features_t{expectedFeatures, 1}), pool->fieldFeatures());
   }
 
@@ -5121,21 +5121,21 @@ TEST(FeaturesTest, add_validate) {
   }
 
   {
-    ASSERT_TRUE(f.add(irs::type<irs::norm>::name()));
+    ASSERT_TRUE(f.add(irs::type<irs::Norm>::name()));
     ASSERT_EQ(irs::IndexFeatures::FREQ, f.indexFeatures());
-    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm>::id()},
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::Norm>::id()},
               f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN));
-    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm2>::id()},
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::Norm2>::id()},
               f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX));
     ASSERT_TRUE(f.validate().ok());
   }
 
   {
-    ASSERT_TRUE(f.add(irs::type<irs::norm>::name()));
+    ASSERT_TRUE(f.add(irs::type<irs::Norm>::name()));
     ASSERT_EQ(irs::IndexFeatures::FREQ, f.indexFeatures());
-    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm>::id()},
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::Norm>::id()},
               f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN));
-    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm2>::id()},
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::Norm2>::id()},
               f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX));
     ASSERT_TRUE(f.validate().ok());
   }
@@ -5144,20 +5144,20 @@ TEST(FeaturesTest, add_validate) {
     ASSERT_TRUE(f.add(irs::type<irs::position>::name()));
     ASSERT_EQ(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS,
               f.indexFeatures());
-    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm>::id()},
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::Norm>::id()},
               f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN));
-    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm2>::id()},
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::Norm2>::id()},
               f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX));
     ASSERT_TRUE(f.validate().ok());
   }
 
   {
-    ASSERT_FALSE(f.add(irs::type<irs::norm2>::name()));
+    ASSERT_FALSE(f.add(irs::type<irs::Norm2>::name()));
     ASSERT_EQ(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS,
               f.indexFeatures());
-    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm>::id()},
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::Norm>::id()},
               f.fieldFeatures(arangodb::iresearch::LinkVersion::MIN));
-    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::norm2>::id()},
+    ASSERT_EQ(std::vector<irs::type_info::type_id>{irs::type<irs::Norm2>::id()},
               f.fieldFeatures(arangodb::iresearch::LinkVersion::MAX));
     ASSERT_TRUE(f.validate().ok());
   }
