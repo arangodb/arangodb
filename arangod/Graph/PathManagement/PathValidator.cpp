@@ -352,6 +352,20 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
 template<class ProviderType, class PathStore,
          VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness>
+void PathValidator<ProviderType, PathStore, vertexUniqueness,
+                   edgeUniqueness>::reset() {
+  if constexpr (vertexUniqueness != VertexUniquenessLevel::NONE) {
+    _uniqueVertices.clear();
+
+    if constexpr (edgeUniqueness != EdgeUniquenessLevel::NONE) {
+      _uniqueEdges.clear();
+    }
+  }
+}
+
+template<class ProviderType, class PathStore,
+         VertexUniquenessLevel vertexUniqueness,
+         EdgeUniquenessLevel edgeUniqueness>
 bool PathValidator<ProviderType, PathStore, vertexUniqueness,
                    edgeUniqueness>::usesPrune() const {
   if (_options.usesPrune()) {

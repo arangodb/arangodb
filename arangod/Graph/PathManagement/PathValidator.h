@@ -70,6 +70,8 @@ class PathValidator {
                                   edgeUniqueness> const& otherValidator)
       -> ValidationResult;
 
+  void reset();
+
   // Prune section
   bool usesPrune() const;
   void setPruneContext(aql::InputAqlItemRow& inputRow);
