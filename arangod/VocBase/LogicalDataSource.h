@@ -63,7 +63,7 @@ class LogicalDataSource {
     Type(Type&& other) noexcept = default;
     bool operator==(Type const& other) const noexcept { return this == &other; }
     bool operator!=(Type const& other) const noexcept { return this != &other; }
-    operator Type const*() const noexcept { return this; }
+    operator Type const *() const noexcept { return this; }
     static Type const& emplace(std::string_view name);
     std::string const& name() const noexcept { return _name; }
 
