@@ -31,6 +31,31 @@
 #include "utils/index_utils.hpp"
 #include "utils/file_utils.hpp"
 
+namespace  {
+bool visit(const irs::column_reader& reader,
+           const std::function<bool(irs::doc_id_t, irs::bytes_ref)>& visitor) {
+  auto it = reader.iterator(true);
+
+  irs::payload dummy;
+  auto* doc = irs::get<irs::document>(*it);
+  if (!doc) {
+    return false;
+  }
+  auto* payload = irs::get<irs::payload>(*it);
+  if (!payload) {
+    payload = &dummy;
+  }
+
+  while (it->next()) {
+    if (!visitor(doc->value, payload->value)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+}
+
 class index_profile_test_case : public tests::index_test_base {
  public:
   void profile_bulk_index(
@@ -214,7 +239,7 @@ class index_profile_test_case : public tests::index_test_base {
 
       // register update jobs
       for (size_t i = 0; i < num_update_threads; ++i) {
-        thread_pool.run([&mutex, &commit_mutex, &writer, num_update_threads, i, update_skip, writer_batch_size, &writer_commit_count, this]()->void {
+        thread_pool.run([&mutex, &commit_mutex, &writer, num_update_threads, i, update_skip, writer_batch_size, &writer_commit_count]()->void {
           {
             // wait for all threads to be registered
             std::lock_guard<std::mutex> lock(mutex);
@@ -340,16 +365,16 @@ class index_profile_test_case : public tests::index_test_base {
     for (size_t i = 0, count = reader.size(); i < count; ++i) {
       indexed_docs_count += reader[i].live_docs_count();
 
-      const auto* column = reader[i].column_reader("same");
+      const auto* column = reader[i].column("same");
       if (column) {
         // field present in all docs from simple_sequential.json
-        column->visit(imported_visitor);
+        visit(*column, imported_visitor);
       }
 
-      column = reader[i].column_reader("updated");
+      column = reader[i].column("updated");
       if (column) {
         // field insterted by updater threads
-        column->visit(updated_visitor);
+        visit(*column, updated_visitor);
       }
     }
 

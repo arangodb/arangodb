@@ -70,16 +70,9 @@ class format_register :
   }
 }; // format_register
 
-irs::columnstore_reader::values_reader_f INVALID_COLUMN =
-  [] (irs::doc_id_t, irs::bytes_ref&) { return false; };
-
 }
 
 namespace iresearch {
-
-/* static */ const columnstore_reader::values_reader_f& columnstore_reader::empty_reader() {
-  return INVALID_COLUMN;
-}
 
 /* static */void index_meta_writer::complete(index_meta& meta) noexcept {
   meta.last_gen_ = meta.gen_;

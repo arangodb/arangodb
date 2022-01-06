@@ -145,10 +145,12 @@ struct IRESEARCH_API index_input : public data_input {
   //////////////////////////////////////////////////////////////////////////////
   virtual int64_t checksum(size_t offset) const = 0;
 
-  index_input(index_input const&) = default;
+ protected:
   index_input() = default;
+  index_input(const index_input&) = default;
+
  private:
-  index_input& operator=( const index_input& ) = delete;
+  index_input& operator=(const index_input&) = delete;
 }; // index_input
 
 //////////////////////////////////////////////////////////////////////////////
