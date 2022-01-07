@@ -181,8 +181,15 @@ TEST_F(CalcCommitIndexTest, includes_less_quorum_size) {
       participants, CalculateCommitIndexOptions{3, 3, 3}, LogIndex{1},
       LogIndex{50});
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
-      reason.value));
+  EXPECT_TRUE(
+      std::holds_alternative<
+          CommitFailReason::NonEligibleServerRequiredForQuorum>(reason.value));
+  auto const& details =
+      std::get<CommitFailReason::NonEligibleServerRequiredForQuorum>(
+          reason.value);
+  EXPECT_EQ(details.candidates.size(), 1);
+  EXPECT_EQ(details.candidates.at("A"),
+            CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded);
 
   EXPECT_EQ(quorum.size(), 0);
   verifyQuorum(participants, quorum, expectedLogIndex);
@@ -230,8 +237,12 @@ TEST_F(CalcCommitIndexTest, all_excluded) {
       participants, CalculateCommitIndexOptions{3, 3, 3}, LogIndex{1},
       LogIndex{50});
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
+  EXPECT_TRUE(std::holds_alternative<CommitFailReason::NonEligibleServerRequiredForQuorum>(
       reason.value));
+  auto const& details =
+      std::get<CommitFailReason::NonEligibleServerRequiredForQuorum>(
+          reason.value);
+  EXPECT_EQ(details.candidates.size(), 3);
 
   EXPECT_EQ(quorum.size(), 0);
   verifyQuorum(participants, quorum, expectedLogIndex);
@@ -521,6 +532,10 @@ TEST_F(CalcCommitIndexTest, who_all_failed_excluded) {
       participants, CalculateCommitIndexOptions{1, 1, 2}, LogIndex{1},
       LogIndex{50});
 
-  EXPECT_TRUE(reason == CommitFailReason::withQuorumSizeNotReached("A") ||
-              reason == CommitFailReason::withQuorumSizeNotReached("B"));
+  EXPECT_EQ(
+      reason,
+      (CommitFailReason::withNonEligibleServerRequiredForQuorum(
+          {{"A", CommitFailReason::NonEligibleServerRequiredForQuorum::kFailed},
+           {"B", CommitFailReason::NonEligibleServerRequiredForQuorum::
+                     kExcluded}})));
 }
