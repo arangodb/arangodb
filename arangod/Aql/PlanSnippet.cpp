@@ -129,15 +129,13 @@ void PlanSnippet::optimizeAdjacentSnippets(
   });
 #endif
 
-  while (lowerSnippet->canStealTopNode()) {
+  if (lowerSnippet->canStealTopNode()) {
     auto candidateToSteal = lowerSnippet->_topMost;
     LOG_DEVEL << "Try stealing " << candidateToSteal->getTypeString() << "("
               << candidateToSteal->id() << ")";
     if (upperSnippet->tryJoinBelow(candidateToSteal)) {
       lowerSnippet->stealTopNode();
-    } else {
-      // Cannot steal anymore we are done
-      break;
+      candidateToSteal->setPlanSnippet(upperSnippet);
     }
   }
 }
@@ -1015,6 +1013,7 @@ void PlanSnippet::stealTopNode() {
   assertInvariants();
 }
 
+ExecutionNode* PlanSnippet::getHighestNode() const { return _topMost; }
 ExecutionNode* PlanSnippet::getLowestNode() const { return _last; }
 
 bool PlanSnippet::isOnCoordinator() const { return _isOnCoordinator; }

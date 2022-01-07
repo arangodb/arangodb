@@ -9821,17 +9821,32 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt,
     struct McHackiAlternative
         : arangodb::aql::WalkerWorkerBase<arangodb::aql::ExecutionNode> {
       bool before(arangodb::aql::ExecutionNode* n) override {
-        // TODO: If we stick with this variant we may want to add the
-        // selectedSnippet on each node.
-        if (_snippets.empty()) {
+        // Only this walker will set the snippets.
+        // No other walker should modify them.
+        // So we can assert no snippet is set yet.
+        // If this assert kicks in either a different place
+        // is now creating planSnippets as well. Please try to unify.
+        // Or: We have the same node pointer in use in multiple plans
+        // this is disallowed and some other place has forgotten to CLONE()
+        // the node.
+        TRI_ASSERT(n->getPlanSnippet() == nullptr);
+        // This method decides on a Snippet for this node.
+        // No matter how it decides make sure the snippet is
+        // set on this node.
+        ScopeGuard updateNodeWithLastSnippet([&]() noexcept {
+          // We have to decide on a snippet, we cannot have an empty
+          // snippet anymore.
+          TRI_ASSERT(_lastSnippet != nullptr);
+          n->setPlanSnippet(_lastSnippet);
+        });
+        if (_lastSnippet == nullptr) {
           // Initial Snippet
-          _snippets.emplace_back(std::make_shared<PlanSnippet>(n));
+          _lastSnippet = std::make_shared<PlanSnippet>(n);
         } else {
           // Try to enlarage last snippet upwards.
-          auto const& top = _snippets.back();
-          if (!top->tryJoinAbove(n)) {
+          if (!_lastSnippet->tryJoinAbove(n)) {
             // Cannot join upwards. Need to create new snippet
-            _snippets.emplace_back(std::make_shared<PlanSnippet>(n));
+            _lastSnippet = std::make_shared<PlanSnippet>(n);
           }
         }
         // Always continue walking
@@ -9846,54 +9861,64 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt,
         return false;
       }
 
-      void after(arangodb::aql::ExecutionNode* n) override {}
-
-      void log() {
-        for (auto const& it : _snippets) {
-          LOG_DEVEL << *it;
+      void after(arangodb::aql::ExecutionNode* n) override {
+        // This after logic has the option to move snippets around
+        // After it is completed and we go to the next node we need
+        // to make sure we have updated the last snippet to whatever this
+        // method has decided
+        ScopeGuard updateLastSnippet([&]() noexcept {
+          _lastSnippet = n->getPlanSnippet();
+          // Every node needs to have a Snippet at the end.
+          TRI_ASSERT(_lastSnippet != nullptr);
+          LOG_DEVEL << n->getTypeString() << " -> "
+                    << (_lastSnippet->isOnCoordinator() ? "COOR" : "DB")
+                    << (void*)_lastSnippet.get();
+        });
+        auto nextSnippet = n->getPlanSnippet();
+        if (nextSnippet != _lastSnippet) {
+          LOG_DEVEL << "Try joining " << *nextSnippet << " with "
+                    << *_lastSnippet;
+          PlanSnippet::optimizeAdjacentSnippets(_lastSnippet, nextSnippet);
         }
       }
 
       void insertCommunicationNodes() {
-        for (auto& it : _snippets) {
-          it->insertCommunicationNodes();
+        // TODO: This code does not branch on subqueries this way.
+        // Will terminate by break,
+        // Snippets are cycle free and non-overlapping, hence we will eventually
+        // reach the snippet that does not have a dependency node
+        auto s = _lastSnippet;
+        while (true) {
+          s->insertCommunicationNodes();
+          auto n = s->getHighestNode();
+          if (n->hasDependency()) {
+            auto dep = n->getFirstDependency();
+            TRI_ASSERT(dep != nullptr);
+            TRI_ASSERT(s.get() != dep->getPlanSnippet().get());
+            s = dep->getPlanSnippet();
+            TRI_ASSERT(s != nullptr);
+          } else {
+            // Exit of our loop.
+            // If we do not have any dependency left we can leave
+            break;
+          }
         }
-        if (!_snippets.front()->isOnCoordinator()) {
-          auto newRoot = _snippets.front()->getLowestNode();
+        if (!_lastSnippet->isOnCoordinator()) {
+          // If we end up starting on the DBServer the above
+          // loop has added nodes below the root.
+          // => We need to relink the root
+          auto newRoot = _lastSnippet->getLowestNode();
           auto plan = newRoot->plan();
-
-          // We need to rewire the root of the Plan.
-          // There are new communication nodes now.
           plan->root(newRoot, true);
         }
       }
 
-      void optimizeAdjacentSnippets() {
-        if (_snippets.size() < 2) {
-          // We will always have one.
-          TRI_ASSERT(_snippets.size() == 1);
-          return;
-        }
-        // Reverse iterate through snippets
-        for (size_t currentIndex = _snippets.size() - 1; currentIndex > 0;
-             --currentIndex) {
-          auto upperSnippet = _snippets[currentIndex];
-          // Protect against invalid access.
-          TRI_ASSERT(currentIndex > 0);
-          auto lowerSnippet = _snippets[currentIndex - 1];
-          PlanSnippet::optimizeAdjacentSnippets(upperSnippet, lowerSnippet);
-        }
-      }
-
      private:
-      std::vector<std::shared_ptr<PlanSnippet>> _snippets{};
+      std::shared_ptr<PlanSnippet> _lastSnippet{nullptr};
 
     } mcHackiWalker{};
 
     plan->root()->walk(mcHackiWalker);
-    mcHackiWalker.log();
-    mcHackiWalker.optimizeAdjacentSnippets();
-    mcHackiWalker.log();
     mcHackiWalker.insertCommunicationNodes();
 
     bool modified = true;

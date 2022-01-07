@@ -103,6 +103,7 @@ class PlanSnippet {
 
   bool isLastNodeInSnippet(ExecutionNode const* node) const;
 
+  ExecutionNode* getHighestNode() const;
   ExecutionNode* getLowestNode() const;
 
   bool isOnCoordinator() const;

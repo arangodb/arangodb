@@ -1174,6 +1174,14 @@ ExecutionLocation ExecutionNode::getAllowedLocation() const {
   return ExecutionLocation(ExecutionLocation::LocationType::ANYWHERE);
 }
 
+std::shared_ptr<PlanSnippet> ExecutionNode::getPlanSnippet() const {
+  return _planSnippet;
+}
+
+void ExecutionNode::setPlanSnippet(std::shared_ptr<PlanSnippet> targetSnippet) {
+  _planSnippet = targetSnippet;
+}
+
 RegisterCount ExecutionNode::getNrOutputRegisters() const {
   if (getType() == ExecutionNode::RETURN) {
     // Special case for RETURN, which usually writes only 1 register.
