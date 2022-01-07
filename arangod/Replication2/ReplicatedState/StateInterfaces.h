@@ -86,7 +86,7 @@ struct IReplicatedFollowerState : IReplicatedFollowerStateBase {
   /**
    * Called by the state machine manager if new log entries have been committed
    * and are ready to be applied to the state machine. The implementation
-   * ensures that this function not called again until the future returned is
+   * ensures that this function is not called again until the future returned is
    * fulfilled.
    *
    * Entries are not released after they are consumed by this function. Its the
