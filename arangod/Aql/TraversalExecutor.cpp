@@ -578,7 +578,8 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
     }
   } else {
     // Refactored variant
-    while (auto currentPath = _traversalEnumerator.getNextPath()) {
+    auto currentPath = _traversalEnumerator.getNextPath();
+    if (currentPath != nullptr) {
       TRI_ASSERT(_inputRow.isInitialized());
 
       // traverser now has next v, e, p values
