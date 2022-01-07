@@ -966,8 +966,7 @@ void Node::toBuilder(Builder& builder, bool showHidden) const {
     }
 
   } catch (std::exception const& e) {
-    LOG_TOPIC("44d99", ERR, Logger::AGENCY)
-        << e.what() << " " << __FILE__ << __LINE__;
+    LOG_TOPIC("44d99", ERR, Logger::AGENCY) << e.what();
   }
 }
 
