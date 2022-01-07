@@ -99,6 +99,10 @@ struct FollowerStatus {
 struct StateStatus {
   std::variant<LeaderStatus, FollowerStatus> variant;
 
+  auto asFollowerStatus() const noexcept -> FollowerStatus const* {
+    return std::get_if<FollowerStatus>(&variant);
+  }
+
   void toVelocyPack(velocypack::Builder&) const;
   static auto fromVelocyPack(velocypack::Slice) -> StateStatus;
 };

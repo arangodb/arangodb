@@ -94,6 +94,8 @@ struct ILogParticipant {
  */
 struct ILogFollower : ILogParticipant, AbstractFollower {
   virtual auto waitForLeaderAcked() -> WaitForFuture = 0;
+  [[nodiscard]] virtual auto getLeader() const noexcept
+      -> std::optional<ParticipantId> const& = 0;
 };
 
 /**
