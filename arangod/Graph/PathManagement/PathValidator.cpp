@@ -97,28 +97,13 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     }
   }
   if constexpr (vertexUniqueness == VertexUniquenessLevel::GLOBAL) {
-    _uniqueEdges.clear();
+    // In case we have VertexUniquenessLevel::GLOBAL, we do not have to take
+    // care about the EdgeUniquenessLevel.
     auto const& [unusedV, addedVertex] =
         _uniqueVertices.emplace(step.getVertexIdentifier());
-
-    if (!step.isFirst()) {
-      bool edgeSuccess = _store.visitReversePath(
-          step, [&](typename PathStore::Step const& step) -> bool {
-            auto const& [unusedE, addedEdge] =
-                _uniqueEdges.emplace(step.getEdgeIdentifier());
-            // If this add fails, we need to exclude this path
-            return addedEdge;
-          });
-
-      // If this add fails, we need to exclude this path
-      if (!addedVertex || !edgeSuccess) {
-        res.combine(ValidationResult::Type::FILTER_AND_PRUNE);
-      }
-    } else {
-      // If this add fails, we need to exclude this path
-      if (!addedVertex) {
-        res.combine(ValidationResult::Type::FILTER_AND_PRUNE);
-      }
+    // If this add fails, we need to exclude this path
+    if (!addedVertex) {
+      res.combine(ValidationResult::Type::FILTER_AND_PRUNE);
     }
   }
   if constexpr (vertexUniqueness == VertexUniquenessLevel::NONE &&
@@ -235,9 +220,6 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   // evaluate if vertex collection is allowed
   bool isAllowed = evaluateVertexRestriction(step);
   if (!isAllowed) {
-    if (_options.hasCompatibility38IncludeFirstVertex() && step.isFirst()) {
-      return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
-    }
     return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
   }
 
@@ -318,9 +300,6 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     bool satifiesCondition =
         evaluateVertexExpression(vertexExpr, _tmpObjectBuilder.slice());
     if (!satifiesCondition) {
-      if (_options.hasCompatibility38IncludeFirstVertex() && step.isFirst()) {
-        return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
-      }
       return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
     }
   }

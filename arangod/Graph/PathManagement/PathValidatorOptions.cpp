@@ -31,7 +31,9 @@ using namespace arangodb::graph;
 PathValidatorOptions::PathValidatorOptions(
     aql::Variable const* tmpVar,
     arangodb::aql::FixedVarExpressionContext& expressionContext)
-    : _tmpVar(tmpVar), _expressionCtx(expressionContext) {}
+    : _allowedVertexCollections{},
+      _tmpVar(tmpVar),
+      _expressionCtx(expressionContext) {}
 
 void PathValidatorOptions::setAllVerticesExpression(
     std::unique_ptr<aql::Expression> expression) {
