@@ -1,6 +1,36 @@
 devel
 -----
 
+* Added `disableIndex` index hint for AQL FOR loops. This index hint disables
+  the usage of any index (except geo or full text indexes) and will cause a
+  full scan over the collection.
+  In some circumstances a full scan can be more efficient than an index scan,
+  for example if the index scan produces many matches (close to the number of
+  documents in the collection) and the index is not fully covering the query.
+  The `disableIndex` hint can be given per FOR loop in the query, e.g.:
+
+      FOR doc IN collection OPTIONS { disableIndex: true } 
+        RETURN doc.value
+
+  The default value of `disableIndex` is `false`.
+  In case a different index hint is provided, `disableIndex: true` takes
+  precendence and produces a warning about the ambiguous settings.
+
+* Added `maxProjections` hint for AQL FOR loops. This hint can be used to set
+  the maximum number of document attributes that are taken into account for
+  using projections.
+
+  For example, in the following query, no projections will be used because the
+  number of potential projection attributes (`value1`, value2`, `value3`) is 
+  higher than the maximum number of projection attributes set via the
+  `maxProjections` option:
+
+      FOR doc IN collection OPTIONS { maxProjections: 2 } 
+        RETURN [ doc.value1, doc.value2, doc.value3 ]
+
+  The default value for `maxProjections` is `5`, which is compatible with the
+  previous hard-coded default value.
+
 * Fixed potentially undefined behavior for exit code of arangodump.
 
 * Ignore signals such as SIGPIPE in client tools.

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1085,8 +1085,7 @@ arangodb::Result arangodb::maintenance::phaseOne(
                            feature, report, shardActionMap, localLogs);
     } catch (std::exception const& e) {
       LOG_TOPIC("55938", ERR, Logger::MAINTENANCE)
-          << "Error executing plan: " << e.what() << ". " << __FILE__ << ":"
-          << __LINE__;
+          << "Error executing plan: " << e.what();
     }
   }
 

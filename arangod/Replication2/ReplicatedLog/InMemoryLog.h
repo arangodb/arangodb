@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -65,10 +66,10 @@ struct InMemoryLog {
 
  private:
   log_type _log{};
-  LogIndex _first{0};
+  LogIndex _first{1};
 
  public:
-  InMemoryLog() = delete;
+  InMemoryLog() = default;
   explicit InMemoryLog(log_type log);
 
   InMemoryLog(InMemoryLog&& other) noexcept;
