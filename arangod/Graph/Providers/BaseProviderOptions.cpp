@@ -42,12 +42,7 @@ IndexAccessor::IndexAccessor(
       _nonConstContainer(std::move(nonConstPart)) {
   if (expression != nullptr) {
     _expression = std::move(expression);
-
-    LOG_DEVEL << "Expression:";
-    _expression->node()->dump(0);
   }
-  LOG_DEVEL << "Index condition:";
-  _indexCondition->dump(0);
 }
 
 aql::AstNode* IndexAccessor::getCondition() const { return _indexCondition; }
