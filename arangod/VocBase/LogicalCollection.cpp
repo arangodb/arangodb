@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -143,7 +143,7 @@ arangodb::LogicalDataSource::Type const& readType(
 LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
                                      bool isAStub)
     : LogicalDataSource(
-          LogicalCollection::category(),
+          *this,
           ::readType(info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN),
           vocbase, DataSourceId{Helper::extractIdValue(info)},
           ::readGloballyUniqueId(info),
@@ -297,13 +297,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 
   prepareIndexes(info.get("indexes"));
   decorateWithInternalValidators();
-}
-
-/*static*/ LogicalDataSource::Category const&
-LogicalCollection::category() noexcept {
-  static const Category category;
-
-  return category;
 }
 
 Result LogicalCollection::updateSchema(VPackSlice schema) {
