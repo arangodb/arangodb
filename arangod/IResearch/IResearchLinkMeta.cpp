@@ -540,12 +540,7 @@ size_t FieldMeta::memory() const noexcept {
 // -----------------------------------------------------------------------------
 
 IResearchLinkMeta::IResearchLinkMeta()
-    : _version{static_cast<uint32_t>(LinkVersion::MAX)} {
-  // add default analyzers
-  for (auto& analyzer : _analyzers) {
-    _analyzerDefinitions.emplace(analyzer._pool);
-  }
-}
+    : _version{static_cast<uint32_t>(LinkVersion::MAX)} {}
 
 bool IResearchLinkMeta::operator==(
     IResearchLinkMeta const& other) const noexcept {
@@ -655,19 +650,6 @@ bool IResearchLinkMeta::init(
   {
     // clear existing definitions
     _analyzerDefinitions.clear();
-
-    //    {
-    //      auto id = IResearchAnalyzerFeature::identity();
-    //
-    //      bool extendedNames =
-    //          server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
-    //      AnalyzerPool::ptr analyzer;
-    //      auto const res = IResearchAnalyzerFeature::createAnalyzerPool(
-    //          analyzer, id->name(), id->type(), id->properties(),
-    //          AnalyzersRevision::Revision{AnalyzersRevision::LATEST},
-    //          id->features(), LinkVersion{_version}, extendedNames);
-    //      _analyzerDefinitions.emplace(analyzer);
-    //    }
 
     // optional object list
     constexpr std::string_view kFieldName{
@@ -832,6 +814,19 @@ bool IResearchLinkMeta::init(
         _analyzerDefinitions.emplace(analyzer);
       }
     }
+
+    if (_analyzerDefinitions.empty()) {
+      auto id = IResearchAnalyzerFeature::identity();
+
+      bool extendedNames =
+          server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
+      AnalyzerPool::ptr analyzer;
+      auto const res = IResearchAnalyzerFeature::createAnalyzerPool(
+          analyzer, id->name(), id->type(), id->properties(),
+          AnalyzersRevision::Revision{AnalyzersRevision::LATEST},
+          id->features(), LinkVersion{_version}, extendedNames);
+      _analyzerDefinitions.emplace(analyzer);
+    }
   }
 
   if (slice.hasKey(StaticStrings::CollectionNameField) &&
@@ -848,6 +843,10 @@ bool IResearchLinkMeta::init(
     ::assertAnaylzerFeatures(_analyzerDefinitions, LinkVersion{_version});
   });
 #endif
+
+  _analyzers.clear();
+  auto& a = *_analyzerDefinitions.begin();
+  _analyzers.emplace_back(a, std::string{a->name()});
 
   return FieldMeta::init(server, slice, errorField, defaultVocbase, defaults,
                          mask, &_analyzerDefinitions);
