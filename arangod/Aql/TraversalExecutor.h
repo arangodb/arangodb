@@ -45,6 +45,7 @@ class Result;
 namespace aql {
 
 class Query;
+class QueryWarnings;
 class OutputAqlItemRow;
 class RegisterInfos;
 template<BlockPassthrough>
@@ -139,6 +140,7 @@ class TraversalExecutorInfos {
   void setOrder(traverser::TraverserOptions::Order order);
   bool isRefactor() const;
   transaction::Methods* getTrx();
+  arangodb::aql::QueryWarnings& getWarnings();
 
  private:
   std::string typeToString(TraversalExecutorInfosHelper::OutputName type) const;
@@ -166,6 +168,7 @@ class TraversalExecutorInfos {
   double _defaultWeight;
   std::string _weightAttribute;
   transaction::Methods* _trx;
+  arangodb::aql::QueryContext& _query;
 };
 
 /**

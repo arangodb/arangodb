@@ -79,7 +79,8 @@ TraversalExecutorInfos::TraversalExecutorInfos(
       _refactor(refactor),
       _defaultWeight(defaultWeight),
       _weightAttribute(weightAttribute),
-      _trx(trx) {
+      _trx(trx),
+      _query(query) {
   if (!refactor) {
     TRI_ASSERT(_traverser != nullptr);
   }
@@ -220,6 +221,9 @@ void TraversalExecutorInfos::setOrder(TraverserOptions::Order order) {
 bool TraversalExecutorInfos::isRefactor() const { return _refactor; }
 
 transaction::Methods* TraversalExecutorInfos::getTrx() { return _trx; }
+arangodb::aql::QueryWarnings& TraversalExecutorInfos::getWarnings() {
+  return _query.warnings();
+}
 
 std::pair<arangodb::graph::VertexUniquenessLevel,
           arangodb::graph::EdgeUniquenessLevel>
@@ -858,12 +862,11 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
       auto pos = sourceString.find('/');
 
       if (pos == std::string::npos) {
-        /*_finder.options()->query().warnings().registerWarning(
+        _infos.getWarnings().registerWarning(
             TRI_ERROR_BAD_PARAMETER,
             "Invalid input for traversal: Only "
             "id strings or objects with _id are "
-            "allowed");*/
-        // TODO [GraphRefactor]: handle warning.";
+            "allowed");
       } else {
         // prepare index
         _traversalEnumerator.prepareIndexExpressions(_infos.getAst());

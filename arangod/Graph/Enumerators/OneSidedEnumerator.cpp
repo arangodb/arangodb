@@ -136,11 +136,13 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
       << " filtered " << res.isFiltered() << " pruned " << res.isPruned()
       << " depth " << _options.getMinDepth() << " <= " << step.getDepth()
       << "<= " << _options.getMaxDepth();
-  if (step.getDepth() >= _options.getMinDepth() && !res.isFiltered()) {
-    // Include it in results.
-    _results.emplace_back(step);
-  } else {
-    _stats.incrFiltered();
+  if (step.getDepth() >= _options.getMinDepth()) {
+    if (res.isFiltered()) {
+      _stats.incrFiltered();
+    } else {
+      // Include it in results.
+      _results.emplace_back(step);
+    }
   }
 
   if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
