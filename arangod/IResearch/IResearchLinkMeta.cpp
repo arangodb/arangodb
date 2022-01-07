@@ -31,6 +31,7 @@
 #include "utils/hash_utils.hpp"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Containers/FlatHashSet.h"
 #include "Basics/StringUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
@@ -98,7 +99,7 @@ constexpr frozen::map<std::string_view, ValueStorage, 3> kNameToPolicy = {
     {"id", ValueStorage::ID},
     {"value", ValueStorage::VALUE}};
 
-constexpr std::array<std::string_view, 3> kPolicyToName{
+constexpr std::array<std::string_view, kNameToPolicy.size()> kPolicyToName{
     "none",    // ValueStorage::NONE
     "id",      // ValueStorage::ID
     "value"};  // ValueStorage::VALUE
@@ -196,7 +197,7 @@ bool FieldMeta::init(application_features::ApplicationServer& server,
       }
 
       _analyzers.clear();  // reset to match read values exactly
-      std::unordered_set<irs::string_ref> uniqueGuard;  // deduplicate analyzers
+      containers::FlatHashSet<std::string_view> uniqueGuard;
 
       for (velocypack::ArrayIterator itr(field); itr.valid(); ++itr) {
         auto value = *itr;
