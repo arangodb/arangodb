@@ -572,6 +572,36 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                          "expected edge index not found");
         }
+
+        std::optional<size_t> memberToUpdate{std::nullopt};
+        std::pair<arangodb::aql::Variable const*,
+                  std::vector<basics::AttributeName>>
+            pathCmp;
+        for (size_t x = 0; x < indexCondition->numMembers(); ++x) {
+          // We search through the nary-and and look for EQ - _from/_to
+          auto eq = indexCondition->getMemberUnchecked(x);
+          if (eq->type !=
+              arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ) {
+            // No equality. Skip
+            continue;
+          }
+          TRI_ASSERT(eq->numMembers() == 2);
+          // It is sufficient to only check member one.
+          // We build the condition this way.
+          auto mem = eq->getMemberUnchecked(0);
+          if (mem->isAttributeAccessForVariable(pathCmp, true)) {
+            if (pathCmp.first != _tmpObjVariable) {
+              continue;
+            }
+            if (pathCmp.second.size() == 1 &&
+                pathCmp.second[0].name == StaticStrings::ToString) {
+              memberToUpdate = x;
+              break;
+            }
+            continue;
+          }
+        }
+
         aql::AstNode* remainderCondition =
             conditionBuilder.getInboundCondition()->clone(ast);
 
@@ -600,7 +630,7 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
             ast, getRegisterPlan()->varInfo, false, false, indexCondition,
             options()->tmpVar());
 
-        indexAccessors.emplace_back(indexToUse, indexCondition, 0,
+        indexAccessors.emplace_back(indexToUse, indexCondition, memberToUpdate,
                                     std::move(expression), std::move(container),
                                     i);
         break;
@@ -616,6 +646,36 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                          "expected edge index not found");
         }
+
+        std::optional<size_t> memberToUpdate{std::nullopt};
+        std::pair<arangodb::aql::Variable const*,
+                  std::vector<basics::AttributeName>>
+            pathCmp;
+        for (size_t x = 0; x < indexCondition->numMembers(); ++x) {
+          // We search through the nary-and and look for EQ - _from/_to
+          auto eq = indexCondition->getMemberUnchecked(x);
+          if (eq->type !=
+              arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ) {
+            // No equality. Skip
+            continue;
+          }
+          TRI_ASSERT(eq->numMembers() == 2);
+          // It is sufficient to only check member one.
+          // We build the condition this way.
+          auto mem = eq->getMemberUnchecked(0);
+          if (mem->isAttributeAccessForVariable(pathCmp, true)) {
+            if (pathCmp.first != _tmpObjVariable) {
+              continue;
+            }
+            if (pathCmp.second.size() == 1 &&
+                pathCmp.second[0].name == StaticStrings::FromString) {
+              memberToUpdate = x;
+              break;
+            }
+            continue;
+          }
+        }
+
         aql::AstNode* remainderCondition =
             conditionBuilder.getOutboundCondition()->clone(ast);
 
@@ -644,7 +704,7 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
             ast, getRegisterPlan()->varInfo, false, false, indexCondition,
             options()->tmpVar());
 
-        indexAccessors.emplace_back(indexToUse, indexCondition, 0,
+        indexAccessors.emplace_back(indexToUse, indexCondition, memberToUpdate,
                                     std::move(expression), std::move(container),
                                     i);
         break;

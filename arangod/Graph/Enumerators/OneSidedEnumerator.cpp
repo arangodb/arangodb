@@ -129,20 +129,20 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
     return;
   }
   ValidationResult res = _validator.validatePath(step);
-
   LOG_TOPIC("78155", TRACE, Logger::GRAPHS)
       << std::boolalpha
       << "<Traverser> Validated Vertex: " << step.getVertex().getID()
       << " filtered " << res.isFiltered() << " pruned " << res.isPruned()
       << " depth " << _options.getMinDepth() << " <= " << step.getDepth()
       << "<= " << _options.getMaxDepth();
-  if (step.getDepth() >= _options.getMinDepth()) {
-    if (res.isFiltered()) {
-      _stats.incrFiltered();
-    } else {
-      // Include it in results.
-      _results.emplace_back(step);
-    }
+
+  if (res.isFiltered() || res.isPruned()) {
+    _stats.incrFiltered();
+  }
+
+  if (step.getDepth() >= _options.getMinDepth() && !res.isFiltered()) {
+    // Include it in results.
+    _results.emplace_back(step);
   }
 
   if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
