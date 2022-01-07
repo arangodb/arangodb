@@ -833,7 +833,8 @@ ErrorCode DatabaseFeature::dropDatabase(std::string const& name,
           [&res, &vocbase](arangodb::LogicalDataSource& dataSource) -> bool {
         // skip LogicalCollection since their internal state is always in the
         // StorageEngine (optimization)
-        if (arangodb::LogicalCollection::category() == dataSource.category()) {
+        if (arangodb::LogicalDataSource::Category::kCollection ==
+            dataSource.category()) {
           return true;
         }
 
