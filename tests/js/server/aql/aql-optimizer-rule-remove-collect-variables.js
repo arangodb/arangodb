@@ -4,8 +4,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
 ///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -28,20 +26,16 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
-var isEqual = helper.isEqual;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+const jsunity = require("jsunity");
+const helper = require("@arangodb/aql-helper");
+const isEqual = helper.isEqual;
 
 function optimizerRuleTestSuite () {
-  var ruleName = "remove-collect-variables";
+  const ruleName = "remove-collect-variables";
   // various choices to control the optimizer:
-  var paramNone     = { optimizer: { rules: [ "-all" ] } };
-  var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
-  var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
+  const paramNone     = { optimizer: { rules: [ "-all" ] } };
+  const paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
+  const paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
 
   return {
 
@@ -50,14 +44,18 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleDisabled : function () {
-      var queries = [
+      const queries = [
         "FOR i IN 1..10 COLLECT a = i INTO group RETURN a",
         "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN a",
-        "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN { a: a, b : b }"
+        "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN { a: a, b : b }",
+        "FOR i IN 1..10 COLLECT WITH COUNT INTO cnt RETURN 1",
+        "FOR i IN 1..10 COLLECT AGGREGATE cnt = COUNT() RETURN 1",
+        "FOR i IN 1..10 COLLECT AGGREGATE sum = SUM(i) RETURN 1",
+        "FOR i IN 1..10 COLLECT AGGREGATE cnt = COUNT(), sum = SUM(i) RETURN 1",
       ];
 
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { }, paramNone);
+        let result = AQL_EXPLAIN(query, { }, paramNone);
         assertEqual([ ], result.plan.rules);
       });
     },
@@ -67,15 +65,23 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleNoEffect : function () {
-      var queries = [
+      const queries = [
         "FOR i IN 1..10 COLLECT a = i RETURN a",
         "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j RETURN a",
         "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN { a: a, b : b, group: group }",
+        "FOR i IN 1..10 COLLECT AGGREGATE cnt = COUNT() RETURN cnt",
+        "FOR i IN 1..10 COLLECT AGGREGATE cnt = COUNT() RETURN 1",
+        "FOR i IN 1..10 COLLECT AGGREGATE sum = SUM(i) RETURN sum",
+        "FOR i IN 1..10 COLLECT AGGREGATE sum = SUM(i) RETURN 1",
+        "FOR i IN 1..10 COLLECT AGGREGATE cnt = COUNT(), sum = SUM(i) RETURN [cnt, sum]",
+        "FOR i IN 1..10 COLLECT v = i WITH COUNT INTO cnt RETURN cnt",
+        "FOR i IN 1..10 COLLECT v = i AGGREGATE cnt = COUNT() RETURN cnt",
+        "FOR i IN 1..10 COLLECT v = i AGGREGATE sum = SUM(i) RETURN sum",
       ];
 
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { }, paramEnabled);
-        assertTrue(result.plan.rules.indexOf(ruleName) === -1, query);
+        let result = AQL_EXPLAIN(query, { }, paramEnabled);
+        assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
 
@@ -84,14 +90,19 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleHasEffect : function () {
-      var queries = [
+      const queries = [
         "FOR i IN 1..10 COLLECT a = i INTO group RETURN a",
         "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN a",
         "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN { a: a, b : b }",
+        "FOR i IN 1..10 COLLECT AGGREGATE cnt = COUNT(), sum = SUM(i) RETURN 1",
+        "FOR i IN 1..10 COLLECT v = i AGGREGATE cnt = COUNT() RETURN 1",
+        "FOR i IN 1..10 COLLECT v = i AGGREGATE sum = SUM(i) RETURN 1",
+        "FOR i IN 1..10 COLLECT v = i AGGREGATE cnt = COUNT(), sum = SUM(i) RETURN 1",
+        "FOR i IN 1..10 COLLECT v = i WITH COUNT INTO cnt RETURN 1",
       ];
 
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { }, paramEnabled);
+        let result = AQL_EXPLAIN(query, { }, paramEnabled);
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
@@ -102,14 +113,16 @@ function optimizerRuleTestSuite () {
 
 
     testPlans : function () {
-      var plans = [
+      const plans = [
         [ "FOR i IN 1..10 COLLECT a = i INTO group RETURN a", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "SortNode", "CollectNode", "ReturnNode" ] ],
         [ "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN a", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "EnumerateListNode", "SortNode", "CollectNode", "ReturnNode" ] ],
-        [ "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN { a: a, b : b }", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "EnumerateListNode", "SortNode", "CollectNode", "CalculationNode", "ReturnNode" ] ]
+        [ "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN { a: a, b : b }", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "EnumerateListNode", "SortNode", "CollectNode", "CalculationNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 COLLECT v = i WITH COUNT INTO cnt RETURN 1", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CollectNode", "SortNode", "CalculationNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 COLLECT v = i AGGREGATE cnt = COUNT() RETURN 1", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CollectNode", "SortNode", "CalculationNode", "ReturnNode" ] ],
       ];
 
       plans.forEach(function(plan) {
-        var result = AQL_EXPLAIN(plan[0], { }, paramEnabled);
+        let result = AQL_EXPLAIN(plan[0], { }, paramEnabled);
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), plan[0]);
         assertEqual(plan[1], helper.getCompactPlan(result).map(function(node) { return node.type; }), plan[0]);
       });
@@ -120,25 +133,57 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testResults : function () {
-      var queries = [
+      const queries = [
         [ "FOR i IN 1..10 COLLECT a = i INTO group RETURN a", [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
         [ "FOR i IN 1..2 FOR j IN 1..2 COLLECT a = i, b = j INTO group RETURN [ a, b ]", [ [ 1, 1 ], [ 1, 2 ], [ 2, 1 ], [ 2, 2 ] ] ],
+        [ "FOR i IN [] COLLECT v = i AGGREGATE cnt = COUNT() RETURN 1", [ ] ],
+        [ "FOR i IN [] COLLECT v = i WITH COUNT INTO cnt RETURN 1", [ ] ],
+        [ "FOR i IN 1..10 COLLECT v = i AGGREGATE cnt = COUNT() RETURN 1", [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ] ],
+        [ "FOR i IN 1..10 COLLECT v = i WITH COUNT INTO cnt RETURN 1", [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ] ],
+        [ "FOR i IN 1..10 COLLECT v = i AGGREGATE cnt = COUNT(), sum = SUM(i) RETURN 1", [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ] ],
+        [ "FOR i IN 1..10 COLLECT v = i AGGREGATE cnt = COUNT(), sum = SUM(i) RETURN cnt", [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ] ],
+        [ "FOR i IN 1..10 COLLECT v = i AGGREGATE cnt = COUNT(), sum = SUM(i) RETURN sum", [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
       ];
 
       queries.forEach(function(query) {
-        var planDisabled   = AQL_EXPLAIN(query[0], { }, paramDisabled);
-        var planEnabled    = AQL_EXPLAIN(query[0], { }, paramEnabled);
+        let planDisabled   = AQL_EXPLAIN(query[0], { }, paramDisabled);
+        let planEnabled    = AQL_EXPLAIN(query[0], { }, paramEnabled);
 
-        var resultDisabled = AQL_EXECUTE(query[0], { }, paramDisabled).json;
-        var resultEnabled  = AQL_EXECUTE(query[0], { }, paramEnabled).json;
+        let resultDisabled = AQL_EXECUTE(query[0], { }, paramDisabled).json;
+        let resultEnabled  = AQL_EXECUTE(query[0], { }, paramEnabled).json;
 
         assertTrue(isEqual(resultDisabled, resultEnabled), query[0]);
 
         assertEqual(-1, planDisabled.plan.rules.indexOf(ruleName), query[0]);
         assertNotEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query[0]);
 
-        assertEqual(resultDisabled, query[1]);
-        assertEqual(resultEnabled, query[1]);
+        assertEqual(resultDisabled, query[1], query);
+        assertEqual(resultEnabled, query[1], query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test results
+////////////////////////////////////////////////////////////////////////////////
+
+    testResultsWhenRuleCannotFire : function () {
+      const queries = [
+        [ "FOR i IN [] COLLECT AGGREGATE cnt = COUNT() RETURN 1", [ 1 ] ],
+        [ "FOR i IN [] COLLECT WITH COUNT INTO cnt RETURN 1", [ 1 ] ],
+        [ "FOR i IN 1..10 COLLECT AGGREGATE cnt = COUNT() RETURN 1", [ 1 ] ],
+        [ "FOR i IN 1..10 COLLECT WITH COUNT INTO cnt RETURN 1", [ 1 ] ],
+        [ "FOR i IN [] COLLECT AGGREGATE cnt = COUNT() RETURN cnt", [ 0 ] ],
+        [ "FOR i IN [] COLLECT WITH COUNT INTO cnt RETURN cnt", [ 0 ] ],
+        [ "FOR i IN 1..10 COLLECT AGGREGATE cnt = COUNT() RETURN cnt", [ 10 ] ],
+        [ "FOR i IN 1..10 COLLECT WITH COUNT INTO cnt RETURN cnt", [ 10 ] ],
+      ];
+
+      queries.forEach(function(query) {
+        let plan    = AQL_EXPLAIN(query[0], { }, paramEnabled);
+        let result  = AQL_EXECUTE(query[0], { }, paramEnabled).json;
+
+        assertEqual(-1, plan.plan.rules.indexOf(ruleName), query[0]);
+        assertEqual(result, query[1], query);
       });
     },
 
@@ -396,11 +441,6 @@ function optimizerRuleTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(optimizerRuleTestSuite);
 
 return jsunity.done();
-
