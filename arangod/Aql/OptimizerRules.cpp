@@ -1418,16 +1418,29 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
       }  // end - if doOptimize
     }    // end - if collectNode has outVariable
 
+    size_t numGroupVariables = collectNode->groupVariables().size();
+    size_t numAggregateVariables = collectNode->aggregateVariables().size();
+
     collectNode->clearAggregates(
-        [&varsUsedLater, &modified](
+        [&varsUsedLater, &numGroupVariables, &numAggregateVariables, &modified](
             AggregateVarInfo const& aggregate) -> bool {
-          if (varsUsedLater.find(aggregate.outVar) == varsUsedLater.end()) {
-            // result of aggregate function not used later
-            modified = true;
-            return true;
+          // it is ok to remove unused aggregations if we have at least one
+          // aggregate variable remaining, or if we have a group variable left.
+          // it is not ok to have 0 aggregate variables and 0 group variables left,
+          // because the different COLLECT executors require some variables to
+          // be present.
+          if (numGroupVariables > 0 || numAggregateVariables > 1) {
+            if (varsUsedLater.find(aggregate.outVar) == varsUsedLater.end()) {
+              // result of aggregate function not used later
+              --numAggregateVariables;
+              modified = true;
+              return true;
+            }
           }
           return false;
         });
+
+    TRI_ASSERT(!collectNode->groupVariables().empty() || !collectNode->aggregateVariables().empty());
 
   }  // for node in nodes
   opt->addPlan(std::move(plan), rule, modified);
