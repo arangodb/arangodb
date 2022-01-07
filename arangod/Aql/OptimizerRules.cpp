@@ -1526,6 +1526,7 @@ void arangodb::aql::removeCollectVariablesRule(
           if (varsUsedLater.find(aggregate.outVar) == varsUsedLater.end()) {
             // result of aggregate function not used later
             if (numGroupVariables > 0 || numAggregateVariables > 1) {
+              --numAggregateVariables;
               modified = true;
               return true;
             }
