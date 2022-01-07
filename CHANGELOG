@@ -1,7 +1,7 @@
 v3.8.5 (XXXX-XX-XX)
 -------------------
 
-* Fixed issue #14576: FATAL {crash} occurs on a simple query.
+* Fixed issue #15476: FATAL {crash} occurs on a simple query.
 
 * Fixed ES-1025: fixed a performance regression caused by different hash
   calculation for primitive types like `uint64_t` and new the `Identifier`
