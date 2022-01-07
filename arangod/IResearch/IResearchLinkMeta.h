@@ -109,11 +109,6 @@ struct FieldMeta {
     bool _storeValues;
   };
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief return default IResearchLinkMeta values
-  ////////////////////////////////////////////////////////////////////////////////
-  static const FieldMeta& DEFAULT();
-
   FieldMeta();
   FieldMeta(FieldMeta const&) = default;
   FieldMeta(FieldMeta&&) = default;
@@ -139,10 +134,10 @@ struct FieldMeta {
   /// @param mask if set reflects which fields were initialized from JSON
   /// @param referencedAnalyzers analyzers referenced in this link
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(arangodb::application_features::ApplicationServer& server,
+  bool init(application_features::ApplicationServer& server,
             velocypack::Slice const& slice, std::string& errorField,
-            irs::string_ref const defaultVocbase,
-            FieldMeta const& defaults = DEFAULT(), Mask* mask = nullptr,
+            irs::string_ref defaultVocbase, FieldMeta const& defaults,
+            Mask* mask = nullptr,
             std::set<AnalyzerPool::ptr, AnalyzerComparer>* referencedAnalyzers =
                 nullptr);
 
@@ -160,8 +155,8 @@ struct FieldMeta {
   /// @param defaultVocbase fallback vocbase
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::application_features::ApplicationServer& server,
-            arangodb::velocypack::Builder& builder,
+  bool json(application_features::ApplicationServer& server,
+            velocypack::Builder& builder,
             FieldMeta const* ignoreEqual = nullptr,
             TRI_vocbase_t const* defaultVocbase = nullptr,
             Mask const* mask = nullptr) const;
@@ -242,11 +237,6 @@ struct IResearchLinkMeta : public FieldMeta {
   }
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief return default IResearchLinkMeta values
-  ////////////////////////////////////////////////////////////////////////////////
-  static const IResearchLinkMeta& DEFAULT();
-
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize IResearchLinkMeta with values from a JSON description
   ///        return success or set 'errorField' to specific field with error
   ///        on failure state is undefined
@@ -261,8 +251,7 @@ struct IResearchLinkMeta : public FieldMeta {
   ////////////////////////////////////////////////////////////////////////////////
   bool init(application_features::ApplicationServer& server, VPackSlice slice,
             bool readAnalyzerDefinition, std::string& errorField,
-            irs::string_ref const defaultVocbase = irs::string_ref::NIL,
-            IResearchLinkMeta const& defaults = DEFAULT(),
+            irs::string_ref defaultVocbase = irs::string_ref::NIL,
             Mask* mask = nullptr);
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -279,9 +268,8 @@ struct IResearchLinkMeta : public FieldMeta {
   ///                       nullptr == do not normalize
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::application_features::ApplicationServer& server,
-            arangodb::velocypack::Builder& builder,
-            bool writeAnalyzerDefinition,
+  bool json(application_features::ApplicationServer& server,
+            velocypack::Builder& builder, bool writeAnalyzerDefinition,
             IResearchLinkMeta const* ignoreEqual = nullptr,
             TRI_vocbase_t const* defaultVocbase = nullptr,
             Mask const* mask = nullptr) const;

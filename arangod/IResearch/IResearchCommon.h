@@ -99,7 +99,8 @@ struct StaticStrings {
   /// @brief the name of the field in the IResearch Link definition denoting the
   ///        referenced analyzer definitions
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const AnalyzerDefinitionsField;
+  static constexpr std::string_view AnalyzerDefinitionsField{
+      "analyzerDefinitions"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the analyzer definition denoting the

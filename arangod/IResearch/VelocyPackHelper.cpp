@@ -105,8 +105,7 @@ arangodb::velocypack::Builder& addStringRef(  // add a value
   return addRef(builder, key, value);
 }
 
-bool mergeSlice(arangodb::velocypack::Builder& builder,
-                arangodb::velocypack::Slice const& slice) {
+bool mergeSlice(velocypack::Builder& builder, velocypack::Slice slice) {
   if (builder.isOpenArray()) {
     if (slice.isArray()) {
       builder.add(arangodb::velocypack::ArrayIterator(slice));
@@ -127,9 +126,8 @@ bool mergeSlice(arangodb::velocypack::Builder& builder,
 }
 
 bool mergeSliceSkipKeys(
-    arangodb::velocypack::Builder& builder,
-    arangodb::velocypack::Slice const& slice,
-    std::function<bool(irs::string_ref const& key)> const& acceptor) {
+    velocypack::Builder& builder, velocypack::Slice slice,
+    std::function<bool(irs::string_ref key)> const& acceptor) {
   if (!builder.isOpenObject() || !slice.isObject()) {
     return mergeSlice(builder, slice);  // no keys to skip for non-objects
   }
@@ -152,8 +150,8 @@ bool mergeSliceSkipKeys(
   return true;
 }
 
-bool mergeSliceSkipOffsets(arangodb::velocypack::Builder& builder,
-                           arangodb::velocypack::Slice const& slice,
+bool mergeSliceSkipOffsets(velocypack::Builder& builder,
+                           velocypack::Slice slice,
                            std::function<bool(size_t offset)> const& acceptor) {
   if (!builder.isOpenArray() || !slice.isArray()) {
     return mergeSlice(builder, slice);  // no offsets to skip for non-arrays

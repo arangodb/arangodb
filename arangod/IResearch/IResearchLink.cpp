@@ -300,17 +300,16 @@ uint64_t computeAvg(std::atomic<uint64_t>& timeNum, uint64_t newTime) {
   return (oldTime + newTime) / (oldNum + 1);
 }
 
+template<typename NormyType>
 auto getIndexFeatures() {
   return [](irs::type_info::type_id id) {
+    TRI_ASSERT(irs::type<NormyType>::id() == id ||
+               irs::type<irs::granularity_prefix>::id() == id);
     const irs::column_info info{
         irs::type<irs::compression::none>::get(), {}, false};
 
-    if (irs::type<irs::Norm2>::id() == id) {
-      return std::make_pair(info, &irs::Norm2::MakeWriter);
-    }
-
-    if (irs::type<irs::Norm>::id() == id) {
-      return std::make_pair(info, &irs::Norm::MakeWriter);
+    if (irs::type<NormyType>::id() == id) {
+      return std::make_pair(info, &NormyType::MakeWriter);
     }
 
     return std::make_pair(info, irs::feature_writer_factory_t{});
@@ -1577,8 +1576,11 @@ Result IResearchLink::initDataStore(
   // Set comparator if requested.
   options.comparator = sorted ? &_comparer : nullptr;
   // Set index features.
-  options.features = getIndexFeatures();
-
+  if (LinkVersion{version} < LinkVersion::MAX) {
+    options.features = getIndexFeatures<irs::Norm>();
+  } else {
+    options.features = getIndexFeatures<irs::Norm2>();
+  }
   // initialize commit callback
   options.meta_payload_provider = [this](uint64_t tick, irs::bstring& out) {
     // update last tick

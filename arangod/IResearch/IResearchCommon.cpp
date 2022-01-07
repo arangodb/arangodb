@@ -49,8 +49,6 @@ arangodb::LogTopic& logTopic() { return TOPIC; }
 /*static*/ std::string const StaticStrings::LinksField("links");
 /*static*/ std::string const StaticStrings::VersionField("version");
 /*static*/ std::string const StaticStrings::ViewIdField("view");
-/*static*/ std::string const StaticStrings::AnalyzerDefinitionsField(
-    "analyzerDefinitions");
 /*static*/ std::string const StaticStrings::AnalyzerFeaturesField("features");
 /*static*/ std::string const StaticStrings::AnalyzerNameField("name");
 /*static*/ std::string const StaticStrings::AnalyzerPropertiesField(
