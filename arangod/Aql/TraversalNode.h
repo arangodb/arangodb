@@ -203,7 +203,11 @@ class TraversalNode : public virtual GraphNode {
   ///        of blocks.
   void prepareOptions() override;
 
+  std::vector<arangodb::graph::IndexAccessor> buildIndexAccessor(
+      TraversalEdgeConditionBuilder& conditionBuilder) const;
   std::vector<arangodb::graph::IndexAccessor> buildUsedIndexes() const;
+  std::unordered_map<uint64_t, std::vector<arangodb::graph::IndexAccessor>>
+  buildUsedDepthBasedIndexes() const;
   std::pair<arangodb::graph::VertexUniquenessLevel,
             arangodb::graph::EdgeUniquenessLevel>
   convertUniquenessLevels() const;

@@ -307,21 +307,8 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
   AqlFunctionsInternalCache aqlCache{};
   arangodb::aql::FixedVarExpressionContext exprContext{
       *server.createFakeTransaction().get(), *fakedQuery.get(), aqlCache};
-  arangodb::aql::InAndOutRowExpressionContext exprContext2{
-      *server.createFakeTransaction().get(),
-      *fakedQuery.get(),
-      aqlCache,
-      {},
-      {},
-      0,
-      0,
-      0};
   arangodb::graph::BaseProviderOptions baseProviderOptions{
-      &tmpVar,
-      std::move(usedIndexes),
-      exprContext,
-      std::move(exprContext2),
-      {}};
+      &tmpVar, std::move(usedIndexes), exprContext, {}, {}};
   arangodb::graph::PathValidatorOptions pathValidatorOptions{&tmpVar,
                                                              exprContext};
   arangodb::graph::OneSidedEnumeratorOptions enumeratorOptions{1, 1};
@@ -532,21 +519,8 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
   AqlFunctionsInternalCache aqlCache{};
   arangodb::aql::FixedVarExpressionContext exprContext{
       *server.createFakeTransaction().get(), *fakedQuery.get(), aqlCache};
-  arangodb::aql::InAndOutRowExpressionContext exprContext2{
-      *server.createFakeTransaction().get(),
-      *fakedQuery.get(),
-      aqlCache,
-      {},
-      {},
-      0,
-      0,
-      0};
   arangodb::graph::BaseProviderOptions baseProviderOptions{
-      &tmpVar,
-      std::move(usedIndexes),
-      exprContext,
-      std::move(exprContext2),
-      {}};
+      &tmpVar, std::move(usedIndexes), exprContext, {}, {}};
   arangodb::graph::PathValidatorOptions pathValidatorOptions{&tmpVar,
                                                              exprContext};
   arangodb::graph::OneSidedEnumeratorOptions enumeratorOptions{1, 1};

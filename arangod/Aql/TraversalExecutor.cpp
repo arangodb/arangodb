@@ -583,7 +583,6 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
 
       // traverser now has next v, e, p values
       transaction::BuilderLeaser tmp{_infos.getTrx()};
-      LOG_DEVEL << "[GraphRefactor]: doOutput - path found";
 
       // Vertex variable (v)
       if (_infos.useVertexOutput()) {
@@ -683,19 +682,14 @@ auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input,
     return {state, oldStats, AqlCall{}};
   } else {
     // refactored variant
-    LOG_DEVEL << "[GraphRefactor]: produceRows";
     while (!output.isFull()) {
       if (_traversalEnumerator.isDone()) {
-        LOG_DEVEL << "[GraphRefactor]: finder is done";
         if (!initTraverser(input)) {  // will set a new start vertex
           TRI_ASSERT(!input.hasDataRow());
-          LOG_DEVEL << "[GraphRefactor]: initTraverser returned false";
           return {input.upstreamState(), stats(), AqlCall{}};
         }
       } else {
-        LOG_DEVEL << "[GraphRefactor]: before doOutput";
         doOutput(output);
-        LOG_DEVEL << "[GraphRefactor]: after doOutput";
       }
     }
 
@@ -870,13 +864,8 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
             "Invalid input for traversal: Only "
             "id strings or objects with _id are "
             "allowed");*/
-        LOG_DEVEL << "[GraphRefactor] handle warning.";
+        // TODO [GraphRefactor]: handle warning.";
       } else {
-        // inject variables
-        // for (auto const& pair : _infos.filterConditionVariables()) {
-        // opts->setVariableValue(pair.first, _inputRow.getValue(pair.second));
-        //}
-
         // prepare index
         _traversalEnumerator.prepareIndexExpressions(_infos.getAst());
 

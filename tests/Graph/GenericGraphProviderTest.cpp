@@ -126,15 +126,13 @@ class GraphProviderTest : public ::testing::Test {
               *_trx.get(), *query, _functionsCache);
       std::vector<Variable const*> vars;
       std::vector<RegisterId const*> regs;
-      arangodb::aql::InAndOutRowExpressionContext exprContext2{
-          *_trx, *query, _functionsCache, {}, {}, 0, 0, 0};
 
       BaseProviderOptions opts(
           tmpVar,
           std::make_pair(
               std::move(usedIndexes),
               std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
-          *_expressionContext.get(), std::move(exprContext2), _emptyShardMap);
+          *_expressionContext.get(), {}, _emptyShardMap);
       return SingleServerProvider<SingleServerProviderStep>(
           *query.get(), std::move(opts), resourceMonitor);
     }

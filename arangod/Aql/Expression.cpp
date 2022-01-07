@@ -785,6 +785,7 @@ AqlValue Expression::executeSimpleExpressionReference(AstNode const* node,
       return AqlValue((*it).second);
     }
   }
+  TRI_ASSERT(_expressionContext != nullptr);
   return _expressionContext->getVariableValue(v, doCopy, mustDestroy);
 }
 

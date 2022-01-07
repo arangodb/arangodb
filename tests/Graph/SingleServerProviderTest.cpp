@@ -109,14 +109,12 @@ class SingleServerProviderTest : public ::testing::Test {
     _expressionContext =
         std::make_unique<arangodb::aql::FixedVarExpressionContext>(
             *_trx, *query, _functionsCache);
-    arangodb::aql::InAndOutRowExpressionContext exprContext2{
-        *_trx, *query, _functionsCache, {}, {}, 0, 0, 0};
     BaseProviderOptions opts(
         _tmpVar,
         std::make_pair(
             std::move(usedIndexes),
             std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
-        *_expressionContext.get(), std::move(exprContext2), _emptyShardMap);
+        *_expressionContext.get(), {}, _emptyShardMap);
     return {*query.get(), std::move(opts), _resourceMonitor};
   }
 

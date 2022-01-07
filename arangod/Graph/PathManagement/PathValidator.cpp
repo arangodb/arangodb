@@ -309,14 +309,14 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   }
 
   // Evaluate depth-based vertex expressions
-  auto expr = _options.getVertexExpression(step.getDepth());
-  if (expr != nullptr) {
+  auto vertexExpr = _options.getVertexExpression(step.getDepth());
+  if (vertexExpr != nullptr) {
     _tmpObjectBuilder.clear();
     _provider.addVertexToBuilder(step.getVertex(), _tmpObjectBuilder);
 
     // evaluate expression
     bool satifiesCondition =
-        evaluateVertexExpression(expr, _tmpObjectBuilder.slice());
+        evaluateVertexExpression(vertexExpr, _tmpObjectBuilder.slice());
     if (!satifiesCondition) {
       if (_options.hasCompatibility38IncludeFirstVertex() && step.isFirst()) {
         return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};

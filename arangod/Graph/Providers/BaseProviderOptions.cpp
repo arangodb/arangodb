@@ -82,15 +82,16 @@ BaseProviderOptions::BaseProviderOptions(
               std::unordered_map<uint64_t, std::vector<IndexAccessor>>>&&
         indexInfo,
     aql::FixedVarExpressionContext& expressionContext,
-    aql::InAndOutRowExpressionContext expressionContext2,
+    std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
+        filterConditionVariables,
     std::unordered_map<std::string, std::vector<std::string>> const&
         collectionToShardMap)
     : _temporaryVariable(tmpVar),
       _indexInformation(std::move(indexInfo)),
       _expressionContext(expressionContext),
-      _expressionContext2(std::move(expressionContext2)),
       _collectionToShardMap(collectionToShardMap),
-      _weightCallback(std::nullopt) {}
+      _weightCallback(std::nullopt),
+      _filterConditionVariables(filterConditionVariables) {}
 
 aql::Variable const* BaseProviderOptions::tmpVar() const {
   return _temporaryVariable;
@@ -112,10 +113,6 @@ aql::FixedVarExpressionContext& BaseProviderOptions::expressionContext() const {
   return _expressionContext;
 }
 
-aql::InAndOutRowExpressionContext& BaseProviderOptions::expressionContext2() {
-  return _expressionContext2;
-}
-
 bool BaseProviderOptions::hasWeightMethod() const {
   return _weightCallback.has_value();
 }
@@ -134,11 +131,13 @@ double BaseProviderOptions::weightEdge(double prefixWeight,
 }
 
 void BaseProviderOptions::prepareContext(aql::InputAqlItemRow input) {
-  _expressionContext2.setInputRow(std::move(input));
+  for (auto const& [var, reg] : _filterConditionVariables) {
+    _expressionContext.setVariableValue(var, input.getValue(reg));
+  }
 }
 
 void BaseProviderOptions::unPrepareContext() {
-  _expressionContext2.invalidateInputRow();
+  _expressionContext.clearVariableValues();
 }
 
 ClusterBaseProviderOptions::ClusterBaseProviderOptions(

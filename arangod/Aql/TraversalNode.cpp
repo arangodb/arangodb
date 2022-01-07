@@ -550,49 +550,36 @@ void TraversalNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   }
 }
 
-std::vector<arangodb::graph::IndexAccessor> TraversalNode::buildUsedIndexes()
-    const {
+std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
+    TraversalEdgeConditionBuilder& conditionBuilder) const {
   std::vector<IndexAccessor> indexAccessors{};
-
+  auto ast = _plan->getAst();
   size_t numEdgeColls = _edgeColls.size();
   bool onlyEdgeIndexes = false;
-
-  auto ast = _plan->getAst();
-  auto const toCondition =
-      ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
-  toCondition->addMember(_toCondition);
-  auto const fromCondition =
-      ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
-  fromCondition->addMember(_fromCondition);
-
-  TraversalEdgeConditionBuilder globalEdgeConditionBuilder(this);
-
-  for (auto& it : _globalEdgeConditions) {
-    globalEdgeConditionBuilder.addConditionPart(it);
-  }
 
   for (size_t i = 0; i < numEdgeColls; ++i) {
     auto dir = _directions[i];
     switch (dir) {
       case TRI_EDGE_IN: {
         std::shared_ptr<Index> indexToUse{nullptr};
-        //        aql::AstNode* condition = toCondition->clone(_plan->getAst());
-        aql::AstNode* condition =
-            globalEdgeConditionBuilder.getInboundCondition()->clone(ast);
+        aql::AstNode* indexCondition =
+            conditionBuilder.getInboundCondition()->clone(ast);
+
         bool res = aql::utils::getBestIndexHandleForFilterCondition(
-            *_edgeColls[i], condition, options()->tmpVar(), 1000,
+            *_edgeColls[i], indexCondition, options()->tmpVar(), 1000,
             aql::IndexHint(), indexToUse, onlyEdgeIndexes);
         if (!res) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                          "expected edge index not found");
         }
+        aql::AstNode* remainderCondition =
+            conditionBuilder.getInboundCondition()->clone(ast);
 
         ::arangodb::containers::HashSet<size_t> toRemove;
         aql::Condition::collectOverlappingMembers(
-            _plan, options()->tmpVar(), condition,
-            globalEdgeConditionBuilder.getInboundCondition(), toRemove, nullptr,
-            false);
-        size_t n = condition->numMembers();
+            _plan, options()->tmpVar(), remainderCondition, indexCondition,
+            toRemove, nullptr, false);
+        size_t n = remainderCondition->numMembers();
 
         std::unique_ptr<aql::Expression> expression = nullptr;
 
@@ -602,42 +589,41 @@ std::vector<arangodb::graph::IndexAccessor> TraversalNode::buildUsedIndexes()
             // Now n is one more than the idx we actually check
             if (toRemove.find(n - 1) != toRemove.end()) {
               // This index has to be removed.
-              condition->removeMemberUnchecked(n - 1);
+              remainderCondition->removeMemberUnchecked(n - 1);
             }
           }
-          expression =
-              std::make_unique<aql::Expression>(_plan->getAst(), condition);
+          expression = std::make_unique<aql::Expression>(_plan->getAst(),
+                                                         remainderCondition);
         }
 
         auto container = aql::utils::extractNonConstPartsOfIndexCondition(
-            ast, getRegisterPlan()->varInfo, false, false, condition,
+            ast, getRegisterPlan()->varInfo, false, false, indexCondition,
             options()->tmpVar());
 
-        indexAccessors.emplace_back(indexToUse, condition, 0,
+        indexAccessors.emplace_back(indexToUse, indexCondition, 0,
                                     std::move(expression), std::move(container),
                                     i);
         break;
       }
       case TRI_EDGE_OUT: {
         std::shared_ptr<Index> indexToUse{nullptr};
-        //        aql::AstNode* condition =
-        //        fromCondition->clone(_plan->getAst());
-        aql::AstNode* condition =
-            globalEdgeConditionBuilder.getOutboundCondition()->clone(ast);
+        aql::AstNode* indexCondition =
+            conditionBuilder.getOutboundCondition()->clone(ast);
         bool res = aql::utils::getBestIndexHandleForFilterCondition(
-            *_edgeColls[i], condition, options()->tmpVar(), 1000,
+            *_edgeColls[i], indexCondition, options()->tmpVar(), 1000,
             aql::IndexHint(), indexToUse, onlyEdgeIndexes);
         if (!res) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                          "expected edge index not found");
         }
+        aql::AstNode* remainderCondition =
+            conditionBuilder.getOutboundCondition()->clone(ast);
 
         ::arangodb::containers::HashSet<size_t> toRemove;
         aql::Condition::collectOverlappingMembers(
-            _plan, options()->tmpVar(), condition,
-            globalEdgeConditionBuilder.getOutboundCondition(), toRemove,
-            nullptr, false);
-        size_t n = condition->numMembers();
+            _plan, options()->tmpVar(), remainderCondition, indexCondition,
+            toRemove, nullptr, false);
+        size_t n = remainderCondition->numMembers();
 
         std::unique_ptr<aql::Expression> expression = nullptr;
 
@@ -647,18 +633,18 @@ std::vector<arangodb::graph::IndexAccessor> TraversalNode::buildUsedIndexes()
             // Now n is one more than the idx we actually check
             if (toRemove.find(n - 1) != toRemove.end()) {
               // This index has to be removed.
-              condition->removeMemberUnchecked(n - 1);
+              remainderCondition->removeMemberUnchecked(n - 1);
             }
           }
-          expression =
-              std::make_unique<aql::Expression>(_plan->getAst(), condition);
+          expression = std::make_unique<aql::Expression>(_plan->getAst(),
+                                                         remainderCondition);
         }
 
         auto container = aql::utils::extractNonConstPartsOfIndexCondition(
-            ast, getRegisterPlan()->varInfo, false, false, condition,
+            ast, getRegisterPlan()->varInfo, false, false, indexCondition,
             options()->tmpVar());
 
-        indexAccessors.emplace_back(indexToUse, condition, 0,
+        indexAccessors.emplace_back(indexToUse, indexCondition, 0,
                                     std::move(expression), std::move(container),
                                     i);
         break;
@@ -669,6 +655,28 @@ std::vector<arangodb::graph::IndexAccessor> TraversalNode::buildUsedIndexes()
     }
   }
   return indexAccessors;
+}
+
+std::vector<arangodb::graph::IndexAccessor> TraversalNode::buildUsedIndexes()
+    const {
+  TraversalEdgeConditionBuilder globalEdgeConditionBuilder(this);
+
+  for (auto& it : _globalEdgeConditions) {
+    globalEdgeConditionBuilder.addConditionPart(it);
+  }
+
+  return buildIndexAccessor(globalEdgeConditionBuilder);
+}
+
+std::unordered_map<uint64_t, std::vector<IndexAccessor>>
+TraversalNode::buildUsedDepthBasedIndexes() const {
+  std::unordered_map<uint64_t, std::vector<IndexAccessor>> result{};
+  for (auto const& [depth, builder] : _edgeConditions) {
+    TRI_ASSERT(builder != nullptr);
+    result.emplace(depth, buildIndexAccessor(*builder));
+  }
+
+  return result;
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -897,6 +905,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
                 std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
           usedIndexes{};
       usedIndexes.first = buildUsedIndexes();
+      usedIndexes.second = buildUsedDepthBasedIndexes();
 
       std::vector<Variable const*> vars{};
       std::vector<RegisterId> regs{};
@@ -906,19 +915,9 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
         regs.emplace_back(reg);
       }
 
-      auto expressionContext2 = arangodb::aql::InAndOutRowExpressionContext{
-          *opts->trx(),
-          opts->query(),
-          opts->aqlFunctionsInternalCache(),
-          std::move(vars),
-          std::move(regs),
-          std::numeric_limits<std::size_t>::max(),
-          std::numeric_limits<std::size_t>::max(),
-          std::numeric_limits<std::size_t>::max()};
-
       arangodb::graph::BaseProviderOptions baseProviderOptions{
           opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
-          std::move(expressionContext2), opts->collectionToShard()};
+          filterConditionVariables, opts->collectionToShard()};
 
       arangodb::graph::OneSidedEnumeratorOptions options{opts->minDepth,
                                                          opts->maxDepth};
@@ -987,28 +986,11 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
             std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
       usedIndexes{};
   usedIndexes.first = buildUsedIndexes();
-
-  std::vector<Variable const*> vars{};
-  std::vector<RegisterId> regs{};
-
-  for (auto [var, reg] : filterConditionVariables) {
-    vars.emplace_back(var);
-    regs.emplace_back(reg);
-  }
-
-  auto expressionContext2 = arangodb::aql::InAndOutRowExpressionContext{
-      *opts->trx(),
-      opts->query(),
-      opts->aqlFunctionsInternalCache(),
-      std::move(vars),
-      std::move(regs),
-      std::numeric_limits<std::size_t>::max(),
-      std::numeric_limits<std::size_t>::max(),
-      std::numeric_limits<std::size_t>::max()};
+  usedIndexes.second = buildUsedDepthBasedIndexes();
 
   arangodb::graph::BaseProviderOptions baseProviderOptions{
       opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
-      std::move(expressionContext2), opts->collectionToShard()};
+      filterConditionVariables, opts->collectionToShard()};
   PathValidatorOptions validatorOptions{opts->_tmpVar,
                                         opts->getExpressionCtx()};
   auto executorInfos = TraversalExecutorInfos(

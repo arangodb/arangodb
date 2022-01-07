@@ -108,8 +108,7 @@ class SingleServerProvider {
   void activateCache(bool enableDocumentCache);
 
   std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> buildCursor(
-      arangodb::aql::FixedVarExpressionContext& expressionContext,
-      arangodb::aql::InAndOutRowExpressionContext& expressionContext2);
+      arangodb::aql::FixedVarExpressionContext& expressionContext);
 
  private:
   // Unique_ptr to have this class movable, and to keep reference of trx()

@@ -99,7 +99,6 @@ class RefactoredSingleServerEdgeCursor {
       std::unordered_map<uint64_t, std::vector<IndexAccessor>>&
           depthBasedIndexConditions,
       arangodb::aql::FixedVarExpressionContext& expressionContext,
-      arangodb::aql::InAndOutRowExpressionContext& expressionContext2,
       bool requiresFullDocument);
 
   ~RefactoredSingleServerEdgeCursor();
@@ -113,8 +112,9 @@ class RefactoredSingleServerEdgeCursor {
   containers::FlatHashMap<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
 
   transaction::Methods* _trx;
+  // Only works with hardcoded variables
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
-  arangodb::aql::InAndOutRowExpressionContext& _expressionCtx2;
+
   bool _requiresFullDocument;
 
  public:
