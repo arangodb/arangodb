@@ -152,11 +152,11 @@ const replicatedLogIsReady = function (database, logId, term, participants, lead
             if (!current.leader) {
                 return Error("Leader has not yet established its term");
             }
-            if (leader.indexOf(current.leader.serverId) === -1) {
-                return Error(`Wrong leader in current; found = ${current.leader.serverId}, expected one of ${leader}`);
-            }
             if (current.leader.term < term) {
                 return Error(`Leader has not yet confirmed the term; found = ${current.leader.term}, expected = ${term}`);
+            }
+            if (leader.indexOf(current.leader.serverId) === -1) {
+                return Error(`Wrong leader in current; found = ${current.leader.serverId}, expected one of ${leader}`);
             }
         }
         return true;
