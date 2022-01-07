@@ -1278,9 +1278,6 @@ void TraversalNode::registerCondition(bool isConditionOnEdge,
 
 void TraversalNode::registerGlobalCondition(bool isConditionOnEdge,
                                             AstNode const* condition) {
-  LOG_DEVEL << "Register Global Condition";
-  condition->dump(0);
-
   Ast::getReferencedVariables(condition, _conditionVariables);
   if (isConditionOnEdge) {
     _globalEdgeConditions.emplace_back(condition);
