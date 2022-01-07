@@ -90,6 +90,7 @@ class ExecutionEngine;
 class ExecutionNode;
 class ExecutionPlan;
 class RegisterInfos;
+class PlanSnippet;
 class Expression;
 template<typename T>
 struct RegisterPlanWalkerT;
@@ -508,6 +509,10 @@ class ExecutionNode {
    */
   [[nodiscard]] virtual ExecutionLocation getAllowedLocation() const = 0;
 
+  std::shared_ptr<PlanSnippet> getPlanSnippet() const;
+
+  void setPlanSnippet(std::shared_ptr<PlanSnippet> targetSnippet);
+
  protected:
   /// @brief serialize this ExecutionNode to VelocyPack.
   /// This function is called as part of `toVelocyPack` and must be overriden in
@@ -595,6 +600,12 @@ class ExecutionNode {
   /// This is computed during the static analysis for each node using the
   /// variable usage in the plan.
   RegIdSetStack _regsToKeepStack;
+
+ private:
+  /// @brief Reference to the Snippet this node is planned on
+  /// this will only exist AFTER all optimizer rules have been
+  /// applied and the Query is ready to be executed
+  std::shared_ptr<PlanSnippet> _planSnippet;
 
  public:
   /// @brief used as "type traits" for ExecutionNodes and derived classes

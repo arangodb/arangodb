@@ -590,6 +590,7 @@ PlanSnippet::PlanSnippet(ExecutionNode* node)
     case ExecutionNode::SORT:
     case ExecutionNode::REMOTESINGLE:
     case ExecutionNode::ENUMERATE_LIST:
+    case ExecutionNode::SUBQUERY:
     case ExecutionNode::COLLECT: {
       _isOnCoordinator = true;
       break;
@@ -679,7 +680,16 @@ bool PlanSnippet::tryJoinAbove(ExecutionNode* node) {
       }
       break;
     }
-
+    case ExecutionNode::SUBQUERY: {
+      if (_isOnCoordinator) {
+        // For now we do not optimize Subquery
+        // For the future: We can include a subquery if it's sharding matches
+        // above or below
+        _topMost = node;
+        didJoin = true;
+      }
+      break;
+    }
     case ExecutionNode::CALCULATION: {
       if (!_isOnCoordinator) {
         auto calc = ExecutionNode::castTo<CalculationNode*>(node);
@@ -717,7 +727,6 @@ bool PlanSnippet::tryJoinAbove(ExecutionNode* node) {
     case ExecutionNode::ASYNC:
     case ExecutionNode::MUTEX:
     case ExecutionNode::WINDOW:
-    case ExecutionNode::SUBQUERY:
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::SUBQUERY_START:
     case ExecutionNode::RETURN:
@@ -790,6 +799,11 @@ bool PlanSnippet::tryJoinBelow(ExecutionNode* node) {
       _gatherOutput.memorizeCollect(collect);
       break;
     }
+    case ExecutionNode::SUBQUERY: {
+      // For now we do not optimize Subqueries
+      // We can optimize them by joining with what we have below and above
+      break;
+    }
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::INDEX:
     case ExecutionNode::INSERT:
@@ -830,7 +844,6 @@ bool PlanSnippet::tryJoinBelow(ExecutionNode* node) {
     case ExecutionNode::ASYNC:
     case ExecutionNode::MUTEX:
     case ExecutionNode::WINDOW:
-    case ExecutionNode::SUBQUERY:
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::SUBQUERY_START:
     case ExecutionNode::RETURN:

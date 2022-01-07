@@ -51,6 +51,7 @@
 #include "Aql/MutexNode.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/NodeFinder.h"
+#include "Aql/PlanSnippet.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/Range.h"
@@ -405,7 +406,8 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
       _depth(slice.get("depth").getNumericValue<unsigned int>()),
       _varUsageValid(true),
       _isInSplicedSubquery(false),
-      _plan(plan) {
+      _plan(plan),
+      _planSnippet(nullptr) {
   TRI_ASSERT(_registerPlan == nullptr);
   _registerPlan = std::make_shared<RegisterPlan>(slice, _depth);
 
