@@ -129,7 +129,8 @@ TEST_F(LogicalDataSourceTest, test_category) {
         "{ \"name\": \"testCollection\" }");
     arangodb::LogicalCollection instance(vocbase, json->slice(), true);
 
-    EXPECT_EQ(arangodb::LogicalCollection::category(), instance.category());
+    EXPECT_EQ(arangodb::LogicalDataSource::Category::kCollection,
+              instance.category());
   }
 
   // LogicalView
@@ -140,7 +141,8 @@ TEST_F(LogicalDataSourceTest, test_category) {
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     LogicalViewImpl instance(vocbase, json->slice());
 
-    EXPECT_EQ(arangodb::LogicalView::category(), instance.category());
+    EXPECT_EQ(arangodb::LogicalDataSource::Category::kView,
+              instance.category());
   }
 }
 
