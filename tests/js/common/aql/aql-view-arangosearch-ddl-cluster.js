@@ -213,11 +213,13 @@ function IResearchFeatureDDLTestSuite () {
       db._create("TestCollection2");
       var view = db._createView("TestView", "arangosearch", {});
 
+      var documents = [];
       for (var i = 0; i < 1000; ++i) {
-        db.TestCollection0.save({ name : i.toString() });
-        db.TestCollection1.save({ name : i.toString() });
-        db.TestCollection2.save({ name : i.toString() });
+        documents.push({ name : i.toString() });
       }
+      db.TestCollection0.save(documents);
+      db.TestCollection1.save(documents);
+      db.TestCollection2.save(documents);
 
       var properties = view.properties();
       assertTrue(Object === properties.links.constructor);
@@ -308,11 +310,13 @@ function IResearchFeatureDDLTestSuite () {
       db._create("TestCollection2");
       var view = db._createView("TestView", "arangosearch", {});
 
+      var documents = [];
       for (var i = 0; i < 1000; ++i) {
-        db.TestCollection0.save({ name : i.toString() });
-        db.TestCollection1.save({ name : i.toString() });
-        db.TestCollection2.save({ name : i.toString() });
+        documents.push({ name : i.toString() });
       }
+      db.TestCollection0.save(documents);
+      db.TestCollection1.save(documents);
+      db.TestCollection2.save(documents);
 
       var meta = { links: {
         "TestCollection0": { },
@@ -486,10 +490,11 @@ function IResearchFeatureDDLTestSuite () {
       col0 = db._create("TestCollection0");
       view = db._createView("TestView", "arangosearch", {});
 
-      col0.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
-      col0.save({ name: "half", text: "quick fox over lazy" });
-      col0.save({ name: "other half", text: "the brown jumps the dog" });
-      col0.save({ name: "quarter", text: "quick over" });
+      col0.save([
+        { name: "full", text: "the quick brown fox jumps over the lazy dog" },
+        { name: "half", text: "quick fox over lazy" },
+        { name: "other half", text: "the brown jumps the dog" },
+        { name: "quarter", text: "quick over" }]);
 
       meta = { links: { "TestCollection0": { includeAllFields: true } } };
       view.properties(meta, true); // partial update
@@ -509,10 +514,14 @@ function IResearchFeatureDDLTestSuite () {
       var col1 = db._create("TestCollection1");
       view = db._createView("TestView", "arangosearch", {});
 
-      col0.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
-      col0.save({ name: "half", text: "quick fox over lazy" });
-      col1.save({ name: "other half", text: "the brown jumps the dog" });
-      col1.save({ name: "quarter", text: "quick over" });
+      col0.save([
+        { name: "full", text: "the quick brown fox jumps over the lazy dog" },
+        { name: "half", text: "quick fox over lazy" }
+      ]);
+      col1.save([
+        { name: "other half", text: "the brown jumps the dog" },
+        { name: "quarter", text: "quick over" }
+      ]);
 
       meta = { links: {
         "TestCollection0": { includeAllFields: true },
@@ -537,10 +546,14 @@ function IResearchFeatureDDLTestSuite () {
       var col2 = db._create("TestCollection2");
       view = db._createView("TestView", "arangosearch", {});
 
-      col2.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
-      col2.save({ name: "half", text: "quick fox over lazy" });
-      col0.save({ name: "other half", text: "the brown jumps the dog" });
-      col0.save({ name: "quarter", text: "quick over" });
+      col2.save([
+        { name: "full", text: "the quick brown fox jumps over the lazy dog" },
+        { name: "half", text: "quick fox over lazy" }
+      ]);
+      col0.save([
+        { name: "other half", text: "the brown jumps the dog" },
+        { name: "quarter", text: "quick over" }
+      ]);
 
       meta = { links: {
         "TestCollection0": { includeAllFields: true },
@@ -609,10 +622,12 @@ function IResearchFeatureDDLTestSuite () {
       col0 = db._create("TestCollection0");
       view = db._createView("TestView", "arangosearch", { "cleanupIntervalStep": 42 });
 
-      col0.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
-      col0.save({ name: "half", text: "quick fox over lazy" });
-      col0.save({ name: "other half", text: "the brown jumps the dog" });
-      col0.save({ name: "quarter", text: "quick over" });
+      col0.save([
+        { name: "full", text: "the quick brown fox jumps over the lazy dog" },
+        { name: "half", text: "quick fox over lazy" },
+        { name: "other half", text: "the brown jumps the dog" },
+        { name: "quarter", text: "quick over" }
+      ]);
 
       meta = { links: { "TestCollection0": { includeAllFields: true } } };
       view.properties(meta, true); // partial update
@@ -647,10 +662,14 @@ function IResearchFeatureDDLTestSuite () {
       var col1 = db._create("TestCollection1");
       view = db._createView("TestView", "arangosearch", { "cleanupIntervalStep": 42 });
 
-      col0.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
-      col0.save({ name: "half", text: "quick fox over lazy" });
-      col1.save({ name: "other half", text: "the brown jumps the dog" });
-      col1.save({ name: "quarter", text: "quick over" });
+      col0.save([
+        { name: "full", text: "the quick brown fox jumps over the lazy dog" },
+        { name: "half", text: "quick fox over lazy" }
+      ]);
+      col1.save([
+        { name: "other half", text: "the brown jumps the dog" },
+        { name: "quarter", text: "quick over" }
+      ]);
 
       meta = { links: {
         "TestCollection0": { includeAllFields: true },
@@ -690,10 +709,14 @@ function IResearchFeatureDDLTestSuite () {
       var col2 = db._create("TestCollection2");
       view = db._createView("TestView", "arangosearch", { "cleanupIntervalStep": 42 });
 
-      col2.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
-      col2.save({ name: "half", text: "quick fox over lazy" });
-      col0.save({ name: "other half", text: "the brown jumps the dog" });
-      col0.save({ name: "quarter", text: "quick over" });
+      col2.save([
+        { name: "full", text: "the quick brown fox jumps over the lazy dog" },
+        { name: "half", text: "quick fox over lazy" }
+      ]);
+      col0.save([
+        { name: "other half", text: "the brown jumps the dog" },
+        { name: "quarter", text: "quick over" }
+      ]);
 
       meta = { links: {
         "TestCollection0": { includeAllFields: true },
@@ -834,10 +857,12 @@ function IResearchFeatureDDLTestSuite () {
       var col0 = db._create("TestCollection0");
       var view = db._createView("TestView", "arangosearch", {});
 
-      col0.save({ a: "foo", c: "bar", z: 0 });
-      col0.save({ a: "foz", d: "baz", z: 1 });
-      col0.save({ b: "bar", c: "foo", z: 2 });
-      col0.save({ b: "baz", d: "foz", z: 3 });
+      col0.save([
+        { a: "foo", c: "bar", z: 0 },
+        { a: "foz", d: "baz", z: 1 },
+        { b: "bar", c: "foo", z: 2 },
+        { b: "baz", d: "foz", z: 3 }
+      ]);
 
       var meta = { links: { "TestCollection0": { fields: { a: {} } } } };
       view.properties(meta, true); // partial update
@@ -877,10 +902,12 @@ function IResearchFeatureDDLTestSuite () {
       var view1 = db._createView("TestView1", "arangosearch", {});
       var view2 = db._createView("TestView2", "arangosearch", {});
 
-      col0.save({ a: "foo", c: "bar", z: 0 });
-      col0.save({ a: "foz", d: "baz", z: 1 });
-      col0.save({ b: "bar", c: "foo", z: 2 });
-      col0.save({ b: "baz", d: "foz", z: 3 });
+      col0.save([
+        { a: "foo", c: "bar", z: 0 },
+        { a: "foz", d: "baz", z: 1 },
+        { b: "bar", c: "foo", z: 2 },
+        { b: "baz", d: "foz", z: 3 }
+      ]);
 
       var meta1 = { links: { "TestCollection0": { fields: { a: {}, z: {} }, storeValues: "id" } } };
       var meta2 = { links: { "TestCollection0": { fields: { b: {}, z: {} }, storeValues: "id" } } };
@@ -942,8 +969,7 @@ function IResearchFeatureDDLTestSuite () {
       }
 
       // insert documents
-      col.save({ foo: 'bar' });
-      col.save({ foo: 'baz' });
+      col.save([{ foo: 'bar' }, { foo: 'baz' }]);
 
       // check link stats
       {
