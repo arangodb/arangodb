@@ -213,11 +213,13 @@ function IResearchFeatureDDLTestSuite () {
       db._create("TestCollection2");
       var view = db._createView("TestView", "arangosearch", {});
 
+      var documents = [];
       for (var i = 0; i < 1000; ++i) {
-        db.TestCollection0.save({ name : i.toString() });
-        db.TestCollection1.save({ name : i.toString() });
-        db.TestCollection2.save({ name : i.toString() });
+        documents.push({ name : i.toString() });
       }
+      db.TestCollection0.save(documents);
+      db.TestCollection1.save(documents);
+      db.TestCollection2.save(documents);
 
       var properties = view.properties();
       assertTrue(Object === properties.links.constructor);
@@ -308,11 +310,13 @@ function IResearchFeatureDDLTestSuite () {
       db._create("TestCollection2");
       var view = db._createView("TestView", "arangosearch", {});
 
+      var documents = [];
       for (var i = 0; i < 1000; ++i) {
-        db.TestCollection0.save({ name : i.toString() });
-        db.TestCollection1.save({ name : i.toString() });
-        db.TestCollection2.save({ name : i.toString() });
+        documents.push({ name : i.toString() });
       }
+      db.TestCollection0.save(documents);
+      db.TestCollection1.save(documents);
+      db.TestCollection2.save(documents);
 
       var meta = { links: {
         "TestCollection0": { },
