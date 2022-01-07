@@ -576,8 +576,7 @@ size_t State::removeConflicts(VPackSlice transactions, bool gotSnapshot) {
       }
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC("9e1df", DEBUG, Logger::AGENCY)
-        << e.what() << " " << __FILE__ << __LINE__;
+    LOG_TOPIC("9e1df", DEBUG, Logger::AGENCY) << e.what();
   }
 
   return ndups;
@@ -960,8 +959,7 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index,
       index = extractIndexFromKey(ii);
       term = ii.get("term").getNumber<uint64_t>();
     } catch (std::exception const& e) {
-      LOG_TOPIC("8ef2a", ERR, Logger::AGENCY)
-          << e.what() << " " << __FILE__ << __LINE__;
+      LOG_TOPIC("8ef2a", ERR, Logger::AGENCY) << e.what();
       return false;
     }
   }
@@ -1006,8 +1004,7 @@ index_t State::loadCompacted() {
       _nextCompactionAfter = _cur + _agent->config().compactionStepSize();
     } catch (std::exception const& e) {
       _cur = 0;
-      LOG_TOPIC("bc330", ERR, Logger::AGENCY)
-          << e.what() << " " << __FILE__ << __LINE__;
+      LOG_TOPIC("bc330", ERR, Logger::AGENCY) << e.what();
     }
   }
 
