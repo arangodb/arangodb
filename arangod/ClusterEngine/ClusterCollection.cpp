@@ -116,9 +116,14 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice,
               VPackValue(Helper::getBooleanValue(
                   slice, StaticStrings::CacheEnabled, def)));
 
-    auto validators = slice.get(StaticStrings::Schema);
-    if (!validators.isNone()) {
-      merge.add(StaticStrings::Schema, validators);
+    if (VPackSlice schema = slice.get(StaticStrings::Schema);
+        !schema.isNone()) {
+      merge.add(StaticStrings::Schema, schema);
+    }
+
+    if (VPackSlice computedValues = slice.get(StaticStrings::ComputedValues);
+        !computedValues.isNone()) {
+      merge.add(StaticStrings::ComputedValues, computedValues);
     }
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   } else if (_engineType == ClusterEngineType::MockEngine) {
@@ -157,13 +162,14 @@ PhysicalCollection* ClusterCollection::clone(LogicalCollection& logical) const {
 
 /// @brief used for updating properties
 void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
-  // objectId might be undefined on the coordinator
   TRI_ASSERT(result.isOpenObject());
 
   if (_engineType == ClusterEngineType::RocksDBEngine) {
     result.add(StaticStrings::CacheEnabled,
                VPackValue(Helper::getBooleanValue(
                    _info.slice(), StaticStrings::CacheEnabled, false)));
+
+    // TODO: computedValues?
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   } else if (_engineType == ClusterEngineType::MockEngine) {
     // do nothing

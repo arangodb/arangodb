@@ -23,9 +23,7 @@
 
 #pragma once
 
-#include <Basics/debugging.h>
 #include <velocypack/Builder.h>
-#include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include <string>
@@ -49,7 +47,7 @@ enum class ValidationLevel {
 
 struct ValidatorBase {
  protected:
-  explicit ValidatorBase();
+  ValidatorBase();
 
  public:
   explicit ValidatorBase(VPackSlice params);

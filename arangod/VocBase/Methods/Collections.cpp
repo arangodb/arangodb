@@ -1298,10 +1298,10 @@ arangodb::velocypack::Builder Collections::filterInput(
       std::unordered_set<std::string>{
           StaticStrings::DataSourceSystem, StaticStrings::DataSourceId,
           "keyOptions", StaticStrings::WaitForSyncString,
-          StaticStrings::CacheEnabled, StaticStrings::ShardKeys,
-          StaticStrings::NumberOfShards, StaticStrings::DistributeShardsLike,
-          "avoidServers", StaticStrings::IsSmart,
-          StaticStrings::ShardingStrategy,
+          StaticStrings::CacheEnabled, StaticStrings::ComputedValues,
+          StaticStrings::ShardKeys, StaticStrings::NumberOfShards,
+          StaticStrings::DistributeShardsLike, "avoidServers",
+          StaticStrings::IsSmart, StaticStrings::ShardingStrategy,
           StaticStrings::GraphSmartGraphAttribute, StaticStrings::Schema,
           StaticStrings::SmartJoinAttribute, StaticStrings::ReplicationFactor,
           StaticStrings::MinReplicationFactor,  // deprecated
