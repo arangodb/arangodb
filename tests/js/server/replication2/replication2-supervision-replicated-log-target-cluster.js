@@ -38,7 +38,7 @@ const {
     createTermSpecification,
     replicatedLogIsReady,
     dbservers,
-    nextUniqueLogId,
+    nextUniqueLogId, interestingSetOfConfigurations, instantiateTestSuite,
     registerAgencyTestBegin, registerAgencyTestEnd,
 } = helper;
 
@@ -97,64 +97,82 @@ const replicatedLogLeaderElectionFailed = function (database, logId, term, serve
 
         return true;
     };
-
 };
 
-const replicatedLogSuite = function () {
+const replicatedLogLeaderElectionFailedNotOk = function (database, logId, term, servers) {
+    const v = _.fromPairs(_.map(servers, (s) => [s, 1]));
+    return replicatedLogLeaderElectionFailed(database, logId, term, v);
+};
+
+const commonHelperFunctions = (function () {
+    let previousDatabase, databaseExisted = true;
+    let stoppedServers = {};
+
+    const continueServer = function (serverId) {
+        if (stoppedServers[serverId] === undefined) {
+            throw Error(`${serverId} not stopped`);
+        }
+        helper.continueServer(serverId);
+        delete stoppedServers[serverId];
+    };
+
+    const stopServer = function (serverId) {
+        if (stoppedServers[serverId] !== undefined) {
+            throw Error(`${serverId} already stopped`);
+        }
+        helper.stopServer(serverId);
+        stoppedServers[serverId] = true;
+    };
+
+    return {
+        setUpAll: function () {
+            previousDatabase = db._name();
+            if (!_.includes(db._databases(), database)) {
+                db._createDatabase(database);
+                databaseExisted = false;
+            }
+            db._useDatabase(database);
+        },
+        stopServer,
+        continueServer,
+
+        tearDownAll: function () {
+            Object.keys(stoppedServers).forEach(function (key) {
+                continueServer(key);
+            });
+
+            db._useDatabase(previousDatabase);
+            if (!databaseExisted) {
+                db._dropDatabase(database);
+            }
+        },
+        resumeAll: function () {
+            Object.keys(stoppedServers).forEach(function (key) {
+                helper.continueServer(key);
+            });
+        },
+    };
+}());
+
+const simpleFailoverTestSuite = function () {
+    const {setUpAll, tearDownAll, stopServer, continueServer, resumeAll} = commonHelperFunctions;
 
     const targetConfig = {
         writeConcern: 2,
-        softWriteConcern: 2,
         replicationFactor: 3,
         waitForSync: false,
     };
 
-    const {setUpAll, tearDownAll, stopServer, continueServer} = (function () {
-        let previousDatabase, databaseExisted = true;
-        let stoppedServers = {};
-        return {
-            setUpAll: function () {
-                previousDatabase = db._name();
-                if (!_.includes(db._databases(), database)) {
-                    db._createDatabase(database);
-                    databaseExisted = false;
-                }
-                db._useDatabase(database);
-            },
-
-            tearDownAll: function () {
-                Object.keys(stoppedServers).forEach(function (key) {
-                    continueServer(key);
-                });
-
-                db._useDatabase(previousDatabase);
-                if (!databaseExisted) {
-                    db._dropDatabase(database);
-                }
-            },
-            stopServer: function (serverId) {
-                if (stoppedServers[serverId] !== undefined) {
-                    throw Error(`{serverId} already stopped`);
-                }
-                helper.stopServer(serverId);
-                stoppedServers[serverId] = true;
-            },
-            continueServer: function (serverId) {
-                if (stoppedServers[serverId] === undefined) {
-                    throw Error(`{serverId} not stopped`);
-                }
-                helper.continueServer(serverId);
-                delete stoppedServers[serverId];
-            },
-        };
-    }());
-
     return {
         setUpAll, tearDownAll,
         setUp: registerAgencyTestBegin,
-        tearDown: registerAgencyTestEnd,
+        tearDown: () => (registerAgencyTestEnd() || resumeAll()),
 
         testCheckSimpleFailover: function () {
+            if (targetConfig.replicationFactor < 3) {
+                return;
+            }
+
             const logId = nextUniqueLogId();
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
             const leader = servers[0];
@@ -218,5 +236,53 @@ const replicatedLogSuite = function () {
     };
 };
 
-jsunity.run(replicatedLogSuite);
+const complexFailoverTestSuite = function (targetConfig) {
+    const {setUpAll, tearDownAll, stopServer, continueServer} = commonHelperFunctions;
+
+    const createReplicatedLog = function () {
+        const logId = nextUniqueLogId();
+        const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
+        const leader = servers[0];
+        const term = 1;
+        replicatedLogSetPlan(database, logId, {
+            id: logId,
+            targetConfig,
+            currentTerm: createTermSpecification(term, servers, targetConfig, leader),
+        });
+        const followers = _.difference(servers, [leader]);
+        console.info(`Created replicated log ${logId} with leader ${leader} on servers ${servers}`);
+        return {term, servers, leader, logId, followers};
+    };
+
+    return {
+        setUpAll, tearDownAll,
+        setUp: registerAgencyTestBegin,
+        tearDown: registerAgencyTestEnd,
+
+        testCheckLeaderFail: function () {
+            const expectFailover = targetConfig.writeConcern > 1;
+            const {term, leader, logId, followers, servers} = createReplicatedLog();
+
+            waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
+            stopServer(leader);
+
+            if (expectFailover) {
+                waitFor(replicatedLogIsReady(database, logId, term + 2, followers, followers));
+            } else {
+                waitFor(replicatedLogLeaderElectionFailedNotOk(database, logId, term + 1, [leader]));
+                continueServer(leader);
+                waitFor(replicatedLogIsReady(database, logId, term + 2, servers, servers));
+            }
+
+            replicatedLogDeletePlan(database, logId);
+        }
+    };
+};
+
+jsunity.run(simpleFailoverTestSuite);
+
+for (const config of interestingSetOfConfigurations) {
+    jsunity.run(instantiateTestSuite(complexFailoverTestSuite, config));
+}
+
 return jsunity.done();

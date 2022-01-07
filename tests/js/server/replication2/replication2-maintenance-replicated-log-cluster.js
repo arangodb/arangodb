@@ -36,8 +36,8 @@ const {
     replicatedLogSetPlanTerm,
     createTermSpecification,
     replicatedLogIsReady,
-    dbservers,
-    nextUniqueLogId, testConfigurationString,
+    dbservers, instantiateTestSuite,
+    nextUniqueLogId, interestingSetOfConfigurations,
     registerAgencyTestBegin, registerAgencyTestEnd
 } = require("@arangodb/testutils/replicated-logs-helper");
 
@@ -309,65 +309,8 @@ const replicatedLogSuite = function (targetConfig) {
     };
 };
 
-const instantiateTestSuite = function (suite, config) {
-    const proto = suite(config);
-    const testName = (name) => testConfigurationString(name, config);
-    let object = {};
-    for (const [name, test] of Object.entries(proto)) {
-        if (["setUp", "tearDown", "setUpAll", "tearDownAll"].indexOf(name) !== -1) {
-            object[name] = test;
-        } else {
-            object[testName(name)] = test;
-        }
-    }
-    return function () {
-        return object;
-    };
-};
 
-
-const testConfigurations = [
-    {
-        writeConcern: 1,
-        softWriteConcern: 1,
-        replicationFactor: 1,
-        waitForSync: false,
-    },
-    {
-        writeConcern: 1,
-        softWriteConcern: 2,
-        replicationFactor: 3,
-        waitForSync: false,
-    },
-    {
-        writeConcern: 2,
-        softWriteConcern: 2,
-        replicationFactor: 3,
-        waitForSync: false,
-    },
-    {
-        writeConcern: 1,
-        softWriteConcern: 2,
-        replicationFactor: 4,
-        waitForSync: false,
-    },
-    {
-        writeConcern: 3,
-        softWriteConcern: 3,
-        replicationFactor: 4,
-        waitForSync: false,
-    },
-    {
-        writeConcern: 4,
-        softWriteConcern: 4,
-        replicationFactor: 4,
-        waitForSync: false,
-    }
-];
-
-
-
-for (const config of testConfigurations) {
+for (const config of interestingSetOfConfigurations) {
     jsunity.run(instantiateTestSuite(replicatedLogSuite, config));
 }
 

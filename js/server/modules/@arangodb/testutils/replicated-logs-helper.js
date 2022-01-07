@@ -72,7 +72,7 @@ const createTermSpecification = function (term, servers, config, leader) {
     //assertTrue(config.replicationFactor === servers.length);
     spec.participants = getParticipantsObjectForServers(servers);
     if (leader !== undefined) {
-        if(!_.includes(servers, leader)) {
+        if (!_.includes(servers, leader)) {
             throw Error("leader is not part of the participants");
         }
         spec.leader = {serverId: leader, rebootId: getServerRebootId(leader)};
@@ -146,11 +146,14 @@ const replicatedLogIsReady = function (database, logId, term, participants, lead
         }
 
         if (leader !== undefined) {
+            if (!(leader instanceof Array)) {
+                leader = [leader];
+            }
             if (!current.leader) {
                 return Error("Leader has not yet established its term");
             }
-            if ( current.leader.serverId !== leader) {
-                return Error(`Wrong leader in current; found = ${current.leader.serverId}, expected = ${leader}`);
+            if (leader.indexOf(current.leader.serverId) === -1) {
+                return Error(`Wrong leader in current; found = ${current.leader.serverId}, expected one of ${leader}`);
             }
             if (current.leader.term < term) {
                 return Error(`Leader has not yet confirmed the term; found = ${current.leader.term}, expected = ${term}`);
@@ -160,7 +163,7 @@ const replicatedLogIsReady = function (database, logId, term, participants, lead
     };
 };
 
-const getServerProcessID = function(serverId) {
+const getServerProcessID = function (serverId) {
     let endpoint = global.ArangoClusterInfo.getServerEndpoint(serverId);
     // Now look for instanceInfo:
     let pos = _.findIndex(global.instanceInfo.arangods,
@@ -184,7 +187,7 @@ const continueServer = function (serverId) {
     }
 };
 
-const nextUniqueLogId = function() {
+const nextUniqueLogId = function () {
     return parseInt(global.ArangoClusterInfo.uniqid());
 };
 
@@ -199,6 +202,62 @@ const registerAgencyTestEnd = function (testName) {
 const testConfigurationString = function (basename, {writeConcern, softWriteConcern, replicationFactor, waitForSync}) {
     return `${basename}-wc${writeConcern}-swc${softWriteConcern}-r${replicationFactor}${waitForSync ? "-ws" : ""}`;
 };
+
+const instantiateTestSuite = function (suite, config) {
+    const proto = suite(config);
+    const testName = (name) => testConfigurationString(name, config);
+    let object = {};
+    for (const [name, test] of Object.entries(proto)) {
+        if (["setUp", "tearDown", "setUpAll", "tearDownAll"].indexOf(name) !== -1) {
+            object[name] = test;
+        } else {
+            object[testName(name)] = test;
+        }
+    }
+    return function () {
+        return object;
+    };
+};
+
+
+const interestingSetOfConfigurations = [
+    {
+        writeConcern: 1,
+        softWriteConcern: 1,
+        replicationFactor: 1,
+        waitForSync: false,
+    },
+    {
+        writeConcern: 1,
+        softWriteConcern: 2,
+        replicationFactor: 3,
+        waitForSync: false,
+    },
+    {
+        writeConcern: 2,
+        softWriteConcern: 2,
+        replicationFactor: 3,
+        waitForSync: false,
+    },
+    {
+        writeConcern: 1,
+        softWriteConcern: 2,
+        replicationFactor: 4,
+        waitForSync: false,
+    },
+    {
+        writeConcern: 3,
+        softWriteConcern: 3,
+        replicationFactor: 4,
+        waitForSync: false,
+    },
+    {
+        writeConcern: 4,
+        softWriteConcern: 4,
+        replicationFactor: 4,
+        waitForSync: false,
+    }
+];
 
 exports.waitFor = waitFor;
 exports.readAgencyValueAt = readAgencyValueAt;
@@ -217,3 +276,5 @@ exports.nextUniqueLogId = nextUniqueLogId;
 exports.registerAgencyTestBegin = registerAgencyTestBegin;
 exports.registerAgencyTestEnd = registerAgencyTestEnd;
 exports.testConfigurationString = testConfigurationString;
+exports.instantiateTestSuite = instantiateTestSuite;
+exports.interestingSetOfConfigurations = interestingSetOfConfigurations;
