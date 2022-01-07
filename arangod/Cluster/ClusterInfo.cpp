@@ -4615,7 +4615,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
           VPackObjectBuilder o(&finishedPlanIndex);
           for (auto const& entry :
                VPackObjectIterator(newIndexBuilder.slice())) {
-            auto const key = entry.key.copyString();
+            auto const key = entry.key.stringView();
             if (key != StaticStrings::IndexIsBuilding &&
                 key != "isNewlyCreated") {
               finishedPlanIndex.add(entry.key.copyString(), entry.value);

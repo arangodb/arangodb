@@ -35,6 +35,10 @@
 #include "Metrics/Fwd.h"
 
 namespace arangodb {
+namespace velocypack {
+class Slice;
+}
+
 namespace consensus {
 
 class Agent;
@@ -79,7 +83,7 @@ class Supervision : public arangodb::Thread {
 
   template<TASKS T>
   class Task {
-    explicit Task(const VPackSlice& config) {}
+    explicit Task(VPackSlice const& config) {}
     ServerID _serverID;
     std::string _endpoint;
   };
@@ -204,7 +208,7 @@ class Supervision : public arangodb::Thread {
   // @brief Action is called if resource should be deleted
   void resourceCreatorLost(
       std::shared_ptr<Node> const& resource,
-      std::function<void(const ResourceCreatorLostEvent&)> const& action);
+      std::function<void(ResourceCreatorLostEvent const&)> const& action);
 
   /// @brief Check for inconsistencies in replication factor vs dbs entries
   void enforceReplication();
