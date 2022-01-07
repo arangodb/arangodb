@@ -85,6 +85,13 @@ class DocumentProducingNode {
 
   void setCanReadOwnWrites(ReadOwnWrites v) noexcept { _readOwnWrites = v; }
 
+  size_t maxProjections() const noexcept { return _maxProjections; }
+
+  void setMaxProjections(size_t value) noexcept { _maxProjections = value; }
+
+  // arbitrary default value for the maximum number of projected attributes
+  static constexpr size_t kMaxProjections = 5;
+
  protected:
   Variable const* _outVariable;
 
@@ -99,6 +106,8 @@ class DocumentProducingNode {
   /// @brief Whether we should read our own writes performed by the current
   /// query. ATM this is only necessary for UPSERTS.
   ReadOwnWrites _readOwnWrites{ReadOwnWrites::no};
+
+  size_t _maxProjections{kMaxProjections};
 };
 
 }  // namespace aql

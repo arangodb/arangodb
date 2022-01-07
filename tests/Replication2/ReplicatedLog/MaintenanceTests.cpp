@@ -243,9 +243,9 @@ TEST_F(ReplicationMaintenanceTest,
       .term = LogTerm{3},
       .local = {},
       .leadershipEstablished = true,
-      .activeParticipantConfig =
+      .activeParticipantsConfig =
           std::make_shared<ParticipantsConfig const>(participantsConfig),
-      .committedParticipantConfig =
+      .committedParticipantsConfig =
           std::make_shared<ParticipantsConfig const>(participantsConfig)};
 
   auto localLogs = ReplicatedLogStatusMap{

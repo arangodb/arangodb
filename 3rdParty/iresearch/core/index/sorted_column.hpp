@@ -85,11 +85,13 @@ class sorted_column final : public column_output, private util::noncopyable {
   // 2nd - flushed column identifier
   std::pair<doc_map, field_id> flush(
     columnstore_writer& writer,
+    columnstore_writer::column_finalizer_f header_writer,
     doc_id_t max, // total number of docs in segment
     const comparer& less);
 
   field_id flush(
     columnstore_writer& writer,
+    columnstore_writer::column_finalizer_f header_writer,
     const doc_map& docmap,
     flush_buffer_t& buffer);
 

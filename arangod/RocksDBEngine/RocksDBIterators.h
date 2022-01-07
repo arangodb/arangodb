@@ -121,7 +121,7 @@ class RocksDBGenericIterator {
   ~RocksDBGenericIterator() = default;
 
   //* The following functions returns true if the iterator is valid within
-  //bounds on return.
+  // bounds on return.
   //  @param limit - number of documents the callback should be applied to
   bool next(GenericCallback const& cb, size_t limit);
 

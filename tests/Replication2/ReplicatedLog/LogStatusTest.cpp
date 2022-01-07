@@ -57,10 +57,10 @@ TEST_F(ReplicatedLogTest, quick_status_compare) {
     EXPECT_EQ(quickStatus.getCurrentTerm(), LogTerm{1});
     auto status = std::get<LeaderStatus>(leader->getStatus().getVariant());
     EXPECT_EQ(quickStatus.getLocalStatistics(), status.local);
-    EXPECT_EQ(*quickStatus.activeParticipantConfig,
-              status.activeParticipantConfig);
-    EXPECT_EQ(*quickStatus.committedParticipantConfig,
-              status.committedParticipantConfig);
+    EXPECT_EQ(*quickStatus.activeParticipantsConfig,
+              status.activeParticipantsConfig);
+    EXPECT_EQ(*quickStatus.committedParticipantsConfig,
+              status.committedParticipantsConfig);
     EXPECT_TRUE(quickStatus.leadershipEstablished);
   }
 
@@ -71,8 +71,8 @@ TEST_F(ReplicatedLogTest, quick_status_compare) {
     auto status = std::get<FollowerStatus>(follower->getStatus().getVariant());
     EXPECT_EQ(quickStatus.getLocalStatistics(), status.local);
 
-    EXPECT_EQ(quickStatus.activeParticipantConfig, nullptr);
-    EXPECT_EQ(quickStatus.committedParticipantConfig, nullptr);
+    EXPECT_EQ(quickStatus.activeParticipantsConfig, nullptr);
+    EXPECT_EQ(quickStatus.committedParticipantsConfig, nullptr);
     EXPECT_TRUE(quickStatus.leadershipEstablished);
   }
 }
