@@ -1,6 +1,10 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* When creating a new database the value of the write concern has to be smaller
+  or equal to the replication factor. Otherwise an error message will be displayed
+  and no database will be created.
+
 * Cancel ongoing RocksDB compactions on server shutdown.
 
 * Updated Enterprise license behavior: now there will be a one hour period for
