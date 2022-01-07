@@ -36,15 +36,18 @@
 #include "RestServer/ServerIdFeature.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 #include "VocBase/ticks.h"
 
 #include "Logger/Logger.h"
 
 namespace {
 
-std::string ensureGuid(std::string&& guid, arangodb::DataSourceId id,
-                       arangodb::DataSourceId planId, std::string const& name,
-                       bool isSystem) {
+[[maybe_unused]] std::string ensureGuid(std::string&& guid,
+                                        arangodb::DataSourceId id,
+                                        arangodb::DataSourceId planId,
+                                        std::string const& name,
+                                        bool isSystem) {
   if (!guid.empty()) {
     return std::move(guid);
   }
@@ -84,8 +87,8 @@ std::string ensureGuid(std::string&& guid, arangodb::DataSourceId id,
   return std::move(guid);
 }
 
-arangodb::DataSourceId ensureId(TRI_vocbase_t& vocbase,
-                                arangodb::DataSourceId id) {
+[[maybe_unused]] arangodb::DataSourceId ensureId(TRI_vocbase_t& vocbase,
+                                                 arangodb::DataSourceId id) {
   if (id) {
     return id;
   }
@@ -114,7 +117,7 @@ arangodb::DataSourceId ensureId(TRI_vocbase_t& vocbase,
   return id;
 }
 
-bool readIsSystem(arangodb::velocypack::Slice definition) {
+[[maybe_unused]] bool readIsSystem(arangodb::velocypack::Slice definition) {
   if (!definition.isObject()) {
     return false;
   }
@@ -144,6 +147,11 @@ arangodb::velocypack::ValuePair toValuePair(std::string const& value) {
 
 namespace arangodb {
 
+static_assert(LogicalDataSource::Category::kCollection ==
+              LogicalCollection::category());
+static_assert(LogicalDataSource::Category::kView ==
+              arangodb::LogicalView::category());
+
 /*static*/ LogicalDataSource::Type const& LogicalDataSource::Type::emplace(
     std::string_view name) {
   static std::mutex mutex;
@@ -160,9 +168,9 @@ namespace arangodb {
   return itr.first->second;
 }
 
-LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
+LogicalDataSource::LogicalDataSource(Category category, Type const& type,
                                      TRI_vocbase_t& vocbase,
-                                     velocypack::Slice const& definition)
+                                     velocypack::Slice definition)
     : LogicalDataSource(
           category, type, vocbase,
           DataSourceId{basics::VelocyPackHelper::extractIdValue(definition)},
@@ -176,22 +184,26 @@ LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
           basics::VelocyPackHelper::getBooleanValue(
               definition, StaticStrings::DataSourceDeleted, false)) {}
 
-LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
+LogicalDataSource::LogicalDataSource(Category category, Type const& type,
                                      TRI_vocbase_t& vocbase, DataSourceId id,
                                      std::string&& guid, DataSourceId planId,
                                      std::string&& name, bool system,
                                      bool deleted)
     : _name(std::move(name)),
-      _category(category),
       _type(type),
       _vocbase(vocbase),
       _id(ensureId(vocbase, id)),
       _planId(planId ? planId : _id),
       _guid(ensureGuid(std::move(guid), _id, _planId, _name, system)),
       _deleted(deleted),
+      _category(category),
       _system(system) {
   TRI_ASSERT(_id);
   TRI_ASSERT(!_guid.empty());
+}
+
+LogicalDataSource::Category LogicalDataSource::category() const noexcept {
+  return _category;
 }
 
 Result LogicalDataSource::properties(velocypack::Builder& builder,
