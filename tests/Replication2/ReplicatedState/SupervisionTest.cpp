@@ -284,6 +284,7 @@ TEST_F(LeaderStateMachineTest, test_log_establish_leader) {
   EXPECT_EQ(action._newLeader, "C") << *r;
 }
 
+#if 0
 TEST_F(LeaderStateMachineTest, test_log_establish_leader_with_higher_term) {
   // here we have a participant "C" with a *better* TermIndexPair than the
   // others because it has a higher LogTerm, but a lower LogIndex
@@ -335,3 +336,4 @@ TEST_F(LeaderStateMachineTest, test_log_establish_leader_with_higher_term) {
 
   EXPECT_EQ(action._newLeader, "C") << *r;
 }
+#endif
