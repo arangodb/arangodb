@@ -366,7 +366,7 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
       BaseProviderOptions forwardProviderOptions(
           opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
           opts->collectionToShard());
-      
+
       BaseProviderOptions backwardProviderOptions(
           opts->tmpVar(), std::move(reversedUsedIndexes),
           opts->getExpressionCtx(), {}, opts->collectionToShard());
