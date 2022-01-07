@@ -41,7 +41,7 @@ struct FollowerStateManager
   using Iterator = typename Stream::Iterator;
 
   FollowerStateManager(
-      std::shared_ptr<ReplicatedState<S>> parent,
+      std::shared_ptr<ReplicatedStateBase> parent,
       std::shared_ptr<replicated_log::ILogFollower> logFollower,
       std::unique_ptr<ReplicatedStateCore> core,
       std::shared_ptr<Factory> factory) noexcept;
