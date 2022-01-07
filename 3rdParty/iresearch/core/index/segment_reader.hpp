@@ -38,9 +38,6 @@ class IRESEARCH_API segment_reader final : public sub_reader {
   typedef segment_reader element_type; // type same as self
   typedef segment_reader ptr; // pointer to self
 
-  template<typename T>
-  static bool has(const segment_meta& meta) noexcept;
-
   static segment_reader open(const directory& dir, const segment_meta& meta);
 
   segment_reader() = default; // required for context<segment_reader>
@@ -68,10 +65,6 @@ class IRESEARCH_API segment_reader final : public sub_reader {
     return *this;
   }
 
-  virtual const column_meta* column(const string_ref& name) const override {
-    return impl_->column(name);
-  }
-
   virtual column_iterator::ptr columns() const override {
     return impl_->columns();
   }
@@ -90,7 +83,7 @@ class IRESEARCH_API segment_reader final : public sub_reader {
     return impl_->mask(std::move(it));
   }
 
-  virtual const term_reader* field(const string_ref& name) const override {
+  virtual const term_reader* field(string_ref name) const override {
     return impl_->field(name);
   }
 
@@ -112,14 +105,16 @@ class IRESEARCH_API segment_reader final : public sub_reader {
     return impl_->size();
   }
 
-  virtual const columnstore_reader::column_reader* sort() const override {
+  virtual const irs::column_reader* sort() const override {
     return impl_->sort();
   }
 
-  using sub_reader::column_reader;
-  virtual const columnstore_reader::column_reader* column_reader(
-      field_id field) const override {
-    return impl_->column_reader(field);
+  virtual const irs::column_reader* column(string_ref name) const override {
+    return impl_->column(name);
+  }
+
+  virtual const irs::column_reader* column(field_id field) const override {
+    return impl_->column(field);
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -138,16 +133,6 @@ class IRESEARCH_API segment_reader final : public sub_reader {
 
   segment_reader(impl_ptr&& impl) noexcept;
 }; // segment_reade
-
-template<>
-/*static*/ IRESEARCH_API bool segment_reader::has<columnstore_reader>(
-    const segment_meta& meta
-) noexcept;
-
-template<>
-/*static*/ IRESEARCH_API bool segment_reader::has<document_mask_reader>(
-    const segment_meta& meta
-) noexcept;
 
 }
 

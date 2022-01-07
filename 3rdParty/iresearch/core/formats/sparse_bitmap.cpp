@@ -77,7 +77,7 @@ enum AccessType : uint32_t {
 
 constexpr size_t DENSE_BLOCK_INDEX_BLOCK_SIZE = 512;
 constexpr size_t DENSE_BLOCK_INDEX_NUM_BLOCKS
-  = sparse_bitmap_writer::BLOCK_SIZE / DENSE_BLOCK_INDEX_BLOCK_SIZE;
+  = sparse_bitmap_writer::kBlockSize / DENSE_BLOCK_INDEX_BLOCK_SIZE;
 constexpr size_t DENSE_INDEX_BLOCK_SIZE_IN_BYTES
   = DENSE_BLOCK_INDEX_NUM_BLOCKS * sizeof(uint16_t);
 constexpr uint32_t DENSE_BLOCK_INDEX_WORDS_PER_BLOCK
@@ -115,26 +115,26 @@ namespace iresearch {
 void sparse_bitmap_writer::finish() {
   flush(block_);
 
-  if (block_index_.size() < BLOCK_SIZE) {
+  if (block_index_.size() < kBlockSize) {
     add_block(block_ ? block_ + 1 : 0);
   }
 
   // create a sentinel block to issue doc_limits::eof() automatically
-  block_ = doc_limits::eof() / BLOCK_SIZE;
-  set(doc_limits::eof() % BLOCK_SIZE);
+  block_ = doc_limits::eof() / kBlockSize;
+  set(doc_limits::eof() % kBlockSize);
   do_flush(1);
 }
 
 void sparse_bitmap_writer::do_flush(uint32_t popcnt) {
   assert(popcnt);
-  assert(block_ < BLOCK_SIZE);
-  assert(popcnt <= BLOCK_SIZE);
+  assert(block_ < kBlockSize);
+  assert(popcnt <= kBlockSize);
 
   out_->write_short(static_cast<uint16_t>(block_));
   out_->write_short(static_cast<uint16_t>(popcnt - 1)); // -1 to fit uint16_t
 
   if (popcnt > BITSET_THRESHOLD) {
-    if (popcnt != BLOCK_SIZE) {
+    if (popcnt != kBlockSize) {
       write_block_index(*out_, bits_);
 
       if constexpr (!is_big_endian()) {
@@ -274,7 +274,7 @@ struct container_iterator<BT_DENSE> {
       return true;
     }
 
-    constexpr int32_t NUM_BLOCKS = sparse_bitmap_writer::NUM_BLOCKS;
+    constexpr int32_t NUM_BLOCKS = sparse_bitmap_writer::kNumBlocks;
 
     ++ctx.word_idx;
     for (; ctx.word_idx < NUM_BLOCKS; ++ctx.word_idx) {
@@ -352,7 +352,7 @@ void sparse_bitmap_iterator::read_block_header() {
   const uint32_t popcnt = 1 + static_cast<uint16_t>(in_->read_short());
   index_ = index_max_;
   index_max_ += popcnt;
-  if (popcnt == sparse_bitmap_writer::BLOCK_SIZE) {
+  if (popcnt == sparse_bitmap_writer::kBlockSize) {
     ctx_.all.missing = block_ - index_;
     cont_begin_ = in_->file_pointer();
 
@@ -374,7 +374,7 @@ void sparse_bitmap_iterator::read_block_header() {
   } else {
     constexpr BlockType type = BT_DENSE;
     constexpr size_t block_size
-      = sparse_bitmap_writer::BLOCK_SIZE / bits_required<byte_type>();
+      = sparse_bitmap_writer::kBlockSize / bits_required<byte_type>();
 
     ctx_.dense.word_idx = -1;
     ctx_.dense.popcnt = index_;
@@ -411,13 +411,13 @@ void sparse_bitmap_iterator::read_block_header() {
 }
 
 void sparse_bitmap_iterator::seek_to_block(doc_id_t target) {
-  assert(target / sparse_bitmap_writer::BLOCK_SIZE);
+  assert(target / sparse_bitmap_writer::kBlockSize);
 
   if (block_index_.begin()) {
     assert(!block_index_.empty() && block_index_.end());
 
-    const doc_id_t target_block = target / sparse_bitmap_writer::BLOCK_SIZE;
-    if (target_block >= (block_ / sparse_bitmap_writer::BLOCK_SIZE + BLOCK_SCAN_THRESHOLD)) {
+    const doc_id_t target_block = target / sparse_bitmap_writer::kBlockSize;
+    if (target_block >= (block_ / sparse_bitmap_writer::kBlockSize + BLOCK_SCAN_THRESHOLD)) {
       const auto* block = block_index_.begin() + target_block;
       if (block >= block_index_.end()) {
         block = block_index_.end() - 1;

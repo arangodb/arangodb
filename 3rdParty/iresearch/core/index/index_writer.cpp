@@ -49,16 +49,18 @@ using namespace irs;
 typedef range<index_writer::modification_context> modification_contexts_ref;
 typedef range<segment_writer::update_context> update_contexts_ref;
 
-const size_t NON_UPDATE_RECORD = std::numeric_limits<size_t>::max(); // non-update
+constexpr size_t kNonUpdateRecord = std::numeric_limits<size_t>::max();
 
-const column_info_provider_t DEFAULT_COLUMN_INFO = [](const string_ref&) {
+const column_info_provider_t kDefaultColumnInfo = [](const string_ref&) {
   // no compression, no encryption
   return column_info{ irs::type<compression::none>::get(), {}, false };
 };
 
-const feature_column_info_provider_t DEFAULT_FEATURE_COLUMN_INFO = [](irs::type_info::type_id) {
+const feature_info_provider_t kDefaultFeatureInfo = [](irs::type_info::type_id) {
   // no compression, no encryption
-  return column_info{ irs::type<compression::none>::get(), {}, false };
+  return std::make_pair(
+    column_info{ irs::type<compression::none>::get(), {}, false },
+    feature_writer_factory_t{});
 };
 
 struct flush_segment_context {
@@ -234,7 +236,7 @@ bool add_document_mask_modified_records(
       // seen (i.e. replacement value whose filter did not match any documents)
       // for every update request a replacement 'update-value' is optimistically inserted
       if (modification.update
-          && doc_ctx.update_id != NON_UPDATE_RECORD
+          && doc_ctx.update_id != kNonUpdateRecord
           && !ctx.modification_contexts_[doc_ctx.update_id].seen) {
         continue; // the current modification matched a replacement document which in turn did not match any records
       }
@@ -265,7 +267,7 @@ bool add_document_mask_unused_updates(flush_segment_context& ctx) {
   for (auto doc_id = ctx.doc_id_begin_; doc_id < ctx.doc_id_end_; ++doc_id) {
     auto& doc_ctx = ctx.update_contexts_[doc_id - doc_limits::min()]; // valid because of asserts above
 
-    if (doc_ctx.update_id == NON_UPDATE_RECORD) {
+    if (doc_ctx.update_id == kNonUpdateRecord) {
       continue; // not an update operation
     }
 
@@ -545,7 +547,7 @@ segment_reader readers_cache::emplace(const segment_meta& meta) {
 
   segment_reader cached_reader;
 
-  // FIXME consider moving open/reopen out of the scope of the lock
+  // FIXME(gnusi) consider moving open/reopen out of the scope of the lock
   // cppcheck-suppress unreadVariable
   auto lock = make_lock_guard(lock_);
   auto& reader = cache_[meta];
@@ -1044,9 +1046,8 @@ void index_writer::flush_context::reset() noexcept {
 index_writer::segment_context::segment_context(
     directory& dir,
     segment_meta_generator_t&& meta_generator,
-    const field_features_t& field_features,
     const column_info_provider_t& column_info,
-    const feature_column_info_provider_t& feature_column_info,
+    const feature_info_provider_t& feature_info,
     const comparer* comparator)
   : active_count_(0),
     buffered_docs_(0),
@@ -1056,8 +1057,7 @@ index_writer::segment_context::segment_context(
     uncomitted_doc_id_begin_(doc_limits::min()),
     uncomitted_generation_offset_(0),
     uncomitted_modification_queries_(0),
-    writer_(segment_writer::make(dir_, field_features, column_info,
-                                 feature_column_info, comparator)) {
+    writer_(segment_writer::make(dir_, column_info, feature_info, comparator)) {
   assert(meta_generator_);
 }
 
@@ -1106,14 +1106,12 @@ uint64_t index_writer::segment_context::flush() {
 index_writer::segment_context::ptr index_writer::segment_context::make(
     directory& dir,
     segment_meta_generator_t&& meta_generator,
-    const field_features_t& field_features,
     const column_info_provider_t& column_info,
-    const feature_column_info_provider_t& feature_column_info,
+    const feature_info_provider_t& feature_info,
     const comparer* comparator) {
   return memory::make_unique<segment_context>(
     dir, std::move(meta_generator),
-    field_features, column_info,
-    feature_column_info, comparator);
+    column_info, feature_info, comparator);
 }
 
 segment_writer::update_context index_writer::segment_context::make_update_context(
@@ -1208,13 +1206,11 @@ index_writer::index_writer(
     const segment_options& segment_limits,
     const comparer* comparator,
     const column_info_provider_t& column_info,
-    const feature_column_info_provider_t& feature_column_info,
+    const feature_info_provider_t& feature_info,
     const payload_provider_t& meta_payload_provider,
-    const field_features_t& field_features,
     index_meta&& meta,
     committed_state_t&& committed_state)
-  : field_features_(field_features),
-    feature_column_info_(feature_column_info),
+  : feature_info_(feature_info),
     column_info_(column_info),
     meta_payload_provider_(meta_payload_provider),
     comparator_(comparator),
@@ -1231,7 +1227,7 @@ index_writer::index_writer(
     write_lock_(std::move(lock)),
     write_lock_file_ref_(std::move(lock_file_ref)) {
   assert(column_info); // ensured by 'make'
-  assert(feature_column_info); // ensured by 'make'
+  assert(feature_info); // ensured by 'make'
   assert(codec);
   flush_context_.store(&flush_context_pool_[0]);
 
@@ -1281,7 +1277,7 @@ void index_writer::clear(uint64_t tick) {
 
   // write 1st phase of index_meta transaction
   if (!writer_->prepare(dir, pending_meta)) {
-    throw illegal_state();
+    throw illegal_state{"Failed to write index metadata."};
   }
 
   auto ref = directory_utils::reference(dir, writer_->filename(pending_meta), true);
@@ -1379,11 +1375,10 @@ index_writer::ptr index_writer::make(
     segment_options(opts),
     opts.comparator,
     opts.column_info
-      ? opts.column_info : DEFAULT_COLUMN_INFO,
-    opts.feature_column_info
-      ? opts.feature_column_info : DEFAULT_FEATURE_COLUMN_INFO,
+      ? opts.column_info : kDefaultColumnInfo,
+    opts.features
+      ? opts.features : kDefaultFeatureInfo,
     opts.meta_payload_provider,
-    opts.features,
     std::move(meta),
     std::move(comitted_state));
 
@@ -1540,7 +1535,7 @@ index_writer::consolidation_result index_writer::consolidate(
   consolidation_segment.meta.name = file_name(meta_.increment()); // increment active meta, not fn arg
 
   ref_tracking_directory dir(dir_); // track references for new segment
-  merge_writer merger(dir, column_info_, feature_column_info_, comparator_);
+  merge_writer merger(dir, column_info_, feature_info_, comparator_);
   merger.reserve(result.size);
 
   // add consolidated segments to the merge_writer
@@ -1790,7 +1785,7 @@ bool index_writer::import(
   segment.meta.name = file_name(meta_.increment());
   segment.meta.codec = codec;
 
-  merge_writer merger(dir, column_info_, feature_column_info_, comparator_);
+  merge_writer merger(dir, column_info_, feature_info_, comparator_);
   merger.reserve(reader.size());
 
   for (auto& curr_segment : reader) {
@@ -1913,16 +1908,15 @@ index_writer::active_segment_context index_writer::get_segment_context(
   };
   auto segment_ctx = segment_writer_pool_.emplace(
     dir_, std::move(meta_generator),
-    field_features_, column_info_,
-    feature_column_info_, comparator_).release();
+    column_info_, feature_info_,
+    comparator_).release();
   auto segment_memory_max = segment_limits_.segment_memory_max.load();
 
   // recreate writer if it reserved more memory than allowed by current limits
   if (segment_memory_max &&
       segment_memory_max < segment_ctx->writer_->memory_reserved()) {
     segment_ctx->writer_ = segment_writer::make(
-      segment_ctx->dir_, field_features_,
-      column_info_,  feature_column_info_, comparator_);
+      segment_ctx->dir_,  column_info_, feature_info_, comparator_);
   }
 
   return active_segment_context(segment_ctx, segments_active_);
@@ -2439,7 +2433,7 @@ bool index_writer::start() {
 
   // write 1st phase of index_meta transaction
   if (!writer_->prepare(dir, pending_meta)) {
-    throw illegal_state();
+    throw illegal_state{"Failed to write index metadata."};
   }
 
   auto update_generation = make_finally([this, &pending_meta]()noexcept{
@@ -2514,7 +2508,7 @@ void index_writer::finish() {
 
   try {
     if (!writer_->commit()) {
-      throw illegal_state();
+      throw illegal_state{"Failed to commit index metadata."};
     }
 #ifndef __APPLE__
     // atomic_store may throw
