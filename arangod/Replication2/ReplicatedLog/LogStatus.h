@@ -133,13 +133,10 @@ struct LogStatus {
 };
 
 /**
- * @brief Provides a more general view of what's currently going on, without
- * completely relying on the leader.
+* @brief Provides a more general view of what's currently going on, without
+* completely relying on the leader.
  */
 struct GlobalStatus {
-  // TODO
-  // There's a few ways to go about this: both optional, only logStatus
-  // optional, or keep only one using a variant
   agency::LogCurrentSupervision supervision;
   std::optional<LogStatus> logStatus;
   static auto fromVelocyPack(velocypack::Slice slice) -> GlobalStatus;

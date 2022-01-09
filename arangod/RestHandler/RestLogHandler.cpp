@@ -202,10 +202,14 @@ RestStatus RestLogHandler::handleGetRequest(
     return handleGetEntry(methods, logId);
   } else if (verb == "slice") {
     return handleGetSlice(methods, logId);
+  } else if (verb == "local-status") {
+    return handleGetLocalStatus(methods, logId);
+  } else if (verb == "global-status") {
+    return handleGetGlobalStatus(methods, logId);
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "expecting one of the resources 'poll', 'head', 'tail', "
-                  "'entry', 'slice'");
+                  "'entry', 'slice', 'local-status', 'global-status'");
   }
   return RestStatus::DONE;
 }
@@ -257,10 +261,14 @@ RestStatus RestLogHandler::handleGet(ReplicatedLogMethods const& methods) {
 RestStatus RestLogHandler::handleGetLog(const ReplicatedLogMethods& methods,
                                         replication2::LogId logId) {
   return waitForFuture(
-      methods.getLogStatus(logId).thenValue([this](auto&& status) {
-        VPackBuilder buffer;
-        status.toVelocyPack(buffer);
-        generateOk(rest::ResponseCode::OK, buffer.slice());
+      methods.getStatus(logId).thenValue([this](auto&& status) {
+        std::visit(
+            [this](auto&& status) {
+              VPackBuilder buffer;
+              status.toVelocyPack(buffer);
+              generateOk(rest::ResponseCode::OK, buffer.slice());
+            },
+            std::move(status));
       }));
 }
 
@@ -376,6 +384,38 @@ RestStatus RestLogHandler::handleGetSlice(ReplicatedLogMethods const& methods,
                  });
 
   return waitForFuture(std::move(fut));
+}
+
+RestStatus RestLogHandler::handleGetLocalStatus(
+    ReplicatedLogMethods const& methods, replication2::LogId logId) {
+  if (_request->suffixes().size() != 2) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expect GET /_api/log/<log-id>/local-status");
+    return RestStatus::DONE;
+  }
+
+  return waitForFuture(
+      methods.getLocalStatus(logId).thenValue([this](auto&& status) {
+        VPackBuilder buffer;
+        status.toVelocyPack(buffer);
+        generateOk(rest::ResponseCode::OK, buffer.slice());
+      }));
+}
+
+RestStatus RestLogHandler::handleGetGlobalStatus(
+    ReplicatedLogMethods const& methods, replication2::LogId logId) {
+  if (_request->suffixes().size() != 2) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expect GET /_api/log/<log-id>/global-status");
+    return RestStatus::DONE;
+  }
+
+  return waitForFuture(
+      methods.getGlobalStatus(logId).thenValue([this](auto&& status) {
+        VPackBuilder buffer;
+        status.toVelocyPack(buffer);
+        generateOk(rest::ResponseCode::OK, buffer.slice());
+      }));
 }
 
 RestStatus RestLogHandler::handleGetEntry(ReplicatedLogMethods const& methods,

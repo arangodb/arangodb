@@ -22,7 +22,8 @@
 #pragma once
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/LogStatus.h"
+
+#include <variant>
 
 namespace arangodb {
 class Result;
@@ -38,8 +39,10 @@ namespace agency {
 struct LogPlanSpecification;
 struct LogPlanTermSpecification;
 }  // namespace agency
+
 namespace replicated_log {
 struct LogStatus;
+struct GlobalStatus;
 struct AppendEntriesRequest;
 struct AppendEntriesResult;
 struct WaitForResult;
@@ -54,6 +57,10 @@ struct WaitForResult;
 struct ReplicatedLogMethods {
   static constexpr auto kDefaultLimit = std::size_t{10};
 
+  typedef std::variant<replication2::replicated_log::LogStatus,
+                       replication2::replicated_log::GlobalStatus>
+      GenericLogStatus;
+
   virtual ~ReplicatedLogMethods() = default;
   virtual auto createReplicatedLog(agency::LogPlanSpecification const& spec)
       const -> futures::Future<Result> = 0;
@@ -62,8 +69,11 @@ struct ReplicatedLogMethods {
   virtual auto getReplicatedLogs() const
       -> futures::Future<std::unordered_map<arangodb::replication2::LogId,
                                             replicated_log::LogStatus>> = 0;
-  virtual auto getLogStatus(LogId) const
+  virtual auto getLocalStatus(LogId) const
+      -> futures::Future<replication2::replicated_log::LogStatus> = 0;
+  virtual auto getGlobalStatus(LogId) const
       -> futures::Future<replication2::replicated_log::GlobalStatus> = 0;
+  virtual auto getStatus(LogId) const -> futures::Future<GenericLogStatus> = 0;
 
   virtual auto getLogEntryByIndex(LogId, LogIndex) const
       -> futures::Future<std::optional<PersistingLogEntry>> = 0;

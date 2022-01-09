@@ -106,7 +106,7 @@ static void JS_GetReplicatedLog(
   }
 
   std::ignore =
-      ReplicatedLogMethods::createInstance(vocbase)->getLogStatus(id).get();
+      ReplicatedLogMethods::createInstance(vocbase)->getStatus(id).get();
   auto result = WrapReplicatedLog(isolate, id);
   TRI_V8_RETURN(result);
 
@@ -277,7 +277,50 @@ static void JS_Status(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto result =
-      ReplicatedLogMethods::createInstance(vocbase)->getLogStatus(id).get();
+      ReplicatedLogMethods::createInstance(vocbase)->getStatus(id).get();
+  auto response = std::visit(
+      [](auto&& r) {
+        VPackBuilder response;
+        r.toVelocyPack(response);
+        return std::move(response);
+      },
+      std::move(result));
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_LocalStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  auto& vocbase = GetContextVocBase(isolate);
+  auto id = UnwrapReplicatedLog(isolate, args.Holder());
+  if (!arangodb::ExecContext::current().isAdminUser()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("No access to replicated log '") + to_string(id) + "'");
+  }
+
+  auto result =
+      ReplicatedLogMethods::createInstance(vocbase)->getLocalStatus(id).get();
+  VPackBuilder response;
+  result.toVelocyPack(response);
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_GlobalStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  auto& vocbase = GetContextVocBase(isolate);
+  auto id = UnwrapReplicatedLog(isolate, args.Holder());
+  if (!arangodb::ExecContext::current().isAdminUser()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("No access to replicated log '") + to_string(id) + "'");
+  }
+
+  auto result =
+      ReplicatedLogMethods::createInstance(vocbase)->getGlobalStatus(id).get();
   VPackBuilder response;
   result.toVelocyPack(response);
   TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
@@ -511,6 +554,11 @@ void TRI_InitV8ReplicatedLogs(TRI_v8_global_t* v8g, v8::Isolate* isolate) {
                        JS_MultiInsert);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "status"),
                        JS_Status);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "localStatus"),
+                       JS_LocalStatus);
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "globalStatus"),
+                       JS_GlobalStatus);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "head"),
                        JS_Head);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "tail"),

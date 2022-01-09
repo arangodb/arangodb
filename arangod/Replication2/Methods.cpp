@@ -24,14 +24,14 @@
 #include <Basics/voc-errors.h>
 #include <Futures/Future.h>
 
-#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Network/Methods.h"
 #include "Replication2/AgencyMethods.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
+#include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "VocBase/vocbase.h"
 
@@ -39,21 +39,7 @@
 
 using namespace arangodb;
 using namespace arangodb::replication2;
-using namespace arangodb::replication2::agency;
 using namespace arangodb::replication2::replicated_log;
-
-namespace {
-auto getAgencyCurrentSupervision(TRI_vocbase_t& vocbase, LogId id)
-    -> LogCurrentSupervision {
-  auto& agencyCache =
-      vocbase.server().getFeature<ClusterFeature>().agencyCache();
-  VPackBuilder builder;
-  agencyCache.get(builder, basics::StringUtils::concatT(
-                               "Current/ReplicatedLogs/", vocbase.name(), "/",
-                               id, "/supervision"));
-  return LogCurrentSupervision{from_velocypack, builder.slice()};
-}
-}  // namespace
 
 struct ReplicatedLogMethodsDBServer final
     : ReplicatedLogMethods,
@@ -75,12 +61,19 @@ struct ReplicatedLogMethodsDBServer final
     return vocbase.getReplicatedLogs();
   }
 
-  auto getLogStatus(LogId id) const
+  auto getLocalStatus(LogId id) const
+      -> futures::Future<replication2::replicated_log::LogStatus> override {
+    return vocbase.getReplicatedLogById(id)->getParticipant()->getStatus();
+  }
+
+  [[noreturn]] auto getGlobalStatus(LogId id) const
       -> futures::Future<replication2::replicated_log::GlobalStatus> override {
-    return GlobalStatus{
-        .supervision = getAgencyCurrentSupervision(vocbase, id),
-        .logStatus =
-            vocbase.getReplicatedLogById(id)->getParticipant()->getStatus()};
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  auto getStatus(LogId id) const -> futures::Future<GenericLogStatus> override {
+    return getLocalStatus(id).thenValue(
+        [](LogStatus&& status) { return GenericLogStatus(std::move(status)); });
   }
 
   auto getLogEntryByIndex(LogId id, LogIndex index) const
@@ -218,9 +211,14 @@ struct ReplicatedLogMethodsCoordinator final
     return vocbase.getReplicatedLogs();
   }
 
-  auto getLogStatus(LogId id) const
+  [[noreturn]] auto getLocalStatus(LogId id) const
+      -> futures::Future<replication2::replicated_log::LogStatus> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  auto getGlobalStatus(LogId id) const
       -> futures::Future<replication2::replicated_log::GlobalStatus> override {
-    auto path = basics::StringUtils::joinT("/", "_api/log", id);
+    auto path = basics::StringUtils::joinT("/", "_api/log", id, "local-status");
     network::RequestOptions opts;
     opts.database = vocbase.name();
     ServerID leaderId;
@@ -229,22 +227,34 @@ struct ReplicatedLogMethodsCoordinator final
       leaderId = getLogLeader(id);
     } catch (basics::Exception const& ex) {
       if (ex.code() == TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED) {
-        return GlobalStatus{getAgencyCurrentSupervision(vocbase, id),
-                            std::nullopt};
+        return GlobalStatus{
+            replication2::agency::methods::getCurrentSupervision(vocbase, id),
+            std::nullopt};
       }
       throw;
     }
 
     return network::sendRequest(pool, "server:" + leaderId,
                                 fuerte::RestVerb::Get, path)
-        .thenValue([](network::Response&& resp) {
+        .thenValue([&](network::Response&& resp) {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());
           }
 
-          return replication2::replicated_log::GlobalStatus::fromVelocyPack(
-              resp.slice().get("result"));
+          auto supervision =
+              replication2::agency::methods::getCurrentSupervision(vocbase, id);
+          auto logStatus =
+              replication2::replicated_log::LogStatus::fromVelocyPack(
+                  resp.slice().get("result"));
+          return GlobalStatus{.supervision = std::move(supervision),
+                              .logStatus = std::move(logStatus)};
         });
+  }
+
+  auto getStatus(LogId id) const -> futures::Future<GenericLogStatus> override {
+    return getGlobalStatus(id).thenValue([](GlobalStatus&& status) {
+      return GenericLogStatus(std::move(status));
+    });
   }
 
   auto getLogEntryByIndex(LogId id, LogIndex index) const

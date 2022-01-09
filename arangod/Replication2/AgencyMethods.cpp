@@ -35,9 +35,13 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/TransactionBuilder.h"
 #include "Agency/AgencyPaths.h"
+#include "Basics/StringUtils.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "VocBase/vocbase.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
 class Result;
@@ -197,4 +201,15 @@ auto methods::updateElectionResult(arangodb::agency::envelope envelope,
           [&](VPackBuilder& builder) { result.toVelocyPack(builder); })
       .inc(paths::current()->version()->str())
       .end();
+}
+
+auto methods::getCurrentSupervision(TRI_vocbase_t& vocbase, LogId id)
+    -> LogCurrentSupervision {
+  auto& agencyCache =
+      vocbase.server().getFeature<ClusterFeature>().agencyCache();
+  VPackBuilder builder;
+  agencyCache.get(builder, basics::StringUtils::concatT(
+                               "Current/ReplicatedLogs/", vocbase.name(), "/",
+                               id, "/supervision"));
+  return LogCurrentSupervision{from_velocypack, builder.slice()};
 }
