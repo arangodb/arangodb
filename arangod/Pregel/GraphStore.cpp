@@ -451,9 +451,7 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
 
   std::lock_guard<std::mutex> guard(_bufferMutex);
   ::moveAppend(vertices, _vertices);
-  ::moveAppend(vKeys, _vertexKeys);
   ::moveAppend(edges, _edges);
-  ::moveAppend(eKeys, _edgeKeys);
 
   LOG_PREGEL("6d389", DEBUG)
       << "Pregel worker: done loading from vertex shard " << vertexShard;

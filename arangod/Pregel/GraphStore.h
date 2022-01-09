@@ -123,9 +123,7 @@ class GraphStore final {
   /// Holds vertex keys, data and pointers to edges
   std::mutex _bufferMutex;
   std::vector<std::unique_ptr<TypedBuffer<Vertex<V, E>>>> _vertices;
-  std::vector<std::unique_ptr<TypedBuffer<char>>> _vertexKeys;
   std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>> _edges;
-  std::vector<std::unique_ptr<TypedBuffer<char>>> _edgeKeys;
 
   // cache the amount of vertices
   std::set<ShardID> _loadedShards;
