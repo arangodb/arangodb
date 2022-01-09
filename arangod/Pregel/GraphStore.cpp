@@ -139,8 +139,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
       _vocbaseGuard.database().server(), poster);
   queue->setConcurrency(_config->parallelism());
 
-  for (auto const& pair : vertexCollMap) {
-    std::vector<ShardID> const& vertexShards = pair.second;
+  for (auto const& [_, vertexShards] : vertexCollMap) {
     if (numShards == SIZE_MAX) {
       numShards = vertexShards.size();
     } else if (numShards != vertexShards.size()) {
@@ -156,8 +155,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
       // distributeshardslike should cause the edges for a vertex to be
       // in the same shard index. x in vertexShard2 => E(x) in edgeShard2
       std::vector<ShardID> edges;
-      for (auto const& pair2 : edgeCollMap) {
-        std::vector<ShardID> const& edgeShards = pair2.second;
+      for (auto const& [_, edgeShards] : edgeCollMap) {
         if (vertexShards.size() != edgeShards.size()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, shardError);
         }
