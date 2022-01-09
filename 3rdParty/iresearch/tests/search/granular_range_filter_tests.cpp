@@ -114,14 +114,11 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
   void by_range_granularity_boost() {
     // add segment
     {
-      irs::index_writer::init_options opts;
-      opts.features.emplace(irs::type<irs::granularity_prefix>::id(), nullptr);
-
       tests::json_doc_generator gen(
         resource("granular_sequential.json"),
         &by_range_json_field_factory);
 
-      add_segment(gen, irs::OM_CREATE, opts);
+      add_segment(gen, irs::OM_CREATE);
     }
 
     auto rdr = open_reader();
@@ -161,14 +158,11 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
   void by_range_granularity_level() {
     // add segment
     {
-      irs::index_writer::init_options opts;
-      opts.features.emplace(irs::type<irs::granularity_prefix>::id(), nullptr);
-
       tests::json_doc_generator gen(
         resource("granular_sequential.json"),
         &by_range_json_field_factory);
 
-      add_segment(gen, irs::OM_CREATE, opts);
+      add_segment(gen, irs::OM_CREATE);
     }
 
     auto rdr = open_reader();
@@ -440,14 +434,11 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
   void by_range_sequential_numeric() {
     // add segment
     {
-      irs::index_writer::init_options opts;
-      opts.features.emplace(irs::type<irs::granularity_prefix>::id(), nullptr);
-
       tests::json_doc_generator gen(
         resource("simple_sequential.json"),
         &by_range_json_field_factory);
 
-      add_segment(gen, irs::OM_CREATE, opts);
+      add_segment(gen, irs::OM_CREATE);
     }
 
     auto rdr = open_reader();
@@ -1243,14 +1234,11 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
   void by_range_sequential_cost() {
     // add segment
     {
-      irs::index_writer::init_options opts;
-      opts.features.emplace(irs::type<irs::granularity_prefix>::id(), nullptr);
-
       tests::json_doc_generator gen(
         resource("simple_sequential.json"),
         &by_range_json_field_factory);
 
-      add_segment(gen, irs::OM_CREATE, opts);
+      add_segment(gen, irs::OM_CREATE);
     }
 
     auto rdr = open_reader();
@@ -1709,14 +1697,11 @@ TEST_P(granular_range_filter_test_case, by_range_numeric) {
 TEST_P(granular_range_filter_test_case, by_range_order) {
   // add segment
   {
-    irs::index_writer::init_options opts;
-    opts.features.emplace(irs::type<irs::granularity_prefix>::id(), nullptr);
-
     tests::json_doc_generator gen(
       resource("simple_sequential.json"),
       &by_range_json_field_factory);
 
-    add_segment(gen, irs::OM_CREATE, opts);
+    add_segment(gen, irs::OM_CREATE);
   }
 
   auto rdr = open_reader();
@@ -1880,14 +1865,11 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
 
 TEST_P(granular_range_filter_test_case, by_range_order_multiple_sorts) {
   {
-    irs::index_writer::init_options opts;
-    opts.features.emplace(irs::type<irs::granularity_prefix>::id(), nullptr);
-
-    auto writer = open_writer(irs::OM_CREATE, opts);
+    auto writer = open_writer(irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // add segment
-    index().emplace_back(writer->field_features());
+    index().emplace_back(writer->feature_info());
     auto& segment = index().back();
 
     {
@@ -1984,10 +1966,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     }
   );
 
-  irs::index_writer::init_options opts;
-  opts.features.emplace(irs::type<irs::granularity_prefix>::id(), nullptr);
-
-  add_segment(gen, irs::OM_CREATE, opts);
+  add_segment(gen, irs::OM_CREATE);
 
   auto reader = open_reader();
   ASSERT_EQ(1, reader->size());
@@ -2025,21 +2004,22 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
 
     auto prepared = query.prepare(reader);
     ASSERT_NE(nullptr, prepared);
-    auto* column = segment.column_reader("_key");
+    auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
-
+    auto values = column->iterator(false);
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
 
     std::set<std::string> actual;
 
-    irs::bytes_ref value;
     auto docs = prepared->execute(segment);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     while(docs->next()) {
       const auto doc = docs->value();
-      values(doc, value);
-      actual.emplace(irs::to_string<std::string>(value.c_str()));
+      ASSERT_EQ(doc, values->seek(doc));
+      actual.emplace(irs::to_string<std::string>(actual_value->value.c_str()));
     }
     ASSERT_EQ(expected, actual);
   }
@@ -2074,21 +2054,22 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
 
     auto prepared = query.prepare(reader);
     ASSERT_NE(nullptr, prepared);
-    auto* column = segment.column_reader("_key");
+    auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
-
+    auto values = column->iterator(false);
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
 
     std::set<std::string> actual;
 
-    irs::bytes_ref value;
     auto docs = prepared->execute(segment);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     while(docs->next()) {
       const auto doc = docs->value();
-      values(doc, value);
-      actual.emplace(irs::to_string<std::string>(value.c_str()));
+      ASSERT_EQ(doc, values->seek(doc));
+      actual.emplace(irs::to_string<std::string>(actual_value->value.c_str()));
     }
     ASSERT_EQ(expected, actual);
   }
@@ -2125,20 +2106,22 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
 
     auto prepared = query.prepare(reader);
     ASSERT_NE(nullptr, prepared);
-    auto* column = segment.column_reader("_key");
+    auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
+    auto values = column->iterator(false);
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
 
     std::set<std::string> actual;
 
-    irs::bytes_ref value;
     auto docs = prepared->execute(segment);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     while(docs->next()) {
       const auto doc = docs->value();
-      values(doc, value);
-      actual.emplace(irs::to_string<std::string>(value.c_str()));
+      ASSERT_EQ(doc, values->seek(doc));
+      actual.emplace(irs::to_string<std::string>(actual_value->value.c_str()));
     }
     ASSERT_EQ(expected, actual);
   }
@@ -2173,20 +2156,22 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
 
     auto prepared = query.prepare(reader);
     ASSERT_NE(nullptr, prepared);
-    auto* column = segment.column_reader("_key");
+    auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
+    auto values = column->iterator(false);
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
 
     std::set<std::string> actual;
 
-    irs::bytes_ref value;
     auto docs = prepared->execute(segment);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     while(docs->next()) {
       const auto doc = docs->value();
-      values(doc, value);
-      actual.emplace(irs::to_string<std::string>(value.c_str()));
+      ASSERT_EQ(doc, values->seek(doc));
+      actual.emplace(irs::to_string<std::string>(actual_value->value.c_str()));
     }
     ASSERT_EQ(expected, actual);
   }
@@ -2195,14 +2180,11 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
 TEST_P(granular_range_filter_test_case, visit) {
   // add segment
   {
-    irs::index_writer::init_options opts;
-    opts.features.emplace(irs::type<irs::granularity_prefix>::id(), nullptr);
-
     tests::json_doc_generator gen(
       resource("simple_sequential.json"),
       &tests::generic_json_field_factory);
 
-    add_segment(gen, irs::OM_CREATE, opts);
+    add_segment(gen, irs::OM_CREATE);
   }
 
   tests::empty_filter_visitor visitor;

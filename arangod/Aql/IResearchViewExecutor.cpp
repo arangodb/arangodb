@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -118,15 +118,15 @@ lookupCollection(                         // find collection
 }
 
 inline irs::doc_iterator::ptr pkColumn(irs::sub_reader const& segment) {
-  auto const* reader = segment.column_reader(DocumentPrimaryKey::PK());
+  auto const* reader = segment.column(DocumentPrimaryKey::PK());
 
-  return reader ? reader->iterator() : nullptr;
+  return reader ? reader->iterator(false) : nullptr;
 }
 
 inline irs::doc_iterator::ptr sortColumn(irs::sub_reader const& segment) {
   auto const* reader = segment.sort();
 
-  return reader ? reader->iterator() : nullptr;
+  return reader ? reader->iterator(false) : nullptr;
 }
 
 inline void reset(ColumnIterator& column,
@@ -822,15 +822,15 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(
             static_cast<size_t>(columnFieldsRegs->first);
         TRI_ASSERT(storedColumnNumber < columns.size());
         auto const* storedValuesReader =
-            segmentReader.column_reader(columns[storedColumnNumber].name);
+            segmentReader.column(columns[storedColumnNumber].name);
         if (ADB_UNLIKELY(!storedValuesReader)) {
           LOG_TOPIC("af7ec", WARN, arangodb::iresearch::TOPIC)
               << "encountered a sub-reader without a stored value column while "
                  "executing a query, ignoring";
           return false;
         }
-        TRI_ASSERT(storedValuesReader->iterator());
-        ::reset(_storedValuesReaders[index++], storedValuesReader->iterator());
+        ::reset(_storedValuesReaders[index++],
+                storedValuesReader->iterator(false));
       }
     }
   }

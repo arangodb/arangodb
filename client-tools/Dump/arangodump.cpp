@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+#include "Basics/signals.h"
 #include "Basics/directories.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -54,10 +55,10 @@ int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
     ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
+    arangodb::signals::maskAllSignalsClient();
     context.installHup();
 
     maskings::InstallMaskings();
-
 #ifdef USE_ENTERPRISE
     maskings::InstallMaskingsEE();
 #endif
@@ -67,7 +68,7 @@ int main(int argc, char* argv[]) {
             argv[0], "Usage: arangodump [<options>]",
             "For more information use:", BIN_DIRECTORY));
     ApplicationServer server(options, BIN_DIRECTORY);
-    int ret;
+    int ret = EXIT_SUCCESS;
 
     server.addFeature<CommunicationFeaturePhase>();
     server.addFeature<BasicFeaturePhaseClient>();

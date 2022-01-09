@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1147,8 +1147,7 @@ void Supervision::run() {
                   LOG_TOPIC("675fc", TRACE, Logger::SUPERVISION)
                       << "Finished doChecks";
                 } catch (std::exception const& e) {
-                  LOG_TOPIC("e0869", ERR, Logger::SUPERVISION)
-                      << e.what() << " " << __FILE__ << " " << __LINE__;
+                  LOG_TOPIC("e0869", ERR, Logger::SUPERVISION) << e.what();
                 } catch (...) {
                   LOG_TOPIC("ac4c4", ERR, Logger::SUPERVISION)
                       << "Supervision::doChecks() generated an uncaught "
@@ -2387,7 +2386,7 @@ void Supervision::restoreBrokenAnalyzersRevision(
 
 void Supervision::resourceCreatorLost(
     std::shared_ptr<Node> const& resource,
-    std::function<void(const ResourceCreatorLostEvent&)> const& action) {
+    std::function<void(ResourceCreatorLostEvent const&)> const& action) {
   //  check if the coordinator exists and its reboot is the same as specified
   auto rebootID = resource->hasAsUInt(StaticStrings::AttrCoordinatorRebootId);
   auto coordinatorID = resource->hasAsString(StaticStrings::AttrCoordinator);
@@ -2414,7 +2413,7 @@ void Supervision::resourceCreatorLost(
 
 void Supervision::ifResourceCreatorLost(
     std::shared_ptr<Node> const& resource,
-    std::function<void(const ResourceCreatorLostEvent&)> const& action) {
+    std::function<void(ResourceCreatorLostEvent const&)> const& action) {
   // check if isBuilding is set and it is true
   auto isBuilding = resource->hasAsBool(StaticStrings::AttrIsBuilding);
   if (isBuilding && isBuilding.value()) {
@@ -3040,8 +3039,7 @@ void Supervision::getUniqueIds() {
       _jobId = _jobIdMax - n;
     } catch (std::exception const& e) {
       LOG_TOPIC("4da4b", ERR, Logger::SUPERVISION)
-          << "Failed to acquire job IDs from agency: " << e.what() << __FILE__
-          << " " << __LINE__;
+          << "Failed to acquire job IDs from agency: " << e.what();
     }
   }
 }

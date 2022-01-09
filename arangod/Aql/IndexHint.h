@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,25 +40,30 @@ class QueryContext;
 /// @brief container for index hint information
 class IndexHint {
  public:
-  enum HintType : uint8_t { Illegal, None, Simple };
+  // there is an important distinction between None and Disabled here:
+  //   None = no index hint set
+  //   Disabled = no index must be used!
+  enum HintType : uint8_t { Illegal, None, Simple, Disabled };
 
  public:
   explicit IndexHint();
   explicit IndexHint(QueryContext& query, AstNode const* node);
-  explicit IndexHint(arangodb::velocypack::Slice const& slice);
+  explicit IndexHint(arangodb::velocypack::Slice slice);
 
- public:
-  HintType type() const;
-  bool isForced() const;
-  std::vector<std::string> const& hint() const;
+  HintType type() const noexcept;
+  bool isForced() const noexcept;
+  std::vector<std::string> const& hint() const noexcept;
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   std::string typeName() const;
   std::string toString() const;
 
+  size_t getLookahead() const noexcept { return _lookahead; }
+
  private:
   HintType _type;
   bool _forced;
+  size_t _lookahead = 1;
 
   // actual hint is a recursive structure, with the data type determined by the
   // _type above; in the case of a nested IndexHint, the value of isForced() is
