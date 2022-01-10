@@ -46,7 +46,8 @@ using LogCurrentLocalStates =
 // Check whether a log has been added to target
 auto checkLogAdded(const Log& log) -> std::unique_ptr<Action>;
 
-auto checkLeaderHealth(Log const& log, ParticipantsHealth const& health)
+auto checkLeaderHealth(LogPlanSpecification const& plan,
+                       ParticipantsHealth const& health)
     -> std::unique_ptr<Action>;
 
 auto runElectionCampaign(LogCurrentLocalStates const& states,

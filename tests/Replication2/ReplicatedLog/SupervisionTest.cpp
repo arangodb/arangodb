@@ -193,7 +193,7 @@ TEST_F(LeaderStateMachineTest, test_election_fails) {
           {"C",
            ParticipantHealth{.rebootId = RebootId{14}, .isHealthy = true}}}};
 
-  auto r = tryLeadershipElection(plan, current, health);
+  auto r = checkLeaderHealth(plan, health);
 
   ASSERT_NE(r, nullptr);
   EXPECT_EQ(r->type(), Action::ActionType::UpdateTermAction);
@@ -205,230 +205,43 @@ TEST_F(LeaderStateMachineTest, test_election_fails) {
   EXPECT_EQ(action._newTerm.leader, std::nullopt);
 }
 
-#if 0
-TEST_F(LeaderStateMachineTest, test_leader_intact) {
-  auto const& config = LogConfig(3, 3, 3, true);
-  auto log =
-      Log{.current = LogCurrent{},
-          .plan = LogPlanSpecification(
-              LogId{1},
-              LogPlanTermSpecification(
-                  LogTerm{1}, config,
-                  LogPlanTermSpecification::Leader{"A", RebootId{1}}, {}),
-              config, {})};
-
-  auto health = ParticipantsHealth{
-      ._health = {
-          {"A", ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}},
-          {"B", ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}},
-          {"C",
-           ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}}}};
-
-  auto r = replicatedLogAction(log, health);
-
-  EXPECT_EQ(r, nullptr);
-}
-
-TEST_F(LeaderStateMachineTest, test_log_no_leader) {
-  // We have no leader, so we have to first run a leadership campaign and then
-  // select a leader.
-  auto const& config = LogConfig(3, 3, 3, true);
-
-  auto logCurrent = LogCurrent();
-  logCurrent.localState =
-      std::unordered_map<ParticipantId, LogCurrentLocalState>(
-          {{"A", LogCurrentLocalState(LogTerm{1},
-                                      TermIndexPair{LogTerm{1}, LogIndex{1}})},
-           {"B", LogCurrentLocalState(LogTerm{1},
-                                      TermIndexPair{LogTerm{1}, LogIndex{1}})},
-           {"C", LogCurrentLocalState(
-                     LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}})}});
-  logCurrent.supervision = LogCurrentSupervision{};
-
-  auto log = Log{
-      .current = logCurrent,
-      .plan = LogPlanSpecification(
-          LogId{1},
-          LogPlanTermSpecification(LogTerm{1}, config, std::nullopt,
-                                   {{"A", {}}, {"B", {}}, {"C", {}}}),
-          config,
-          ParticipantsConfig{
-              .generation = 1,
-              .participants = {
-                  {"A", ParticipantFlags{.forced = false, .excluded = false}},
-                  {"B", ParticipantFlags{.forced = false, .excluded = false}},
-
-                  {"C",
-                   ParticipantFlags{.forced = false, .excluded = false}}}})};
-
-  auto health = ParticipantsHealth{
-      ._health = {
-          {"A", ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}},
-          {"B", ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}},
-          {"C",
-           ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}}}};
-
-  auto r = replicatedLogAction(log, health);
-  EXPECT_NE(r, nullptr);
-
-  EXPECT_EQ(r->type(), Action::ActionType::SuccessfulLeaderElectionAction)
-      << *r;
-
-  auto& action = dynamic_cast<SuccessfulLeaderElectionAction&>(*r);
-
-  auto possibleLeaders = std::set<ParticipantId>{"A", "B", "C"};
-  EXPECT_TRUE(possibleLeaders.contains(action._newLeader));
-}
-
-TEST_F(LeaderStateMachineTest, test_log_with_dead_leader) {
-  // Here the RebootId of the leader "A" in the Plan is 42, but
-  // the health record says its RebootId is 43; this
-  // means that the leader is not acceptable anymore and we
-  // expect a new term that has the leader removed.
-  auto const& config = LogConfig(3, 3, 3, true);
-
-  auto logCurrent = LogCurrent();
-  logCurrent.localState =
-      std::unordered_map<ParticipantId, LogCurrentLocalState>(
-          {{"A", LogCurrentLocalState(LogTerm{1},
-                                      TermIndexPair{LogTerm{1}, LogIndex{1}})},
-           {"B", LogCurrentLocalState(LogTerm{1},
-                                      TermIndexPair{LogTerm{1}, LogIndex{1}})},
-           {"C", LogCurrentLocalState(
-                     LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}})}});
-  logCurrent.supervision = LogCurrentSupervision{};
-
-  auto log = Log{
-      .current = logCurrent,
-      .plan = LogPlanSpecification(
-          LogId{1},
-          LogPlanTermSpecification(
-              LogTerm{1}, config,
-              LogPlanTermSpecification::Leader{"A", RebootId{42}},
-              {{"A", {}}, {"B", {}}, {"C", {}}}),
-          config,
-          ParticipantsConfig{
-              .generation = 1,
-              .participants = {
-                  {"A", ParticipantFlags{.forced = false, .excluded = false}},
-                  {"B", ParticipantFlags{.forced = false, .excluded = false}},
-
-                  {"C",
-                   ParticipantFlags{.forced = false, .excluded = false}}}})};
-
-  auto health = ParticipantsHealth{
-      ._health = {
-          {"A", ParticipantHealth{.rebootId = RebootId{43}, .isHealthy = true}},
-          {"B", ParticipantHealth{.rebootId = RebootId{14}, .isHealthy = true}},
-          {"C",
-           ParticipantHealth{.rebootId = RebootId{14}, .isHealthy = true}}}};
-
-  auto r = replicatedLogAction(log, health);
-
-  ASSERT_NE(r, nullptr);
-  EXPECT_EQ(r->type(), Action::ActionType::UpdateTermAction);
-
-  auto& action = dynamic_cast<UpdateTermAction&>(*r);
-
-  // TODO: Friend op == for newTerm
-  EXPECT_EQ(action._newTerm.term,
-            LogTerm{log.plan.currentTerm->term.value + 1});
-  EXPECT_EQ(action._newTerm.leader, std::nullopt);
-}
-
-TEST_F(LeaderStateMachineTest, test_log_establish_leader) {
-  // Here we have no leader, so we expect to get a leadership election;
-  // given the HealthRecord all participants are electible as leader,
-  // but we will get one of them at random.
-  auto const& config = LogConfig(3, 3, 3, true);
-
-  auto logCurrent = LogCurrent();
-  logCurrent.localState =
-      std::unordered_map<ParticipantId, LogCurrentLocalState>(
-          {{"A", LogCurrentLocalState(LogTerm{1},
-                                      TermIndexPair{LogTerm{1}, LogIndex{1}})},
-           {"B", LogCurrentLocalState(LogTerm{1},
-                                      TermIndexPair{LogTerm{1}, LogIndex{1}})},
-           {"C", LogCurrentLocalState(
-                     LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{42}})}});
-  logCurrent.supervision = LogCurrentSupervision{};
-
-  auto log = Log{
-      .current = logCurrent,
-      .plan = LogPlanSpecification(
-          LogId{1},
-          LogPlanTermSpecification(LogTerm{1}, config, std::nullopt,
-                                   {{"A", {}}, {"B", {}}, {"C", {}}}),
-          config,
-          ParticipantsConfig{
-              .generation = 1,
-              .participants = {
-                  {"A", ParticipantFlags{.forced = false, .excluded = false}},
-                  {"B", ParticipantFlags{.forced = false, .excluded = false}},
-
-                  {"C",
-                   ParticipantFlags{.forced = false, .excluded = false}}}})};
-
-  auto health = ParticipantsHealth{
-      ._health = {
-          {"A", ParticipantHealth{.rebootId = RebootId{43}, .isHealthy = true}},
-          {"B", ParticipantHealth{.rebootId = RebootId{14}, .isHealthy = true}},
-          {"C",
-           ParticipantHealth{.rebootId = RebootId{14}, .isHealthy = true}}}};
-
-  auto r = replicatedLogAction(log, health);
-
-  ASSERT_NE(r, nullptr);
-
-  EXPECT_EQ(r->type(), Action::ActionType::SuccessfulLeaderElectionAction)
-      << *r;
-
-  auto& action = dynamic_cast<SuccessfulLeaderElectionAction&>(*r);
-
-  EXPECT_EQ(action._newLeader, "C") << *r;
-}
-
-TEST_F(LeaderStateMachineTest, test_log_establish_leader_with_higher_term) {
+TEST_F(LeaderStateMachineTest, test_election_leader_with_higher_term) {
   // here we have a participant "C" with a *better* TermIndexPair than the
   // others because it has a higher LogTerm, but a lower LogIndex
   // so we expect "C" to be elected leader
   auto const& config = LogConfig(3, 3, 3, true);
 
-  auto logCurrent = LogCurrent();
-  logCurrent.localState =
-      std::unordered_map<ParticipantId, LogCurrentLocalState>(
-          {{"A", LogCurrentLocalState(LogTerm{1},
-                                      TermIndexPair{LogTerm{1}, LogIndex{15}})},
-           {"B", LogCurrentLocalState(LogTerm{1},
-                                      TermIndexPair{LogTerm{1}, LogIndex{27}})},
-           {"C", LogCurrentLocalState(
-                     LogTerm{1}, TermIndexPair{LogTerm{4}, LogIndex{42}})}});
-  logCurrent.supervision = LogCurrentSupervision{};
+  auto current = LogCurrent();
+  current.localState = std::unordered_map<ParticipantId, LogCurrentLocalState>(
+      {{"A", LogCurrentLocalState(LogTerm{1},
+                                  TermIndexPair{LogTerm{1}, LogIndex{15}})},
+       {"B", LogCurrentLocalState(LogTerm{1},
+                                  TermIndexPair{LogTerm{1}, LogIndex{27}})},
+       {"C", LogCurrentLocalState(LogTerm{1},
+                                  TermIndexPair{LogTerm{4}, LogIndex{42}})}});
+  current.supervision = LogCurrentSupervision{};
 
-  auto log = Log{
-      .current = logCurrent,
-      .plan = LogPlanSpecification(
-          LogId{1},
-          LogPlanTermSpecification(LogTerm{1}, config, std::nullopt,
-                                   {{"A", {}}, {"B", {}}, {"C", {}}}),
-          config,
-          ParticipantsConfig{
-              .generation = 1,
-              .participants = {
-                  {"A", ParticipantFlags{.forced = false, .excluded = false}},
-                  {"B", ParticipantFlags{.forced = false, .excluded = false}},
+  auto const& plan = LogPlanSpecification(
+      LogId{1},
+      LogPlanTermSpecification(LogTerm{1}, config, std::nullopt,
+                               {{"A", {}}, {"B", {}}, {"C", {}}}),
+      config,
+      ParticipantsConfig{
+          .generation = 1,
+          .participants = {
+              {"A", ParticipantFlags{.forced = false, .excluded = false}},
+              {"B", ParticipantFlags{.forced = false, .excluded = false}},
 
-                  {"C",
-                   ParticipantFlags{.forced = false, .excluded = false}}}})};
+              {"C", ParticipantFlags{.forced = false, .excluded = false}}}});
 
-  auto health = ParticipantsHealth{
+  auto const& health = ParticipantsHealth{
       ._health = {
           {"A", ParticipantHealth{.rebootId = RebootId{43}, .isHealthy = true}},
           {"B", ParticipantHealth{.rebootId = RebootId{14}, .isHealthy = true}},
           {"C",
            ParticipantHealth{.rebootId = RebootId{14}, .isHealthy = true}}}};
 
-  auto r = replicatedLogAction(log, health);
+  auto r = tryLeadershipElection(plan, current, health);
 
   ASSERT_NE(r, nullptr);
 
@@ -439,4 +252,24 @@ TEST_F(LeaderStateMachineTest, test_log_establish_leader_with_higher_term) {
 
   EXPECT_EQ(action._newLeader, "C") << *r;
 }
-#endif
+
+TEST_F(LeaderStateMachineTest, test_leader_intact) {
+  auto const& config = LogConfig(3, 3, 3, true);
+  auto const& plan = LogPlanSpecification(
+      LogId{1},
+      LogPlanTermSpecification(
+          LogTerm{1}, config,
+          LogPlanTermSpecification::Leader{"A", RebootId{1}}, {}),
+      config, {});
+
+  auto const& health = ParticipantsHealth{
+      ._health = {
+          {"A", ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}},
+          {"B", ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}}}};
+
+  auto r = checkLeaderHealth(plan, health);
+
+  EXPECT_EQ(r, nullptr);
+}
