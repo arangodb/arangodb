@@ -1,3 +1,4 @@
+/* eslint-disable camelcase */
 import { JSONSchemaType } from 'ajv';
 import _, { merge, partial } from 'lodash';
 
@@ -12,6 +13,8 @@ export const typeNameMap = {
   stopwords: 'Stopwords',
   collation: 'Collation',
   segmentation: 'Segmentation',
+  nearest_neighbors: 'Nearest Neighbors',
+  classification: 'Classification',
   pipeline: 'Pipeline',
   geojson: 'GeoJSON',
   geopoint: 'GeoPoint'
@@ -105,10 +108,10 @@ export type AqlState = {
 };
 
 export type StopwordsState = StopwordsProperty & {
-  type: 'stopwords',
+  type: 'stopwords';
   properties: {
     hex?: boolean;
-  }
+  };
 };
 
 export type CollationState = LocaleProperty & {
@@ -116,9 +119,27 @@ export type CollationState = LocaleProperty & {
 };
 
 export type SegmentationState = CaseProperty & {
-  type: 'segmentation',
+  type: 'segmentation';
   properties: {
     break?: 'all' | 'alpha' | 'graphic';
+  };
+};
+
+export type ModelProperty = {
+  properties: {
+    model_location: string;
+    top_k?: number; // [0, 2147483647]
+  };
+};
+
+export type NearestNeighborsState = ModelProperty & {
+  type: 'nearest_neighbors';
+};
+
+export type ClassificationState = ModelProperty & {
+  type: 'classification';
+  properties: {
+    threshold?: number; // [0.0, 1.0]
   };
 };
 
@@ -130,7 +151,9 @@ export type PipelineState = DelimiterState
   | AqlState
   | StopwordsState
   | CollationState
-  | SegmentationState;
+  | SegmentationState
+  | NearestNeighborsState
+  | ClassificationState;
 
 export type PipelineStates = {
   type: 'pipeline';
@@ -174,6 +197,8 @@ export type AnalyzerTypeState = IdentityState
   | StopwordsState
   | CollationState
   | SegmentationState
+  | NearestNeighborsState
+  | ClassificationState
   | PipelineStates
   | GeoJsonState
   | GeoPointState;
@@ -247,7 +272,7 @@ const mergeBase = partial(merge, _, baseSchema);
 
 const identitySchema = mergeBase({
   properties: {
-    type: {
+    'type': {
       const: 'identity'
     }
   },
@@ -256,7 +281,7 @@ const identitySchema = mergeBase({
 
 const delimiterSchema = mergeBase({
   properties: {
-    type: {
+    'type': {
       const: 'delimiter'
     },
     'properties': {
@@ -281,7 +306,7 @@ const delimiterSchema = mergeBase({
 
 const stemSchema = mergeBase({
   properties: {
-    type: {
+    'type': {
       const: 'stem'
     },
     'properties': {
@@ -302,7 +327,7 @@ const stemSchema = mergeBase({
 
 const normSchema = mergeBase({
   properties: {
-    type: {
+    'type': {
       const: 'norm'
     },
     'properties': {
@@ -325,7 +350,7 @@ const normSchema = mergeBase({
 
 const ngramSchema = mergeBase({
   properties: {
-    type: {
+    'type': {
       const: 'ngram'
     },
     'properties': {
@@ -378,7 +403,7 @@ const ngramSchema = mergeBase({
 
 const textSchema = mergeBase({
   properties: {
-    type: {
+    'type': {
       const: 'text'
     },
     'properties': {
@@ -437,7 +462,7 @@ const textSchema = mergeBase({
 
 const aqlSchema = mergeBase({
   properties: {
-    type: {
+    'type': {
       const: 'aql'
     },
     'properties': {
@@ -486,7 +511,7 @@ const aqlSchema = mergeBase({
 
 const stopwordsSchema = mergeBase({
   properties: {
-    type: {
+    'type': {
       const: 'stopwords'
     },
     'properties': {
@@ -518,7 +543,7 @@ const stopwordsSchema = mergeBase({
 
 const collationSchema = mergeBase({
   properties: {
-    type: {
+    'type': {
       const: 'collation'
     },
     'properties': {
@@ -539,7 +564,7 @@ const collationSchema = mergeBase({
 
 const segmentationSchema = mergeBase({
   properties: {
-    type: {
+    'type': {
       const: 'segmentation'
     },
     'properties': {
@@ -556,6 +581,67 @@ const segmentationSchema = mergeBase({
       additionalProperties: false,
       default: {}
     }
+  },
+  required: ['type', 'properties']
+});
+
+const nearestNeighborsSchema = mergeBase({
+  properties: {
+    'type': {
+      const: 'nearest_neighbors'
+    },
+    'properties': {
+      type: 'object',
+      nullable: false,
+      properties: {
+        model_location: {
+          type: 'string',
+          nullable: false
+        },
+        top_k: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 2147483647,
+          nullable: false
+        }
+      }
+    },
+    additionalProperties: false,
+    default: {}
+  },
+  required: ['type', 'properties']
+});
+
+const classificationSchema = mergeBase({
+  properties: {
+    'type': {
+      const: 'classification'
+    },
+    'properties': {
+      type: 'object',
+      nullable: false,
+      properties: {
+        model_location: {
+          type: 'string',
+          nullable: false
+        },
+        top_k: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 2147483647,
+          nullable: false
+        },
+        threshold: {
+          type: 'number',
+          nullable: false,
+          minimum: 0,
+          maximum: 1,
+          default: 0
+        }
+      }
+    },
+    additionalProperties: false,
+    default: {}
   },
   required: ['type', 'properties']
 });
@@ -586,7 +672,9 @@ const pipelineSchema = mergeBase({
               aqlSchema,
               stopwordsSchema,
               collationSchema,
-              segmentationSchema
+              segmentationSchema,
+              nearestNeighborsSchema,
+              classificationSchema
             ],
             errorMessage: {
               discriminator: '/type should be one of "delimiter", "stem", "norm", "ngram", "text", "aql",' +
@@ -677,6 +765,8 @@ export const formSchema: JSONSchemaType<FormState> = {
     stopwordsSchema,
     collationSchema,
     segmentationSchema,
+    nearestNeighborsSchema,
+    classificationSchema,
     pipelineSchema,
     geojsonSchema,
     geopointSchema
