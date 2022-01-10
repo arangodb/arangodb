@@ -62,11 +62,48 @@ RestStatus RestLogHandler::executeByMethod(
       return handleGetRequest(methods);
     case rest::RequestType::POST:
       return handlePostRequest(methods);
+    case rest::RequestType::PUT:
+      return handlePutRequest(methods);
     case rest::RequestType::DELETE_REQ:
       return handleDeleteRequest(methods);
     default:
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                     TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  }
+  return RestStatus::DONE;
+}
+
+RestStatus RestLogHandler::handlePutRequest(
+    ReplicatedLogMethods const& methods) {
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {  // error message generated in parseVPackBody
+    return RestStatus::DONE;
+  }
+
+  if (suffixes.empty()) {
+    return handlePost(methods, body);
+  }
+
+  if (suffixes.size() != 2) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expect POST /_api/log/<log-id>/[verb]");
+    return RestStatus::DONE;
+  }
+
+  LogId logId{basics::StringUtils::uint64(suffixes[0])};
+  if (auto& verb = suffixes[1]; verb == "insert") {
+    return handlePostInsert(methods, logId, body);
+  } else if (verb == "release") {
+    return handlePostRelease(methods, logId);
+  } else if (verb == "multi-insert") {
+    return handlePostInsertMulti(methods, logId, body);
+  } else {
+    generateError(
+        rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+        "expecting one of the resources 'insert', 'release', 'multi-insert'");
   }
   return RestStatus::DONE;
 }

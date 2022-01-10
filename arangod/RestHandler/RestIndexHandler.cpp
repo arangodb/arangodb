@@ -119,13 +119,7 @@ RestStatus RestIndexHandler::continueExecute() {
 void RestIndexHandler::shutdownExecute(bool isFinalized) noexcept {
   auto sg = arangodb::scopeGuard(
       [&]() noexcept { RestVocbaseBaseHandler::shutdownExecute(isFinalized); });
-
-  // request not done yet
-  if (!isFinalized) {
-    return;
-  }
-
-  if (_request->requestType() == rest::RequestType::POST) {
+  if (isFinalized && _request->requestType() == rest::RequestType::POST) {
     std::unique_lock<std::mutex> locker(_mutex);
     shutdownBackgroundThread();
   }

@@ -49,6 +49,8 @@ class RestLogHandler : public RestVocbaseBaseHandler {
       replication2::ReplicatedLogMethods const& methods);
   RestStatus handlePostRequest(
       replication2::ReplicatedLogMethods const& methods);
+  RestStatus handlePutRequest(
+      replication2::ReplicatedLogMethods const& methods);
   RestStatus handleDeleteRequest(
       replication2::ReplicatedLogMethods const& methods);
 

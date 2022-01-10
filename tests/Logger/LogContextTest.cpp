@@ -128,6 +128,29 @@ TEST_F(LogContextTest, ScopedValue_sets_Values_for_current_scope) {
   EXPECT_EQ(4, cnt);
 }
 
+TEST_F(LogContextTest,
+       pushValues_adds_shared_values_to_context_and_returns_an_EntryPtr) {
+  unsigned cnt = 0;
+  LogContext::OverloadVisitor countingVisitor(
+      [&cnt](std::string_view, auto&&) { ++cnt; });
+  auto values = LogContext::makeValue().with<LogKey1>("blubb").share();
+
+  LogContext::EntryPtr entry1 = LogContext::Current::pushValues(values);
+  LogContext::EntryPtr entry2 = LogContext::Current::pushValues(
+      LogContext::makeValue().with<LogKey2>(42));
+
+  {
+    LogContext::current().visit(countingVisitor);
+    EXPECT_EQ(2, cnt);
+  }
+
+  LogContext::Current::popEntry(entry2);
+  LogContext::Current::popEntry(entry1);
+
+  LogContext::current().visit(countingVisitor);
+  EXPECT_EQ(2, cnt);
+}
+
 TEST_F(LogContextTest, current_returns_copy_of_the_threads_current_LogContext) {
   unsigned cnt = 0;
   LogContext::OverloadVisitor countingVisitor(

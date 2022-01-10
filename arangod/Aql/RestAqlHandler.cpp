@@ -529,6 +529,7 @@ void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
     LOG_TOPIC("c4db4", INFO, Logger::FIXME)
         << "Ignoring unknown exception during rest handler shutdown.";
   }
+  RestVocbaseBaseHandler::shutdownExecute(isFinalized);
 }
 
 // dig out the query from ID, handle errors

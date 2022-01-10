@@ -63,6 +63,10 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
       _state(HandlerState::PREPARE),
       _trackedAsOngoingLowPrio(false),
       _lane(RequestLane::UNDEFINED),
+      _logContextScopeValues(LogContext::makeValue()
+                                 .with<UrlName>(_request->fullUrl())
+                                 .with<UserName>(_request->user())
+                                 .share()),
       _canceled(false) {}
 
 RestHandler::~RestHandler() {
@@ -425,7 +429,8 @@ void RestHandler::runHandlerStateMachine() {
         _statistics.SET_REQUEST_END();
         // Callback may stealStatistics!
         _callback(this);
-        // No need to finalize here!
+
+        shutdownExecute(true);
         return;
 
       case HandlerState::DONE:
@@ -468,6 +473,14 @@ void RestHandler::prepareEngine() {
   _state = HandlerState::FAILED;
 }
 
+void RestHandler::prepareExecute(bool isContinue) {
+  _logContextEntry = LogContext::Current::pushValues(_logContextScopeValues);
+}
+
+void RestHandler::shutdownExecute(bool isFinalized) noexcept {
+  LogContext::Current::popEntry(_logContextEntry);
+}
+
 /// Execute the rest handler state machine. Retry the wakeup,
 /// returns true if _state == PAUSED, false otherwise
 bool RestHandler::wakeupHandler() {
@@ -482,6 +495,7 @@ bool RestHandler::wakeupHandler() {
 void RestHandler::executeEngine(bool isContinue) {
   DTRACE_PROBE1(arangod, RestHandlerExecuteEngine, this);
   ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
+
   ExecContextScope scope(exec);
 
   try {

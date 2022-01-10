@@ -113,13 +113,19 @@ RestStatus RestAdminLogHandler::execute() {
       return reportLogs(/*newFormat*/ true);
     } else if (suffixes.size() == 1 && suffixes[0] == "level") {
       handleLogLevel();
+    } else if (suffixes.size() == 1 && suffixes[0] == "structured") {
+      handleLogStructuredParams();
     } else {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                     "superfluous suffix, expecting /_admin/log/entries");
     }
-  } else {
-    handleLogLevel();
+  } else if (type == rest::RequestType::PUT) {
+    if (suffixes.size() == 1 && suffixes[0] == "level") {
+      handleLogLevel();
+    } else {
+      handleLogStructuredParams();
+    }
   }
 
   return RestStatus::DONE;
@@ -462,6 +468,66 @@ void RestAdminLogHandler::handleLogLevel() {
     for (auto const& level : levels) {
       builder.add(level.first,
                   VPackValue(Logger::translateLogLevel(level.second)));
+    }
+    builder.close();
+
+    generateResult(rest::ResponseCode::OK, builder.slice());
+  } else {
+    // invalid method
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  }
+}
+
+void RestAdminLogHandler::handleLogStructuredParams() {
+  std::vector<std::string> const& suffixes = _request->suffixes();
+
+  // was validated earlier
+  TRI_ASSERT(!suffixes.empty());
+
+  if (suffixes[0] != "structured") {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+                  "superfluous suffix, expecting /_admin/log/structured");
+    return;
+  }
+
+  auto const type = _request->requestType();
+
+  if (type == rest::RequestType::GET) {
+    VPackBuilder builder;
+    builder.openObject();
+    auto const params = Logger::structuredLogParams();
+    for (auto const& param : params) {
+      builder.add(param, VPackValue(true));
+    }
+    builder.close();
+
+    generateResult(rest::ResponseCode::OK, builder.slice());
+  } else if (type == rest::RequestType::PUT) {
+    // set log level
+    bool parseSuccess = false;
+    VPackSlice slice = this->parseVPackBody(parseSuccess);
+    if (!parseSuccess) {
+      return;  // error message generated in parseVPackBody
+    }
+
+    if (slice.isString()) {
+      Logger::setLogStructuredParams({slice.copyString()});
+    } else if (slice.isObject()) {
+      for (auto it : VPackObjectIterator(slice)) {
+        if (it.value.isBoolean()) {
+          std::string const l = it.key.copyString() + "=" +
+                                (it.value.getBoolean() ? "true" : "false");
+          Logger::setLogStructuredParams({l});
+        }
+      }
+    }
+
+    VPackBuilder builder;
+    builder.openObject();
+    auto const params = Logger::structuredLogParams();
+    for (auto const& param : params) {
+      builder.add(param, VPackValue(true));
     }
     builder.close();
 

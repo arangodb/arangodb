@@ -1355,6 +1355,9 @@ function ahuacatlQuerySimpleTestSuite () {
       }
       q += `RETURN v${cnt - 1})[0]\n`;
       q += "RETURN i + x";
+      require('console').log(q);
+      const db = require('@arangodb').db;
+      db._explain(q);
       const expected = _.range(cnt, cnt + 10);
       assertEqual(expected, AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
     },
