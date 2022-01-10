@@ -237,9 +237,10 @@ const replicatedLogSuite = function () {
 
             let log = db._replicatedLog(logId);
             let globalStatus = log.status();
+            assertEqual(globalStatus.supervision, {});
+            assertEqual(globalStatus.leaderId, leader);
             let localStatus = helper.getLocalStatus(logId, leader);
             assertEqual(localStatus.role, "leader");
-            assertEqual(globalStatus.supervision, {});
             assertEqual(globalStatus.logStatus, localStatus);
             localStatus = helper.getLocalStatus(logId, servers[1]);
             assertEqual(localStatus.role, "follower");
