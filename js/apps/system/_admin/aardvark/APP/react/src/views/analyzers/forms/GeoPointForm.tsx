@@ -1,11 +1,12 @@
-import React, { ChangeEvent } from "react";
-import { FormProps, GeoPointState } from "../constants";
+import React, { ChangeEvent, Dispatch } from "react";
+import { GeoOptionsProperty, GeoPointState } from "../constants";
+import { DispatchArgs, FormProps } from "../../../utils/constants";
 import { filter, isEmpty, negate } from 'lodash';
 import GeoOptionsInput from "./inputs/GeoOptionsInput";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import Textbox from "../../../components/pure-css/form/Textbox";
 
-const GeoPointForm = ({ formState, dispatch, disabled }: FormProps) => {
+const GeoPointForm = ({ formState, dispatch, disabled }: FormProps<GeoPointState>) => {
   const updateArray = (event: ChangeEvent<HTMLInputElement>, field: string) => {
     const items = event.target.value.split('.');
 
@@ -35,9 +36,8 @@ const GeoPointForm = ({ formState, dispatch, disabled }: FormProps) => {
     updateArray(event, 'properties.longitude');
   };
 
-  const geoPointFormState = formState as GeoPointState;
-  const getLatitude = () => (geoPointFormState.properties.latitude || []).join('.');
-  const getLongitude = () => (geoPointFormState.properties.longitude || []).join('.');
+  const getLatitude = () => (formState.properties.latitude || []).join('.');
+  const getLongitude = () => (formState.properties.longitude || []).join('.');
 
   return <Grid>
     <Cell size={'1-2'}>
@@ -51,7 +51,8 @@ const GeoPointForm = ({ formState, dispatch, disabled }: FormProps) => {
     </Cell>
 
     <Cell size={'1'}>
-      <GeoOptionsInput formState={formState} dispatch={dispatch} disabled={disabled}/>
+      <GeoOptionsInput formState={formState} dispatch={dispatch as Dispatch<DispatchArgs<GeoOptionsProperty>>}
+                       disabled={disabled}/>
     </Cell>
   </Grid>;
 };
