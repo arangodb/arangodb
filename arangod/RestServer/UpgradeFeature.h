@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,9 +28,9 @@
 
 namespace arangodb {
 
-// this feature is responsible for performing a database upgrade. 
-// it is only doing something if the server was started with the option 
-// `--database.auto-upgrade true` or `--database.check-version true`. 
+// this feature is responsible for performing a database upgrade.
+// it is only doing something if the server was started with the option
+// `--database.auto-upgrade true` or `--database.check-version true`.
 // On a coordinator this feature will *not* perform the actual upgrade,
 // because it is too early in the sequence. Coordinator upgrades are
 // performed by the ClusterUpgradeFeature, which is way later in the
@@ -47,7 +47,7 @@ class UpgradeFeature final : public application_features::ApplicationFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
-  
+
   void addTask(methods::Upgrade::Task&& task);
   bool upgrading() const noexcept { return _upgrade; }
 
@@ -66,4 +66,3 @@ class UpgradeFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

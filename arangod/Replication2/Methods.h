@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,7 +27,7 @@
 namespace arangodb {
 class Result;
 namespace futures {
-template <typename T>
+template<typename T>
 class Future;
 }
 }  // namespace arangodb
@@ -51,15 +52,18 @@ struct WaitForResult;
  * request to the leader.
  */
 struct ReplicatedLogMethods {
+  static constexpr auto kDefaultLimit = std::size_t{10};
+
   virtual ~ReplicatedLogMethods() = default;
-  virtual auto createReplicatedLog(agency::LogPlanSpecification const& spec) const
+  virtual auto createReplicatedLog(agency::LogPlanSpecification const& spec)
+      const -> futures::Future<Result> = 0;
+  virtual auto deleteReplicatedLog(LogId id) const
       -> futures::Future<Result> = 0;
-  virtual auto deleteReplicatedLog(LogId id) const -> futures::Future<Result> = 0;
   virtual auto getReplicatedLogs() const
-      -> futures::Future<std::unordered_map<arangodb::replication2::LogId, replicated_log::LogStatus>> = 0;
+      -> futures::Future<std::unordered_map<arangodb::replication2::LogId,
+                                            replicated_log::LogStatus>> = 0;
   virtual auto getLogStatus(LogId) const
       -> futures::Future<replication2::replicated_log::LogStatus> = 0;
-
 
   virtual auto getLogEntryByIndex(LogId, LogIndex) const
       -> futures::Future<std::optional<PersistingLogEntry>> = 0;
@@ -73,10 +77,11 @@ struct ReplicatedLogMethods {
   virtual auto tail(LogId, std::size_t limit) const
       -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
 
-  virtual auto insert(LogId, LogPayload) const
-      -> futures::Future<std::pair<LogIndex, replicated_log::WaitForResult>> = 0;
+  virtual auto insert(LogId, LogPayload) const -> futures::Future<
+      std::pair<LogIndex, replicated_log::WaitForResult>> = 0;
   virtual auto insert(LogId, TypedLogIterator<LogPayload>& iter) const
-      -> futures::Future<std::pair<std::vector<LogIndex>, replicated_log::WaitForResult>> = 0;
+      -> futures::Future<
+          std::pair<std::vector<LogIndex>, replicated_log::WaitForResult>> = 0;
   virtual auto release(LogId, LogIndex) const -> futures::Future<Result> = 0;
 
   static auto createInstance(TRI_vocbase_t& vocbase)

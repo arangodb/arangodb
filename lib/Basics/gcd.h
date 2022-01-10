@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,7 +35,7 @@ namespace basics {
 /// note: T must be an unsigned type
 ////////////////////////////////////////////////////////////////////////////////
 
-template <typename T>
+template<typename T>
 static T binaryGcd(T u, T v) {
   if (u == 0) {
     return v;
@@ -69,4 +69,3 @@ static T binaryGcd(T u, T v) {
 }
 }  // namespace basics
 }  // namespace arangodb
-

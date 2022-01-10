@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,13 +42,16 @@ using namespace arangodb;
 using namespace arangodb::cluster;
 
 static_assert(
-    std::is_same_v<decltype(SchedulerFeature::SCHEDULER), RebootTracker::SchedulerPointer>,
+    std::is_same_v<decltype(SchedulerFeature::SCHEDULER),
+                   RebootTracker::SchedulerPointer>,
     "Type of SchedulerPointer must match SchedulerFeature::SCHEDULER");
 static_assert(std::is_pointer<RebootTracker::SchedulerPointer>::value,
               "If SCHEDULER is changed to a non-pointer type, this class "
               "might have to be adapted");
 static_assert(
-    std::is_base_of<Scheduler, std::remove_pointer<RebootTracker::SchedulerPointer>::type>::value,
+    std::is_base_of<
+        Scheduler,
+        std::remove_pointer<RebootTracker::SchedulerPointer>::type>::value,
     "SchedulerPointer is expected to point to an instance of Scheduler");
 
 RebootTracker::RebootTracker(RebootTracker::SchedulerPointer scheduler)
@@ -63,7 +66,8 @@ RebootTracker::RebootTracker(RebootTracker::SchedulerPointer scheduler)
 #endif
 }
 
-void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> const& state) {
+void RebootTracker::updateServerState(
+    std::unordered_map<ServerID, RebootId> const& state) {
   MUTEX_LOCKER(guard, _mutex);
 
   LOG_TOPIC("77a6e", DEBUG, Logger::CLUSTER)
@@ -105,7 +109,8 @@ void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> con
       TRI_ASSERT(oldRebootId <= newRebootId);
       if (oldRebootId < newRebootId) {
         LOG_TOPIC("88857", INFO, Logger::CLUSTER)
-            << "Server " << serverId << " gone or rebooted, aborting its old jobs now.";
+            << "Server " << serverId
+            << " gone or rebooted, aborting its old jobs now.";
         // Try to schedule all callbacks for serverId older than newRebootId.
         // If that didn't throw, erase the entry.
         scheduleCallbacksFor(serverId, newRebootId);
@@ -128,18 +133,20 @@ void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> con
   }
 }
 
-CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState const& peerState,
-                                            RebootTracker::Callback callback,
-                                            std::string callbackDescription) {
+CallbackGuard RebootTracker::callMeOnChange(
+    RebootTracker::PeerState const& peerState, RebootTracker::Callback callback,
+    std::string callbackDescription) {
   MUTEX_LOCKER(guard, _mutex);
 
   auto const rebootIdIt = _rebootIds.find(peerState.serverId());
 
-  // We MUST NOT insert something in _callbacks[serverId] unless _rebootIds[serverId] exists!
+  // We MUST NOT insert something in _callbacks[serverId] unless
+  // _rebootIds[serverId] exists!
   if (rebootIdIt == _rebootIds.end()) {
     std::string const error = [&]() {
       std::stringstream strstream;
-      strstream << "When trying to register callback '" << callbackDescription << "': "
+      strstream << "When trying to register callback '" << callbackDescription
+                << "': "
                 << "The server " << peerState.serverId() << " is not known. "
                 << "If this server joined the cluster in the last seconds, "
                    "this can happen.";
@@ -153,7 +160,8 @@ CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState const& peer
 
   if (peerState.rebootId() < currentRebootId) {
     // If this ID is already older, schedule the callback immediately.
-    queueCallback(DescriptedCallback{std::move(callback), std::move(callbackDescription)});
+    queueCallback(DescriptedCallback{std::move(callback),
+                                     std::move(callbackDescription)});
     return CallbackGuard{nullptr};
   }
 
@@ -168,8 +176,8 @@ CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState const& peer
     // We must never leave a nullptr in here!
     // Try to create a new map, or remove the entry.
     try {
-      callbackMapPtr =
-          std::make_shared<std::remove_reference<decltype(callbackMapPtr)>::type::element_type>();
+      callbackMapPtr = std::make_shared<std::remove_reference<
+          decltype(callbackMapPtr)>::type::element_type>();
     } catch (...) {
       rebootIdMap.erase(peerState.rebootId());
       throw;
@@ -183,14 +191,15 @@ CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState const& peer
   auto const callbackId = getNextCallbackId();
 
   // The guard constructor might, theoretically, throw, and so can constructing
-  // the std::function. So we need to construct it before emplacing the callback.
+  // the std::function. So we need to construct it before emplacing the
+  // callback.
   auto callbackGuard = CallbackGuard([this, peerState, callbackId]() {
     unregisterCallback(peerState, callbackId);
   });
 
-  auto const [iterator, inserted] =
-      callbackMap.try_emplace(callbackId, DescriptedCallback{std::move(callback),
-                                                         std::move(callbackDescription)});
+  auto const [iterator, inserted] = callbackMap.try_emplace(
+      callbackId,
+      DescriptedCallback{std::move(callback), std::move(callbackDescription)});
   TRI_ASSERT(inserted);
   TRI_ASSERT(callbackId == iterator->first);
 
@@ -208,7 +217,8 @@ void RebootTracker::scheduleAllCallbacksFor(ServerID const& serverId) {
 // If (and only if) it returns, it has scheduled all affected callbacks, and
 // removed them from the registry.
 // Otherwise the state is unchanged.
-void RebootTracker::scheduleCallbacksFor(ServerID const& serverId, RebootId rebootId) {
+void RebootTracker::scheduleCallbacksFor(ServerID const& serverId,
+                                         RebootId rebootId) {
   _mutex.assertLockedByCurrentThread();
 
   auto serverIt = _callbacks.find(serverId);
@@ -235,7 +245,9 @@ void RebootTracker::scheduleCallbacksFor(ServerID const& serverId, RebootId rebo
 }
 
 RebootTracker::Callback RebootTracker::createSchedulerCallback(
-    std::vector<std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>> callbacks) {
+    std::vector<
+        std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>>
+        callbacks) {
   TRI_ASSERT(!callbacks.empty());
   TRI_ASSERT(std::none_of(callbacks.cbegin(), callbacks.cend(),
                           [](auto it) { return it == nullptr; }));
@@ -262,7 +274,8 @@ RebootTracker::Callback RebootTracker::createSchedulerCallback(
               << "[" << ex.code() << "] " << ex.what();
         } catch (std::exception const& ex) {
           LOG_TOPIC("3d935", INFO, Logger::CLUSTER)
-              << "Failed to execute reboot callback: " << descr << ": " << ex.what();
+              << "Failed to execute reboot callback: " << descr << ": "
+              << ex.what();
         } catch (...) {
           LOG_TOPIC("f7427", INFO, Logger::CLUSTER)
               << "Failed to execute reboot callback: " << descr << ": "
@@ -274,7 +287,9 @@ RebootTracker::Callback RebootTracker::createSchedulerCallback(
 }
 
 void RebootTracker::queueCallbacks(
-    std::vector<std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>> callbacks) {
+    std::vector<
+        std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>>
+        callbacks) {
   if (callbacks.empty()) {
     return;
   }
@@ -316,26 +331,31 @@ RebootTracker::CallbackId RebootTracker::getNextCallbackId() noexcept {
 }
 
 void RebootTracker::queueCallback(DescriptedCallback callback) {
-  queueCallbacks({std::make_shared<std::unordered_map<CallbackId, DescriptedCallback>>(
-      std::unordered_map<CallbackId, DescriptedCallback>{ { getNextCallbackId(), std::move(callback) } }
-  )});
+  queueCallbacks(
+      {std::make_shared<std::unordered_map<CallbackId, DescriptedCallback>>(
+          std::unordered_map<CallbackId, DescriptedCallback>{
+              {getNextCallbackId(), std::move(callback)}})});
 }
-    
-void RebootTracker::PeerState::toVelocyPack(velocypack::Builder& builder) const {
+
+void RebootTracker::PeerState::toVelocyPack(
+    velocypack::Builder& builder) const {
   builder.openObject();
   builder.add(StaticStrings::AttrCoordinatorId, VPackValue(_serverId));
-  builder.add(StaticStrings::AttrCoordinatorRebootId, VPackValue(_rebootId.value()));
+  builder.add(StaticStrings::AttrCoordinatorRebootId,
+              VPackValue(_rebootId.value()));
   builder.close();
 }
 
-RebootTracker::PeerState RebootTracker::PeerState::fromVelocyPack(velocypack::Slice slice) {
+RebootTracker::PeerState RebootTracker::PeerState::fromVelocyPack(
+    velocypack::Slice slice) {
   TRI_ASSERT(slice.isObject());
   VPackSlice serverIdSlice = slice.get(StaticStrings::AttrCoordinatorId);
   VPackSlice rebootIdSlice = slice.get(StaticStrings::AttrCoordinatorRebootId);
 
   if (!serverIdSlice.isString() || !rebootIdSlice.isInteger()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid reboot id");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "invalid reboot id");
   }
-  
-  return { serverIdSlice.copyString(), RebootId(rebootIdSlice.getUInt()) };
+
+  return {serverIdSlice.copyString(), RebootId(rebootIdSlice.getUInt())};
 }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +32,8 @@
 using namespace arangodb::aql;
 
 /// @brief create a short string storage instance
-ShortStringStorage::ShortStringStorage(arangodb::ResourceMonitor& resourceMonitor, size_t blockSize)
+ShortStringStorage::ShortStringStorage(
+    arangodb::ResourceMonitor& resourceMonitor, size_t blockSize)
     : _resourceMonitor(resourceMonitor),
       _blockSize(blockSize),
       _current(nullptr),
@@ -68,7 +69,8 @@ char* ShortStringStorage::registerString(char const* p, size_t length) {
 }
 
 /// @brief register a short string, unescaping it
-char* ShortStringStorage::unescape(char const* p, size_t length, size_t* outLength) {
+char* ShortStringStorage::unescape(char const* p, size_t length,
+                                   size_t* outLength) {
   TRI_ASSERT(length <= maxStringLength);
 
   if (_current == nullptr || (_current + length + 1 > _end)) {
@@ -95,7 +97,7 @@ void ShortStringStorage::allocateBlock() {
     ResourceUsageScope scope(_resourceMonitor, _blockSize);
 
     _blocks.emplace_back(std::make_unique<char[]>(_blockSize));
-  
+
     // now we are responsible for memory usage tracking
     scope.steal();
   }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,16 +49,19 @@ class Expression;
 class Projections;
 struct NonConstExpressionContainer;
 
-template<typename T> struct RegisterPlanT;
+template<typename T>
+struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
 
 /// @brief class IndexNode
-class IndexNode : public ExecutionNode, public DocumentProducingNode, public CollectionAccessingNode {
+class IndexNode : public ExecutionNode,
+                  public DocumentProducingNode,
+                  public CollectionAccessingNode {
   friend class ExecutionBlock;
 
  public:
-  IndexNode(ExecutionPlan* plan, ExecutionNodeId id, aql::Collection const* collection,
-            Variable const* outVariable,
+  IndexNode(ExecutionPlan* plan, ExecutionNodeId id,
+            aql::Collection const* collection, Variable const* outVariable,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
             std::unique_ptr<Condition> condition, IndexIteratorOptions const&);
 
@@ -88,7 +91,8 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -107,8 +111,10 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   std::vector<transaction::Methods::IndexHandle> const& getIndexes() const;
 
   bool isLateMaterialized() const noexcept {
-    TRI_ASSERT((_outNonMaterializedDocId == nullptr && _outNonMaterializedIndVars.second.empty()) ||
-               !(_outNonMaterializedDocId == nullptr || _outNonMaterializedIndVars.second.empty()));
+    TRI_ASSERT((_outNonMaterializedDocId == nullptr &&
+                _outNonMaterializedIndVars.second.empty()) ||
+               !(_outNonMaterializedDocId == nullptr ||
+                 _outNonMaterializedIndVars.second.empty()));
     return !_outNonMaterializedIndVars.second.empty();
   }
 
@@ -116,7 +122,9 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
     return isProduceResult() && !_projections.supportsCoveringIndex();
   }
 
-  bool isDeterministic() override final { return canReadOwnWrites() == ReadOwnWrites::no; }
+  bool isDeterministic() override final {
+    return canReadOwnWrites() == ReadOwnWrites::no;
+  }
 
   struct IndexVariable {
     size_t indexFieldNum;
@@ -126,18 +134,23 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   using IndexValuesVars =
       std::pair<IndexId, std::unordered_map<Variable const*, size_t>>;
 
-  using IndexValuesRegisters = std::pair<IndexId, std::unordered_map<size_t, RegisterId>>;
+  using IndexValuesRegisters =
+      std::pair<IndexId, std::unordered_map<size_t, RegisterId>>;
 
-  using IndexVarsInfo = std::unordered_map<std::vector<arangodb::basics::AttributeName> const*, IndexVariable>;
+  using IndexVarsInfo =
+      std::unordered_map<std::vector<arangodb::basics::AttributeName> const*,
+                         IndexVariable>;
 
-  void setLateMaterialized(aql::Variable const* docIdVariable, IndexId commonIndexId,
+  void setLateMaterialized(aql::Variable const* docIdVariable,
+                           IndexId commonIndexId,
                            IndexVarsInfo const& indexVariables);
 
   void setProjections(arangodb::aql::Projections projections);
 
  protected:
   /// @brief export to VelocyPack
-  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override final;
 
  private:
   NonConstExpressionContainer initializeOnce() const;
@@ -145,7 +158,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   bool isProduceResult() const {
     return (isVarUsedLater(_outVariable) || _filter != nullptr) && !doCount();
   }
-  
+
   /// @brief adds a UNIQUE() to a dynamic IN condition
   arangodb::aql::AstNode* makeUnique(arangodb::aql::AstNode*) const;
 
@@ -155,7 +168,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
 
   /// @brief the index(es) condition
   std::unique_ptr<Condition> _condition;
-  
+
   /// @brief the index sort order - this is the same order for all indexes
   bool _needsGatherNodeSort;
 
@@ -171,4 +184,3 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
 
 }  // namespace aql
 }  // namespace arangodb
-

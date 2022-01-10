@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -71,17 +71,15 @@ namespace {
 // return an identifier to a connection configuration, consisting of
 // endpoint, username, password, jwt, authentication and protocol type
 std::string connectionIdentifier(fuerte::ConnectionBuilder& builder) {
-  return
-      builder.normalizedEndpoint() + "/" +
-      builder.user() + "/" + builder.password() + "/" + 
-      builder.jwtToken() + "/" +
-      to_string(builder.authenticationType()) + "/" + 
-      to_string(builder.protocolType());
+  return builder.normalizedEndpoint() + "/" + builder.user() + "/" +
+         builder.password() + "/" + builder.jwtToken() + "/" +
+         to_string(builder.authenticationType()) + "/" +
+         to_string(builder.protocolType());
 }
-} // namespace
+}  // namespace
 
-V8ClientConnection::V8ClientConnection(application_features::ApplicationServer& server,
-                                       ClientFeature& client)
+V8ClientConnection::V8ClientConnection(
+    application_features::ApplicationServer& server, ClientFeature& client)
     : _server(server),
       _client(client),
       _requestTimeout(_client.requestTimeout()),
@@ -99,12 +97,12 @@ V8ClientConnection::V8ClientConnection(application_features::ApplicationServer& 
 
   _builder.maxConnectRetries(3);
   _builder.connectRetryPause(std::chrono::milliseconds(100));
-  _builder.connectTimeout(std::chrono::milliseconds(static_cast<int64_t>(1000.0 * _client.connectionTimeout())));
+  _builder.connectTimeout(std::chrono::milliseconds(
+      static_cast<int64_t>(1000.0 * _client.connectionTimeout())));
   _builder.onFailure([this](fu::Error err, std::string const& msg) {
     // care only about connection errors
     if (err == fu::Error::CouldNotConnect ||
-        err == fu::Error::VstUnauthorized ||
-        err == fu::Error::ProtocolError) {
+        err == fu::Error::VstUnauthorized || err == fu::Error::ProtocolError) {
       std::unique_lock<std::recursive_mutex> guard(_lock, std::try_to_lock);
       if (guard && !_setCustomError) {
         _lastHttpReturnCode = 503;
@@ -132,7 +130,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection() {
 
     // check if we have a connection for that endpoint in our cache
     auto it = _connectionCache.find(id);
-    if (it != _connectionCache.end()) { 
+    if (it != _connectionCache.end()) {
       auto c = (*it).second;
       // cache hit. remove the connection from the cache and return it!
       _connectionCache.erase(it);
@@ -145,7 +143,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection() {
   // try to find an existing connection in the cache
   // the cache has one connection per endpoint
   auto [newConnection, wasFromCache] = findConnection();
-  int retryCount = wasFromCache? 2 : 1;
+  int retryCount = wasFromCache ? 2 : 1;
   fu::StringMap params{{"details", "true"}};
   while (retryCount > 0) {
     auto req = fu::createRequest(fu::RestVerb::Get, "/_api/version", params);
@@ -167,9 +165,9 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection() {
       if (res->contentType() == fu::ContentType::VPack) {
         body = res->slice();
       } else if (res->contentType() == fu::ContentType::Json) {
-        parsedBody =
-          VPackParser::fromJson(reinterpret_cast<char const*>(res->payload().data()),
-                                res->payload().size());
+        parsedBody = VPackParser::fromJson(
+            reinterpret_cast<char const*>(res->payload().data()),
+            res->payload().size());
         body = parsedBody->slice();
       }
       if (_lastHttpReturnCode >= 400) {
@@ -178,8 +176,8 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection() {
         if (it != headers.end()) {
           std::string errorMessage = (*it).second;
           if (body.isObject()) {
-            std::string const msg =
-              VelocyPackHelper::getStringValue(body, StaticStrings::ErrorMessage, "");
+            std::string const msg = VelocyPackHelper::getStringValue(
+                body, StaticStrings::ErrorMessage, "");
             if (!msg.empty()) {
               errorMessage = msg;
             }
@@ -202,7 +200,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection() {
       _connection = newConnection;
 
       std::string const server =
-        VelocyPackHelper::getStringValue(body, "server", "");
+          VelocyPackHelper::getStringValue(body, "server", "");
 
       // "server" value is a string and content is "arango"
       if (server == "arango") {
@@ -225,8 +223,9 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection() {
           return newConnection;
         }
         std::string const versionString =
-          VelocyPackHelper::getStringValue(body, "version", "");
-        std::pair<int, int> version = rest::Version::parseVersionString(versionString);
+            VelocyPackHelper::getStringValue(body, "version", "");
+        std::pair<int, int> version =
+            rest::Version::parseVersionString(versionString);
         if (version.first < 3) {
           // major version of server is too low
           //_client->disconnect();
@@ -257,8 +256,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::acquireConnection() {
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
 
-  if (!_connection ||
-      (_connection->state() == fu::Connection::State::Closed)) {
+  if (!_connection || (_connection->state() == fu::Connection::State::Closed)) {
     return createConnection();
   }
   return _connection;
@@ -268,8 +266,9 @@ void V8ClientConnection::setInterrupted(bool interrupted) {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   if (interrupted && _connection != nullptr) {
     shutdownConnection();
-  } else if (!interrupted && (_connection == nullptr ||
-                              (_connection->state() == fu::Connection::State::Closed))) {
+  } else if (!interrupted &&
+             (_connection == nullptr ||
+              (_connection->state() == fu::Connection::State::Closed))) {
     createConnection();
   }
 }
@@ -298,9 +297,9 @@ std::string V8ClientConnection::endpointSpecification() const {
 application_features::ApplicationServer& V8ClientConnection::server() {
   return _server;
 }
-  
-void V8ClientConnection::setDatabaseName(std::string const& value) { 
-  _databaseName = normalizeUtf8ToNFC(value); 
+
+void V8ClientConnection::setDatabaseName(std::string const& value) {
+  _databaseName = normalizeUtf8ToNFC(value);
 }
 
 double V8ClientConnection::timeout() const { return _requestTimeout.count(); }
@@ -380,15 +379,18 @@ void V8ClientConnection::reconnect() {
     throw errorMessage;
   }
 
-  if (isConnected() && _lastHttpReturnCode == static_cast<int>(rest::ResponseCode::OK)) {
+  if (isConnected() &&
+      _lastHttpReturnCode == static_cast<int>(rest::ResponseCode::OK)) {
     LOG_TOPIC("2d416", INFO, arangodb::Logger::FIXME)
-        << ClientFeature::buildConnectedMessage(endpointSpecification(), _version, _role, _mode, _databaseName, _client.username());
+        << ClientFeature::buildConnectedMessage(
+               endpointSpecification(), _version, _role, _mode, _databaseName,
+               _client.username());
   } else {
     if (_client.getWarnConnect()) {
       LOG_TOPIC("9d7ea", ERR, arangodb::Logger::FIXME)
           << "Could not connect to endpoint '" << _client.endpoint()
-          << "', username: '" << _client.username() << "' - Server message: " <<
-        _lastErrorMessage;
+          << "', username: '" << _client.username()
+          << "' - Server message: " << _lastErrorMessage;
     }
 
     std::string errorMsg = "could not connect";
@@ -429,12 +431,18 @@ static void ObjectToMap(v8::Isolate* isolate,
   v8::Local<v8::Object> v8Headers = val.As<v8::Object>();
 
   if (v8Headers->IsObject()) {
-    v8::Local<v8::Array> const props = v8Headers->GetPropertyNames(TRI_IGETC).FromMaybe(v8::Local<v8::Array>());
+    v8::Local<v8::Array> const props =
+        v8Headers->GetPropertyNames(TRI_IGETC).FromMaybe(
+            v8::Local<v8::Array>());
     auto context = TRI_IGETC;
     for (uint32_t i = 0; i < props->Length(); i++) {
-      v8::Local<v8::Value> key = props->Get(context, i).FromMaybe(v8::Local<v8::Value>());
-      myMap.emplace(TRI_ObjectToString(isolate, key),
-                    TRI_ObjectToString(isolate, v8Headers->Get(context, key).FromMaybe(v8::Local<v8::Value>())));
+      v8::Local<v8::Value> key =
+          props->Get(context, i).FromMaybe(v8::Local<v8::Value>());
+      myMap.emplace(
+          TRI_ObjectToString(isolate, key),
+          TRI_ObjectToString(
+              isolate,
+              v8Headers->Get(context, key).FromMaybe(v8::Local<v8::Value>())));
     }
   }
 }
@@ -463,7 +471,8 @@ static void DestroyV8ClientConnection(V8ClientConnection* v8connection) {
 static void ClientConnection_DestructorCallback(
     const v8::WeakCallbackInfo<v8::Persistent<v8::External>>& data) {
   auto persistent = data.GetParameter();
-  auto myConnection = v8::Local<v8::External>::New(data.GetIsolate(), *persistent);
+  auto myConnection =
+      v8::Local<v8::External>::New(data.GetIsolate(), *persistent);
   auto v8connection = static_cast<V8ClientConnection*>(myConnection->Value());
 
   DestroyV8ClientConnection(v8connection);
@@ -473,17 +482,22 @@ static void ClientConnection_DestructorCallback(
 /// @brief wrap V8ClientConnection in a v8::Object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Local<v8::Value> WrapV8ClientConnection(v8::Isolate* isolate,
-                                                   V8ClientConnection* v8connection) {
+static v8::Local<v8::Value> WrapV8ClientConnection(
+    v8::Isolate* isolate, V8ClientConnection* v8connection) {
   v8::EscapableHandleScope scope(isolate);
-  auto localConnectionTempl = v8::Local<v8::ObjectTemplate>::New(isolate, ConnectionTempl);
-  v8::Local<v8::Object> result = localConnectionTempl->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+  auto localConnectionTempl =
+      v8::Local<v8::ObjectTemplate>::New(isolate, ConnectionTempl);
+  v8::Local<v8::Object> result =
+      localConnectionTempl->NewInstance(TRI_IGETC).FromMaybe(
+          v8::Local<v8::Object>());
 
   auto myConnection = v8::External::New(isolate, v8connection);
-  result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRAP_TYPE_CONNECTION));
+  result->SetInternalField(SLOT_CLASS_TYPE,
+                           v8::Integer::New(isolate, WRAP_TYPE_CONNECTION));
   result->SetInternalField(SLOT_CLASS, myConnection);
   Connections[v8connection].Reset(isolate, myConnection);
-  Connections[v8connection].SetWeak(&Connections[v8connection], ClientConnection_DestructorCallback,
+  Connections[v8connection].SetWeak(&Connections[v8connection],
+                                    ClientConnection_DestructorCallback,
                                     v8::WeakCallbackType::kFinalizer);
   return scope.Escape<v8::Value>(result);
 }
@@ -492,22 +506,25 @@ static v8::Local<v8::Value> WrapV8ClientConnection(v8::Isolate* isolate,
 /// @brief ClientConnection constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_ConstructorCallback(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_ConstructorCallback(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
-  auto v8connection = std::make_unique<V8ClientConnection>(client->server(), *client);
+  auto v8connection =
+      std::make_unique<V8ClientConnection>(client->server(), *client);
   v8connection->connect();
 
   if (v8connection->isConnected() &&
       v8connection->lastHttpReturnCode() == (int)rest::ResponseCode::OK) {
     LOG_TOPIC("9c8b4", INFO, arangodb::Logger::FIXME)
-        << ClientFeature::buildConnectedMessage(v8connection->endpointSpecification(), v8connection->version(),
-                                                v8connection->role(), v8connection->mode(), v8connection->databaseName(),
-                                                v8connection->username());
+        << ClientFeature::buildConnectedMessage(
+               v8connection->endpointSpecification(), v8connection->version(),
+               v8connection->role(), v8connection->mode(),
+               v8connection->databaseName(), v8connection->username());
   } else {
     std::string errorMessage =
         "Could not connect. Error message: " + v8connection->lastErrorMessage();
@@ -524,20 +541,22 @@ static void ClientConnection_ConstructorCallback(v8::FunctionCallbackInfo<v8::Va
 /// @brief ClientConnection method "protocol"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_protocol(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_protocol(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
   if (v8connection == nullptr || client == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("protocol() must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "protocol() must be invoked on an arango connection object instance.");
   }
-  
+
   TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, v8connection->protocol()));
 
   TRI_V8_TRY_CATCH_END
@@ -547,21 +566,23 @@ static void ClientConnection_protocol(v8::FunctionCallbackInfo<v8::Value> const&
 /// @brief ClientConnection method "reconnect"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_reconnect(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_reconnect(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   if (isExecutionDeadlineReached(isolate)) {
     return;
   }
 
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
   if (v8connection == nullptr || client == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("reconnect() must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "reconnect() must be invoked on an arango connection object instance.");
   }
 
   if (args.Length() < 2) {
@@ -584,7 +605,8 @@ static void ClientConnection_reconnect(v8::FunctionCallbackInfo<v8::Value> const
 
   if (args.Length() < 4) {
     if (client->jwtSecret().empty()) {
-      ShellConsoleFeature& console = v8connection->server().getFeature<ShellConsoleFeature>();
+      ShellConsoleFeature& console =
+          v8connection->server().getFeature<ShellConsoleFeature>();
 
       if (console.isEnabled()) {
         password = console.readPassword("Please specify a password: ");
@@ -603,11 +625,12 @@ static void ClientConnection_reconnect(v8::FunctionCallbackInfo<v8::Value> const
     warnConnect = TRI_ObjectToBoolean(isolate, args[4]);
   }
 
-  V8SecurityFeature& v8security = v8connection->server().getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security =
+      v8connection->server().getFeature<V8SecurityFeature>();
   if (!v8security.isAllowedToConnectToEndpoint(isolate, endpoint, endpoint)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   std::string("not allowed to connect to this endpoint") +
-                                   endpoint);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("not allowed to connect to this endpoint") + endpoint);
   }
 
   client->setEndpoint(endpoint);
@@ -638,7 +661,8 @@ static void ClientConnection_reconnect(v8::FunctionCallbackInfo<v8::Value> const
 /// @brief ClientConnection method "connectedUser"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_connectedUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_connectedUser(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
@@ -647,7 +671,9 @@ static void ClientConnection_connectedUser(v8::FunctionCallbackInfo<v8::Value> c
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
   if (client == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connectedUser() must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "connectedUser() must be invoked on an arango connection object "
+        "instance.");
   }
 
   TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, client->username()));
@@ -658,8 +684,8 @@ static void ClientConnection_connectedUser(v8::FunctionCallbackInfo<v8::Value> c
 /// @brief ClientConnection method "GET" helper
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpGetAny(v8::FunctionCallbackInfo<v8::Value> const& args,
-                                        bool raw) {
+static void ClientConnection_httpGetAny(
+    v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -667,11 +693,12 @@ static void ClientConnection_httpGetAny(v8::FunctionCallbackInfo<v8::Value> cons
     return;
   }
   // get the connection
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("get() must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "get() must be invoked on an arango connection object instance.");
   }
 
   // check params
@@ -687,8 +714,8 @@ static void ClientConnection_httpGetAny(v8::FunctionCallbackInfo<v8::Value> cons
     ObjectToMap(isolate, headerFields, args[1]);
   }
 
-  TRI_V8_RETURN(v8connection->getData(isolate, std::string_view(*url, url.length()),
-                                      headerFields, raw));
+  TRI_V8_RETURN(v8connection->getData(
+      isolate, std::string_view(*url, url.length()), headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -696,7 +723,8 @@ static void ClientConnection_httpGetAny(v8::FunctionCallbackInfo<v8::Value> cons
 /// @brief ClientConnection method "GET"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpGet(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpGet(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpGetAny(args, false);
 }
 
@@ -704,7 +732,8 @@ static void ClientConnection_httpGet(v8::FunctionCallbackInfo<v8::Value> const& 
 /// @brief ClientConnection method "GET_RAW"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpGetRaw(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpGetRaw(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpGetAny(args, true);
 }
 
@@ -712,8 +741,8 @@ static void ClientConnection_httpGetRaw(v8::FunctionCallbackInfo<v8::Value> cons
 /// @brief ClientConnection method "HEAD" helper
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpHeadAny(v8::FunctionCallbackInfo<v8::Value> const& args,
-                                         bool raw) {
+static void ClientConnection_httpHeadAny(
+    v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   if (isExecutionDeadlineReached(isolate)) {
@@ -721,11 +750,12 @@ static void ClientConnection_httpHeadAny(v8::FunctionCallbackInfo<v8::Value> con
   }
 
   // get the connection
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("head() must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "head() must be invoked on an arango connection object instance.");
   }
 
   // check params
@@ -742,8 +772,8 @@ static void ClientConnection_httpHeadAny(v8::FunctionCallbackInfo<v8::Value> con
     ObjectToMap(isolate, headerFields, args[1]);
   }
 
-  TRI_V8_RETURN(v8connection->headData(isolate, std::string_view(*url, url.length()),
-                                       headerFields, raw));
+  TRI_V8_RETURN(v8connection->headData(
+      isolate, std::string_view(*url, url.length()), headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -751,7 +781,8 @@ static void ClientConnection_httpHeadAny(v8::FunctionCallbackInfo<v8::Value> con
 /// @brief ClientConnection method "HEAD"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpHead(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpHead(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpHeadAny(args, false);
 }
 
@@ -759,7 +790,8 @@ static void ClientConnection_httpHead(v8::FunctionCallbackInfo<v8::Value> const&
 /// @brief ClientConnection method "HEAD_RAW"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpHeadRaw(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpHeadRaw(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpHeadAny(args, true);
 }
 
@@ -767,8 +799,8 @@ static void ClientConnection_httpHeadRaw(v8::FunctionCallbackInfo<v8::Value> con
 /// @brief ClientConnection method "DELETE" helper
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpDeleteAny(v8::FunctionCallbackInfo<v8::Value> const& args,
-                                           bool raw) {
+static void ClientConnection_httpDeleteAny(
+    v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   if (isExecutionDeadlineReached(isolate)) {
@@ -776,11 +808,12 @@ static void ClientConnection_httpDeleteAny(v8::FunctionCallbackInfo<v8::Value> c
   }
 
   // get the connection
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("delete() must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "delete() must be invoked on an arango connection object instance.");
   }
 
   // check params
@@ -792,8 +825,9 @@ static void ClientConnection_httpDeleteAny(v8::FunctionCallbackInfo<v8::Value> c
 
   std::unordered_map<std::string, std::string> headerFields;
   if (args.Length() == 1) {  // no body provided
-    TRI_V8_RETURN(v8connection->deleteData(isolate, std::string_view(*url, url.length()),
-                                           v8::Undefined(isolate), headerFields, raw));
+    TRI_V8_RETURN(
+        v8connection->deleteData(isolate, std::string_view(*url, url.length()),
+                                 v8::Undefined(isolate), headerFields, raw));
   }
 
   // check header fields
@@ -801,7 +835,8 @@ static void ClientConnection_httpDeleteAny(v8::FunctionCallbackInfo<v8::Value> c
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
-  TRI_V8_RETURN(v8connection->deleteData(isolate, std::string_view(*url, url.length()),
+  TRI_V8_RETURN(v8connection->deleteData(isolate,
+                                         std::string_view(*url, url.length()),
                                          args[1], headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
@@ -810,7 +845,8 @@ static void ClientConnection_httpDeleteAny(v8::FunctionCallbackInfo<v8::Value> c
 /// @brief ClientConnection method "DELETE"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpDelete(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpDelete(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpDeleteAny(args, false);
 }
 
@@ -818,7 +854,8 @@ static void ClientConnection_httpDelete(v8::FunctionCallbackInfo<v8::Value> cons
 /// @brief ClientConnection method "DELETE_RAW"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpDeleteRaw(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpDeleteRaw(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpDeleteAny(args, true);
 }
 
@@ -826,8 +863,8 @@ static void ClientConnection_httpDeleteRaw(v8::FunctionCallbackInfo<v8::Value> c
 /// @brief ClientConnection method "OPTIONS" helper
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpOptionsAny(v8::FunctionCallbackInfo<v8::Value> const& args,
-                                            bool raw) {
+static void ClientConnection_httpOptionsAny(
+    v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   if (isExecutionDeadlineReached(isolate)) {
@@ -835,11 +872,12 @@ static void ClientConnection_httpOptionsAny(v8::FunctionCallbackInfo<v8::Value> 
   }
 
   // get the connection
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("options() must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "options() must be invoked on an arango connection object instance.");
   }
 
   // check params
@@ -856,7 +894,8 @@ static void ClientConnection_httpOptionsAny(v8::FunctionCallbackInfo<v8::Value> 
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
-  TRI_V8_RETURN(v8connection->optionsData(isolate, std::string_view(*url, url.length()),
+  TRI_V8_RETURN(v8connection->optionsData(isolate,
+                                          std::string_view(*url, url.length()),
                                           args[1], headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
@@ -865,7 +904,8 @@ static void ClientConnection_httpOptionsAny(v8::FunctionCallbackInfo<v8::Value> 
 /// @brief ClientConnection method "OPTIONS"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpOptions(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpOptions(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpOptionsAny(args, false);
 }
 
@@ -873,7 +913,8 @@ static void ClientConnection_httpOptions(v8::FunctionCallbackInfo<v8::Value> con
 /// @brief ClientConnection method "OPTIONS_RAW"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpOptionsRaw(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpOptionsRaw(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpOptionsAny(args, true);
 }
 
@@ -881,8 +922,8 @@ static void ClientConnection_httpOptionsRaw(v8::FunctionCallbackInfo<v8::Value> 
 /// @brief ClientConnection method "POST" helper
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpPostAny(v8::FunctionCallbackInfo<v8::Value> const& args,
-                                         bool raw) {
+static void ClientConnection_httpPostAny(
+    v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   if (isExecutionDeadlineReached(isolate)) {
@@ -890,11 +931,12 @@ static void ClientConnection_httpPostAny(v8::FunctionCallbackInfo<v8::Value> con
   }
 
   // get the connection
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("post() must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "post() must be invoked on an arango connection object instance.");
   }
 
   // check params
@@ -910,7 +952,8 @@ static void ClientConnection_httpPostAny(v8::FunctionCallbackInfo<v8::Value> con
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
-  TRI_V8_RETURN(v8connection->postData(isolate, std::string_view(*url, url.length()),
+  TRI_V8_RETURN(v8connection->postData(isolate,
+                                       std::string_view(*url, url.length()),
                                        args[1], headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
@@ -919,7 +962,8 @@ static void ClientConnection_httpPostAny(v8::FunctionCallbackInfo<v8::Value> con
 /// @brief ClientConnection method "POST"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpPost(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpPost(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpPostAny(args, false);
 }
 
@@ -927,7 +971,8 @@ static void ClientConnection_httpPost(v8::FunctionCallbackInfo<v8::Value> const&
 /// @brief ClientConnection method "POST_RAW"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpPostRaw(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpPostRaw(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpPostAny(args, true);
 }
 
@@ -935,8 +980,8 @@ static void ClientConnection_httpPostRaw(v8::FunctionCallbackInfo<v8::Value> con
 /// @brief ClientConnection method "PUT" helper
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpPutAny(v8::FunctionCallbackInfo<v8::Value> const& args,
-                                        bool raw) {
+static void ClientConnection_httpPutAny(
+    v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   if (isExecutionDeadlineReached(isolate)) {
@@ -944,11 +989,12 @@ static void ClientConnection_httpPutAny(v8::FunctionCallbackInfo<v8::Value> cons
   }
 
   // get the connection
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("put() must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "put() must be invoked on an arango connection object instance.");
   }
 
   // check params
@@ -965,7 +1011,8 @@ static void ClientConnection_httpPutAny(v8::FunctionCallbackInfo<v8::Value> cons
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
-  TRI_V8_RETURN(v8connection->putData(isolate, std::string_view(*url, url.length()),
+  TRI_V8_RETURN(v8connection->putData(isolate,
+                                      std::string_view(*url, url.length()),
                                       args[1], headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
@@ -974,7 +1021,8 @@ static void ClientConnection_httpPutAny(v8::FunctionCallbackInfo<v8::Value> cons
 /// @brief ClientConnection method "PUT"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpPut(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpPut(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpPutAny(args, false);
 }
 
@@ -982,7 +1030,8 @@ static void ClientConnection_httpPut(v8::FunctionCallbackInfo<v8::Value> const& 
 /// @brief ClientConnection method "PUT_RAW"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpPutRaw(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpPutRaw(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpPutAny(args, true);
 }
 
@@ -990,8 +1039,8 @@ static void ClientConnection_httpPutRaw(v8::FunctionCallbackInfo<v8::Value> cons
 /// @brief ClientConnection method "PATCH" helper
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpPatchAny(v8::FunctionCallbackInfo<v8::Value> const& args,
-                                          bool raw) {
+static void ClientConnection_httpPatchAny(
+    v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -999,11 +1048,12 @@ static void ClientConnection_httpPatchAny(v8::FunctionCallbackInfo<v8::Value> co
     return;
   }
   // get the connection
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("patch() must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "patch() must be invoked on an arango connection object instance.");
   }
 
   // check params
@@ -1019,7 +1069,8 @@ static void ClientConnection_httpPatchAny(v8::FunctionCallbackInfo<v8::Value> co
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
-  TRI_V8_RETURN(v8connection->patchData(isolate, std::string_view(*url, url.length()),
+  TRI_V8_RETURN(v8connection->patchData(isolate,
+                                        std::string_view(*url, url.length()),
                                         args[1], headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
@@ -1028,7 +1079,8 @@ static void ClientConnection_httpPatchAny(v8::FunctionCallbackInfo<v8::Value> co
 /// @brief ClientConnection method "PATCH"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpPatch(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpPatch(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpPatchAny(args, false);
 }
 
@@ -1036,7 +1088,8 @@ static void ClientConnection_httpPatch(v8::FunctionCallbackInfo<v8::Value> const
 /// @brief ClientConnection method "PATCH_RAW"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpPatchRaw(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpPatchRaw(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpPatchAny(args, true);
 }
 
@@ -1044,7 +1097,8 @@ static void ClientConnection_httpPatchRaw(v8::FunctionCallbackInfo<v8::Value> co
 /// @brief ClientConnection send file helper
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpSendFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpSendFile(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1053,17 +1107,16 @@ static void ClientConnection_httpSendFile(v8::FunctionCallbackInfo<v8::Value> co
   }
 
   // get the connection
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("sendFile() must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "sendFile() must be invoked on an arango connection object instance.");
   }
 
   // check params
-  if (args.Length() < 2 ||
-      args.Length() > 3 ||
-      !args[0]->IsString() ||
+  if (args.Length() < 2 || args.Length() > 3 || !args[0]->IsString() ||
       args[1]->IsUndefined()) {
     TRI_V8_THROW_EXCEPTION_USAGE("sendFile(<url>, <file>[, <headers>])");
   }
@@ -1080,14 +1133,14 @@ static void ClientConnection_httpSendFile(v8::FunctionCallbackInfo<v8::Value> co
 
   // check header fields
   std::unordered_map<std::string, std::string> headerFields;
-    // check header fields
+  // check header fields
   if (args.Length() > 2) {
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
   v8::Local<v8::Value> result =
-      v8connection->postData(isolate, std::string_view(*url, url.length()), args[1],
-                             headerFields, false, /*isFile*/ true);
+      v8connection->postData(isolate, std::string_view(*url, url.length()),
+                             args[1], headerFields, false, /*isFile*/ true);
 
   if (tryCatch.HasCaught()) {
     isolate->ThrowException(tryCatch.Exception());
@@ -1102,7 +1155,8 @@ static void ClientConnection_httpSendFile(v8::FunctionCallbackInfo<v8::Value> co
 /// @brief ClientConnection method "getEndpoint"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_getEndpoint(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_getEndpoint(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -1110,14 +1164,16 @@ static void ClientConnection_getEndpoint(v8::FunctionCallbackInfo<v8::Value> con
     return;
   }
   // get the connection
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
   if (v8connection == nullptr || client == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("getEndpoint() must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "getEndpoint() must be invoked on an arango connection object "
+        "instance.");
   }
 
   // check params
@@ -1135,7 +1191,8 @@ static void ClientConnection_getEndpoint(v8::FunctionCallbackInfo<v8::Value> con
 
 static uint64_t DefaultChunkSize = 1024 * 1024 * 4;
 
-static void ClientConnection_importCsv(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_importCsv(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
@@ -1173,7 +1230,9 @@ static void ClientConnection_importCsv(v8::FunctionCallbackInfo<v8::Value> const
     v8::Local<v8::Object> options = TRI_ToObject(context, args[2]);
     // separator
     if (TRI_HasProperty(context, isolate, options, separatorKey)) {
-      separator = TRI_ObjectToString(isolate, options->Get(context, separatorKey).FromMaybe(v8::Local<v8::Value>()));
+      separator =
+          TRI_ObjectToString(isolate, options->Get(context, separatorKey)
+                                          .FromMaybe(v8::Local<v8::Value>()));
 
       if (separator.length() < 1) {
         TRI_V8_THROW_EXCEPTION_PARAMETER(
@@ -1183,7 +1242,9 @@ static void ClientConnection_importCsv(v8::FunctionCallbackInfo<v8::Value> const
 
     // quote
     if (TRI_HasProperty(context, isolate, options, quoteKey)) {
-      quote = TRI_ObjectToString(isolate, options->Get(context, quoteKey).FromMaybe(v8::Local<v8::Value>()));
+      quote = TRI_ObjectToString(
+          isolate,
+          options->Get(context, quoteKey).FromMaybe(v8::Local<v8::Value>()));
 
       if (quote.length() > 1) {
         TRI_V8_THROW_EXCEPTION_PARAMETER(
@@ -1192,8 +1253,8 @@ static void ClientConnection_importCsv(v8::FunctionCallbackInfo<v8::Value> const
     }
   }
 
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
@@ -1211,25 +1272,30 @@ static void ClientConnection_importCsv(v8::FunctionCallbackInfo<v8::Value> const
   if (ih.importDelimited(collectionName, fileName, "", ImportHelper::CSV)) {
     v8::Local<v8::Object> result = v8::Object::New(isolate);
 
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "lines"),
-                v8::Integer::New(isolate, (int32_t)ih.getReadLines())).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "lines"),
+              v8::Integer::New(isolate, (int32_t)ih.getReadLines()))
+        .FromMaybe(false);
 
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "created"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberCreated())).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "created"),
+              v8::Integer::New(isolate, (int32_t)ih.getNumberCreated()))
+        .FromMaybe(false);
 
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "errors"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberErrors())).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "errors"),
+              v8::Integer::New(isolate, (int32_t)ih.getNumberErrors()))
+        .FromMaybe(false);
 
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "updated"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberUpdated())).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "updated"),
+              v8::Integer::New(isolate, (int32_t)ih.getNumberUpdated()))
+        .FromMaybe(false);
 
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "ignored"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberIgnored())).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "ignored"),
+              v8::Integer::New(isolate, (int32_t)ih.getNumberIgnored()))
+        .FromMaybe(false);
 
     TRI_V8_RETURN(result);
   }
@@ -1247,7 +1313,8 @@ static void ClientConnection_importCsv(v8::FunctionCallbackInfo<v8::Value> const
 /// @brief imports a JSON file
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_importJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_importJson(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1271,8 +1338,8 @@ static void ClientConnection_importJson(v8::FunctionCallbackInfo<v8::Value> cons
     TRI_V8_THROW_TYPE_ERROR("<collection> must be a UTF-8 filename");
   }
 
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
@@ -1288,25 +1355,30 @@ static void ClientConnection_importJson(v8::FunctionCallbackInfo<v8::Value> cons
   if (ih.importJson(collectionName, fileName, false)) {
     v8::Local<v8::Object> result = v8::Object::New(isolate);
 
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "lines"),
-                v8::Integer::New(isolate, (int32_t)ih.getReadLines())).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "lines"),
+              v8::Integer::New(isolate, (int32_t)ih.getReadLines()))
+        .FromMaybe(false);
 
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "created"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberCreated())).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "created"),
+              v8::Integer::New(isolate, (int32_t)ih.getNumberCreated()))
+        .FromMaybe(false);
 
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "errors"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberErrors())).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "errors"),
+              v8::Integer::New(isolate, (int32_t)ih.getNumberErrors()))
+        .FromMaybe(false);
 
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "updated"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberUpdated())).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "updated"),
+              v8::Integer::New(isolate, (int32_t)ih.getNumberUpdated()))
+        .FromMaybe(false);
 
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "ignored"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberIgnored())).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "ignored"),
+              v8::Integer::New(isolate, (int32_t)ih.getNumberIgnored()))
+        .FromMaybe(false);
 
     TRI_V8_RETURN(result);
   }
@@ -1324,7 +1396,8 @@ static void ClientConnection_importJson(v8::FunctionCallbackInfo<v8::Value> cons
 /// @brief ClientConnection method "lastError"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_lastHttpReturnCode(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_lastHttpReturnCode(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1333,11 +1406,13 @@ static void ClientConnection_lastHttpReturnCode(v8::FunctionCallbackInfo<v8::Val
   }
 
   // get the connection
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("lastHttpReturnCode() must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "lastHttpReturnCode() must be invoked on an arango connection object "
+        "instance.");
   }
 
   // check params
@@ -1353,7 +1428,8 @@ static void ClientConnection_lastHttpReturnCode(v8::FunctionCallbackInfo<v8::Val
 /// @brief ClientConnection method "lastErrorMessage"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_lastErrorMessage(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_lastErrorMessage(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1362,11 +1438,13 @@ static void ClientConnection_lastErrorMessage(v8::FunctionCallbackInfo<v8::Value
   }
 
   // get the connection
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("lastErrorMessage() must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "lastErrorMessage() must be invoked on an arango connection object "
+        "instance.");
   }
 
   // check params
@@ -1382,7 +1460,8 @@ static void ClientConnection_lastErrorMessage(v8::FunctionCallbackInfo<v8::Value
 /// @brief ClientConnection method "isConnected"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_isConnected(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_isConnected(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1391,11 +1470,13 @@ static void ClientConnection_isConnected(v8::FunctionCallbackInfo<v8::Value> con
   }
 
   // get the connection
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("isConnected() must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "isConnected() must be invoked on an arango connection object "
+        "instance.");
   }
 
   if (args.Length() != 0) {
@@ -1413,7 +1494,8 @@ static void ClientConnection_isConnected(v8::FunctionCallbackInfo<v8::Value> con
 /// @brief ClientConnection method "forceJson"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_forceJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_forceJson(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1422,11 +1504,12 @@ static void ClientConnection_forceJson(v8::FunctionCallbackInfo<v8::Value> const
   }
 
   // get the connection
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("forceJson() must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "forceJson() must be invoked on an arango connection object instance.");
   }
 
   if (args.Length() != 1) {
@@ -1437,7 +1520,8 @@ static void ClientConnection_forceJson(v8::FunctionCallbackInfo<v8::Value> const
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
   if (client == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("forceJson() unable to get client instance");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "forceJson() unable to get client instance");
   }
 
   bool forceJson = TRI_ObjectToBoolean(isolate, args[0]);
@@ -1451,7 +1535,8 @@ static void ClientConnection_forceJson(v8::FunctionCallbackInfo<v8::Value> const
 /// @brief ClientConnection method "timeout"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_timeout(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_timeout(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1460,11 +1545,12 @@ static void ClientConnection_timeout(v8::FunctionCallbackInfo<v8::Value> const& 
   }
 
   // get the connection
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("timeout() must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "timeout() must be invoked on an arango connection object instance.");
   }
 
   if (args.Length() == 0) {
@@ -1477,7 +1563,8 @@ static void ClientConnection_timeout(v8::FunctionCallbackInfo<v8::Value> const& 
     ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
     if (client == nullptr) {
-      TRI_V8_THROW_EXCEPTION_INTERNAL("timeout() unable to get client instance");
+      TRI_V8_THROW_EXCEPTION_INTERNAL(
+          "timeout() unable to get client instance");
     }
 
     client->requestTimeout(value);
@@ -1492,7 +1579,8 @@ static void ClientConnection_timeout(v8::FunctionCallbackInfo<v8::Value> const& 
 /// @brief ClientConnection method "toString"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_toString(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_toString(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1501,12 +1589,12 @@ static void ClientConnection_toString(v8::FunctionCallbackInfo<v8::Value> const&
   }
 
   // get the connection
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    // when invoking ArangoConnection.toString() we end here, i.e. printObject does this.
-    // be silent about this.
+    // when invoking ArangoConnection.toString() we end here, i.e. printObject
+    // does this. be silent about this.
     isolate->ThrowException(v8::Object::New(isolate));
     return;
   }
@@ -1532,7 +1620,8 @@ static void ClientConnection_toString(v8::FunctionCallbackInfo<v8::Value> const&
 /// @brief ClientConnection method "getVersion"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_getVersion(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_getVersion(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1541,11 +1630,13 @@ static void ClientConnection_getVersion(v8::FunctionCallbackInfo<v8::Value> cons
   }
 
   // get the connection
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("getVersion() must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "getVersion() must be invoked on an arango connection object "
+        "instance.");
   }
 
   if (args.Length() != 0) {
@@ -1560,7 +1651,8 @@ static void ClientConnection_getVersion(v8::FunctionCallbackInfo<v8::Value> cons
 /// @brief ClientConnection method "getMode"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_getMode(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_getMode(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1569,11 +1661,12 @@ static void ClientConnection_getMode(v8::FunctionCallbackInfo<v8::Value> const& 
   }
 
   // get the connection
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("getMode() must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "getMode() must be invoked on an arango connection object instance.");
   }
 
   if (args.Length() != 0) {
@@ -1588,7 +1681,8 @@ static void ClientConnection_getMode(v8::FunctionCallbackInfo<v8::Value> const& 
 /// @brief ClientConnection method "getRole"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_getRole(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_getRole(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1597,11 +1691,12 @@ static void ClientConnection_getRole(v8::FunctionCallbackInfo<v8::Value> const& 
   }
 
   // get the connection
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("getRole() must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "getRole() must be invoked on an arango connection object instance.");
   }
 
   if (args.Length() != 0) {
@@ -1616,7 +1711,8 @@ static void ClientConnection_getRole(v8::FunctionCallbackInfo<v8::Value> const& 
 /// @brief ClientConnection method "getDatabaseName"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_getDatabaseName(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_getDatabaseName(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1625,11 +1721,13 @@ static void ClientConnection_getDatabaseName(v8::FunctionCallbackInfo<v8::Value>
   }
 
   // get the connection
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("getDatabaseName() must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "getDatabaseName() must be invoked on an arango connection object "
+        "instance.");
   }
 
   if (args.Length() != 0) {
@@ -1644,7 +1742,8 @@ static void ClientConnection_getDatabaseName(v8::FunctionCallbackInfo<v8::Value>
 /// @brief ClientConnection method "setDatabaseName"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_setDatabaseName(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_setDatabaseName(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1653,14 +1752,16 @@ static void ClientConnection_setDatabaseName(v8::FunctionCallbackInfo<v8::Value>
   }
 
   // get the connection
-  V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
   if (v8connection == nullptr || client == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("setDatabaseName() must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "setDatabaseName() must be invoked on an arango connection object "
+        "instance.");
   }
 
   if (args.Length() != 1 || !args[0]->IsString()) {
@@ -1677,7 +1778,8 @@ static void ClientConnection_setDatabaseName(v8::FunctionCallbackInfo<v8::Value>
 
 v8::Local<v8::Value> V8ClientConnection::getData(
     v8::Isolate* isolate, std::string_view location,
-    std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
+    std::unordered_map<std::string, std::string> const& headerFields,
+    bool raw) {
   if (raw) {
     return requestDataRaw(isolate, fu::RestVerb::Get, location,
                           v8::Undefined(isolate), headerFields);
@@ -1688,7 +1790,8 @@ v8::Local<v8::Value> V8ClientConnection::getData(
 
 v8::Local<v8::Value> V8ClientConnection::headData(
     v8::Isolate* isolate, std::string_view location,
-    std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
+    std::unordered_map<std::string, std::string> const& headerFields,
+    bool raw) {
   if (raw) {
     return requestDataRaw(isolate, fu::RestVerb::Head, location,
                           v8::Undefined(isolate), headerFields);
@@ -1698,48 +1801,67 @@ v8::Local<v8::Value> V8ClientConnection::headData(
 }
 
 v8::Local<v8::Value> V8ClientConnection::deleteData(
-    v8::Isolate* isolate, std::string_view location, v8::Local<v8::Value> const& body,
-    std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
+    v8::Isolate* isolate, std::string_view location,
+    v8::Local<v8::Value> const& body,
+    std::unordered_map<std::string, std::string> const& headerFields,
+    bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, fu::RestVerb::Delete, location, body, headerFields);
+    return requestDataRaw(isolate, fu::RestVerb::Delete, location, body,
+                          headerFields);
   }
-  return requestData(isolate, fu::RestVerb::Delete, location, body, headerFields);
+  return requestData(isolate, fu::RestVerb::Delete, location, body,
+                     headerFields);
 }
 
 v8::Local<v8::Value> V8ClientConnection::optionsData(
-    v8::Isolate* isolate, std::string_view location, v8::Local<v8::Value> const& body,
-    std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
+    v8::Isolate* isolate, std::string_view location,
+    v8::Local<v8::Value> const& body,
+    std::unordered_map<std::string, std::string> const& headerFields,
+    bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, fu::RestVerb::Options, location, body, headerFields);
+    return requestDataRaw(isolate, fu::RestVerb::Options, location, body,
+                          headerFields);
   }
-  return requestData(isolate, fu::RestVerb::Options, location, body, headerFields);
+  return requestData(isolate, fu::RestVerb::Options, location, body,
+                     headerFields);
 }
 
 v8::Local<v8::Value> V8ClientConnection::postData(
-    v8::Isolate* isolate, std::string_view location, v8::Local<v8::Value> const& body,
-    std::unordered_map<std::string, std::string> const& headerFields, bool raw, bool isFile) {
+    v8::Isolate* isolate, std::string_view location,
+    v8::Local<v8::Value> const& body,
+    std::unordered_map<std::string, std::string> const& headerFields, bool raw,
+    bool isFile) {
   if (raw) {
-    return requestDataRaw(isolate, fu::RestVerb::Post, location, body, headerFields);
+    return requestDataRaw(isolate, fu::RestVerb::Post, location, body,
+                          headerFields);
   }
-  return requestData(isolate, fu::RestVerb::Post, location, body, headerFields, isFile);
+  return requestData(isolate, fu::RestVerb::Post, location, body, headerFields,
+                     isFile);
 }
 
 v8::Local<v8::Value> V8ClientConnection::putData(
-    v8::Isolate* isolate, std::string_view location, v8::Local<v8::Value> const& body,
-    std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
+    v8::Isolate* isolate, std::string_view location,
+    v8::Local<v8::Value> const& body,
+    std::unordered_map<std::string, std::string> const& headerFields,
+    bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, fu::RestVerb::Put, location, body, headerFields);
+    return requestDataRaw(isolate, fu::RestVerb::Put, location, body,
+                          headerFields);
   }
   return requestData(isolate, fu::RestVerb::Put, location, body, headerFields);
 }
 
 v8::Local<v8::Value> V8ClientConnection::patchData(
-    v8::Isolate* isolate, std::string_view location, v8::Local<v8::Value> const& body,
-    std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
+    v8::Isolate* isolate, std::string_view location,
+    v8::Local<v8::Value> const& body,
+    std::unordered_map<std::string, std::string> const& headerFields,
+    bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, fu::RestVerb::Patch, location, body, headerFields);
+    return requestDataRaw(isolate, fu::RestVerb::Patch, location, body,
+                          headerFields);
   }
-  return requestData(isolate, fu::RestVerb::Patch, location, body, headerFields);
+  return requestData(isolate, fu::RestVerb::Patch, location, body,
+                     headerFields);
 }
 
 int fuerteToArangoErrorCode(fu::Error ec) {
@@ -1766,44 +1888,42 @@ int fuerteToArangoErrorCode(fu::Error ec) {
 }
 
 // V8 -> fuerte
-void translateHeaders(fu::Request& request,
-                      fu::RestVerb const method,
-                      std::string_view location,
-                      std::string const& databaseName,
-                      bool forceJson,
-                      std::chrono::duration<double> const& requestTimeout,
-                      std::unordered_map<std::string, std::string> const& headerFields) {
+void translateHeaders(
+    fu::Request& request, fu::RestVerb const method, std::string_view location,
+    std::string const& databaseName, bool forceJson,
+    std::chrono::duration<double> const& requestTimeout,
+    std::unordered_map<std::string, std::string> const& headerFields) {
   request.header.restVerb = method;
   request.header.database = databaseName;
   request.header.parseArangoPath(location);
   if (forceJson) {
-    // Preset posting json (if) but allow override if there is a specified header:
+    // Preset posting json (if) but allow override if there is a specified
+    // header:
     request.header.contentType(fu::ContentType::Json);
     request.header.acceptType(fu::ContentType::Json);
   }
   for (auto& pair : headerFields) {
-    request.header.addMeta(basics::StringUtils::tolower(pair.first), pair.second);
+    request.header.addMeta(basics::StringUtils::tolower(pair.first),
+                           pair.second);
   }
   if (request.header.acceptType() == fu::ContentType::Unset) {
     request.header.acceptType(fu::ContentType::VPack);
   }
 
-  request.timeout(
-      correctTimeoutToExecutionDeadline(
-        std::chrono::duration_cast<std::chrono::milliseconds>(requestTimeout)));
+  request.timeout(correctTimeoutToExecutionDeadline(
+      std::chrono::duration_cast<std::chrono::milliseconds>(requestTimeout)));
 }
 
 // V8 -> fuerte
-bool setPostBody(fu::Request& request,
-                 v8::Isolate* isolate,
+bool setPostBody(fu::Request& request, v8::Isolate* isolate,
                  v8::Local<v8::Value> const& body,
-                 velocypack::Options const& vpackOptions,
-                 bool forceJson,
+                 velocypack::Options const& vpackOptions, bool forceJson,
                  bool isFile) {
   if (isFile) {
     std::string const inFile = TRI_ObjectToString(isolate, body);
     if (!FileUtils::exists(inFile)) {
-      std::string err = std::string("file to load for body doesn't exist: ") + inFile;
+      std::string err =
+          std::string("file to load for body doesn't exist: ") + inFile;
       TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, err);
       return false;
     }
@@ -1815,10 +1935,12 @@ bool setPostBody(fu::Request& request,
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_errno(), err);
     }
     request.header.contentType(fu::ContentType::Custom);
-    request.addBinary(reinterpret_cast<uint8_t const*>(contents.data()), contents.length());
+    request.addBinary(reinterpret_cast<uint8_t const*>(contents.data()),
+                      contents.length());
   } else if (body->IsString() || body->IsStringObject()) {  // assume JSON
     TRI_Utf8ValueNFC bodyString(isolate, body);
-    request.addBinary(reinterpret_cast<uint8_t const*>(*bodyString), bodyString.length());
+    request.addBinary(reinterpret_cast<uint8_t const*>(*bodyString),
+                      bodyString.length());
     if (request.header.contentType() == fu::ContentType::Unset) {
       request.header.contentType(fu::ContentType::Json);
     }
@@ -1840,7 +1962,8 @@ bool setPostBody(fu::Request& request,
     if (forceJson) {
       auto resultJson = builder.slice().toJson();
       char const* resStr = resultJson.c_str();
-      request.addBinary(reinterpret_cast<uint8_t const*>(resStr), resultJson.length());
+      request.addBinary(reinterpret_cast<uint8_t const*>(resStr),
+                        resultJson.length());
       request.header.contentType(fu::ContentType::Json);
     } else {
       request.addVPack(std::move(buffer));
@@ -1857,18 +1980,16 @@ bool setPostBody(fu::Request& request,
 
 bool canParseResponse(fu::Response const& response) {
   return (response.isContentTypeVPack() || response.isContentTypeJSON()) &&
-    (response.contentEncoding() == fuerte::ContentEncoding::Identity ||
-     response.contentEncoding() == fuerte::ContentEncoding::Gzip ||
-     response.contentEncoding() == fuerte::ContentEncoding::Deflate)     &&
+         (response.contentEncoding() == fuerte::ContentEncoding::Identity ||
+          response.contentEncoding() == fuerte::ContentEncoding::Gzip ||
+          response.contentEncoding() == fuerte::ContentEncoding::Deflate) &&
          response.payload().size() > 0;
 }
-
-
 
 v8::Local<v8::Value> parseReplyBodyToV8(fu::Response const& response,
                                         v8::Isolate* isolate) {
   if ((response.contentType() != fu::ContentType::VPack) &&
-      (response.contentType() != fu::ContentType::Json) ) {
+      (response.contentType() != fu::ContentType::Json)) {
     return v8::Undefined(isolate);
   }
 
@@ -1883,27 +2004,31 @@ v8::Local<v8::Value> parseReplyBodyToV8(fu::Response const& response,
     ErrorCode code = TRI_ERROR_NO_ERROR;
     if (response.contentEncoding() == fuerte::ContentEncoding::Deflate) {
       code = arangodb::encoding::gzipInflate(
-        reinterpret_cast<uint8_t const*>(responseBody.data()), responseBody.size(), inflateBuf);
+          reinterpret_cast<uint8_t const*>(responseBody.data()),
+          responseBody.size(), inflateBuf);
     } else {
       code = arangodb::encoding::gzipUncompress(
-        reinterpret_cast<uint8_t const*>(responseBody.data()), responseBody.size(), inflateBuf);
+          reinterpret_cast<uint8_t const*>(responseBody.data()),
+          responseBody.size(), inflateBuf);
     }
     if (code != TRI_ERROR_NO_ERROR) {
-        std::string err("Error inflating compressed response body");
-        TRI_CreateErrorObject(isolate, code, err, true);
-        return v8::Undefined(isolate);
+      std::string err("Error inflating compressed response body");
+      TRI_CreateErrorObject(isolate, code, err, true);
+      return v8::Undefined(isolate);
     }
     if (response.contentType() == fu::ContentType::VPack) {
       auto const& slices = VPackSlice(inflateBuf.data());
       return TRI_VPackToV8(isolate, slices);
     } else {
       try {
-        auto parsedBody = VPackParser::fromJson(inflateBuf.data(), inflateBuf.size());
+        auto parsedBody =
+            VPackParser::fromJson(inflateBuf.data(), inflateBuf.size());
         return TRI_VPackToV8(isolate, parsedBody->slice());
       } catch (std::exception const& ex) {
         std::string err("Error parsing the server JSON reply: ");
         err += ex.what();
-        TRI_CreateErrorObject(isolate, TRI_ERROR_HTTP_CORRUPTED_JSON, err, true);
+        TRI_CreateErrorObject(isolate, TRI_ERROR_HTTP_CORRUPTED_JSON, err,
+                              true);
       }
     }
   } else {
@@ -1914,14 +2039,14 @@ v8::Local<v8::Value> parseReplyBodyToV8(fu::Response const& response,
       auto responseBody = response.payload();
       try {
         auto parsedBody = VPackParser::fromJson(
-          reinterpret_cast<char const*>(
-            responseBody.data()),
-          responseBody.size());
+            reinterpret_cast<char const*>(responseBody.data()),
+            responseBody.size());
         return TRI_VPackToV8(isolate, parsedBody->slice());
       } catch (std::exception const& ex) {
         std::string err("Error parsing the server JSON reply: ");
         err += ex.what();
-        TRI_CreateErrorObject(isolate, TRI_ERROR_HTTP_CORRUPTED_JSON, err, true);
+        TRI_CreateErrorObject(isolate, TRI_ERROR_HTTP_CORRUPTED_JSON, err,
+                              true);
       }
     }
   }
@@ -1933,24 +2058,22 @@ v8::Local<v8::Value> translateResultBodyToV8(fu::Response const& response,
   auto responseBody = response.payload();
   if (((response.contentEncoding() == fuerte::ContentEncoding::Identity) ||
        (response.contentEncoding() == fuerte::ContentEncoding::Gzip) ||
-       (response.contentEncoding() == fuerte::ContentEncoding::Deflate)    ) &&
-      (
-        response.isContentTypeJSON() ||
-        response.isContentTypeText() ||
-        response.isContentTypeHtml()
-        )
-    ) {
+       (response.contentEncoding() == fuerte::ContentEncoding::Deflate)) &&
+      (response.isContentTypeJSON() || response.isContentTypeText() ||
+       response.isContentTypeHtml())) {
     if (response.contentEncoding() == fuerte::ContentEncoding::Deflate ||
-        response.contentEncoding() == fuerte::ContentEncoding::Gzip)      {
+        response.contentEncoding() == fuerte::ContentEncoding::Gzip) {
       auto responseBody = response.payload();
       VPackBuffer<uint8_t> inflateBuf;
       ErrorCode code = TRI_ERROR_NO_ERROR;
       if (response.contentEncoding() == fuerte::ContentEncoding::Deflate) {
         code = arangodb::encoding::gzipInflate(
-          reinterpret_cast<uint8_t const*>(responseBody.data()), responseBody.size(), inflateBuf);
+            reinterpret_cast<uint8_t const*>(responseBody.data()),
+            responseBody.size(), inflateBuf);
       } else {
         code = arangodb::encoding::gzipUncompress(
-          reinterpret_cast<uint8_t const*>(responseBody.data()), responseBody.size(), inflateBuf);
+            reinterpret_cast<uint8_t const*>(responseBody.data()),
+            responseBody.size(), inflateBuf);
       }
       if (code != TRI_ERROR_NO_ERROR) {
         std::string err("Error inflating compressed response body");
@@ -1963,71 +2086,67 @@ v8::Local<v8::Value> translateResultBodyToV8(fu::Response const& response,
       return TRI_V8_PAIR_STRING(isolate, bodyStr, responseBody.size());
     }
   } else {
-    V8Buffer* buffer = V8Buffer::New
-      (isolate,
-       static_cast<char const*>(responseBody.data()),
-       responseBody.size());
+    V8Buffer* buffer =
+        V8Buffer::New(isolate, static_cast<char const*>(responseBody.data()),
+                      responseBody.size());
     return v8::Local<v8::Object>::New(isolate, buffer->_handle);
   }
 }
-void setResultMessage(v8::Isolate* isolate,
-                      v8::Local<v8::Context> context,
-                      bool isError,
-                      unsigned lastHttpReturnCode,
+void setResultMessage(v8::Isolate* isolate, v8::Local<v8::Context> context,
+                      bool isError, unsigned lastHttpReturnCode,
                       std::string const& message,
                       v8::Local<v8::Object> result) {
-    result->Set(context,
-                TRI_V8_STD_STRING(isolate, StaticStrings::Error),
-                v8::Boolean::New(isolate, true)).FromMaybe(isError);
-    result->Set(context,
-                TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                v8::Integer::New(isolate, lastHttpReturnCode)).FromMaybe(false);
-    result->Set(context,
-                TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
-                TRI_V8_STD_STRING(isolate, message)).FromMaybe(false);
+  result
+      ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::Error),
+            v8::Boolean::New(isolate, true))
+      .FromMaybe(isError);
+  result
+      ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
+            v8::Integer::New(isolate, lastHttpReturnCode))
+      .FromMaybe(false);
+  result
+      ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
+            TRI_V8_STD_STRING(isolate, message))
+      .FromMaybe(false);
 }
 
-void setResultMessage(v8::Isolate* isolate,
-                      v8::Local<v8::Context> context,
-                      bool isError,
-                      unsigned lastHttpReturnCode,
+void setResultMessage(v8::Isolate* isolate, v8::Local<v8::Context> context,
+                      bool isError, unsigned lastHttpReturnCode,
                       v8::Local<v8::Object> result) {
   // create raw response
-  result->Set(context,
-              TRI_V8_ASCII_STRING(isolate, "code"),
-              v8::Integer::New(isolate, lastHttpReturnCode)).FromMaybe(false);
+  result
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "code"),
+            v8::Integer::New(isolate, lastHttpReturnCode))
+      .FromMaybe(false);
 
   if (lastHttpReturnCode >= 400) {
     std::string msg(GeneralResponse::responseString(
         static_cast<ResponseCode>(lastHttpReturnCode)));
-    setResultMessage(isolate, context, isError, lastHttpReturnCode, msg, result);
+    setResultMessage(isolate, context, isError, lastHttpReturnCode, msg,
+                     result);
   } else {
-    result->Set(context,
-                TRI_V8_STD_STRING(isolate, StaticStrings::Error),
-                v8::Boolean::New(isolate, false)).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::Error),
+              v8::Boolean::New(isolate, false))
+        .FromMaybe(false);
   }
 }
 
 v8::Local<v8::Value> V8ClientConnection::requestData(
-    v8::Isolate* isolate,
-    fu::RestVerb method,
-    std::string_view location,
+    v8::Isolate* isolate, fu::RestVerb method, std::string_view location,
     v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields,
     bool isFile) {
-
   bool retry = true;
 
 again:
   auto req = std::make_unique<fu::Request>();
-  translateHeaders(*req,
-                   method, location, _databaseName, _forceJson,
+  translateHeaders(*req, method, location, _databaseName, _forceJson,
                    _requestTimeout, headerFields);
 
   if (!setPostBody(*req, isolate, body, _vpackOptions, _forceJson, isFile)) {
     return v8::Undefined(isolate);
   }
-
 
   std::shared_ptr<fu::Connection> connection = acquireConnection();
   if (!connection || connection->state() == fu::Connection::State::Closed) {
@@ -2057,10 +2176,13 @@ again:
     _lastErrorMessage = fu::to_string(rc);
     _lastHttpReturnCode = static_cast<int>(rest::ResponseCode::SERVER_ERROR);
 
-    setResultMessage(isolate, context, true, errorNumber, _lastErrorMessage, result);
-    result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "code"),
-                v8::Integer::New(isolate, static_cast<int>(rest::ResponseCode::SERVER_ERROR))).FromMaybe(false);
+    setResultMessage(isolate, context, true, errorNumber, _lastErrorMessage,
+                     result);
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "code"),
+              v8::Integer::New(
+                  isolate, static_cast<int>(rest::ResponseCode::SERVER_ERROR)))
+        .FromMaybe(false);
 
     return result;
   }
@@ -2090,16 +2212,15 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     v8::Isolate* isolate, fu::RestVerb method, std::string_view location,
     v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields) {
-
   bool retry = true;
 
 again:
   auto req = std::make_unique<fu::Request>();
-  translateHeaders(*req,
-                   method, location, _databaseName, _forceJson,
+  translateHeaders(*req, method, location, _databaseName, _forceJson,
                    _requestTimeout, headerFields);
 
-  if (!setPostBody(*req, isolate, body, _vpackOptions, _forceJson, false)) { // no file support
+  if (!setPostBody(*req, isolate, body, _vpackOptions, _forceJson,
+                   false)) {  // no file support
     return v8::Undefined(isolate);
   }
   std::shared_ptr<fu::Connection> connection = acquireConnection();
@@ -2127,7 +2248,8 @@ again:
   // not complete
   v8::Local<v8::Object> result = v8::Object::New(isolate);
   if (!response) {
-    setResultMessage(isolate, context, true, _lastHttpReturnCode, _lastErrorMessage, result);
+    setResultMessage(isolate, context, true, _lastHttpReturnCode,
+                     _lastErrorMessage, result);
     return result;
   }
 
@@ -2136,162 +2258,205 @@ again:
   setResultMessage(isolate, context, false, _lastHttpReturnCode, result);
 
   v8::Local<v8::Object> headers = v8::Object::New(isolate);
-  result->Set(context,
-              TRI_V8_ASCII_STRING(isolate, "headers"), headers).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "headers"), headers)
+      .FromMaybe(false);
 
   if (canParseResponse(*response)) {
-    result->Set(context,
-                TRI_V8_STD_STRING(isolate, StaticStrings::ParsedBody),
-                parseReplyBodyToV8(*response, isolate)).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ParsedBody),
+              parseReplyBodyToV8(*response, isolate))
+        .FromMaybe(false);
   }
   auto payloadSize = response->payload().size();
   if (payloadSize > 0) {
-    result->Set(context,
-                TRI_V8_STD_STRING(isolate, StaticStrings::Body),
-                translateResultBodyToV8(*response, isolate)
-      ).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::Body),
+              translateResultBodyToV8(*response, isolate))
+        .FromMaybe(false);
   }
 
   if (response->contentType() != fuerte::ContentType::Custom) {
-    auto contentType = TRI_V8_STD_STRING(isolate, fu::to_string(response->contentType()));
-    headers->Set(context,
-                 TRI_V8_STD_STRING(isolate, StaticStrings::ContentTypeHeader),
-                 contentType).FromMaybe(false);
+    auto contentType =
+        TRI_V8_STD_STRING(isolate, fu::to_string(response->contentType()));
+    headers
+        ->Set(context,
+              TRI_V8_STD_STRING(isolate, StaticStrings::ContentTypeHeader),
+              contentType)
+        .FromMaybe(false);
   }
   for (auto const& it : response->header.meta()) {
-    headers->Set(context,
-                 TRI_V8_STD_STRING(isolate, it.first),
-                 TRI_V8_STD_STRING(isolate, it.second)).FromMaybe(false);
+    headers
+        ->Set(context, TRI_V8_STD_STRING(isolate, it.first),
+              TRI_V8_STD_STRING(isolate, it.second))
+        .FromMaybe(false);
   }
 
   if ((_builder.protocolType() == fu::ProtocolType::Vst) &&
       (method != fu::RestVerb::Head)) {
     // VST only adds a content-length header in case of head, since else its
     // part of the protocol.
-    headers->Set(context,
-                 TRI_V8_STD_STRING(isolate, StaticStrings::ContentLength),
-                 TRI_V8_STD_STRING(isolate, std::to_string(payloadSize))).FromMaybe(false);
+    headers
+        ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ContentLength),
+              TRI_V8_STD_STRING(isolate, std::to_string(payloadSize)))
+        .FromMaybe(false);
   }
   // and returns
   return result;
 }
 
-void V8ClientConnection::initServer(v8::Isolate* isolate, v8::Local<v8::Context> context) {
+void V8ClientConnection::initServer(v8::Isolate* isolate,
+                                    v8::Local<v8::Context> context) {
   v8::Local<v8::Value> v8client = v8::External::New(isolate, &_client);
 
-  v8::Local<v8::FunctionTemplate> connection_templ = v8::FunctionTemplate::New(isolate);
+  v8::Local<v8::FunctionTemplate> connection_templ =
+      v8::FunctionTemplate::New(isolate);
 
   connection_templ->SetClassName(
       TRI_V8_ASCII_STRING(isolate, "ArangoConnection"));
 
-  v8::Local<v8::ObjectTemplate> connection_proto = connection_templ->PrototypeTemplate();
+  v8::Local<v8::ObjectTemplate> connection_proto =
+      connection_templ->PrototypeTemplate();
 
-  connection_proto->Set(isolate, "DELETE",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_httpDelete));
+  connection_proto->Set(
+      isolate, "DELETE",
+      v8::FunctionTemplate::New(isolate, ClientConnection_httpDelete));
 
-  connection_proto->Set(isolate, "DELETE_RAW",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_httpDeleteRaw));
+  connection_proto->Set(
+      isolate, "DELETE_RAW",
+      v8::FunctionTemplate::New(isolate, ClientConnection_httpDeleteRaw));
 
-  connection_proto->Set(isolate, "GET",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_httpGet));
+  connection_proto->Set(
+      isolate, "GET",
+      v8::FunctionTemplate::New(isolate, ClientConnection_httpGet));
 
-  connection_proto->Set(isolate, "GET_RAW",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_httpGetRaw));
+  connection_proto->Set(
+      isolate, "GET_RAW",
+      v8::FunctionTemplate::New(isolate, ClientConnection_httpGetRaw));
 
-  connection_proto->Set(isolate, "HEAD",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_httpHead));
+  connection_proto->Set(
+      isolate, "HEAD",
+      v8::FunctionTemplate::New(isolate, ClientConnection_httpHead));
 
-  connection_proto->Set(isolate, "HEAD_RAW",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_httpHeadRaw));
+  connection_proto->Set(
+      isolate, "HEAD_RAW",
+      v8::FunctionTemplate::New(isolate, ClientConnection_httpHeadRaw));
 
-  connection_proto->Set(isolate, "OPTIONS",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_httpOptions));
+  connection_proto->Set(
+      isolate, "OPTIONS",
+      v8::FunctionTemplate::New(isolate, ClientConnection_httpOptions));
 
-  connection_proto->Set(isolate, "OPTIONS_RAW",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_httpOptionsRaw));
+  connection_proto->Set(
+      isolate, "OPTIONS_RAW",
+      v8::FunctionTemplate::New(isolate, ClientConnection_httpOptionsRaw));
 
-  connection_proto->Set(isolate, "PATCH",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_httpPatch));
+  connection_proto->Set(
+      isolate, "PATCH",
+      v8::FunctionTemplate::New(isolate, ClientConnection_httpPatch));
 
-  connection_proto->Set(isolate, "PATCH_RAW",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_httpPatchRaw));
+  connection_proto->Set(
+      isolate, "PATCH_RAW",
+      v8::FunctionTemplate::New(isolate, ClientConnection_httpPatchRaw));
 
-  connection_proto->Set(isolate, "POST",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_httpPost));
+  connection_proto->Set(
+      isolate, "POST",
+      v8::FunctionTemplate::New(isolate, ClientConnection_httpPost));
 
-  connection_proto->Set(isolate, "POST_RAW",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_httpPostRaw));
+  connection_proto->Set(
+      isolate, "POST_RAW",
+      v8::FunctionTemplate::New(isolate, ClientConnection_httpPostRaw));
 
-  connection_proto->Set(isolate, "PUT",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_httpPut));
-  connection_proto->Set(isolate, "PUT_RAW",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_httpPutRaw));
+  connection_proto->Set(
+      isolate, "PUT",
+      v8::FunctionTemplate::New(isolate, ClientConnection_httpPut));
+  connection_proto->Set(
+      isolate, "PUT_RAW",
+      v8::FunctionTemplate::New(isolate, ClientConnection_httpPutRaw));
 
-  connection_proto->Set(isolate, "SEND_FILE",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_httpSendFile));
+  connection_proto->Set(
+      isolate, "SEND_FILE",
+      v8::FunctionTemplate::New(isolate, ClientConnection_httpSendFile));
 
   connection_proto->Set(isolate, "getEndpoint",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_getEndpoint, v8client));
+                        v8::FunctionTemplate::New(
+                            isolate, ClientConnection_getEndpoint, v8client));
 
-  connection_proto->Set(isolate, "lastHttpReturnCode",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_lastHttpReturnCode));
+  connection_proto->Set(
+      isolate, "lastHttpReturnCode",
+      v8::FunctionTemplate::New(isolate, ClientConnection_lastHttpReturnCode));
 
-  connection_proto->Set(isolate, "lastErrorMessage",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_lastErrorMessage));
+  connection_proto->Set(
+      isolate, "lastErrorMessage",
+      v8::FunctionTemplate::New(isolate, ClientConnection_lastErrorMessage));
 
-  connection_proto->Set(isolate, "isConnected",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_isConnected));
+  connection_proto->Set(
+      isolate, "isConnected",
+      v8::FunctionTemplate::New(isolate, ClientConnection_isConnected));
 
-  connection_proto->Set(isolate, "forceJson",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_forceJson, v8client));
+  connection_proto->Set(
+      isolate, "forceJson",
+      v8::FunctionTemplate::New(isolate, ClientConnection_forceJson, v8client));
 
-  connection_proto->Set(isolate, "reconnect",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_reconnect, v8client));
+  connection_proto->Set(
+      isolate, "reconnect",
+      v8::FunctionTemplate::New(isolate, ClientConnection_reconnect, v8client));
 
   connection_proto->Set(isolate, "connectedUser",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_connectedUser,
-                                                  v8client));
-  
-  connection_proto->Set(isolate, "protocol",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_protocol, v8client));
+                        v8::FunctionTemplate::New(
+                            isolate, ClientConnection_connectedUser, v8client));
 
-  connection_proto->Set(isolate, "timeout",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_timeout, v8client));
+  connection_proto->Set(
+      isolate, "protocol",
+      v8::FunctionTemplate::New(isolate, ClientConnection_protocol, v8client));
 
-  connection_proto->Set(isolate, "toString",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_toString, v8client));
+  connection_proto->Set(
+      isolate, "timeout",
+      v8::FunctionTemplate::New(isolate, ClientConnection_timeout, v8client));
 
-  connection_proto->Set(isolate, "getVersion",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_getVersion));
+  connection_proto->Set(
+      isolate, "toString",
+      v8::FunctionTemplate::New(isolate, ClientConnection_toString, v8client));
 
-  connection_proto->Set(isolate, "getMode",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_getMode));
+  connection_proto->Set(
+      isolate, "getVersion",
+      v8::FunctionTemplate::New(isolate, ClientConnection_getVersion));
 
-  connection_proto->Set(isolate, "getRole",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_getRole));
+  connection_proto->Set(
+      isolate, "getMode",
+      v8::FunctionTemplate::New(isolate, ClientConnection_getMode));
 
-  connection_proto->Set(isolate, "getDatabaseName",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_getDatabaseName));
+  connection_proto->Set(
+      isolate, "getRole",
+      v8::FunctionTemplate::New(isolate, ClientConnection_getRole));
 
-  connection_proto->Set(isolate, "setDatabaseName",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_setDatabaseName,
-                                                  v8client));
+  connection_proto->Set(
+      isolate, "getDatabaseName",
+      v8::FunctionTemplate::New(isolate, ClientConnection_getDatabaseName));
 
-  connection_proto->Set(isolate, "importCsv",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_importCsv, v8client));
+  connection_proto->Set(
+      isolate, "setDatabaseName",
+      v8::FunctionTemplate::New(isolate, ClientConnection_setDatabaseName,
+                                v8client));
+
+  connection_proto->Set(
+      isolate, "importCsv",
+      v8::FunctionTemplate::New(isolate, ClientConnection_importCsv, v8client));
 
   connection_proto->Set(isolate, "importJson",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_importJson, v8client));
+                        v8::FunctionTemplate::New(
+                            isolate, ClientConnection_importJson, v8client));
 
-  connection_proto->SetCallAsFunctionHandler(ClientConnection_ConstructorCallback, v8client);
+  connection_proto->SetCallAsFunctionHandler(
+      ClientConnection_ConstructorCallback, v8client);
 
-  v8::Local<v8::ObjectTemplate> connection_inst = connection_templ->InstanceTemplate();
+  v8::Local<v8::ObjectTemplate> connection_inst =
+      connection_templ->InstanceTemplate();
 
   connection_inst->SetInternalFieldCount(2);
 
-  TRI_AddGlobalVariableVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "ArangoConnection"),
-                               connection_proto->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()));
+  TRI_AddGlobalVariableVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "ArangoConnection"),
+      connection_proto->NewInstance(TRI_IGETC).FromMaybe(
+          v8::Local<v8::Object>()));
 
   ConnectionTempl.Reset(isolate, connection_inst);
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -94,9 +94,11 @@ class GraphNode : public ExecutionNode {
   /// @brief Internal constructor to clone the node.
   GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
             std::vector<Collection*> const& edgeColls,
-            std::vector<Collection*> const& vertexColls, TRI_edge_direction_e defaultDirection,
+            std::vector<Collection*> const& vertexColls,
+            TRI_edge_direction_e defaultDirection,
             std::vector<TRI_edge_direction_e> directions,
-            std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph);
+            std::unique_ptr<graph::BaseOptions> options,
+            graph::Graph const* graph);
 
   /// @brief Clone constructor, used for constructors of derived classes.
   /// Does not clone recursively, does not clone properties (`other.plan()` is
@@ -119,7 +121,8 @@ class GraphNode : public ExecutionNode {
   /// @brief flag, if smart traversal (Enterprise Edition only!) is done
   bool isSmart() const;
 
-  /// @brief flag, if the graph is a Disjoint SmartGraph (Enterprise Edition only!)
+  /// @brief flag, if the graph is a Disjoint SmartGraph (Enterprise Edition
+  /// only!)
   bool isDisjoint() const;
 
   /// @brief return the database
@@ -189,9 +192,7 @@ class GraphNode : public ExecutionNode {
   void injectVertexCollection(aql::Collection& other);
 
   std::vector<aql::Collection const*> collections() const;
-  void resetCollectionToShard() {
-    _collectionToShard.clear();
-  }
+  void resetCollectionToShard() { _collectionToShard.clear(); }
   void addCollectionToShard(std::string const& coll, std::string const& shard) {
     // NOTE: Do not replace this by emplace or insert.
     // This is also used to overwrite the existing entry.
@@ -206,24 +207,23 @@ class GraphNode : public ExecutionNode {
   // Internal helpers used in tests to modify enterprise detections.
   // These should not be used in production, as their detection
   // is implemented in constructors.
-  void setIsSmart(bool target) {
-    _isSmart = target;
-  }
+  void setIsSmart(bool target) { _isSmart = target; }
 
-  void setIsDisjoint(bool target) {
-    _isDisjoint = target;
-  }
+  void setIsDisjoint(bool target) { _isDisjoint = target; }
 #endif
  protected:
-  void doToVelocyPack(arangodb::velocypack::Builder& nodes, unsigned flags) const override;
+  void doToVelocyPack(arangodb::velocypack::Builder& nodes,
+                      unsigned flags) const override;
 
-  void graphCloneHelper(ExecutionPlan& plan, GraphNode& clone, bool withProperties) const;
+  void graphCloneHelper(ExecutionPlan& plan, GraphNode& clone,
+                        bool withProperties) const;
 
  private:
   void addEdgeCollection(aql::Collections const& collections,
                          std::string const& name, TRI_edge_direction_e dir);
   void addEdgeCollection(aql::Collection& collection, TRI_edge_direction_e dir);
-  void addVertexCollection(aql::Collections const& collections, std::string const& name);
+  void addVertexCollection(aql::Collections const& collections,
+                           std::string const& name);
   void addVertexCollection(aql::Collection& collection);
 
   void setGraphInfoAndCopyColls(std::vector<Collection*> const& edgeColls,

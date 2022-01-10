@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,12 +38,14 @@ class ScatterNode;
 
 class DistributeConsumerNode : public ExecutionNode {
  public:
-  DistributeConsumerNode(ExecutionPlan* plan, ExecutionNodeId id, std::string distributeId)
+  DistributeConsumerNode(ExecutionPlan* plan, ExecutionNodeId id,
+                         std::string distributeId)
       : ExecutionNode(plan, id),
         _distributeId(std::move(distributeId)),
         _isResponsibleForInitializeCursor(true) {}
 
-  DistributeConsumerNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  DistributeConsumerNode(ExecutionPlan* plan,
+                         arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
   NodeType getType() const override { return DISTRIBUTE_CONSUMER; }
@@ -51,7 +53,8 @@ class DistributeConsumerNode : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   /// @brief whether or not this node will forward initializeCursor or shutDown
   /// requests
@@ -79,17 +82,20 @@ class DistributeConsumerNode : public ExecutionNode {
     // This node is not allowed to be cloned.
     // Clone specialization!
     TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "DistributeConsumerNode cannot be cloned");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "DistributeConsumerNode cannot be cloned");
   }
 
   CostEstimate estimateCost() const override {
     TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "DistributeConsumerNode cannot be estimated");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "DistributeConsumerNode cannot be estimated");
   }
 
  protected:
   /// @brief export to VelocyPack
-  void doToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const override;
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override;
 
  private:
   /// @brief our own distributeId. If it is set, we will fetch only ata for
@@ -104,4 +110,3 @@ class DistributeConsumerNode : public ExecutionNode {
 };
 
 }  // namespace arangodb::aql
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -118,12 +118,7 @@ enum class RequestLane {
   UNDEFINED,
 };
 
-enum class RequestPriority {
-  MAINTENANCE = 0,
-  HIGH = 1,
-  MED = 2,
-  LOW = 3
-};
+enum class RequestPriority { MAINTENANCE = 0, HIGH = 1, MED = 2, LOW = 3 };
 
 inline RequestPriority PriorityRequestLane(RequestLane lane) {
   switch (lane) {
@@ -173,4 +168,3 @@ inline RequestPriority PriorityRequestLane(RequestLane lane) {
 }
 
 }  // namespace arangodb
-

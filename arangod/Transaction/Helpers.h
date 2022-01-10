@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,7 +47,7 @@ class Builder;
 namespace transaction {
 class Context;
 class Methods;
-  
+
 namespace helpers {
 /// @brief extract the _key attribute from a slice
 std::string_view extractKeyPart(VPackSlice);
@@ -55,7 +55,8 @@ std::string_view extractKeyPart(VPackSlice);
 /// @brief extract the _key attribute from a string_view
 std::string_view extractKeyPart(std::string_view);
 
-std::string extractIdString(CollectionNameResolver const*, VPackSlice, VPackSlice const&);
+std::string extractIdString(CollectionNameResolver const*, VPackSlice,
+                            VPackSlice const&);
 
 /// @brief quick access to the _key attribute in a database document
 /// the document must have at least two attributes, and _key is supposed to
@@ -93,13 +94,15 @@ std::string_view extractCollectionFromId(std::string_view id);
 RevisionId extractRevFromDocument(VPackSlice slice);
 VPackSlice extractRevSliceFromDocument(VPackSlice slice);
 
-OperationResult buildCountResult(OperationOptions const& options,
-                                 std::vector<std::pair<std::string, uint64_t>> const& count,
-                                 transaction::CountType type, uint64_t& total);
+OperationResult buildCountResult(
+    OperationOptions const& options,
+    std::vector<std::pair<std::string, uint64_t>> const& count,
+    transaction::CountType type, uint64_t& total);
 
 /// @brief creates an id string from a custom _id value and the _key string
 std::string makeIdFromCustom(CollectionNameResolver const* resolver,
-                             VPackSlice const& idPart, VPackSlice const& keyPart);
+                             VPackSlice const& idPart,
+                             VPackSlice const& keyPart);
 
 std::string makeIdFromParts(CollectionNameResolver const* resolver,
                             DataSourceId const& cid, VPackSlice const& keyPart);
@@ -153,7 +156,6 @@ class BuilderLeaser {
   transaction::Context* _transactionContext;
   arangodb::velocypack::Builder* _builder;
 };
-  
+
 }  // namespace transaction
 }  // namespace arangodb
-

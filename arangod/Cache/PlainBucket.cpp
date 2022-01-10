@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -102,7 +102,8 @@ void PlainBucket::insert(std::uint32_t hash, CachedValue* value) {
   }
 }
 
-CachedValue* PlainBucket::remove(std::uint32_t hash, void const* key, std::size_t keySize) {
+CachedValue* PlainBucket::remove(std::uint32_t hash, void const* key,
+                                 std::size_t keySize) {
   TRI_ASSERT(isLocked());
   CachedValue* value = find(hash, key, keySize, false);
   if (value != nullptr) {

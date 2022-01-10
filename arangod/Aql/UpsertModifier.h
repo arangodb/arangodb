@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,8 +39,8 @@ namespace arangodb::aql {
 struct ModificationExecutorInfos;
 
 // TODO Remove this state, and use a variant as in SimpleModifier.
-//      It makes most sense to do this when implementing async upsert operations,
-//      so I'm leaving it for now.
+//      It makes most sense to do this when implementing async upsert
+//      operations, so I'm leaving it for now.
 enum class ModificationExecutorResultState {
   // State that is used when the Executor's modifier has not been
   // asked to produce a result.
@@ -54,7 +54,7 @@ enum class ModificationExecutorResultState {
   // State that is used when the Executor's modifier has produced
   // a result that is ready to consume.
   HaveResult,
-  };
+};
 
 class UpsertModifier {
  public:
@@ -132,8 +132,10 @@ class UpsertModifier {
   VPackArrayIterator getInsertResultsIterator() const;
 
   OperationType updateReplaceCase(ModificationExecutorAccumulator& accu,
-                                  AqlValue const& inDoc, AqlValue const& updateDoc);
-  OperationType insertCase(ModificationExecutorAccumulator& accu, AqlValue const& insertDoc);
+                                  AqlValue const& inDoc,
+                                  AqlValue const& updateDoc);
+  OperationType insertCase(ModificationExecutorAccumulator& accu,
+                           AqlValue const& insertDoc);
 
   ModificationExecutorInfos& _infos;
   std::vector<ModOp> _operations;
@@ -146,7 +148,7 @@ class UpsertModifier {
   arangodb::velocypack::Builder _keyDocBuilder;
 
   size_t const _batchSize;
-  
+
   mutable std::mutex _resultStateMutex;
   ModificationExecutorResultState _resultState;
 };

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,7 +35,8 @@ namespace arangodb::metrics {
  */
 class Counter final : public Metric {
  public:
-  Counter(uint64_t n, std::string_view name, std::string_view help, std::string_view labels);
+  Counter(uint64_t n, std::string_view name, std::string_view help,
+          std::string_view labels);
   ~Counter() final;
 
   [[nodiscard]] std::string_view type() const noexcept final;

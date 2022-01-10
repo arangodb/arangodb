@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,16 +31,17 @@
 namespace arangodb {
 namespace aql {
 
-template <typename T, WalkerUniqueness U>
+template<typename T, WalkerUniqueness U>
 class NodeFinder final : public WalkerWorker<ExecutionNode, U> {
   ::arangodb::containers::SmallVector<ExecutionNode*>& _out;
-  
+
   T _lookingFor;
 
   bool _enterSubqueries;
 
  public:
-  NodeFinder(T const&, ::arangodb::containers::SmallVector<ExecutionNode*>&, bool enterSubqueries);
+  NodeFinder(T const&, ::arangodb::containers::SmallVector<ExecutionNode*>&,
+             bool enterSubqueries);
 
   bool before(ExecutionNode*) override final;
 
@@ -49,7 +50,8 @@ class NodeFinder final : public WalkerWorker<ExecutionNode, U> {
   }
 };
 
-class EndNodeFinder final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+class EndNodeFinder final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   ::arangodb::containers::SmallVector<ExecutionNode*>& _out;
 
   std::vector<bool> _found;
@@ -57,7 +59,8 @@ class EndNodeFinder final : public WalkerWorker<ExecutionNode, WalkerUniqueness:
   bool _enterSubqueries;
 
  public:
-  EndNodeFinder(::arangodb::containers::SmallVector<ExecutionNode*>&, bool enterSubqueries);
+  EndNodeFinder(::arangodb::containers::SmallVector<ExecutionNode*>&,
+                bool enterSubqueries);
 
   bool before(ExecutionNode*) override final;
 
@@ -73,4 +76,3 @@ class EndNodeFinder final : public WalkerWorker<ExecutionNode, WalkerUniqueness:
 };
 }  // namespace aql
 }  // namespace arangodb
-

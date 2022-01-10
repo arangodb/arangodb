@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -58,8 +58,9 @@ class HeartbeatBackgroundJobThread;
 class HeartbeatThread : public Thread,
                         public std::enable_shared_from_this<HeartbeatThread> {
  public:
-  HeartbeatThread(application_features::ApplicationServer&, AgencyCallbackRegistry*,
-                  std::chrono::microseconds, uint64_t maxFailsBeforeWarning);
+  HeartbeatThread(application_features::ApplicationServer&,
+                  AgencyCallbackRegistry*, std::chrono::microseconds,
+                  uint64_t maxFailsBeforeWarning);
   ~HeartbeatThread();
 
  public:
@@ -328,4 +329,3 @@ class HeartbeatThread : public Thread,
   metrics::Counter& _heartbeat_failure_counter;
 };
 }  // namespace arangodb
-

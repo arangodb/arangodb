@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,14 +31,14 @@ namespace arangodb::aql {
 
 class ExecutionNodeId : public basics::Identifier {
  public:
-  using Identifier::Identifier;
   using Identifier::BaseType;
+  using Identifier::Identifier;
 
   /// @brief placeholder used for internal nodes
-  static constexpr Identifier::BaseType InternalNode = std::numeric_limits<BaseType>::max();
+  static constexpr Identifier::BaseType InternalNode =
+      std::numeric_limits<BaseType>::max();
 };
 
 }  // namespace arangodb::aql
 
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::aql::ExecutionNodeId)
-

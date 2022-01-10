@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,7 +39,8 @@ class ProgramOptions;
 
 class ConfigFeature final : public application_features::ApplicationFeature {
  public:
-  ConfigFeature(application_features::ApplicationServer& server, std::string const& progname,
+  ConfigFeature(application_features::ApplicationServer& server,
+                std::string const& progname,
                 std::string const& configFilename = "");
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -58,4 +59,3 @@ class ConfigFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

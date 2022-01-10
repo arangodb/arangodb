@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,11 +49,9 @@ bool HttpResponse::HIDE_PRODUCT_HEADER = false;
 
 HttpResponse::HttpResponse(ResponseCode code, uint64_t mid,
                            std::unique_ptr<basics::StringBuffer> buffer)
-: GeneralResponse(code, mid),
-  _body(std::move(buffer)),
-  _bodySize(0) {
+    : GeneralResponse(code, mid), _body(std::move(buffer)), _bodySize(0) {
   _contentType = ContentType::TEXT;
-    
+
   if (!_body) {
     _body = std::make_unique<basics::StringBuffer>(false);
   }
@@ -75,7 +73,8 @@ void HttpResponse::reset(ResponseCode code) {
 
 void HttpResponse::setCookie(std::string const& name, std::string const& value,
                              int lifeTimeSeconds, std::string const& path,
-                             std::string const& domain, bool secure, bool httpOnly) {
+                             std::string const& domain, bool secure,
+                             bool httpOnly) {
   StringBuffer buffer(false);
 
   std::string tmp = StringUtils::trim(name);
@@ -173,14 +172,16 @@ void HttpResponse::writeHeader(StringBuffer* output) {
       continue;
     }
 
-    if (keyLength == 6 && key[0] == 's' && memcmp(key.c_str(), "server", keyLength) == 0) {
+    if (keyLength == 6 && key[0] == 's' &&
+        memcmp(key.c_str(), "server", keyLength) == 0) {
       // this ensures we don't print two "Server" headers
       seenServerHeader = true;
       // go on and use the user-defined "Server" header value
     }
 
     // reserve enough space for header name + ": " + value + "\r\n"
-    if (output->reserve(keyLength + 2 + it.second.size() + 2) != TRI_ERROR_NO_ERROR) {
+    if (output->reserve(keyLength + 2 + it.second.size() + 2) !=
+        TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
@@ -258,8 +259,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   }
 
   if (seenTransferEncodingHeader && transferEncoding == "chunked") {
-    output->appendText(
-        std::string_view("Transfer-Encoding: chunked\r\n\r\n"));
+    output->appendText(std::string_view("Transfer-Encoding: chunked\r\n\r\n"));
   } else {
     if (seenTransferEncodingHeader) {
       output->appendText(std::string_view("Transfer-Encoding: "));
@@ -290,7 +290,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   // end of header, body to follow
 }
 
-void HttpResponse::addPayload(VPackSlice slice, 
+void HttpResponse::addPayload(VPackSlice slice,
                               velocypack::Options const* options,
                               bool resolveExternals) {
   if (_contentType == rest::ContentType::JSON &&
@@ -300,11 +300,12 @@ void HttpResponse::addPayload(VPackSlice slice,
     _contentType = rest::ContentType::VPACK;
   }
 
-  addPayloadInternal(slice.start(), slice.byteSize(), options, resolveExternals);
+  addPayloadInternal(slice.start(), slice.byteSize(), options,
+                     resolveExternals);
 }
 
 void HttpResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
-                              velocypack::Options const* options, 
+                              velocypack::Options const* options,
                               bool resolveExternals) {
   if (_contentType == rest::ContentType::JSON &&
       _contentTypeRequested == rest::ContentType::VPACK) {
@@ -314,7 +315,8 @@ void HttpResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
   }
 
   if (buffer.size() > 0) {
-    addPayloadInternal(buffer.data(), buffer.length(), options, resolveExternals);
+    addPayloadInternal(buffer.data(), buffer.length(), options,
+                       resolveExternals);
   }
 }
 
@@ -323,7 +325,8 @@ void HttpResponse::addRawPayload(std::string_view payload) {
 }
 
 void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
-                                      VPackOptions const* options, bool resolveExternals) {
+                                      VPackOptions const* options,
+                                      bool resolveExternals) {
   TRI_ASSERT(data != nullptr);
 
   if (!options) {
@@ -349,12 +352,14 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
       // will contain sanitized data
       VPackBuffer<uint8_t> tmpBuffer;
       if (resolveExternals) {
-        bool resolveExt = VelocyPackHelper::hasNonClientTypes(currentData, true, true);
+        bool resolveExt =
+            VelocyPackHelper::hasNonClientTypes(currentData, true, true);
         if (resolveExt) {                  // resolve
           tmpBuffer.reserve(inputLength);  // reserve space already
           VPackBuilder builder(tmpBuffer, options);
-          VelocyPackHelper::sanitizeNonClientTypes(currentData, VPackSlice::noneSlice(),
-              builder, options, true, true);
+          VelocyPackHelper::sanitizeNonClientTypes(
+              currentData, VPackSlice::noneSlice(), builder, options, true,
+              true);
           currentData = VPackSlice(tmpBuffer.data());
           outputLength = currentData.byteSize();
         }
@@ -364,14 +369,14 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
         _body->appendText(currentData.startAs<const char>(), outputLength);
       }
       resultLength += outputLength;
-      
+
       // advance to next slice (if any)
       if (length < inputLength) {
         // oops, length specification may be wrong?!
         break;
       }
 
-      data += inputLength; 
+      data += inputLength;
       length -= inputLength;
     }
 
@@ -382,7 +387,7 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
   }
 
   setContentType(rest::ContentType::JSON);
-  
+
   /// dump options contain have the escapeUnicode attribute set to true
   /// this allows dumping of string values as plain 7-bit ASCII values.
   /// for example, the string "möter" will be dumped as "m\u00F6ter".
@@ -392,11 +397,11 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
   VPackOptions tmpOpts = *options;
   tmpOpts.escapeUnicode = true;
 
-  // here, the input (data) must **not** contain multiple velocypack values, 
+  // here, the input (data) must **not** contain multiple velocypack values,
   // written one after the other
   VPackSlice current(data);
   TRI_ASSERT(current.byteSize() == length);
-  
+
   if (_generateBody) {
     // convert object to JSON string
     VPackStringBufferAdapter buffer(_body->stringBuffer());

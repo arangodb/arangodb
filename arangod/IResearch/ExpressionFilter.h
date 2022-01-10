@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,7 +70,8 @@ struct ExpressionExecutionContext final : irs::attribute {
 
   ExpressionExecutionContext() = default;
 
-  ExpressionExecutionContext(arangodb::iresearch::ViewExpressionContextBase& ctx) noexcept
+  ExpressionExecutionContext(
+      arangodb::iresearch::ViewExpressionContextBase& ctx) noexcept
       : ctx(&ctx) {}
 
   explicit operator bool() const noexcept { return ctx; }
@@ -95,7 +96,8 @@ class ByExpression final : public irs::filter {
 
   ByExpression() noexcept;
 
-  void init(aql::ExecutionPlan const& plan, aql::Ast& ast, arangodb::aql::AstNode& node) noexcept {
+  void init(aql::ExecutionPlan const& plan, aql::Ast& ast,
+            arangodb::aql::AstNode& node) noexcept {
     _ctx.plan = &plan;
     _ctx.ast = &ast;
     _ctx.node.reset(&node, [](arangodb::aql::AstNode*) {});
@@ -111,10 +113,8 @@ class ByExpression final : public irs::filter {
   using irs::filter::prepare;
 
   virtual irs::filter::prepared::ptr prepare(
-      irs::index_reader const& index,
-      irs::order::prepared const& ord,
-      irs::boost_t boost,
-      irs::attribute_provider const* ctx) const override;
+      irs::index_reader const& index, irs::order::prepared const& ord,
+      irs::boost_t boost, irs::attribute_provider const* ctx) const override;
 
   virtual size_t hash() const noexcept override;
 
@@ -131,4 +131,3 @@ class ByExpression final : public irs::filter {
 
 }  // namespace iresearch
 }  // namespace arangodb
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -58,8 +58,9 @@ class PregelFeature final : public application_features::ApplicationFeature {
   std::pair<Result, uint64_t> startExecution(
       TRI_vocbase_t& vocbase, std::string algorithm,
       std::vector<std::string> const& vertexCollections,
-      std::vector<std::string> const& edgeCollections, 
-      std::unordered_map<std::string, std::vector<std::string>> const& edgeCollectionRestrictions,
+      std::vector<std::string> const& edgeCollections,
+      std::unordered_map<std::string, std::vector<std::string>> const&
+          edgeCollectionRestrictions,
       VPackSlice const& params);
 
   void start() override final;
@@ -67,7 +68,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
   void unprepare() override final;
 
   bool isStopping() const noexcept;
-  
+
   uint64_t createExecutionNumber();
   void addConductor(std::shared_ptr<Conductor>&&, uint64_t executionNumber);
   std::shared_ptr<Conductor> conductor(uint64_t executionNumber);
@@ -85,7 +86,8 @@ class PregelFeature final : public application_features::ApplicationFeature {
   }
 
   void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
-                              VPackSlice const& body, VPackBuilder& outResponse);
+                              VPackSlice const& body,
+                              VPackBuilder& outResponse);
   void handleWorkerRequest(TRI_vocbase_t& vocbase, std::string const& path,
                            VPackSlice const& body, VPackBuilder& outBuilder);
 
@@ -95,22 +97,24 @@ class PregelFeature final : public application_features::ApplicationFeature {
     _softShutdownOngoing.store(true, std::memory_order_relaxed);
   }
 
-  Result toVelocyPack(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result,
-                      bool allDatabases, bool fanout) const;
+  Result toVelocyPack(TRI_vocbase_t& vocbase,
+                      arangodb::velocypack::Builder& result, bool allDatabases,
+                      bool fanout) const;
 
  private:
   void scheduleGarbageCollection();
 
   mutable Mutex _mutex;
-  
+
   std::unique_ptr<RecoveryManager> _recoveryManager;
-  /// @brief _recoveryManagerPtr always points to the same object as _recoveryManager, but allows
-  /// the pointer to be read atomically. This is necessary because _recoveryManager is initialized
-  /// lazily at a time when other threads are already running and potentially trying to read the
-  /// pointer. This only works because _recoveryManager is only initialzed once and lives until the
-  /// owning PregelFeature instance is also destroyed.
+  /// @brief _recoveryManagerPtr always points to the same object as
+  /// _recoveryManager, but allows the pointer to be read atomically. This is
+  /// necessary because _recoveryManager is initialized lazily at a time when
+  /// other threads are already running and potentially trying to read the
+  /// pointer. This only works because _recoveryManager is only initialzed once
+  /// and lives until the owning PregelFeature instance is also destroyed.
   std::atomic<RecoveryManager*> _recoveryManagerPtr{nullptr};
-  
+
   Scheduler::WorkHandle _gcHandle;
 
   struct ConductorEntry {
@@ -120,11 +124,11 @@ class PregelFeature final : public application_features::ApplicationFeature {
   };
 
   std::unordered_map<uint64_t, ConductorEntry> _conductors;
-  std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<IWorker>>> _workers;
+  std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<IWorker>>>
+      _workers;
 
   std::atomic<bool> _softShutdownOngoing;
 };
 
 }  // namespace pregel
 }  // namespace arangodb
-

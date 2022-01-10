@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -39,9 +40,10 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
     virtual void operator()(fu2::unique_function<void() noexcept>) = 0;
   };
 
-  RocksDBLogPersistor(rocksdb::ColumnFamilyHandle* cf, rocksdb::DB* db,
-                      std::shared_ptr<Executor> executor,
-                      std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> options);
+  RocksDBLogPersistor(
+      rocksdb::ColumnFamilyHandle* cf, rocksdb::DB* db,
+      std::shared_ptr<Executor> executor,
+      std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> options);
 
   struct WriteOptions {
     bool waitForSync = false;
@@ -58,9 +60,13 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
   using Action = std::variant<InsertEntries, RemoveFront>;
 
   struct PersistRequest {
-    PersistRequest(std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
-                   Action action, futures::Promise<Result> promise)
-        : log(std::move(log)), action(std::move(action)), promise(std::move(promise)) {}
+    PersistRequest(
+        std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>
+            log,
+        Action action, futures::Promise<Result> promise)
+        : log(std::move(log)),
+          action(std::move(action)),
+          promise(std::move(promise)) {}
 
     auto execute(rocksdb::WriteBatch& wb) -> Result;
 
@@ -69,9 +75,9 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
     futures::Promise<Result> promise;
   };
 
-  auto persist(std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
-               Action action, WriteOptions const& options)
-      ->futures::Future<Result>;
+  auto persist(
+      std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
+      Action action, WriteOptions const& options) -> futures::Future<Result>;
 
   struct Lane {
     Lane() = delete;
@@ -89,33 +95,39 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
 
   void runPersistorWorker(Lane& lane) noexcept;
 
-  std::array<Lane, 2> _lanes = {Lane{Lane::WaitForSync{}}, Lane{Lane::DontWaitForSync{}}};
+  std::array<Lane, 2> _lanes = {Lane{Lane::WaitForSync{}},
+                                Lane{Lane::DontWaitForSync{}}};
 
   rocksdb::ColumnFamilyHandle* const _cf;
   rocksdb::DB* const _db;
   std::shared_ptr<Executor> _executor;
-  std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> const _options;
+  std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> const
+      _options;
 };
 
-class RocksDBPersistedLog : public replication2::replicated_log::PersistedLog,
-                            public std::enable_shared_from_this<RocksDBPersistedLog> {
+class RocksDBPersistedLog
+    : public replication2::replicated_log::PersistedLog,
+      public std::enable_shared_from_this<RocksDBPersistedLog> {
  public:
   ~RocksDBPersistedLog() override = default;
   RocksDBPersistedLog(replication2::LogId id, uint64_t objectId,
                       std::shared_ptr<RocksDBLogPersistor> persistor);
 
-  auto insert(replication2::PersistedLogIterator& iter, WriteOptions const&) -> Result override;
+  auto insert(replication2::PersistedLogIterator& iter, WriteOptions const&)
+      -> Result override;
   auto insertAsync(std::unique_ptr<replication2::PersistedLogIterator> iter,
                    WriteOptions const&) -> futures::Future<Result> override;
   auto read(replication2::LogIndex start)
       -> std::unique_ptr<replication2::PersistedLogIterator> override;
-  auto removeFront(replication2::LogIndex stop) -> futures::Future<Result> override;
+  auto removeFront(replication2::LogIndex stop)
+      -> futures::Future<Result> override;
   auto removeBack(replication2::LogIndex start) -> Result override;
 
   // On success, iter will be completely consumed and written to wb.
   auto prepareWriteBatch(replication2::PersistedLogIterator& iter,
                          rocksdb::WriteBatch& wb) -> Result;
-  auto prepareRemoveFront(replication2::LogIndex stop, rocksdb::WriteBatch&) -> Result;
+  auto prepareRemoveFront(replication2::LogIndex stop, rocksdb::WriteBatch&)
+      -> Result;
 
   uint64_t objectId() const { return _objectId; }
 

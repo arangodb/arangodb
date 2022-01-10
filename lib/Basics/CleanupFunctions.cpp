@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,9 +29,11 @@ using namespace arangodb::basics;
 
 // Init static class members
 Mutex CleanupFunctions::_functionsMutex;
-std::vector<std::unique_ptr<CleanupFunctions::CleanupFunction>> CleanupFunctions::_cleanupFunctions;
+std::vector<std::unique_ptr<CleanupFunctions::CleanupFunction>>
+    CleanupFunctions::_cleanupFunctions;
 
-void CleanupFunctions::registerFunction(std::unique_ptr<CleanupFunctions::CleanupFunction> func) {
+void CleanupFunctions::registerFunction(
+    std::unique_ptr<CleanupFunctions::CleanupFunction> func) {
   MUTEX_LOCKER(locker, _functionsMutex);
   _cleanupFunctions.emplace_back(std::move(func));
 }

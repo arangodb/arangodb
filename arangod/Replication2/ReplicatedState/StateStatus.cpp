@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -94,7 +95,8 @@ auto leaderStateFromString(std::string_view str) -> LeaderInternalState {
 }
 }  // namespace
 
-auto replicated_state::to_string(LeaderInternalState state) noexcept -> std::string_view {
+auto replicated_state::to_string(LeaderInternalState state) noexcept
+    -> std::string_view {
   switch (state) {
     case LeaderInternalState::kWaitingForLeadershipEstablished:
       return StringWaitingForLeadershipEstablished;
@@ -111,7 +113,8 @@ auto replicated_state::to_string(LeaderInternalState state) noexcept -> std::str
   return "(unknown-internal-leader-state)";
 }
 
-auto replicated_state::to_string(FollowerInternalState state) noexcept -> std::string_view {
+auto replicated_state::to_string(FollowerInternalState state) noexcept
+    -> std::string_view {
   switch (state) {
     case FollowerInternalState::kWaitForLeaderConfirmation:
       return StringWaitForLeaderConfirmation;
@@ -193,7 +196,8 @@ void FollowerStatus::State::toVelocyPack(velocypack::Builder& builder) const {
   }
 }
 
-auto FollowerStatus::State::fromVelocyPack(velocypack::Slice s) -> FollowerStatus::State {
+auto FollowerStatus::State::fromVelocyPack(velocypack::Slice s)
+    -> FollowerStatus::State {
   // TODO read lastChange timepoint
   auto state = followerStateFromString(s.get(StringState).stringView());
   auto detail = std::optional<std::string>{};
@@ -212,7 +216,8 @@ void LeaderStatus::State::toVelocyPack(velocypack::Builder& builder) const {
   }
 }
 
-auto LeaderStatus::State::fromVelocyPack(velocypack::Slice s) -> LeaderStatus::State {
+auto LeaderStatus::State::fromVelocyPack(velocypack::Slice s)
+    -> LeaderStatus::State {
   // TODO read lastChange timepoint
   auto state = leaderStateFromString(s.get(StringState).stringView());
   auto detail = std::optional<std::string>{};

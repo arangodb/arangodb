@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,14 +31,15 @@ class RocksDBTransactionMethods;
 class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
  public:
   ReplicatedRocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                                transaction::Options const& options);
+                                    transaction::Options const& options);
 
   ~ReplicatedRocksDBTransactionState() override;
 
   /// @brief begin a transaction
   Result beginTransaction(transaction::Hints hints) override;
 
-  RocksDBTransactionMethods* rocksdbMethods(DataSourceId collectionId) const override;
+  RocksDBTransactionMethods* rocksdbMethods(
+      DataSourceId collectionId) const override;
 
   void beginQuery(bool isModificationQuery) override;
   void endQuery(bool isModificationQuery) noexcept override;
@@ -72,4 +73,3 @@ class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
 };
 
 }  // namespace arangodb
-

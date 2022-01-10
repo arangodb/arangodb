@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,14 +51,16 @@ struct PRWorkerContext : public WorkerContext {
   }
 };
 
-PageRank::PageRank(application_features::ApplicationServer& server, VPackSlice const& params)
+PageRank::PageRank(application_features::ApplicationServer& server,
+                   VPackSlice const& params)
     : SimpleAlgorithm(server, "PageRank", params),
       _useSource(params.hasKey("sourceField")) {}
 
 /// will use a seed value for pagerank if available
 struct SeededPRGraphFormat final : public NumberGraphFormat<float, float> {
   SeededPRGraphFormat(application_features::ApplicationServer& server,
-                      std::string const& source, std::string const& result, float vertexNull)
+                      std::string const& source, std::string const& result,
+                      float vertexNull)
       : NumberGraphFormat(server, source, result, vertexNull, 0.0f) {}
 };
 
@@ -100,7 +102,8 @@ struct PRComputation : public VertexComputation<float, float, float> {
   }
 };
 
-VertexComputation<float, float, float>* PageRank::createComputation(WorkerConfig const* config) const {
+VertexComputation<float, float, float>* PageRank::createComputation(
+    WorkerConfig const* config) const {
   return new PRComputation();
 }
 
@@ -116,7 +119,8 @@ struct PRMasterContext : public MasterContext {
   }
 
   void preApplication() override {
-    LOG_TOPIC("e0598", DEBUG, Logger::PREGEL) << "Using threshold " << _threshold << " for pagerank";
+    LOG_TOPIC("e0598", DEBUG, Logger::PREGEL)
+        << "Using threshold " << _threshold << " for pagerank";
   }
 
   bool postGlobalSuperstep() override {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,7 +54,7 @@ std::string buildFilename(char const* path, char const* name);
 // creates a filename
 std::string buildFilename(std::string const& path, std::string const& name);
 
-template <typename... Args>
+template<typename... Args>
 inline std::string buildFilename(std::string const& path,
                                  std::string const& name, Args... args) {
   return buildFilename(buildFilename(path, name), args...);
@@ -66,9 +66,12 @@ void slurp(std::string const& filename, StringBuffer& result);
 Result slurp(std::string const& filename, std::string& result);
 
 // creates file and writes string to it
-void spit(std::string const& filename, char const* ptr, size_t len, bool sync = false);
-void spit(std::string const& filename, std::string const& content, bool sync = false);
-void spit(std::string const& filename, StringBuffer const& content, bool sync = false);
+void spit(std::string const& filename, char const* ptr, size_t len,
+          bool sync = false);
+void spit(std::string const& filename, std::string const& content,
+          bool sync = false);
+void spit(std::string const& filename, StringBuffer const& content,
+          bool sync = false);
 
 // if a file could be removed returns TRI_ERROR_NO_ERROR.
 // otherwise, returns TRI_ERROR_SYS_ERROR and sets LastError.
@@ -76,34 +79,33 @@ void spit(std::string const& filename, StringBuffer const& content, bool sync = 
 
 // creates a new directory
 bool createDirectory(std::string const& name, ErrorCode* errorNumber = nullptr);
-bool createDirectory(std::string const& name, int mask, ErrorCode* errorNumber = nullptr);
+bool createDirectory(std::string const& name, int mask,
+                     ErrorCode* errorNumber = nullptr);
 
 /// @brief copies directories / files recursive
 /// will not copy files/directories for which the filter function
-/// returns true (now wrapper for version below with TRI_copy_recursive_e filter)
+/// returns true (now wrapper for version below with TRI_copy_recursive_e
+/// filter)
 bool copyRecursive(std::string const& source, std::string const& target,
                    std::function<bool(std::string const&)> const& filter,
                    std::string& error);
 
-enum TRI_copy_recursive_e {
-  TRI_COPY_IGNORE,
-  TRI_COPY_COPY,
-  TRI_COPY_LINK
-};
+enum TRI_copy_recursive_e { TRI_COPY_IGNORE, TRI_COPY_COPY, TRI_COPY_LINK };
 
 /// @brief copies directories / files recursive
 /// will not copy files/directories for which the filter function
 /// returns true
-bool copyRecursive(std::string const& source, std::string const& target,
-                   std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
-                   std::string& error);
+bool copyRecursive(
+    std::string const& source, std::string const& target,
+    std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
+    std::string& error);
 
 /// @brief will not copy files/directories for which the filter function
 /// returns true
-bool copyDirectoryRecursive(std::string const& source, std::string const& target,
-                            std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
-                            std::string& error);
-
+bool copyDirectoryRecursive(
+    std::string const& source, std::string const& target,
+    std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
+    std::string& error);
 
 // returns list of files
 std::vector<std::string> listFiles(std::string const& directory);
@@ -125,7 +127,8 @@ bool exists(std::string const& path);
 off_t size(std::string const& path);
 
 // strip extension
-std::string stripExtension(std::string const& path, std::string const& extension);
+std::string stripExtension(std::string const& path,
+                           std::string const& extension);
 
 // changes into directory
 FileResult changeDirectory(std::string const& path);
@@ -148,4 +151,3 @@ std::string slurpProgram(std::string const& program);
 }  // namespace FileUtils
 }  // namespace basics
 }  // namespace arangodb
-

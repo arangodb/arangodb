@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -63,7 +63,8 @@ bool LineEditor::close() { return _shell->close(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string LineEditor::prompt(std::string const& prompt,
-                               std::string const& begin, ShellBase::EofType& eof) {
+                               std::string const& begin,
+                               ShellBase::EofType& eof) {
   return _shell->prompt(prompt, begin, eof);
 }
 

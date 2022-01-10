@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,8 +37,7 @@
 
 #else
 
-#define CONDITION_LOCKER(a, b) \
-  ::arangodb::basics::ConditionLocker a(&(b))
+#define CONDITION_LOCKER(a, b) ::arangodb::basics::ConditionLocker a(&(b))
 
 #endif
 
@@ -52,8 +51,8 @@ class ConditionVariable;
 /// is released or to broadcast an event.
 class ConditionLocker {
  public:
-    ConditionLocker(ConditionLocker const&) = delete;
-    ConditionLocker& operator=(ConditionLocker const&) = delete;
+  ConditionLocker(ConditionLocker const&) = delete;
+  ConditionLocker& operator=(ConditionLocker const&) = delete;
 
 /// @brief locks the condition variable
 ///

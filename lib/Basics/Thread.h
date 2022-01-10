@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,13 +55,11 @@ class Thread {
 #endif
 
   enum class ThreadState { CREATED, STARTING, STARTED, STOPPING, STOPPED };
-  
-  std::string stringifyState() {
-    return stringify(state());
-  }
+
+  std::string stringifyState() { return stringify(state()); }
 
   static std::string stringify(ThreadState);
-  
+
   /// @brief returns the process id
   static TRI_pid_t currentProcessId();
 
@@ -84,8 +82,9 @@ class Thread {
   static TRI_tid_t currentThreadId();
 
  public:
-  Thread(application_features::ApplicationServer& server, std::string const& name,
-         bool deleteOnExit = false, std::uint32_t terminationTimeout = INFINITE);
+  Thread(application_features::ApplicationServer& server,
+         std::string const& name, bool deleteOnExit = false,
+         std::uint32_t terminationTimeout = INFINITE);
   virtual ~Thread();
 
   // whether or not the thread is allowed to start during prepare
@@ -115,7 +114,9 @@ class Thread {
   uint64_t threadNumber() const noexcept { return _threadNumber; }
 
   /// @brief false, if the thread is just created
-  bool hasStarted() const noexcept { return _state.load() != ThreadState::CREATED; }
+  bool hasStarted() const noexcept {
+    return _state.load() != ThreadState::CREATED;
+  }
 
   /// @brief true, if the thread is still running
   bool isRunning() const noexcept {
@@ -127,7 +128,7 @@ class Thread {
 
   /// @brief starts the thread
   bool start(basics::ConditionVariable* _finishedCondition = nullptr);
-  
+
   /// @brief return the threads current state
   ThreadState state() const noexcept {
     return _state.load(std::memory_order_relaxed);
@@ -148,7 +149,7 @@ class Thread {
  protected:
   /// @brief the thread program. note that any implementation of run() is
   /// responsible for handling its own exceptions inside run(). failure to do
-  /// so will lead to the thread being aborted, and the exception escaping 
+  /// so will lead to the thread being aborted, and the exception escaping
   /// from  it!!
   virtual void run() = 0;
 
@@ -158,7 +159,7 @@ class Thread {
   void markAsStopped() noexcept;
   void runMe();
   void releaseRef() noexcept;
- 
+
  protected:
   application_features::ApplicationServer& _server;
 
@@ -175,9 +176,10 @@ class Thread {
 
   // The max timeout (in ms) to wait for the thread to terminate.
   // Failure to terminate within the specified time results in process abortion!
-  // The default value is INFINITE, i.e., we want to wait forever instead of aborting the process.
+  // The default value is INFINITE, i.e., we want to wait forever instead of
+  // aborting the process.
   std::uint32_t _terminationTimeout;
-  
+
   bool const _deleteOnExit;
 
   basics::ConditionVariable* _finishedCondition;
@@ -185,4 +187,3 @@ class Thread {
   std::atomic<ThreadState> _state;
 };
 }  // namespace arangodb
-

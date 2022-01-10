@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,10 +31,11 @@ class QueryContext;
 
 class DocumentIndexExpressionContext final : public QueryExpressionContext {
  public:
-  DocumentIndexExpressionContext(transaction::Methods& trx,
-                                 QueryContext& query,
+  DocumentIndexExpressionContext(transaction::Methods& trx, QueryContext& query,
                                  AqlFunctionsInternalCache& cache,
-                                 AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
+                                 AqlValue (*getValue)(void const* ctx,
+                                                      Variable const* var,
+                                                      bool doCopy),
                                  void const* ctx);
 
   ~DocumentIndexExpressionContext() = default;
@@ -58,4 +59,3 @@ class DocumentIndexExpressionContext final : public QueryExpressionContext {
 
 }  // namespace aql
 }  // namespace arangodb
-

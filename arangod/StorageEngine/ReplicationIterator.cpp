@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +32,8 @@ LogicalCollection& ReplicationIterator::collection() const {
   return _collection;
 }
 
-RevisionReplicationIterator::RevisionReplicationIterator(LogicalCollection& collection)
+RevisionReplicationIterator::RevisionReplicationIterator(
+    LogicalCollection& collection)
     : ReplicationIterator(collection) {}
 
 ReplicationIterator::Ordering RevisionReplicationIterator::order() const {

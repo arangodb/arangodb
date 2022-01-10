@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,32 +54,42 @@ using AstNodeFlagsType = uint32_t;
 /// the flags are used to prevent repeated calculations of node properties
 /// (e.g. is the node value constant, sorted etc.)
 enum AstNodeFlagType : AstNodeFlagsType {
-  DETERMINED_SORTED = 0x0000001,  // node is a list and its members are sorted asc.
+  DETERMINED_SORTED =
+      0x0000001,  // node is a list and its members are sorted asc.
   DETERMINED_CONSTANT = 0x0000002,  // node value is constant (i.e. not dynamic)
-  DETERMINED_SIMPLE = 0x0000004,  // node value is simple (i.e. for use in a simple expression)
+  DETERMINED_SIMPLE =
+      0x0000004,  // node value is simple (i.e. for use in a simple expression)
   DETERMINED_NONDETERMINISTIC = 0x0000010,  // node produces non-deterministic
                                             // result (e.g. function call nodes)
-  DETERMINED_RUNONDBSERVER = 0x0000020,  // node can run on the DB server in a cluster setup
-  DETERMINED_CHECKUNIQUENESS = 0x0000040,  // object's keys must be checked for uniqueness
-  DETERMINED_V8 = 0x0000080,               // node will use V8 internally
+  DETERMINED_RUNONDBSERVER =
+      0x0000020,  // node can run on the DB server in a cluster setup
+  DETERMINED_CHECKUNIQUENESS =
+      0x0000040,              // object's keys must be checked for uniqueness
+  DETERMINED_V8 = 0x0000080,  // node will use V8 internally
 
   VALUE_SORTED = 0x0000100,    // node is a list and its members are sorted asc.
   VALUE_CONSTANT = 0x0000200,  // node value is constant (i.e. not dynamic)
-  VALUE_SIMPLE = 0x0000400,  // node value is simple (i.e. for use in a simple expression)
+  VALUE_SIMPLE =
+      0x0000400,  // node value is simple (i.e. for use in a simple expression)
   VALUE_NONDETERMINISTIC = 0x0001000,  // node produces non-deterministic result
                                        // (e.g. function call nodes)
-  VALUE_RUNONDBSERVER = 0x0002000,  // node can run on the DB server in a cluster setup
-  VALUE_CHECKUNIQUENESS = 0x0004000,  // object's keys must be checked for uniqueness
-  VALUE_V8 = 0x0008000,               // node will use V8 internally
-  FLAG_KEEP_VARIABLENAME = 0x0010000,  // node is a reference to a variable name, not the variable
-                                       // value (used in KEEP nodes)
+  VALUE_RUNONDBSERVER =
+      0x0002000,  // node can run on the DB server in a cluster setup
+  VALUE_CHECKUNIQUENESS =
+      0x0004000,         // object's keys must be checked for uniqueness
+  VALUE_V8 = 0x0008000,  // node will use V8 internally
+  FLAG_KEEP_VARIABLENAME =
+      0x0010000,  // node is a reference to a variable name, not the variable
+                  // value (used in KEEP nodes)
   FLAG_BIND_PARAMETER = 0x0020000,  // node was created from a bind parameter
-  FLAG_FINALIZED = 0x0040000,  // node has been finalized and should not be modified; only
-                               // set and checked in maintainer mode
+  FLAG_FINALIZED =
+      0x0040000,  // node has been finalized and should not be modified; only
+                  // set and checked in maintainer mode
   FLAG_SUBQUERY_REFERENCE = 0x0080000,  // node references a subquery
-  
+
   FLAG_INTERNAL_CONST = 0x0100000,  // internal, constant node
-  FLAG_READ_OWN_WRITES = 0x0200000,  // reads own writes (only needed for UPSERT FOR nodes)
+  FLAG_READ_OWN_WRITES =
+      0x0200000,  // reads own writes (only needed for UPSERT FOR nodes)
 };
 
 /// @brief enumeration of AST node value types
@@ -230,7 +240,7 @@ struct AstNode {
 
   /// @brief create the node from VPack
   explicit AstNode(Ast*, arangodb::velocypack::Slice slice);
-  
+
   /// @brief destroy the node
   ~AstNode();
 
@@ -258,7 +268,8 @@ struct AstNode {
   /// @brief compute the value for a constant value node
   /// the value is owned by the node and must not be freed by the caller
   /// the Builder object can be passed in as an optimization
-  arangodb::velocypack::Slice computeValue(arangodb::velocypack::Builder* = nullptr) const;
+  arangodb::velocypack::Slice computeValue(
+      arangodb::velocypack::Builder* = nullptr) const;
 
   uint8_t const* computedValue() const noexcept { return _computedValue; }
 
@@ -283,7 +294,8 @@ struct AstNode {
   static void validateValueType(int type);
 
   /// @brief fetch a node's type from VPack
-  static AstNodeType getNodeTypeFromVPack(arangodb::velocypack::Slice const& slice);
+  static AstNodeType getNodeTypeFromVPack(
+      arangodb::velocypack::Slice const& slice);
 
   /**
    * @brief Helper class to check if this node can be represented as VelocyPack
@@ -323,7 +335,8 @@ struct AstNode {
   void setFlag(AstNodeFlagType flag) const noexcept;
 
   /// @brief set two flags for the node
-  void setFlag(AstNodeFlagType typeFlag, AstNodeFlagType valueFlag) const noexcept;
+  void setFlag(AstNodeFlagType typeFlag,
+               AstNodeFlagType valueFlag) const noexcept;
 
   /// @brief remove a flag for the node
   void removeFlag(AstNodeFlagType flag) const noexcept;
@@ -371,7 +384,8 @@ struct AstNode {
 
   /// @brief whether or not a value node is of type attribute access that
   /// refers to the specified variable reference
-  bool isAttributeAccessForVariable(Variable const* variable, bool allowIndexedAccess) const;
+  bool isAttributeAccessForVariable(Variable const* variable,
+                                    bool allowIndexedAccess) const;
 
   /// @brief whether or not a value node is of type attribute access that
   /// refers to any variable reference
@@ -445,7 +459,8 @@ struct AstNode {
   /// @brief remove a member from the node
   void removeMemberUnchecked(size_t i);
 
-  /// @brief remove a member from the node while breaking members ordering. Faster than removeMemberUnchecked
+  /// @brief remove a member from the node while breaking members ordering.
+  /// Faster than removeMemberUnchecked
   void removeMemberUncheckedUnordered(size_t i);
 
   /// @brief return a member of the node
@@ -455,7 +470,8 @@ struct AstNode {
   AstNode* getMemberUnchecked(size_t i) const noexcept;
 
   /// @brief sort members with a custom comparison function
-  void sortMembers(std::function<bool(AstNode const*, AstNode const*)> const& func);
+  void sortMembers(
+      std::function<bool(AstNode const*, AstNode const*)> const& func);
 
   /// @brief reduces the number of members of the node
   void reduceMembers(size_t i);
@@ -565,9 +581,9 @@ struct AstNode {
 
  private:
   /// @brief helper for building flags
-  template <typename... Args>
-  static std::underlying_type<AstNodeFlagType>::type makeFlags(AstNodeFlagType flag,
-                                                               Args... args) noexcept;
+  template<typename... Args>
+  static std::underlying_type<AstNodeFlagType>::type makeFlags(
+      AstNodeFlagType flag, Args... args) noexcept;
 
   static std::underlying_type<AstNodeFlagType>::type makeFlags() noexcept;
 
@@ -585,7 +601,7 @@ struct AstNode {
 int CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8);
 
 /// @brief less comparator for Ast value nodes
-template <bool useUtf8>
+template<bool useUtf8>
 struct AstNodeValueLess {
   bool operator()(AstNode const* lhs, AstNode const* rhs) const;
 };
@@ -636,12 +652,16 @@ std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const&);
   if (b) {                                 \
     FINALIZE_SUBTREE(n);                   \
   }
-#define TEMPORARILY_UNLOCK_NODE(n)                                                         \
-  bool wasFinalizedAlready = (n)->hasFlag(arangodb::aql::AstNodeFlagType::FLAG_FINALIZED); \
-  if (wasFinalizedAlready) {                                                               \
-    (n)->flags = ((n)->flags & ~arangodb::aql::AstNodeFlagType::FLAG_FINALIZED);           \
-  }                                                                                        \
-  auto sg = arangodb::scopeGuard([&]() noexcept { FINALIZE_SUBTREE_CONDITIONAL(n, wasFinalizedAlready); });
+#define TEMPORARILY_UNLOCK_NODE(n)                                      \
+  bool wasFinalizedAlready =                                            \
+      (n)->hasFlag(arangodb::aql::AstNodeFlagType::FLAG_FINALIZED);     \
+  if (wasFinalizedAlready) {                                            \
+    (n)->flags =                                                        \
+        ((n)->flags & ~arangodb::aql::AstNodeFlagType::FLAG_FINALIZED); \
+  }                                                                     \
+  auto sg = arangodb::scopeGuard([&]() noexcept {                       \
+    FINALIZE_SUBTREE_CONDITIONAL(n, wasFinalizedAlready);               \
+  });
 #else
 #define FINALIZE_SUBTREE(n) \
   while (0) {               \
@@ -662,4 +682,3 @@ std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const&);
   do {                             \
   } while (0)
 #endif
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,27 +34,24 @@ class RocksDBTransactionState;
 
 class RocksDBSavePoint {
  public:
-  RocksDBSavePoint(DataSourceId collectionId,
-                   RocksDBTransactionState& state,
+  RocksDBSavePoint(DataSourceId collectionId, RocksDBTransactionState& state,
                    TRI_voc_document_operation_e operationType);
 
   ~RocksDBSavePoint();
 
   void prepareOperation(RevisionId rid);
-  
+
   /// @brief acknowledges the current savepoint, so there
   /// will be no rollback when the destructor is called
   [[nodiscard]] Result finish(RevisionId rid);
-  
-  TRI_voc_document_operation_e operationType() const {
-    return _operationType;
-  }
+
+  TRI_voc_document_operation_e operationType() const { return _operationType; }
 
   /// @brief this is going to be called if at least one Put or Delete
   /// has made it into the underyling WBWI. if so, on rollback we must
   /// perform a full rebuild
   void tainted() { _tainted = true; }
-  
+
  private:
   void rollback();
 
@@ -71,4 +68,3 @@ class RocksDBSavePoint {
 };
 
 }  // namespace arangodb
-

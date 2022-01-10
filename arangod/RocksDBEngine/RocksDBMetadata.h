@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,13 +54,18 @@ struct RocksDBMetadata final {
 
   /// @brief collection count
   struct DocCount {
-    rocksdb::SequenceNumber _committedSeq; /// safe sequence number for recovery
-    uint64_t _added; /// number of added documents
-    uint64_t _removed; /// number of removed documents
+    rocksdb::SequenceNumber
+        _committedSeq;       /// safe sequence number for recovery
+    uint64_t _added;         /// number of added documents
+    uint64_t _removed;       /// number of removed documents
     RevisionId _revisionId;  /// @brief last used revision id
 
-    DocCount(rocksdb::SequenceNumber sq, uint64_t added, uint64_t removed, RevisionId rid)
-        : _committedSeq(sq), _added(added), _removed(removed), _revisionId(rid) {}
+    DocCount(rocksdb::SequenceNumber sq, uint64_t added, uint64_t removed,
+             RevisionId rid)
+        : _committedSeq(sq),
+          _added(added),
+          _removed(removed),
+          _revisionId(rid) {}
 
     explicit DocCount(arangodb::velocypack::Slice const&);
     void toVelocyPack(arangodb::velocypack::Builder&) const;
@@ -80,7 +85,8 @@ struct RocksDBMetadata final {
    * @param  trxId The identifier for the active transaction
    * @param  seq   The sequence number immediately prior to call
    */
-  rocksdb::SequenceNumber placeBlocker(TransactionId trxId, rocksdb::SequenceNumber seq);
+  rocksdb::SequenceNumber placeBlocker(TransactionId trxId,
+                                       rocksdb::SequenceNumber seq);
 
   /**
    * @brief Update a blocker to allow proper commit/serialize semantics
@@ -111,23 +117,27 @@ struct RocksDBMetadata final {
   bool hasBlockerUpTo(rocksdb::SequenceNumber seq) const noexcept;
 
   /// @brief returns the largest safe seq to squash updates against
-  rocksdb::SequenceNumber committableSeq(rocksdb::SequenceNumber maxCommitSeq) const;
+  rocksdb::SequenceNumber committableSeq(
+      rocksdb::SequenceNumber maxCommitSeq) const;
 
   /// @brief buffer a counter adjustment
-  void adjustNumberDocuments(rocksdb::SequenceNumber seq, RevisionId revId, int64_t adj);
+  void adjustNumberDocuments(rocksdb::SequenceNumber seq, RevisionId revId,
+                             int64_t adj);
 
-  /// @brief buffer a counter adjustment ONLY in recovery, optimized to use less memory
+  /// @brief buffer a counter adjustment ONLY in recovery, optimized to use less
+  /// memory
   void adjustNumberDocumentsInRecovery(rocksdb::SequenceNumber seq,
                                        RevisionId revId, int64_t adj);
 
   /// @brief serialize the collection metadata
   arangodb::Result serializeMeta(rocksdb::WriteBatch&, LogicalCollection&,
                                  bool force, arangodb::velocypack::Builder&,
-                                 rocksdb::SequenceNumber& appliedSeq, std::string& output);
+                                 rocksdb::SequenceNumber& appliedSeq,
+                                 std::string& output);
 
   /// @brief deserialize collection metadata, only called on startup
   arangodb::Result deserializeMeta(rocksdb::DB*, LogicalCollection&);
-  
+
   void loadInitialNumberDocuments();
 
   uint64_t numberDocuments() const noexcept {
@@ -179,7 +189,7 @@ struct RocksDBMetadata final {
   std::map<rocksdb::SequenceNumber, Adjustment> _bufferedAdjs;
   /// @brief internal buffer for adjustments
   std::map<rocksdb::SequenceNumber, Adjustment> _stagedAdjs;
-  
+
   // below values are updated immediately, but are not serialized
   std::atomic<uint64_t> _numberDocuments;
   std::atomic<RevisionId> _revisionId;

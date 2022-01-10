@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,7 +35,7 @@ namespace arangodb {
 /// @brief Iterator for an enum class type
 /// will work only when the enum values are unique, contiguous and
 /// sorted in order
-template <typename T, T beginValue, T endValue>
+template<typename T, T beginValue, T endValue>
 class EnumIterator {
   typedef typename std::underlying_type<T>::type ValueType;
 
@@ -67,4 +67,3 @@ class EnumIterator {
 };
 
 }  // namespace arangodb
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,25 +45,24 @@ class AqlTransaction : public transaction::Methods {
  public:
   /// @brief create the transaction and add all collections
   /// from the query context
-  static std::unique_ptr<AqlTransaction>
-    create(std::shared_ptr<transaction::Context> const& transactionContext,
-           aql::Collections const& collections,
-           transaction::Options const& options,
-           std::unordered_set<std::string> inaccessibleCollections =
-               std::unordered_set<std::string>());
+  static std::unique_ptr<AqlTransaction> create(
+      std::shared_ptr<transaction::Context> const& transactionContext,
+      aql::Collections const& collections, transaction::Options const& options,
+      std::unordered_set<std::string> inaccessibleCollections =
+          std::unordered_set<std::string>());
 
-  AqlTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
-                 transaction::Options const& options);
+  AqlTransaction(
+      std::shared_ptr<transaction::Context> const& transactionContext,
+      transaction::Options const& options);
 
   /// protected so we can create different subclasses
-  AqlTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
-                 aql::Collections const& collections,
-                 transaction::Options const& options);
-  
+  AqlTransaction(
+      std::shared_ptr<transaction::Context> const& transactionContext,
+      aql::Collections const& collections, transaction::Options const& options);
+
  protected:
   /// @brief add a collection to the transaction
   Result processCollection(aql::Collection&);
 };
 }  // namespace aql
 }  // namespace arangodb
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -74,7 +74,8 @@ struct ReplicationApplierState {
 
   /// performs initial sync or running tailing syncer
   bool isActive() const {
-    return (_phase == ActivityPhase::INITIAL || _phase == ActivityPhase::TAILING);
+    return (_phase == ActivityPhase::INITIAL ||
+            _phase == ActivityPhase::TAILING);
   }
 
   /// performs initial sync or running tailing syncer
@@ -154,4 +155,3 @@ struct ReplicationApplierState {
 };
 
 }  // namespace arangodb
-

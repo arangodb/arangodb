@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -52,8 +53,9 @@ DECLARE_GAUGE(arangodb_replication2_replicated_log_number, std::uint64_t,
 
 DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_append_entries_rtt,
                   AppendEntriesRttScale, "RTT for AppendEntries requests [us]");
-DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_follower_append_entries_rt,
-                  AppendEntriesRttScale, "RT for AppendEntries call [us]");
+DECLARE_HISTOGRAM(
+    arangodb_replication2_replicated_log_follower_append_entries_rt,
+    AppendEntriesRttScale, "RT for AppendEntries call [us]");
 
 DECLARE_COUNTER(arangodb_replication2_replicated_log_creation_total,
                 "Number of replicated logs created since server start");
@@ -65,11 +67,13 @@ DECLARE_GAUGE(
     arangodb_replication2_replicated_log_leader_number, std::uint64_t,
     "Number of replicated logs this server has, and is currently a leader of");
 
-DECLARE_GAUGE(arangodb_replication2_replicated_log_follower_number, std::uint64_t,
+DECLARE_GAUGE(arangodb_replication2_replicated_log_follower_number,
+              std::uint64_t,
               "Number of replicated logs this server has, and is currently a "
               "follower of");
 
-DECLARE_GAUGE(arangodb_replication2_replicated_log_inactive_number, std::uint64_t,
+DECLARE_GAUGE(arangodb_replication2_replicated_log_inactive_number,
+              std::uint64_t,
               "Number of replicated logs this server has, and is currently "
               "neither leader nor follower of");
 
@@ -81,7 +85,8 @@ DECLARE_COUNTER(arangodb_replication2_replicated_log_started_following_total,
                 "Number of times a replicated log on this server started "
                 "following a leader in a term");
 
-DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_inserts_bytes, InsertBytesScale,
+DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_inserts_bytes,
+                  InsertBytesScale,
                   "Number of bytes per insert in replicated log leader "
                   "instances on this server [bytes]");
 

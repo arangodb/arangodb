@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -55,20 +56,26 @@ auto updateTermSpecification(DatabaseID const& database, LogId id,
                              std::optional<LogTerm> prevTerm = {})
     -> futures::Future<ResultT<uint64_t>>;
 
-auto updateElectionResult(arangodb::agency::envelope envelope, DatabaseID const& database,
-                          LogId id, LogCurrentSupervisionElection const& result)
+auto updateElectionResult(arangodb::agency::envelope envelope,
+                          DatabaseID const& database, LogId id,
+                          LogCurrentSupervisionElection const& result)
     -> arangodb::agency::envelope;
-auto removeElectionResult(arangodb::agency::envelope envelope, DatabaseID const& database,
-                          LogId id) -> arangodb::agency::envelope;
+auto removeElectionResult(arangodb::agency::envelope envelope,
+                          DatabaseID const& database, LogId id)
+    -> arangodb::agency::envelope;
 
-auto deleteReplicatedLogTrx(arangodb::agency::envelope envelope, DatabaseID const& database,
-                            LogId id) -> arangodb::agency::envelope;
+auto deleteReplicatedLogTrx(arangodb::agency::envelope envelope,
+                            DatabaseID const& database, LogId id)
+    -> arangodb::agency::envelope;
 auto deleteReplicatedLog(DatabaseID const& database, LogId id)
     -> futures::Future<ResultT<uint64_t>>;
 
-auto createReplicatedLogTrx(arangodb::agency::envelope envelope, DatabaseID const& database,
-                            LogPlanSpecification const& spec) -> arangodb::agency::envelope;
-auto createReplicatedLog(DatabaseID const& database, LogPlanSpecification const& spec)
+auto createReplicatedLogTrx(arangodb::agency::envelope envelope,
+                            DatabaseID const& database,
+                            LogPlanSpecification const& spec)
+    -> arangodb::agency::envelope;
+auto createReplicatedLog(DatabaseID const& database,
+                         LogPlanSpecification const& spec)
     -> futures::Future<ResultT<uint64_t>>;
 
-}
+}  // namespace arangodb::replication2::agency::methods

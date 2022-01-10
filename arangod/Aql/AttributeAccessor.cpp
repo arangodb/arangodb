@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,8 +39,10 @@ class AttributeAccessorKey final : public AttributeAccessor {
   explicit AttributeAccessorKey(Variable const* variable)
       : AttributeAccessor(variable) {}
 
-  AqlValue get(CollectionNameResolver const&, ExpressionContext const* context, bool& mustDestroy) override {
-    AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
+  AqlValue get(CollectionNameResolver const&, ExpressionContext const* context,
+               bool& mustDestroy) override {
+    AqlValue const& value =
+        context->getVariableValue(_variable, false, mustDestroy);
     return value.getKeyAttribute(mustDestroy, true);
   }
 };
@@ -50,8 +52,10 @@ class AttributeAccessorId final : public AttributeAccessor {
   explicit AttributeAccessorId(Variable const* variable)
       : AttributeAccessor(variable) {}
 
-  AqlValue get(CollectionNameResolver const& resolver, ExpressionContext const* context, bool& mustDestroy) override {
-    AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
+  AqlValue get(CollectionNameResolver const& resolver,
+               ExpressionContext const* context, bool& mustDestroy) override {
+    AqlValue const& value =
+        context->getVariableValue(_variable, false, mustDestroy);
     return value.getIdAttribute(resolver, mustDestroy, true);
   }
 };
@@ -61,8 +65,10 @@ class AttributeAccessorFrom final : public AttributeAccessor {
   explicit AttributeAccessorFrom(Variable const* variable)
       : AttributeAccessor(variable) {}
 
-  AqlValue get(CollectionNameResolver const&, ExpressionContext const* context, bool& mustDestroy) override {
-    AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
+  AqlValue get(CollectionNameResolver const&, ExpressionContext const* context,
+               bool& mustDestroy) override {
+    AqlValue const& value =
+        context->getVariableValue(_variable, false, mustDestroy);
     return value.getFromAttribute(mustDestroy, true);
   }
 };
@@ -72,19 +78,24 @@ class AttributeAccessorTo final : public AttributeAccessor {
   explicit AttributeAccessorTo(Variable const* variable)
       : AttributeAccessor(variable) {}
 
-  AqlValue get(CollectionNameResolver const&, ExpressionContext const* context, bool& mustDestroy) override {
-    AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
+  AqlValue get(CollectionNameResolver const&, ExpressionContext const* context,
+               bool& mustDestroy) override {
+    AqlValue const& value =
+        context->getVariableValue(_variable, false, mustDestroy);
     return value.getToAttribute(mustDestroy, true);
   }
 };
 
 class AttributeAccessorSingle final : public AttributeAccessor {
  public:
-  explicit AttributeAccessorSingle(Variable const* variable, std::string const& attributeName)
+  explicit AttributeAccessorSingle(Variable const* variable,
+                                   std::string const& attributeName)
       : AttributeAccessor(variable), _attributeName(attributeName) {}
 
-  AqlValue get(CollectionNameResolver const& resolver, ExpressionContext const* context, bool& mustDestroy) override {
-    AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
+  AqlValue get(CollectionNameResolver const& resolver,
+               ExpressionContext const* context, bool& mustDestroy) override {
+    AqlValue const& value =
+        context->getVariableValue(_variable, false, mustDestroy);
     // use optimized version for single attribute (e.g. variable.attr)
     return value.get(resolver, _attributeName, mustDestroy, true);
   }
@@ -95,11 +106,14 @@ class AttributeAccessorSingle final : public AttributeAccessor {
 
 class AttributeAccessorMulti final : public AttributeAccessor {
  public:
-  explicit AttributeAccessorMulti(Variable const* variable, arangodb::aql::AttributeNamePath&& path)
+  explicit AttributeAccessorMulti(Variable const* variable,
+                                  arangodb::aql::AttributeNamePath&& path)
       : AttributeAccessor(variable), _path(std::move(path)) {}
 
-  AqlValue get(CollectionNameResolver const& resolver, ExpressionContext const* context, bool& mustDestroy) override {
-    AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
+  AqlValue get(CollectionNameResolver const& resolver,
+               ExpressionContext const* context, bool& mustDestroy) override {
+    AqlValue const& value =
+        context->getVariableValue(_variable, false, mustDestroy);
     // use general version for multiple attributes (e.g. variable.attr.subattr)
     return value.get(resolver, _path.get(), mustDestroy, true);
   }
@@ -115,7 +129,8 @@ AttributeAccessor::AttributeAccessor(Variable const* variable)
     : _variable(variable) {}
 
 /// @brief replace the variable in the accessor
-void AttributeAccessor::replaceVariable(std::unordered_map<VariableId, Variable const*> const& replacements) {
+void AttributeAccessor::replaceVariable(
+    std::unordered_map<VariableId, Variable const*> const& replacements) {
   for (auto const& it : replacements) {
     if (it.first == _variable->id) {
       _variable = it.second;
@@ -124,9 +139,9 @@ void AttributeAccessor::replaceVariable(std::unordered_map<VariableId, Variable 
   }
 }
 
-AttributeAccessor* AttributeAccessor::create(arangodb::aql::AttributeNamePath&& path,
-                                             Variable const* variable,
-                                             bool dataIsFromCollection) {
+AttributeAccessor* AttributeAccessor::create(
+    arangodb::aql::AttributeNamePath&& path, Variable const* variable,
+    bool dataIsFromCollection) {
   TRI_ASSERT(variable != nullptr);
   TRI_ASSERT(!path.empty());
 
@@ -136,8 +151,7 @@ AttributeAccessor* AttributeAccessor::create(arangodb::aql::AttributeNamePath&& 
   // use them for non-collection data, as the optimized functions may easily
   // create out-of-bounds accesses in that case
   AttributeNamePath::Type type = path.type();
-  if (!dataIsFromCollection &&
-      path.size() == 1) {
+  if (!dataIsFromCollection && path.size() == 1) {
     type = AttributeNamePath::Type::SingleAttribute;
   }
 

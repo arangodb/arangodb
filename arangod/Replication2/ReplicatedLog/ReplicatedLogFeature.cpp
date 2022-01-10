@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -51,8 +52,8 @@ ReplicatedLogFeature::ReplicatedLogFeature(ApplicationServer& server)
   startsAfter<DatabaseFeaturePhase>();
 }
 
-auto ReplicatedLogFeature::metrics() const noexcept
-    -> std::shared_ptr<replication2::replicated_log::ReplicatedLogMetrics> const& {
+auto ReplicatedLogFeature::metrics() const noexcept -> std::shared_ptr<
+    replication2::replicated_log::ReplicatedLogMetrics> const& {
   return _replicatedLogMetrics;
 }
 
@@ -62,13 +63,15 @@ auto ReplicatedLogFeature::options() const noexcept
 }
 
 void ReplicatedLogFeature::prepare() {
-  if (ServerState::instance()->isCoordinator() || ServerState::instance()->isAgent()) {
+  if (ServerState::instance()->isCoordinator() ||
+      ServerState::instance()->isAgent()) {
     setEnabled(false);
     return;
   }
 }
 
-void ReplicatedLogFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void ReplicatedLogFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
   options->addSection("replicatedlog", "Options for replicated logs");
 
@@ -76,24 +79,30 @@ void ReplicatedLogFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      "send a batch of log updates early when threshold "
                      "(in bytes) is exceeded",
                      new SizeTParameter(&_options->_thresholdNetworkBatchSize));
-  options->addOption("--replicatedlog.threshold-rocksdb-write-batch-size",
-                     "write a batch of log updates to RocksDB early "
-                     "when threshold (in bytes) is exceeded",
-                     new SizeTParameter(&_options->_thresholdRocksDBWriteBatchSize));
+  options->addOption(
+      "--replicatedlog.threshold-rocksdb-write-batch-size",
+      "write a batch of log updates to RocksDB early "
+      "when threshold (in bytes) is exceeded",
+      new SizeTParameter(&_options->_thresholdRocksDBWriteBatchSize));
 #endif
 }
 
-void ReplicatedLogFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_options->_thresholdNetworkBatchSize < ReplicatedLogGlobalSettings::minThresholdNetworkBatchSize) {
+void ReplicatedLogFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> options) {
+  if (_options->_thresholdNetworkBatchSize <
+      ReplicatedLogGlobalSettings::minThresholdNetworkBatchSize) {
     LOG_TOPIC("e83c3", FATAL, arangodb::Logger::REPLICATION2)
-        << "Invalid value for `--threshold-network-batch-size`. The value must be at "
+        << "Invalid value for `--threshold-network-batch-size`. The value must "
+           "be at "
            "least "
         << ReplicatedLogGlobalSettings::minThresholdNetworkBatchSize;
     FATAL_ERROR_EXIT();
   }
-  if (_options->_thresholdRocksDBWriteBatchSize < ReplicatedLogGlobalSettings::minThresholdRocksDBWriteBatchSize) {
+  if (_options->_thresholdRocksDBWriteBatchSize <
+      ReplicatedLogGlobalSettings::minThresholdRocksDBWriteBatchSize) {
     LOG_TOPIC("e83c4", FATAL, arangodb::Logger::REPLICATION2)
-        << "Invalid value for `--threshold-rocksdb-write-batch-size`. The value must be at "
+        << "Invalid value for `--threshold-rocksdb-write-batch-size`. The "
+           "value must be at "
            "least "
         << ReplicatedLogGlobalSettings::minThresholdRocksDBWriteBatchSize;
     FATAL_ERROR_EXIT();

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,9 +43,9 @@ class CreateCollection : public ActionBase, public ShardDefinition {
   void setState(ActionState state) override final;
 
  private:
-  bool _doNotIncrement = false;   // indicate that `setState` shall not increment the version
+  bool _doNotIncrement =
+      false;  // indicate that `setState` shall not increment the version
 };
 
 }  // namespace maintenance
 }  // namespace arangodb
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,7 +48,8 @@ class RestUsersHandler : public arangodb::RestBaseHandler {
   void generateUserResult(rest::ResponseCode code,
                           velocypack::Builder const& doc);
 
-  void generateDatabaseResult(auth::UserManager*, std::string const& user, bool full);
+  void generateDatabaseResult(auth::UserManager*, std::string const& user,
+                              bool full);
 
   RestStatus getRequest(auth::UserManager*);
   RestStatus postRequest(auth::UserManager*);
@@ -57,4 +58,3 @@ class RestUsersHandler : public arangodb::RestBaseHandler {
   RestStatus deleteRequest(auth::UserManager*);
 };
 }  // namespace arangodb
-

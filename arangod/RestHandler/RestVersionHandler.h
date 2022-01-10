@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,11 +34,12 @@ class RestVersionHandler : public arangodb::RestBaseHandler {
                      GeneralResponse*);
 
  public:
-  static void getVersion(application_features::ApplicationServer& server, bool allowInfo, bool includeDetails, VPackBuilder& result);
-  
+  static void getVersion(application_features::ApplicationServer& server,
+                         bool allowInfo, bool includeDetails,
+                         VPackBuilder& result);
+
   char const* name() const override final { return "RestVersionHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
 };
 }  // namespace arangodb
-

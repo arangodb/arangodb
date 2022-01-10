@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,14 +62,17 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 #ifdef _WIN32
-static const int FOREGROUND_WHITE = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
-static const int BACKGROUND_WHITE = BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE;
+static const int FOREGROUND_WHITE =
+    FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
+static const int BACKGROUND_WHITE =
+    BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE;
 static const int INTENSITY = FOREGROUND_INTENSITY | BACKGROUND_INTENSITY;
 #endif
 
 namespace arangodb {
 
-ShellConsoleFeature::ShellConsoleFeature(application_features::ApplicationServer& server)
+ShellConsoleFeature::ShellConsoleFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Console"),
 #ifdef _WIN32
       _cygwinShell(false),
@@ -109,14 +112,17 @@ ShellConsoleFeature::ShellConsoleFeature(application_features::ApplicationServer
 #endif
 }
 
-void ShellConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--quiet", "silent startup", new BooleanParameter(&_quiet));
+void ShellConsoleFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
+  options->addOption("--quiet", "silent startup",
+                     new BooleanParameter(&_quiet));
 
   options->addSection("console", "console");
 
-  options->addOption("--console.colors", "enable color support",
-                     new BooleanParameter(&_colors),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
+  options->addOption(
+      "--console.colors", "enable color support",
+      new BooleanParameter(&_colors),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--console.auto-complete", "enable auto completion",
                      new BooleanParameter(&_autoComplete));
@@ -127,17 +133,20 @@ void ShellConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options
   options->addOption("--console.audit-file",
                      "audit log file to save commands and results",
                      new StringParameter(&_auditFile));
-  
-  options->addOption("--console.history",
-                     "whether or not to load and persist command-line history",
-                     new BooleanParameter(&_useHistory))
-                     .setIntroducedIn(30405);
 
-  options->addOption("--console.pager", "enable paging", new BooleanParameter(&_pager));
+  options
+      ->addOption("--console.history",
+                  "whether or not to load and persist command-line history",
+                  new BooleanParameter(&_useHistory))
+      .setIntroducedIn(30405);
 
-  options->addOption("--console.pager-command", "pager command",
-                     new StringParameter(&_pagerCommand),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption("--console.pager", "enable paging",
+                     new BooleanParameter(&_pager));
+
+  options->addOption(
+      "--console.pager-command", "pager command",
+      new StringParameter(&_pagerCommand),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--console.prompt",
@@ -223,7 +232,8 @@ void ShellConsoleFeature::_print(std::string const& s) {
 
                 case 1:  // BOLD
                 case 5:  // BLINK
-                  _consoleAttribute = (_defaultAttribute ^ FOREGROUND_INTENSITY) & INTENSITY;
+                  _consoleAttribute =
+                      (_defaultAttribute ^ FOREGROUND_INTENSITY) & INTENSITY;
                   break;
 
                 case 30:
@@ -239,7 +249,8 @@ void ShellConsoleFeature::_print(std::string const& s) {
                   break;
 
                 case 33:
-                  _consoleColor = FOREGROUND_RED | FOREGROUND_GREEN | _defaultBackground;
+                  _consoleColor =
+                      FOREGROUND_RED | FOREGROUND_GREEN | _defaultBackground;
                   break;
 
                 case 34:
@@ -247,11 +258,13 @@ void ShellConsoleFeature::_print(std::string const& s) {
                   break;
 
                 case 35:
-                  _consoleColor = FOREGROUND_BLUE | FOREGROUND_RED | _defaultBackground;
+                  _consoleColor =
+                      FOREGROUND_BLUE | FOREGROUND_RED | _defaultBackground;
                   break;
 
                 case 36:
-                  _consoleColor = FOREGROUND_BLUE | FOREGROUND_GREEN | _defaultBackground;
+                  _consoleColor =
+                      FOREGROUND_BLUE | FOREGROUND_GREEN | _defaultBackground;
                   break;
 
                 case 37:
@@ -316,7 +329,8 @@ std::string ShellConsoleFeature::readPassword(std::string const& message) {
 std::string ShellConsoleFeature::readPassword() {
   TRI_SetStdinVisibility(false);
 
-  auto sg = arangodb::scopeGuard([&]() noexcept { TRI_SetStdinVisibility(true); });
+  auto sg =
+      arangodb::scopeGuard([&]() noexcept { TRI_SetStdinVisibility(true); });
 
   std::string password;
 
@@ -324,7 +338,8 @@ std::string ShellConsoleFeature::readPassword() {
   std::wstring wpassword;
   _setmode(_fileno(stdin), _O_U16TEXT);
   std::getline(std::wcin, wpassword);
-  icu::UnicodeString pw(wpassword.c_str(), static_cast<int32_t>(wpassword.length()));
+  icu::UnicodeString pw(wpassword.c_str(),
+                        static_cast<int32_t>(wpassword.length()));
   pw.toUTF8String<std::string>(password);
 #else
   std::getline(std::cin, password);
@@ -336,17 +351,19 @@ void ShellConsoleFeature::printWelcomeInfo() {
   if (_quiet) {
     return;
   }
-    
+
   std::ostringstream s;
-  
+
   if (_pager) {
     s << "Using pager '" << _pagerCommand << "' for output buffering. ";
   }
 
   if (_useHistory) {
-    s << "Command-line history will be persisted when the shell is exited. You can use `--console.history false` to turn this off";
+    s << "Command-line history will be persisted when the shell is exited. You "
+         "can use `--console.history false` to turn this off";
   } else {
-    s << "Command-line history is enabled for this session only and will *not* be persisted.";
+    s << "Command-line history is enabled for this session only and will *not* "
+         "be persisted.";
   }
 
   printLine(s.str());
@@ -431,7 +448,8 @@ void ShellConsoleFeature::flushLog() {
   }
 }
 
-ShellConsoleFeature::Prompt ShellConsoleFeature::buildPrompt(ClientFeature* client) {
+ShellConsoleFeature::Prompt ShellConsoleFeature::buildPrompt(
+    ClientFeature* client) {
   std::string result;
   bool esc = false;
 
@@ -449,7 +467,8 @@ ShellConsoleFeature::Prompt ShellConsoleFeature::buildPrompt(ClientFeature* clie
         result.append(tmp.str());
       } else if (c == 'a') {
         std::ostringstream tmp;
-        tmp << std::setprecision(6) << std::fixed << (TRI_microtime() - _startTime);
+        tmp << std::setprecision(6) << std::fixed
+            << (TRI_microtime() - _startTime);
         result.append(tmp.str());
       } else if (c == 'p') {
         std::ostringstream tmp;

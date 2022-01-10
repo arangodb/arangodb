@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,14 +27,16 @@
 using namespace arangodb::aql;
 
 DocumentIndexExpressionContext::DocumentIndexExpressionContext(
-    arangodb::transaction::Methods& trx,
-    QueryContext& query,
-    AqlFunctionsInternalCache& cache, AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
+    arangodb::transaction::Methods& trx, QueryContext& query,
+    AqlFunctionsInternalCache& cache,
+    AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
     void const* ctx)
-  : QueryExpressionContext(trx, query, cache), _getValue(getValue), _ctx(ctx) {}
+    : QueryExpressionContext(trx, query, cache),
+      _getValue(getValue),
+      _ctx(ctx) {}
 
-AqlValue DocumentIndexExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
-                                                          bool& mustDestroy) const {
+AqlValue DocumentIndexExpressionContext::getVariableValue(
+    Variable const* variable, bool doCopy, bool& mustDestroy) const {
   mustDestroy = doCopy;  // as we are copying
   return _getValue(_ctx, variable, doCopy);
 }

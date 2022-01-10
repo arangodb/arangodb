@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,7 +37,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace aql {
 
@@ -54,10 +54,11 @@ class VariableGenerator {
 
  public:
   /// @brief visit all variables
-  void visit(std::function<void(Variable*)> const&); 
+  void visit(std::function<void(Variable*)> const&);
 
   /// @brief return a map of all variable ids with their names
-  std::unordered_map<VariableId, std::string const> variables(bool includeTemporaries) const;
+  std::unordered_map<VariableId, std::string const> variables(
+      bool includeTemporaries) const;
 
   /// @brief generate a variable
   Variable* createVariable(std::string_view name, bool isUserDefined);
@@ -109,4 +110,3 @@ class VariableGenerator {
 };
 }  // namespace aql
 }  // namespace arangodb
-

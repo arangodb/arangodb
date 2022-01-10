@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,8 +43,9 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 /// @return a collection exists in database or a wildcard was specified
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::Result existsCollection(arangodb::application_features::ApplicationServer& server,
-                                  std::string const& database, std::string const& collection) {
+arangodb::Result existsCollection(
+    arangodb::application_features::ApplicationServer& server,
+    std::string const& database, std::string const& collection) {
   if (!server.hasFeature<arangodb::DatabaseFeature>()) {
     return arangodb::Result(TRI_ERROR_INTERNAL,
                             "failure to find feature 'Database'");
@@ -78,8 +79,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestUsersHandler::RestUsersHandler(application_features::ApplicationServer& server,
-                                   GeneralRequest* request, GeneralResponse* response)
+RestUsersHandler::RestUsersHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestUsersHandler::execute() {
@@ -124,11 +126,12 @@ bool RestUsersHandler::canAccessUser(std::string const& user) const {
 }
 
 /// helper to generate a compliant response for individual user requests
-void RestUsersHandler::generateUserResult(rest::ResponseCode code, VPackBuilder const& doc) {
+void RestUsersHandler::generateUserResult(rest::ResponseCode code,
+                                          VPackBuilder const& doc) {
   VPackBuilder b;
-  b(VPackValue(VPackValueType::Object))(StaticStrings::Error,
-                                        VPackValue(false))(StaticStrings::Code,
-                                                           VPackValue((int)code))();
+  b(VPackValue(VPackValueType::Object))(
+      StaticStrings::Error, VPackValue(false))(StaticStrings::Code,
+                                               VPackValue((int)code))();
   b = VPackCollection::merge(doc.slice(), b.slice(), false);
   generateResult(code, b.slice());
 }
@@ -195,7 +198,8 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
         if (suffixes.size() == 3 && resp.isObject()) {
           resp = resp.get(suffixes[2]);
         }
-        generateOk(ResponseCode::OK, resp.isNone() ? VPackSlice::nullSlice() : resp);
+        generateOk(ResponseCode::OK,
+                   resp.isNone() ? VPackSlice::nullSlice() : resp);
         return TRI_ERROR_NO_ERROR;
       });
       if (r.fail()) {
@@ -211,41 +215,47 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
 
 /// generate response for /_api/user/database?full=true/false
 void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
-                                              std::string const& username, bool full) {
+                                              std::string const& username,
+                                              bool full) {
   // return list of databases
   VPackBuilder data;
   data.openObject();
   Result res = um->accessUser(username, [&, this](auth::User const& user) {
-    server().getFeature<DatabaseFeature>().enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
-      if (full) {
-        auto lvl = user.configuredDBAuthLevel(vocbase.name());
-        std::string str = convertFromAuthLevel(lvl);
-        velocypack::ObjectBuilder b(&data, vocbase.name(), true);
+    server().getFeature<DatabaseFeature>().enumerateDatabases(
+        [&](TRI_vocbase_t& vocbase) -> void {
+          if (full) {
+            auto lvl = user.configuredDBAuthLevel(vocbase.name());
+            std::string str = convertFromAuthLevel(lvl);
+            velocypack::ObjectBuilder b(&data, vocbase.name(), true);
 
-        data.add("permission", VPackValue(str));
+            data.add("permission", VPackValue(str));
 
-        velocypack::ObjectBuilder b2(&data, "collections", true);
+            velocypack::ObjectBuilder b2(&data, "collections", true);
 
-        methods::Collections::enumerate(&vocbase, [&](std::shared_ptr<LogicalCollection> const& c) -> void {
-          TRI_ASSERT(c);
-          lvl = user.configuredCollectionAuthLevel(vocbase.name(), c->name());
-          data.add(c->name(), velocypack::Value(convertFromAuthLevel(lvl)));
+            methods::Collections::enumerate(
+                &vocbase,
+                [&](std::shared_ptr<LogicalCollection> const& c) -> void {
+                  TRI_ASSERT(c);
+                  lvl = user.configuredCollectionAuthLevel(vocbase.name(),
+                                                           c->name());
+                  data.add(c->name(),
+                           velocypack::Value(convertFromAuthLevel(lvl)));
+                });
+            lvl = user.configuredCollectionAuthLevel(vocbase.name(), "*");
+            data.add("*", velocypack::Value(convertFromAuthLevel(lvl)));
+          } else {  // hide db's without access
+            auto lvl = user.databaseAuthLevel(vocbase.name());
+
+            if (lvl >= auth::Level::RO) {
+              data.add(vocbase.name(), VPackValue(convertFromAuthLevel(lvl)));
+            }
+          }
         });
-        lvl = user.configuredCollectionAuthLevel(vocbase.name(), "*");
-        data.add("*", velocypack::Value(convertFromAuthLevel(lvl)));
-      } else {  // hide db's without access
-        auto lvl = user.databaseAuthLevel(vocbase.name());
-
-        if (lvl >= auth::Level::RO) {
-          data.add(vocbase.name(), VPackValue(convertFromAuthLevel(lvl)));
-        }
-      }
-    });
 
     if (full) {
       auth::Level lvl = user.databaseAuthLevel("*");
-      data("*", VPackValue(VPackValueType::Object))("permission",
-                                                    VPackValue(convertFromAuthLevel(lvl)))();
+      data("*", VPackValue(VPackValueType::Object))(
+          "permission", VPackValue(convertFromAuthLevel(lvl)))();
     }
 
     return TRI_ERROR_NO_ERROR;
@@ -439,14 +449,15 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
           VPackSlice oldConf = u.userData();
           if (!newVal.isObject() || !newVal.hasKey("value")) {
             if (oldConf.isObject() && oldConf.hasKey(key)) {
-              u.setUserData(
-                  VPackCollection::remove(oldConf, std::unordered_set<std::string>{key}));
+              u.setUserData(VPackCollection::remove(
+                  oldConf, std::unordered_set<std::string>{key}));
             }       // Nothing to do. We do not have a config yet.
           } else {  // We need to merge the new key into the config
             VPackBuilder b;
             b(VPackValue(VPackValueType::Object))(key, newVal.get("value"))();
 
-            if (oldConf.isObject() && !oldConf.isEmptyObject()) {  // merge value in
+            if (oldConf.isObject() &&
+                !oldConf.isEmptyObject()) {  // merge value in
               u.setUserData(VPackCollection::merge(oldConf, b.slice(), false));
             } else {
               u.setUserData(std::move(b));
@@ -510,9 +521,9 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
     Result r = um->removeUser(user);
     if (r.ok()) {
       VPackBuilder b;
-      b(VPackValue(VPackValueType::Object))(StaticStrings::Error,
-                                            VPackValue(false))(StaticStrings::Code,
-                                                               VPackValue(202))();
+      b(VPackValue(VPackValueType::Object))(
+          StaticStrings::Error, VPackValue(false))(StaticStrings::Code,
+                                                   VPackValue(202))();
       generateResult(ResponseCode::ACCEPTED, b.slice());
     } else {
       generateError(r);
@@ -569,9 +580,9 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
 
       if (r.ok()) {
         VPackBuilder b;
-        b(VPackValue(VPackValueType::Object))(StaticStrings::Error,
-                                              VPackValue(false))(StaticStrings::Code,
-                                                                 VPackValue(202))();
+        b(VPackValue(VPackValueType::Object))(
+            StaticStrings::Error, VPackValue(false))(StaticStrings::Code,
+                                                     VPackValue(202))();
         generateResult(ResponseCode::ACCEPTED, b.slice());
       } else {
         generateError(r);
@@ -584,7 +595,8 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
           VPackBuilder b;
           b(VPackValue(VPackValueType::Object))(key, VPackSlice::nullSlice())();
           if (!u.configData().isNone()) {
-            u.setConfigData(VPackCollection::merge(u.configData(), b.slice(), false, true));
+            u.setConfigData(
+                VPackCollection::merge(u.configData(), b.slice(), false, true));
           }
           return TRI_ERROR_NO_ERROR;
         });

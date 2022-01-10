@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -65,7 +66,7 @@ auto sendAgencyWriteTransaction(VPackBufferUInt8 trx)
         auto slice = res.slice().get("results");
         TRI_ASSERT(slice.isArray());
         TRI_ASSERT(!slice.isEmptyArray());
-        return slice.at(slice.length()-1).getNumericValue<uint64_t>();
+        return slice.at(slice.length() - 1).getNumericValue<uint64_t>();
       });
 }
 }  // namespace
@@ -75,20 +76,21 @@ auto methods::updateTermSpecificationTrx(arangodb::agency::envelope envelope,
                                          LogPlanTermSpecification const& spec,
                                          std::optional<LogTerm> prevTerm)
     -> arangodb::agency::envelope {
-  auto path = paths::plan()->replicatedLogs()->database(database)->log(to_string(id));
+  auto path =
+      paths::plan()->replicatedLogs()->database(database)->log(to_string(id));
   auto logPath = path->str();
   auto termPath = path->currentTerm()->str();
 
   return envelope.write()
-      .emplace_object(termPath,
-                      [&](VPackBuilder& builder) { spec.toVelocyPack(builder); })
+      .emplace_object(
+          termPath, [&](VPackBuilder& builder) { spec.toVelocyPack(builder); })
       .inc(paths::plan()->version()->str())
       .precs()
       .isNotEmpty(logPath)
       .cond(prevTerm.has_value(),
             [&](auto&& precs) {
-              return std::move(precs).isEqual(path->currentTerm()->term()->str(),
-                                              prevTerm->value);
+              return std::move(precs).isEqual(
+                  path->currentTerm()->term()->str(), prevTerm->value);
             })
       .end();
 }
@@ -100,8 +102,9 @@ auto methods::updateTermSpecification(DatabaseID const& database, LogId id,
   VPackBufferUInt8 trx;
   {
     VPackBuilder builder(trx);
-    updateTermSpecificationTrx(arangodb::agency::envelope::into_builder(builder),
-                               database, id, spec, prevTerm)
+    updateTermSpecificationTrx(
+        arangodb::agency::envelope::into_builder(builder), database, id, spec,
+        prevTerm)
         .done();
   }
 
@@ -111,7 +114,8 @@ auto methods::updateTermSpecification(DatabaseID const& database, LogId id,
 auto methods::deleteReplicatedLogTrx(arangodb::agency::envelope envelope,
                                      DatabaseID const& database, LogId id)
     -> arangodb::agency::envelope {
-  auto path = paths::plan()->replicatedLogs()->database(database)->log(id)->str();
+  auto path =
+      paths::plan()->replicatedLogs()->database(database)->log(id)->str();
 
   return envelope.write()
       .remove(path)
@@ -126,7 +130,8 @@ auto methods::deleteReplicatedLog(DatabaseID const& database, LogId id)
   VPackBufferUInt8 trx;
   {
     VPackBuilder builder(trx);
-    deleteReplicatedLogTrx(arangodb::agency::envelope::into_builder(builder), database, id)
+    deleteReplicatedLogTrx(arangodb::agency::envelope::into_builder(builder),
+                           database, id)
         .done();
   }
 
@@ -137,23 +142,26 @@ auto methods::createReplicatedLogTrx(arangodb::agency::envelope envelope,
                                      DatabaseID const& database,
                                      LogPlanSpecification const& spec)
     -> arangodb::agency::envelope {
-  auto path = paths::plan()->replicatedLogs()->database(database)->log(spec.id)->str();
+  auto path =
+      paths::plan()->replicatedLogs()->database(database)->log(spec.id)->str();
 
   return envelope.write()
-      .emplace_object(path,
-                      [&](VPackBuilder& builder) { spec.toVelocyPack(builder); })
+      .emplace_object(
+          path, [&](VPackBuilder& builder) { spec.toVelocyPack(builder); })
       .inc(paths::plan()->version()->str())
       .precs()
       .isEmpty(path)
       .end();
 }
 
-auto methods::createReplicatedLog(DatabaseID const& database, LogPlanSpecification const& spec)
+auto methods::createReplicatedLog(DatabaseID const& database,
+                                  LogPlanSpecification const& spec)
     -> futures::Future<ResultT<uint64_t>> {
   VPackBufferUInt8 trx;
   {
     VPackBuilder builder(trx);
-    createReplicatedLogTrx(arangodb::agency::envelope::into_builder(builder), database, spec)
+    createReplicatedLogTrx(arangodb::agency::envelope::into_builder(builder),
+                           database, spec)
         .done();
   }
   return sendAgencyWriteTransaction(std::move(trx));
@@ -162,8 +170,11 @@ auto methods::createReplicatedLog(DatabaseID const& database, LogPlanSpecificati
 auto methods::removeElectionResult(arangodb::agency::envelope envelope,
                                    DatabaseID const& database, LogId id)
     -> arangodb::agency::envelope {
-  auto path =
-      paths::current()->replicatedLogs()->database(database)->log(to_string(id))->str();
+  auto path = paths::current()
+                  ->replicatedLogs()
+                  ->database(database)
+                  ->log(to_string(id))
+                  ->str();
 
   return envelope.write()
       .remove(path + "/supervision/election")
@@ -175,14 +186,16 @@ auto methods::updateElectionResult(arangodb::agency::envelope envelope,
                                    DatabaseID const& database, LogId id,
                                    LogCurrentSupervisionElection const& result)
     -> arangodb::agency::envelope {
-  auto path =
-      paths::current()->replicatedLogs()->database(database)->log(to_string(id))->str();
+  auto path = paths::current()
+                  ->replicatedLogs()
+                  ->database(database)
+                  ->log(to_string(id))
+                  ->str();
 
   return envelope.write()
-      .emplace_object(path + "/supervision/election",
-                      [&](VPackBuilder& builder) {
-                        result.toVelocyPack(builder);
-                      })
+      .emplace_object(
+          path + "/supervision/election",
+          [&](VPackBuilder& builder) { result.toVelocyPack(builder); })
       .inc(paths::current()->version()->str())
       .end();
 }

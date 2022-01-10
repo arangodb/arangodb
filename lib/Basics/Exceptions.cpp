@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,10 +41,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 // All other constructors delegate to this one.
-Exception::Exception(ErrorCode code, std::string&& errorMessage, SourceLocation location) noexcept
-    : _errorMessage(std::move(errorMessage)),
-      _location(location),
-      _code(code) {
+Exception::Exception(ErrorCode code, std::string&& errorMessage,
+                     SourceLocation location) noexcept
+    : _errorMessage(std::move(errorMessage)), _location(location), _code(code) {
   appendLocation();
 }
 Exception::Exception(ErrorCode code, SourceLocation location)
@@ -52,23 +51,30 @@ Exception::Exception(ErrorCode code, SourceLocation location)
 Exception::Exception(Result const& result, SourceLocation location)
     : Exception(result.errorNumber(), result.errorMessage(), location) {}
 Exception::Exception(Result&& result, SourceLocation location) noexcept
-    : Exception(result.errorNumber(), std::move(result).errorMessage(), location) {}
-Exception::Exception(ErrorCode code, std::string_view errorMessage, SourceLocation location)
+    : Exception(result.errorNumber(), std::move(result).errorMessage(),
+                location) {}
+Exception::Exception(ErrorCode code, std::string_view errorMessage,
+                     SourceLocation location)
     : Exception(code, std::string{errorMessage}, location) {}
-Exception::Exception(ErrorCode code, const char* errorMessage, SourceLocation location)
+Exception::Exception(ErrorCode code, const char* errorMessage,
+                     SourceLocation location)
     : Exception(code, std::string{errorMessage}, location) {}
 
 Exception::Exception(ErrorCode code, char const* file, int line)
     : Exception(code, SourceLocation(file, line)) {}
 Exception::Exception(arangodb::Result const& result, char const* file, int line)
     : Exception(result, SourceLocation(file, line)) {}
-Exception::Exception(arangodb::Result&& result, char const* file, int line) noexcept
+Exception::Exception(arangodb::Result&& result, char const* file,
+                     int line) noexcept
     : Exception(std::move(result), SourceLocation(file, line)) {}
-Exception::Exception(ErrorCode code, std::string_view errorMessage, char const* file, int line)
+Exception::Exception(ErrorCode code, std::string_view errorMessage,
+                     char const* file, int line)
     : Exception(code, errorMessage, SourceLocation(file, line)) {}
-Exception::Exception(ErrorCode code, std::string&& errorMessage, char const* file, int line) noexcept
+Exception::Exception(ErrorCode code, std::string&& errorMessage,
+                     char const* file, int line) noexcept
     : Exception(code, std::move(errorMessage), SourceLocation(file, line)) {}
-Exception::Exception(ErrorCode code, char const* errorMessage, char const* file, int line)
+Exception::Exception(ErrorCode code, char const* errorMessage, char const* file,
+                     int line)
     : Exception(code, errorMessage, SourceLocation(file, line)) {}
 
 /// @brief returns the error message
@@ -83,12 +89,15 @@ char const* Exception::what() const noexcept { return _errorMessage.c_str(); }
 /// @brief append original error location to message
 void Exception::appendLocation() noexcept try {
   if (_code == TRI_ERROR_INTERNAL) {
-    _errorMessage += std::string(" (exception location: ") + _location.file_name() +
-                     ":" + std::to_string(_location.line()) +
+    _errorMessage += std::string(" (exception location: ") +
+                     _location.file_name() + ":" +
+                     std::to_string(_location.line()) +
                      "). Please report this error to arangodb.com";
-  } else if (_code == TRI_ERROR_OUT_OF_MEMORY || _code == TRI_ERROR_NOT_IMPLEMENTED) {
-    _errorMessage += std::string(" (exception location: ") + _location.file_name() +
-                     ":" + std::to_string(_location.line()) + ")";
+  } else if (_code == TRI_ERROR_OUT_OF_MEMORY ||
+             _code == TRI_ERROR_NOT_IMPLEMENTED) {
+    _errorMessage += std::string(" (exception location: ") +
+                     _location.file_name() + ":" +
+                     std::to_string(_location.line()) + ")";
   }
 } catch (...) {
   // this function is called from the exception constructor, so it should
@@ -149,7 +158,8 @@ std::string Exception::FillFormatExceptionString(char const* format, ...) {
   return std::string(buffer, size_t(length));
 }
 
-[[noreturn]] void ::arangodb::basics::helper::dieWithLogMessage(char const* errorMessage) {
+[[noreturn]] void ::arangodb::basics::helper::dieWithLogMessage(
+    char const* errorMessage) {
   LOG_TOPIC("1d250", FATAL, Logger::FIXME)
       << "Failed to create an error message, giving up. " << errorMessage;
   FATAL_ERROR_EXIT();

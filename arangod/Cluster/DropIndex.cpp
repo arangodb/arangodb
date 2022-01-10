@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,7 +62,8 @@ DropIndex::DropIndex(MaintenanceFeature& feature, ActionDescription const& d)
   TRI_ASSERT(d.has(INDEX));
 
   if (!error.str().empty()) {
-    LOG_TOPIC("02662", ERR, Logger::MAINTENANCE) << "DropIndex: " << error.str();
+    LOG_TOPIC("02662", ERR, Logger::MAINTENANCE)
+        << "DropIndex: " << error.str();
     result(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
@@ -86,9 +87,10 @@ bool DropIndex::first() {
     auto col = vocbase->lookupCollection(shard);
     if (col == nullptr) {
       std::stringstream error;
-      error << "failed to lookup local collection " << shard
-            << " in database " << database;
-      LOG_TOPIC("c593d", ERR, Logger::MAINTENANCE) << "DropIndex: " << error.str();
+      error << "failed to lookup local collection " << shard << " in database "
+            << database;
+      LOG_TOPIC("c593d", ERR, Logger::MAINTENANCE)
+          << "DropIndex: " << error.str();
       result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       return false;
     }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -98,7 +98,8 @@ bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) noexcept {
   uint64_t x, y;
 
   if (gettimeofday(&tp, nullptr) != 0) {
-    LOG_TOPIC("3515f", FATAL, arangodb::Logger::FIXME) << "could not get time of day";
+    LOG_TOPIC("3515f", FATAL, arangodb::Logger::FIXME)
+        << "could not get time of day";
     FATAL_ERROR_ABORT();
   }
 

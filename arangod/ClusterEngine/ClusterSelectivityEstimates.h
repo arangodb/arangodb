@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,7 +35,7 @@ class ClusterSelectivityEstimates {
  public:
   explicit ClusterSelectivityEstimates(LogicalCollection& collection);
   void flush();
-  
+
   /// @brief fetch estimates from cache or server
   /// @param allowUpdate allow cluster communication
   /// @param tid specify ongoing transaction this is a part of
@@ -46,8 +46,8 @@ class ClusterSelectivityEstimates {
   struct InternalData {
     IndexEstMap estimates;
     double expireStamp;
-    
-    InternalData(IndexEstMap const& estimates, double expireStamp) 
+
+    InternalData(IndexEstMap const& estimates, double expireStamp)
         : estimates(estimates), expireStamp(expireStamp) {}
   };
 
@@ -57,9 +57,8 @@ class ClusterSelectivityEstimates {
   // whether or not a thread is currently updating the estimates
   std::atomic<bool> _updating;
 
-  static constexpr double defaultTtl = 90.0;
+  static constexpr double defaultTtl = 180.0;
   static constexpr double systemCollectionTtl = 900.0;
 };
 
 }  // namespace arangodb
-

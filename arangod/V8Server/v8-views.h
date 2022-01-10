@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,6 @@
 
 struct TRI_vocbase_t;
 
-void TRI_InitV8Views( // init views
-                     TRI_v8_global_t& v8g, // V8 globals
-                     v8::Isolate* isolate);
-
+void TRI_InitV8Views(      // init views
+    TRI_v8_global_t& v8g,  // V8 globals
+    v8::Isolate* isolate);

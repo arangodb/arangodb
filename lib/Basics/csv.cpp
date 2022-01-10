@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +36,8 @@
 void TRI_InitCsvParser(
     TRI_csv_parser_t* parser, void (*begin)(TRI_csv_parser_t*, size_t),
     void (*add)(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool),
-    void (*end)(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool), void* vData) {
+    void (*end)(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool),
+    void* vData) {
   size_t length;
 
   parser->_state = TRI_CSV_PARSER_BOL;
@@ -101,7 +102,8 @@ void TRI_SetSeparatorCsvParser(TRI_csv_parser_t* parser, char separator) {
 /// @brief set the quote character
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetQuoteCsvParser(TRI_csv_parser_t* parser, char quote, bool useQuote) {
+void TRI_SetQuoteCsvParser(TRI_csv_parser_t* parser, char quote,
+                           bool useQuote) {
   parser->_quote = quote;
   parser->_useQuote = useQuote;
 }
@@ -118,7 +120,8 @@ void TRI_UseBackslashCsvParser(TRI_csv_parser_t* parser, bool value) {
 /// @brief parses a CSV line
 ////////////////////////////////////////////////////////////////////////////////
 
-ErrorCode TRI_ParseCsvString(TRI_csv_parser_t* parser, char const* line, size_t length) {
+ErrorCode TRI_ParseCsvString(TRI_csv_parser_t* parser, char const* line,
+                             size_t length) {
   char* ptr;
   char* qtr;
 
@@ -250,7 +253,8 @@ ErrorCode TRI_ParseCsvString(TRI_csv_parser_t* parser, char const* line, size_t 
           break;
 
         case TRI_CSV_PARSER_CORRUPTED:
-          while (ptr < parser->_stop && *ptr != parser->_separator && *ptr != '\n') {
+          while (ptr < parser->_stop && *ptr != parser->_separator &&
+                 *ptr != '\n') {
             ptr++;
           }
 

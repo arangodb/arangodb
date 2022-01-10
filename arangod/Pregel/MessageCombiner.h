@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,13 +29,13 @@ namespace arangodb {
 namespace pregel {
 
 // specify serialization, whatever
-template <class M>
+template<class M>
 struct MessageCombiner {
   virtual ~MessageCombiner() = default;
   virtual void combine(M& firstValue, M const& secondValue) const = 0;
 };
 
-template <typename M>
+template<typename M>
 struct MinCombiner : public MessageCombiner<M> {
   static_assert(std::is_arithmetic<M>::value, "Message type must be numeric");
   MinCombiner() {}
@@ -46,7 +46,7 @@ struct MinCombiner : public MessageCombiner<M> {
   };
 };
 
-template <typename M>
+template<typename M>
 struct SumCombiner : public MessageCombiner<M> {
   static_assert(std::is_arithmetic<M>::value, "Message type must be numeric");
   SumCombiner() {}

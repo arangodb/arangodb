@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +33,8 @@ bool isEmptyString(char const* p, size_t length) noexcept {
   char const* e = p + length;
 
   while (p < e) {
-    if (*p != ' ' && *p != '\t' && *p != '\r' && *p != '\n' && *p != '\f' && *p != '\b') {
+    if (*p != ' ' && *p != '\t' && *p != '\r' && *p != '\n' && *p != '\f' &&
+        *p != '\b') {
       return false;
     }
     ++p;
@@ -69,19 +70,19 @@ double stringToNumber(std::string const& value, bool& failed) noexcept {
   return 0.0;
 }
 
-template <typename T>
+template<typename T>
 bool isUnsafeAddition(T l, T r) {
   return ((r > 0 && l > (std::numeric_limits<T>::max)() - r) ||
           (r < 0 && l < (std::numeric_limits<T>::min)() - r));
 }
 
-template <typename T>
+template<typename T>
 bool isUnsafeSubtraction(T l, T r) {
   return ((r > 0 && l < (std::numeric_limits<T>::min)() + r) ||
           (r < 0 && l > (std::numeric_limits<T>::max)() + r));
 }
 
-template <typename T>
+template<typename T>
 bool isUnsafeMultiplication(T l, T r) {
   if (l > 0) {
     if (r > 0) {
@@ -108,7 +109,7 @@ bool isUnsafeMultiplication(T l, T r) {
   return false;
 }
 
-template <typename T>
+template<typename T>
 bool isUnsafeDivision(T l, T r) {
   // note: the caller still has to check whether r is zero (division by zero)
   return (l == (std::numeric_limits<T>::min)() && r == -1);

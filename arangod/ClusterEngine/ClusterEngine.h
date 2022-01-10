@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,13 +61,14 @@ class ClusterEngine final : public StorageEngine {
   // the storage engine must not start any threads here or write any files
   void prepare() override;
   void start() override;
-  
+
   HealthData healthCheck() override;
 
-  std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
-  std::shared_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase,
-                                                           TransactionId tid,
-                                                           transaction::Options const& options) override;
+  std::unique_ptr<transaction::Manager> createTransactionManager(
+      transaction::ManagerFeature&) override;
+  std::shared_ptr<TransactionState> createTransactionState(
+      TRI_vocbase_t& vocbase, TransactionId tid,
+      transaction::Options const& options) override;
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
@@ -86,9 +87,11 @@ class ClusterEngine final : public StorageEngine {
 
   ErrorCode getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
                                      arangodb::velocypack::Builder& result,
-                                     bool wasCleanShutdown, bool isUpgrade) override;
+                                     bool wasCleanShutdown,
+                                     bool isUpgrade) override;
 
-  ErrorCode getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
+  ErrorCode getViews(TRI_vocbase_t& vocbase,
+                     arangodb::velocypack::Builder& result) override;
 
   std::string versionFilename(TRI_voc_tick_t id) const override {
     // the cluster engine does not have any versioning information
@@ -105,28 +108,32 @@ class ClusterEngine final : public StorageEngine {
 
   void cleanupReplicationContexts() override {}
 
-  velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                         ErrorCode& status) override;
-  velocypack::Builder getReplicationApplierConfiguration(ErrorCode& status) override;
-  ErrorCode removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) override {
+  velocypack::Builder getReplicationApplierConfiguration(
+      TRI_vocbase_t& vocbase, ErrorCode& status) override;
+  velocypack::Builder getReplicationApplierConfiguration(
+      ErrorCode& status) override;
+  ErrorCode removeReplicationApplierConfiguration(
+      TRI_vocbase_t& vocbase) override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
   ErrorCode removeReplicationApplierConfiguration() override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
   ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                velocypack::Slice slice, bool doSync) override {
+                                                velocypack::Slice slice,
+                                                bool doSync) override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
-  ErrorCode saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
-                                                bool doSync) override {
+  ErrorCode saveReplicationApplierConfiguration(
+      arangodb::velocypack::Slice slice, bool doSync) override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
   Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,
                         std::string const& keysId) override {
     return {TRI_ERROR_NOT_IMPLEMENTED};
   }
-  Result createLoggerState(TRI_vocbase_t* vocbase, velocypack::Builder& builder) override {
+  Result createLoggerState(TRI_vocbase_t* vocbase,
+                           velocypack::Builder& builder) override {
     return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   Result createTickRanges(velocypack::Builder& builder) override {
@@ -135,9 +142,8 @@ class ClusterEngine final : public StorageEngine {
   Result firstTick(uint64_t& tick) override {
     return {TRI_ERROR_NOT_IMPLEMENTED};
   }
-  Result lastLogger(TRI_vocbase_t& vocbase,
-                    uint64_t tickStart, uint64_t tickEnd,
-                    velocypack::Builder& builder) override {
+  Result lastLogger(TRI_vocbase_t& vocbase, uint64_t tickStart,
+                    uint64_t tickEnd, velocypack::Builder& builder) override {
     return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   WalAccess const* walAccess() const override {
@@ -159,10 +165,10 @@ class ClusterEngine final : public StorageEngine {
 
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
 
-  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&& info,
-                                                      bool isUpgrade) override;
-  std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&& info,
-                                                ErrorCode& status) override;
+  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(
+      arangodb::CreateDatabaseInfo&& info, bool isUpgrade) override;
+  std::unique_ptr<TRI_vocbase_t> createDatabase(
+      arangodb::CreateDatabaseInfo&& info, ErrorCode& status) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
 
   // current recovery state
@@ -174,29 +180,39 @@ class ClusterEngine final : public StorageEngine {
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
 
-  arangodb::Result dropCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
+  arangodb::Result dropCollection(TRI_vocbase_t& vocbase,
+                                  LogicalCollection& collection) override;
 
   void changeCollection(TRI_vocbase_t& vocbase,
-                        LogicalCollection const& collection, bool doSync) override;
+                        LogicalCollection const& collection,
+                        bool doSync) override;
 
-  arangodb::Result renameCollection(TRI_vocbase_t& vocbase, LogicalCollection const& collection,
+  arangodb::Result renameCollection(TRI_vocbase_t& vocbase,
+                                    LogicalCollection const& collection,
                                     std::string const& oldName) override;
 
   arangodb::Result changeView(TRI_vocbase_t& vocbase,
-                              arangodb::LogicalView const& view, bool doSync) override;
+                              arangodb::LogicalView const& view,
+                              bool doSync) override;
 
   arangodb::Result createView(TRI_vocbase_t& vocbase, DataSourceId id,
                               arangodb::LogicalView const& view) override;
 
-  arangodb::Result dropView(TRI_vocbase_t const& vocbase, LogicalView const& view) override;
+  arangodb::Result dropView(TRI_vocbase_t const& vocbase,
+                            LogicalView const& view) override;
 
-  arangodb::Result compactAll(bool changeLevel, bool compactBottomMostLevel) override;
+  arangodb::Result compactAll(bool changeLevel,
+                              bool compactBottomMostLevel) override;
 
-  virtual auto createReplicatedLog(TRI_vocbase_t&, arangodb::replication2::LogId)
-      -> ResultT<std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>> override;
+  virtual auto createReplicatedLog(TRI_vocbase_t&,
+                                   arangodb::replication2::LogId)
+      -> ResultT<std::shared_ptr<
+          arangodb::replication2::replicated_log::PersistedLog>> override;
 
-  virtual auto dropReplicatedLog(TRI_vocbase_t&,
-                                 std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> const&)
+  virtual auto dropReplicatedLog(
+      TRI_vocbase_t&,
+      std::shared_ptr<
+          arangodb::replication2::replicated_log::PersistedLog> const&)
       -> Result override;
 
   /// @brief Add engine-specific optimizer rules
@@ -236,4 +252,3 @@ class ClusterEngine final : public StorageEngine {
 };
 
 }  // namespace arangodb
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace aql {
 
@@ -39,7 +39,7 @@ struct ModificationOptions : OperationOptions {
   /// @brief constructor, using default values
   explicit ModificationOptions(arangodb::velocypack::Slice const&);
 
-  ModificationOptions() 
+  ModificationOptions()
       : OperationOptions(),
         ignoreErrors(false),
         ignoreDocumentNotFound(false),
@@ -56,4 +56,3 @@ struct ModificationOptions : OperationOptions {
 
 }  // namespace aql
 }  // namespace arangodb
-

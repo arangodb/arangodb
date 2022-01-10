@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,25 +24,23 @@
 #pragma once
 
 #include "RestHandler/RestBaseHandler.h"
-  
+
 #include <mutex>
 #include <unordered_map>
 
 namespace arangodb {
 class RestSystemReportHandler : public arangodb::RestBaseHandler {
  public:
-  RestSystemReportHandler(
-    application_features::ApplicationServer&, GeneralRequest*,
-    GeneralResponse*);
+  RestSystemReportHandler(application_features::ApplicationServer&,
+                          GeneralRequest*, GeneralResponse*);
   char const* name() const override final { return "RestSystemReportHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
-private:
+
+ private:
   bool isAdminUser() const;
 
   static std::mutex _exclusive;
   std::unordered_map<std::string, std::string> const cmds;
-
 };
 }  // namespace arangodb
-

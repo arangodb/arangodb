@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,9 +30,9 @@
 namespace arangodb {
 namespace iresearch {
 
-class IResearchAnalyzerFeature; // forward declaration
+class IResearchAnalyzerFeature;  // forward declaration
 
-class RestAnalyzerHandler: public RestVocbaseBaseHandler {
+class RestAnalyzerHandler : public RestVocbaseBaseHandler {
  public:
   // @note RestHandlerFactory::createHandler(...) passes raw pointers for
   //       request/response to RestHandlerCreator::createNoData(...)
@@ -52,18 +52,12 @@ class RestAnalyzerHandler: public RestVocbaseBaseHandler {
 
  private:
   void createAnalyzer(IResearchAnalyzerFeature& analyzers);
-  void getAnalyzer(
-    IResearchAnalyzerFeature& analyzers, 
-    std::string const& requestedName 
-  );
+  void getAnalyzer(IResearchAnalyzerFeature& analyzers,
+                   std::string const& requestedName);
   void getAnalyzers(IResearchAnalyzerFeature& analyzers);
-  void removeAnalyzer(
-    IResearchAnalyzerFeature& analyzers, 
-    std::string const& requestedName, 
-    bool force
-  );
+  void removeAnalyzer(IResearchAnalyzerFeature& analyzers,
+                      std::string const& requestedName, bool force);
 };
 
-} // iresearch
-} // arangodb
-
+}  // namespace iresearch
+}  // namespace arangodb

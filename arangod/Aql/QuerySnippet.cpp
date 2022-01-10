@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,14 +47,15 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 
 namespace {
-DistributeConsumerNode* createConsumerNode(ExecutionPlan* plan, ScatterNode* internalScatter,
-                                           std::string_view const distributeId) {
-  auto uniq_consumer =
-      std::make_unique<DistributeConsumerNode>(plan, plan->nextId(),
-                                               std::string(distributeId));
+DistributeConsumerNode* createConsumerNode(
+    ExecutionPlan* plan, ScatterNode* internalScatter,
+    std::string_view const distributeId) {
+  auto uniq_consumer = std::make_unique<DistributeConsumerNode>(
+      plan, plan->nextId(), std::string(distributeId));
   auto consumer = uniq_consumer.get();
   TRI_ASSERT(consumer != nullptr);
-  // Hand over responsibility to plan, s.t. it can clean up if one of the below fails
+  // Hand over responsibility to plan, s.t. it can clean up if one of the below
+  // fails
   plan->registerNode(uniq_consumer.release());
   consumer->setIsInSplicedSubquery(internalScatter->isInSplicedSubquery());
   consumer->addDependency(internalScatter);
@@ -70,21 +71,23 @@ using NodeAliasMap = std::map<ExecutionNodeId, ExecutionNodeId>;
 /*
  * The CloneWorker "clones" a snippet
  *
- * rootNode -> N1 -> N2 -> ... -> Nk [-> DistributeConsumer -> internalScatter -> remoteNode]
+ * rootNode -> N1 -> N2 -> ... -> Nk [-> DistributeConsumer -> internalScatter
+ * -> remoteNode]
  *
- * (the back part is optional, because we could be the last snippet and hence do not need to
- * talk to a coordinator)
+ * (the back part is optional, because we could be the last snippet and hence do
+ * not need to talk to a coordinator)
  *
  * to
  *
- * internalGather -> rootNode -> CN1 -> CN2 -> ... -> CNk [ -> DistributeConsumerNode -> internalScatter ]
+ * internalGather -> rootNode -> CN1 -> CN2 -> ... -> CNk [ ->
+ * DistributeConsumerNode -> internalScatter ]
  *
- * where CN1 ... CNk are clones of N1 ... Nk, taking into account subquery nodes,
- * and the DistributeConsumer are only inserted (and *newly created*) if the original snippet
- * has the back part.
+ * where CN1 ... CNk are clones of N1 ... Nk, taking into account subquery
+ * nodes, and the DistributeConsumer are only inserted (and *newly created*) if
+ * the original snippet has the back part.
  *
- * Note that there is only *one* internal scatter/internal gather involved, and these are neither
- * created nor cloned in this code.
+ * Note that there is only *one* internal scatter/internal gather involved, and
+ * these are neither created nor cloned in this code.
  *
  * This is used to create a plan of the form
  *
@@ -103,12 +106,14 @@ using NodeAliasMap = std::map<ExecutionNodeId, ExecutionNodeId>;
  *                      INTERNAL_GATHER
  *
  */
-class CloneWorker final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+class CloneWorker final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
   explicit CloneWorker(ExecutionNode* rootNode, GatherNode* internalGather,
                        ScatterNode* internalScatter,
-                       MapNodeToColNameToShards const& localExpansions, size_t shardId,
-                       std::string_view const distId, NodeAliasMap& nodeAliases);
+                       MapNodeToColNameToShards const& localExpansions,
+                       size_t shardId, std::string_view const distId,
+                       NodeAliasMap& nodeAliases);
   void process();
 
  private:
@@ -134,8 +139,9 @@ class CloneWorker final : public WalkerWorker<ExecutionNode, WalkerUniqueness::N
 
 CloneWorker::CloneWorker(ExecutionNode* root, GatherNode* internalGather,
                          ScatterNode* internalScatter,
-                         MapNodeToColNameToShards const& localExpansions, size_t shardId,
-                         std::string_view const distId, NodeAliasMap& nodeAliases)
+                         MapNodeToColNameToShards const& localExpansions,
+                         size_t shardId, std::string_view const distId,
+                         NodeAliasMap& nodeAliases)
     : _root{root},
       _internalScatter{internalScatter},
       _internalGather{internalGather},
@@ -145,7 +151,7 @@ CloneWorker::CloneWorker(ExecutionNode* root, GatherNode* internalGather,
       _nodeAliases{nodeAliases} {}
 
 void CloneWorker::process() {
-  _root->walk(*this); 
+  _root->walk(*this);
 
   // Home-brew early cancel: We collect the processed nodes on a stack
   // and process them in reverse order in processAfter
@@ -154,7 +160,8 @@ void CloneWorker::process() {
   }
 }
 
-void CloneWorker::setUsedShardsOnClone(ExecutionNode* node, ExecutionNode* clone) {
+void CloneWorker::setUsedShardsOnClone(ExecutionNode* node,
+                                       ExecutionNode* clone) {
   auto permuter = _localExpansions.find(node);
   if (permuter != _localExpansions.end()) {
     if (clone->getType() == ExecutionNode::TRAVERSAL ||
@@ -166,10 +173,12 @@ void CloneWorker::setUsedShardsOnClone(ExecutionNode* node, ExecutionNode* clone
         if (graphNode->isDisjoint()) {
           TRI_ASSERT(graphNode != nullptr);
           TRI_ASSERT(graphNode->isDisjoint());
-          // we've found a Disjoint SmartGraph node, now add the `i` th shard for used collections
+          // we've found a Disjoint SmartGraph node, now add the `i` th shard
+          // for used collections
           for (auto const& myExp : permuter->second) {
             std::string const& cName = myExp.first;
-            graphNode->addCollectionToShard(cName, *std::next(myExp.second.begin(), _shardId));
+            graphNode->addCollectionToShard(
+                cName, *std::next(myExp.second.begin(), _shardId));
           }
         }
       } else {
@@ -177,11 +186,13 @@ void CloneWorker::setUsedShardsOnClone(ExecutionNode* node, ExecutionNode* clone
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
       }
     } else {
-      auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(clone);
+      auto collectionAccessingNode =
+          dynamic_cast<CollectionAccessingNode*>(clone);
       if (collectionAccessingNode != nullptr) {
         // we guarantee that we only have one collection here
         TRI_ASSERT(permuter->second.size() == 1);
-        std::string const& cName = collectionAccessingNode->collection()->name();
+        std::string const& cName =
+            collectionAccessingNode->collection()->name();
         // Get the `i` th shard
         collectionAccessingNode->setUsedShard(
             *std::next(permuter->second.at(cName).begin(), _shardId));
@@ -270,9 +281,11 @@ void QuerySnippet::addNode(ExecutionNode* node) {
     case ExecutionNode::UPSERT: {
       // We do not actually need to know the details here.
       // We just wanna know the shards!
-      auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(node);
+      auto collectionAccessingNode =
+          dynamic_cast<CollectionAccessingNode*>(node);
       TRI_ASSERT(collectionAccessingNode != nullptr);
-      _expansions.emplace_back(node, !collectionAccessingNode->isUsedAsSatellite(),
+      _expansions.emplace_back(node,
+                               !collectionAccessingNode->isUsedAsSatellite(),
                                collectionAccessingNode->isUsedAsSatellite());
       break;
     }
@@ -285,7 +298,8 @@ void QuerySnippet::addNode(ExecutionNode* node) {
       break;
     }
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
-      auto viewNode = ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
+      auto viewNode =
+          ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
 
       // evaluate node volatility before the distribution
       // can't do it on DB servers since only parts of the plan will be sent
@@ -294,7 +308,8 @@ void QuerySnippet::addNode(ExecutionNode* node) {
       break;
     }
     case ExecutionNode::MATERIALIZE: {
-      auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(node);
+      auto collectionAccessingNode =
+          dynamic_cast<CollectionAccessingNode*>(node);
       // Materialize index node - true
       // Materialize view node - false
       if (collectionAccessingNode != nullptr) {
@@ -320,9 +335,9 @@ void QuerySnippet::addNode(ExecutionNode* node) {
 void QuerySnippet::serializeIntoBuilder(
     ServerID const& server,
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
-    ShardLocking& shardLocking, std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
+    ShardLocking& shardLocking,
+    std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
     VPackBuilder& infoBuilder) {
-
   ExecutionNode* remoteParent{nullptr};
 
   TRI_ASSERT(!_expansions.empty());
@@ -333,27 +348,30 @@ void QuerySnippet::serializeIntoBuilder(
     TRI_ASSERT(firstBranchRes.is(TRI_ERROR_CLUSTER_NOT_LEADER));
     return;
   }
-  MapNodeToColNameToShards& localExpansions =
-      firstBranchRes.get();
+  MapNodeToColNameToShards& localExpansions = firstBranchRes.get();
   // We clone every Node* and maintain a list of ReportingGroups for profiler
   if (_remoteNode != nullptr) {
     if (!_madeResponsibleForShutdown) {
       // Enough to do this step once
       // We need to connect this Node to the sink
       // update the remote node with the information about the query
-      _remoteNode->server("server:" + arangodb::ServerState::instance()->getId());
+      _remoteNode->server("server:" +
+                          arangodb::ServerState::instance()->getId());
       _remoteNode->queryId(_inputSnippet);
 
       // A Remote can only contact a global SCATTER or GATHER node.
       TRI_ASSERT(_remoteNode->getFirstDependency() != nullptr);
-      TRI_ASSERT(_remoteNode->getFirstDependency()->getType() == ExecutionNode::SCATTER ||
-                 _remoteNode->getFirstDependency()->getType() == ExecutionNode::DISTRIBUTE);
+      TRI_ASSERT(_remoteNode->getFirstDependency()->getType() ==
+                     ExecutionNode::SCATTER ||
+                 _remoteNode->getFirstDependency()->getType() ==
+                     ExecutionNode::DISTRIBUTE);
       TRI_ASSERT(_remoteNode->hasDependency());
 
-      // Need to wire up the internal scatter and distribute consumer in between the last two nodes
-      // Note that we need to clean up this after we produced the snippets.
-      _globalScatter =
-          ExecutionNode::castTo<ScatterNode*>(_remoteNode->getFirstDependency());
+      // Need to wire up the internal scatter and distribute consumer in between
+      // the last two nodes Note that we need to clean up this after we produced
+      // the snippets.
+      _globalScatter = ExecutionNode::castTo<ScatterNode*>(
+          _remoteNode->getFirstDependency());
       // Let the globalScatter node distribute data by server
       _globalScatter->setScatterType(ScatterNode::ScatterType::SERVER);
 
@@ -380,15 +398,17 @@ void QuerySnippet::serializeIntoBuilder(
   }
 
   // The Key is required to build up the queryId mapping later
-  infoBuilder.add(VPackValue(
-      arangodb::basics::StringUtils::itoa(_idOfSinkRemoteNode.id()) + ":" + server));
+  infoBuilder.add(
+      VPackValue(arangodb::basics::StringUtils::itoa(_idOfSinkRemoteNode.id()) +
+                 ":" + server));
   if (!localExpansions.empty()) {  // one expansion
     // We have Expansions to permutate, guaranteed they have
     // all identical lengths.
     auto const& colToShardMap = localExpansions.begin()->second;
     // We will never add an empty map
     TRI_ASSERT(!colToShardMap.empty());
-    // For all collections within this map we will have the same amount of shards.
+    // For all collections within this map we will have the same amount of
+    // shards.
     size_t numberOfShardsToPermutate = colToShardMap.begin()->second.size();
     TRI_ASSERT(numberOfShardsToPermutate > 1);
 
@@ -402,8 +422,8 @@ void QuerySnippet::serializeIntoBuilder(
     TRI_ASSERT(plan == _sinkNode->plan());
     // Clone the sink node, we do not need dependencies (second bool)
     // And we do not need variables
-    auto* internalGather =
-        ExecutionNode::castTo<GatherNode*>(_sinkNode->clone(plan, false, false));
+    auto* internalGather = ExecutionNode::castTo<GatherNode*>(
+        _sinkNode->clone(plan, false, false));
     // Use the same elements for sorting
     internalGather->elements(_sinkNode->elements());
     // We need to modify the registerPlanning.
@@ -419,8 +439,8 @@ void QuerySnippet::serializeIntoBuilder(
     if (_remoteNode != nullptr) {  // RemoteBlock talking to coordinator snippet
       TRI_ASSERT(_globalScatter != nullptr);
       TRI_ASSERT(plan == _globalScatter->plan());
-      internalScatter =
-          ExecutionNode::castTo<ScatterNode*>(_globalScatter->clone(plan, false, false));
+      internalScatter = ExecutionNode::castTo<ScatterNode*>(
+          _globalScatter->clone(plan, false, false));
       internalScatter->clearClients();
 
       TRI_ASSERT(_remoteNode->getDependencies().size() == 0);
@@ -469,7 +489,8 @@ void QuerySnippet::serializeIntoBuilder(
 
       // hook distribute node into stream '0', since that does not happen below
       prototypeConsumer = createConsumerNode(plan, internalScatter, distIds[0]);
-      nodeAliases.try_emplace(prototypeConsumer->id(), ExecutionNodeId::InternalNode);
+      nodeAliases.try_emplace(prototypeConsumer->id(),
+                              ExecutionNodeId::InternalNode);
       // now wire up the temporary nodes
 
       TRI_ASSERT(_nodes.size() > 1);
@@ -500,8 +521,9 @@ void QuerySnippet::serializeIntoBuilder(
     // make sure we don't explode accessing distIds
     TRI_ASSERT(numberOfShardsToPermutate == distIds.size());
     for (size_t i = 1; i < numberOfShardsToPermutate; ++i) {
-      auto cloneWorker = CloneWorker(snippetRoot, internalGather, internalScatter,
-                                     localExpansions, i, distIds.at(i), nodeAliases);
+      auto cloneWorker =
+          CloneWorker(snippetRoot, internalGather, internalScatter,
+                      localExpansions, i, distIds.at(i), nodeAliases);
       // Warning, the walkerworker is abused.
       cloneWorker.process();
     }
@@ -566,7 +588,8 @@ auto QuerySnippet::prepareFirstBranch(
     if (exp.node->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
       // Special case, VIEWs can serve more than 1 shard per Node.
       // We need to inject them all at once.
-      auto* viewNode = ExecutionNode::castTo<iresearch::IResearchViewNode*>(exp.node);
+      auto* viewNode =
+          ExecutionNode::castTo<iresearch::IResearchViewNode*>(exp.node);
       auto& viewShardList = viewNode->shards();
       viewShardList.clear();
 
@@ -577,7 +600,8 @@ auto QuerySnippet::prepareFirstBranch(
           auto check = shardMapping.find(s);
           // If we find a shard here that is not in this mapping,
           // we have 1) a problem with locking before that should have thrown
-          // 2) a problem with shardMapping lookup that should have thrown before
+          // 2) a problem with shardMapping lookup that should have thrown
+          // before
           TRI_ASSERT(check != shardMapping.end());
           if (check->second == server) {
             viewShardList.emplace_back(s);
@@ -618,9 +642,11 @@ auto QuerySnippet::prepareFirstBranch(
         return std::any_of(shards.begin(), shards.end(),
                            [&shardMapping, &server](auto const& shard) {
                              auto mappedServerIt = shardMapping.find(shard);
-                             // If we find a shard here that is not in this mapping,
-                             // we have 1) a problem with locking before that should have thrown
-                             // 2) a problem with shardMapping lookup that should have thrown before
+                             // If we find a shard here that is not in this
+                             // mapping, we have 1) a problem with locking
+                             // before that should have thrown 2) a problem with
+                             // shardMapping lookup that should have thrown
+                             // before
                              TRI_ASSERT(mappedServerIt != shardMapping.end());
                              return mappedServerIt->second == server;
                            });
@@ -648,8 +674,9 @@ auto QuerySnippet::prepareFirstBranch(
           // SatelliteGraphs which are used that way, or SatelliteCollections
           // (in a OneShard case) because local graphs (on DB-Servers) only ever
           // occur in either OneShard, SatelliteGraphs or Disjoint SmartGraphs.
-          TRI_ASSERT(found->second == server || localGraphNode->isUsedAsSatellite() ||
-                     aqlCollection->isSatellite() || localGraphNode->isDisjoint());
+          TRI_ASSERT(
+              found->second == server || localGraphNode->isUsedAsSatellite() ||
+              aqlCollection->isSatellite() || localGraphNode->isDisjoint());
           // provide a correct translation from collection to shard
           // to be used in toVelocyPack methods of classes derived
           // from GraphNode
@@ -667,20 +694,21 @@ auto QuerySnippet::prepareFirstBranch(
           numShards++;
         }
         if (myExp.size() > 0) {
-          localGraphNode->addCollectionToShard(aqlCollection->name(), *myExp.begin());
+          localGraphNode->addCollectionToShard(aqlCollection->name(),
+                                               *myExp.begin());
           if (myExp.size() > 1) {
             myExpFinal.insert({aqlCollection->name(), std::move(myExp)});
           }
         } else {
           if (localGraphNode->isDisjoint()) {
-            // the target server does not have anything to do with the particular
-            // collection (e.g. because the collection's shards are all on other
-            // servers), but it may be asked for this collection, because vertex
-            // collections are registered _globally_ with the TraversalNode and
-            // not on a per-target server basis.
-            // so in order to serve later lookups for this collection, we insert
-            // an empty string into the collection->shard map.
-            // on lookup, we will react to this.
+            // the target server does not have anything to do with the
+            // particular collection (e.g. because the collection's shards are
+            // all on other servers), but it may be asked for this collection,
+            // because vertex collections are registered _globally_ with the
+            // TraversalNode and not on a per-target server basis. so in order
+            // to serve later lookups for this collection, we insert an empty
+            // string into the collection->shard map. on lookup, we will react
+            // to this.
             localGraphNode->addCollectionToShard(aqlCollection->name(), "");
           }
         }
@@ -691,7 +719,8 @@ auto QuerySnippet::prepareFirstBranch(
       if (localGraphNode->isDisjoint()) {
         if (!myExpFinal.empty()) {
           size_t numberOfShards = myExpFinal.begin()->second.size();
-          // We need one expansion for every non-satellite collection in the Graph
+          // We need one expansion for every non-satellite collection in the
+          // Graph
           size_t amountOfNonSatellites = 0;
           for (auto const& col : localGraphNode->collections()) {
             if (!col->isSatellite()) {
@@ -714,7 +743,8 @@ auto QuerySnippet::prepareFirstBranch(
       }
 
       if (localGraphNode->isEligibleAsSatelliteTraversal()) {
-        auto foundEnoughShards = numShards == localGraphNode->collections().size();
+        auto foundEnoughShards =
+            numShards == localGraphNode->collections().size();
         TRI_ASSERT(foundEnoughShards);
         if (!foundEnoughShards) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
@@ -741,7 +771,8 @@ auto QuerySnippet::prepareFirstBranch(
       // Only accessing nodes can end up here.
       TRI_ASSERT(modNode != nullptr);
       auto col = modNode->collection();
-      // Should be hit earlier, a modification node here is required to have a collection
+      // Should be hit earlier, a modification node here is required to have a
+      // collection
       TRI_ASSERT(col != nullptr);
       auto const& shards = shardLocking.shardsForSnippet(id(), col);
       for (auto const& s : shards) {
@@ -763,7 +794,8 @@ auto QuerySnippet::prepareFirstBranch(
       // Always use the list of nodes we maintain to hold the first
       // of all shards.
       // We later use a clone mechanism to inject other shards of permutation
-      auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(exp.node);
+      auto collectionAccessingNode =
+          dynamic_cast<CollectionAccessingNode*>(exp.node);
       TRI_ASSERT(collectionAccessingNode != nullptr);
       collectionAccessingNode->setUsedShard(*myExp.begin());
 
@@ -775,28 +807,33 @@ auto QuerySnippet::prepareFirstBranch(
           // Otherwise we get away with only using the main stream for
           // this server
           // NOTE: This might differ between servers.
-          // One server might require an expansion (many shards) while another does not (only one shard).
+          // One server might require an expansion (many shards) while another
+          // does not (only one shard).
           myExpFinal.insert({col->name(), std::move(myExp)});
         }
       }
     }
 
     if (exp.doExpand) {
-      auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(exp.node);
+      auto collectionAccessingNode =
+          dynamic_cast<CollectionAccessingNode*>(exp.node);
       TRI_ASSERT(collectionAccessingNode != nullptr);
       TRI_ASSERT(!collectionAccessingNode->isUsedAsSatellite());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       size_t numberOfShardsToPermutate = 0;
       // set the max loop index (note this will essentially be done only once)
-      // we can set first found map to overall size as they all must be the same (asserted above)
+      // we can set first found map to overall size as they all must be the same
+      // (asserted above)
       if (myExpFinal.size() > 0) {
         numberOfShardsToPermutate = myExpFinal.begin()->second.size();
       }
 
-      // All parts need to have exact same size, they need to be permutated pairwise!
+      // All parts need to have exact same size, they need to be permutated
+      // pairwise!
       for (auto const& myExp : myExpFinal) {
-        TRI_ASSERT(numberOfShardsToPermutate == 0 || myExp.second.size() == numberOfShardsToPermutate);
+        TRI_ASSERT(numberOfShardsToPermutate == 0 ||
+                   myExp.second.size() == numberOfShardsToPermutate);
       }
 #endif
 

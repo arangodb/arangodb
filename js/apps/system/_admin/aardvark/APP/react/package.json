@@ -6,6 +6,7 @@
     "@types/lodash": "^4.14.172",
     "ajv": "^8.6.2",
     "ajv-errors": "^3.0.0",
+    "ansi-html-community": "0.0.8",
     "arangojs": "^7.5.0",
     "axios": "^0.18.0",
     "backbone": "^1.3.3",
@@ -170,5 +171,8 @@
     "presets": [
       "react-app"
     ]
+  },
+  "resolutions": {
+    "ansi-html": "https://registry.yarnpkg.com/ansi-html-community/-/ansi-html-community-0.0.8.tgz#69fbc4d6ccbe383f9736934ae34c3f8290f1bf41"
   }
 }

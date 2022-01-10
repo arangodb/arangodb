@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -80,7 +80,8 @@ Variable const* Scope::getVariable(std::string_view name) const {
 
 /// @brief return a variable, allowing usage of special pseudo vars such
 /// as OLD and NEW
-Variable const* Scope::getVariable(std::string_view name, bool allowSpecial) const {
+Variable const* Scope::getVariable(std::string_view name,
+                                   bool allowSpecial) const {
   auto variable = getVariable(name);
 
   if (variable == nullptr && allowSpecial) {
@@ -183,7 +184,8 @@ Variable const* Scopes::getVariable(std::string_view name) const {
 }
 
 /// @brief return a variable by name - this respects the current scopes
-Variable const* Scopes::getVariable(std::string_view name, bool allowSpecial) const {
+Variable const* Scopes::getVariable(std::string_view name,
+                                    bool allowSpecial) const {
   TRI_ASSERT(!_activeScopes.empty());
 
   for (auto it = _activeScopes.rbegin(); it != _activeScopes.rend(); ++it) {
@@ -204,7 +206,8 @@ Variable const* Scopes::getCurrentVariable() const {
     // in order to pass it into a function that requires a null-terminated C
     // string, we need to create a temporary string
     std::string temp(Variable::NAME_CURRENT);
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, temp.c_str());
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
+                                  temp.c_str());
   }
   auto result = _currentVariables.back();
   TRI_ASSERT(result != nullptr);

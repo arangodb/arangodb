@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,9 +37,7 @@ Compactor::Compactor(Agent* agent)
       _waitInterval(1000000) {}
 
 /// Dtor shuts down thread
-Compactor::~Compactor() {
-  shutdown();
-}
+Compactor::~Compactor() { shutdown(); }
 
 // @brief Run
 void Compactor::run() {
@@ -82,7 +80,8 @@ void Compactor::wakeUp() {
 
 // @brief Begin shutdown
 void Compactor::beginShutdown() {
-  LOG_TOPIC("4bad9", DEBUG, Logger::AGENCY) << "Shutting down compactor personality";
+  LOG_TOPIC("4bad9", DEBUG, Logger::AGENCY)
+      << "Shutting down compactor personality";
 
   Thread::beginShutdown();
 

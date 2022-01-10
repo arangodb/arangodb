@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -74,10 +74,10 @@ class Inception : public Thread {
 
   Agent& _agent;                            //< @brief The agent
   arangodb::basics::ConditionVariable _cv;  //< @brief For proper shutdown
-  std::unordered_map<std::string, size_t> _acked;  //< @brief acknowledged config version
-  mutable arangodb::Mutex _vLock;                  //< @brieg Guard _acked
+  std::unordered_map<std::string, size_t>
+      _acked;                      //< @brief acknowledged config version
+  mutable arangodb::Mutex _vLock;  //< @brieg Guard _acked
 };
 
 }  // namespace consensus
 }  // namespace arangodb
-

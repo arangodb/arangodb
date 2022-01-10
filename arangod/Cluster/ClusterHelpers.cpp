@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,8 +50,8 @@ bool ClusterHelpers::compareServerLists(VPackSlice plan, VPackSlice current) {
 
 bool ClusterHelpers::compareServerLists(std::vector<std::string> planned,
                                         std::vector<std::string> current) {
-  bool equalLeader =
-      !planned.empty() && !current.empty() && planned.front() == current.front();
+  bool equalLeader = !planned.empty() && !current.empty() &&
+                     planned.front() == current.front();
   std::sort(planned.begin(), planned.end());
   std::sort(current.begin(), current.end());
   return equalLeader && current == planned;
@@ -60,7 +60,7 @@ bool ClusterHelpers::compareServerLists(std::vector<std::string> planned,
 bool ClusterHelpers::isCoordinatorName(ServerID const& serverId) {
   return serverId.compare(0, 5, "CRDN-", 5) == 0;
 }
-  
+
 bool ClusterHelpers::isDBServerName(ServerID const& serverId) {
   return serverId.compare(0, 5, "PRMR-", 5) == 0;
 }

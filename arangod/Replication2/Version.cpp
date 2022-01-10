@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -41,9 +42,10 @@ auto arangodb::replication::parseVersion(std::string_view version)
   } else if (version == "2") {
     return replication::Version::TWO;
   }
-  return ResultT<replication::Version>::error(TRI_ERROR_BAD_PARAMETER,
-                                              StringUtils::concatT(R"(Replication version must be "1" or "2", but is )",
-                                                                   version));
+  return ResultT<replication::Version>::error(
+      TRI_ERROR_BAD_PARAMETER,
+      StringUtils::concatT(R"(Replication version must be "1" or "2", but is )",
+                           version));
 }
 
 auto arangodb::replication::parseVersion(velocypack::Slice version)
@@ -51,13 +53,15 @@ auto arangodb::replication::parseVersion(velocypack::Slice version)
   if (version.isString()) {
     return parseVersion(version.stringView());
   } else {
-    return ResultT<replication::Version>::error(TRI_ERROR_BAD_PARAMETER,
-                                                StringUtils::concatT(R"(Replication version must be a string, but is )",
-                                                                     version.typeName()));
+    return ResultT<replication::Version>::error(
+        TRI_ERROR_BAD_PARAMETER,
+        StringUtils::concatT(R"(Replication version must be a string, but is )",
+                             version.typeName()));
   }
 }
 
-auto replication::versionToString(replication::Version version) -> std::string_view {
+auto replication::versionToString(replication::Version version)
+    -> std::string_view {
   switch (version) {
     case Version::ONE:
       return "1";
@@ -65,7 +69,8 @@ auto replication::versionToString(replication::Version version) -> std::string_v
       return "2";
   }
   abortOrThrow(TRI_ERROR_INTERNAL,
-               StringUtils::concatT("Unhandled replication version: ",
-                                    static_cast<std::underlying_type_t<Version>>(version)),
+               StringUtils::concatT(
+                   "Unhandled replication version: ",
+                   static_cast<std::underlying_type_t<Version>>(version)),
                ADB_HERE);
 }

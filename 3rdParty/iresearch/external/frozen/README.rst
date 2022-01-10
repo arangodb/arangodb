@@ -4,12 +4,16 @@ Frozen
 .. image:: https://travis-ci.org/serge-sans-paille/frozen.svg?branch=master
    :target: https://travis-ci.org/serge-sans-paille/frozen
 
-Header-only library that provides 0 cost initialization for immutable containers and various algorithms.
+Header-only library that provides 0 cost initialization for immutable containers, fixed-size containers, and various algorithms.
 
 Frozen provides:
 
 - immutable (a.k.a. frozen), ``constexpr``-compatible versions of ``std::set``,
   ``std::unordered_set``, ``std::map`` and ``std::unordered_map``.
+  
+- fixed-capacity, ``constinit``-compatible versions of ``std::map`` and 
+  ``std::unordered_map`` with immutable, compile-time selected keys mapped
+  to mutable values.
 
 - 0-cost initialization version of ``std::search`` for frozen needles using
   Boyer-Moore or Knuth-Morris-Pratt algorithms.
@@ -18,8 +22,9 @@ Frozen provides:
 The ``unordered_*`` containers are guaranteed *perfect* (a.k.a. no hash
 collision) and the extra storage is linear with respect to the number of keys.
 
-Once initialized, the containers cannot be updated, and in exchange, lookups
-are faster. And initialization is free when ``constexpr`` is used :-).
+Once initialized, the container keys cannot be updated, and in exchange, lookups
+are faster. And initialization is free when ``constexpr`` or ``constinit`` is 
+used :-).
 
 
 Installation
@@ -87,6 +92,26 @@ String support is built-in:
         {"31", 31},
     };
     constexpr auto val = olaf.at("19");
+
+The associative containers have different functionality with and without ``constexpr``. 
+With ``constexpr``, frozen maps have immutable keys and values. Without ``constexpr``, the 
+values can be updated in runtime (the keys, however, remain immutable):
+
+.. code:: C++
+
+
+    #include <frozen/unordered_map.h>
+    #include <frozen/string.h>
+
+    static constinit frozen::unordered_map<frozen::string, frozen::string, 2> voice = {
+        {"Anna", "???"},
+        {"Elsa", "???"}
+    };
+    
+    int main() {
+    	voice.at("Anna") = "Kristen";
+	voice.at("Elsa") = "Idina";
+    }
 
 You may also prefer a slightly more DRY initialization syntax:
 

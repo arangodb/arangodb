@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,31 +49,36 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-TimeZoneFeature::TimeZoneFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "TimeZone"), _binaryPath(server.getBinaryPath()) {
+TimeZoneFeature::TimeZoneFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature(server, "TimeZone"),
+      _binaryPath(server.getBinaryPath()) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
 TimeZoneFeature::~TimeZoneFeature() = default;
 
-void TimeZoneFeature::prepareTimeZoneData(std::string const& binaryPath,
-                                          std::string const& binaryExecutionPath,
-                                          std::string const& binaryName) {
-
+void TimeZoneFeature::prepareTimeZoneData(
+    std::string const& binaryPath, std::string const& binaryExecutionPath,
+    std::string const& binaryName) {
   std::string tz_path;
   if (!TRI_GETENV("TZ_DATA", tz_path)) {
     tz_path.clear();
-    std::string test_exe = FileUtils::buildFilename(binaryExecutionPath, "tzdata");
+    std::string test_exe =
+        FileUtils::buildFilename(binaryExecutionPath, "tzdata");
 
     if (FileUtils::isDirectory(test_exe)) {
       FileUtils::makePathAbsolute(test_exe);
       FileUtils::normalizePath(test_exe);
       tz_path = test_exe;
     } else {
-      std::string argv0 = FileUtils::buildFilename(binaryExecutionPath, binaryName);
-      std::string path = TRI_LocateInstallDirectory(argv0.c_str(), binaryPath.c_str());
-      path = FileUtils::buildFilename(path, ICU_DESTINATION_DIRECTORY, "tzdata");
+      std::string argv0 =
+          FileUtils::buildFilename(binaryExecutionPath, binaryName);
+      std::string path =
+          TRI_LocateInstallDirectory(argv0.c_str(), binaryPath.c_str());
+      path =
+          FileUtils::buildFilename(path, ICU_DESTINATION_DIRECTORY, "tzdata");
       FileUtils::makePathAbsolute(path);
       FileUtils::normalizePath(path);
       tz_path = path;
@@ -97,7 +102,8 @@ void TimeZoneFeature::prepare() {
   std::string binaryExecutionPath = context->getBinaryPath();
   std::string binaryName = context->binaryName();
 
-  TimeZoneFeature::prepareTimeZoneData(_binaryPath, binaryExecutionPath, binaryName);
+  TimeZoneFeature::prepareTimeZoneData(_binaryPath, binaryExecutionPath,
+                                       binaryName);
 }
 
 void TimeZoneFeature::start() {

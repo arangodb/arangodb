@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,16 +37,15 @@ struct AqlValue;
 /// Defined in AqlValue.cpp!
 namespace std {
 
-template <>
+template<>
 struct hash<arangodb::aql::AqlValue> {
   size_t operator()(arangodb::aql::AqlValue const& x) const noexcept;
 };
 
-template <>
+template<>
 struct equal_to<arangodb::aql::AqlValue> {
   bool operator()(arangodb::aql::AqlValue const& a,
                   arangodb::aql::AqlValue const& b) const noexcept;
 };
 
 }  // namespace std
-

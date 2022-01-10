@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -240,7 +240,7 @@ class SimpleHttpResult final {
   // flag which indicates whether or not the complete request has already be
   // sent (to the operating system):
   bool _haveSentRequestFully;
-  
+
   // request result type
   enum resultTypes _requestResultType;
 

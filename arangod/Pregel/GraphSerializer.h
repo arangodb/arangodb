@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,18 +35,20 @@
 namespace arangodb {
 namespace pregel {
 
-template <typename V>
+template<typename V>
 struct VertexSerializer {
   virtual ~VertexSerializer() = default;
 
-  virtual void serialize(VPackBuilder const& builder, V const* targetPtr) const = 0;
+  virtual void serialize(VPackBuilder const& builder,
+                         V const* targetPtr) const = 0;
 
   virtual bool deserialize(VPackSlice const& data, V* targetPtr) const = 0;
 };
 
-template <>
+template<>
 struct VertexSerializer<int64_t> {
-  virtual void serialize(VPackBuilder const& builder, int64_t const* targetPtr) const {
+  virtual void serialize(VPackBuilder const& builder,
+                         int64_t const* targetPtr) const {
     builder.add(VPackValue(*targetPtr));
   };
   virtual bool deserialize(VPackSlice const& data, int64_t* targetPtr) const {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,23 +35,24 @@ using namespace arangodb::aql;
 ScatterExecutorInfos::ScatterExecutorInfos(std::vector<std::string> clientIds)
     : ClientsExecutorInfos(std::move(clientIds)) {}
 
-
-ScatterExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
-                                                  ExecutionNode const* node,
-                                                  RegisterInfos const& registerInfos)
+ScatterExecutor::ClientBlockData::ClientBlockData(
+    ExecutionEngine& engine, ExecutionNode const* node,
+    RegisterInfos const& registerInfos)
     : _queue{}, _executor(nullptr), _executorHasMore{false} {
   // We only get shared ptrs to const data. so we need to copy here...
   IdExecutorInfos executorInfos(false, RegisterId(0), "", false);
   auto idExecutorRegisterInfos =
-    RegisterInfos{{},
-                  {},
-                  registerInfos.numberOfInputRegisters(),
-                  registerInfos.numberOfOutputRegisters(),
-                  registerInfos.registersToClear(),
-                  registerInfos.registersToKeep()};
-  // NOTE: Do never change this type! The execute logic below requires this and only this type.
+      RegisterInfos{{},
+                    {},
+                    registerInfos.numberOfInputRegisters(),
+                    registerInfos.numberOfOutputRegisters(),
+                    registerInfos.registersToClear(),
+                    registerInfos.registersToKeep()};
+  // NOTE: Do never change this type! The execute logic below requires this and
+  // only this type.
   _executor = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
-      &engine, node, std::move(idExecutorRegisterInfos), std::move(executorInfos));
+      &engine, node, std::move(idExecutorRegisterInfos),
+      std::move(executorInfos));
 }
 
 auto ScatterExecutor::ClientBlockData::clear() -> void {
@@ -82,7 +83,8 @@ auto ScatterExecutor::ClientBlockData::hasDataFor(AqlCall const& call) -> bool {
   return _executorHasMore || !_queue.empty();
 }
 
-auto ScatterExecutor::ClientBlockData::execute(AqlCallStack const& callStack, ExecutionState upstreamState)
+auto ScatterExecutor::ClientBlockData::execute(AqlCallStack const& callStack,
+                                               ExecutionState upstreamState)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   TRI_ASSERT(_executor != nullptr);
 
@@ -93,8 +95,8 @@ auto ScatterExecutor::ClientBlockData::execute(AqlCallStack const& callStack, Ex
     // this executor is used here.
     // Unfortunately i did not get a version compiled were i could only
     // forward declare the templates in header.
-    auto casted =
-        static_cast<ExecutionBlockImpl<IdExecutor<ConstFetcher>>*>(_executor.get());
+    auto casted = static_cast<ExecutionBlockImpl<IdExecutor<ConstFetcher>>*>(
+        _executor.get());
     TRI_ASSERT(casted != nullptr);
     auto& [block, skipResult] = _queue.front();
     casted->injectConstantBlock(std::move(block), std::move(skipResult));
@@ -123,17 +125,17 @@ auto ScatterExecutor::ClientBlockData::execute(AqlCallStack const& callStack, Ex
 
 ScatterExecutor::ScatterExecutor(Infos const&) {}
 
-auto ScatterExecutor::distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
-                                      std::unordered_map<std::string, ClientBlockData>& blockMap) const
-    -> void {
+auto ScatterExecutor::distributeBlock(
+    SharedAqlItemBlockPtr const& block, SkipResult skipped,
+    std::unordered_map<std::string, ClientBlockData>& blockMap) const -> void {
   // Scatter returns every block on every client as is.
   for (auto& [id, list] : blockMap) {
     list.addBlock(block, skipped);
   }
 }
 
-ExecutionBlockImpl<ScatterExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
-                                                        ScatterNode const* node,
-                                                        RegisterInfos registerInfos,
-                                                        ScatterExecutor::Infos&& executorInfos)
-    : BlocksWithClientsImpl(engine, node, std::move(registerInfos), std::move(executorInfos)) {}
+ExecutionBlockImpl<ScatterExecutor>::ExecutionBlockImpl(
+    ExecutionEngine* engine, ScatterNode const* node,
+    RegisterInfos registerInfos, ScatterExecutor::Infos&& executorInfos)
+    : BlocksWithClientsImpl(engine, node, std::move(registerInfos),
+                            std::move(executorInfos)) {}

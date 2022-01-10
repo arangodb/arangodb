@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,7 @@ namespace arangodb {
 namespace transaction {
 class Methods;
 }
-  
+
 class RestDocumentHandler : public RestVocbaseBaseHandler {
  public:
   RestDocumentHandler(application_features::ApplicationServer&, GeneralRequest*,
@@ -83,9 +83,8 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
 
   // removes a document
   RestStatus removeDocument();
-  
-private:
+
+ private:
   std::unique_ptr<transaction::Methods> _activeTrx;
 };
 }  // namespace arangodb
-

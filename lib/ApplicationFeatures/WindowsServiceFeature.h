@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,9 +37,11 @@ void WINAPI ServiceCtrl(DWORD dwCtrlCode);
 
 namespace arangodb {
 
-class WindowsServiceFeature final : public application_features::ApplicationFeature {
+class WindowsServiceFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit WindowsServiceFeature(application_features::ApplicationServer& server);
+  explicit WindowsServiceFeature(
+      application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -73,9 +75,9 @@ class WindowsServiceFeature final : public application_features::ApplicationFeat
  private:
   uint16_t _progress;
 
-  /// @brief flag that tells us whether we have been informed about the shutdown before
+  /// @brief flag that tells us whether we have been informed about the shutdown
+  /// before
   std::atomic<bool> _shutdownNoted;
 };
 
 }  // namespace arangodb
-

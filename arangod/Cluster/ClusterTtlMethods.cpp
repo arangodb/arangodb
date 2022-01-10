@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,7 +49,8 @@ using namespace arangodb::rest;
 namespace arangodb {
 
 /// @brief get TTL statistics from all DBservers and aggregate them
-Result getTtlStatisticsFromAllDBServers(ClusterFeature& feature, TtlStatistics& out) {
+Result getTtlStatisticsFromAllDBServers(ClusterFeature& feature,
+                                        TtlStatistics& out) {
   ClusterInfo& ci = feature.clusterInfo();
 
   std::vector<ServerID> DBservers = ci.getCurrentDBServers();
@@ -59,14 +60,14 @@ Result getTtlStatisticsFromAllDBServers(ClusterFeature& feature, TtlStatistics& 
   std::vector<Future<network::Response>> futures;
   futures.reserve(DBservers.size());
   for (std::string const& server : DBservers) {
-    futures.emplace_back(
-        network::sendRequestRetry(pool, "server:" + server, fuerte::RestVerb::Get,
-                                  url, VPackBufferUInt8()));
+    futures.emplace_back(network::sendRequestRetry(pool, "server:" + server,
+                                                   fuerte::RestVerb::Get, url,
+                                                   VPackBufferUInt8()));
   }
 
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
-    
+
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
     }
@@ -83,7 +84,8 @@ Result getTtlStatisticsFromAllDBServers(ClusterFeature& feature, TtlStatistics& 
 }
 
 /// @brief get TTL properties from all DBservers
-Result getTtlPropertiesFromAllDBServers(ClusterFeature& feature, VPackBuilder& out) {
+Result getTtlPropertiesFromAllDBServers(ClusterFeature& feature,
+                                        VPackBuilder& out) {
   ClusterInfo& ci = feature.clusterInfo();
 
   std::vector<ServerID> DBservers = ci.getCurrentDBServers();
@@ -93,14 +95,14 @@ Result getTtlPropertiesFromAllDBServers(ClusterFeature& feature, VPackBuilder& o
   std::vector<Future<network::Response>> futures;
   futures.reserve(DBservers.size());
   for (std::string const& server : DBservers) {
-    futures.emplace_back(
-        network::sendRequestRetry(pool, "server:" + server, fuerte::RestVerb::Get,
-                                  url, VPackBufferUInt8()));
+    futures.emplace_back(network::sendRequestRetry(pool, "server:" + server,
+                                                   fuerte::RestVerb::Get, url,
+                                                   VPackBufferUInt8()));
   }
 
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
-    
+
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
     }
@@ -119,7 +121,8 @@ Result getTtlPropertiesFromAllDBServers(ClusterFeature& feature, VPackBuilder& o
 
 /// @brief set TTL properties on all DBservers
 Result setTtlPropertiesOnAllDBServers(ClusterFeature& feature,
-                                      VPackSlice properties, VPackBuilder& out) {
+                                      VPackSlice properties,
+                                      VPackBuilder& out) {
   ClusterInfo& ci = feature.clusterInfo();
 
   std::vector<ServerID> DBservers = ci.getCurrentDBServers();
@@ -132,14 +135,13 @@ Result setTtlPropertiesOnAllDBServers(ClusterFeature& feature,
   VPackBufferUInt8 buffer;
   buffer.append(properties.begin(), properties.byteSize());
   for (std::string const& server : DBservers) {
-    futures.emplace_back(network::sendRequestRetry(pool, "server:" + server,
-                                                   fuerte::RestVerb::Put, url,
-                                                   buffer));
+    futures.emplace_back(network::sendRequestRetry(
+        pool, "server:" + server, fuerte::RestVerb::Put, url, buffer));
   }
 
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
-    
+
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
     }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,45 +49,49 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
 
   std::string const& forceOneShardAttributeValue =
       _query.queryOptions().forceOneShardAttributeValue;
-  bool useRestrictedShard = pushToSingleServer && !forceOneShardAttributeValue.empty();
+  bool useRestrictedShard =
+      pushToSingleServer && !forceOneShardAttributeValue.empty();
 
-  auto addRestrictedShard = [&](aql::Collection const* col,
-                                std::unordered_set<std::string>& restrictedShards) {
-    TRI_ASSERT(!forceOneShardAttributeValue.empty());
-    TRI_ASSERT(useRestrictedShard);
-    std::string shardId;
-    auto errorCode = TRI_ERROR_NO_ERROR;
-    if (col->isDisjoint()) {
-      // if disjoint smart edge collection, we must insert an
-      // artifical key with two colons, to pretend it is a real
-      // smart graph key
-      errorCode = col->getCollection()->getResponsibleShard(
-          forceOneShardAttributeValue + ":test:" + forceOneShardAttributeValue, shardId);
-    } else {
-      auto const& shardKeys = col->getCollection().get()->shardKeys();
-      TRI_ASSERT(!shardKeys.empty());
-      auto const& shardKey = shardKeys.at(0);
-      if (shardKey == "_key:") {
-        errorCode =
-            col->getCollection()->getResponsibleShard(forceOneShardAttributeValue + ":test", shardId);
-      } else if (shardKey == ":_key") {
-        errorCode =
-            col->getCollection()->getResponsibleShard("test:" + forceOneShardAttributeValue, shardId);
-      } else {
-        VPackBuilder builder;
-        {
-          VPackObjectBuilder guard(&builder);
-          builder.add(shardKey, VPackValue(forceOneShardAttributeValue));
+  auto addRestrictedShard =
+      [&](aql::Collection const* col,
+          std::unordered_set<std::string>& restrictedShards) {
+        TRI_ASSERT(!forceOneShardAttributeValue.empty());
+        TRI_ASSERT(useRestrictedShard);
+        std::string shardId;
+        auto errorCode = TRI_ERROR_NO_ERROR;
+        if (col->isDisjoint()) {
+          // if disjoint smart edge collection, we must insert an
+          // artifical key with two colons, to pretend it is a real
+          // smart graph key
+          errorCode = col->getCollection()->getResponsibleShard(
+              forceOneShardAttributeValue +
+                  ":test:" + forceOneShardAttributeValue,
+              shardId);
+        } else {
+          auto const& shardKeys = col->getCollection().get()->shardKeys();
+          TRI_ASSERT(!shardKeys.empty());
+          auto const& shardKey = shardKeys.at(0);
+          if (shardKey == "_key:") {
+            errorCode = col->getCollection()->getResponsibleShard(
+                forceOneShardAttributeValue + ":test", shardId);
+          } else if (shardKey == ":_key") {
+            errorCode = col->getCollection()->getResponsibleShard(
+                "test:" + forceOneShardAttributeValue, shardId);
+          } else {
+            VPackBuilder builder;
+            {
+              VPackObjectBuilder guard(&builder);
+              builder.add(shardKey, VPackValue(forceOneShardAttributeValue));
+            }
+            errorCode = col->getCollection()->getResponsibleShard(
+                builder.slice(), false, shardId);
+          }
         }
-        errorCode =
-            col->getCollection()->getResponsibleShard(builder.slice(), false, shardId);
-      }
-    }
-    if (errorCode != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(errorCode);
-    }
-    restrictedShards.emplace(std::move(shardId));
-  };
+        if (errorCode != TRI_ERROR_NO_ERROR) {
+          THROW_ARANGO_EXCEPTION(errorCode);
+        }
+        restrictedShards.emplace(std::move(shardId));
+      };
 
   // If we have ever accessed the server lists,
   // we cannot insert Nodes anymore.
@@ -109,7 +113,8 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
       auto const graphIsUsedAsSatellite = graphNode->isUsedAsSatellite();
       auto const isUsedAsSatellite = [&](auto const& col) {
         return graphIsUsedAsSatellite ||
-               (col->isSatellite() && (pushToSingleServer || graphNode->isSmart()));
+               (col->isSatellite() &&
+                (pushToSingleServer || graphNode->isSmart()));
       };
       // Add all Edge Collections to the Transactions, Traversals do never write
       for (auto const& col : graphNode->edgeColls()) {
@@ -136,7 +141,8 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
     }
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::INDEX: {
-      auto const* colNode = dynamic_cast<CollectionAccessingNode const*>(baseNode);
+      auto const* colNode =
+          dynamic_cast<CollectionAccessingNode const*>(baseNode);
       if (colNode == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_INTERNAL,
@@ -155,7 +161,8 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
       break;
     }
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
-      auto viewNode = ExecutionNode::castTo<iresearch::IResearchViewNode const*>(baseNode);
+      auto viewNode =
+          ExecutionNode::castTo<iresearch::IResearchViewNode const*>(baseNode);
       if (viewNode == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unable to cast node to ViewNode");
@@ -165,7 +172,8 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
         if (useRestrictedShard) {
           addRestrictedShard(&col, restrictedShards);
         }
-        updateLocking(&col, AccessMode::Type::READ, snippetId, restrictedShards, false);
+        updateLocking(&col, AccessMode::Type::READ, snippetId, restrictedShards,
+                      false);
       }
 
       break;
@@ -175,7 +183,8 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
     case ExecutionNode::REMOVE:
     case ExecutionNode::REPLACE:
     case ExecutionNode::UPSERT: {
-      auto const* modNode = ExecutionNode::castTo<ModificationNode const*>(baseNode);
+      auto const* modNode =
+          ExecutionNode::castTo<ModificationNode const*>(baseNode);
       if (modNode == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_INTERNAL, "unable to cast node to ModificationNode");
@@ -191,8 +200,9 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
       // Not supported yet
       TRI_ASSERT(!modNode->isUsedAsSatellite());
       updateLocking(col,
-                    modNode->getOptions().exclusive ? AccessMode::Type::EXCLUSIVE
-                                                    : AccessMode::Type::WRITE,
+                    modNode->getOptions().exclusive
+                        ? AccessMode::Type::EXCLUSIVE
+                        : AccessMode::Type::WRITE,
                     snippetId, restrictedShards, modNode->isUsedAsSatellite());
       break;
     }
@@ -202,10 +212,10 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
   }
 }
 
-void ShardLocking::updateLocking(Collection const* col,
-                                 AccessMode::Type const& accessType, size_t snippetId,
-                                 std::unordered_set<std::string> const& restrictedShards,
-                                 bool usedAsSatellite) {
+void ShardLocking::updateLocking(
+    Collection const* col, AccessMode::Type const& accessType, size_t snippetId,
+    std::unordered_set<std::string> const& restrictedShards,
+    bool usedAsSatellite) {
   auto& info = _collectionLocking[col];
   // We need to upgrade the lock
   info.lockType = (std::max)(info.lockType, accessType);
@@ -245,7 +255,8 @@ void ShardLocking::updateLocking(Collection const* col,
     bool& isRestricted = snip.isRestricted;
     std::unordered_set<ShardID>& shards = snip.restrictedShards;
     if (isRestricted) {
-      // We are already restricted, only possible if the restriction is identical
+      // We are already restricted, only possible if the restriction is
+      // identical
       TRI_ASSERT(shards == restrictedShards);
       if (shards != restrictedShards) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -294,8 +305,10 @@ std::vector<ServerID> ShardLocking::getRelevantServers() {
         auto server = shardMapping.find(sid);
         if (server != shardMapping.end()) {
           // We will create all maps as empty default constructions on the way
-          _serverToCollectionToShard[server->second][lockInfo.first].emplace(sid);
-          _serverToLockTypeToShard[server->second][lockInfo.second.lockType].emplace(sid);
+          _serverToCollectionToShard[server->second][lockInfo.first].emplace(
+              sid);
+          _serverToLockTypeToShard[server->second][lockInfo.second.lockType]
+              .emplace(sid);
         }
       }
     }
@@ -313,16 +326,17 @@ std::vector<ServerID> ShardLocking::getRelevantServers() {
     }
   }
   std::vector<ServerID> result;
-  std::transform(_serverToCollectionToShard.begin(), _serverToCollectionToShard.end(),
-                 std::back_inserter(result), [](auto const& item) {
+  std::transform(_serverToCollectionToShard.begin(),
+                 _serverToCollectionToShard.end(), std::back_inserter(result),
+                 [](auto const& item) {
                    TRI_ASSERT(!item.first.empty());
                    return item.first;
                  });
   return result;
 }
 
-void ShardLocking::serializeIntoBuilder(ServerID const& server,
-                                        arangodb::velocypack::Builder& builder) const {
+void ShardLocking::serializeIntoBuilder(
+    ServerID const& server, arangodb::velocypack::Builder& builder) const {
   // We NEED to have some lock infomration for every server, wo do not allow
   // servers that are basically not responsible for data here.
   auto lockInfo = _serverToLockTypeToShard.find(server);
@@ -386,8 +400,8 @@ std::unordered_map<ShardID, ServerID> const& ShardLocking::getShardMapping() {
   return _shardMapping;
 }
 
-std::unordered_set<ShardID> const& ShardLocking::shardsForSnippet(QuerySnippet::Id snippetId,
-                                                                  Collection const* col) {
+std::unordered_set<ShardID> const& ShardLocking::shardsForSnippet(
+    QuerySnippet::Id snippetId, Collection const* col) {
   auto const& lockInfo = _collectionLocking.find(col);
 
   TRI_ASSERT(lockInfo != _collectionLocking.end());

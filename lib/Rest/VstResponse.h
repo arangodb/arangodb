@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,25 +29,24 @@
 namespace arangodb {
 
 class VstResponse : public GeneralResponse {
-
  public:
   VstResponse(ResponseCode code, uint64_t mid);
 
- bool isResponseEmpty() const override {
-    return _payload.empty();
- }
+  bool isResponseEmpty() const override { return _payload.empty(); }
 
   virtual arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;
   };
 
   void reset(ResponseCode code) override final;
-  void addPayload(velocypack::Slice slice, arangodb::velocypack::Options const* = nullptr,
+  void addPayload(velocypack::Slice slice,
+                  arangodb::velocypack::Options const* = nullptr,
                   bool resolveExternals = true) override;
-  void addPayload(velocypack::Buffer<uint8_t>&&, arangodb::velocypack::Options const* = nullptr,
+  void addPayload(velocypack::Buffer<uint8_t>&&,
+                  arangodb::velocypack::Options const* = nullptr,
                   bool resolveExternals = true) override;
   void addRawPayload(std::string_view payload) override;
- 
+
   velocypack::Buffer<uint8_t>& payload() { return _payload; }
 
   bool isCompressionAllowed() override { return false; }
@@ -55,9 +54,8 @@ class VstResponse : public GeneralResponse {
 
   /// write VST response message header
   void writeMessageHeader(velocypack::Buffer<uint8_t>&) const;
-  
+
  private:
-  velocypack::Buffer<uint8_t> _payload; /// actual payload
+  velocypack::Buffer<uint8_t> _payload;  /// actual payload
 };
 }  // namespace arangodb
-

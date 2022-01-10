@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,7 +43,8 @@ inline static std::chrono::system_clock::duration secs_since_epoch() {
   return std::chrono::system_clock::now().time_since_epoch();
 }
 
-ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription const& desc)
+ActionBase::ActionBase(MaintenanceFeature& feature,
+                       ActionDescription const& desc)
     : _feature(feature),
       _description(desc),
       _state(READY),
@@ -102,7 +103,8 @@ bool ActionBase::fastTrack() const {
 /// @brief execution finished successfully or failed ... and race timer expired
 bool ActionBase::done() const {
   return (COMPLETE == _state || FAILED == _state) &&
-         _actionDone.load() + std::chrono::seconds(_feature.getSecondsActionsBlock()) <=
+         _actionDone.load() +
+                 std::chrono::seconds(_feature.getSecondsActionsBlock()) <=
              secs_since_epoch();
 
 }  // ActionBase::done
@@ -118,7 +120,8 @@ VPackSlice const ActionBase::properties() const {
 
 /// @brief Initiate a new action that will start immediately, pausing this
 /// action
-void ActionBase::createPreAction(std::shared_ptr<ActionDescription> const& description) {
+void ActionBase::createPreAction(
+    std::shared_ptr<ActionDescription> const& description) {
   _preAction = description;
   std::shared_ptr<Action> new_action = _feature.preAction(description);
 
@@ -134,12 +137,14 @@ void ActionBase::createPreAction(std::shared_ptr<ActionDescription> const& descr
 
 /// @brief Retrieve pointer to action that should run before this one
 std::shared_ptr<Action> ActionBase::getPreAction() {
-  return (_preAction != nullptr) ? _feature.findFirstNotDoneAction(_preAction) : nullptr;
+  return (_preAction != nullptr) ? _feature.findFirstNotDoneAction(_preAction)
+                                 : nullptr;
 }
 
 /// @brief Retrieve pointer to action that should run after this one
 std::shared_ptr<Action> ActionBase::getPostAction() {
-  return (_postAction != nullptr) ? _feature.findFirstNotDoneAction(_postAction) : nullptr;
+  return (_postAction != nullptr) ? _feature.findFirstNotDoneAction(_postAction)
+                                  : nullptr;
 }
 
 // FIXMEMAINTENANCE: Code path could corrupt registry object because
@@ -147,13 +152,15 @@ std::shared_ptr<Action> ActionBase::getPostAction() {
 
 /// @brief Create a new action that will start after this action successfully
 /// completes
-void ActionBase::createPostAction(std::shared_ptr<ActionDescription> const& description) {
+void ActionBase::createPostAction(
+    std::shared_ptr<ActionDescription> const& description) {
   // postAction() sets up what we need
   _postAction = description;
   if (_postAction) {
     _feature.postAction(description);
   } else {
-    result(TRI_ERROR_BAD_PARAMETER, "postAction rejected parameters for _postAction.");
+    result(TRI_ERROR_BAD_PARAMETER,
+           "postAction rejected parameters for _postAction.");
   }
 }  // ActionBase::createPostAction
 
@@ -174,18 +181,21 @@ void ActionBase::endStats() {
 
 }  // ActionBase::endStats
 
-ShardDefinition::ShardDefinition(std::string const& database, std::string const& shard)
+ShardDefinition::ShardDefinition(std::string const& database,
+                                 std::string const& shard)
     : _database(database), _shard(shard) {
   TRI_ASSERT(!database.empty());
   TRI_ASSERT(!shard.empty());
 }
 
-Result arangodb::actionError(ErrorCode errorCode, std::string const& errorMessage) {
+Result arangodb::actionError(ErrorCode errorCode,
+                             std::string const& errorMessage) {
   LOG_TOPIC("c889d", ERR, Logger::MAINTENANCE) << errorMessage;
   return Result(errorCode, errorMessage);
 }
 
-Result arangodb::actionWarn(ErrorCode errorCode, std::string const& errorMessage) {
+Result arangodb::actionWarn(ErrorCode errorCode,
+                            std::string const& errorMessage) {
   LOG_TOPIC("abe54", WARN, Logger::MAINTENANCE) << errorMessage;
   return Result(errorCode, errorMessage);
 }
@@ -197,18 +207,26 @@ void ActionBase::toVelocyPack(VPackBuilder& builder) const {
   builder.add("state", VPackValue(_state));
   builder.add("progress", VPackValue(_progress));
 
-  builder.add("created", VPackValue(timepointToString(
-                             std::chrono::duration_cast<std::chrono::system_clock::duration>(
-                                 _actionCreated.load()))));
-  builder.add("started", VPackValue(timepointToString(
-                             std::chrono::duration_cast<std::chrono::system_clock::duration>(
-                                 _actionStarted.load()))));
-  builder.add("lastStat", VPackValue(timepointToString(
-                              std::chrono::duration_cast<std::chrono::system_clock::duration>(
-                                  _actionLastStat.load()))));
-  builder.add("done", VPackValue(timepointToString(
-                          std::chrono::duration_cast<std::chrono::system_clock::duration>(
-                              _actionDone.load()))));
+  builder.add(
+      "created",
+      VPackValue(timepointToString(
+          std::chrono::duration_cast<std::chrono::system_clock::duration>(
+              _actionCreated.load()))));
+  builder.add(
+      "started",
+      VPackValue(timepointToString(
+          std::chrono::duration_cast<std::chrono::system_clock::duration>(
+              _actionStarted.load()))));
+  builder.add(
+      "lastStat",
+      VPackValue(timepointToString(
+          std::chrono::duration_cast<std::chrono::system_clock::duration>(
+              _actionLastStat.load()))));
+  builder.add(
+      "done",
+      VPackValue(timepointToString(
+          std::chrono::duration_cast<std::chrono::system_clock::duration>(
+              _actionDone.load()))));
   {
     std::lock_guard<std::mutex> lock(resLock);
     builder.add("result", VPackValue(_result.errorNumber()));
@@ -232,7 +250,8 @@ ActionState ActionBase::getState() const { return _state; }
 void ActionBase::setState(ActionState state) {
   // We want to make sure that we get another maintenance run
   // when we shift from any state to complete or failed
-  if ((COMPLETE == state || FAILED == state) && _state != state && _description.has(DATABASE)) {
+  if ((COMPLETE == state || FAILED == state) && _state != state &&
+      _description.has(DATABASE)) {
     _feature.addDirty(_description.get(DATABASE));
     TRI_ASSERT(!_description.get(DATABASE).empty());
   }

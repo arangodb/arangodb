@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -66,10 +66,10 @@ int compareIndexedValues(arangodb::velocypack::Slice const& lhs,
   } while (true);
 }
 
-} // namespace
+}  // namespace
 
-int RocksDBVPackComparator::compareIndexValues(rocksdb::Slice const& lhs,
-                                               rocksdb::Slice const& rhs) const {
+int RocksDBVPackComparator::compareIndexValues(
+    rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const {
   constexpr size_t objectIDLength = RocksDBKey::objectIdSize();
 
   int r = memcmp(lhs.data(), rhs.data(), objectIDLength);
@@ -77,9 +77,10 @@ int RocksDBVPackComparator::compareIndexValues(rocksdb::Slice const& lhs,
   if (r != 0) {
     // different object ID
     return r;
-  } 
+  }
 
-  if (ADB_UNLIKELY(lhs.size() == objectIDLength || rhs.size() == objectIDLength)) {
+  if (ADB_UNLIKELY(lhs.size() == objectIDLength ||
+                   rhs.size() == objectIDLength)) {
     if (lhs.size() == rhs.size()) {
       return 0;
     }
@@ -89,8 +90,10 @@ int RocksDBVPackComparator::compareIndexValues(rocksdb::Slice const& lhs,
   TRI_ASSERT(lhs.size() > sizeof(uint64_t));
   TRI_ASSERT(rhs.size() > sizeof(uint64_t));
 
-  VPackSlice const lSlice = VPackSlice(reinterpret_cast<uint8_t const*>(lhs.data()) + sizeof(uint64_t));
-  VPackSlice const rSlice = VPackSlice(reinterpret_cast<uint8_t const*>(rhs.data()) + sizeof(uint64_t));
+  VPackSlice const lSlice = VPackSlice(
+      reinterpret_cast<uint8_t const*>(lhs.data()) + sizeof(uint64_t));
+  VPackSlice const rSlice = VPackSlice(
+      reinterpret_cast<uint8_t const*>(rhs.data()) + sizeof(uint64_t));
 
   r = ::compareIndexedValues(lSlice, rSlice);
 

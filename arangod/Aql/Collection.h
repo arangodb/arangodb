@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,7 +53,8 @@ struct Collection {
   Collection(Collection const&) = delete;
   Collection& operator=(Collection const&) = delete;
 
-  Collection(std::string const&, TRI_vocbase_t*, AccessMode::Type accessType, Hint hint);
+  Collection(std::string const&, TRI_vocbase_t*, AccessMode::Type accessType,
+             Hint hint);
 
   TRI_vocbase_t* vocbase() const;
 
@@ -94,7 +95,8 @@ struct Collection {
   std::shared_ptr<std::vector<std::string>> shardIds() const;
 
   /// @brief returns the filtered list of shard ids of a collection
-  std::shared_ptr<std::vector<std::string>> shardIds(std::unordered_set<std::string> const& includedShards) const;
+  std::shared_ptr<std::vector<std::string>> shardIds(
+      std::unordered_set<std::string> const& includedShards) const;
 
   /// @brief returns the shard keys of a collection
   /// if "normalize" is true, then the shard keys for a smart vertex collection
@@ -126,7 +128,7 @@ struct Collection {
     TRI_ASSERT(_shardToServerMapping.find(sid) == _shardToServerMapping.end());
     _shardToServerMapping.try_emplace(sid, server);
   }
-  
+
   /// @brief lookup the server responsible for the given shard.
   ServerID const& getServerForShard(ShardID const& sid) const {
     auto const& it = _shardToServerMapping.find(sid);
@@ -137,30 +139,32 @@ struct Collection {
 
   /// @brief get the index by it's identifier. Will either throw or
   ///        return a valid index. nullptr is impossible.
-  std::shared_ptr<arangodb::Index> indexByIdentifier(std::string const& idxId) const;
-  
+  std::shared_ptr<arangodb::Index> indexByIdentifier(
+      std::string const& idxId) const;
+
   std::vector<std::shared_ptr<arangodb::Index>> indexes() const;
-  
-  /// @brief use the already set collection 
-  /// Whenever getCollection() is called, _collection must be a non-nullptr or an 
-  /// assertion will be triggered. In non-maintainer mode an exception will be thrown.
-  /// that means getCollection() must not be called on non-existing collections or
-  /// views
+
+  /// @brief use the already set collection
+  /// Whenever getCollection() is called, _collection must be a non-nullptr or
+  /// an assertion will be triggered. In non-maintainer mode an exception will
+  /// be thrown. that means getCollection() must not be called on non-existing
+  /// collections or views
   std::shared_ptr<arangodb::LogicalCollection> getCollection() const;
 
   /// @brief whether or not we have a collection object underneath (true for
   /// existing collections, false for non-existing collections and for views).
   bool hasCollectionObject() const noexcept;
-  
+
  private:
   /// @brief throw if the underlying collection has not been set
   void checkCollection() const;
 
  private:
   // _collection will only be populated here in the constructor, and not later.
-  // note that it will only be populated for "real" collections and shards though. 
-  // aql::Collection objects can also be created for views and for non-existing 
-  // collections. In these cases it is not possible to populate _collection, at all.
+  // note that it will only be populated for "real" collections and shards
+  // though. aql::Collection objects can also be created for views and for
+  // non-existing collections. In these cases it is not possible to populate
+  // _collection, at all.
   std::shared_ptr<arangodb::LogicalCollection> _collection;
 
   TRI_vocbase_t* _vocbase;
@@ -182,4 +186,3 @@ struct Collection {
 };
 }  // namespace aql
 }  // namespace arangodb
-
