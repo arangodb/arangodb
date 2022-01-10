@@ -708,10 +708,12 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_EQ(
         typeid(prepared.get()),
         typeid(irs::all().prepare(*reader).get()));  // should be same type
-    auto column = segment.column_reader("name");
+    auto column = segment.column("name");
     ASSERT_TRUE(column);
-    auto columnValues = column->values();
-    ASSERT_TRUE(columnValues);
+    auto columnValues = column->iterator(false);
+    ASSERT_NE(nullptr, columnValues);
+    auto* value = irs::get<irs::payload>(*columnValues);
+    ASSERT_NE(nullptr, value);
     auto docs = prepared->execute(segment, irs::order::prepared::unordered(),
                                   &queryCtx);
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
@@ -720,12 +722,11 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_EQ(arangodb::velocypack::ArrayIterator(testDataRoot).size(),
               cost->estimate());
 
-    irs::bytes_ref value;
     for (auto doc : arangodb::velocypack::ArrayIterator(testDataRoot)) {
       EXPECT_TRUE(docs->next());
-      EXPECT_TRUE(columnValues(docs->value(), value));
+      EXPECT_EQ(docs->value(), columnValues->seek(docs->value()));
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
-                  irs::to_string<irs::string_ref>(value.c_str()));
+                  irs::to_string<irs::string_ref>(value->value.c_str()));
     }
     EXPECT_FALSE(docs->next());
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
@@ -803,10 +804,12 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_EQ(
         typeid(prepared.get()),
         typeid(irs::all().prepare(*reader).get()));  // should be same type
-    auto column = segment.column_reader("name");
+    auto column = segment.column("name");
     ASSERT_TRUE(column);
-    auto columnValues = column->values();
-    ASSERT_TRUE(columnValues);
+    auto columnValues = column->iterator(false);
+    ASSERT_NE(nullptr, columnValues);
+    auto* value = irs::get<irs::payload>(*columnValues);
+    ASSERT_NE(nullptr, value);
     auto docs = prepared->execute(segment, irs::order::prepared::unordered(),
                                   &queryCtx);
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
@@ -815,12 +818,11 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_EQ(arangodb::velocypack::ArrayIterator(testDataRoot).size(),
               cost->estimate());
 
-    irs::bytes_ref value;
     for (auto doc : arangodb::velocypack::ArrayIterator(testDataRoot)) {
       EXPECT_TRUE(docs->next());
-      EXPECT_TRUE(columnValues(docs->value(), value));
+      EXPECT_EQ(docs->value(), columnValues->seek(docs->value()));
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
-                  irs::to_string<irs::string_ref>(value.c_str()));
+                  irs::to_string<irs::string_ref>(value->value.c_str()));
     }
     EXPECT_FALSE(docs->next());
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
@@ -895,10 +897,12 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto prepared = filter.prepare(*reader, irs::order::prepared::unordered(),
                                    &queryCtx);      // invalid context provided
     EXPECT_EQ(irs::no_boost(), prepared->boost());  // no boost set
-    auto column = segment.column_reader("name");
+    auto column = segment.column("name");
     ASSERT_TRUE(column);
-    auto columnValues = column->values();
-    ASSERT_TRUE(columnValues);
+    auto columnValues = column->iterator(false);
+    ASSERT_NE(nullptr, columnValues);
+    auto* value = irs::get<irs::payload>(*columnValues);
+    ASSERT_NE(nullptr, value);
     execCtx.ctx = &ctx;  // fix context
     auto docs = prepared->execute(segment, irs::order::prepared::unordered(),
                                   &queryCtx);
@@ -908,12 +912,11 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_EQ(arangodb::velocypack::ArrayIterator(testDataRoot).size(),
               cost->estimate());
 
-    irs::bytes_ref value;
     for (auto doc : arangodb::velocypack::ArrayIterator(testDataRoot)) {
       EXPECT_TRUE(docs->next());
-      EXPECT_TRUE(columnValues(docs->value(), value));
+      EXPECT_EQ(docs->value(), columnValues->seek(docs->value()));
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
-                  irs::to_string<irs::string_ref>(value.c_str()));
+                  irs::to_string<irs::string_ref>(value->value.c_str()));
     }
     EXPECT_FALSE(docs->next());
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
@@ -1135,10 +1138,12 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     auto prepared =
         filter.prepare(*reader, irs::order::prepared::unordered(), &queryCtx);
-    auto column = segment.column_reader("name");
+    auto column = segment.column("name");
     ASSERT_TRUE(column);
-    auto columnValues = column->values();
-    ASSERT_TRUE(columnValues);
+    auto columnValues = column->iterator(false);
+    ASSERT_NE(nullptr, columnValues);
+    auto* value = irs::get<irs::payload>(*columnValues);
+    ASSERT_NE(nullptr, value);
     auto docs = prepared->execute(segment, irs::order::prepared::unordered(),
                                   &queryCtx);
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
@@ -1154,15 +1159,14 @@ TEST_F(IResearchExpressionFilterTest, test) {
       ctx.vars.emplace("c", value);
     }
 
-    irs::bytes_ref keyValue;
     auto it = arangodb::velocypack::ArrayIterator(testDataRoot);
     for (size_t i = 0; i < it.size() / 2; ++i) {
       ASSERT_TRUE(it.valid());
       auto doc = *it;
       EXPECT_TRUE(docs->next());
-      EXPECT_TRUE(columnValues(docs->value(), keyValue));
+      EXPECT_EQ(docs->value(), columnValues->seek(docs->value()));
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
-                  irs::to_string<irs::string_ref>(keyValue.c_str()));
+                  irs::to_string<irs::string_ref>(value->value.c_str()));
       it.next();
     }
 
@@ -1282,10 +1286,12 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto prepared = filter.prepare(*reader, preparedOrder, &queryCtx);
     EXPECT_EQ(1.5f, prepared->boost());
 
-    auto column = segment.column_reader("name");
+    auto column = segment.column("name");
     ASSERT_TRUE(column);
-    auto columnValues = column->values();
-    ASSERT_TRUE(columnValues);
+    auto columnValues = column->iterator(false);
+    ASSERT_NE(nullptr, columnValues);
+    auto* value = irs::get<irs::payload>(*columnValues);
+    ASSERT_NE(nullptr, value);
     auto docs = prepared->execute(segment, preparedOrder, &queryCtx);
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* score = irs::get<irs::score>(*docs);
@@ -1304,16 +1310,15 @@ TEST_F(IResearchExpressionFilterTest, test) {
       ctx.vars.emplace("c", value);
     }
 
-    irs::bytes_ref keyValue;
     auto it = arangodb::velocypack::ArrayIterator(testDataRoot);
     for (size_t i = 0; i < it.size() / 2; ++i) {
       ASSERT_TRUE(it.valid());
       auto doc = *it;
       EXPECT_TRUE(docs->next());
       [[maybe_unused]] auto* scoreValue = score->evaluate();
-      EXPECT_TRUE(columnValues(docs->value(), keyValue));
+      EXPECT_EQ(docs->value(), columnValues->seek(docs->value()));
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
-                  irs::to_string<irs::string_ref>(keyValue.c_str()));
+                  irs::to_string<irs::string_ref>(value->value.c_str()));
       it.next();
     }
 
@@ -1401,10 +1406,12 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     auto prepared =
         filter.prepare(*reader, irs::order::prepared::unordered(), &queryCtx);
-    auto column = segment.column_reader("name");
+    auto column = segment.column("name");
     ASSERT_TRUE(column);
-    auto columnValues = column->values();
-    ASSERT_TRUE(columnValues);
+    auto columnValues = column->iterator(false);
+    ASSERT_NE(nullptr, columnValues);
+    auto* value = irs::get<irs::payload>(*columnValues);
+    ASSERT_NE(nullptr, value);
     auto docs = prepared->execute(segment, irs::order::prepared::unordered(),
                                   &queryCtx);
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
@@ -1425,7 +1432,6 @@ TEST_F(IResearchExpressionFilterTest, test) {
     }
 
     auto it = arangodb::velocypack::ArrayIterator(testDataRoot);
-    irs::bytes_ref keyValue;
 
     size_t const seek_to = 7;
     for (size_t i = 0; i < seek_to; ++i) {
@@ -1438,9 +1444,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
       ASSERT_TRUE(it.valid());
       auto doc = *it;
       EXPECT_TRUE(docs->next());
-      EXPECT_TRUE(columnValues(docs->value(), keyValue));
+      EXPECT_EQ(docs->value(), columnValues->seek(docs->value()));
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
-                  irs::to_string<irs::string_ref>(keyValue.c_str()));
+                  irs::to_string<irs::string_ref>(value->value.c_str()));
       it.next();
     }
 

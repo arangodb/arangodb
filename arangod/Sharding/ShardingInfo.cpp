@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -616,6 +616,13 @@ Result ShardingInfo::validateShardsAndReplicationFactor(
                 static_cast<size_t>(writeConcern) >
                     cl.clusterInfo().getCurrentDBServers().size()) {
               return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+            }
+
+            if (replicationFactorSlice.isNumber() &&
+                writeConcern > replicationFactorSlice.getNumber<int64_t>()) {
+              return Result(
+                  TRI_ERROR_BAD_PARAMETER,
+                  "writeConcern must not be higher than replicationFactor");
             }
           }
         }

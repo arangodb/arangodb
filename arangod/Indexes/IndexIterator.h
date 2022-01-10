@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -343,6 +343,9 @@ struct IndexIteratorOptions {
   bool evaluateFCalls = true;
   /// @brief enable caching
   bool enableCache = true;
+  /// @brief number of lookahead elements considered before computing the next
+  /// intersection of the Z-curve with the search range
+  size_t lookahead = 1;
 };
 
 /// index estimate map, defined here because it was convenient

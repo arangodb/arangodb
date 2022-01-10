@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,13 +61,15 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
   RocksDBZkdIndexIterator(LogicalCollection* collection,
                           RocksDBZkdIndexBase* index, transaction::Methods* trx,
                           zkd::byte_string min, zkd::byte_string max,
-                          std::size_t dim, ReadOwnWrites readOwnWrites)
+                          std::size_t dim, ReadOwnWrites readOwnWrites,
+                          size_t lookahead)
       : IndexIterator(collection, trx, readOwnWrites),
         _bound(RocksDBKeyBounds::ZkdIndex(index->objectId())),
         _min(std::move(min)),
         _max(std::move(max)),
         _dim(dim),
-        _index(index) {
+        _index(index),
+        _lookahead(lookahead) {
     _cur = _min;
     _upperBound = _bound.end();
 
@@ -85,6 +87,12 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
   char const* typeName() const override { return "rocksdb-zkd-index-iterator"; }
 
  protected:
+  size_t numNextTries()
+      const noexcept {  // may depend on the number of dimensions
+                        // and the limits of the query
+    return _lookahead;
+  }
+
   bool nextImpl(LocalDocumentIdCallback const& callback,
                 size_t limit) override {
     for (auto i = size_t{0}; i < limit;) {
@@ -105,7 +113,26 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
         case IterState::CHECK_CURRENT_ITER: {
           auto const rocksKey = _iter->key();
           auto const byteStringKey = RocksDBKey::zkdIndexValue(rocksKey);
-          if (!zkd::testInBox(byteStringKey, _min, _max, _dim)) {
+
+          bool foundNextZValueInBox =
+              zkd::testInBox(byteStringKey, _min, _max, _dim);
+          for (size_t numTried = 0;
+               !foundNextZValueInBox && numTried < numNextTries(); ++numTried) {
+            _iter->Next();
+            if (!_iter->Valid()) {
+              arangodb::rocksutils::checkIteratorStatus(_iter.get());
+              _iterState = IterState::DONE;
+              break;  // for loop
+            }
+            foundNextZValueInBox =
+                zkd::testInBox(byteStringKey, _min, _max, _dim);
+          }
+
+          if (_iterState == IterState::DONE) {
+            break;  // case CHECK_CURRENT_ITER
+          }
+
+          if (!foundNextZValueInBox) {
             _cur = byteStringKey;
 
             zkd::compareWithBoxInto(_cur, _min, _max, _dim, _compareResult);
@@ -163,6 +190,8 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
 
   std::unique_ptr<rocksdb::Iterator> _iter;
   RocksDBZkdIndexBase* _index = nullptr;
+
+  const size_t _lookahead;
 
   std::vector<zkd::CompareResult> _compareResult;
 };
@@ -527,7 +556,7 @@ arangodb::RocksDBZkdIndexBase::iteratorForCondition(
 
   return std::make_unique<RocksDBZkdIndexIterator<false>>(
       &_collection, this, trx, std::move(min), std::move(max), fields().size(),
-      readOwnWrites);
+      readOwnWrites, opts.lookahead);
 }
 
 std::unique_ptr<IndexIterator>
@@ -540,7 +569,7 @@ arangodb::RocksDBUniqueZkdIndex::iteratorForCondition(
 
   return std::make_unique<RocksDBZkdIndexIterator<true>>(
       &_collection, this, trx, std::move(min), std::move(max), fields().size(),
-      readOwnWrites);
+      readOwnWrites, opts.lookahead);
 }
 
 arangodb::Result arangodb::RocksDBUniqueZkdIndex::insert(
