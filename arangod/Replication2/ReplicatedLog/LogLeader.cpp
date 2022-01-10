@@ -519,6 +519,7 @@ auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
             .term = term,
             .local = leaderData.getLocalStatistics(),
             .leadershipEstablished = leaderData._leadershipEstablished,
+            .commitFailReason = commitFailReason,
             .activeParticipantsConfig = leaderData.activeParticipantsConfig,
             .committedParticipantsConfig =
                 leaderData.committedParticipantsConfig};
