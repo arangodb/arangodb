@@ -149,8 +149,8 @@ void GeneralServer::stopWorking() {
     std::lock_guard<std::recursive_mutex> guard(_tasksLock);
     _commTasks.clear();
   }
-  _acceptors.clear();
   _contexts.clear();  // stops threads
+  _acceptors.clear();
 }
 
 // -----------------------------------------------------------------------------
