@@ -30,6 +30,7 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Iterator.h>
+#include <atomic>
 
 namespace arangodb {
 
@@ -69,7 +70,9 @@ class Cursor {
 
   inline double ttl() const { return _ttl; }
 
-  inline double expires() const { return _expires; }
+  inline double expires() const {
+    return _expires.load(std::memory_order_relaxed);
+  }
 
   inline bool isUsed() const { return _isUsed; }
 
@@ -81,13 +84,13 @@ class Cursor {
     TRI_ASSERT(!_isDeleted);
     TRI_ASSERT(!_isUsed);
 
-    _isUsed = true;
+    _isUsed.store(true, std::memory_order_relaxed);
   }
 
   void release() noexcept {
     TRI_ASSERT(_isUsed);
-    _isUsed = false;
-    _expires = TRI_microtime() + _ttl;
+    _expires.store(TRI_microtime() + _ttl, std::memory_order_relaxed);
+    _isUsed.store(false, std::memory_order_release);
   }
 
   virtual void kill() {}
@@ -135,7 +138,7 @@ class Cursor {
   CursorId const _id;
   size_t const _batchSize;
   double _ttl;
-  double _expires;
+  std::atomic<double> _expires;
   bool const _hasCount;
   bool _isDeleted;
   std::atomic<bool> _isUsed;
