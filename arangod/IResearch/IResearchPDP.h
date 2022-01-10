@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +28,7 @@
 
 namespace iresearch {
 class parametric_description;
-} // iresearch
+}  // namespace iresearch
 
 namespace arangodb {
 namespace iresearch {
@@ -37,10 +37,7 @@ constexpr irs::byte_type MAX_LEVENSHTEIN_DISTANCE = 4;
 constexpr irs::byte_type MAX_DAMERAU_LEVENSHTEIN_DISTANCE = 3;
 
 const irs::parametric_description& getParametricDescription(
-  irs::byte_type max_distance,
-  bool with_transpositions);
+    irs::byte_type max_distance, bool with_transpositions);
 
-} // iresearch
-} // arangodb
-
-
+}  // namespace iresearch
+}  // namespace arangodb

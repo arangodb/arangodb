@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -95,9 +95,10 @@ struct BaseOptions {
     LookupInfo(arangodb::aql::QueryContext&, arangodb::velocypack::Slice const&,
                arangodb::velocypack::Slice const&);
 
-    void initializeNonConstExpressions(aql::Ast* ast,
-                                       std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
-                                       aql::Variable const* indexVariable);
+    void initializeNonConstExpressions(
+        aql::Ast* ast,
+        std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+        aql::Variable const* indexVariable);
 
     /// @brief Build a velocypack containing all relevant information
     ///        for DBServer traverser engines.
@@ -110,7 +111,8 @@ struct BaseOptions {
 
  public:
   static std::unique_ptr<BaseOptions> createOptionsFromSlice(
-      arangodb::aql::QueryContext& query, arangodb::velocypack::Slice const& definition);
+      arangodb::aql::QueryContext& query,
+      arangodb::velocypack::Slice const& definition);
 
   explicit BaseOptions(arangodb::aql::QueryContext& query);
 
@@ -122,7 +124,8 @@ struct BaseOptions {
   BaseOptions(BaseOptions const&, bool allowAlreadyBuiltCopy = false);
   BaseOptions& operator=(BaseOptions const&) = delete;
 
-  BaseOptions(aql::QueryContext&, arangodb::velocypack::Slice, arangodb::velocypack::Slice);
+  BaseOptions(aql::QueryContext&, arangodb::velocypack::Slice,
+              arangodb::velocypack::Slice);
 
   virtual ~BaseOptions();
 
@@ -132,7 +135,8 @@ struct BaseOptions {
 
   void setVariable(aql::Variable const*);
 
-  void addLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
+  void addLookupInfo(aql::ExecutionPlan* plan,
+                     std::string const& collectionName,
                      std::string const& attributeName, aql::AstNode* condition,
                      bool onlyEdgeIndexes = false);
 
@@ -142,7 +146,8 @@ struct BaseOptions {
 
   void serializeVariables(arangodb::velocypack::Builder&) const;
 
-  void setCollectionToShard(std::unordered_map<std::string, std::string> const&);
+  void setCollectionToShard(
+      std::unordered_map<std::string, std::string> const&);
 
   bool produceVertices() const { return _produceVertices; }
 
@@ -179,10 +184,12 @@ struct BaseOptions {
   TraverserCache* cache() const;
   void ensureCache();
 
-  void activateCache(bool enableDocumentCache,
-                     std::unordered_map<ServerID, aql::EngineId> const* engines);
+  void activateCache(
+      bool enableDocumentCache,
+      std::unordered_map<ServerID, aql::EngineId> const* engines);
 
-  std::unordered_map<std::string, std::vector<std::string>> const& collectionToShard() const {
+  std::unordered_map<std::string, std::vector<std::string>> const&
+  collectionToShard() const {
     return _collectionToShard;
   }
 
@@ -208,26 +215,33 @@ struct BaseOptions {
   arangodb::aql::FixedVarExpressionContext const& getExpressionCtx() const;
 
   virtual void initializeIndexConditions(
-    aql::Ast* ast, std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
-    aql::Variable const* indexVariable);
+      aql::Ast* ast,
+      std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+      aql::Variable const* indexVariable);
 
   virtual void calculateIndexExpressions(aql::Ast* ast);
 
  protected:
-  double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;
+  double costForLookupInfoList(std::vector<LookupInfo> const& list,
+                               size_t& createItems) const;
 
   // Requires an open Object in the given builder an
   // will inject EngineInfo into it.
   // Does not close the builder.
   void injectEngineInfo(arangodb::velocypack::Builder&) const;
 
-  aql::Expression* getEdgeExpression(size_t cursorId, bool& needToInjectVertex) const;
+  aql::Expression* getEdgeExpression(size_t cursorId,
+                                     bool& needToInjectVertex) const;
 
-  bool evaluateExpression(aql::Expression*, arangodb::velocypack::Slice varValue);
+  bool evaluateExpression(aql::Expression*,
+                          arangodb::velocypack::Slice varValue);
 
-  void injectLookupInfoInList(std::vector<LookupInfo>&, aql::ExecutionPlan* plan,
-                              std::string const& collectionName, std::string const& attributeName,
-                              aql::AstNode* condition, bool onlyEdgeIndexes = false);
+  void injectLookupInfoInList(std::vector<LookupInfo>&,
+                              aql::ExecutionPlan* plan,
+                              std::string const& collectionName,
+                              std::string const& attributeName,
+                              aql::AstNode* condition,
+                              bool onlyEdgeIndexes = false);
 
   void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
 
@@ -254,15 +268,17 @@ struct BaseOptions {
   /// so this resambles "ALL ==" parts of filters.
   std::vector<LookupInfo> _baseLookupInfos;
 
-  /// Reference to the query we are running in. Necessary for internal API calls.
+  /// Reference to the query we are running in. Necessary for internal API
+  /// calls.
   aql::QueryContext& _query;
 
-  /// Mutable variable that is used to write the current object (vertex or edge) to
-  /// in order to test the condition.
+  /// Mutable variable that is used to write the current object (vertex or edge)
+  /// to in order to test the condition.
   aql::Variable const* _tmpVar;
 
   /// @brief the traverser cache
-  /// This basically caches strings, and items we want to reference multiple times.
+  /// This basically caches strings, and items we want to reference multiple
+  /// times.
   std::unique_ptr<TraverserCache> _cache;
 
   // @brief - translations for one-shard-databases
@@ -276,17 +292,20 @@ struct BaseOptions {
   /// Each traversal itself is single-threaded.
   size_t _parallelism;
 
-  /// @brief whether or not the vertex data is memorized for later use in the query.
+  /// @brief whether or not the vertex data is memorized for later use in the
+  /// query.
   bool _produceVertices;
 
-  /// @brief whether or not the edge data is memorized for later use in the query.
+  /// @brief whether or not the edge data is memorized for later use in the
+  /// query.
   bool _produceEdges{true};
 
   /// @brief whether or not we are running on a coordinator
   bool const _isCoordinator;
 
   /// @brief whether or not we are running the refactored version
-  /// TODO: This must be removed prior release - (is currently needed for the refactoring)
+  /// TODO: This must be removed prior release - (is currently needed for the
+  /// refactoring)
   bool _refactor;
 };
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +32,8 @@
 static double executionDeadline = 0.0;
 
 // arangosh only: set a deadline
-static void JS_SetExecutionDeadlineTo(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_SetExecutionDeadlineTo(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -51,7 +52,7 @@ static void JS_SetExecutionDeadlineTo(v8::FunctionCallbackInfo<v8::Value> const&
     executionDeadline = TRI_microtime() + n / 1000;
   }
 
-  TRI_V8_RETURN_BOOL((when > 0.00001) && (now - when > 0.0) );
+  TRI_V8_RETURN_BOOL((when > 0.00001) && (now - when > 0.0));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -65,7 +66,8 @@ bool isExecutionDeadlineReached(v8::Isolate* isolate) {
     return false;
   }
 
-  TRI_CreateErrorObject(isolate, TRI_ERROR_DISABLED, "Execution deadline reached!", true);
+  TRI_CreateErrorObject(isolate, TRI_ERROR_DISABLED,
+                        "Execution deadline reached!", true);
   return true;
 }
 
@@ -82,7 +84,8 @@ double correctTimeoutToExecutionDeadlineS(double timeoutSeconds) {
   return delta;
 }
 
-std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::milliseconds timeout) {
+std::chrono::milliseconds correctTimeoutToExecutionDeadline(
+    std::chrono::milliseconds timeout) {
   using namespace std::chrono;
 
   double epochDoubleWhen = executionDeadline;
@@ -99,12 +102,10 @@ std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::millise
     return timeout;
   }
   return delta;
-
 }
 
-void TRI_InitV8Deadline(v8::Isolate* isolate)
-{
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "SYS_COMMUNICATE_SLEEP_DEADLINE"),
-                               JS_SetExecutionDeadlineTo);
+void TRI_InitV8Deadline(v8::Isolate* isolate) {
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_COMMUNICATE_SLEEP_DEADLINE"),
+      JS_SetExecutionDeadlineTo);
 }

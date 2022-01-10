@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +25,7 @@
 
 #include "Basics/Common.h"
 
-template <typename T>
+template<typename T>
 struct ParseResult {
   enum StatusCode : int {
     VALID,
@@ -47,4 +47,3 @@ struct ParseResult {
   std::string message;
   T result;
 };
-

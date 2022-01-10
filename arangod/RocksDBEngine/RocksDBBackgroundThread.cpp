@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,8 +35,11 @@
 
 using namespace arangodb;
 
-RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine& eng, double interval)
-    : Thread(eng.server(), "RocksDBThread"), _engine(eng), _interval(interval) {}
+RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine& eng,
+                                                 double interval)
+    : Thread(eng.server(), "RocksDBThread"),
+      _engine(eng),
+      _interval(interval) {}
 
 RocksDBBackgroundThread::~RocksDBBackgroundThread() { shutdown(); }
 
@@ -80,16 +83,17 @@ void RocksDBBackgroundThread::run() {
           double end = TRI_microtime();
           if (end - start > 5.0) {
             LOG_TOPIC("3ad54", WARN, Logger::ENGINES)
-                << "slow background settings sync: " << Logger::FIXED(end - start, 6)
-                << " s";
+                << "slow background settings sync: "
+                << Logger::FIXED(end - start, 6) << " s";
           } else if (end - start > 0.75) {
             LOG_TOPIC("dd9ea", DEBUG, Logger::ENGINES)
-                << "slow background settings sync took: " << Logger::FIXED(end - start, 6)
-                << " s";
+                << "slow background settings sync took: "
+                << Logger::FIXED(end - start, 6) << " s";
           }
         } catch (std::exception const& ex) {
           LOG_TOPIC("4652c", WARN, Logger::ENGINES)
-            << "caught exception in rocksdb background sync operation: " << ex.what();
+              << "caught exception in rocksdb background sync operation: "
+              << ex.what();
         }
       }
 
@@ -98,11 +102,11 @@ void RocksDBBackgroundThread::run() {
 
       if (!force) {
         try {
-          // this only schedules tree rebuilds, but the actual rebuilds are performed
-          // by async tasks in the scheduler.
+          // this only schedules tree rebuilds, but the actual rebuilds are
+          // performed by async tasks in the scheduler.
           _engine.processTreeRebuilds();
         } catch (std::exception const& ex) {
-          LOG_TOPIC("eea93", WARN, Logger::ENGINES) 
+          LOG_TOPIC("eea93", WARN, Logger::ENGINES)
               << "caught exception during tree rebuilding: " << ex.what();
         }
       }
@@ -119,7 +123,8 @@ void RocksDBBackgroundThread::run() {
             [&minTick](TRI_vocbase_t& vocbase) -> void {
               // lowestServedValue will return the lowest of the lastServedTick
               // values stored, or UINT64_MAX if no clients are registered
-              minTick = std::min(minTick, vocbase.replicationClients().lowestServedValue());
+              minTick = std::min(
+                  minTick, vocbase.replicationClients().lowestServedValue());
             });
       }
 
@@ -134,13 +139,13 @@ void RocksDBBackgroundThread::run() {
         // and then prune them when they expired
         _engine.pruneWalFiles();
       } else {
-        // WAL file pruning not (yet) enabled. this will be the case the 
+        // WAL file pruning not (yet) enabled. this will be the case the
         // first few minutes after the instance startup.
         // only keep track of which WAL files exist and what the lower
         // bound sequence number is
         _engine.determineWalFilesInitial();
       }
-        
+
       if (!isStopping()) {
         _engine.processCompactions();
       }
@@ -157,6 +162,7 @@ void RocksDBBackgroundThread::run() {
     _engine.settingsManager()->sync(true);  // final write on shutdown
   } catch (std::exception const& ex) {
     LOG_TOPIC("f3aa6", WARN, Logger::ENGINES)
-        << "caught exception during final RocksDB sync operation: " << ex.what();
+        << "caught exception during final RocksDB sync operation: "
+        << ex.what();
   }
 }

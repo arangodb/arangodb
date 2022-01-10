@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +33,7 @@
 namespace arangodb {
 namespace graph {
 
-template <typename Key, typename Value, typename Weight>
+template<typename Key, typename Value, typename Weight>
 class ShortestPathPriorityQueue {
   // This class implements a data structure that is a key/value
   // store with the additional property that every Value has a
@@ -189,7 +189,8 @@ class ShortestPathPriorityQueue {
   /// @brief popMinimal, returns true if something was returned and false
   /// if the structure is empty. Key and Value are stored in k and v.
   /// This will keep the unique_ptr inside the history for further lookup.
-  /// In case you doe not want to lookup the value, you need to call stealMinimal
+  /// In case you doe not want to lookup the value, you need to call
+  /// stealMinimal
   //////////////////////////////////////////////////////////////////////////////
 
   bool popMinimal(Key& k, Value*& v) {

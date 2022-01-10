@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,14 +31,16 @@ namespace aql {
 
 /// @brief returns the current value of the steady clock.
 /// note that values produced by this function are not necessarily
-/// identical to unix timestamps, and are thus not meaningful by themselves. 
-/// they are only meaningful to measure time differences, i.e. when 
+/// identical to unix timestamps, and are thus not meaningful by themselves.
+/// they are only meaningful to measure time differences, i.e. when
 /// subtracting two of this function's return values from another.
 /// the values returned by this function are monotonically increasing,
 /// but not necessarily strictly monotonically increasing.
 double currentSteadyClockValue() {
-  return std::chrono::duration<double>(  // time since "start of clock" in seconds
-             std::chrono::steady_clock::now().time_since_epoch()).count();
+  return std::chrono::duration<double>(  // time since "start of clock" in
+                                         // seconds
+             std::chrono::steady_clock::now().time_since_epoch())
+      .count();
 }
 
 /// @brief returns the elapsed time (in seconds) since the previous
@@ -50,5 +52,5 @@ double elapsedSince(double previous) {
   return diff;
 }
 
-} // namespace aql
-} // namespace arangodb
+}  // namespace aql
+}  // namespace arangodb

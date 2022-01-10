@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,35 +55,41 @@ struct H2Response : public HttpResponse {
   RequestStatistics::Item statistics;
 };
 
-template <SocketType T>
+template<SocketType T>
 /*static*/ int H2CommTask<T>::on_begin_headers(nghttp2_session* session,
-                                               const nghttp2_frame* frame, void* user_data) {
+                                               const nghttp2_frame* frame,
+                                               void* user_data) {
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
 
-  if (frame->hd.type != NGHTTP2_HEADERS || frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+  if (frame->hd.type != NGHTTP2_HEADERS ||
+      frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
     return 0;
   }
 
   const int32_t sid = frame->hd.stream_id;
   me->acquireStatistics(sid).SET_READ_START(TRI_microtime());
-  auto req = std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ sid,
-                                           /*allowMethodOverride*/ false);
+  auto req =
+      std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ sid,
+                                    /*allowMethodOverride*/ false);
   me->createStream(sid, std::move(req));
 
-  LOG_TOPIC("33598", TRACE, Logger::REQUESTS) << "<http2> creating new stream " << sid;
+  LOG_TOPIC("33598", TRACE, Logger::REQUESTS)
+      << "<http2> creating new stream " << sid;
 
   return 0;
 }
 
-template <SocketType T>
-/*static*/ int H2CommTask<T>::on_header(nghttp2_session* session, const nghttp2_frame* frame,
+template<SocketType T>
+/*static*/ int H2CommTask<T>::on_header(nghttp2_session* session,
+                                        const nghttp2_frame* frame,
                                         const uint8_t* name, size_t namelen,
                                         const uint8_t* value, size_t valuelen,
                                         uint8_t flags, void* user_data) {
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
   const int32_t sid = frame->hd.stream_id;
 
-  if (frame->hd.type != NGHTTP2_HEADERS || frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+  if (frame->hd.type != NGHTTP2_HEADERS ||
+      frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
     return 0;
   }
 
@@ -95,10 +101,12 @@ template <SocketType T>
   // prevent stream headers from becoming too large
   strm->headerBuffSize += namelen + valuelen;
   if (strm->headerBuffSize > 64 * 1024 * 1024) {
-    return nghttp2_submit_rst_stream(me->_session, NGHTTP2_FLAG_NONE, sid, NGHTTP2_INTERNAL_ERROR);
+    return nghttp2_submit_rst_stream(me->_session, NGHTTP2_FLAG_NONE, sid,
+                                     NGHTTP2_INTERNAL_ERROR);
   }
 
-  // handle pseudo headers https://http2.github.io/http2-spec/#rfc.section.8.1.2.3
+  // handle pseudo headers
+  // https://http2.github.io/http2-spec/#rfc.section.8.1.2.3
   std::string_view field(reinterpret_cast<const char*>(name), namelen);
   std::string_view val(reinterpret_cast<const char*>(value), valuelen);
 
@@ -117,9 +125,10 @@ template <SocketType T>
   return 0;
 }
 
-template <SocketType T>
+template<SocketType T>
 /*static*/ int H2CommTask<T>::on_frame_recv(nghttp2_session* session,
-                                            const nghttp2_frame* frame, void* user_data) {
+                                            const nghttp2_frame* frame,
+                                            void* user_data) {
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
 
   switch (frame->hd.type) {
@@ -128,7 +137,8 @@ template <SocketType T>
       if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
         const int32_t sid = frame->hd.stream_id;
         LOG_TOPIC("c75b1", TRACE, Logger::REQUESTS)
-            << "<http2> finalized request on stream " << sid << " with ptr " << me;
+            << "<http2> finalized request on stream " << sid << " with ptr "
+            << me;
 
         Stream* strm = me->findStream(sid);
         if (strm) {
@@ -142,9 +152,11 @@ template <SocketType T>
   return 0;
 }
 
-template <SocketType T>
-/*static*/ int H2CommTask<T>::on_data_chunk_recv(nghttp2_session* session, uint8_t flags,
-                                                 int32_t stream_id, const uint8_t* data,
+template<SocketType T>
+/*static*/ int H2CommTask<T>::on_data_chunk_recv(nghttp2_session* session,
+                                                 uint8_t flags,
+                                                 int32_t stream_id,
+                                                 const uint8_t* data,
                                                  size_t len, void* user_data) {
   LOG_TOPIC("2823c", TRACE, Logger::REQUESTS)
       << "<http2> received data for stream " << stream_id;
@@ -157,9 +169,11 @@ template <SocketType T>
   return 0;
 }
 
-template <SocketType T>
-/*static*/ int H2CommTask<T>::on_stream_close(nghttp2_session* session, int32_t stream_id,
-                                              uint32_t error_code, void* user_data) {
+template<SocketType T>
+/*static*/ int H2CommTask<T>::on_stream_close(nghttp2_session* session,
+                                              int32_t stream_id,
+                                              uint32_t error_code,
+                                              void* user_data) {
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
   auto it = me->_streams.find(stream_id);
   if (it != me->_streams.end()) {
@@ -179,17 +193,19 @@ template <SocketType T>
   return 0;
 }
 
-template <SocketType T>
+template<SocketType T>
 /*static*/ int H2CommTask<T>::on_frame_send(nghttp2_session* session,
-                                            const nghttp2_frame* frame, void* user_data) {
+                                            const nghttp2_frame* frame,
+                                            void* user_data) {
   // can be used for push promises
   return 0;
 }
 
-template <SocketType T>
+template<SocketType T>
 /*static*/ int H2CommTask<T>::on_frame_not_send(nghttp2_session* session,
                                                 const nghttp2_frame* frame,
-                                                int lib_error_code, void* user_data) {
+                                                int lib_error_code,
+                                                void* user_data) {
   if (frame->hd.type != NGHTTP2_HEADERS) {
     return 0;
   }
@@ -200,12 +216,13 @@ template <SocketType T>
       << nghttp2_strerror(lib_error_code) << "' (" << lib_error_code << ")";
 
   // Issue RST_STREAM so that stream does not hang around.
-  nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, sid, NGHTTP2_INTERNAL_ERROR);
+  nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, sid,
+                            NGHTTP2_INTERNAL_ERROR);
 
   return 0;
 }
 
-template <SocketType T>
+template<SocketType T>
 H2CommTask<T>::H2CommTask(GeneralServer& server, ConnectionInfo info,
                           std::unique_ptr<AsioSocket<T>> so)
     : GeneralCommTask<T>(server, std::move(info), std::move(so)) {
@@ -214,7 +231,7 @@ H2CommTask<T>::H2CommTask(GeneralServer& server, ConnectionInfo info,
   initNgHttp2Session();
 }
 
-template <SocketType T>
+template<SocketType T>
 H2CommTask<T>::~H2CommTask() noexcept {
   nghttp2_session_del(_session);
   _session = nullptr;
@@ -244,8 +261,9 @@ int on_error_callback(nghttp2_session* session, int lib_error_code,
 int on_invalid_frame_recv(nghttp2_session* session, const nghttp2_frame* frame,
                           int lib_error_code, void* user_data) {
   LOG_TOPIC("b5de2", INFO, Logger::REQUESTS)
-      << "received illegal data frame on stream " << frame->hd.stream_id << ": '"
-      << nghttp2_strerror(lib_error_code) << "' (" << lib_error_code << ")";
+      << "received illegal data frame on stream " << frame->hd.stream_id
+      << ": '" << nghttp2_strerror(lib_error_code) << "' (" << lib_error_code
+      << ")";
   return 0;
 }
 
@@ -253,7 +271,8 @@ constexpr uint32_t window_size = (1 << 30) - 1;  // 1 GiB
 void submitConnectionPreface(nghttp2_session* session) {
   std::array<nghttp2_settings_entry, 4> iv;
   // 32 streams matches the queue capacity
-  iv[0] = {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, arangodb::H2MaxConcurrentStreams};
+  iv[0] = {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS,
+           arangodb::H2MaxConcurrentStreams};
   // typically client is just a *sink* and just process data as
   // much as possible.  Use large window size by default.
   iv[1] = {NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE, window_size};
@@ -262,13 +281,16 @@ void submitConnectionPreface(nghttp2_session* session) {
 
   nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv.data(), iv.size());
   // increase connection window size up to window_size
-  //  nghttp2_session_set_local_window_size(session, NGHTTP2_FLAG_NONE, 0, 1 << 30);
+  //  nghttp2_session_set_local_window_size(session, NGHTTP2_FLAG_NONE, 0, 1 <<
+  //  30);
 }
 
-ssize_t data_source_read_length_callback(nghttp2_session* session, uint8_t frame_type,
-                                         int32_t stream_id, int32_t session_remote_window_size,
+ssize_t data_source_read_length_callback(nghttp2_session* session,
+                                         uint8_t frame_type, int32_t stream_id,
+                                         int32_t session_remote_window_size,
                                          int32_t stream_remote_window_size,
-                                         uint32_t remote_max_frame_size, void* user_data) {
+                                         uint32_t remote_max_frame_size,
+                                         void* user_data) {
   LOG_TOPIC("b6f34", TRACE, Logger::REQUESTS)
       << "session_remote_window_size: " << session_remote_window_size
       << ", stream_remote_window_size: " << stream_remote_window_size
@@ -278,7 +300,7 @@ ssize_t data_source_read_length_callback(nghttp2_session* session, uint8_t frame
 }  // namespace
 
 /// init h2 session
-template <SocketType T>
+template<SocketType T>
 void H2CommTask<T>::initNgHttp2Session() {
   nghttp2_session_callbacks* callbacks;
   int rv = nghttp2_session_callbacks_new(&callbacks);
@@ -286,18 +308,28 @@ void H2CommTask<T>::initNgHttp2Session() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  auto cbScope = scopeGuard([&]() noexcept { nghttp2_session_callbacks_del(callbacks); });
+  auto cbScope =
+      scopeGuard([&]() noexcept { nghttp2_session_callbacks_del(callbacks); });
 
-  nghttp2_session_callbacks_set_on_begin_headers_callback(callbacks, H2CommTask<T>::on_begin_headers);
-  nghttp2_session_callbacks_set_on_header_callback(callbacks, H2CommTask<T>::on_header);
-  nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks, H2CommTask<T>::on_frame_recv);
-  nghttp2_session_callbacks_set_on_data_chunk_recv_callback(callbacks, H2CommTask<T>::on_data_chunk_recv);
-  nghttp2_session_callbacks_set_on_stream_close_callback(callbacks, H2CommTask<T>::on_stream_close);
-  nghttp2_session_callbacks_set_on_frame_send_callback(callbacks, H2CommTask<T>::on_frame_send);
-  nghttp2_session_callbacks_set_on_frame_not_send_callback(callbacks, H2CommTask<T>::on_frame_not_send);
-  nghttp2_session_callbacks_set_on_invalid_frame_recv_callback(callbacks, on_invalid_frame_recv);
+  nghttp2_session_callbacks_set_on_begin_headers_callback(
+      callbacks, H2CommTask<T>::on_begin_headers);
+  nghttp2_session_callbacks_set_on_header_callback(callbacks,
+                                                   H2CommTask<T>::on_header);
+  nghttp2_session_callbacks_set_on_frame_recv_callback(
+      callbacks, H2CommTask<T>::on_frame_recv);
+  nghttp2_session_callbacks_set_on_data_chunk_recv_callback(
+      callbacks, H2CommTask<T>::on_data_chunk_recv);
+  nghttp2_session_callbacks_set_on_stream_close_callback(
+      callbacks, H2CommTask<T>::on_stream_close);
+  nghttp2_session_callbacks_set_on_frame_send_callback(
+      callbacks, H2CommTask<T>::on_frame_send);
+  nghttp2_session_callbacks_set_on_frame_not_send_callback(
+      callbacks, H2CommTask<T>::on_frame_not_send);
+  nghttp2_session_callbacks_set_on_invalid_frame_recv_callback(
+      callbacks, on_invalid_frame_recv);
   nghttp2_session_callbacks_set_error_callback2(callbacks, on_error_callback);
-  nghttp2_session_callbacks_set_data_source_read_length_callback(callbacks, data_source_read_length_callback);
+  nghttp2_session_callbacks_set_data_source_read_length_callback(
+      callbacks, data_source_read_length_callback);
 
   rv = nghttp2_session_server_new(&_session, callbacks, /*args*/ this);
   if (rv != 0) {
@@ -305,7 +337,7 @@ void H2CommTask<T>::initNgHttp2Session() {
   }
 }
 
-template <SocketType T>
+template<SocketType T>
 void H2CommTask<T>::upgradeHttp1(std::unique_ptr<HttpRequest> req) {
   bool found;
   std::string const& settings = req->header("http2-settings", found);
@@ -313,7 +345,8 @@ void H2CommTask<T>::upgradeHttp1(std::unique_ptr<HttpRequest> req) {
 
   std::string decoded = StringUtils::decodeBase64(settings);
   uint8_t const* src = reinterpret_cast<const uint8_t*>(decoded.data());
-  int rv = nghttp2_session_upgrade2(_session, src, decoded.size(), wasHead, nullptr);
+  int rv =
+      nghttp2_session_upgrade2(_session, src, decoded.size(), wasHead, nullptr);
 
   if (rv != 0) {
     // The settings_payload is badly formed.
@@ -331,52 +364,55 @@ void H2CommTask<T>::upgradeHttp1(std::unique_ptr<HttpRequest> req) {
       "Upgrade\r\nUpgrade: h2c\r\n\r\n");
 
   auto buffer = asio_ns::buffer(str->data(), str->size());
-  asio_ns::async_write(this->_protocol->socket, buffer,
-                       withLogContext(
-                         [self(this->shared_from_this()), str(std::move(str)),
-                          req(std::move(req))](const asio_ns::error_code& ec, std::size_t) mutable {
-                            auto& me = static_cast<H2CommTask<T>&>(*self);
-                            if (ec) {
-                              me.close(ec);
-                              return;
-                            }
+  asio_ns::async_write(
+      this->_protocol->socket, buffer,
+      withLogContext([self(this->shared_from_this()), str(std::move(str)),
+                      req(std::move(req))](const asio_ns::error_code& ec,
+                                           std::size_t) mutable {
+        auto& me = static_cast<H2CommTask<T>&>(*self);
+        if (ec) {
+          me.close(ec);
+          return;
+        }
 
-                            submitConnectionPreface(me._session);
+        submitConnectionPreface(me._session);
 
-                            // The HTTP/1.1 request that is sent prior to upgrade is assigned
-                            // a stream identifier of 1 (see Section 5.1.1).
-                            // Stream 1 is implicitly "half-closed" from the client toward the server
+        // The HTTP/1.1 request that is sent prior to upgrade is assigned
+        // a stream identifier of 1 (see Section 5.1.1).
+        // Stream 1 is implicitly "half-closed" from the client toward the
+        // server
 
-                            TRI_ASSERT(req->messageId() == 1);
-                            auto* strm = me.createStream(1, std::move(req));
-                            TRI_ASSERT(strm);
+        TRI_ASSERT(req->messageId() == 1);
+        auto* strm = me.createStream(1, std::move(req));
+        TRI_ASSERT(strm);
 
-                            // will start writing later
-                            me.processStream(*strm);
+        // will start writing later
+        me.processStream(*strm);
 
-                            // start reading
-                            me.asyncReadSome();
-                          }));
+        // start reading
+        me.asyncReadSome();
+      }));
 }
 
-template <SocketType T>
+template<SocketType T>
 void H2CommTask<T>::start() {
   LOG_TOPIC("db5ab", DEBUG, Logger::REQUESTS)
       << "<http2> opened connection \"" << (void*)this << "\"";
 
-  asio_ns::post(this->_protocol->context.io_context, [self = this->shared_from_this()] {
-    auto& me = static_cast<H2CommTask<T>&>(*self);
+  asio_ns::post(this->_protocol->context.io_context,
+                [self = this->shared_from_this()] {
+                  auto& me = static_cast<H2CommTask<T>&>(*self);
 
-    // queueing the server connection preface,
-    // which always consists of a SETTINGS frame.
-    submitConnectionPreface(me._session);
+                  // queueing the server connection preface,
+                  // which always consists of a SETTINGS frame.
+                  submitConnectionPreface(me._session);
 
-    me.doWrite();        // write out preface
-    me.asyncReadSome();  // start reading
-  });
+                  me.doWrite();        // write out preface
+                  me.asyncReadSome();  // start reading
+                });
 }
 
-template <SocketType T>
+template<SocketType T>
 bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
   if (ec) {
     this->close(ec);
@@ -413,7 +449,7 @@ bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
   return true;  //  continue read lopp
 }
 
-template <SocketType T>
+template<SocketType T>
 void H2CommTask<T>::setIOTimeout() {
   double secs = this->_generalServerFeature.keepAliveTimeout();
   if (secs <= 0) {
@@ -430,7 +466,8 @@ void H2CommTask<T>::setIOTimeout() {
   auto millis = std::chrono::milliseconds(static_cast<int64_t>(secs * 1000));
   this->_protocol->timer.expires_after(millis);  // cancels old waiters
   this->_protocol->timer.async_wait(
-      withLogContext([=, this, self = CommTask::weak_from_this()](asio_ns::error_code const& ec) {
+      withLogContext([=, this, self = CommTask::weak_from_this()](
+                         asio_ns::error_code const& ec) {
         std::shared_ptr<CommTask> s;
         if (ec || !(s = self.lock())) {  // was canceled / deallocated
           return;
@@ -451,7 +488,8 @@ void H2CommTask<T>::setIOTimeout() {
           }
         }
         // In all other cases we do nothing, since we have been posted to the
-        // iocontext but the thing we should be timing out has already completed.
+        // iocontext but the thing we should be timing out has already
+        // completed.
       }));
 }
 
@@ -464,16 +502,20 @@ static void __attribute__((noinline)) DTraceH2CommTaskProcessStream(size_t th) {
 static void DTraceH2CommTaskProcessStream(size_t) {}
 #endif
 
-template <SocketType T>
+template<SocketType T>
 std::string H2CommTask<T>::url(HttpRequest const* req) const {
   if (req != nullptr) {
-    return std::string((req->databaseName().empty() ? "" : "/_db/" + StringUtils::urlEncode(req->databaseName()))) +
-      (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath());
+    return std::string(
+               (req->databaseName().empty()
+                    ? ""
+                    : "/_db/" + StringUtils::urlEncode(req->databaseName()))) +
+           (Logger::logRequestParameters() ? req->fullUrl()
+                                           : req->requestPath());
   }
   return "";
 }
 
-template <SocketType T>
+template<SocketType T>
 void H2CommTask<T>::processStream(Stream& stream) {
   DTraceH2CommTaskProcessStream((size_t)this);
 
@@ -483,27 +525,29 @@ void H2CommTask<T>::processStream(Stream& stream) {
   try {
     processRequest(stream, std::move(req));
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC("a78c5", WARN, Logger::REQUESTS) << "request failed with error " << ex.code()
-      << " " << ex.message();
-    this->sendErrorResponse(GeneralResponse::responseCode(ex.code()), respContentType,
-                            msgId, ex.code(), ex.message());
+    LOG_TOPIC("a78c5", WARN, Logger::REQUESTS)
+        << "request failed with error " << ex.code() << " " << ex.message();
+    this->sendErrorResponse(GeneralResponse::responseCode(ex.code()),
+                            respContentType, msgId, ex.code(), ex.message());
   } catch (std::exception const& ex) {
-    LOG_TOPIC("d1e88", WARN, Logger::REQUESTS) << "request failed with error " << ex.what();
-    this->sendErrorResponse(ResponseCode::SERVER_ERROR, respContentType,
-                            msgId, ErrorCode(TRI_ERROR_FAILED), ex.what());
+    LOG_TOPIC("d1e88", WARN, Logger::REQUESTS)
+        << "request failed with error " << ex.what();
+    this->sendErrorResponse(ResponseCode::SERVER_ERROR, respContentType, msgId,
+                            ErrorCode(TRI_ERROR_FAILED), ex.what());
   }
 }
 
-template <SocketType T>
-void H2CommTask<T>::processRequest(Stream& stream, std::unique_ptr<HttpRequest> req) {
-  
+template<SocketType T>
+void H2CommTask<T>::processRequest(Stream& stream,
+                                   std::unique_ptr<HttpRequest> req) {
   // ensure there is a null byte termination. RestHandlers use
   // C functions like strchr that except a C string as input
   req->body().push_back('\0');
   req->body().resetTo(req->body().size() - 1);
 
   if (this->stopped()) {
-    return;  // we have to ignore this request because the connection has already been closed
+    return;  // we have to ignore this request because the connection has
+             // already been closed
   }
 
   // from here on we will send a response, the connection is not IDLE
@@ -512,7 +556,8 @@ void H2CommTask<T>::processRequest(Stream& stream, std::unique_ptr<HttpRequest> 
     LOG_TOPIC("924ce", INFO, Logger::REQUESTS)
         << "\"h2-request-begin\",\"" << (void*)this << "\",\""
         << this->_connectionInfo.clientAddress << "\",\""
-        << HttpRequest::translateMethod(req->requestType()) << "\",\"" << url(req.get()) << "\"";
+        << HttpRequest::translateMethod(req->requestType()) << "\",\""
+        << url(req.get()) << "\"";
 
     std::string_view body = req->rawPayload();
     this->_generalServerFeature.countHttp2Request(body.size());
@@ -561,7 +606,8 @@ void H2CommTask<T>::processRequest(Stream& stream, std::unique_ptr<HttpRequest> 
   }
 
   // create a handler and execute
-  auto resp = std::make_unique<H2Response>(rest::ResponseCode::SERVER_ERROR, messageId);
+  auto resp =
+      std::make_unique<H2Response>(rest::ResponseCode::SERVER_ERROR, messageId);
   resp->setContentType(req->contentTypeResponse());
   this->executeRequest(std::move(req), std::move(resp));
 }
@@ -582,7 +628,7 @@ static void __attribute__((noinline)) DTraceH2CommTaskSendResponse(size_t th) {
 static void DTraceH2CommTaskSendResponse(size_t) {}
 #endif
 
-template <SocketType T>
+template<SocketType T>
 void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
                                  RequestStatistics::Item stat) {
   DTraceH2CommTaskSendResponse((size_t)this);
@@ -599,14 +645,17 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
       << "\"h2-request-end\",\"" << (void*)this << "\",\""
       << this->_connectionInfo.clientAddress
       << "\",\""
-      //      << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser))
-      << url(nullptr) << "\",\"" << static_cast<int>(res->responseCode()) << "\","
-      << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << "," << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6);
+      //      <<
+      //      GeneralRequest::translateMethod(::llhttpToRequestType(&_parser))
+      << url(nullptr) << "\",\"" << static_cast<int>(res->responseCode())
+      << "\"," << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << ","
+      << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6);
 
   auto* tmp = static_cast<H2Response*>(res.get());
   tmp->statistics = std::move(stat);
 
-  // this uses a fixed capacity queue, push might fail (unlikely, we limit max streams)
+  // this uses a fixed capacity queue, push might fail (unlikely, we limit max
+  // streams)
   unsigned retries = 512;
   try {
     while (ADB_UNLIKELY(!_responses.push(tmp) && --retries > 0)) {
@@ -633,16 +682,17 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
   // avoid using asio_ns::post if possible
   bool signaled = _signaledWrite.load();
   if (!signaled && !_signaledWrite.exchange(true)) {
-    asio_ns::post(this->_protocol->context.io_context, [self = this->shared_from_this()] {
-      auto& me = static_cast<H2CommTask<T>&>(*self);
-      me._signaledWrite.store(false);
-      me.doWrite();
-    });
+    asio_ns::post(this->_protocol->context.io_context,
+                  [self = this->shared_from_this()] {
+                    auto& me = static_cast<H2CommTask<T>&>(*self);
+                    me._signaledWrite.store(false);
+                    me.doWrite();
+                  });
   }
 }
 
 // queue the response onto the session, call only on IO thread
-template <SocketType T>
+template<SocketType T>
 void H2CommTask<T>::queueHttp2Responses() {
   H2Response* response = nullptr;
   while (_responses.pop(response)) {
@@ -652,7 +702,8 @@ void H2CommTask<T>::queueHttp2Responses() {
     Stream* strm = findStream(streamId);
     if (strm == nullptr) {  // stream was already closed for some reason
       LOG_TOPIC("e2773", DEBUG, Logger::REQUESTS)
-          << "response with message id '" << streamId << "' has no H2 stream on server";
+          << "response with message id '" << streamId
+          << "' has no H2 stream on server";
       return;
     }
     strm->response = std::move(guard);
@@ -675,7 +726,8 @@ void H2CommTask<T>::queueHttp2Responses() {
       std::string const& val = it.second;
 
       // ignore content-length
-      if (key == StaticStrings::ContentLength || key == StaticStrings::Connection ||
+      if (key == StaticStrings::ContentLength ||
+          key == StaticStrings::Connection ||
           key == StaticStrings::TransferEncoding) {
         continue;
       }
@@ -684,19 +736,22 @@ void H2CommTask<T>::queueHttp2Responses() {
         seenServerHeader = true;
       }
 
-      nva.push_back({(uint8_t*)key.data(), (uint8_t*)val.data(), key.size(), val.size(),
-                     NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});
+      nva.push_back(
+          {(uint8_t*)key.data(), (uint8_t*)val.data(), key.size(), val.size(),
+           NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});
     }
 
     // add "Server" response header
     if (!seenServerHeader && !HttpResponse::HIDE_PRODUCT_HEADER) {
-      nva.push_back({(uint8_t*)"server", (uint8_t*)"ArangoDB", 6, 8,
-                     NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});
+      nva.push_back(
+          {(uint8_t*)"server", (uint8_t*)"ArangoDB", 6, 8,
+           NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});
     }
 
     for (std::string const& cookie : res.cookies()) {
-      nva.push_back({(uint8_t*)"set-cookie", (uint8_t*)cookie.data(), 10, cookie.size(),
-                     NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});
+      nva.push_back(
+          {(uint8_t*)"set-cookie", (uint8_t*)cookie.data(), 10, cookie.size(),
+           NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});
     }
 
     std::string type;
@@ -708,7 +763,8 @@ void H2CommTask<T>::queueHttp2Responses() {
 
     std::string len;
     nghttp2_data_provider *prd_ptr = nullptr, prd;
-    if (!res.generateBody() || expectResponseBody(static_cast<int>(res.responseCode()))) {
+    if (!res.generateBody() ||
+        expectResponseBody(static_cast<int>(res.responseCode()))) {
       len = std::to_string(res.bodySize());
       nva.push_back({(uint8_t*)"content-length", (uint8_t*)len.c_str(), 14,
                      len.size(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
@@ -719,7 +775,8 @@ void H2CommTask<T>::queueHttp2Responses() {
       prd.source.ptr = strm;
       prd.read_callback = [](nghttp2_session* session, int32_t stream_id,
                              uint8_t* buf, size_t length, uint32_t* data_flags,
-                             nghttp2_data_source* source, void* user_data) -> ssize_t {
+                             nghttp2_data_source* source,
+                             void* user_data) -> ssize_t {
         auto strm = static_cast<H2CommTask<T>::Stream*>(source->ptr);
 
         basics::StringBuffer& body = strm->response->body();
@@ -738,8 +795,10 @@ void H2CommTask<T>::queueHttp2Responses() {
         }
 
         // simon: might be needed if NGHTTP2_DATA_FLAG_NO_COPY is used
-        //      if (nghttp2_session_get_stream_remote_close(session, stream_id) == 0) {
-        //          nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id, NGHTTP2_NO_ERROR);
+        //      if (nghttp2_session_get_stream_remote_close(session, stream_id)
+        //      == 0) {
+        //          nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+        //          stream_id, NGHTTP2_NO_ERROR);
         //      }
         return static_cast<ssize_t>(nread);
       };
@@ -762,10 +821,12 @@ void H2CommTask<T>::queueHttp2Responses() {
 
 #ifdef USE_DTRACE
 // Moved out to avoid duplication by templates.
-static void __attribute__((noinline)) DTraceH2CommTaskBeforeAsyncWrite(size_t th) {
+static void __attribute__((noinline))
+DTraceH2CommTaskBeforeAsyncWrite(size_t th) {
   DTRACE_PROBE1(arangod, H2CommTaskBeforeAsyncWrite, th);
 }
-static void __attribute__((noinline)) DTraceH2CommTaskAfterAsyncWrite(size_t th) {
+static void __attribute__((noinline))
+DTraceH2CommTaskAfterAsyncWrite(size_t th) {
   DTRACE_PROBE1(arangod, H2CommTaskAfterAsyncWrite, th);
 }
 #else
@@ -774,7 +835,7 @@ static void DTraceH2CommTaskAfterAsyncWrite(size_t) {}
 #endif
 
 // called on IO context thread
-template <SocketType T>
+template<SocketType T>
 void H2CommTask<T>::doWrite() {
   if (this->_writing) {
     return;
@@ -829,38 +890,39 @@ void H2CommTask<T>::doWrite() {
   setIOTimeout();
 
   DTraceH2CommTaskBeforeAsyncWrite((size_t)this);
-  asio_ns::async_write(this->_protocol->socket, outBuffers,
-                       withLogContext([self = this->shared_from_this()](const asio_ns::error_code& ec,
-                                                                        std::size_t nwrite) {
-                         auto& me = static_cast<H2CommTask<T>&>(*self);
-                         me._writing = false;
-                         if (ec) {
-                           me.close(ec);
-                           return;
-                         }
+  asio_ns::async_write(
+      this->_protocol->socket, outBuffers,
+      withLogContext([self = this->shared_from_this()](
+                         const asio_ns::error_code& ec, std::size_t nwrite) {
+        auto& me = static_cast<H2CommTask<T>&>(*self);
+        me._writing = false;
+        if (ec) {
+          me.close(ec);
+          return;
+        }
 
-                         DTraceH2CommTaskAfterAsyncWrite((size_t)self.get());
+        DTraceH2CommTaskAfterAsyncWrite((size_t)self.get());
 
-                         me.doWrite();
-                       }));
+        me.doWrite();
+      }));
 }
 
-template <SocketType T>
-std::unique_ptr<GeneralResponse> H2CommTask<T>::createResponse(rest::ResponseCode responseCode,
-                                                               uint64_t mid) {
+template<SocketType T>
+std::unique_ptr<GeneralResponse> H2CommTask<T>::createResponse(
+    rest::ResponseCode responseCode, uint64_t mid) {
   return std::make_unique<H2Response>(responseCode, mid);
 }
 
-template <SocketType T>
-typename H2CommTask<T>::Stream* H2CommTask<T>::createStream(int32_t sid,
-                                                            std::unique_ptr<HttpRequest> req) {
+template<SocketType T>
+typename H2CommTask<T>::Stream* H2CommTask<T>::createStream(
+    int32_t sid, std::unique_ptr<HttpRequest> req) {
   TRI_ASSERT(static_cast<uint64_t>(sid) == req->messageId());
   auto [it, inserted] = _streams.emplace(sid, Stream{std::move(req)});
   TRI_ASSERT(inserted == true);
   return &it->second;
 }
 
-template <SocketType T>
+template<SocketType T>
 typename H2CommTask<T>::Stream* H2CommTask<T>::findStream(int32_t sid) {
   auto const& it = _streams.find(sid);
   if (it != _streams.end()) {
@@ -870,9 +932,10 @@ typename H2CommTask<T>::Stream* H2CommTask<T>::findStream(int32_t sid) {
 }
 
 /// should close connection
-template <SocketType T>
+template<SocketType T>
 bool H2CommTask<T>::shouldStop() const {
-  return !nghttp2_session_want_read(_session) && !nghttp2_session_want_write(_session);
+  return !nghttp2_session_want_read(_session) &&
+         !nghttp2_session_want_write(_session);
 }
 
 template class arangodb::rest::H2CommTask<SocketType::Tcp>;

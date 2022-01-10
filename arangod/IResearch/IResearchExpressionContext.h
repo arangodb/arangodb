@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,7 +54,10 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
   explicit ViewExpressionContextBase(arangodb::transaction::Methods* trx,
                                      aql::QueryContext* query,
                                      aql::AqlFunctionsInternalCache* cache)
-  : ExpressionContext(), _trx(trx), _query(query), _aqlFunctionsInternalCache(cache)  {}
+      : ExpressionContext(),
+        _trx(trx),
+        _query(query),
+        _aqlFunctionsInternalCache(cache) {}
 
   void registerWarning(ErrorCode errorCode, char const* msg) override final;
   void registerError(ErrorCode errorCode, char const* msg) override final;
@@ -63,10 +66,12 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
                                        bool caseInsensitive) override final;
   icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
                                       bool caseInsensitive) override final;
-  icu::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression, velocypack::Options const* opts,
+  icu::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression,
+                                       velocypack::Options const* opts,
                                        bool& isEmptyExpression) override final;
 
-  arangodb::ValidatorBase* buildValidator(arangodb::velocypack::Slice const&) override final;
+  arangodb::ValidatorBase* buildValidator(
+      arangodb::velocypack::Slice const&) override final;
 
   TRI_vocbase_t& vocbase() const override final;
   /// may be inaccessible on some platforms
@@ -74,12 +79,12 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
   bool killed() const override final;
 
   aql::AstNode const* _expr{};  // for troubleshooting
-  
-protected:
+
+ protected:
   arangodb::transaction::Methods* _trx;
   arangodb::aql::QueryContext* _query;
   arangodb::aql::AqlFunctionsInternalCache* _aqlFunctionsInternalCache;
-};                              // ViewExpressionContextBase
+};  // ViewExpressionContextBase
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @struct ViewExpressionContext
@@ -89,18 +94,21 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
 
   ViewExpressionContext(arangodb::transaction::Methods& trx,
                         aql::QueryContext& query,
-                        aql::AqlFunctionsInternalCache& cache, aql::Variable const& outVar,
+                        aql::AqlFunctionsInternalCache& cache,
+                        aql::Variable const& outVar,
                         VarInfoMap const& varInfoMap, int nodeDepth)
       : ViewExpressionContextBase(&trx, &query, &cache),
         _outVar(outVar),
         _varInfoMap(varInfoMap),
         _nodeDepth(nodeDepth) {}
 
-  virtual bool isDataFromCollection(aql::Variable const* variable) const override {
+  virtual bool isDataFromCollection(
+      aql::Variable const* variable) const override {
     return variable->isDataFromCollection;
   }
 
-  virtual aql::AqlValue getVariableValue(aql::Variable const* variable, bool doCopy,
+  virtual aql::AqlValue getVariableValue(aql::Variable const* variable,
+                                         bool doCopy,
                                          bool& mustDestroy) const override;
 
   inline aql::Variable const& outVariable() const noexcept { return _outVar; }
@@ -115,4 +123,3 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
 
 }  // namespace iresearch
 }  // namespace arangodb
-

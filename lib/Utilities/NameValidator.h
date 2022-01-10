@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -58,7 +58,8 @@ struct CollectionNameValidator {
   static constexpr std::size_t maxNameLengthTraditional = 256;
   static constexpr std::size_t maxNameLengthExtended = maxNameLengthTraditional;
 
-  /// @brief maximum length of a collection name (in bytes), (not yet) based on convention
+  /// @brief maximum length of a collection name (in bytes), (not yet) based on
+  /// convention
   static constexpr std::size_t maxNameLength(bool extendedNames) noexcept {
     return extendedNames ? maxNameLengthExtended : maxNameLengthTraditional;
   }
@@ -89,35 +90,35 @@ struct ViewNameValidator {
 };
 
 struct IndexNameValidator {
-  /// @brief maximal index name length, in bytes 
+  /// @brief maximal index name length, in bytes
   static constexpr std::size_t maxNameLengthTraditional = 256;
   static constexpr std::size_t maxNameLengthExtended = maxNameLengthTraditional;
 
-  /// @brief maximum length of an index name (in bytes), (not yet) based on convention
+  /// @brief maximum length of an index name (in bytes), (not yet) based on
+  /// convention
   static constexpr std::size_t maxNameLength(bool extendedNames) noexcept {
     return extendedNames ? maxNameLengthExtended : maxNameLengthTraditional;
   }
 
   /// @brief checks if a index name is allowed in the given context.
   /// returns true if the name is allowed and false otherwise
-  static bool isAllowedName(bool extendedNames,
-                            std::string_view name) noexcept;
+  static bool isAllowedName(bool extendedNames, std::string_view name) noexcept;
 };
 
 struct AnalyzerNameValidator {
-  /// @brief maximal analyzer name length, in bytes 
+  /// @brief maximal analyzer name length, in bytes
   static constexpr std::size_t maxNameLengthTraditional = 64;
   static constexpr std::size_t maxNameLengthExtended = maxNameLengthTraditional;
 
-  /// @brief maximum length of an analyzer name (in bytes), (not yet) based on convention
+  /// @brief maximum length of an analyzer name (in bytes), (not yet) based on
+  /// convention
   static constexpr std::size_t maxNameLength(bool extendedNames) noexcept {
     return extendedNames ? maxNameLengthExtended : maxNameLengthTraditional;
   }
 
   /// @brief checks if an analyzer name is allowed in the given context.
   /// returns true if the name is allowed and false otherwise
-  static bool isAllowedName(bool extendedNames,
-                            std::string_view name) noexcept;
+  static bool isAllowedName(bool extendedNames, std::string_view name) noexcept;
 };
 
-}
+}  // namespace arangodb

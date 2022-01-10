@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,13 +62,15 @@ double TRI_DoubleString(char const* str) {
   TRI_set_errno(TRI_ERROR_NO_ERROR);
   double result = strtod(str, &endptr);
 
-  while (*endptr == ' ' || *endptr == '\t' || *endptr == '\r' || *endptr == '\n' || *endptr == '\f' || *endptr == '\v') {
+  while (*endptr == ' ' || *endptr == '\t' || *endptr == '\r' ||
+         *endptr == '\n' || *endptr == '\f' || *endptr == '\v') {
     ++endptr;
   }
 
   if (*endptr != '\0') {
     TRI_set_errno(TRI_ERROR_ILLEGAL_NUMBER);
-  } else if (errno == ERANGE && (result == HUGE_VAL || result == -HUGE_VAL || result == 0)) {
+  } else if (errno == ERANGE &&
+             (result == HUGE_VAL || result == -HUGE_VAL || result == 0)) {
     TRI_set_errno(TRI_ERROR_NUMERIC_OVERFLOW);
   }
 
@@ -100,7 +102,8 @@ int32_t TRI_Int32String(char const* str) {
   result = strtol(str, &endptr, 10);
 #endif
 
-  while (*endptr == ' ' || *endptr == '\t' || *endptr == '\r' || *endptr == '\n' || *endptr == '\f' || *endptr == '\v') {
+  while (*endptr == ' ' || *endptr == '\t' || *endptr == '\r' ||
+         *endptr == '\n' || *endptr == '\f' || *endptr == '\v') {
     ++endptr;
   }
 
@@ -158,7 +161,8 @@ uint32_t TRI_UInt32String(char const* str) {
   result = (uint32_t)strtoul(str, &endptr, 10);
 #endif
 
-  while (*endptr == ' ' || *endptr == '\t' || *endptr == '\r' || *endptr == '\n' || *endptr == '\f' || *endptr == '\v') {
+  while (*endptr == ' ' || *endptr == '\t' || *endptr == '\r' ||
+         *endptr == '\n' || *endptr == '\f' || *endptr == '\v') {
     ++endptr;
   }
 

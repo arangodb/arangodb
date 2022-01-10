@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +40,7 @@ struct AqlValue;
 
 namespace graph {
 
-template <class ProviderType, class Step>
+template<class ProviderType, class Step>
 class PathResult;
 
 class ValidationResult;
@@ -54,7 +54,7 @@ class ValidationResult;
  * }
  */
 
-template <class StepType>
+template<class StepType>
 class PathStore {
  public:
   using Step = StepType;
@@ -80,16 +80,18 @@ class PathStore {
   size_t size() const { return _schreier.size(); }
 
   auto visitReversePath(Step const& step,
-                        std::function<bool(Step const&)> const& visitor) const -> bool;
+                        std::function<bool(Step const&)> const& visitor) const
+      -> bool;
 
-  auto modifyReversePath(Step& step, std::function<bool(Step&)> const& visitor) -> bool;
+  auto modifyReversePath(Step& step, std::function<bool(Step&)> const& visitor)
+      -> bool;
 
-  template <class PathResultType>
+  template<class PathResultType>
   auto buildPath(Step const& vertex, PathResultType& path) const -> void;
 
-  template <class ProviderType>
-  auto reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const
-      -> void;
+  template<class ProviderType>
+  auto reverseBuildPath(Step const& vertex,
+                        PathResult<ProviderType, Step>& path) const -> void;
 
  private:
   /// @brief schreier vector to store the visited vertices

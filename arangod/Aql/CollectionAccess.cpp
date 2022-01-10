@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,7 +43,8 @@ auto CollectionAccess::collection() const noexcept -> aql::Collection const* {
 CollectionAccess::CollectionAccess(aql::Collection const* collection)
     : _collection(collection) {}
 
-CollectionAccess::CollectionAccess(aql::Collections const* const collections, velocypack::Slice const slice) {
+CollectionAccess::CollectionAccess(aql::Collections const* const collections,
+                                   velocypack::Slice const slice) {
   if (slice.get("prototype").isString()) {
     _prototypeCollection =
         collections->get(slice.get("prototype").copyString());
@@ -60,7 +61,8 @@ CollectionAccess::CollectionAccess(aql::Collections const* const collections, ve
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg);
   }
 
-  if (auto const isSatelliteOfSlice = slice.get("isSatelliteOf"); isSatelliteOfSlice.isInteger()) {
+  if (auto const isSatelliteOfSlice = slice.get("isSatelliteOf");
+      isSatelliteOfSlice.isInteger()) {
     auto const isSatelliteOfId = isSatelliteOfSlice.getUInt();
     _isSatelliteOf = ExecutionNodeId{isSatelliteOfId};
   } else {
@@ -79,11 +81,13 @@ void CollectionAccess::setPrototype(aql::Collection const* prototypeCollection,
   _prototypeOutVariable = prototypeOutVariable;
 }
 
-auto CollectionAccess::prototypeCollection() const noexcept -> aql::Collection const* {
+auto CollectionAccess::prototypeCollection() const noexcept
+    -> aql::Collection const* {
   return _prototypeCollection;
 }
 
-auto CollectionAccess::prototypeOutVariable() const noexcept -> aql::Variable const* {
+auto CollectionAccess::prototypeOutVariable() const noexcept
+    -> aql::Variable const* {
   return _prototypeOutVariable;
 }
 
@@ -95,11 +99,13 @@ bool CollectionAccess::isUsedAsSatellite() const noexcept {
   return _isSatelliteOf != std::nullopt;
 }
 
-auto CollectionAccess::getSatelliteOf(std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById) const
+auto CollectionAccess::getSatelliteOf(
+    std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById) const
     -> ExecutionNode* {
   if (_isSatelliteOf.has_value()) {
     auto* parentNode = nodesById.at(_isSatelliteOf.value());
-    auto* parentColAccess = ExecutionNode::castTo<CollectionAccessingNode*>(parentNode);
+    auto* parentColAccess =
+        ExecutionNode::castTo<CollectionAccessingNode*>(parentNode);
     if (parentColAccess->isUsedAsSatellite()) {
       parentNode = parentColAccess->getSatelliteOf(nodesById);
       // recursive path compression if our prototype has a prototype itself
@@ -112,7 +118,7 @@ auto CollectionAccess::getSatelliteOf(std::unordered_map<ExecutionNodeId, Execut
   }
 }
 
-
-auto CollectionAccess::getRawSatelliteOf() const -> std::optional<ExecutionNodeId> {
+auto CollectionAccess::getRawSatelliteOf() const
+    -> std::optional<ExecutionNodeId> {
   return _isSatelliteOf;
 }

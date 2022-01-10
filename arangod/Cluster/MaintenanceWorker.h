@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,10 +36,12 @@ namespace maintenance {
 class MaintenanceWorker : public Thread {
  public:
   explicit MaintenanceWorker(MaintenanceFeature& feature,
-                    int minimalPriorityAllowed,
-                    std::unordered_set<std::string> const& labels = std::unordered_set<std::string>());
+                             int minimalPriorityAllowed,
+                             std::unordered_set<std::string> const& labels =
+                                 std::unordered_set<std::string>());
 
-  MaintenanceWorker(MaintenanceFeature& feature, std::shared_ptr<Action>& directAction);
+  MaintenanceWorker(MaintenanceFeature& feature,
+                    std::shared_ptr<Action>& directAction);
 
   virtual ~MaintenanceWorker() { shutdown(); }
 
@@ -93,4 +95,3 @@ class MaintenanceWorker : public Thread {
 
 }  // namespace maintenance
 }  // namespace arangodb
-

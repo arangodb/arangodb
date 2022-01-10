@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,18 +29,14 @@
 using namespace arangodb;
 using namespace arangodb::transaction;
 
-CountCache::CountCache(double ttl) 
-    : count(CountCache::NotPopulated), 
-      expireStamp(0.0),
-      ttl(ttl) {}
+CountCache::CountCache(double ttl)
+    : count(CountCache::NotPopulated), expireStamp(0.0), ttl(ttl) {}
 
 uint64_t CountCache::get() const {
   return count.load(std::memory_order_relaxed);
 }
 
-double CountCache::getTime() const {
-  return TRI_microtime();
-}
+double CountCache::getTime() const { return TRI_microtime(); }
 
 uint64_t CountCache::getWithTtl() const {
   // (1) - this acquire-load synchronizes with the release-store (2)

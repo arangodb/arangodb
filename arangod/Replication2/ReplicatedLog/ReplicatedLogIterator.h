@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,9 +27,11 @@
 #if (_MSC_VER >= 1)
 // suppress warnings:
 #pragma warning(push)
-// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of data
+// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of
+// data
 #pragma warning(disable : 4267)
-// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift intended?)
+// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift
+// intended?)
 #pragma warning(disable : 4334)
 #endif
 #include <immer/flex_vector.hpp>
@@ -44,7 +47,8 @@ namespace arangodb::replication2::replicated_log {
 
 class ReplicatedLogIterator : public LogRangeIterator {
  public:
-  using log_type = ::immer::flex_vector<InMemoryLogEntry, arangodb::immer::arango_memory_policy>;
+  using log_type = ::immer::flex_vector<InMemoryLogEntry,
+                                        arangodb::immer::arango_memory_policy>;
 
   explicit ReplicatedLogIterator(log_type container)
       : _container(std::move(container)),
@@ -67,7 +71,8 @@ class ReplicatedLogIterator : public LogRangeIterator {
     if (_container.empty()) {
       return {LogIndex{0}, LogIndex{0}};
     } else {
-      return {_container.front().entry().logIndex(), _container.back().entry().logIndex() + 1};
+      return {_container.front().entry().logIndex(),
+              _container.back().entry().logIndex() + 1};
     }
   }
 
@@ -79,7 +84,8 @@ class ReplicatedLogIterator : public LogRangeIterator {
 
 class InMemoryPersistedLogIterator : public PersistedLogIterator {
  public:
-  using log_type = ::immer::flex_vector<InMemoryLogEntry, arangodb::immer::arango_memory_policy>;
+  using log_type = ::immer::flex_vector<InMemoryLogEntry,
+                                        arangodb::immer::arango_memory_policy>;
 
   explicit InMemoryPersistedLogIterator(log_type container)
       : _container(std::move(container)),
@@ -103,7 +109,8 @@ class InMemoryPersistedLogIterator : public PersistedLogIterator {
 
 class InMemoryLogIterator : public TypedLogIterator<InMemoryLogEntry> {
  public:
-  using log_type = ::immer::flex_vector<InMemoryLogEntry, arangodb::immer::arango_memory_policy>;
+  using log_type = ::immer::flex_vector<InMemoryLogEntry,
+                                        arangodb::immer::arango_memory_policy>;
 
   explicit InMemoryLogIterator(log_type container)
       : _container(std::move(container)),

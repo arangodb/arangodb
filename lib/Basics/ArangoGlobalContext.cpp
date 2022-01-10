@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,7 +62,8 @@ inline void ADB_WindowsExitFunction(int, void*) {}
 // Disable a warning caused by the call to ADB_WindowsExitFunction() in
 // ~ArangoGlobalContext().
 #pragma warning(push)
-#pragma warning(disable : 4722)  // destructor never returns, potential memory leak
+#pragma warning( \
+    disable : 4722)  // destructor never returns, potential memory leak
 #endif
 
 using namespace arangodb;
@@ -77,10 +78,12 @@ static void ReopenLog(int) { LogAppender::reopen(); }
 
 ArangoGlobalContext* ArangoGlobalContext::CONTEXT = nullptr;
 
-ArangoGlobalContext::ArangoGlobalContext(int /*argc*/, char* argv[], char const* installDirectory)
+ArangoGlobalContext::ArangoGlobalContext(int /*argc*/, char* argv[],
+                                         char const* installDirectory)
     : _binaryName(TRI_BinaryName(argv[0])),
       _binaryPath(TRI_LocateBinaryPath(argv[0])),
-      _runRoot(TRI_GetInstallRoot(TRI_LocateBinaryPath(argv[0]), installDirectory)),
+      _runRoot(
+          TRI_GetInstallRoot(TRI_LocateBinaryPath(argv[0]), installDirectory)),
       _ret(EXIT_FAILURE) {
 #ifndef _WIN32
 #ifndef __APPLE__
@@ -137,19 +140,22 @@ void ArangoGlobalContext::normalizePath(std::vector<std::string>& paths,
   }
 }
 
-void ArangoGlobalContext::normalizePath(std::string& path, char const* whichPath, bool fatal) {
+void ArangoGlobalContext::normalizePath(std::string& path,
+                                        char const* whichPath, bool fatal) {
   StringUtils::rTrimInPlace(path, TRI_DIR_SEPARATOR_STR);
 
   arangodb::basics::FileUtils::normalizePath(path);
   if (!arangodb::basics::FileUtils::exists(path)) {
-    std::string directory = arangodb::basics::FileUtils::buildFilename(_runRoot, path);
+    std::string directory =
+        arangodb::basics::FileUtils::buildFilename(_runRoot, path);
     if (!arangodb::basics::FileUtils::exists(directory)) {
       if (!fatal) {
         return;
       }
       LOG_TOPIC("3537a", FATAL, arangodb::Logger::FIXME)
-          << "failed to locate " << whichPath << " directory, its neither available in '"
-          << path << "' nor in '" << directory << "'";
+          << "failed to locate " << whichPath
+          << " directory, its neither available in '" << path << "' nor in '"
+          << directory << "'";
       FATAL_ERROR_EXIT();
     }
     arangodb::basics::FileUtils::normalizePath(directory);

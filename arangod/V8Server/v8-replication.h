@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,7 @@
 #include "Basics/Common.h"
 #include "v8-vocbase.h"
 
-void TRI_InitV8Replication(v8::Isolate* isolate, v8::Handle<v8::Context> context,
+void TRI_InitV8Replication(v8::Isolate* isolate,
+                           v8::Handle<v8::Context> context,
                            TRI_vocbase_t* vocbase, size_t threadNumber,
                            TRI_v8_global_t* v8g);
-

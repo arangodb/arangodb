@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,12 +38,14 @@ class ApplicationServer;
 class GeneralResponse;
 class GlobalReplicationApplier;
 
-class ReplicationFeature final : public application_features::ApplicationFeature {
+class ReplicationFeature final
+    : public application_features::ApplicationFeature {
  public:
   explicit ReplicationFeature(application_features::ApplicationServer& server);
   ~ReplicationFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions> options) override final;
+  void collectOptions(
+      std::shared_ptr<options::ProgramOptions> options) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
@@ -105,7 +107,8 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   /// @brief fill a response object with correct response for a follower
   void prepareFollowerResponse(GeneralResponse*, arangodb::ServerState::Mode);
 
-  /// @brief get max document num for quick call to _api/replication/keys to get actual keys or only doc count
+  /// @brief get max document num for quick call to _api/replication/keys to get
+  /// actual keys or only doc count
   uint64_t quickKeysLimit() const { return _quickKeysLimit; }
 
  private:
@@ -115,12 +118,12 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   /// @brief request timeout for replication requests
   double _requestTimeout;
 
-  /// @brief whether or not the user-defined connect timeout is forced to be used
-  /// this is true only if the user set the connect timeout at startup
+  /// @brief whether or not the user-defined connect timeout is forced to be
+  /// used this is true only if the user set the connect timeout at startup
   bool _forceConnectTimeout;
 
-  /// @brief whether or not the user-defined request timeout is forced to be used
-  /// this is true only if the user set the request timeout at startup
+  /// @brief whether or not the user-defined request timeout is forced to be
+  /// used this is true only if the user set the request timeout at startup
   bool _forceRequestTimeout;
 
   bool _replicationApplierAutoStart;
@@ -130,7 +133,7 @@ class ReplicationFeature final : public application_features::ApplicationFeature
 
   /// Use the revision-based replication protocol
   bool _syncByRevision;
-  
+
   /// @brief cache for reusable connections
   httpclient::ConnectionCache _connectionCache;
 
@@ -149,4 +152,3 @@ class ReplicationFeature final : public application_features::ApplicationFeature
 };
 
 }  // namespace arangodb
-

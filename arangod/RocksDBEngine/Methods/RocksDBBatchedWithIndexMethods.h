@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +28,7 @@
 #include <rocksdb/utilities/write_batch_with_index.h>
 
 namespace rocksdb {
- class WriteBatchWithIndex;
+class WriteBatchWithIndex;
 }  // namespace rocksdb
 
 namespace arangodb {
@@ -39,17 +39,20 @@ class RocksDBBatchedWithIndexMethods final : public RocksDBMethods {
   RocksDBBatchedWithIndexMethods(rocksdb::TransactionDB* db,
                                  rocksdb::WriteBatchWithIndex*);
 
-  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*,
-                      rocksdb::Slice const&, rocksdb::PinnableSlice*, ReadOwnWrites) override;
+  rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
+                      rocksdb::PinnableSlice*, ReadOwnWrites) override;
   rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
                                rocksdb::Slice const&,
                                rocksdb::PinnableSlice*) override;
   rocksdb::Status Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
                       rocksdb::Slice const& val, bool assume_tracked) override;
-  rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+  rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*,
+                               RocksDBKey const& key,
                                rocksdb::Slice const& val) override;
-  rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
-  rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
+  rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*,
+                         RocksDBKey const& key) override;
+  rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*,
+                               RocksDBKey const&) override;
   void PutLogData(rocksdb::Slice const&) override;
 
  private:
@@ -58,4 +61,3 @@ class RocksDBBatchedWithIndexMethods final : public RocksDBMethods {
 };
 
 }  // namespace arangodb
-

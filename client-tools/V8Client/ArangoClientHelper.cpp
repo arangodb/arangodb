@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +40,8 @@ using namespace arangodb::httpclient;
 ArangoClientHelper::ArangoClientHelper() : _httpClient(nullptr) {}
 
 // helper to rewrite HTTP location
-std::string ArangoClientHelper::rewriteLocation(void* data, std::string const& location) {
+std::string ArangoClientHelper::rewriteLocation(void* data,
+                                                std::string const& location) {
   if (location.compare(0, 5, "/_db/") == 0) {
     return location;
   }
@@ -55,7 +56,8 @@ std::string ArangoClientHelper::rewriteLocation(void* data, std::string const& l
 }
 
 // extract an error message from a response
-std::string ArangoClientHelper::getHttpErrorMessage(SimpleHttpResult* result, ErrorCode* err) {
+std::string ArangoClientHelper::getHttpErrorMessage(SimpleHttpResult* result,
+                                                    ErrorCode* err) {
   if (err != nullptr) {
     *err = TRI_ERROR_NO_ERROR;
   }
@@ -68,15 +70,15 @@ std::string ArangoClientHelper::getHttpErrorMessage(SimpleHttpResult* result, Er
     std::string const& errorMessage =
         arangodb::basics::VelocyPackHelper::getStringValue(body, "errorMessage",
                                                            "");
-    auto errorNum =
-        arangodb::basics::VelocyPackHelper::getNumericValue<int>(body,
-                                                                 "errorNum", 0);
+    auto errorNum = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+        body, "errorNum", 0);
 
     if (!errorMessage.empty() && errorNum > 0) {
       if (err != nullptr) {
         *err = ErrorCode{errorNum};
       }
-      details = ": ArangoError " + StringUtils::itoa(errorNum) + ": " + errorMessage;
+      details =
+          ": ArangoError " + StringUtils::itoa(errorNum) + ": " + errorMessage;
     }
   } catch (...) {
     // No action, fallthrough for error
@@ -88,8 +90,8 @@ std::string ArangoClientHelper::getHttpErrorMessage(SimpleHttpResult* result, Er
 
 // check if server is a coordinator of a cluster
 bool ArangoClientHelper::getArangoIsCluster(ErrorCode* err) {
-  std::unique_ptr<SimpleHttpResult> response(
-      _httpClient->request(rest::RequestType::GET, "/_admin/server/role", "", 0));
+  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
+      rest::RequestType::GET, "/_admin/server/role", "", 0));
 
   if (response == nullptr || !response->isComplete()) {
     return false;
@@ -108,7 +110,8 @@ bool ArangoClientHelper::getArangoIsCluster(ErrorCode* err) {
     }
   } else {
     if (response->wasHttpError()) {
-      _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), err), false);
+      _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), err),
+                                   false);
     }
 
     _httpClient->disconnect();

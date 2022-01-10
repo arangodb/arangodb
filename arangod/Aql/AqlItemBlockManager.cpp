@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,14 +33,12 @@ using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the manager
-AqlItemBlockManager::AqlItemBlockManager(arangodb::ResourceMonitor& resourceMonitor,
-                                         SerializationFormat format)
+AqlItemBlockManager::AqlItemBlockManager(
+    arangodb::ResourceMonitor& resourceMonitor, SerializationFormat format)
     : _resourceMonitor(resourceMonitor), _format(format) {}
 
 /// @brief destroy the manager
-AqlItemBlockManager::~AqlItemBlockManager() {
-  delete _constValueBlock;
-}
+AqlItemBlockManager::~AqlItemBlockManager() { delete _constValueBlock; }
 
 void AqlItemBlockManager::initializeConstValueBlock(RegisterCount nrRegs) {
   TRI_ASSERT(_constValueBlock == nullptr);
@@ -48,7 +46,8 @@ void AqlItemBlockManager::initializeConstValueBlock(RegisterCount nrRegs) {
 }
 
 /// @brief request a block with the specified size
-SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t numRows, RegisterCount numRegisters) {
+SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(
+    size_t numRows, RegisterCount numRegisters) {
   size_t const targetSize = numRows * numRegisters;
 
   AqlItemBlock* block = nullptr;
@@ -57,7 +56,7 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t numRows, Register
   int tries = 0;
   do {
     TRI_ASSERT(i < numBuckets);
-    
+
     std::lock_guard<std::mutex> guard(_buckets[i]._mutex);
     if (!_buckets[i].empty()) {
       block = _buckets[i].pop();
@@ -129,7 +128,8 @@ void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) noexcept {
   }
 }
 
-SharedAqlItemBlockPtr AqlItemBlockManager::requestAndInitBlock(arangodb::velocypack::Slice slice) {
+SharedAqlItemBlockPtr AqlItemBlockManager::requestAndInitBlock(
+    arangodb::velocypack::Slice slice) {
   auto const nrItemsSigned =
       VelocyPackHelper::getNumericValue<int64_t>(slice, "nrItems", 0);
   auto const nrRegs =
@@ -148,14 +148,13 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestAndInitBlock(arangodb::velocyp
   return block;
 }
 
-arangodb::ResourceMonitor& AqlItemBlockManager::resourceMonitor() const noexcept {
+arangodb::ResourceMonitor& AqlItemBlockManager::resourceMonitor()
+    const noexcept {
   return _resourceMonitor;
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-void AqlItemBlockManager::deleteBlock(AqlItemBlock* block) {
-  delete block;
-}
+void AqlItemBlockManager::deleteBlock(AqlItemBlock* block) { delete block; }
 #endif
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -207,8 +206,9 @@ uint32_t AqlItemBlockManager::Bucket::getId(size_t targetSize) noexcept {
   if (ADB_UNLIKELY(targetSize >= (1ULL << numBuckets))) {
     return (numBuckets - 1);
   }
-  
-  uint32_t value = arangodb::NumberUtils::log2(static_cast<uint32_t>(targetSize));
+
+  uint32_t value =
+      arangodb::NumberUtils::log2(static_cast<uint32_t>(targetSize));
   TRI_ASSERT(value < numBuckets);
   return value;
 }

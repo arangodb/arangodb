@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,7 @@ struct TRI_vocbase_t;
 namespace arangodb {
 class V8ContextGuard;
 class V8LineEditor;
-}
+}  // namespace arangodb
 
 namespace arangodb {
 namespace application_features {
@@ -66,4 +66,3 @@ class ConsoleThread final : public Thread {
   std::atomic<bool> _userAborted;
 };
 }  // namespace arangodb
-

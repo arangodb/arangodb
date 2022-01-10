@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +29,8 @@ namespace arangodb {
 
 class ClientFeature;
 
-class ShellConsoleFeature final : public application_features::ApplicationFeature {
+class ShellConsoleFeature final
+    : public application_features::ApplicationFeature {
  public:
   explicit ShellConsoleFeature(application_features::ApplicationServer& server);
 
@@ -114,4 +115,3 @@ class ShellConsoleFeature final : public application_features::ApplicationFeatur
 };
 
 }  // namespace arangodb
-

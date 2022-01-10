@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -65,18 +65,22 @@ struct QueryOptions {
   TEST_VIRTUAL ~QueryOptions() = default;
 
   void fromVelocyPack(arangodb::velocypack::Slice slice);
-  void toVelocyPack(arangodb::velocypack::Builder& builder, bool disableOptimizerRules) const;
+  void toVelocyPack(arangodb::velocypack::Builder& builder,
+                    bool disableOptimizerRules) const;
   TEST_VIRTUAL ProfileLevel getProfileLevel() const { return profile; }
-  TEST_VIRTUAL TraversalProfileLevel getTraversalProfileLevel() const { return traversalProfile; }
+  TEST_VIRTUAL TraversalProfileLevel getTraversalProfileLevel() const {
+    return traversalProfile;
+  }
 
   size_t memoryLimit;
   size_t maxNumberOfPlans;
   size_t maxWarningCount;
   size_t maxNodesPerCallstack;
-  double maxRuntime; // query has to execute within the given time or will be killed
+  double maxRuntime;  // query has to execute within the given time or will be
+                      // killed
   double satelliteSyncWait;
-  double ttl; // time until query cursor expires - avoids coursors to
-              // stick around for ever if client does not collect the data
+  double ttl;  // time until query cursor expires - avoids coursors to
+               // stick around for ever if client does not collect the data
   /// Level 0 nothing, Level 1 profile, Level 2,3 log tracing info
   ProfileLevel profile;
   TraversalProfileLevel traversalProfile;
@@ -89,7 +93,7 @@ struct QueryOptions {
   bool fullCount;
   bool count;
   bool verboseErrors;
-  bool skipAudit; // skips audit logging - used only internally
+  bool skipAudit;  // skips audit logging - used only internally
   ExplainRegisterPlan explainRegisters;
 
   /// @brief shard key attribute value used to push a query down
@@ -98,7 +102,7 @@ struct QueryOptions {
 
   /// @brief optimizer rules to turn off/on manually
   std::vector<std::string> optimizerRules;
-  
+
   /// @brief manual restriction to certain shards
   std::unordered_set<std::string> restrictToShards;
 
@@ -108,7 +112,7 @@ struct QueryOptions {
 #endif
 
   transaction::Options transactionOptions;
-  
+
   static size_t defaultMemoryLimit;
   static size_t defaultMaxNumberOfPlans;
   static size_t defaultMaxNodesPerCallstack;
@@ -120,4 +124,3 @@ struct QueryOptions {
 
 }  // namespace aql
 }  // namespace arangodb
-

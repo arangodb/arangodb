@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,7 +52,8 @@ int TRI_closesocket(TRI_socket_t s) {
     if (res != 0) {
       // Windows complains about shutting down a socket that was not bound
       // so we will not print out the error here
-      // LOG_TOPIC("52a7b", WARN, arangodb::Logger::FIXME) << "socket shutdown error: "
+      // LOG_TOPIC("52a7b", WARN, arangodb::Logger::FIXME) << "socket shutdown
+      // error: "
       // << WSAGetLastError();
     } else {
       char buf[256];
@@ -83,7 +84,8 @@ int TRI_closesocket(TRI_socket_t s) {
   return res;
 }
 
-int TRI_readsocket(TRI_socket_t s, void* buffer, size_t numBytesToRead, int flags) {
+int TRI_readsocket(TRI_socket_t s, void* buffer, size_t numBytesToRead,
+                   int flags) {
   int res;
 #ifdef _WIN32
   res = recv(s.fileHandle, (char*)(buffer), (int)(numBytesToRead), flags);
@@ -355,11 +357,13 @@ ErrorCode TRI_InetPton6(char const* src, unsigned char* dst) {
 bool TRI_setsockopttimeout(TRI_socket_t s, double timeout) {
   DWORD to = (DWORD)timeout * 1000;
 
-  if (TRI_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char const*)&to, sizeof(to)) != 0) {
+  if (TRI_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char const*)&to,
+                     sizeof(to)) != 0) {
     return false;
   }
 
-  if (TRI_setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (char const*)&to, sizeof(to)) != 0) {
+  if (TRI_setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (char const*)&to,
+                     sizeof(to)) != 0) {
     return false;
   }
   return true;

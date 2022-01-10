@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -74,12 +74,13 @@ static void parseNodeInput(AstNode const* node, std::string& id,
                                          "_id string or an object with _id.");
   }
 }
-static ShortestPathExecutorInfos::InputVertex prepareVertexInput(ShortestPathNode const* node,
-                                                                 bool isTarget) {
+static ShortestPathExecutorInfos::InputVertex prepareVertexInput(
+    ShortestPathNode const* node, bool isTarget) {
   using InputVertex = ShortestPathExecutorInfos::InputVertex;
   if (isTarget) {
     if (node->usesTargetInVariable()) {
-      auto it = node->getRegisterPlan()->varInfo.find(node->targetInVariable()->id);
+      auto it =
+          node->getRegisterPlan()->varInfo.find(node->targetInVariable()->id);
       TRI_ASSERT(it != node->getRegisterPlan()->varInfo.end());
       return InputVertex{it->second.registerId};
     } else {
@@ -87,7 +88,8 @@ static ShortestPathExecutorInfos::InputVertex prepareVertexInput(ShortestPathNod
     }
   } else {
     if (node->usesStartInVariable()) {
-      auto it = node->getRegisterPlan()->varInfo.find(node->startInVariable()->id);
+      auto it =
+          node->getRegisterPlan()->varInfo.find(node->startInVariable()->id);
       TRI_ASSERT(it != node->getRegisterPlan()->varInfo.end());
       return InputVertex{it->second.registerId};
     } else {
@@ -97,9 +99,11 @@ static ShortestPathExecutorInfos::InputVertex prepareVertexInput(ShortestPathNod
 }
 }  // namespace
 
-ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
-                                   AstNode const* direction, AstNode const* start,
-                                   AstNode const* target, AstNode const* graph,
+ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, ExecutionNodeId id,
+                                   TRI_vocbase_t* vocbase,
+                                   AstNode const* direction,
+                                   AstNode const* start, AstNode const* target,
+                                   AstNode const* graph,
                                    std::unique_ptr<BaseOptions> options)
     : GraphNode(plan, id, vocbase, direction, graph, std::move(options)),
       _inStartVariable(nullptr),
@@ -113,22 +117,20 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_
   auto ast = _plan->getAst();
   // Let us build the conditions on _from and _to. Just in case we need them.
   {
-    auto const* access =
-        ast->createNodeAttributeAccess(getTemporaryRefNode(),
-                                       StaticStrings::FromString);
-    auto const* cond =
-        ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, _tmpIdNode);
+    auto const* access = ast->createNodeAttributeAccess(
+        getTemporaryRefNode(), StaticStrings::FromString);
+    auto const* cond = ast->createNodeBinaryOperator(
+        NODE_TYPE_OPERATOR_BINARY_EQ, access, _tmpIdNode);
     _fromCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
     _fromCondition->addMember(cond);
   }
   TRI_ASSERT(_fromCondition != nullptr);
 
   {
-    auto const* access =
-        ast->createNodeAttributeAccess(getTemporaryRefNode(),
-                                       StaticStrings::ToString);
-    auto const* cond =
-        ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, _tmpIdNode);
+    auto const* access = ast->createNodeAttributeAccess(
+        getTemporaryRefNode(), StaticStrings::ToString);
+    auto const* cond = ast->createNodeBinaryOperator(
+        NODE_TYPE_OPERATOR_BINARY_EQ, access, _tmpIdNode);
     _toCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
     _toCondition->addMember(cond);
   }
@@ -143,7 +145,8 @@ ShortestPathNode::ShortestPathNode(
     ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
     std::vector<Collection*> const& edgeColls,
     std::vector<Collection*> const& vertexColls,
-    TRI_edge_direction_e defaultDirection, std::vector<TRI_edge_direction_e> const& directions,
+    TRI_edge_direction_e defaultDirection,
+    std::vector<TRI_edge_direction_e> const& directions,
     Variable const* inStartVariable, std::string const& startVertexId,
     Variable const* inTargetVariable, std::string const& targetVertexId,
     std::unique_ptr<BaseOptions> options, graph::Graph const* graph)
@@ -158,7 +161,8 @@ ShortestPathNode::ShortestPathNode(
 
 ShortestPathNode::~ShortestPathNode() = default;
 
-ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
+                                   arangodb::velocypack::Slice const& base)
     : GraphNode(plan, base),
       _inStartVariable(nullptr),
       _inTargetVariable(nullptr),
@@ -216,7 +220,8 @@ void ShortestPathNode::setStartInVariable(Variable const* inVariable) {
   _startVertexId = "";
 }
 
-void ShortestPathNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void ShortestPathNode::doToVelocyPack(VPackBuilder& nodes,
+                                      unsigned flags) const {
   GraphNode::doToVelocyPack(nodes, flags);  // call base class method
   // In variables
   if (usesStartInVariable()) {
@@ -245,7 +250,8 @@ void ShortestPathNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
-    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   auto inputRegisters = RegIdSet();
@@ -262,28 +268,33 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
   }
 
   auto outputRegisters = RegIdSet{};
-  std::unordered_map<ShortestPathExecutorInfos::OutputName, RegisterId, ShortestPathExecutorInfos::OutputNameHash> outputRegisterMapping;
+  std::unordered_map<ShortestPathExecutorInfos::OutputName, RegisterId,
+                     ShortestPathExecutorInfos::OutputNameHash>
+      outputRegisterMapping;
   if (isVertexOutVariableUsedLater()) {
     auto it = varInfo.find(vertexOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
-    outputRegisterMapping.try_emplace(ShortestPathExecutorInfos::OutputName::VERTEX,
-                                      it->second.registerId);
+    outputRegisterMapping.try_emplace(
+        ShortestPathExecutorInfos::OutputName::VERTEX, it->second.registerId);
     outputRegisters.emplace(it->second.registerId);
   }
   if (isEdgeOutVariableUsedLater()) {
     auto it = varInfo.find(edgeOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
-    outputRegisterMapping.try_emplace(ShortestPathExecutorInfos::OutputName::EDGE,
-                                      it->second.registerId);
+    outputRegisterMapping.try_emplace(
+        ShortestPathExecutorInfos::OutputName::EDGE, it->second.registerId);
     outputRegisters.emplace(it->second.registerId);
   }
 
-  auto registerInfos = createRegisterInfos(std::move(inputRegisters), std::move(outputRegisters));
+  auto registerInfos = createRegisterInfos(std::move(inputRegisters),
+                                           std::move(outputRegisters));
 
   auto opts = static_cast<ShortestPathOptions*>(options());
 
-  ShortestPathExecutorInfos::InputVertex sourceInput = ::prepareVertexInput(this, false);
-  ShortestPathExecutorInfos::InputVertex targetInput = ::prepareVertexInput(this, true);
+  ShortestPathExecutorInfos::InputVertex sourceInput =
+      ::prepareVertexInput(this, false);
+  ShortestPathExecutorInfos::InputVertex targetInput =
+      ::prepareVertexInput(this, true);
 
   std::unique_ptr<ShortestPathFinder> finder;
   if (opts->useWeight()) {
@@ -297,35 +308,38 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
 #endif
 
   TRI_ASSERT(finder != nullptr);
-  auto executorInfos =
-      ShortestPathExecutorInfos(std::move(finder), std::move(outputRegisterMapping),
-                                std::move(sourceInput), std::move(targetInput));
+  auto executorInfos = ShortestPathExecutorInfos(
+      std::move(finder), std::move(outputRegisterMapping),
+      std::move(sourceInput), std::move(targetInput));
   return std::make_unique<ExecutionBlockImpl<ShortestPathExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
-ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan, bool withDependencies,
+ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
+                                       bool withDependencies,
                                        bool withProperties) const {
   TRI_ASSERT(!_optionsBuilt);
   auto oldOpts = static_cast<ShortestPathOptions*>(options());
-  std::unique_ptr<BaseOptions> tmp = std::make_unique<ShortestPathOptions>(*oldOpts);
-  auto c = std::make_unique<ShortestPathNode>(plan, _id, _vocbase, _edgeColls,
-                                              _vertexColls, _defaultDirection, _directions,
-                                              _inStartVariable, _startVertexId,
-                                              _inTargetVariable, _targetVertexId,
-                                              std::move(tmp), _graphObj);
+  std::unique_ptr<BaseOptions> tmp =
+      std::make_unique<ShortestPathOptions>(*oldOpts);
+  auto c = std::make_unique<ShortestPathNode>(
+      plan, _id, _vocbase, _edgeColls, _vertexColls, _defaultDirection,
+      _directions, _inStartVariable, _startVertexId, _inTargetVariable,
+      _targetVertexId, std::move(tmp), _graphObj);
   shortestPathCloneHelper(*plan, *c, withProperties);
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-void ShortestPathNode::shortestPathCloneHelper(ExecutionPlan& plan, ShortestPathNode& c,
+void ShortestPathNode::shortestPathCloneHelper(ExecutionPlan& plan,
+                                               ShortestPathNode& c,
                                                bool withProperties) const {
   graphCloneHelper(plan, c, withProperties);
   if (isVertexOutVariableUsedLater()) {
     auto vertexOutVariable = _vertexOutVariable;
     if (withProperties) {
-      vertexOutVariable = plan.getAst()->variables()->createVariable(vertexOutVariable);
+      vertexOutVariable =
+          plan.getAst()->variables()->createVariable(vertexOutVariable);
     }
     TRI_ASSERT(vertexOutVariable != nullptr);
     c.setVertexOutput(vertexOutVariable);
@@ -334,7 +348,8 @@ void ShortestPathNode::shortestPathCloneHelper(ExecutionPlan& plan, ShortestPath
   if (isEdgeOutVariableUsedLater()) {
     auto edgeOutVariable = _edgeOutVariable;
     if (withProperties) {
-      edgeOutVariable = plan.getAst()->variables()->createVariable(edgeOutVariable);
+      edgeOutVariable =
+          plan.getAst()->variables()->createVariable(edgeOutVariable);
     }
     TRI_ASSERT(edgeOutVariable != nullptr);
     c.setEdgeOutput(edgeOutVariable);
@@ -349,10 +364,11 @@ void ShortestPathNode::shortestPathCloneHelper(ExecutionPlan& plan, ShortestPath
   c._fromCondition = _fromCondition->clone(_plan->getAst());
   c._toCondition = _toCondition->clone(_plan->getAst());
 }
-  
-void ShortestPathNode::replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) {
+
+void ShortestPathNode::replaceVariables(
+    std::unordered_map<VariableId, Variable const*> const& replacements) {
   if (_inStartVariable != nullptr) {
-   _inStartVariable = Variable::replace(_inStartVariable, replacements);
+    _inStartVariable = Variable::replace(_inStartVariable, replacements);
   }
 
   if (_inTargetVariable != nullptr) {
@@ -401,13 +417,16 @@ void ShortestPathNode::prepareOptions() {
       case TRI_EDGE_IN:
         opts->addLookupInfo(_plan, _edgeColls[i]->name(),
                             StaticStrings::ToString, _toCondition->clone(ast));
-        opts->addReverseLookupInfo(_plan, _edgeColls[i]->name(), StaticStrings::FromString,
+        opts->addReverseLookupInfo(_plan, _edgeColls[i]->name(),
+                                   StaticStrings::FromString,
                                    _fromCondition->clone(ast));
         break;
       case TRI_EDGE_OUT:
         opts->addLookupInfo(_plan, _edgeColls[i]->name(),
-                            StaticStrings::FromString, _fromCondition->clone(ast));
-        opts->addReverseLookupInfo(_plan, _edgeColls[i]->name(), StaticStrings::ToString,
+                            StaticStrings::FromString,
+                            _fromCondition->clone(ast));
+        opts->addReverseLookupInfo(_plan, _edgeColls[i]->name(),
+                                   StaticStrings::ToString,
                                    _toCondition->clone(ast));
         break;
       case TRI_EDGE_ANY:
@@ -437,7 +456,8 @@ auto ShortestPathNode::options() const -> ShortestPathOptions* {
 
 // This constructor is only used from LocalTraversalNode, and GraphNode
 // is virtually inherited; thus its constructor is never called from here.
-ShortestPathNode::ShortestPathNode(ExecutionPlan& plan, ShortestPathNode const& other)
+ShortestPathNode::ShortestPathNode(ExecutionPlan& plan,
+                                   ShortestPathNode const& other)
     : GraphNode(GraphNode::THIS_THROWS_WHEN_CALLED{}),
       _inStartVariable(other._inStartVariable),
       _startVertexId(other._startVertexId),

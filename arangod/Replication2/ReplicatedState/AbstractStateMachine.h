@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -38,20 +39,25 @@ struct ReplicatedLog;
 
 namespace replicated_state {
 
-template <typename T>
-struct AbstractStateMachine : std::enable_shared_from_this<AbstractStateMachine<T>> {
-  // TODO Maybe we can create a non-templated base class for functions that do not
+template<typename T>
+struct AbstractStateMachine
+    : std::enable_shared_from_this<AbstractStateMachine<T>> {
+  // TODO Maybe we can create a non-templated base class for functions that do
+  // not
   //      require the template parameter. (waitFor, pollEntries, ...)
   using LogIterator = TypedLogIterator<T>;
   using LogRangeIterator = TypedLogRangeIterator<T>;
 
   virtual ~AbstractStateMachine() = default;
 
-  explicit AbstractStateMachine(std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog> log);
+  explicit AbstractStateMachine(
+      std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>
+          log);
   auto triggerPollEntries() -> futures::Future<Result>;
 
  protected:
-  virtual auto installSnapshot(ParticipantId const&) -> futures::Future<Result> = 0;
+  virtual auto installSnapshot(ParticipantId const&)
+      -> futures::Future<Result> = 0;
   virtual auto applyEntries(std::unique_ptr<LogRangeIterator>)
       -> futures::Future<Result> = 0;
 
@@ -59,7 +65,8 @@ struct AbstractStateMachine : std::enable_shared_from_this<AbstractStateMachine<
   auto getEntry(LogIndex) -> std::optional<T>;
   auto getIterator(LogIndex first) -> std::unique_ptr<LogIterator>;
   auto insert(T const&) -> LogIndex;
-  auto waitFor(LogIndex) -> futures::Future<replication2::replicated_log::WaitForResult>;
+  auto waitFor(LogIndex)
+      -> futures::Future<replication2::replicated_log::WaitForResult>;
 
  private:
   struct GuardedData {
@@ -68,7 +75,8 @@ struct AbstractStateMachine : std::enable_shared_from_this<AbstractStateMachine<
   };
 
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
-  std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog> const log;
+  std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog> const
+      log;
 };
 
 }  // namespace replicated_state

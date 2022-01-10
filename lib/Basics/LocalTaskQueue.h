@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -78,7 +78,8 @@ class LocalTaskQueue {
   LocalTaskQueue(LocalTaskQueue const&) = delete;
   LocalTaskQueue& operator=(LocalTaskQueue const&) = delete;
 
-  explicit LocalTaskQueue(application_features::ApplicationServer& server, PostFn poster);
+  explicit LocalTaskQueue(application_features::ApplicationServer& server,
+                          PostFn poster);
 
   ~LocalTaskQueue();
 
@@ -181,4 +182,3 @@ class LocalTaskQueue {
 
 }  // namespace basics
 }  // namespace arangodb
-

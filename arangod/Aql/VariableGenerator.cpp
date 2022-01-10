@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,11 +33,8 @@
 using namespace arangodb::aql;
 
 /// @brief create the generator
-VariableGenerator::VariableGenerator() 
-    : _id(0) { 
-  _variables.reserve(8); 
-}
-  
+VariableGenerator::VariableGenerator() : _id(0) { _variables.reserve(8); }
+
 /// @brief visit all variables
 void VariableGenerator::visit(std::function<void(Variable*)> const& visitor) {
   for (auto& it : _variables) {
@@ -46,7 +43,8 @@ void VariableGenerator::visit(std::function<void(Variable*)> const& visitor) {
 }
 
 /// @brief return a map of all variable ids with their names
-std::unordered_map<VariableId, std::string const> VariableGenerator::variables(bool includeTemporaries) const {
+std::unordered_map<VariableId, std::string const> VariableGenerator::variables(
+    bool includeTemporaries) const {
   std::unordered_map<VariableId, std::string const> result;
 
   for (auto const& it : _variables) {
@@ -62,12 +60,15 @@ std::unordered_map<VariableId, std::string const> VariableGenerator::variables(b
 }
 
 /// @brief generate a variable
-Variable* VariableGenerator::createVariable(std::string_view name, bool isUserDefined) {
+Variable* VariableGenerator::createVariable(std::string_view name,
+                                            bool isUserDefined) {
   std::string temp(name);
-  
-  if (isUserDefined && !isValidName(name.data(), name.data() + name.size())) { 
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, 
-                                   arangodb::basics::Exception::FillExceptionString(TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, temp.c_str()));
+
+  if (isUserDefined && !isValidName(name.data(), name.data() + name.size())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_PARSE,
+        arangodb::basics::Exception::FillExceptionString(
+            TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, temp.c_str()));
   }
 
   auto variable = std::make_unique<Variable>(std::move(temp), nextId(), false);
@@ -120,7 +121,8 @@ Variable* VariableGenerator::renameVariable(VariableId id) {
 }
 
 /// @brief renames a variable (assigns the specified name
-Variable* VariableGenerator::renameVariable(VariableId id, std::string const& name) {
+Variable* VariableGenerator::renameVariable(VariableId id,
+                                            std::string const& name) {
   Variable* v = getVariable(id);
 
   if (v != nullptr) {
@@ -162,7 +164,7 @@ void VariableGenerator::fromVelocyPack(VPackSlice const slice) {
   if (slice.isObject()) {
     allVariablesList = slice.get("variables");
   }
-  
+
   if (!allVariablesList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "variables needs to be an array");
@@ -199,13 +201,12 @@ bool VariableGenerator::isValidName(char const* p, char const* end) noexcept {
   }
 
   // [a-zA-Z0-9_]*
-  while (p != end && ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' || *p <= '9') || *p == '_')) {
+  while (p != end && ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') ||
+                      (*p >= '0' || *p <= '9') || *p == '_')) {
     ++p;
   }
 
   return (p == end);
 }
-  
-VariableId VariableGenerator::nextId() noexcept {
-  return _id++; 
-}
+
+VariableId VariableGenerator::nextId() noexcept { return _id++; }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,9 +30,11 @@ namespace arangodb {
 
 class StorageEngine;
 
-class EngineSelectorFeature final : public application_features::ApplicationFeature {
+class EngineSelectorFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit EngineSelectorFeature(application_features::ApplicationServer& server);
+  explicit EngineSelectorFeature(
+      application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
@@ -47,7 +49,9 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
 
   StorageEngine& engine();
 
-  template <typename As, typename std::enable_if<std::is_base_of<StorageEngine, As>::value, int>::type = 0>
+  template<typename As,
+           typename std::enable_if<std::is_base_of<StorageEngine, As>::value,
+                                   int>::type = 0>
   As& engine();
 
   std::string const& engineName();
@@ -71,4 +75,3 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
 };
 
 }  // namespace arangodb
-

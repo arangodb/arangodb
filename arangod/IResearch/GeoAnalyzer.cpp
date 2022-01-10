@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +28,6 @@
 #include "s2/s2point_region.h"
 #include "s2/s2latlng.h"
 
-
 #include "analysis/analyzers.hpp"
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-aliases.h"
@@ -36,14 +35,12 @@
 #include "Geo/GeoParams.h"
 #include "IResearch/Geo.h"
 
-
-
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 #include "VPackDeserializer/deserializer.h"
 
-namespace  {
+namespace {
 
 using namespace std::literals::string_literals;
 
@@ -62,51 +59,70 @@ constexpr const char MAX_LEVEL_PARAM[] = "maxLevel";
 constexpr const char LATITUDE_PARAM[] = "latitude";
 constexpr const char LONGITUDE_PARAM[] = "longitude";
 
-using GeoJSONTypeEnumDeserializer = enum_deserializer<
-  GeoJSONAnalyzer::Type,
-  enum_member<GeoJSONAnalyzer::Type::SHAPE, values::string_value<GEOJSON_SHAPE_TYPE>>,
-  enum_member<GeoJSONAnalyzer::Type::CENTROID, values::string_value<GEOJSON_CENTROID_TYPE>>,
-  enum_member<GeoJSONAnalyzer::Type::POINT, values::string_value<GEOJSON_POINT_TYPE>>
->;
+using GeoJSONTypeEnumDeserializer =
+    enum_deserializer<GeoJSONAnalyzer::Type,
+                      enum_member<GeoJSONAnalyzer::Type::SHAPE,
+                                  values::string_value<GEOJSON_SHAPE_TYPE>>,
+                      enum_member<GeoJSONAnalyzer::Type::CENTROID,
+                                  values::string_value<GEOJSON_CENTROID_TYPE>>,
+                      enum_member<GeoJSONAnalyzer::Type::POINT,
+                                  values::string_value<GEOJSON_POINT_TYPE>>>;
 
 struct GeoOptionsValidator {
   std::optional<deserialize_error> operator()(GeoOptions const& opts) const {
     if (opts.minLevel < 0 || opts.maxCells < 0 || opts.maxCells < 0) {
-      return deserialize_error{"'minLevel', 'maxLevel', 'maxCells' must be a positive integer"};
+      return deserialize_error{
+          "'minLevel', 'maxLevel', 'maxCells' must be a positive integer"};
     }
 
-    if (opts.maxLevel > GeoOptions::MAX_LEVEL || opts.minLevel > GeoOptions::MAX_LEVEL) {
+    if (opts.maxLevel > GeoOptions::MAX_LEVEL ||
+        opts.minLevel > GeoOptions::MAX_LEVEL) {
       return deserialize_error{
-        "'minLevel', 'maxLevel' must not exceed '"s
-        .append(std::to_string(GeoOptions::MAX_LEVEL))
-        .append("'")};
+          "'minLevel', 'maxLevel' must not exceed '"s
+              .append(std::to_string(GeoOptions::MAX_LEVEL))
+              .append("'")};
     }
 
     if (opts.minLevel > opts.maxLevel) {
-      return deserialize_error{"'minLevel' must be less or equal than 'maxLevel'"};
+      return deserialize_error{
+          "'minLevel' must be less or equal than 'maxLevel'"};
     }
 
     return {};
   }
 };
 
-using GeoOptionsDeserializer = utilities::constructing_deserializer<GeoOptions, parameter_list<
-  factory_simple_parameter<MAX_CELLS_PARAM, int32_t, false, values::numeric_value<int32_t, GeoOptions::DEFAULT_MAX_CELLS>>,
-  factory_simple_parameter<MIN_LEVEL_PARAM, int32_t, false, values::numeric_value<int32_t, GeoOptions::DEFAULT_MIN_LEVEL>>,
-  factory_simple_parameter<MAX_LEVEL_PARAM, int32_t, false, values::numeric_value<int32_t, GeoOptions::DEFAULT_MAX_LEVEL>>
->>;
+using GeoOptionsDeserializer = utilities::constructing_deserializer<
+    GeoOptions,
+    parameter_list<
+        factory_simple_parameter<
+            MAX_CELLS_PARAM, int32_t, false,
+            values::numeric_value<int32_t, GeoOptions::DEFAULT_MAX_CELLS>>,
+        factory_simple_parameter<
+            MIN_LEVEL_PARAM, int32_t, false,
+            values::numeric_value<int32_t, GeoOptions::DEFAULT_MIN_LEVEL>>,
+        factory_simple_parameter<
+            MAX_LEVEL_PARAM, int32_t, false,
+            values::numeric_value<int32_t, GeoOptions::DEFAULT_MAX_LEVEL>>>>;
 
-using ValidatingGeoOptionsDeserializer = validate<GeoOptionsDeserializer, GeoOptionsValidator>;
+using ValidatingGeoOptionsDeserializer =
+    validate<GeoOptionsDeserializer, GeoOptionsValidator>;
 
-using GeoJSONOptionsDeserializer = utilities::constructing_deserializer<GeoJSONAnalyzer::Options, parameter_list<
-  factory_deserialized_default<OPTIONS_PARAM, ValidatingGeoOptionsDeserializer>,
-  factory_deserialized_default<TYPE_PARAM, GeoJSONTypeEnumDeserializer,
-                                           values::numeric_value<GeoJSONAnalyzer::Type,
-                                                                 static_cast<std::underlying_type_t<GeoJSONAnalyzer::Type>>(GeoJSONAnalyzer::Type::SHAPE)>>>
->;
+using GeoJSONOptionsDeserializer = utilities::constructing_deserializer<
+    GeoJSONAnalyzer::Options,
+    parameter_list<
+        factory_deserialized_default<OPTIONS_PARAM,
+                                     ValidatingGeoOptionsDeserializer>,
+        factory_deserialized_default<
+            TYPE_PARAM, GeoJSONTypeEnumDeserializer,
+            values::numeric_value<
+                GeoJSONAnalyzer::Type,
+                static_cast<std::underlying_type_t<GeoJSONAnalyzer::Type>>(
+                    GeoJSONAnalyzer::Type::SHAPE)>>>>;
 
 struct GeoPointAnalyzerOptionsValidator {
-  std::optional<deserialize_error> operator()(GeoPointAnalyzer::Options const& opts) const {
+  std::optional<deserialize_error> operator()(
+      GeoPointAnalyzer::Options const& opts) const {
     bool const latitudeEmpty = opts.latitude.empty();
     bool const longitudeEmpty = opts.longitude.empty();
 
@@ -129,15 +145,23 @@ struct GeoPointAnalyzerOptionsValidator {
 template<typename T>
 using vector = std::vector<T>;
 
-using StringVectorDeserializer = array_deserializer<values::value_deserializer<std::string>, vector>;
+using StringVectorDeserializer =
+    array_deserializer<values::value_deserializer<std::string>, vector>;
 
-using GeoPointsOptionsDeserializer = utilities::constructing_deserializer<GeoPointAnalyzer::Options, parameter_list<
-  factory_deserialized_default<OPTIONS_PARAM, ValidatingGeoOptionsDeserializer>,
-  factory_deserialized_default<LATITUDE_PARAM, StringVectorDeserializer, values::default_constructed_value<std::initializer_list<std::string>>>,
-  factory_deserialized_default<LONGITUDE_PARAM, StringVectorDeserializer, values::default_constructed_value<std::initializer_list<std::string>>>
->>;
+using GeoPointsOptionsDeserializer = utilities::constructing_deserializer<
+    GeoPointAnalyzer::Options,
+    parameter_list<
+        factory_deserialized_default<OPTIONS_PARAM,
+                                     ValidatingGeoOptionsDeserializer>,
+        factory_deserialized_default<LATITUDE_PARAM, StringVectorDeserializer,
+                                     values::default_constructed_value<
+                                         std::initializer_list<std::string>>>,
+        factory_deserialized_default<LONGITUDE_PARAM, StringVectorDeserializer,
+                                     values::default_constructed_value<
+                                         std::initializer_list<std::string>>>>>;
 
-using ValidatingGeoPointsOptionsDeserializer = validate<GeoPointsOptionsDeserializer, GeoPointAnalyzerOptionsValidator>;
+using ValidatingGeoPointsOptionsDeserializer =
+    validate<GeoPointsOptionsDeserializer, GeoPointAnalyzerOptionsValidator>;
 
 template<typename Analyzer>
 struct Deserializer;
@@ -176,10 +200,12 @@ void toVelocyPack(VPackBuilder& builder, GeoJSONAnalyzer::Options const& opts) {
   toVelocyPack(builder, opts.options);
 }
 
-void toVelocyPack(VPackBuilder& builder, GeoPointAnalyzer::Options const& opts) {
-  auto addArray = [&builder](const char* name, std::vector<std::string> const& values) {
+void toVelocyPack(VPackBuilder& builder,
+                  GeoPointAnalyzer::Options const& opts) {
+  auto addArray = [&builder](const char* name,
+                             std::vector<std::string> const& values) {
     VPackArrayBuilder arrayScope(&builder, name);
-    for (auto& value: values) {
+    for (auto& value : values) {
       builder.add(VPackValue(value));
     }
   };
@@ -192,15 +218,16 @@ void toVelocyPack(VPackBuilder& builder, GeoPointAnalyzer::Options const& opts) 
 }
 
 template<typename Analyzer>
-bool fromVelocyPack(irs::string_ref const& args, typename Analyzer::Options& out) {
+bool fromVelocyPack(irs::string_ref const& args,
+                    typename Analyzer::Options& out) {
   auto const slice = arangodb::iresearch::slice(args);
 
   auto const res = deserialize<typename Deserializer<Analyzer>::type,
                                hints::hint_list<hints::ignore_unknown>>(slice);
 
   if (!res.ok()) {
-    LOG_TOPIC("4349c", WARN, arangodb::iresearch::TOPIC) <<
-      "Failed to deserialize options from JSON while constructing '"
+    LOG_TOPIC("4349c", WARN, arangodb::iresearch::TOPIC)
+        << "Failed to deserialize options from JSON while constructing '"
         << irs::type<Analyzer>::name() << "' analyzer, error: '"
         << res.error().message << "'";
     return false;
@@ -211,7 +238,7 @@ bool fromVelocyPack(irs::string_ref const& args, typename Analyzer::Options& out
 }
 
 template<typename Analyzer>
-bool normalize(const irs::string_ref& args,  std::string& out) {
+bool normalize(const irs::string_ref& args, std::string& out) {
   typename Analyzer::Options opts;
 
   if (!fromVelocyPack<Analyzer>(args, opts)) {
@@ -227,8 +254,7 @@ bool normalize(const irs::string_ref& args,  std::string& out) {
 }
 
 template<typename Analyzer>
-irs::analysis::analyzer::ptr make(
-    irs::string_ref const& args) {
+irs::analysis::analyzer::ptr make(irs::string_ref const& args) {
   typename Analyzer::Options opts;
 
   if (!fromVelocyPack<Analyzer>(args, opts)) {
@@ -238,7 +264,7 @@ irs::analysis::analyzer::ptr make(
   return std::make_unique<Analyzer>(opts);
 }
 
-}
+}  // namespace
 
 namespace arangodb {
 namespace iresearch {
@@ -248,12 +274,9 @@ namespace iresearch {
 // ----------------------------------------------------------------------------
 
 GeoAnalyzer::GeoAnalyzer(const irs::type_info& type)
-  : attributes{{
-      { irs::type<irs::increment>::id(), &_inc       },
-      { irs::type<irs::term_attribute>::id(), &_term }},
-      type
-    } {
-}
+    : attributes{{{irs::type<irs::increment>::id(), &_inc},
+                  {irs::type<irs::term_attribute>::id(), &_term}},
+                 type} {}
 
 bool GeoAnalyzer::next() noexcept {
   if (_begin >= _end) {
@@ -263,8 +286,7 @@ bool GeoAnalyzer::next() noexcept {
   auto& value = *_begin++;
 
   _term.value = irs::bytes_ref(
-    reinterpret_cast<const irs::byte_type*>(value.c_str()),
-    value.size());
+      reinterpret_cast<const irs::byte_type*>(value.c_str()), value.size());
 
   return true;
 }
@@ -279,8 +301,8 @@ void GeoAnalyzer::reset(std::vector<std::string>&& terms) noexcept {
 // --SECTION--                                                  GeoJSONAnalyzer
 // ----------------------------------------------------------------------------
 
-/*static*/ bool GeoJSONAnalyzer::normalize(
-    const irs::string_ref& args, std::string& out) {
+/*static*/ bool GeoJSONAnalyzer::normalize(const irs::string_ref& args,
+                                           std::string& out) {
   return ::normalize<GeoJSONAnalyzer>(args, out);
 }
 
@@ -290,8 +312,7 @@ void GeoAnalyzer::reset(std::vector<std::string>&& terms) noexcept {
 }
 
 /*static*/ VPackSlice GeoJSONAnalyzer::store(
-    irs::token_stream const* ctx,
-    VPackSlice slice,
+    irs::token_stream const* ctx, VPackSlice slice,
     velocypack::Buffer<uint8_t>& buf) noexcept {
   TRI_ASSERT(ctx);
 
@@ -316,10 +337,9 @@ void GeoAnalyzer::reset(std::vector<std::string>&& terms) noexcept {
 }
 
 GeoJSONAnalyzer::GeoJSONAnalyzer(Options const& opts)
-  : GeoAnalyzer(irs::type<GeoJSONAnalyzer>::get()),
-    _indexer(S2Options(opts.options)),
-    _type(opts.type) {
-}
+    : GeoAnalyzer(irs::type<GeoJSONAnalyzer>::get()),
+      _indexer(S2Options(opts.options)),
+      _type(opts.type) {}
 
 void GeoJSONAnalyzer::prepare(S2RegionTermIndexer::Options& opts) const {
   opts = _indexer.options();
@@ -342,7 +362,8 @@ bool GeoJSONAnalyzer::reset(const irs::string_ref& value) {
     TRI_ASSERT(region);
 
     if (arangodb::geo::ShapeContainer::Type::S2_POINT == _shape.type()) {
-      GeoAnalyzer::reset(_indexer.GetIndexTerms(static_cast<S2PointRegion const*>(region)->point(), {}));
+      GeoAnalyzer::reset(_indexer.GetIndexTerms(
+          static_cast<S2PointRegion const*>(region)->point(), {}));
     } else {
       GeoAnalyzer::reset(_indexer.GetIndexTerms(*region, {}));
     }
@@ -355,8 +376,8 @@ bool GeoJSONAnalyzer::reset(const irs::string_ref& value) {
 // --SECTION--                                                 GeoPointAnalyzer
 // ----------------------------------------------------------------------------
 
-/*static*/ bool GeoPointAnalyzer::normalize(
-    const irs::string_ref& args, std::string& out) {
+/*static*/ bool GeoPointAnalyzer::normalize(const irs::string_ref& args,
+                                            std::string& out) {
   return ::normalize<GeoPointAnalyzer>(args, out);
 }
 
@@ -366,12 +387,11 @@ bool GeoJSONAnalyzer::reset(const irs::string_ref& value) {
 }
 
 GeoPointAnalyzer::GeoPointAnalyzer(Options const& opts)
-  : GeoAnalyzer(irs::type<GeoPointAnalyzer>::get()),
-    _indexer(S2Options(opts.options)),
-    _fromArray{opts.latitude.empty() || opts.longitude.empty()},
-    _latitude(!_fromArray ? opts.latitude : std::vector<std::string>{}),
-    _longitude(!_fromArray ? opts.longitude : std::vector<std::string>{}) {
-}
+    : GeoAnalyzer(irs::type<GeoPointAnalyzer>::get()),
+      _indexer(S2Options(opts.options)),
+      _fromArray{opts.latitude.empty() || opts.longitude.empty()},
+      _latitude(!_fromArray ? opts.latitude : std::vector<std::string>{}),
+      _longitude(!_fromArray ? opts.longitude : std::vector<std::string>{}) {}
 
 void GeoPointAnalyzer::prepare(S2RegionTermIndexer::Options& opts) const {
   opts = _indexer.options();
@@ -404,10 +424,9 @@ bool GeoPointAnalyzer::reset(const irs::string_ref& value) {
   return true;
 }
 
-/*static*/ VPackSlice GeoPointAnalyzer::store(
-    irs::token_stream const* ctx,
-    [[maybe_unused]] VPackSlice slice,
-    VPackBuffer<uint8_t>& buf) {
+/*static*/ VPackSlice GeoPointAnalyzer::store(irs::token_stream const* ctx,
+                                              [[maybe_unused]] VPackSlice slice,
+                                              VPackBuffer<uint8_t>& buf) {
   TRI_ASSERT(ctx);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -438,5 +457,5 @@ bool GeoPointAnalyzer::reset(const irs::string_ref& value) {
   return array.slice();
 }
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb

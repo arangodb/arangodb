@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,7 +49,6 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
   RestStatus execute() override;
 
  private:
-
   RestStatus reportErrorEmptyRequest();
   RestStatus reportTooManySuffices();
   RestStatus reportBadQuery(std::string const& message = "bad parameter");
@@ -63,4 +62,3 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
 };
 
 }  // namespace arangodb
-

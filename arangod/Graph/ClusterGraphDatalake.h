@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,16 +48,17 @@ class ClusterGraphDatalake {
   ~ClusterGraphDatalake();
 
   size_t numEntries() const noexcept { return _data.size(); }
-  
+
   void clear() noexcept {
     _data.clear();
     _resourceMonitor.decreaseMemoryUsage(_totalMemoryUsage);
     _totalMemoryUsage = 0;
   }
-  
+
   arangodb::velocypack::Slice operator[](size_t index) const noexcept;
 
-  arangodb::velocypack::Slice add(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> data);
+  arangodb::velocypack::Slice add(
+      std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> data);
 
  private:
   arangodb::ResourceMonitor& _resourceMonitor;

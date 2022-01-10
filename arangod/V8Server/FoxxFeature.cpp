@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,27 +50,28 @@ void FoxxFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--foxx.queues", "enable Foxx queues",
                      new BooleanParameter(&_enabled),
                      arangodb::options::makeFlags(
-                     arangodb::options::Flags::DefaultNoComponents,
-                     arangodb::options::Flags::OnCoordinator,
-                     arangodb::options::Flags::OnSingle));
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnCoordinator,
+                         arangodb::options::Flags::OnSingle));
 
   options->addOption("--foxx.queues-poll-interval",
                      "poll interval (in seconds) for Foxx queue manager",
                      new DoubleParameter(&_pollInterval),
                      arangodb::options::makeFlags(
-                     arangodb::options::Flags::DefaultNoComponents,
-                     arangodb::options::Flags::OnCoordinator,
-                     arangodb::options::Flags::OnSingle));
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnCoordinator,
+                         arangodb::options::Flags::OnSingle));
 
-  options->addOption("--foxx.force-update-on-startup",
-                     "ensure all Foxx services are synchronized before "
-                     "completeing the boot sequence",
-                     new BooleanParameter(&_startupWaitForSelfHeal),
-                     arangodb::options::makeFlags(
-                     arangodb::options::Flags::DefaultNoComponents,
-                     arangodb::options::Flags::OnCoordinator,
-                     arangodb::options::Flags::OnSingle))
-                     .setIntroducedIn(30705);
+  options
+      ->addOption("--foxx.force-update-on-startup",
+                  "ensure all Foxx services are synchronized before "
+                  "completeing the boot sequence",
+                  new BooleanParameter(&_startupWaitForSelfHeal),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30705);
 }
 
 bool FoxxFeature::startupWaitForSelfHeal() const {

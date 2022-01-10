@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,7 +53,9 @@ bool ConditionVariable::wait(std::chrono::microseconds delay_us) noexcept {
 }
 
 /// @brief signals all waiting threads
-void ConditionVariable::broadcast() noexcept { TRI_BroadcastCondition(&_condition); }
+void ConditionVariable::broadcast() noexcept {
+  TRI_BroadcastCondition(&_condition);
+}
 
 /// @brief signals a waiting thread
 void ConditionVariable::signal() noexcept { TRI_SignalCondition(&_condition); }

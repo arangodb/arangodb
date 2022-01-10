@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,13 +33,16 @@
 using namespace arangodb;
 using namespace arangodb::consensus;
 
-ActiveFailoverJob::ActiveFailoverJob(Node const& snapshot, AgentInterface* agent,
-                                     std::string const& jobId, std::string const& creator,
+ActiveFailoverJob::ActiveFailoverJob(Node const& snapshot,
+                                     AgentInterface* agent,
+                                     std::string const& jobId,
+                                     std::string const& creator,
                                      std::string const& failed)
     : Job(NOTFOUND, snapshot, agent, jobId, creator), _server(failed) {}
 
-ActiveFailoverJob::ActiveFailoverJob(Node const& snapshot, AgentInterface* agent,
-                                     JOB_STATUS status, std::string const& jobId)
+ActiveFailoverJob::ActiveFailoverJob(Node const& snapshot,
+                                     AgentInterface* agent, JOB_STATUS status,
+                                     std::string const& jobId)
     : Job(status, snapshot, agent, jobId) {
   // Get job details from agency:
   std::string path = pos[status] + _jobId + "/";
@@ -63,7 +66,8 @@ ActiveFailoverJob::~ActiveFailoverJob() = default;
 void ActiveFailoverJob::run(bool& aborts) { runHelper(_server, "", aborts); }
 
 bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
-  LOG_TOPIC("3f7ab", DEBUG, Logger::SUPERVISION) << "Todo: Handle failover for leader " + _server;
+  LOG_TOPIC("3f7ab", DEBUG, Logger::SUPERVISION)
+      << "Todo: Handle failover for leader " + _server;
 
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
 
@@ -98,7 +102,8 @@ bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
     {
       VPackObjectBuilder health(_jb.get());
       // Status should still be BAD
-      addPreconditionServerHealth(*_jb, _server, Supervision::HEALTH_STATUS_BAD);
+      addPreconditionServerHealth(*_jb, _server,
+                                  Supervision::HEALTH_STATUS_BAD);
       // Target/FailedServers does not already include _server
       _jb->add(VPackValue(failedServersPrefix + "/" + _server));
       {
@@ -109,7 +114,11 @@ bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
       _jb->add(VPackValue(failedServersPrefix));
       {
         VPackObjectBuilder old(_jb.get());
-        _jb->add("old", _snapshot.get(failedServersPrefix).value().get().toBuilder().slice());
+        _jb->add("old", _snapshot.get(failedServersPrefix)
+                            .value()
+                            .get()
+                            .toBuilder()
+                            .slice());
       }
     }  // Preconditions
   }    // transactions
@@ -127,7 +136,8 @@ bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
 
   _status = NOTFOUND;
 
-  LOG_TOPIC("3e5b0", INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
+  LOG_TOPIC("3e5b0", INFO, Logger::SUPERVISION)
+      << "Failed to insert job " + _jobId;
   return false;
 }
 
@@ -136,7 +146,8 @@ bool ActiveFailoverJob::start(bool&) {
   // the job.
 
   // Fail job, if Health back to not FAILED
-  if (checkServerHealth(_snapshot, _server) != Supervision::HEALTH_STATUS_FAILED) {
+  if (checkServerHealth(_snapshot, _server) !=
+      Supervision::HEALTH_STATUS_FAILED) {
     std::string reason = "Server " + _server + " is no longer failed. " +
                          "Not starting ActiveFailoverJob job";
     LOG_TOPIC("b1d34", INFO, Logger::SUPERVISION) << reason;
@@ -156,7 +167,8 @@ bool ActiveFailoverJob::start(bool&) {
   if (jobId && !abortable(_snapshot, *jobId)) {
     return false;
   } else if (jobId) {
-    JobContext(PENDING, *jobId, _snapshot, _agent).abort("ActiveFailoverJob requests abort");
+    JobContext(PENDING, *jobId, _snapshot, _agent)
+        .abort("ActiveFailoverJob requests abort");
   }
 
   // Todo entry
@@ -167,8 +179,9 @@ bool ActiveFailoverJob::start(bool&) {
       try {
         _snapshot.get(toDoPrefix + _jobId).value().get().toBuilder(todo);
       } catch (std::exception const&) {
-        LOG_TOPIC("26fec", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
-                                                    " from agency snapshot";
+        LOG_TOPIC("26fec", INFO, Logger::SUPERVISION)
+            << "Failed to get key " + toDoPrefix + _jobId +
+                   " from agency snapshot";
         return false;
       }
     } else {
@@ -182,7 +195,8 @@ bool ActiveFailoverJob::start(bool&) {
         << "No follower for fail-over available, will retry";
     return false;  // job will retry later
   }
-  LOG_TOPIC("2ef54", INFO, Logger::SUPERVISION) << "Selected '" << newLeader << "' as leader";
+  LOG_TOPIC("2ef54", INFO, Logger::SUPERVISION)
+      << "Selected '" << newLeader << "' as leader";
 
   // Enter pending, remove todo
   Builder pending;
@@ -200,9 +214,11 @@ bool ActiveFailoverJob::start(bool&) {
     {
       VPackObjectBuilder precondition(&pending);
       // Failed condition persists
-      addPreconditionServerHealth(pending, _server, Supervision::HEALTH_STATUS_FAILED);
+      addPreconditionServerHealth(pending, _server,
+                                  Supervision::HEALTH_STATUS_FAILED);
       // Destination server still in good condition
-      addPreconditionServerHealth(pending, newLeader, Supervision::HEALTH_STATUS_GOOD);
+      addPreconditionServerHealth(pending, newLeader,
+                                  Supervision::HEALTH_STATUS_GOOD);
       // Destination server should not be blocked by another job
       addPreconditionServerNotBlocked(pending, newLeader);
       // AsyncReplication leader must be the failed server
@@ -259,11 +275,13 @@ typedef std::pair<std::string, TRI_voc_tick_t> ServerTick;
 std::string ActiveFailoverJob::findBestFollower() {
   std::vector<std::string> healthy = healthyServers(_snapshot);
   // the failed leader should never appear as healthy
-  TRI_ASSERT(std::find(healthy.begin(), healthy.end(), _server) == healthy.end());
+  TRI_ASSERT(std::find(healthy.begin(), healthy.end(), _server) ==
+             healthy.end());
 
   // blocked; (not sure if this can even happen)
   try {
-    for (auto const& srv : _snapshot.get(blockedServersPrefix).value().get().children()) {
+    for (auto const& srv :
+         _snapshot.get(blockedServersPrefix).value().get().children()) {
       healthy.erase(std::remove(healthy.begin(), healthy.end(), srv.first),
                     healthy.end());
     }
@@ -293,8 +311,8 @@ std::string ActiveFailoverJob::findBestFollower() {
       return "";
     }
 
-    VPackSlice obj = resp.at(0).get(
-        {Job::agencyPrefix, std::string("AsyncReplication")});
+    VPackSlice obj =
+        resp.at(0).get({Job::agencyPrefix, std::string("AsyncReplication")});
     for (VPackObjectIterator::ObjectPair pair : VPackObjectIterator(obj)) {
       std::string srvUUID = pair.key.copyString();
       bool isAvailable =
@@ -306,7 +324,8 @@ std::string ActiveFailoverJob::findBestFollower() {
 
       VPackSlice leader = pair.value.get("leader");  // broken leader
       VPackSlice lastTick = pair.value.get("lastTick");
-      if (leader.isString() && leader.isEqualString(_server) && lastTick.isNumber()) {
+      if (leader.isString() && leader.isEqualString(_server) &&
+          lastTick.isNumber()) {
         ticks.emplace_back(std::move(srvUUID), lastTick.getUInt());
       }
     }
@@ -314,15 +333,17 @@ std::string ActiveFailoverJob::findBestFollower() {
     LOG_TOPIC("66318", ERR, Logger::SUPERVISION)
         << "could not determine follower: " << e.message();
   } catch (std::exception const& e) {
-    LOG_TOPIC("92baa", ERR, Logger::SUPERVISION) << "could not determine follower: " << e.what();
+    LOG_TOPIC("92baa", ERR, Logger::SUPERVISION)
+        << "could not determine follower: " << e.what();
   } catch (...) {
     LOG_TOPIC("567b2", ERR, Logger::SUPERVISION)
         << "internal error while determining best follower";
   }
 
-  std::sort(ticks.begin(), ticks.end(), [&](ServerTick const& a, ServerTick const& b) {
-    return a.second > b.second;
-  });
+  std::sort(ticks.begin(), ticks.end(),
+            [&](ServerTick const& a, ServerTick const& b) {
+              return a.second > b.second;
+            });
   if (!ticks.empty()) {
     TRI_ASSERT(ticks.size() == 1 || ticks[0].second >= ticks[1].second);
     return ticks[0].first;

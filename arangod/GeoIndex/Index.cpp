@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,7 +53,8 @@ Index::Index(VPackSlice const& info,
   _coverParams.fromVelocyPack(info);
 
   if (fields.size() == 1) {
-    bool geoJson = basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
+    bool geoJson =
+        basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
     // geojson means [<longitude>, <latitude>] or
     // json object {type:"<name>, coordinates:[]}.
     _variant = geoJson ? Variant::GEOJSON : Variant::COMBINED_LAT_LON;
@@ -61,18 +62,18 @@ Index::Index(VPackSlice const& info,
     auto& loc = fields[0];
     _location.reserve(loc.size());
     std::transform(loc.begin(), loc.end(), std::back_inserter(_location),
-                   [](auto const& a) { return a.name; } );
+                   [](auto const& a) { return a.name; });
   } else if (fields.size() == 2) {
     _variant = Variant::INDIVIDUAL_LAT_LON;
     auto& lat = fields[0];
     _latitude.reserve(lat.size());
     std::transform(lat.begin(), lat.end(), std::back_inserter(_latitude),
-                   [](auto const& a) { return a.name; } );
+                   [](auto const& a) { return a.name; });
 
     auto& lon = fields[1];
     _longitude.reserve(lon.size());
     std::transform(lon.begin(), lon.end(), std::back_inserter(_longitude),
-                   [](auto const& a) { return a.name; } );
+                   [](auto const& a) { return a.name; });
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -83,11 +84,11 @@ Index::Index(VPackSlice const& info,
 /// @brief Parse document and return cells for indexing
 Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
                          S2Point& centroid) const {
-
   if (_variant == Variant::GEOJSON) {
     VPackSlice loc = doc.get(_location);
     if (loc.isArray()) {
-      return geo::utils::indexCellsLatLng(loc, /*geojson*/ true, cells, centroid);
+      return geo::utils::indexCellsLatLng(loc, /*geojson*/ true, cells,
+                                          centroid);
     }
     geo::ShapeContainer shape;
     Result r = geo::geojson::parseRegion(loc, shape);
@@ -105,7 +106,8 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
     return r;
   } else if (_variant == Variant::COMBINED_LAT_LON) {
     VPackSlice loc = doc.get(_location);
-    return geo::utils::indexCellsLatLng(loc, /*geojson*/ false, cells, centroid);
+    return geo::utils::indexCellsLatLng(loc, /*geojson*/ false, cells,
+                                        centroid);
   } else if (_variant == Variant::INDIVIDUAL_LAT_LON) {
     VPackSlice lat = doc.get(_latitude);
     VPackSlice lon = doc.get(_longitude);
@@ -126,7 +128,8 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
   return TRI_ERROR_INTERNAL;
 }
 
-Result Index::shape(velocypack::Slice const& doc, geo::ShapeContainer& shape) const {
+Result Index::shape(velocypack::Slice const& doc,
+                    geo::ShapeContainer& shape) const {
   if (_variant == Variant::GEOJSON) {
     VPackSlice loc = doc.get(_location);
     if (loc.isArray() && loc.length() >= 2) {
@@ -144,14 +147,16 @@ Result Index::shape(velocypack::Slice const& doc, geo::ShapeContainer& shape) co
     if (!lon.isNumber() || !lat.isNumber()) {
       return TRI_ERROR_BAD_PARAMETER;
     }
-    shape.resetCoordinates(lat.getNumericValue<double>(), lon.getNumericValue<double>());
+    shape.resetCoordinates(lat.getNumericValue<double>(),
+                           lon.getNumericValue<double>());
     return TRI_ERROR_NO_ERROR;
   }
   return TRI_ERROR_INTERNAL;
 }
 
 // Handle GEO_DISTANCE(<something>, doc.field)
-S2LatLng Index::parseGeoDistance(aql::AstNode const* args, aql::Variable const* ref) {
+S2LatLng Index::parseGeoDistance(aql::AstNode const* args,
+                                 aql::Variable const* ref) {
   // aql::AstNode* dist = node->getMemberUnchecked(0);
   TRI_ASSERT(args->numMembers() == 2);
   if (args->numMembers() != 2) {
@@ -160,7 +165,8 @@ S2LatLng Index::parseGeoDistance(aql::AstNode const* args, aql::Variable const* 
   // either doc.geo or [doc.lng, doc.lat]
   aql::AstNode const* var = args->getMember(1);
   TRI_ASSERT(var->isAttributeAccessForVariable(ref, true) ||
-             (var->isArray() && var->getMember(0)->isAttributeAccessForVariable(ref, true) &&
+             (var->isArray() &&
+              var->getMember(0)->isAttributeAccessForVariable(ref, true) &&
               var->getMember(1)->isAttributeAccessForVariable(ref, true)));
   aql::AstNode* cc = args->getMemberUnchecked(0);
   TRI_ASSERT(cc->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS);
@@ -191,10 +197,12 @@ S2LatLng Index::parseGeoDistance(aql::AstNode const* args, aql::Variable const* 
 }
 
 // either parses GEO_DISTANCE call argument values
-S2LatLng Index::parseDistFCall(aql::AstNode const* node, aql::Variable const* ref) {
+S2LatLng Index::parseDistFCall(aql::AstNode const* node,
+                               aql::Variable const* ref) {
   TRI_ASSERT(node->type == aql::NODE_TYPE_FCALL);
   aql::AstNode* args = node->getMemberUnchecked(0);
-  aql::Function const* func = static_cast<aql::Function const*>(node->getData());
+  aql::Function const* func =
+      static_cast<aql::Function const*>(node->getData());
   TRI_ASSERT(func != nullptr);
   if (func->name == "GEO_DISTANCE") {
     return Index::parseGeoDistance(args, ref);
@@ -216,7 +224,8 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       aql::AstNode const* args = node->getMemberUnchecked(0);
       TRI_ASSERT(args->numMembers() == 2);
       if (args->numMembers() != 2) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+        THROW_ARANGO_EXCEPTION(
+            TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
       }
 
       aql::AstNode const* geoJson = args->getMemberUnchecked(0);
@@ -224,8 +233,10 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       // geojson or array with variables
       TRI_ASSERT(symbol->isAttributeAccessForVariable(ref, true) ||
                  (symbol->isArray() && symbol->numMembers() == 2 &&
-                  symbol->getMember(0)->getAttributeAccessForVariable(true) != nullptr &&
-                  symbol->getMember(1)->getAttributeAccessForVariable(true) != nullptr));
+                  symbol->getMember(0)->getAttributeAccessForVariable(true) !=
+                      nullptr &&
+                  symbol->getMember(1)->getAttributeAccessForVariable(true) !=
+                      nullptr));
       TRI_ASSERT(geoJson->type != aql::NODE_TYPE_REFERENCE);
 
       // arrays can't occur only handle real GeoJSON
@@ -294,7 +305,8 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
   }
 }
 
-void Index::parseCondition(aql::AstNode const* node, aql::Variable const* reference,
+void Index::parseCondition(aql::AstNode const* node,
+                           aql::Variable const* reference,
                            geo::QueryParams& params) {
   if (aql::Ast::IsAndOperatorType(node->type)) {
     for (size_t i = 0; i < node->numMembers(); i++) {
@@ -303,12 +315,10 @@ void Index::parseCondition(aql::AstNode const* node, aql::Variable const* refere
   } else {
     handleNode(node, reference, params);
   }
-  
+
   // allow for GEO_DISTANCE(g, d.geometry) <= 0
-  if (params.filterType == geo::FilterType::NONE &&
-      params.minDistance == 0 &&
-      params.maxDistance == 0 &&
-      params.maxInclusive) {
+  if (params.filterType == geo::FilterType::NONE && params.minDistance == 0 &&
+      params.maxDistance == 0 && params.maxInclusive) {
     params.maxDistance = geo::kRadEps * geo::kEarthRadiusInMeters;
   }
 }

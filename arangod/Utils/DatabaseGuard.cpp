@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,7 @@
 
 namespace {
 
-template <typename T>
+template<typename T>
 TRI_vocbase_t& vocbase(arangodb::DatabaseFeature& feature, T& id) {
   auto* vocbase = feature.useDatabase(id);
 
@@ -41,10 +41,9 @@ TRI_vocbase_t& vocbase(arangodb::DatabaseFeature& feature, T& id) {
 }  // namespace
 
 namespace arangodb {
-  
+
 /// @brief create guard on existing db
-DatabaseGuard::DatabaseGuard(TRI_vocbase_t& vocbase) 
-    : _vocbase(vocbase) {
+DatabaseGuard::DatabaseGuard(TRI_vocbase_t& vocbase) : _vocbase(vocbase) {
   if (!_vocbase.use()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }

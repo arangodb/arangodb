@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,8 +50,9 @@ class ClusterTransactionState final : public TransactionState {
 
   /// @brief abort a transaction
   [[nodiscard]] Result abortTransaction(transaction::Methods* trx) override;
-  
-  [[nodiscard]] Result performIntermediateCommitIfRequired(DataSourceId cid) override;
+
+  [[nodiscard]] Result performIntermediateCommitIfRequired(
+      DataSourceId cid) override;
 
   /// @brief return number of commits, including intermediate commits
   [[nodiscard]] uint64_t numCommits() const override;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,7 @@ using namespace arangodb;
 using namespace arangodb::cluster;
 using namespace arangodb::cluster::paths;
 
-std::ostream& arangodb::cluster::paths::operator<<(std::ostream& stream, Path const& path) {
+std::ostream& arangodb::cluster::paths::operator<<(std::ostream& stream,
+                                                   Path const& path) {
   return path.toStream(stream);
 }

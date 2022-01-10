@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -56,7 +56,7 @@ inline double intToDouble(uint64_t i) {
   return d;
 }
 
-template <typename T>
+template<typename T>
 inline T uintFromPersistentLittleEndian(char const* p) {
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
   T value;
@@ -64,7 +64,7 @@ inline T uintFromPersistentLittleEndian(char const* p) {
   return basics::littleToHost<T>(value);
 }
 
-template <typename T>
+template<typename T>
 inline T uintFromPersistentBigEndian(char const* p) {
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
   T value;
@@ -72,14 +72,14 @@ inline T uintFromPersistentBigEndian(char const* p) {
   return basics::bigToHost<T>(value);
 }
 
-template <typename T>
+template<typename T>
 inline void uintToPersistentLittleEndian(std::string& p, T value) {
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
   value = basics::hostToLittle(value);
   p.append(reinterpret_cast<const char*>(&value), sizeof(T));
 }
 
-template <typename T>
+template<typename T>
 inline void uintToPersistentBigEndian(std::string& p, T value) {
   // uintToPersistentLittleEndian<T>(p, basics::hostToBig(value));
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
@@ -89,4 +89,3 @@ inline void uintToPersistentBigEndian(std::string& p, T value) {
 
 }  // namespace rocksutils
 }  // namespace arangodb
-

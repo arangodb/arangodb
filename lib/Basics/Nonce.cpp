@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -75,7 +75,8 @@ void create(size_t size) {
 
   destroy();
 
-  LOG_TOPIC("5a658", TRACE, arangodb::Logger::FIXME) << "creating nonces with size: " << size;
+  LOG_TOPIC("5a658", TRACE, arangodb::Logger::FIXME)
+      << "creating nonces with size: " << size;
   TimestampNonces = new uint32_t[size];
 
   memset(TimestampNonces, 0, sizeof(uint32_t) * size);
@@ -120,7 +121,8 @@ bool checkAndMark(std::string const& nonce) {
 
   uint8_t const* buffer = (uint8_t const*)nonce.c_str();
 
-  uint32_t timestamp = (uint32_t(buffer[0]) << 24) | (uint32_t(buffer[1]) << 16) |
+  uint32_t timestamp = (uint32_t(buffer[0]) << 24) |
+                       (uint32_t(buffer[1]) << 16) |
                        (uint32_t(buffer[2]) << 8) | uint32_t(buffer[3]);
 
   uint64_t random = (uint64_t(buffer[4]) << 56) | (uint64_t(buffer[5]) << 48) |
@@ -174,8 +176,9 @@ bool checkAndMark(uint32_t timestamp, uint64_t random) {
     age >>= 1;
   }
 
-  LOG_TOPIC("562a6", TRACE, arangodb::Logger::FIXME) << "age of timestamp " << timestamp << " is "
-                                            << age << " (log " << l2age << ")";
+  LOG_TOPIC("562a6", TRACE, arangodb::Logger::FIXME)
+      << "age of timestamp " << timestamp << " is " << age << " (log " << l2age
+      << ")";
 
   StatisticsNonces[l2age][proofs]++;
 

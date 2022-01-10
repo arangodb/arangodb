@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,16 +50,14 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
-                       velocypack::Buffer<uint8_t> buffer,
-                       size_t payloadOffset,
+                       velocypack::Buffer<uint8_t> buffer, size_t payloadOffset,
                        uint64_t messageId)
     : GeneralRequest(connectionInfo, messageId),
       _payloadOffset(payloadOffset),
       _validatedPayload(false) {
-  _contentType = ContentType::UNSET; // intentional
+  _contentType = ContentType::UNSET;  // intentional
   _contentTypeResponse = ContentType::VPACK;
-  _payload = std::move(buffer),
-  parseHeaderInformation();
+  _payload = std::move(buffer), parseHeaderInformation();
 }
 
 size_t VstRequest::contentLength() const {
@@ -74,29 +72,33 @@ std::string_view VstRequest::rawPayload() const {
   if (_payload.size() <= _payloadOffset) {
     return std::string_view();
   }
-  return std::string_view(reinterpret_cast<char const*>(_payload.data() + _payloadOffset),
-                          _payload.size() - _payloadOffset);
+  return std::string_view(
+      reinterpret_cast<char const*>(_payload.data() + _payloadOffset),
+      _payload.size() - _payloadOffset);
 }
 
 VPackSlice VstRequest::payload(bool strictValidation) {
   if (_contentType == ContentType::JSON) {
     if (!_vpackBuilder && _payload.size() > _payloadOffset) {
-      _vpackBuilder = VPackParser::fromJson(_payload.data() + _payloadOffset,
-                                            _payload.size() - _payloadOffset, 
-                                            validationOptions(strictValidation));
+      _vpackBuilder = VPackParser::fromJson(
+          _payload.data() + _payloadOffset, _payload.size() - _payloadOffset,
+          validationOptions(strictValidation));
     }
     if (_vpackBuilder) {
       return _vpackBuilder->slice();
     }
-  } else if ((_contentType == ContentType::UNSET) || (_contentType == ContentType::VPACK)) {
+  } else if ((_contentType == ContentType::UNSET) ||
+             (_contentType == ContentType::VPACK)) {
     if (_payload.size() > _payloadOffset) {
       uint8_t const* ptr = _payload.data() + _payloadOffset;
       if (!_validatedPayload) {
-        /// the header is validated in VstCommTask, the actual body is only validated on demand
+        /// the header is validated in VstCommTask, the actual body is only
+        /// validated on demand
         VPackOptions const* options = validationOptions(strictValidation);
         VPackValidator validator(options);
         // will throw on error
-        _validatedPayload = validator.validate(ptr, _payload.size() - _payloadOffset);
+        _validatedPayload =
+            validator.validate(ptr, _payload.size() - _payloadOffset);
       }
       return VPackSlice(ptr);
     }
@@ -113,11 +115,11 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
   if (!keySlice.isString() || !valSlice.isString()) {
     return;
   }
-  
+
   std::string key = keySlice.copyString();
   StringUtils::tolowerInPlace(key);
   std::string value = valSlice.copyString();
-    
+
   if (key == StaticStrings::Accept) {
     StringUtils::tolowerInPlace(value);
     _contentTypeResponse = rest::stringToContentType(value, ContentType::VPACK);
@@ -129,11 +131,13 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
     return;  // don't insert this header!!
   } else if ((_contentType == ContentType::UNSET) &&
              (key == StaticStrings::ContentTypeHeader)) {
-    StringUtils::tolowerInPlace(value);    
-    auto res = rest::stringToContentType(value, /*default*/ContentType::UNSET);
-    // simon: the "@arangodb/requests" module by default the "text/plain" content-types for JSON
-    // in most tests. As soon as someone fixes all the tests we can enable these again.
-    if (res == ContentType::JSON || res == ContentType::VPACK || res == ContentType::DUMP) {
+    StringUtils::tolowerInPlace(value);
+    auto res = rest::stringToContentType(value, /*default*/ ContentType::UNSET);
+    // simon: the "@arangodb/requests" module by default the "text/plain"
+    // content-types for JSON in most tests. As soon as someone fixes all the
+    // tests we can enable these again.
+    if (res == ContentType::JSON || res == ContentType::VPACK ||
+        res == ContentType::DUMP) {
       _contentType = res;
       return;  // don't insert this header!!
     }
@@ -147,19 +151,22 @@ void VstRequest::parseHeaderInformation() {
   /// the header was already validated here, the actual body was not
   VPackSlice vHeader(_payload.data());
   if (!vHeader.isArray() || vHeader.length() != 7) {
-    LOG_TOPIC("0007b", WARN, Logger::COMMUNICATION) << "invalid VST message header";
+    LOG_TOPIC("0007b", WARN, Logger::COMMUNICATION)
+        << "invalid VST message header";
     throw std::runtime_error("invalid VST message header");
   }
 
   try {
     TRI_ASSERT(vHeader.isArray());
-    auto version = vHeader.at(0).getInt();       // version
-    auto type = vHeader.at(1).getInt();          // type
-    { 
-      VPackSlice dbName = vHeader.at(2);         // database
-      _databaseName = dbName.copyString(); 
+    auto version = vHeader.at(0).getInt();  // version
+    auto type = vHeader.at(1).getInt();     // type
+    {
+      VPackSlice dbName = vHeader.at(2);  // database
+      _databaseName = dbName.copyString();
       if (_databaseName != normalizeUtf8ToNFC(_databaseName)) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ILLEGAL_NAME, "database name is not properly UTF-8 NFC-normalized");
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_ARANGO_ILLEGAL_NAME,
+            "database name is not properly UTF-8 NFC-normalized");
       }
     }
     _type = meta::toEnum<RequestType>(vHeader.at(3).getInt());  // request type
@@ -194,7 +201,7 @@ void VstRequest::parseHeaderInformation() {
 
     // fullUrl should not be necessary for Vst
     _fullUrl = _requestPath;
-    _fullUrl.push_back('?'); // intentional
+    _fullUrl.push_back('?');  // intentional
     for (auto const& param : _values) {
       _fullUrl.append(param.first + "=" +
                       basics::StringUtils::urlEncode(param.second) + "&");

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,15 +36,17 @@ namespace arangodb {
 /// @brief a flexible way to get at the system vocbase
 ///        can be used for persisting configuration
 ////////////////////////////////////////////////////////////////////////////////
-class SystemDatabaseFeature final : public application_features::ApplicationFeature {
+class SystemDatabaseFeature final
+    : public application_features::ApplicationFeature {
  public:
   struct VocbaseReleaser {
     void operator()(TRI_vocbase_t* ptr);
   };
   typedef std::unique_ptr<TRI_vocbase_t, VocbaseReleaser> ptr;
 
-  explicit SystemDatabaseFeature(application_features::ApplicationServer& server,
-                                 TRI_vocbase_t* vocbase = nullptr);
+  explicit SystemDatabaseFeature(
+      application_features::ApplicationServer& server,
+      TRI_vocbase_t* vocbase = nullptr);
 
   static std::string const& name() noexcept;
   void start() override;
@@ -52,8 +54,8 @@ class SystemDatabaseFeature final : public application_features::ApplicationFeat
   ptr use() const;
 
  private:
-  std::atomic<TRI_vocbase_t*> _vocbase;  // cached pointer to the system database
+  std::atomic<TRI_vocbase_t*>
+      _vocbase;  // cached pointer to the system database
 };
 
 }  // namespace arangodb
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,9 +34,11 @@
 namespace arangodb {
 class RestServerThread;
 
-class GeneralServerFeature final : public application_features::ApplicationFeature {
+class GeneralServerFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit GeneralServerFeature(application_features::ApplicationServer& server);
+  explicit GeneralServerFeature(
+      application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -48,7 +50,7 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   void unprepare() override final;
 
   double keepAliveTimeout() const noexcept;
-  bool proxyCheck() const noexcept ;
+  bool proxyCheck() const noexcept;
   bool returnQueueTimeHeader() const noexcept;
   std::vector<std::string> trustedProxies() const;
   bool allowMethodOverride() const noexcept;
@@ -73,16 +75,11 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
     _requestBodySizeVst.count(bodySize);
   }
 
-  void countHttp2Connection() {
-    _http2Connections.count();
-  }
+  void countHttp2Connection() { _http2Connections.count(); }
 
-  void countVstConnection() {
-    _vstConnections.count();
-  }
+  void countVstConnection() { _vstConnections.count(); }
 
  private:
-
   void buildServers();
   void defineHandlers();
 
@@ -110,4 +107,3 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
 };
 
 }  // namespace arangodb
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -75,7 +75,8 @@ class AsyncLinkHandle final {
   void reset();
 
   AsyncValue<IResearchLink> _link;
-  std::atomic_bool _asyncTerminate{false};  // trigger termination of long-running async jobs
+  std::atomic_bool _asyncTerminate{
+      false};  // trigger termination of long-running async jobs
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,7 +104,8 @@ class IResearchLink {
     Snapshot& operator=(Snapshot const&) = delete;
     Snapshot() = default;
     ~Snapshot() = default;
-    Snapshot(AsyncValue<IResearchLink>::Value&& lock, irs::directory_reader&& reader) noexcept
+    Snapshot(AsyncValue<IResearchLink>::Value&& lock,
+             irs::directory_reader&& reader) noexcept
         : _lock{std::move(lock)}, _reader{std::move(reader)} {
       TRI_ASSERT(_lock.ownsLock());
     }
@@ -124,7 +126,8 @@ class IResearchLink {
     }
 
    private:
-    AsyncValue<IResearchLink>::Value _lock;  // lock preventing data store deallocation
+    AsyncValue<IResearchLink>::Value
+        _lock;  // lock preventing data store deallocation
     irs::directory_reader _reader;
   };
 
@@ -180,10 +183,12 @@ class IResearchLink {
   IndexId id() const noexcept { return _id; }
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief insert an ArangoDB document into an iResearch View using '_meta' params
+  /// @brief insert an ArangoDB document into an iResearch View using '_meta'
+  /// params
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
-  Result insert(transaction::Methods& trx, LocalDocumentId documentId, velocypack::Slice doc);
+  Result insert(transaction::Methods& trx, LocalDocumentId documentId,
+                velocypack::Slice doc);
 
   static bool isHidden();  // arangodb::Index override
   static bool isSorted();  // arangodb::Index override
@@ -195,7 +200,8 @@ class IResearchLink {
   void load();
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief index comparator, used by the coordinator to detect if the specified
+  /// @brief index comparator, used by the coordinator to detect if the
+  /// specified
   ///        definition is the same as this link
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
@@ -223,7 +229,8 @@ class IResearchLink {
   /// @brief remove an ArangoDB document from an iResearch View
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
-  Result remove(transaction::Methods& trx, LocalDocumentId documentId, velocypack::Slice doc);
+  Result remove(transaction::Methods& trx, LocalDocumentId documentId,
+                velocypack::Slice doc);
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief 'this' for the lifetime of the link data-store
@@ -265,7 +272,8 @@ class IResearchLink {
   /// @brief initialize from the specified definition used in make(...)
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
-  Result init(velocypack::Slice const& definition, InitCallback const& initCallback = {});
+  Result init(velocypack::Slice const& definition,
+              InitCallback const& initCallback = {});
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @return arangosearch internal format identifier
@@ -277,12 +285,13 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   IResearchViewStoredValues const& storedValues() const noexcept;
 
-  /// @brief sets the _collectionName in Link meta. Used in cluster only to store
-  /// linked collection name (as shard name differs from the cluster-wide collection name)
-  /// @param name collection to set. Should match existing value of the _collectionName
-  /// if it is not empty.
-  /// @return true if name not existed in link before and was actually set by this call,
-  /// false otherwise
+  /// @brief sets the _collectionName in Link meta. Used in cluster only to
+  /// store linked collection name (as shard name differs from the cluster-wide
+  /// collection name)
+  /// @param name collection to set. Should match existing value of the
+  /// _collectionName if it is not empty.
+  /// @return true if name not existed in link before and was actually set by
+  /// this call, false otherwise
   bool setCollectionName(irs::string_ref name) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -385,11 +394,13 @@ class IResearchLink {
     irs::utf8_path _path;
     irs::directory_reader _reader;
     irs::index_writer::ptr _writer;
-    TRI_voc_tick_t _recoveryTick{0};  // the tick at which data store was recovered
+    TRI_voc_tick_t _recoveryTick{
+        0};  // the tick at which data store was recovered
     std::atomic_bool _inRecovery{false};  // data store is in recovery
     explicit operator bool() const noexcept { return _directory && _writer; }
 
-    void resetDataStore() noexcept {  // reset all underlying readers to release file handles
+    void resetDataStore() noexcept {  // reset all underlying readers to release
+                                      // file handles
       _reader.reset();
       _writer.reset();
       _directory.reset();
@@ -416,9 +427,10 @@ class IResearchLink {
   /// @brief run segment consolidation on the data store
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  UnsafeOpResult consolidateUnsafe(IResearchViewMeta::ConsolidationPolicy const& policy,
-                                   irs::merge_writer::flush_progress_t const& progress,
-                                   bool& emptyConsolidation);
+  UnsafeOpResult consolidateUnsafe(
+      IResearchViewMeta::ConsolidationPolicy const& policy,
+      irs::merge_writer::flush_progress_t const& progress,
+      bool& emptyConsolidation);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run filesystem cleanup on the data store
@@ -437,16 +449,18 @@ class IResearchLink {
   /// @brief run segment consolidation on the data store
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  Result consolidateUnsafeImpl(IResearchViewMeta::ConsolidationPolicy const& policy,
-                               irs::merge_writer::flush_progress_t const& progress,
-                               bool& emptyConsolidation);
+  Result consolidateUnsafeImpl(
+      IResearchViewMeta::ConsolidationPolicy const& policy,
+      irs::merge_writer::flush_progress_t const& progress,
+      bool& emptyConsolidation);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the data store with a new or from an existing directory
   //////////////////////////////////////////////////////////////////////////////
-  Result initDataStore(InitCallback const& initCallback, uint32_t version, bool sorted,
-                       std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-                       irs::type_info::type_id primarySortCompression);
+  Result initDataStore(
+      InitCallback const& initCallback, uint32_t version, bool sorted,
+      std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
+      irs::type_info::type_id primarySortCompression);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief schedule a commit job
@@ -465,20 +479,27 @@ class IResearchLink {
 
   StorageEngine* _engine;
   VPackComparer _comparer;
-  IResearchFeature* _asyncFeature;  // the feature where async jobs were registered (nullptr == no jobs registered)
-  AsyncLinkPtr _asyncSelf;  // 'this' for the lifetime of the link (for use with asynchronous calls)
+  IResearchFeature*
+      _asyncFeature;  // the feature where async jobs were registered (nullptr
+                      // == no jobs registered)
+  AsyncLinkPtr _asyncSelf;  // 'this' for the lifetime of the link (for use with
+                            // asynchronous calls)
   LogicalCollection& _collection;  // the linked collection
-  DataStore _dataStore;  // the iresearch data store, protected by _asyncSelf->mutex()
+  DataStore
+      _dataStore;  // the iresearch data store, protected by _asyncSelf->mutex()
   std::shared_ptr<FlushSubscription> _flushSubscription;
   std::shared_ptr<MaintenanceState> _maintenanceState;
   IndexId const _id;                  // the index identifier
   TRI_voc_tick_t _lastCommittedTick;  // protected by _commitMutex
   size_t _cleanupIntervalCount;
-  IResearchLinkMeta const _meta;  // how this collection should be indexed (read-only, set via init())
-  std::mutex _commitMutex;  // prevents data store sequential commits
-  std::function<void(transaction::Methods& trx, transaction::Status status)> _trxCallback;  // for insert(...)/remove(...)
-  std::string const _viewGuid;  // the identifier of the desired view (read-only, set via init())
-  bool _createdInRecovery;  // link was created based on recovery marker
+  IResearchLinkMeta const _meta;  // how this collection should be indexed
+                                  // (read-only, set via init())
+  std::mutex _commitMutex;        // prevents data store sequential commits
+  std::function<void(transaction::Methods& trx, transaction::Status status)>
+      _trxCallback;             // for insert(...)/remove(...)
+  std::string const _viewGuid;  // the identifier of the desired view
+                                // (read-only, set via init())
+  bool _createdInRecovery;      // link was created based on recovery marker
 
   metrics::Batch<LinkStats>* _linkStats;
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,7 +41,8 @@ void ReleaseCollection(arangodb::LogicalCollection const* collection);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return all collections in a cluster
 ////////////////////////////////////////////////////////////////////////////////
-std::vector<std::shared_ptr<arangodb::LogicalCollection>> GetCollections(TRI_vocbase_t& vocbase);
+std::vector<std::shared_ptr<arangodb::LogicalCollection>> GetCollections(
+    TRI_vocbase_t& vocbase);
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief check if a name belongs to a collection
@@ -57,17 +58,18 @@ bool EqualCollection(arangodb::CollectionNameResolver const* resolver,
 /// be freed. If it is not a local collection (coordinator case), then delete
 /// will be called when the V8 object is garbage collected.
 ////////////////////////////////////////////////////////////////////////////////
-v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
-                                      std::shared_ptr<arangodb::LogicalCollection> const& collection);
+v8::Handle<v8::Object> WrapCollection(
+    v8::Isolate* isolate,
+    std::shared_ptr<arangodb::LogicalCollection> const& collection);
 
-void TRI_InitV8Collections(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
-                           TRI_v8_global_t* v8g, v8::Isolate* isolate,
+void TRI_InitV8Collections(v8::Handle<v8::Context> context,
+                           TRI_vocbase_t* vocbase, TRI_v8_global_t* v8g,
+                           v8::Isolate* isolate,
                            v8::Handle<v8::ObjectTemplate> ArangoDBNS);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unwrap a LogicalCollection wrapped via WrapCollection(...)
 /// @return collection or nullptr on failure
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::LogicalCollection* UnwrapCollection(v8::Isolate* isolate,
-                                              v8::Local<v8::Object> const& holder);
-
+arangodb::LogicalCollection* UnwrapCollection(
+    v8::Isolate* isolate, v8::Local<v8::Object> const& holder);

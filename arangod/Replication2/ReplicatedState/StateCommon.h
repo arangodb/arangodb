@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,16 +23,20 @@
 
 #pragma once
 
+#include <chrono>
+#include <compare>
 #include <cstdint>
 #include <iostream>
+#include <optional>
+
 #include <velocypack/Slice.h>
-#include <compare>
+#include "Basics/Result.h"
 
 namespace arangodb::velocypack {
 class Value;
 template<typename, typename>
 struct Extractor;
-}
+}  // namespace arangodb::velocypack
 namespace arangodb {
 namespace replication2::replicated_state {
 
@@ -41,9 +46,11 @@ struct StateGeneration {
       : value{value} {}
   std::uint64_t value;
 
-  [[nodiscard]] auto saturatedDecrement(uint64_t delta = 1) const noexcept -> StateGeneration;
+  [[nodiscard]] auto saturatedDecrement(uint64_t delta = 1) const noexcept
+      -> StateGeneration;
 
-  friend auto operator<=>(StateGeneration const&, StateGeneration const&) = default;
+  friend auto operator<=>(StateGeneration const&,
+                          StateGeneration const&) = default;
 
   [[nodiscard]] auto operator+(std::uint64_t delta) const -> StateGeneration;
 
@@ -52,12 +59,34 @@ struct StateGeneration {
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 };
 
+struct SnapshotStatus {
+  enum Status {
+    kUninitialized,
+    kInitiated,
+    kCompleted,
+    kFailed,
+  };
+
+  using clock = std::chrono::system_clock;
+
+  void updateStatus(Status, std::optional<Result> newError = std::nullopt);
+
+  Status status{kUninitialized};
+  clock::time_point lastChange;
+  StateGeneration generation;
+  std::optional<Result> error;
+};
+
+auto to_string(SnapshotStatus::Status) noexcept -> std::string_view;
+auto operator<<(std::ostream&, SnapshotStatus const&) -> std::ostream&;
 auto operator<<(std::ostream&, StateGeneration) -> std::ostream&;
 }  // namespace replication2::replicated_state
 
-template <>
-struct arangodb::velocypack::Extractor<replication2::replicated_state::StateGeneration> {
-  static auto extract(velocypack::Slice slice) -> replication2::replicated_state::StateGeneration {
+template<>
+struct arangodb::velocypack::Extractor<
+    replication2::replicated_state::StateGeneration> {
+  static auto extract(velocypack::Slice slice)
+      -> replication2::replicated_state::StateGeneration {
     return replication2::replicated_state::StateGeneration{
         slice.getNumericValue<std::uint64_t>()};
   }

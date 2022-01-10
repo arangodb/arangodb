@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,30 +41,34 @@ class ValidationResult;
 /*
  * TODO:
  *
- * - EdgeUniqueness, like vertex Uniqueness, and sometimes Edge and Vertex Uniqueness enforce each other.
- *   (e.g. => VertexUniqueness == PATH => EdgeUniquess PATH || NONE.
+ * - EdgeUniqueness, like vertex Uniqueness, and sometimes Edge and Vertex
+ * Uniqueness enforce each other. (e.g. => VertexUniqueness == PATH =>
+ * EdgeUniquess PATH || NONE.
  *
  * - Prune Condition.
  * - PostFilter Condition.
  * - Path Conditions. Vertex, Edge maybe in LookupInfo
  *     (e.g. p.vertices[*].name ALL == "HANS")
  */
-template <class Provider, class PathStore, VertexUniquenessLevel vertexUniqueness>
+template<class Provider, class PathStore,
+         VertexUniquenessLevel vertexUniqueness>
 class PathValidator {
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
  public:
-  PathValidator(Provider& provider, PathStore const& store, PathValidatorOptions opts);
+  PathValidator(Provider& provider, PathStore const& store,
+                PathValidatorOptions opts);
   ~PathValidator();
 
   auto validatePath(typename PathStore::Step const& step) -> ValidationResult;
   auto validatePath(typename PathStore::Step const& step,
-                    PathValidator<Provider, PathStore, vertexUniqueness> const& otherValidator)
-      -> ValidationResult;
+                    PathValidator<Provider, PathStore, vertexUniqueness> const&
+                        otherValidator) -> ValidationResult;
 
   void setPruneEvaluator(std::unique_ptr<aql::PruneExpressionEvaluator> eval);
 
-  void setPostFilterEvaluator(std::unique_ptr<aql::PruneExpressionEvaluator> eval);
+  void setPostFilterEvaluator(
+      std::unique_ptr<aql::PruneExpressionEvaluator> eval);
 
   void reset();
 
@@ -75,7 +79,9 @@ class PathValidator {
   // Only for applied vertex uniqueness
   // TODO: Figure out if we can make this Member template dependend
   //       e.g. std::enable_if<vertexUniqueness != NONE>
-  ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> _uniqueVertices;
+  ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
+                                  std::equal_to<VertexRef>>
+      _uniqueVertices;
 
   PathValidatorOptions _options;
 
@@ -86,15 +92,16 @@ class PathValidator {
   arangodb::velocypack::Builder _tmpObjectBuilder;
 
  private:
-  auto evaluateVertexCondition(typename PathStore::Step const&) -> ValidationResult;
+  auto evaluateVertexCondition(typename PathStore::Step const&)
+      -> ValidationResult;
   auto evaluateVertexRestriction(typename PathStore::Step const& step) -> bool;
 
   auto exposeUniqueVertices() const
-      -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> const&;
+      -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
+                                         std::equal_to<VertexRef>> const&;
 
   auto evaluateVertexExpression(arangodb::aql::Expression* expression,
-                          arangodb::velocypack::Slice value) -> bool;
+                                arangodb::velocypack::Slice value) -> bool;
 };
 }  // namespace graph
 }  // namespace arangodb
-

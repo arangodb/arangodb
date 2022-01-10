@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,7 +34,7 @@ namespace aql {
 enum class WalkerUniqueness : std::uint8_t { Unique, NonUnique };
 
 /// @brief base interface to walk an execution plan recursively.
-template <class T>
+template<class T>
 class WalkerWorkerBase {
  public:
   WalkerWorkerBase() = default;
@@ -60,7 +60,7 @@ class WalkerWorkerBase {
 /// if template parameter `unique == true`, this will visit each node once, even
 /// if multiple paths lead to the same node. no assertions are raised if
 /// multiple paths lead to the same node
-template <class T, WalkerUniqueness U>
+template<class T, WalkerUniqueness U>
 class WalkerWorker : public WalkerWorkerBase<T> {
  public:
   virtual bool done([[maybe_unused]] T* en) override {
@@ -99,7 +99,5 @@ class WalkerWorker : public WalkerWorkerBase<T> {
   ::arangodb::containers::HashSet<T*> _done;
 };
 
-
 }  // namespace aql
 }  // namespace arangodb
-

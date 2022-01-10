@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,29 +31,18 @@ std::string extractShellExecutableName(std::string const& input) {
       // is it a variable name assignment?
       if (input.find('=', pos) == std::string::npos) {
         str = input.substr(0, pos);
-      }
-      else {
+      } else {
         str = input;
       }
     } else {
       str = input;
     }
-    if (str == "arangobackup" ||
-        str == "arangobench" ||
-        str == "arangod" ||
-        str == "arangodb" ||
-        str == "arangodbtests" ||
-        str == "arangodump" ||
-        str == "arangoexport" ||
-        str == "arangoimp" ||
-        str == "arangoimport" ||
-        str == "arango-init-database" ||
-        str == "arangoinspect" ||
-        str == "arangorestore" ||
-        str == "arango-secure-installation" ||
-        str == "arangosh" ||
-        str == "arangovpack"
-      ) {
+    if (str == "arangobackup" || str == "arangobench" || str == "arangod" ||
+        str == "arangodb" || str == "arangodbtests" || str == "arangodump" ||
+        str == "arangoexport" || str == "arangoimp" || str == "arangoimport" ||
+        str == "arango-init-database" || str == "arangoinspect" ||
+        str == "arangorestore" || str == "arango-secure-installation" ||
+        str == "arangosh" || str == "arangovpack") {
       return str;
     }
   }

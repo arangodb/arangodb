@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +33,8 @@
 using namespace arangodb;
 
 StorageEngine::StorageEngine(application_features::ApplicationServer& server,
-                             std::string engineName, const std::string& featureName,
+                             std::string engineName,
+                             const std::string& featureName,
                              std::unique_ptr<IndexFactory>&& indexFactory)
     : application_features::ApplicationFeature(server, featureName),
       _indexFactory(std::move(indexFactory)),
@@ -51,11 +52,17 @@ StorageEngine::StorageEngine(application_features::ApplicationServer& server,
   startsAfter<ViewTypesFeature>();
 }
 
-void StorageEngine::addParametersForNewCollection(velocypack::Builder&, VPackSlice) {}
+void StorageEngine::addParametersForNewCollection(velocypack::Builder&,
+                                                  VPackSlice) {}
 
-Result StorageEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id, const VPackSlice& slice) { return {}; }
+Result StorageEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
+                                                const VPackSlice& slice) {
+  return {};
+}
 Result StorageEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) { return {}; }
-bool StorageEngine::inRecovery() { return recoveryState() < RecoveryState::DONE; }
+bool StorageEngine::inRecovery() {
+  return recoveryState() < RecoveryState::DONE;
+}
 IndexFactory const& StorageEngine::indexFactory() const {
   // The factory has to be created by the implementation
   // and shall never be deleted
@@ -94,13 +101,15 @@ void StorageEngine::getStatistics(velocypack::Builder& builder, bool v2) const {
 
 void StorageEngine::getStatistics(std::string& result, bool v2) const {}
 
-void StorageEngine::registerCollection(TRI_vocbase_t& vocbase,
-                                       const std::shared_ptr<arangodb::LogicalCollection>& collection) {
+void StorageEngine::registerCollection(
+    TRI_vocbase_t& vocbase,
+    const std::shared_ptr<arangodb::LogicalCollection>& collection) {
   vocbase.registerCollection(true, collection);
 }
 
-void StorageEngine::registerView(TRI_vocbase_t& vocbase,
-                                 const std::shared_ptr<arangodb::LogicalView>& view) {
+void StorageEngine::registerView(
+    TRI_vocbase_t& vocbase,
+    const std::shared_ptr<arangodb::LogicalView>& view) {
   vocbase.registerView(true, view);
 }
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,16 +46,16 @@ class SnappyStringAppendSink : public snappy::Sink {
 /// @brief helper class for compressing a Merkle tree using Snappy
 class MerkleTreeSnappySource : public snappy::Source {
  public:
-  explicit MerkleTreeSnappySource(std::uint64_t numberOfShards, 
-                                  std::uint64_t allocationSize,
-                                  arangodb::containers::MerkleTreeBase::Data const& data);
-  
+  explicit MerkleTreeSnappySource(
+      std::uint64_t numberOfShards, std::uint64_t allocationSize,
+      arangodb::containers::MerkleTreeBase::Data const& data);
+
   size_t Available() const override;
-  
+
   char const* Peek(size_t* len) override;
 
   void Skip(size_t n) override;
-   
+
  private:
   std::uint64_t const numberOfShards;
   arangodb::containers::MerkleTreeBase::Data const& data;
@@ -63,4 +63,4 @@ class MerkleTreeSnappySource : public snappy::Source {
   std::uint64_t bytesLeftToRead;
 };
 
-}  // namespace
+}  // namespace arangodb::containers::helpers

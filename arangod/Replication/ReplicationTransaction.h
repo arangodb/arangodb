@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,7 +37,8 @@ class ReplicationTransaction : public transaction::Methods {
  public:
   /// @brief create the transaction
   explicit ReplicationTransaction(TRI_vocbase_t& vocbase)
-      : transaction::Methods(transaction::StandaloneContext::Create(vocbase), transaction::Options::replicationDefaults()),
+      : transaction::Methods(transaction::StandaloneContext::Create(vocbase),
+                             transaction::Options::replicationDefaults()),
         _guard(vocbase) {
     TRI_ASSERT(state() != nullptr);
     state()->setExclusiveAccessType();
@@ -48,4 +49,3 @@ class ReplicationTransaction : public transaction::Methods {
 };
 
 }  // namespace arangodb
-

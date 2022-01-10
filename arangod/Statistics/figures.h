@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,7 +51,7 @@ struct Counter {
 
   int64_t get() const { return _count.load(std::memory_order_relaxed); }
 
-private:
+ private:
   std::atomic<int64_t> _count;
 };
 
@@ -122,4 +122,3 @@ struct Distribution {
 };
 }  // namespace statistics
 }  // namespace arangodb
-

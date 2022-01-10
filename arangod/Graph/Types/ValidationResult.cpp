@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,7 +37,8 @@ bool ValidationResult::isFiltered() const noexcept {
 
 void ValidationResult::combine(Type t) noexcept { _type = std::max(_type, t); }
 
-std::ostream& arangodb::graph::operator<<(std::ostream& stream, ValidationResult const& res) {
+std::ostream& arangodb::graph::operator<<(std::ostream& stream,
+                                          ValidationResult const& res) {
   switch (res._type) {
     case ValidationResult::Type::TAKE:
       stream << "take";

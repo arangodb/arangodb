@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,7 @@
 
 namespace arangodb {
 
-template <typename T, typename C>
+template<typename T, typename C>
 struct enumerate_wrapper;
 
 /*
@@ -41,16 +41,16 @@ struct enumerate_wrapper;
  * Usable for std::vector, std::list, std::map and std::unordered_map. _should_
  * work for other containers that provide a LegacyIterator as well.
  */
-template <typename T, typename C = unsigned int>
+template<typename T, typename C = unsigned int>
 enumerate_wrapper<T, C> enumerate(T&& v, C c = C());
 
-template <typename T, typename C = unsigned int>
+template<typename T, typename C = unsigned int>
 struct enumerate_iterator;
 
-template <typename T, typename C>
+template<typename T, typename C>
 void swap(enumerate_iterator<T, C>& a, enumerate_iterator<T, C>& b);
 
-template <typename T, typename C>
+template<typename T, typename C>
 struct enumerate_iterator {
   enumerate_iterator() : _iter(), _c(0) {}
 
@@ -82,12 +82,12 @@ struct enumerate_iterator {
   C _c;
 };
 
-template <typename T, typename C>
+template<typename T, typename C>
 auto enumerate_iterator<T, C>::operator*() const -> reference {
   return std::make_pair(_c, std::reference_wrapper(*_iter));
 }
 
-template <typename T, typename C>
+template<typename T, typename C>
 struct enumerate_wrapper {
   using I = typename std::decay_t<T>::iterator;
   T _t;
@@ -97,33 +97,34 @@ struct enumerate_wrapper {
   auto end() { return enumerate_iterator(_t.end(), _c); }
 };
 
-template <typename T, typename C>
+template<typename T, typename C>
 void swap(enumerate_iterator<T, C>& a, enumerate_iterator<T, C>& b) {
   using std::swap;
   swap(a._iter, b._iter);
   swap(a._c, b._c);
 }
 
-template <typename T, typename C>
+template<typename T, typename C>
 auto enumerate_iterator<T, C>::operator++() -> enumerate_iterator& {
   ++_c;
   ++_iter;
   return *this;
 }
 
-template <typename T, typename C>
-bool enumerate_iterator<T, C>::operator==(enumerate_iterator const& other) const {
+template<typename T, typename C>
+bool enumerate_iterator<T, C>::operator==(
+    enumerate_iterator const& other) const {
   return _iter == other._iter;
 }
 
-template <typename T, typename C>
-bool enumerate_iterator<T, C>::operator!=(enumerate_iterator const& other) const {
+template<typename T, typename C>
+bool enumerate_iterator<T, C>::operator!=(
+    enumerate_iterator const& other) const {
   return _iter != other._iter;
 }
 
-template <typename T, typename C>
+template<typename T, typename C>
 enumerate_wrapper<T, C> enumerate(T&& v, C c) {
   return enumerate_wrapper<T, C>{std::forward<T>(v), c};
 }
 };  // namespace arangodb
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -95,9 +95,9 @@ struct SimpleHttpClientParams {
   uint64_t getRetryWaitTime() { return _retryWaitTime; }
 
   void setRetryMessage(std::string const& m) { _retryMessage = m; }
-  
+
   double getRequestTimeout() const { return _requestTimeout; }
-  
+
   void setRequestTimeout(double value) noexcept { _requestTimeout = value; }
 
   void setMaxPacketSize(size_t ms) { _maxPacketSize = ms; }
@@ -118,14 +118,16 @@ struct SimpleHttpClientParams {
                            std::string const& password) {
     TRI_ASSERT(prefix != nullptr);
     TRI_ASSERT(strcmp(prefix, "/") == 0);
-    _basicAuth = arangodb::basics::StringUtils::encodeBase64(username + ":" + password);
+    _basicAuth =
+        arangodb::basics::StringUtils::encodeBase64(username + ":" + password);
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief allows rewriting locations
   //////////////////////////////////////////////////////////////////////////////
 
-  void setLocationRewriter(void* data, std::string (*func)(void*, std::string const&)) {
+  void setLocationRewriter(void* data,
+                           std::string (*func)(void*, std::string const&)) {
     _locationRewriter.data = data;
     _locationRewriter.func = func;
   }
@@ -138,7 +140,7 @@ struct SimpleHttpClientParams {
 
  private:
   double _requestTimeout;
-  
+
   // flag whether or not we keep the connection on destruction
   bool _keepConnectionOnDestruction = false;
 
@@ -202,11 +204,12 @@ class SimpleHttpClient {
   };
 
  public:
-  SimpleHttpClient(std::unique_ptr<GeneralClientConnection>&, SimpleHttpClientParams const&);
+  SimpleHttpClient(std::unique_ptr<GeneralClientConnection>&,
+                   SimpleHttpClientParams const&);
   SimpleHttpClient(GeneralClientConnection*, SimpleHttpClientParams const&);
   ~SimpleHttpClient();
 
-  /// @brief allow the SimpleHttpClient to reuse/recycle the result. 
+  /// @brief allow the SimpleHttpClient to reuse/recycle the result.
   /// the SimpleHttpClient will assume ownership for it
   void recycleResult(std::unique_ptr<SimpleHttpResult> result);
 
@@ -257,8 +260,9 @@ class SimpleHttpClient {
   /// have been _maxRetries retries
   //////////////////////////////////////////////////////////////////////////////
 
-  SimpleHttpResult* retryRequest(rest::RequestType, std::string const&, char const*, size_t,
-                                 std::unordered_map<std::string, std::string> const&);
+  SimpleHttpResult* retryRequest(
+      rest::RequestType, std::string const&, char const*, size_t,
+      std::unordered_map<std::string, std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief make an http request, creating a new HttpResult object
@@ -269,7 +273,8 @@ class SimpleHttpClient {
   /// have been _maxRetries retries
   //////////////////////////////////////////////////////////////////////////////
 
-  SimpleHttpResult* retryRequest(rest::RequestType, std::string const&, char const*, size_t);
+  SimpleHttpResult* retryRequest(rest::RequestType, std::string const&,
+                                 char const*, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief make an http request, creating a new HttpResult object
@@ -277,7 +282,8 @@ class SimpleHttpClient {
   /// this version does not allow specifying custom headers
   //////////////////////////////////////////////////////////////////////////////
 
-  SimpleHttpResult* request(rest::RequestType, std::string const&, char const*, size_t);
+  SimpleHttpResult* request(rest::RequestType, std::string const&, char const*,
+                            size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief make an http request, actual worker function
@@ -285,8 +291,9 @@ class SimpleHttpClient {
   /// this version allows specifying custom headers
   //////////////////////////////////////////////////////////////////////////////
 
-  SimpleHttpResult* request(rest::RequestType, std::string const&, char const*, size_t,
-                            std::unordered_map<std::string, std::string> const&);
+  SimpleHttpResult* request(
+      rest::RequestType, std::string const&, char const*, size_t,
+      std::unordered_map<std::string, std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the current error message
@@ -302,7 +309,8 @@ class SimpleHttpClient {
     _errorMessage = message;
 
     if (_params._warn || forceWarn) {
-      LOG_TOPIC("a1b4d", WARN, arangodb::Logger::HTTPCLIENT) << "" << _errorMessage;
+      LOG_TOPIC("a1b4d", WARN, arangodb::Logger::HTTPCLIENT)
+          << "" << _errorMessage;
     }
   }
 
@@ -312,7 +320,8 @@ class SimpleHttpClient {
 
   void setErrorMessage(std::string_view message, ErrorCode error) {
     if (error != TRI_ERROR_NO_ERROR) {
-      _errorMessage = basics::StringUtils::concatT(message, ": ", TRI_errno_string(error));
+      _errorMessage =
+          basics::StringUtils::concatT(message, ": ", TRI_errno_string(error));
     } else {
       setErrorMessage(message);
     }
@@ -354,8 +363,9 @@ class SimpleHttpClient {
   /// this version allows specifying custom headers
   //////////////////////////////////////////////////////////////////////////////
 
-  SimpleHttpResult* doRequest(rest::RequestType, std::string const&, char const*, size_t,
-                              std::unordered_map<std::string, std::string> const&);
+  SimpleHttpResult* doRequest(
+      rest::RequestType, std::string const&, char const*, size_t,
+      std::unordered_map<std::string, std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the connection
@@ -375,7 +385,8 @@ class SimpleHttpClient {
 
   std::string rewriteLocation(std::string const& location) {
     if (_params._locationRewriter.func != nullptr) {
-      return _params._locationRewriter.func(_params._locationRewriter.data, location);
+      return _params._locationRewriter.func(_params._locationRewriter.data,
+                                            location);
     }
 
     return location;
@@ -397,9 +408,10 @@ class SimpleHttpClient {
   /// @param headerFields                   list of header fields
   //////////////////////////////////////////////////////////////////////////////
 
-  void setRequest(rest::RequestType method, std::string const& location,
-                  char const* body, size_t bodyLength,
-                  std::unordered_map<std::string, std::string> const& headerFields);
+  void setRequest(
+      rest::RequestType method, std::string const& location, char const* body,
+      size_t bodyLength,
+      std::unordered_map<std::string, std::string> const& headerFields);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief process (a part of) the http header, the data is
@@ -507,7 +519,7 @@ class SimpleHttpClient {
   std::atomic<bool> _aborted;
 
   std::string _hostname;
-  
+
   // reference to communication feature phase (populated only once for
   // the entire lifetime of the SimpleHttpClient, as the repeated feature
   // lookup may be expensive otherwise)
@@ -515,4 +527,3 @@ class SimpleHttpClient {
 };
 }  // namespace httpclient
 }  // namespace arangodb
-

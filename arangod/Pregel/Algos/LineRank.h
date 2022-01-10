@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -56,7 +56,8 @@ struct LineRank : public SimpleAlgorithm<float, float, float> {
   WorkerContext* workerContext(velocypack::Slice params) const override;
   MasterContext* masterContext(velocypack::Slice) const override;
 
-  VertexComputation<float, float, float>* createComputation(WorkerConfig const*) const override;
+  VertexComputation<float, float, float>* createComputation(
+      WorkerConfig const*) const override;
 
   IAggregator* aggregator(std::string const& name) const override;
 };

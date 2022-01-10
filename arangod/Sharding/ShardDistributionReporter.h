@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,15 +45,16 @@ class ShardDistributionReporter {
   ShardDistributionReporter(ClusterInfo* ci, network::Sender sender);
 
   ~ShardDistributionReporter();
-  
-  /// @brief helper function to create an instance of the ShardDistributionReporter
-  static std::shared_ptr<ShardDistributionReporter> instance(application_features::ApplicationServer&);
 
+  /// @brief helper function to create an instance of the
+  /// ShardDistributionReporter
+  static std::shared_ptr<ShardDistributionReporter> instance(
+      application_features::ApplicationServer&);
 
   /// @brief fetch distribution for a single collections in db
-  void getCollectionDistributionForDatabase(std::string const& dbName,
-                                            std::string const& colName,
-                                            arangodb::velocypack::Builder& result);
+  void getCollectionDistributionForDatabase(
+      std::string const& dbName, std::string const& colName,
+      arangodb::velocypack::Builder& result);
 
   /// @brief fetch distributions for all collections in db
   void getDistributionForDatabase(std::string const& dbName,
@@ -62,18 +63,20 @@ class ShardDistributionReporter {
  private:
   /// @brief internal helper function to fetch distributions
   void getCollectionDistribution(
-      std::string const& dbName, 
-      std::vector<std::shared_ptr<LogicalCollection>> const& cols, 
-      arangodb::velocypack::Builder& result,
-      bool progress);
+      std::string const& dbName,
+      std::vector<std::shared_ptr<LogicalCollection>> const& cols,
+      arangodb::velocypack::Builder& result, bool progress);
 
-  bool testAllShardsInSync(std::string const& dbName, LogicalCollection const* col,
-                           std::unordered_map<std::string, std::vector<std::string>> const* allShards);
+  bool testAllShardsInSync(
+      std::string const& dbName, LogicalCollection const* col,
+      std::unordered_map<std::string, std::vector<std::string>> const*
+          allShards);
 
   void helperDistributionForDatabase(
       std::string const& dbName, arangodb::velocypack::Builder& result,
-      std::queue<std::shared_ptr<LogicalCollection>>& todoSyncStateCheck, double endtime,
-      std::unordered_map<std::string, std::string>& aliases, bool progress);
+      std::queue<std::shared_ptr<LogicalCollection>>& todoSyncStateCheck,
+      double endtime, std::unordered_map<std::string, std::string>& aliases,
+      bool progress);
 
  private:
   ClusterInfo* _ci;
@@ -81,4 +84,3 @@ class ShardDistributionReporter {
 };
 }  // namespace cluster
 }  // namespace arangodb
-

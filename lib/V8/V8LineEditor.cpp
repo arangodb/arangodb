@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -89,7 +89,9 @@ static bool SignalHandler(DWORD eventType) {
 
       return true;
     }
-    default: { return true; }
+    default: {
+      return true;
+    }
   }
 }
 
@@ -131,7 +133,8 @@ class V8Completer : public Completer {
     int openParen = 0;
     int openBrackets = 0;
     int openBraces = 0;
-    int openStrings = 0;  // only used for template strings, which can be multi-line
+    int openStrings =
+        0;  // only used for template strings, which can be multi-line
     int openComments = 0;
 
     enum line_parse_state_e {
@@ -337,7 +340,8 @@ class V8Completer : public Completer {
     v8::Local<v8::String> cpl = TRI_V8_ASCII_STRING(isolate, "_COMPLETIONS");
 
     if (current->HasOwnProperty(context, cpl).FromMaybe(false)) {
-      v8::Handle<v8::Value> funcVal = current->Get(context, cpl).FromMaybe(v8::Local<v8::Value>());
+      v8::Handle<v8::Value> funcVal =
+          current->Get(context, cpl).FromMaybe(v8::Local<v8::Value>());
 
       if (funcVal->IsFunction()) {
         v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(funcVal);
@@ -347,7 +351,8 @@ class V8Completer : public Completer {
         v8::Handle<v8::Value> args[] = {v8::Null(isolate)};
 
         try {
-          v8::Handle<v8::Value> cpls = func->Call(context, current, 0, args).FromMaybe(v8::Handle<v8::Value>());
+          v8::Handle<v8::Value> cpls = func->Call(context, current, 0, args)
+                                           .FromMaybe(v8::Handle<v8::Value>());
 
           if (cpls->IsArray()) {
             properties = v8::Handle<v8::Array>::Cast(cpls);
@@ -357,7 +362,8 @@ class V8Completer : public Completer {
         }
       }
     } else {
-      properties = current->GetPropertyNames(context).FromMaybe(v8::Handle<v8::Array>());
+      properties =
+          current->GetPropertyNames(context).FromMaybe(v8::Handle<v8::Array>());
     }
 
     // locate
@@ -367,13 +373,18 @@ class V8Completer : public Completer {
         result.reserve(static_cast<size_t>(n));
 
         for (uint32_t i = 0; i < n; ++i) {
-          v8::Handle<v8::Value> v = properties->Get(context, i).FromMaybe(v8::Handle<v8::Value>());
+          v8::Handle<v8::Value> v =
+              properties->Get(context, i).FromMaybe(v8::Handle<v8::Value>());
 
           TRI_Utf8ValueNFC str(isolate, v);
           char const* s = *str;
 
           if (s != nullptr && *s) {
-            std::string suffix = (current->Get(context, v).FromMaybe(v8::Local<v8::Value>())->IsFunction()) ? "()" : "";
+            std::string suffix = (current->Get(context, v)
+                                      .FromMaybe(v8::Local<v8::Value>())
+                                      ->IsFunction())
+                                     ? "()"
+                                     : "";
             std::string name = path + s + suffix;
 
             if (prefix.empty() || prefix[0] == '\0' ||
@@ -396,9 +407,13 @@ class V8Completer : public Completer {
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8LineEditor::V8LineEditor(v8::Isolate* isolate, v8::Handle<v8::Context> context,
+V8LineEditor::V8LineEditor(v8::Isolate* isolate,
+                           v8::Handle<v8::Context> context,
                            std::string const& history)
-    : LineEditor(), _isolate(isolate), _context(context), _executingCommand(false) {
+    : LineEditor(),
+      _isolate(isolate),
+      _context(context),
+      _executingCommand(false) {
   // register global instance
 
   {

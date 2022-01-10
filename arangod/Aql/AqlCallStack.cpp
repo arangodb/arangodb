@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,8 +35,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlCallStack::AqlCallStack(AqlCallList call)
-    : _operations{{std::move(call)}} {}
+AqlCallStack::AqlCallStack(AqlCallList call) : _operations{{std::move(call)}} {}
 
 AqlCallStack::AqlCallStack(AqlCallStack const& other, AqlCallList call)
     : _operations{other._operations} {
@@ -83,7 +82,8 @@ void AqlCallStack::pushCall(AqlCallList const& call) {
   _operations.emplace_back(call);
 }
 
-auto AqlCallStack::fromVelocyPack(velocypack::Slice const slice) -> ResultT<AqlCallStack> {
+auto AqlCallStack::fromVelocyPack(velocypack::Slice const slice)
+    -> ResultT<AqlCallStack> {
   if (ADB_UNLIKELY(!slice.isArray())) {
     using namespace std::string_literals;
     return Result(TRI_ERROR_TYPE_ERROR,
@@ -143,7 +143,8 @@ auto AqlCallStack::toString() const -> std::string {
   return result;
 }
 
-auto AqlCallStack::createEquivalentFetchAllShadowRowsStack() const -> AqlCallStack {
+auto AqlCallStack::createEquivalentFetchAllShadowRowsStack() const
+    -> AqlCallStack {
   AqlCallStack res{*this};
   // We can always overfetch the next subquery here.
   // We gonna need all data anyways.
@@ -154,17 +155,20 @@ auto AqlCallStack::createEquivalentFetchAllShadowRowsStack() const -> AqlCallSta
 }
 
 auto AqlCallStack::needToCountSubquery() const noexcept -> bool {
-  return std::any_of(_operations.begin(), _operations.end(), [](AqlCallList const& call) -> bool {
-    auto const& nextCall = call.peekNextCall();
-    return nextCall.needSkipMore() || nextCall.hasLimit();
-  });
+  return std::any_of(_operations.begin(), _operations.end(),
+                     [](AqlCallList const& call) -> bool {
+                       auto const& nextCall = call.peekNextCall();
+                       return nextCall.needSkipMore() || nextCall.hasLimit();
+                     });
 }
 
 auto AqlCallStack::needToSkipSubquery() const noexcept -> bool {
-  return std::any_of(_operations.begin(), _operations.end(), [](AqlCallList const& call) -> bool {
-    auto const& nextCall = call.peekNextCall();
-    return nextCall.needSkipMore() || nextCall.hardLimit == 0;
-  });
+  return std::any_of(_operations.begin(), _operations.end(),
+                     [](AqlCallList const& call) -> bool {
+                       auto const& nextCall = call.peekNextCall();
+                       return nextCall.needSkipMore() ||
+                              nextCall.hardLimit == 0;
+                     });
 }
 
 auto AqlCallStack::shadowRowDepthToSkip() const -> size_t {
@@ -173,7 +177,7 @@ auto AqlCallStack::shadowRowDepthToSkip() const -> size_t {
   for (size_t i = 0; i < n; ++i) {
     auto& call = _operations[i];
     auto const& nextCall = call.peekNextCall();
-     if (nextCall.needSkipMore() || nextCall.getLimit() == 0) {
+    if (nextCall.needSkipMore() || nextCall.getLimit() == 0) {
       return n - i - 1;
     }
   }
@@ -207,17 +211,20 @@ auto AqlCallStack::modifyTopCall() -> AqlCall& {
 }
 
 auto AqlCallStack::hasAllValidCalls() const noexcept -> bool {
-  return std::all_of(_operations.begin(), _operations.end(), [](AqlCallList const& list) {
-    if (!list.hasMoreCalls()) {
-      return false;
-    }
-    auto const& nextCall = list.peekNextCall();
-    // We cannot continue if any of our calls has a softLimit reached.
-    return !(nextCall.hasSoftLimit() && nextCall.getLimit() == 0 && nextCall.getOffset() == 0);
-  });
+  return std::all_of(
+      _operations.begin(), _operations.end(), [](AqlCallList const& list) {
+        if (!list.hasMoreCalls()) {
+          return false;
+        }
+        auto const& nextCall = list.peekNextCall();
+        // We cannot continue if any of our calls has a softLimit reached.
+        return !(nextCall.hasSoftLimit() && nextCall.getLimit() == 0 &&
+                 nextCall.getOffset() == 0);
+      });
 }
 
-auto AqlCallStack::requestLessDataThan(AqlCallStack const& other) const noexcept -> bool {
+auto AqlCallStack::requestLessDataThan(AqlCallStack const& other) const noexcept
+    -> bool {
   if (_operations.size() != other._operations.size()) {
     return false;
   }

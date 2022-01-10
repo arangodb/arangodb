@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,17 +38,19 @@ namespace cluster {
 
 void abortTransactions(LogicalCollection& coll) {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
-  if (!mgr) { // might be called during shutdown
+  if (!mgr) {  // might be called during shutdown
     return;
   }
 
-  bool didWork = mgr->abortManagedTrx(
-      [&coll](TransactionState const& state, std::string const& /*user*/) -> bool {
-    TransactionCollection* tcoll = state.collection(coll.id(), AccessMode::Type::NONE);
-    return tcoll != nullptr;
-  });
+  bool didWork =
+      mgr->abortManagedTrx([&coll](TransactionState const& state,
+                                   std::string const& /*user*/) -> bool {
+        TransactionCollection* tcoll =
+            state.collection(coll.id(), AccessMode::Type::NONE);
+        return tcoll != nullptr;
+      });
 
-  LOG_TOPIC_IF("7eda2", INFO, Logger::TRANSACTIONS, didWork) 
+  LOG_TOPIC_IF("7eda2", INFO, Logger::TRANSACTIONS, didWork)
       << "aborted leader transactions on shard " << coll.id() << "'";
 }
 
@@ -57,17 +59,19 @@ void abortLeaderTransactionsOnShard(DataSourceId cid) {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
-  bool didWork = mgr->abortManagedTrx(
-      [cid](TransactionState const& state, std::string const& /*user*/) -> bool {
+  bool didWork =
+      mgr->abortManagedTrx([cid](TransactionState const& state,
+                                 std::string const& /*user*/) -> bool {
         if (state.id().isLeaderTransactionId()) {
-          TransactionCollection* tcoll = state.collection(cid, AccessMode::Type::NONE);
+          TransactionCollection* tcoll =
+              state.collection(cid, AccessMode::Type::NONE);
           return tcoll != nullptr;
         }
         return false;
       });
 
-  LOG_TOPIC_IF("7edb3", INFO, Logger::TRANSACTIONS, didWork) 
-     <<  "aborted leader transactions on shard '" << cid << "'";
+  LOG_TOPIC_IF("7edb3", INFO, Logger::TRANSACTIONS, didWork)
+      << "aborted leader transactions on shard '" << cid << "'";
 }
 
 void abortFollowerTransactionsOnShard(DataSourceId cid) {
@@ -75,16 +79,18 @@ void abortFollowerTransactionsOnShard(DataSourceId cid) {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
-  bool didWork = mgr->abortManagedTrx(
-      [cid](TransactionState const& state, std::string const& /*user*/) -> bool {
+  bool didWork =
+      mgr->abortManagedTrx([cid](TransactionState const& state,
+                                 std::string const& /*user*/) -> bool {
         if (state.id().isFollowerTransactionId()) {
-          TransactionCollection* tcoll = state.collection(cid, AccessMode::Type::NONE);
+          TransactionCollection* tcoll =
+              state.collection(cid, AccessMode::Type::NONE);
           return tcoll != nullptr;
         }
         return false;
       });
 
-  LOG_TOPIC_IF("7dcff", INFO, Logger::TRANSACTIONS, didWork) 
+  LOG_TOPIC_IF("7dcff", INFO, Logger::TRANSACTIONS, didWork)
       << "aborted follower transactions on shard '" << cid << "'";
 }
 
@@ -94,12 +100,12 @@ void abortTransactionsWithFailedServers(ClusterInfo& ci) {
   std::vector<ServerID> failed = ci.getFailedServers();
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
-  
+
   bool didWork = false;
   if (ServerState::instance()->isCoordinator()) {
-    
     // abort all transactions using a lead server
-    didWork = mgr->abortManagedTrx([&](TransactionState const& state, std::string const& /*user*/) -> bool {
+    didWork = mgr->abortManagedTrx([&](TransactionState const& state,
+                                       std::string const& /*user*/) -> bool {
       for (ServerID const& sid : failed) {
         if (state.knowsServer(sid)) {
           return true;
@@ -107,29 +113,30 @@ void abortTransactionsWithFailedServers(ClusterInfo& ci) {
       }
       return false;
     });
-    
+
   } else if (ServerState::instance()->isDBServer()) {
-    
     // only care about failed coordinators
-    failed.erase(std::remove_if(failed.begin(), failed.end(), [](ServerID const& str) {
-      return !ClusterHelpers::isDBServerName(str);
-    }), failed.end());
+    failed.erase(std::remove_if(failed.begin(), failed.end(),
+                                [](ServerID const& str) {
+                                  return !ClusterHelpers::isDBServerName(str);
+                                }),
+                 failed.end());
     if (failed.empty()) {
       return;
     }
-    
+
     // abort all transaction started by a certain coordinator
-    didWork = mgr->abortManagedTrx(
-        [&](TransactionState const& state, std::string const& /*user*/) -> bool {
-          uint32_t serverId = state.id().serverId();
-          if (serverId != 0) {
-            ServerID coordId = ci.getCoordinatorByShortID(serverId);
-            return std::find(failed.begin(), failed.end(), coordId) != failed.end();
-          }
-          return false;
-        });
+    didWork = mgr->abortManagedTrx([&](TransactionState const& state,
+                                       std::string const& /*user*/) -> bool {
+      uint32_t serverId = state.id().serverId();
+      if (serverId != 0) {
+        ServerID coordId = ci.getCoordinatorByShortID(serverId);
+        return std::find(failed.begin(), failed.end(), coordId) != failed.end();
+      }
+      return false;
+    });
   }
-  
+
   LOG_TOPIC_IF("b59e3", INFO, Logger::TRANSACTIONS, didWork)
       << "aborting transactions for servers '" << failed << "'";
 }

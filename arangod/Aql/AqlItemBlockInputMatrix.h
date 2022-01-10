@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,7 +44,7 @@ class AqlItemBlockInputMatrix {
 
   void reset() noexcept { _lastRange.reset(); }
   bool hasBlock() const noexcept { return _lastRange.hasBlock(); }
-  
+
   bool hasShadowRow() const noexcept;
   bool hasDataRow() const noexcept;
   bool hasValidRow() const noexcept;
@@ -99,4 +99,3 @@ class AqlItemBlockInputMatrix {
 };
 
 }  // namespace arangodb::aql
-

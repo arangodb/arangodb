@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,9 +35,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 AqlValueMaterializer::AqlValueMaterializer(velocypack::Options const* options)
-    : options(options),
-      materialized(),
-      hasCopied(false) {}
+    : options(options), materialized(), hasCopied(false) {}
 
 AqlValueMaterializer::AqlValueMaterializer(AqlValueMaterializer const& other)
     : options(other.options),
@@ -49,7 +47,8 @@ AqlValueMaterializer::AqlValueMaterializer(AqlValueMaterializer const& other)
   }
 }
 
-AqlValueMaterializer& AqlValueMaterializer::operator=(AqlValueMaterializer const& other) {
+AqlValueMaterializer& AqlValueMaterializer::operator=(
+    AqlValueMaterializer const& other) {
   if (this != &other) {
     TRI_ASSERT(options == other.options);  // must be from same transaction
     options = other.options;
@@ -65,7 +64,8 @@ AqlValueMaterializer& AqlValueMaterializer::operator=(AqlValueMaterializer const
   return *this;
 }
 
-AqlValueMaterializer::AqlValueMaterializer(AqlValueMaterializer&& other) noexcept
+AqlValueMaterializer::AqlValueMaterializer(
+    AqlValueMaterializer&& other) noexcept
     : options(other.options),
       materialized(other.materialized),
       hasCopied(other.hasCopied) {
@@ -75,7 +75,8 @@ AqlValueMaterializer::AqlValueMaterializer(AqlValueMaterializer&& other) noexcep
   other.materialized = AqlValue();
 }
 
-AqlValueMaterializer& AqlValueMaterializer::operator=(AqlValueMaterializer&& other) noexcept {
+AqlValueMaterializer& AqlValueMaterializer::operator=(
+    AqlValueMaterializer&& other) noexcept {
   if (this != &other) {
     TRI_ASSERT(options == other.options);  // must be from same transaction
     options = other.options;

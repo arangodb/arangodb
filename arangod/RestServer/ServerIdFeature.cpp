@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,7 +46,8 @@ namespace arangodb {
 
 ServerId ServerIdFeature::SERVERID{0};
 
-ServerIdFeature::ServerIdFeature(application_features::ApplicationServer& server)
+ServerIdFeature::ServerIdFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, "ServerId") {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
@@ -90,7 +91,8 @@ void ServerIdFeature::generateId() {
   TRI_ASSERT(SERVERID.empty());
 
   do {
-    SERVERID = ServerId(RandomGenerator::interval(static_cast<uint64_t>(0x0000FFFFFFFFFFFFULL)));
+    SERVERID = ServerId(RandomGenerator::interval(
+        static_cast<uint64_t>(0x0000FFFFFFFFFFFFULL)));
 
   } while (SERVERID.empty());
 
@@ -105,7 +107,8 @@ ErrorCode ServerIdFeature::readId() {
 
   ServerId foundId;
   try {
-    VPackBuilder builder = basics::VelocyPackHelper::velocyPackFromFile(_idFilename);
+    VPackBuilder builder =
+        basics::VelocyPackHelper::velocyPackFromFile(_idFilename);
     VPackSlice content = builder.slice();
     if (!content.isObject()) {
       return TRI_ERROR_INTERNAL;
@@ -152,16 +155,17 @@ ErrorCode ServerIdFeature::writeId() {
     builder.close();
   } catch (...) {
     // out of memory
-    LOG_TOPIC("6cac3", ERR, arangodb::Logger::FIXME) << "cannot save server id in file '"
-                                            << _idFilename << "': out of memory";
+    LOG_TOPIC("6cac3", ERR, arangodb::Logger::FIXME)
+        << "cannot save server id in file '" << _idFilename
+        << "': out of memory";
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   // save json info to file
   LOG_TOPIC("f6cbd", DEBUG, arangodb::Logger::FIXME)
       << "Writing server id to file '" << _idFilename << "'";
-  bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(_idFilename,
-                                                                 builder.slice(), true);
+  bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
+      _idFilename, builder.slice(), true);
 
   if (!ok) {
     LOG_TOPIC("26de4", ERR, arangodb::Logger::FIXME)

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,20 +48,23 @@ namespace network {
 /// @brief resolve 'shard:' or 'server:' url to actual endpoint
 ErrorCode resolveDestination(NetworkFeature const&, DestinationId const& dest,
                              network::EndpointSpec&);
-ErrorCode resolveDestination(ClusterInfo&, DestinationId const& dest, network::EndpointSpec&);
+ErrorCode resolveDestination(ClusterInfo&, DestinationId const& dest,
+                             network::EndpointSpec&);
 
-Result resultFromBody(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& b,
-                      ErrorCode defaultError);
+Result resultFromBody(
+    std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& b,
+    ErrorCode defaultError);
 Result resultFromBody(std::shared_ptr<arangodb::velocypack::Builder> const& b,
                       ErrorCode defaultError);
 Result resultFromBody(arangodb::velocypack::Slice b, ErrorCode defaultError);
 
 /// @brief extract the error from a cluster response
-template <typename T>
+template<typename T>
 OperationResult opResultFromBody(T const& body, ErrorCode defaultErrorCode,
                                  OperationOptions&& options) {
-  return OperationResult(arangodb::network::resultFromBody(body, defaultErrorCode),
-                         std::move(options));
+  return OperationResult(
+      arangodb::network::resultFromBody(body, defaultErrorCode),
+      std::move(options));
 }
 
 /// @brief extract the error code form the body

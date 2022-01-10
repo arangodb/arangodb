@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,9 +46,13 @@ class SortCondition {
   /// @brief create the sort condition
   SortCondition(ExecutionPlan* plan,
                 std::vector<std::pair<Variable const*, bool>> const& sorts,
-                std::vector<std::vector<arangodb::basics::AttributeName>> const& constAttributes,
-                ::arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>> const& nonNullAttributes,
-                std::unordered_map<VariableId, AstNode const*> const& variableDefinitions);
+                std::vector<std::vector<arangodb::basics::AttributeName>> const&
+                    constAttributes,
+                ::arangodb::containers::HashSet<
+                    std::vector<arangodb::basics::AttributeName>> const&
+                    nonNullAttributes,
+                std::unordered_map<VariableId, AstNode const*> const&
+                    variableDefinitions);
 
   /// @brief destroy the sort condition
   ~SortCondition();
@@ -59,7 +63,7 @@ class SortCondition {
 
   /// @brief whether or not all conditions have the same sort order
   inline bool isUnidirectional() const { return _unidirectional; }
-  
+
   /// @brief whether or not all sort directions are ascending
   /// note that the return value of this function is only meaningful if the
   /// sort is unidirectional
@@ -80,20 +84,22 @@ class SortCondition {
 
   /// @brief returns the number of attributes in the sort condition covered
   /// by the specified index fields
-  size_t coveredAttributes(Variable const*,
-                           std::vector<std::vector<arangodb::basics::AttributeName>> const&) const;
+  size_t coveredAttributes(
+      Variable const*,
+      std::vector<std::vector<arangodb::basics::AttributeName>> const&) const;
 
   /// @brief returns true if all attributes in the sort condition are proven
   /// to be non-null
   bool onlyUsesNonNullSortAttributes(
-                           std::vector<std::vector<arangodb::basics::AttributeName>> const&) const;
+      std::vector<std::vector<arangodb::basics::AttributeName>> const&) const;
 
   /// @brief  return the sort condition (as a tuple containing variable, AstNode
   /// and sort order) at `position`.
   /// `position` can  be a value between 0 and the result of
   /// SortCondition::numAttributes(). The bool attribute returned is whether
   /// the sort order is ascending (true) or descending (false)
-  std::tuple<Variable const*, AstNode const*, bool> field(size_t position) const;
+  std::tuple<Variable const*, AstNode const*, bool> field(
+      size_t position) const;
 
  private:
   struct SortField {
@@ -109,10 +115,12 @@ class SortCondition {
   std::vector<SortField> _fields;
 
   /// @brief const attributes
-  std::vector<std::vector<arangodb::basics::AttributeName>> const _constAttributes;
-  
+  std::vector<std::vector<arangodb::basics::AttributeName>> const
+      _constAttributes;
+
   /// @brief non-null attributes
-  ::arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>> const _nonNullAttributes;
+  ::arangodb::containers::HashSet<
+      std::vector<arangodb::basics::AttributeName>> const _nonNullAttributes;
 
   /// @brief whether or not the sort is unidirectional
   bool _unidirectional;
@@ -126,4 +134,3 @@ class SortCondition {
 };
 }  // namespace aql
 }  // namespace arangodb
-

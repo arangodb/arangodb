@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,4 +42,3 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
 void TRI_InitV8Actions(v8::Isolate* isolate);
 
 void TRI_InitV8ServerUtils(v8::Isolate* isolate);
-

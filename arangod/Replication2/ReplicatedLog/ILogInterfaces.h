@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -36,12 +37,13 @@
 namespace arangodb {
 class Result;
 struct LoggerContext;
-}
+}  // namespace arangodb
 
 namespace arangodb::replication2::replicated_log {
 
 struct LogCore;
 struct LogStatus;
+struct QuickLogStatus;
 struct InMemoryLog;
 
 struct WaitForResult {
@@ -58,25 +60,28 @@ struct WaitForResult {
 };
 
 /**
-* @brief Interface for a log participant: That is, usually either a leader or a
-* follower (LogLeader and LogFollower). Can also be a LogUnconfiguredParticipant,
-* e.g. during startup.
-* The most prominent thing this interface provides is that each instance is
-* responsible for a singular LogCore, which can be moved out with resign().
-*/
+ * @brief Interface for a log participant: That is, usually either a leader or a
+ * follower (LogLeader and LogFollower). Can also be a
+ * LogUnconfiguredParticipant, e.g. during startup. The most prominent thing
+ * this interface provides is that each instance is responsible for a singular
+ * LogCore, which can be moved out with resign().
+ */
 struct ILogParticipant {
   [[nodiscard]] virtual auto getStatus() const -> LogStatus = 0;
+  [[nodiscard]] virtual auto getQuickStatus() const -> QuickLogStatus = 0;
   virtual ~ILogParticipant() = default;
-  [[nodiscard]] virtual auto resign() &&
-      -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> = 0;
+  [[nodiscard]] virtual auto
+  resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> = 0;
 
   using WaitForPromise = futures::Promise<WaitForResult>;
   using WaitForFuture = futures::Future<WaitForResult>;
-  using WaitForIteratorFuture = futures::Future<std::unique_ptr<LogRangeIterator>>;
+  using WaitForIteratorFuture =
+      futures::Future<std::unique_ptr<LogRangeIterator>>;
   using WaitForQueue = std::multimap<LogIndex, WaitForPromise>;
 
   [[nodiscard]] virtual auto waitFor(LogIndex index) -> WaitForFuture = 0;
-  [[nodiscard]] virtual auto waitForIterator(LogIndex index) -> WaitForIteratorFuture = 0;
+  [[nodiscard]] virtual auto waitForIterator(LogIndex index)
+      -> WaitForIteratorFuture = 0;
   [[nodiscard]] virtual auto getTerm() const noexcept -> std::optional<LogTerm>;
   [[nodiscard]] virtual auto getCommitIndex() const noexcept -> LogIndex = 0;
 
@@ -89,6 +94,8 @@ struct ILogParticipant {
  */
 struct ILogFollower : ILogParticipant, AbstractFollower {
   virtual auto waitForLeaderAcked() -> WaitForFuture = 0;
+  [[nodiscard]] virtual auto getLeader() const noexcept
+      -> std::optional<ParticipantId> const& = 0;
 };
 
 /**
@@ -99,33 +106,40 @@ struct ILogLeader : ILogParticipant {
   virtual auto insert(LogPayload payload, bool waitForSync) -> LogIndex = 0;
 
   struct DoNotTriggerAsyncReplication {};
-  constexpr static auto doNotTriggerAsyncReplication = DoNotTriggerAsyncReplication{};
-  virtual auto insert(LogPayload payload, bool waitForSync, DoNotTriggerAsyncReplication) -> LogIndex = 0;
+  constexpr static auto doNotTriggerAsyncReplication =
+      DoNotTriggerAsyncReplication{};
+  virtual auto insert(LogPayload payload, bool waitForSync,
+                      DoNotTriggerAsyncReplication) -> LogIndex = 0;
   virtual void triggerAsyncReplication() = 0;
 
-  [[nodiscard]] virtual auto isLeadershipEstablished() const noexcept -> bool = 0;
+  [[nodiscard]] virtual auto isLeadershipEstablished() const noexcept
+      -> bool = 0;
   virtual auto waitForLeadership() -> WaitForFuture = 0;
   [[nodiscard]] virtual auto copyInMemoryLog() const -> InMemoryLog = 0;
 };
 
 /**
-* @brief Unconfigured log participant, i.e. currently neither a leader nor
-* follower. Holds a LogCore, does nothing else.
-*/
+ * @brief Unconfigured log participant, i.e. currently neither a leader nor
+ * follower. Holds a LogCore, does nothing else.
+ */
 struct LogUnconfiguredParticipant final
     : std::enable_shared_from_this<LogUnconfiguredParticipant>,
       ILogParticipant {
   ~LogUnconfiguredParticipant() override;
-  explicit LogUnconfiguredParticipant(std::unique_ptr<LogCore> logCore,
-                                      std::shared_ptr<ReplicatedLogMetrics> logMetrics);
+  explicit LogUnconfiguredParticipant(
+      std::unique_ptr<LogCore> logCore,
+      std::shared_ptr<ReplicatedLogMetrics> logMetrics);
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
-  auto resign() &&
-      -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
+  [[nodiscard]] auto getQuickStatus() const -> QuickLogStatus override;
+  auto
+  resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
   [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
-  [[nodiscard]] auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
+  [[nodiscard]] auto waitForIterator(LogIndex index)
+      -> WaitForIteratorFuture override;
   [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
+
  private:
   std::unique_ptr<LogCore> _logCore;
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;

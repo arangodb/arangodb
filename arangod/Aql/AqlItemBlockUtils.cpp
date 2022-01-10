@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,8 +33,8 @@ using namespace arangodb::aql;
 /// @brief concatenate multiple blocks, note that the new block now owns all
 /// AqlValue pointers in the old blocks, therefore, the latter are all
 /// set to nullptr, just to be sure.
-SharedAqlItemBlockPtr itemBlock::concatenate(AqlItemBlockManager& manager,
-                                             std::vector<SharedAqlItemBlockPtr>& blocks) {
+SharedAqlItemBlockPtr itemBlock::concatenate(
+    AqlItemBlockManager& manager, std::vector<SharedAqlItemBlockPtr>& blocks) {
   TRI_ASSERT(!blocks.empty());
 
   size_t totalRows = 0;

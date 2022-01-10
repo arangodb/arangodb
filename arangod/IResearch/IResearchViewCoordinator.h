@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,7 +39,7 @@ struct ViewFactory;  // forward declaration
 namespace arangodb {
 namespace iresearch {
 
-class IResearchLink; // forward declaration
+class IResearchLink;  // forward declaration
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class IResearchViewCoordinator
@@ -64,11 +64,11 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   Result link(IResearchLink const& link);
 
-  void open() override { /* NOOP */ }
+  void open() override { /* NOOP */
+  }
 
   using LogicalDataSource::properties;
-  virtual Result properties(VPackSlice properties,
-                            bool isUserRequest,
+  virtual Result properties(VPackSlice properties, bool isUserRequest,
                             bool partialUpdate) override;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -114,11 +114,11 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
 
   IResearchViewCoordinator(TRI_vocbase_t& vocbase, VPackSlice info);
 
-  std::unordered_map<DataSourceId, std::pair<std::string, VPackBuilder>> _collections;  // transient member, not persisted
+  std::unordered_map<DataSourceId, std::pair<std::string, VPackBuilder>>
+      _collections;                  // transient member, not persisted
   mutable std::shared_mutex _mutex;  // for use with '_collections'
   IResearchViewMeta _meta;
 };  // IResearchViewCoordinator
 
 }  // namespace iresearch
 }  // namespace arangodb
-

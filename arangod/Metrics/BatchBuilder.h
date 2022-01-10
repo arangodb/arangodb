@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,7 @@
 
 namespace arangodb::metrics {
 
-template <typename T>
+template<typename T>
 class BatchBuilder : public GenericBuilder<BatchBuilder<T>> {
  public:
   using MetricT = Batch<T>;
@@ -36,7 +36,8 @@ class BatchBuilder : public GenericBuilder<BatchBuilder<T>> {
     return "untyped";
   }
   [[nodiscard]] std::shared_ptr<Metric> build() const final {
-    return std::make_shared<MetricT>(T{}, this->_name, this->_help, this->_labels);
+    return std::make_shared<MetricT>(T{}, this->_name, this->_help,
+                                     this->_labels);
   }
 
   void setName(std::string_view name) noexcept { this->_name = name; }
