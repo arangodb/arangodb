@@ -31,7 +31,7 @@ const {
   readReplicatedLogAgency,
   replicatedLogSetPlan,
   replicatedLogDeletePlan,
-  replicatedLogUpdatePlanParticipantsFlags,
+  replicatedLogUpdatePlanParticipantsConfigParticipants,
   replicatedLogSetPlanTerm,
   createParticipantsConfig,
   createTermSpecification,
@@ -214,14 +214,13 @@ const replicatedLogSuite = function () {
 
       // now update the excluded flag for one participant
       const follower = servers[1];
-      participantsConfig.participants[follower].excluded = true;
-      let newGeneration = replicatedLogUpdatePlanParticipantsFlags(database, logId, participantsConfig.participants);
+      let newGeneration = replicatedLogUpdatePlanParticipantsConfigParticipants(database, logId, {[follower]: {excluded: true, forced: false}});
       waitFor(replicatedLogParticipantsFlag(logId, {[follower]: {excluded: true, forced: false}}, newGeneration));
 
-      newGeneration = replicatedLogUpdatePlanParticipantsFlags(database, logId, {[follower]: null});
+      newGeneration = replicatedLogUpdatePlanParticipantsConfigParticipants(database, logId, {[follower]: {excluded: false, forced: false}});
       waitFor(replicatedLogParticipantGeneration(logId, newGeneration));
 
-      waitFor(replicatedLogParticipantsFlag(logId, {[follower]: null}, newGeneration));
+      waitFor(replicatedLogParticipantsFlag(logId, {[follower]: {excluded: false, forced: false}}, newGeneration));
       replicatedLogDeletePlan(database, logId);
     },
 
@@ -269,7 +268,7 @@ const replicatedLogSuite = function () {
       replicatedLogDeletePlan(database, logId);
     },
 
-    testUpdateTermAddParticipant: function () {
+    testAddParticipant: function () {
       const logId = nextLogId();
       const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
       const leader = servers[0];
@@ -285,14 +284,20 @@ const replicatedLogSuite = function () {
 
       // wait for all servers to have reported in current
       waitFor(replicatedLogIsReady(logId, term, servers));
-      // now rewrite the term with an additional participant
-      const newServers = [...servers, _.sample(remaining)];
-      replicatedLogSetPlanTerm(database, logId, createTermSpecification(term, newServers, targetConfig, leader));
+      // now add an additional participant to the participants configuration
+      const newServer = _.sample(remaining);
+      const newServers = [...servers, newServer];
+      replicatedLogUpdatePlanParticipantsConfigParticipants(database, logId, {
+        [newServer]: {
+          excluded: false,
+          forced: false
+        }
+      });
       waitFor(replicatedLogIsReady(logId, term, newServers, leader));
       replicatedLogDeletePlan(database, logId);
     },
 
-    testUpdateTermRemoveParticipant: function () {
+    testRemoveParticipant: function () {
       const logId = nextLogId();
       const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
       const remaining = _.difference(dbservers, servers);
@@ -310,9 +315,10 @@ const replicatedLogSuite = function () {
 
       // wait for all servers to have reported in current
       waitFor(replicatedLogIsReady(logId, term, newServers));
-      // now rewrite the term with an additional participant
-      replicatedLogSetPlanTerm(database, logId, createTermSpecification(term, servers, targetConfig, leader));
-      // TODO waitFor(replicatedLogParticipantsFlag(logId, {[toBeRemoved]: null})); -- doesn't work yet
+      replicatedLogUpdatePlanParticipantsConfigParticipants(database, logId, {
+        [toBeRemoved]: null
+      });
+      waitFor(replicatedLogParticipantsFlag(logId, {[toBeRemoved]: null}));
       replicatedLogDeletePlan(database, logId);
     },
   };

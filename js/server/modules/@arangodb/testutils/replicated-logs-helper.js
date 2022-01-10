@@ -105,10 +105,10 @@ const replicatedLogSetPlanParticipantsConfig = function (database, logId, partic
   global.ArangoAgency.increaseVersion(`Plan/Version`);
 };
 
-const replicatedLogUpdatePlanParticipantsConfig = function (database, logId, participantsConfig) {
+const replicatedLogUpdatePlanParticipantsConfigParticipants = function (database, logId, participants) {
   const oldValue = readAgencyValueAt(`Plan/ReplicatedLogs/${database}/${logId}/participantsConfig`);
   const newValue = oldValue || {generation: 0, participants: {}};
-  for (const [p, v] of Object.entries(participantsConfig)) {
+  for (const [p, v] of Object.entries(participants)) {
     if (v === null) {
       delete newValue.participants[p];
     } else {
@@ -144,7 +144,7 @@ exports.createTermSpecification = createTermSpecification;
 exports.dbservers = dbservers;
 exports.readReplicatedLogAgency = readReplicatedLogAgency;
 exports.replicatedLogSetPlanParticipantsConfig = replicatedLogSetPlanParticipantsConfig;
-exports.replicatedLogUpdatePlanParticipantsFlags = replicatedLogUpdatePlanParticipantsConfig;
+exports.replicatedLogUpdatePlanParticipantsConfigParticipants = replicatedLogUpdatePlanParticipantsConfigParticipants;
 exports.replicatedLogSetPlanTerm = replicatedLogSetPlanTerm;
 exports.replicatedLogSetPlan = replicatedLogSetPlan;
 exports.replicatedLogDeletePlan = replicatedLogDeletePlan;
