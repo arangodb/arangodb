@@ -67,7 +67,8 @@ struct LogPlanSpecification {
   LogConfig targetConfig;
   ParticipantsConfig participantsConfig;
 
-  auto toVelocyPack(VPackBuilder&) const -> void;
+  auto toVelocyPack(velocypack::Builder&) const -> void;
+  static auto fromVelocyPack(velocypack::Slice) -> LogPlanSpecification;
   LogPlanSpecification(from_velocypack_t, VPackSlice);
   LogPlanSpecification() = default;
 
@@ -161,8 +162,14 @@ struct LogTarget {
 
   std::optional<ParticipantId> leader;
 
-  struct Properties {};
+  struct Properties {
+    void toVelocyPack(velocypack::Builder&) const;
+    static auto fromVelocyPack(velocypack::Slice) -> Properties;
+  };
   Properties properties;
+
+  static auto fromVelocyPack(velocypack::Slice) -> LogTarget;
+  void toVelocyPack(velocypack::Builder&) const;
 };
 
 /* Convenience Wrapper */

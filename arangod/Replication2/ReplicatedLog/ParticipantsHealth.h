@@ -33,13 +33,13 @@ struct ParticipantHealth {
 };
 
 struct ParticipantsHealth {
-  auto isHealthy(ParticipantId participant) const -> bool {
+  auto isHealthy(ParticipantId const& participant) const -> bool {
     if (auto it = _health.find(participant); it != std::end(_health)) {
       return it->second.isHealthy;
     }
     return false;
   };
-  auto validRebootId(ParticipantId participant, RebootId rebootId) const
+  auto validRebootId(ParticipantId const& participant, RebootId rebootId) const
       -> bool {
     if (auto it = _health.find(participant); it != std::end(_health)) {
       return it->second.rebootId == rebootId;

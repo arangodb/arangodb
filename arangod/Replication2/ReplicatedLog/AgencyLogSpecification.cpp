@@ -124,6 +124,11 @@ LogPlanSpecification::LogPlanSpecification(
       targetConfig(config),
       participantsConfig(std::move(participantsConfig)) {}
 
+auto LogPlanSpecification::fromVelocyPack(velocypack::Slice slice)
+    -> LogPlanSpecification {
+  return LogPlanSpecification(from_velocypack, slice);
+}
+
 LogCurrentLocalState::LogCurrentLocalState(from_velocypack_t,
                                            VPackSlice slice) {
   auto spearheadSlice = slice.get(StaticStrings::Spearhead);
@@ -270,4 +275,47 @@ auto LogCurrent::Leader::fromVelocyPack(VPackSlice s) -> Leader {
   leader.committedParticipantsConfig = ParticipantsConfig::fromVelocyPack(
       s.get(StringCommittedParticipantsConfig));
   return leader;
+}
+
+auto LogTarget::fromVelocyPack(velocypack::Slice s) -> LogTarget {
+  auto target = LogTarget{};
+  target.id = s.get(StaticStrings::Id).extract<LogId>();
+  target.config = LogConfig(s.get(StaticStrings::Config));
+  if (auto leaderSlice = s.get(StaticStrings::Leader); leaderSlice.isString()) {
+    target.leader = leaderSlice.copyString();
+  }
+  for (auto const& [pid, flags] : velocypack::ObjectIterator(s.get("participants"))) {
+    target.participants.emplace(pid.copyString(), ParticipantFlags::fromVelocyPack(flags));
+  }
+  if (auto propSlice = s.get("properties"); !propSlice.isNone()) {
+    target.properties = Properties::fromVelocyPack(propSlice);
+  }
+  return target;
+}
+
+void LogTarget::toVelocyPack(velocypack::Builder& builder) const {
+  velocypack::ObjectBuilder ob(&builder);
+  builder.add(StaticStrings::Id, VPackValue(id));
+  builder.add(VPackValue(StaticStrings::Config));
+  config.toVelocyPack(builder);
+  if (leader.has_value()) {
+    builder.add(StaticStrings::Leader, VPackValue(leader.value()));
+  }
+  {
+    velocypack::ObjectBuilder pb(&builder);
+    for (auto const& [pid, flags] : participants) {
+      builder.add(VPackValue(pid));
+      flags.toVelocyPack(builder);
+    }
+  }
+  builder.add(VPackValue("properties"));
+  properties.toVelocyPack(builder);
+}
+
+void LogTarget::Properties::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder ob(&builder);
+}
+
+auto LogTarget::Properties::fromVelocyPack(velocypack::Slice s) -> LogTarget::Properties {
+  return {};
 }
