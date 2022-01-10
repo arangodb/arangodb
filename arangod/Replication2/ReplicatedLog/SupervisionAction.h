@@ -22,76 +22,17 @@
 
 #pragma once
 
-#include "Basics/ErrorCode.h"
-#include "Cluster/ClusterTypes.h"
-
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-common.h"
 #include "velocypack/velocypack-aliases.h"
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/SupervisionTypes.h"
 
-#include <chrono>
-#include <memory>
-#include <optional>
-#include <string>
-#include <unordered_map>
-
-namespace arangodb::replication2::replicated_state {
-
-using namespace arangodb::replication2;
 using namespace arangodb::replication2::agency;
-using namespace arangodb::replication2::replicated_state::agency;
 
-/* Transitional glue code  */
-struct Log {
-  LogCurrent current;
-  LogPlanSpecification plan;
-};
-using LogCurrentLocalStates =
-    std::unordered_map<ParticipantId, LogCurrentLocalState>;
-
-struct ParticipantHealth {
-  RebootId rebootId;
-  bool isHealthy;
-};
-
-struct ParticipantsHealth {
-  auto isHealthy(ParticipantId participant) const -> bool {
-    if (auto it = _health.find(participant); it != std::end(_health)) {
-      return it->second.isHealthy;
-    }
-    return false;
-  };
-  auto validRebootId(ParticipantId participant, RebootId rebootId) const
-      -> bool {
-    if (auto it = _health.find(participant); it != std::end(_health)) {
-      return it->second.rebootId == rebootId;
-    }
-    return false;
-  };
-
-  std::unordered_map<ParticipantId, ParticipantHealth> _health;
-};
-
-struct LeaderElectionCampaign {
-  enum class Reason { ServerIll, TermNotConfirmed, OK };
-
-  std::unordered_map<ParticipantId, Reason> reasons;
-  size_t numberOKParticipants{0};
-  replication2::TermIndexPair bestTermIndex;
-  std::vector<ParticipantId> electibleLeaderSet;
-
-  void toVelocyPack(VPackBuilder& builder) const;
-};
-auto to_string(LeaderElectionCampaign::Reason reason) -> std::string_view;
-auto operator<<(std::ostream& os, LeaderElectionCampaign::Reason reason)
-    -> std::ostream&;
-
-auto to_string(LeaderElectionCampaign const& campaign) -> std::string;
-auto operator<<(std::ostream& os, LeaderElectionCampaign const& action)
-    -> std::ostream&;
+namespace arangodb::replication2::replicated_log {
 
 struct Action {
   enum class ActionType {
@@ -126,6 +67,8 @@ struct UpdateTermAction : Action {
 auto to_string(UpdateTermAction action) -> std::string;
 auto operator<<(std::ostream& os, UpdateTermAction const& action)
     -> std::ostream&;
+
+struct LeaderElectionCampaign;
 
 struct SuccessfulLeaderElectionAction : Action {
   SuccessfulLeaderElectionAction(){};
@@ -168,52 +111,4 @@ struct ImpossibleCampaignAction : Action {
 auto to_string(ImpossibleCampaignAction const& action) -> std::string;
 auto operator<<(std::ostream& os, ImpossibleCampaignAction const& action)
     -> std::ostream&;
-
-auto computeReason(LogCurrentLocalState const& status, bool healthy,
-                   LogTerm term) -> LeaderElectionCampaign::Reason;
-
-auto runElectionCampaign(LogCurrentLocalStates const& states,
-                         ParticipantsHealth const& health, LogTerm term)
-    -> LeaderElectionCampaign;
-
-auto replicatedLogAction(Log const&, ParticipantsHealth const&)
-    -> std::unique_ptr<Action>;
-
-struct PlanAction {
-  enum class ActionType { AddParticipantAction, RemoveParticipantAction };
-  virtual void execute() = 0;
-  virtual ActionType type() const = 0;
-  virtual void toVelocyPack(VPackBuilder& builder) const = 0;
-  virtual ~PlanAction() = default;
-};
-
-struct AddParticipantAction : PlanAction {
-  AddParticipantAction(ParticipantId participant) : _pid(participant){};
-  void execute() override;
-  ActionType type() const override {
-    return PlanAction::ActionType::AddParticipantAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  ParticipantId _pid;
-};
-
-struct RemoveParticipantAction : PlanAction {
-  RemoveParticipantAction(ParticipantId participant) : _pid(participant){};
-  void execute() override{};
-  ActionType type() const override {
-    return PlanAction::ActionType::RemoveParticipantAction;
-  };
-  void toVelocyPack(VPackBuilder& builder) const override;
-
-  ParticipantId _pid;
-};
-
-auto checkParticipantAddedToTarget(Log const& log, State const& state)
-    -> std::unique_ptr<PlanAction>;
-auto checkParticipantRemovedFromTarget(Log const& log, State const& state)
-    -> std::unique_ptr<PlanAction>;
-auto checkSnapshotReady(Log const& log, State const& state)
-    -> std::unique_ptr<PlanAction>;
-
-}  // namespace arangodb::replication2::replicated_state
+}  // namespace arangodb::replication2::replicated_log

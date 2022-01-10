@@ -152,4 +152,28 @@ struct LogCurrent {
   LogCurrent() = default;
 };
 
+struct LogTarget {
+  using Participants = std::unordered_map<ParticipantId, ParticipantFlags>;
+
+  LogId id;
+  Participants participants;
+  LogConfig config;
+
+  std::optional<ParticipantId> leader;
+
+  struct Properties {};
+  Properties properties;
+};
+
+/* Convenience Wrapper */
+struct Log {
+  LogTarget target;
+
+  // These two do not necessarily exist in the Agency
+  // so when we're called for a Log these might not
+  // exist
+  std::optional<LogPlanSpecification> plan;
+  std::optional<LogCurrent> current;
+};
+
 }  // namespace arangodb::replication2::agency
