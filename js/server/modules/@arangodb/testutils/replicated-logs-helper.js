@@ -64,7 +64,7 @@ const getServerRebootId = function (serverId) {
 
 const getParticipantsObjectForServers = function (servers) {
   return _.reduce(servers, (a, v) => {
-    a[v] = {};
+    a[v] = {excluded: false, forced: false};
     return a;
   }, {});
 };
@@ -100,23 +100,23 @@ const readReplicatedLogAgency = function (database, logId) {
   return {target, plan, current};
 };
 
-const replicatedLogSetPlanParticipantsFlags = function (database, logId, participants) {
-  global.ArangoAgency.set(`Plan/ReplicatedLogs/${database}/${logId}/participantsConfig`, participants);
+const replicatedLogSetPlanParticipantsConfig = function (database, logId, participantsConfig) {
+  global.ArangoAgency.set(`Plan/ReplicatedLogs/${database}/${logId}/participantsConfig`, participantsConfig);
   global.ArangoAgency.increaseVersion(`Plan/Version`);
 };
 
-const replicatedLogUpdatePlanParticipantsFlags = function (database, logId, participants) {
-  let oldValue = readAgencyValueAt(`Plan/ReplicatedLogs/${database}/${logId}/participantsConfig`);
-  oldValue = oldValue || {generation: 0, participants: {}};
-  for (const [p, v] of Object.entries(participants)) {
+const replicatedLogUpdatePlanParticipantsConfig = function (database, logId, participantsConfig) {
+  const oldValue = readAgencyValueAt(`Plan/ReplicatedLogs/${database}/${logId}/participantsConfig`);
+  const newValue = oldValue || {generation: 0, participants: {}};
+  for (const [p, v] of Object.entries(participantsConfig)) {
     if (v === null) {
-      delete oldValue.participants[p];
+      delete newValue.participants[p];
     } else {
-      oldValue.participants[p] = v;
+      newValue.participants[p] = v;
     }
   }
-  let gen = oldValue.generation += 1;
-  replicatedLogSetPlanParticipantsFlags(database, logId, oldValue);
+  const gen = newValue.generation += 1;
+  replicatedLogSetPlanParticipantsConfig(database, logId, newValue);
   return gen;
 };
 
@@ -143,8 +143,8 @@ exports.createParticipantsConfig = createParticipantsConfig;
 exports.createTermSpecification = createTermSpecification;
 exports.dbservers = dbservers;
 exports.readReplicatedLogAgency = readReplicatedLogAgency;
-exports.replicatedLogSetPlanParticipantsFlags = replicatedLogSetPlanParticipantsFlags;
-exports.replicatedLogUpdatePlanParticipantsFlags = replicatedLogUpdatePlanParticipantsFlags;
+exports.replicatedLogSetPlanParticipantsConfig = replicatedLogSetPlanParticipantsConfig;
+exports.replicatedLogUpdatePlanParticipantsFlags = replicatedLogUpdatePlanParticipantsConfig;
 exports.replicatedLogSetPlanTerm = replicatedLogSetPlanTerm;
 exports.replicatedLogSetPlan = replicatedLogSetPlan;
 exports.replicatedLogDeletePlan = replicatedLogDeletePlan;

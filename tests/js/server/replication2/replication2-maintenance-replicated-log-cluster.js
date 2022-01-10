@@ -35,7 +35,7 @@ const {
   replicatedLogSetPlanTerm,
   createParticipantsConfig,
   createTermSpecification,
-  dbservers
+  dbservers,
 } = require("@arangodb/testutils/replicated-logs-helper");
 
 const database = 'ReplLogsMaintenanceTest';
@@ -201,11 +201,12 @@ const replicatedLogSuite = function () {
       const leader = servers[0];
       const term = 1;
       const generation = 1;
+      const participantsConfig = createParticipantsConfig(generation, servers);
       replicatedLogSetPlan(database, logId, {
         id: logId,
         targetConfig,
         currentTerm: createTermSpecification(term, servers, targetConfig, leader),
-        participantsConfig: createParticipantsConfig(generation, servers),
+        participantsConfig,
       });
 
       // wait for all servers to have reported in current
@@ -213,7 +214,8 @@ const replicatedLogSuite = function () {
 
       // now update the excluded flag for one participant
       const follower = servers[1];
-      let newGeneration = replicatedLogUpdatePlanParticipantsFlags(database, logId, {[follower]: {excluded: true}});
+      participantsConfig.participants[follower].excluded = true;
+      let newGeneration = replicatedLogUpdatePlanParticipantsFlags(database, logId, participantsConfig.participants);
       waitFor(replicatedLogParticipantsFlag(logId, {[follower]: {excluded: true, forced: false}}, newGeneration));
 
       newGeneration = replicatedLogUpdatePlanParticipantsFlags(database, logId, {[follower]: null});
