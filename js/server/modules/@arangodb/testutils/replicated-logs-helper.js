@@ -23,6 +23,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 const {wait} = require("internal");
 const _ = require("lodash");
+const request = require('@arangodb/request');
+const arangodb = require('@arangodb');
+const ArangoError = arangodb.ArangoError;
 
 const waitFor = function (checkFn, maxTries = 100) {
     let count = 0;
@@ -160,6 +163,55 @@ const replicatedLogIsReady = function (database, logId, term, participants, lead
     };
 };
 
+const getServerUrl = function(serverId) {
+    let endpoint = global.ArangoClusterInfo.getServerEndpoint(serverId);
+    return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
+};
+
+const checkRequestResult = function (requestResult) {
+    if (requestResult === undefined) {
+        throw new ArangoError({
+            'error': true,
+            'code': 500,
+            'errorNum': arangodb.ERROR_INTERNAL,
+            'errorMessage': 'Unknown error. Request result is empty'
+        });
+    }
+
+    if (requestResult.hasOwnProperty('error')) {
+        if (requestResult.error) {
+            if (requestResult.errorNum === arangodb.ERROR_TYPE_ERROR) {
+                throw new TypeError(requestResult.errorMessage);
+            }
+
+            const error = new ArangoError(requestResult);
+            error.message = requestResult.message;
+            throw error;
+        }
+
+        // remove the property from the original object
+        delete requestResult.error;
+    }
+
+    if (requestResult.json.error) {
+        throw new ArangoError({
+            'error': true,
+            'code': requestResult.json.code,
+            'errorNum': arangodb.ERROR_INTERNAL,
+            'errorMessage': 'Error during request'
+        });
+    }
+
+    return requestResult;
+};
+
+const getLocalStatus = function(logId, serverId) {
+    let url = getServerUrl(serverId);
+    const res = request.get(`${url}/_api/log/${logId}/local-status`);
+    checkRequestResult(res);
+    return res.json.result;
+};
+
 const getServerProcessID = function(serverId) {
     let endpoint = global.ArangoClusterInfo.getServerEndpoint(serverId);
     // Now look for instanceInfo:
@@ -212,3 +264,4 @@ exports.continueServer = continueServer;
 exports.nextUniqueLogId = nextUniqueLogId;
 exports.registerAgencyTestBegin = registerAgencyTestBegin;
 exports.registerAgencyTestEnd = registerAgencyTestEnd;
+exports.getLocalStatus = getLocalStatus;

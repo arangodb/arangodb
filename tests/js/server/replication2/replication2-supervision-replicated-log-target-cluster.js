@@ -30,6 +30,7 @@ const {sleep} = require('internal');
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
 const helper = require("@arangodb/testutils/replicated-logs-helper");
+
 const {
     waitFor,
     readReplicatedLogAgency,
@@ -48,7 +49,7 @@ const waitForReplicatedLogAvailable = function (id) {
     while (true) {
         try {
             let status = db._replicatedLog(id).status();
-            if (status.role === "leader") {
+            if ("logStatus" in status && status.logStatus.role === "leader") {
                 break;
             }
         } catch (err) {
@@ -109,7 +110,7 @@ const replicatedLogSuite = function () {
         waitForSync: false,
     };
 
-    const {setUpAll, tearDownAll, stopServer, continueServer} = (function () {
+    const {setUpAll, tearDownAll, tearDownEach, stopServer, continueServer} = (function () {
         let previousDatabase, databaseExisted = true;
         let stoppedServers = {};
         return {
@@ -123,15 +124,19 @@ const replicatedLogSuite = function () {
             },
 
             tearDownAll: function () {
-                Object.keys(stoppedServers).forEach(function (key) {
-                    continueServer(key);
-                });
-
                 db._useDatabase(previousDatabase);
                 if (!databaseExisted) {
                     db._dropDatabase(database);
                 }
             },
+
+            tearDownEach: function (testName) {
+                Object.keys(stoppedServers).forEach(function (key) {
+                    continueServer(key);
+                });
+                registerAgencyTestEnd(testName);
+            },
+
             stopServer: function (serverId) {
                 if (stoppedServers[serverId] !== undefined) {
                     throw Error(`{serverId} already stopped`);
@@ -152,7 +157,7 @@ const replicatedLogSuite = function () {
     return {
         setUpAll, tearDownAll,
         setUp: registerAgencyTestBegin,
-        tearDown: registerAgencyTestEnd,
+        tearDown: tearDownEach,
 
         testCheckSimpleFailover: function () {
             const logId = nextUniqueLogId();
@@ -212,6 +217,46 @@ const replicatedLogSuite = function () {
             // now resume, servers[2] has to become leader, because it's the only server with log entry 1 available
             continueServer(servers[1]);
             waitFor(replicatedLogIsReady(database, logId, term + 2, [servers[1], servers[2]], servers[2]));
+
+            replicatedLogDeletePlan(database, logId);
+        },
+
+        testLogStatus: function () {
+            const logId = nextUniqueLogId();
+            const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
+            const leader = servers[0];
+            const term = 1;
+            replicatedLogSetPlan(database, logId, {
+                id: logId,
+                targetConfig,
+                currentTerm: createTermSpecification(term, servers, targetConfig, leader),
+            });
+
+            waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
+            waitForReplicatedLogAvailable(logId);
+
+            let log = db._replicatedLog(logId);
+            let globalStatus = log.status();
+            let localStatus = helper.getLocalStatus(logId, leader);
+            assertEqual(localStatus.role, "leader");
+            assertEqual(globalStatus.supervision, {});
+            assertEqual(globalStatus.logStatus, localStatus);
+            localStatus = helper.getLocalStatus(logId, servers[1]);
+            assertEqual(localStatus.role, "follower");
+
+            stopServer(leader);
+            stopServer(servers[1]);
+
+            waitFor(replicatedLogLeaderElectionFailed(database, logId, term + 1, {
+                [leader]: 1,
+                [servers[1]]: 1,
+                [servers[2]]: 0,
+            }));
+
+            globalStatus = log.status();
+            const {current} = readReplicatedLogAgency(database, logId);
+            const election = current.supervision.election;
+            assertEqual(election, globalStatus.supervision.election);
 
             replicatedLogDeletePlan(database, logId);
         },
