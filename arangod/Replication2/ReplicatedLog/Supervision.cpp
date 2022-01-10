@@ -22,9 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Supervision.h"
+
 #include <memory>
+
+#include "Basics/StringUtils.h"
+#include "Basics/Exceptions.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedState/Supervision.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb::replication2::agency;
 
@@ -199,6 +203,7 @@ auto checkLogTargetParticipantRemoved(LogTarget const& target,
       return nullptr;
     }
   }
+  return nullptr;
 }
 
 // Check whether the Target configuration differs from Plan

@@ -25,11 +25,13 @@
 
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/Supervision.h"
+#include "Replication2/ReplicatedLog/Supervision.h"
+#include "Replication2/ReplicatedLog/SupervisionTypes.h"
 
 using namespace arangodb;
+using namespace arangodb::replication2;
 using namespace arangodb::replication2::agency;
-using namespace arangodb::replication2::replicated_state;
+using namespace arangodb::replication2::replicated_log;
 
 struct LeaderElectionCampaignTest : ::testing::Test {};
 TEST_F(LeaderElectionCampaignTest, test_computeReason) {

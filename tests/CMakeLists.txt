@@ -336,6 +336,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/RewriteLogTest.cpp
   Replication2/ReplicatedLog/RocksDBLogTest.cpp
   Replication2/ReplicatedLog/SimpleInsertTests.cpp
+  Replication2/ReplicatedLog/SupervisionTest.cpp
   Replication2/ReplicatedLog/TestHelper.cpp
   Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
   Replication2/ReplicatedLog/UpdateReplicatedLogTests.cpp
@@ -347,7 +348,6 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedState/ReplicatedStateTest.cpp
   Replication2/ReplicatedState/StateMachineTestHelper.cpp
   Replication2/ReplicatedState/StateMachineTestHelper.h
-  Replication2/ReplicatedState/SupervisionTest.cpp
   Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
   Replication2/Mocks/PersistedLog.cpp
   Replication2/Mocks/PersistedLog.h
