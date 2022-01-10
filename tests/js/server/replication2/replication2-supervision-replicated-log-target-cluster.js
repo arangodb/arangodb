@@ -300,45 +300,46 @@ const complexFailoverTestSuite = function (targetConfig) {
 
             replicatedLogDeletePlan(database, logId);
         },
-        testCheckExcludedServer: function () {
-            /*
-                1. mark a set of servers as excluded. writeConcern many servers should remain non-excluded.
-                2. stop the leader.
-                4. wait for leader election
-                    4.1. if a leader was elected, it will not be able to establish its term.
-                        4.1.1. wait for commit fail reason: excluded server
-                        4.1.2. remove excluded flag from one of the servers
-                        4.1.3. await leadership established
-                    4.2. if a leader can not be elected,
-                        4.2.1. check that all excluded servers are reported as excluded
-                        4.2.2. check that all servers report their term
-                        4.2.3. remove excluded flag from one of the servers
-                        4.2.3. await newly elected leader
-             */
-            const expectFailover = withstandsNumberOfFailures(targetConfig, 1);
-            const willElectLeader = targetConfig.replicationFactor - targetConfig.writeConcern + 1 <= targetConfig.replicationFactor - 1;
-            const {term, leader, logId, followers, servers} = createReplicatedLog();
-
-            waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
-            stopServer(leader);
-
-            if (expectFailover) {
-                waitFor(replicatedLogIsReady(database, logId, term + 2, followers, followers));
-            } else if (willElectLeader) {
-                // leader will not establish
-                waitFor(replicatedLogIsReady(database, logId, term + 2, followers));
-                const newLeader = getDeclaredLeader(database, logId);
-                assertTrue(newLeader !== undefined);
-                continueServer(leader);
-                waitFor(replicatedLogIsReady(database, logId, term + 2, servers, newLeader));
-            } else {
-                waitFor(replicatedLogLeaderElectionFailedNotOk(database, logId, term + 1, [leader]));
-                continueServer(leader);
-                waitFor(replicatedLogIsReady(database, logId, term + 2, servers, servers));
-            }
-
-            replicatedLogDeletePlan(database, logId);
-        },
+        // TODO add this test when commit fail reason is available even when leadership is not established
+        // testCheckExcludedServer: function () {
+        //     /*
+        //         1. mark a set of servers as excluded. writeConcern many servers should remain non-excluded.
+        //         2. stop the leader.
+        //         4. wait for leader election
+        //             4.1. if a leader was elected, it will not be able to establish its term.
+        //                 4.1.1. wait for commit fail reason: excluded server
+        //                 4.1.2. remove excluded flag from one of the servers
+        //                 4.1.3. await leadership established
+        //             4.2. if a leader can not be elected,
+        //                 4.2.1. check that all excluded servers are reported as excluded
+        //                 4.2.2. check that all servers report their term
+        //                 4.2.3. remove excluded flag from one of the servers
+        //                 4.2.3. await newly elected leader
+        //      */
+        //     const expectFailover = withstandsNumberOfFailures(targetConfig, 1);
+        //     const willElectLeader = targetConfig.replicationFactor - targetConfig.writeConcern + 1 <= targetConfig.replicationFactor - 1;
+        //     const {term, leader, logId, followers, servers} = createReplicatedLog();
+        //
+        //     waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
+        //     stopServer(leader);
+        //
+        //     if (expectFailover) {
+        //         waitFor(replicatedLogIsReady(database, logId, term + 2, followers, followers));
+        //     } else if (willElectLeader) {
+        //         // leader will not establish
+        //         waitFor(replicatedLogIsReady(database, logId, term + 2, followers));
+        //         const newLeader = getDeclaredLeader(database, logId);
+        //         assertTrue(newLeader !== undefined);
+        //         continueServer(leader);
+        //         waitFor(replicatedLogIsReady(database, logId, term + 2, servers, newLeader));
+        //     } else {
+        //         waitFor(replicatedLogLeaderElectionFailedNotOk(database, logId, term + 1, [leader]));
+        //         continueServer(leader);
+        //         waitFor(replicatedLogIsReady(database, logId, term + 2, servers, servers));
+        //     }
+        //
+        //     replicatedLogDeletePlan(database, logId);
+        // },
     };
 };
 
