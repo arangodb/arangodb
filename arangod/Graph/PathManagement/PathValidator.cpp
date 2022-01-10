@@ -266,6 +266,20 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     }
   }
 
+  // Evaluate depth-based vertex expressions
+  auto vertexExpr = _options.getVertexExpression(step.getDepth());
+  if (vertexExpr != nullptr) {
+    _tmpObjectBuilder.clear();
+    _provider.addVertexToBuilder(step.getVertex(), _tmpObjectBuilder);
+
+    // evaluate expression
+    bool satifiesCondition =
+        evaluateVertexExpression(vertexExpr, _tmpObjectBuilder.slice());
+    if (!satifiesCondition) {
+      return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
+    }
+  }
+
   // TODO [GraphRefactor]: Check how this is actually supposed to work.
   // Somehow existent old code in DepthFirstEnumerator::next() is a little bit
   // confusing.
@@ -284,25 +298,11 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     }
 
     TRI_ASSERT(!evaluator->needsPath());
-
     if (!evaluator->evaluate()) {
       return ValidationResult{ValidationResult::Type::FILTER};
     }
   }
 
-  // Evaluate depth-based vertex expressions
-  auto vertexExpr = _options.getVertexExpression(step.getDepth());
-  if (vertexExpr != nullptr) {
-    _tmpObjectBuilder.clear();
-    _provider.addVertexToBuilder(step.getVertex(), _tmpObjectBuilder);
-
-    // evaluate expression
-    bool satifiesCondition =
-        evaluateVertexExpression(vertexExpr, _tmpObjectBuilder.slice());
-    if (!satifiesCondition) {
-      return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
-    }
-  }
   return ValidationResult{ValidationResult::Type::TAKE};
 }
 
