@@ -202,7 +202,7 @@ irs::analysis::analyzer::ptr make_slice(VPackSlice const& slice) {
   if (parse_options_slice(slice, options)) {
     auto validationRes = arangodb::aql::StandaloneCalculation::validateQuery(
         arangodb::DatabaseFeature::getCalculationVocbase(), options.queryString,
-        CALCULATION_PARAMETER_NAME);
+        CALCULATION_PARAMETER_NAME, " in aql analyzer");
     if (validationRes.ok()) {
       return std::make_unique<arangodb::iresearch::AqlAnalyzer>(options);
     } else {
@@ -339,7 +339,8 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
   std::get<AnalyzerValueTypeAttribute>(_attrs).value = _options.returnType;
   TRI_ASSERT(arangodb::aql::StandaloneCalculation::validateQuery(
                  arangodb::DatabaseFeature::getCalculationVocbase(),
-                 _options.queryString, CALCULATION_PARAMETER_NAME)
+                 _options.queryString, CALCULATION_PARAMETER_NAME,
+                 " in aql analyzer")
                  .ok());
 }
 

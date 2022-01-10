@@ -28,6 +28,8 @@
 #include <string>
 #include <vector>
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -50,17 +52,22 @@ class ComputedValues {
   };
 
  public:
-  explicit ComputedValues(velocypack::Slice params);
+  explicit ComputedValues(TRI_vocbase_t& vocbase,
+                          std::vector<std::string> const& shardKeys,
+                          velocypack::Slice params);
   ComputedValues(ComputedValues const&) = delete;
   ComputedValues& operator=(ComputedValues const&) = delete;
   ~ComputedValues();
 
   void toVelocyPack(velocypack::Builder&) const;
 
-  static Result validateDefinitions(velocypack::Slice params);
+  // static Result validateDefinitions(LogicalCollection& collection,
+  // velocypack::Slice params);
 
  private:
-  Result buildDefinitions(velocypack::Slice params);
+  Result buildDefinitions(TRI_vocbase_t& vocbase,
+                          std::vector<std::string> const& shardKeys,
+                          velocypack::Slice params);
 
   std::vector<ComputedValue> _values;
 };

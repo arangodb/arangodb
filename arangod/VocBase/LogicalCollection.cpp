@@ -352,7 +352,12 @@ Result LogicalCollection::updateComputedValues(VPackSlice computedValues) {
     // computed values will be removed if empty array is given
     if (!computedValues.isEmptyArray()) {
       try {
-        newValue = std::make_shared<ComputedValues>(computedValues);
+        newValue =
+            std::make_shared<ComputedValues>(vocbase()
+                                                 .server()
+                                                 .getFeature<DatabaseFeature>()
+                                                 .getCalculationVocbase(),
+                                             shardKeys(), computedValues);
       } catch (std::exception const& ex) {
         using namespace std::literals::string_literals;
         return {TRI_ERROR_BAD_PARAMETER,

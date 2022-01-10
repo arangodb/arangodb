@@ -34,8 +34,12 @@
 #include "Aql/Parser.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryString.h"
+#include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Hints.h"
 #include "Transaction/SmartContext.h"
+#include "Transaction/Status.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/vocbase.h"
@@ -157,11 +161,11 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
     _trx->begin();
   }
 
-  virtual arangodb::aql::QueryOptions const& queryOptions() const override {
+  arangodb::aql::QueryOptions const& queryOptions() const override {
     return _queryOptions;
   }
 
-  virtual arangodb::aql::QueryOptions& queryOptions() noexcept override {
+  arangodb::aql::QueryOptions& queryOptions() noexcept override {
     return _queryOptions;
   }
 
@@ -174,37 +178,37 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
   }
 
   /// @brief pass-thru a resolver object from the transaction context
-  virtual arangodb::CollectionNameResolver const& resolver() const override {
+  arangodb::CollectionNameResolver const& resolver() const override {
     return _resolver;
   }
 
-  virtual arangodb::velocypack::Options const& vpackOptions() const override {
+  arangodb::velocypack::Options const& vpackOptions() const override {
     return arangodb::velocypack::Options::Defaults;
   }
 
   /// @brief create a transaction::Context
-  virtual std::shared_ptr<arangodb::transaction::Context> newTrxContext()
+  std::shared_ptr<arangodb::transaction::Context> newTrxContext()
       const override {
     return std::shared_ptr<arangodb::transaction::Context>(
         std::shared_ptr<arangodb::transaction::Context>(),
         &_transactionContext);
   }
 
-  virtual arangodb::transaction::Methods& trxForOptimization() override {
+  arangodb::transaction::Methods& trxForOptimization() override {
     return *_trx;
   }
 
-  virtual bool killed() const override { return false; }
+  bool killed() const override { return false; }
 
-  virtual void debugKillQuery() override {}
+  void debugKillQuery() override {}
 
   /// @brief whether or not a query is a modification query
-  virtual bool isModificationQuery() const noexcept override { return false; }
+  bool isModificationQuery() const noexcept override { return false; }
 
-  virtual bool isAsyncQuery() const noexcept override { return false; }
+  bool isAsyncQuery() const noexcept override { return false; }
 
-  virtual void enterV8Context() override {
-    TRI_ASSERT(FALSE);
+  void enterV8Context() override {
+    TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_NOT_IMPLEMENTED,
         "CalculationQueryContext entering V8 context is not implemented");
@@ -228,7 +232,12 @@ std::unique_ptr<QueryContext> StandaloneCalculation::buildQueryContext(
 
 Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
                                             std::string_view queryString,
-                                            std::string_view parameterName) {
+                                            std::string_view parameterName,
+                                            char const* errorContext) {
+  TRI_ASSERT(errorContext != nullptr);
+
+  using namespace std::string_literals;
+
   try {
     CalculationQueryContext queryContext(vocbase);
     auto ast = queryContext.ast();
@@ -242,21 +251,20 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
     // Forbid all V8 related stuff as it is not available on DBServers where
     // analyzers run.
     if (ast->willUseV8()) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "V8 usage is forbidden for aql analyzer"};
+      return {TRI_ERROR_BAD_PARAMETER, "V8 usage is forbidden"s + errorContext};
     }
 
     // no modification (as data access is forbidden) but to give more clear
     // error message
     if (ast->containsModificationNode()) {
-      return {TRI_ERROR_BAD_PARAMETER, "DML is forbidden for aql analyzer"};
+      return {TRI_ERROR_BAD_PARAMETER, "DML is forbidden"s + errorContext};
     }
 
     // no traversal (also data access is forbidden) but to give more clear error
     // message
     if (ast->containsTraversal()) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "Traversal usage is forbidden for aql analyzer"};
+              "Traversal usage is forbidden"s + errorContext};
     }
 
     std::string errorMessage;
@@ -266,8 +274,8 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
     // run.
     arangodb::aql::Ast::traverseReadOnly(
         ast->root(),
-        [&errorMessage,
-         &parameterName](arangodb::aql::AstNode const* node) -> bool {
+        [&errorMessage, &parameterName,
+         &errorContext](arangodb::aql::AstNode const* node) -> bool {
           TRI_ASSERT(node);
           switch (node->type) {
             // these nodes are ok unconditionally
@@ -342,14 +350,15 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
                       arangodb::aql::Function::Flags::CanUseInAnalyzer)) {
                 errorMessage = "Function '";
                 errorMessage.append(func->name)
-                    .append("' is forbidden for aql analyzer");
+                    .append("' is forbidden")
+                    .append(errorContext);
                 return false;
               }
             } break;
             case arangodb::aql::NODE_TYPE_PARAMETER: {
               if (node->getStringView() != parameterName) {
-                errorMessage = "Invalid bind parameter found '";
-                errorMessage.append(parameterName).append("'");
+                errorMessage = "Invalid bind parameter '";
+                errorMessage.append(node->getStringView()).append("' found");
                 return false;
               }
             } break;
@@ -357,7 +366,8 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
             default:
               errorMessage = "Node type '";
               errorMessage.append(node->getTypeString())
-                  .append("' is forbidden for aql analyzer");
+                  .append("' is forbidden")
+                  .append(errorContext);
               return false;
           }
           return true;

@@ -22,9 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ComputedValues.h"
+#include "Aql/StandaloneCalculation.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -32,6 +34,10 @@
 
 #include <string_view>
 #include <unordered_set>
+
+namespace {
+constexpr std::string_view docParameter("doc");
+}
 
 namespace arangodb {
 
@@ -53,8 +59,10 @@ void ComputedValues::ComputedValue::toVelocyPack(
   result.close();
 }
 
-ComputedValues::ComputedValues(velocypack::Slice params) {
-  Result res = buildDefinitions(params);
+ComputedValues::ComputedValues(TRI_vocbase_t& vocbase,
+                               std::vector<std::string> const& shardKeys,
+                               velocypack::Slice params) {
+  Result res = buildDefinitions(vocbase, shardKeys, params);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -62,7 +70,9 @@ ComputedValues::ComputedValues(velocypack::Slice params) {
 
 ComputedValues::~ComputedValues() = default;
 
-Result ComputedValues::buildDefinitions(velocypack::Slice params) {
+Result ComputedValues::buildDefinitions(
+    TRI_vocbase_t& vocbase, std::vector<std::string> const& shardKeys,
+    velocypack::Slice params) {
   if (params.isNone() || params.isNull()) {
     return {};
   }
@@ -74,53 +84,78 @@ Result ComputedValues::buildDefinitions(velocypack::Slice params) {
   using namespace std::literals::string_literals;
 
   std::unordered_set<std::string_view> names;
+  Result res;
+
   for (auto it : VPackArrayIterator(params)) {
     VPackSlice name = it.get("name");
     if (!name.isString() || name.getStringLength() == 0) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "invalid 'computedValues' entry: invalid attribute name"};
+      return res.reset(
+          TRI_ERROR_BAD_PARAMETER,
+          "invalid 'computedValues' entry: invalid attribute name");
     }
 
-    if (name.stringView() == StaticStrings::IdString ||
-        name.stringView() == StaticStrings::RevString ||
-        name.stringView() == StaticStrings::KeyString) {
-      return {TRI_ERROR_BAD_PARAMETER, "invalid 'computedValues' entry: '"s +
-                                           name.copyString() +
-                                           "' attribute cannot be computed"};
+    std::string_view n = name.stringView();
+
+    if (n == StaticStrings::IdString || n == StaticStrings::RevString ||
+        n == StaticStrings::KeyString) {
+      return res.reset(TRI_ERROR_BAD_PARAMETER,
+                       "invalid 'computedValues' entry: '"s +
+                           name.copyString() +
+                           "' attribute cannot be computed");
     }
-    // TODO: forbid computedValues on shardKeys!
+
+    // forbid computedValues on shardKeys!
+    for (auto const& key : shardKeys) {
+      if (key == n) {
+        return res.reset(TRI_ERROR_BAD_PARAMETER,
+                         "invalid 'computedValues' entry: cannot compute "
+                         "values of shard key attributes");
+      }
+    }
 
     VPackSlice expression = it.get("expression");
     if (!expression.isString()) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "invalid 'computedValues' entry: invalid computation expression"};
+      return res.reset(
+          TRI_ERROR_BAD_PARAMETER,
+          "invalid 'computedValues' entry: invalid computation expression");
     }
-    // TODO: validate the actual expression
+
+    // validate the actual expression
+    res.reset(aql::StandaloneCalculation::validateQuery(
+        vocbase, expression.stringView(), ::docParameter, ""));
+    if (res.fail()) {
+      std::string errorMsg = "invalid 'computedValues' entry: "s;
+      errorMsg.append(res.errorMessage()).append(" in computation expression");
+      res.reset(TRI_ERROR_BAD_PARAMETER, std::move(errorMsg));
+      break;
+    }
 
     VPackSlice doOverride = it.get("override");
     if (!doOverride.isBoolean()) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "invalid 'computedValues' entry: 'override' must be a boolean"};
+      return res.reset(
+          TRI_ERROR_BAD_PARAMETER,
+          "invalid 'computedValues' entry: 'override' must be a boolean");
     }
 
     // check for duplicate names in the array
     if (!names.emplace(name.stringView()).second) {
       using namespace std::literals::string_literals;
-      return {TRI_ERROR_BAD_PARAMETER,
-              "invalid 'computedValues' entry: duplicate attribute name '"s +
-                  name.copyString() + "'"};
+      return res.reset(
+          TRI_ERROR_BAD_PARAMETER,
+          "invalid 'computedValues' entry: duplicate attribute name '"s +
+              name.copyString() + "'");
     }
 
     try {
       _values.emplace_back(ComputedValue{
           name.stringView(), expression.stringView(), doOverride.getBoolean()});
     } catch (std::exception const& ex) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "invalid 'computedValues' entry: "s + ex.what()};
+      return res.reset(TRI_ERROR_BAD_PARAMETER,
+                       "invalid 'computedValues' entry: "s + ex.what());
     }
   }
 
-  return {};
+  return res;
 }
 
 void ComputedValues::toVelocyPack(velocypack::Builder& result) const {
@@ -134,12 +169,10 @@ void ComputedValues::toVelocyPack(velocypack::Builder& result) const {
     result.close();
   }
 }
-
-Result ComputedValues::validateDefinitions(velocypack::Slice params) {
-  return basics::catchVoidToResult([params]() {
-    // will throw upon invalid inputs
-    ComputedValues temp(params);
-  });
+/*
+Result ComputedValues::validateDefinitions(LogicalCollection& collection,
+velocypack::Slice params) { return buildDefinitions(collection, params);
 }
+*/
 
 }  // namespace arangodb
