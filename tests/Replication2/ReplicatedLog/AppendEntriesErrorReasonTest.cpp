@@ -25,19 +25,19 @@
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/types.h"
 
-#include "Replication2/Mocks/FakeFollower.h"
+#include "Replication2/Mocks/FakeAbstractFollower.h"
 
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::test;
 
 struct AppendEntriesErrorReasonTest : ReplicatedLogTest {
   std::shared_ptr<TestReplicatedLog> leaderLog;
-  std::shared_ptr<FakeFollower> follower;
+  std::shared_ptr<FakeAbstractFollower> follower;
   std::shared_ptr<LogLeader> leader;
 
   void SetUp() override {
     leaderLog = makeReplicatedLog(LogId{1});
-    follower = std::make_shared<FakeFollower>("follower");
+    follower = std::make_shared<FakeAbstractFollower>("follower");
     leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2);
 
     auto const firstIdx =

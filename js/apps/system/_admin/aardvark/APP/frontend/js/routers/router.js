@@ -60,7 +60,11 @@
       'logs': 'logger',
       'helpus': 'helpUs',
       'views': 'views',
-      'view/:name': 'view',
+      'view/:name': 'viewInfo',
+      'view/:name/settings': 'viewSettings',
+      'view/:name/consolidation': 'viewConsolidation',
+      'view/:name/links': 'viewLinks',
+      'view/:name/json': 'viewJSON',
       'graph/:name': 'graph',
       'graph/:name/settings': 'graphSettings',
       'support': 'support'
@@ -111,7 +115,7 @@
             this.loggerView.logTopicView.remove();
           }
         }
-      
+
         if (this.lastRoute === '#shards') {
           if (this.shardsView) {
             this.shardsView.remove();
@@ -1260,25 +1264,44 @@
       });
     },
 
-    view: function (name) {
-      const self = this;
+    viewInfo: function (name) {
       this.checkUser();
 
-      this.init.then(() => {
-        if (this.viewView) {
-          this.viewView.remove();
-        }
+      this.init.then(
+        () => ReactDOM.render(React.createElement(window.ViewInfoReactView, { name }),
+          document.getElementById('content')));
+    },
 
-        this.arangoViewsStore.fetch({
-          success: function () {
-            self.viewView = new window.ViewView({
-              model: self.arangoViewsStore.get(name),
-              name: name
-            });
-            self.viewView.render();
-          }
-        });
-      });
+    viewSettings: function (name) {
+      this.checkUser();
+
+      this.init.then(
+        () => ReactDOM.render(React.createElement(window.ViewSettingsReactView, { name }),
+          document.getElementById('content')));
+    },
+
+    viewConsolidation: function (name) {
+      this.checkUser();
+
+      this.init.then(
+        () => ReactDOM.render(React.createElement(window.ViewConsolidationReactView, { name }),
+          document.getElementById('content')));
+    },
+
+    viewLinks: function (name) {
+      this.checkUser();
+
+      this.init.then(
+        () => ReactDOM.render(React.createElement(window.ViewLinksReactView, { name }),
+          document.getElementById('content')));
+    },
+
+    viewJSON: function (name) {
+      this.checkUser();
+
+      this.init.then(
+        () => ReactDOM.render(React.createElement(window.ViewJSONReactView, { name }),
+          document.getElementById('content')));
     },
 
     views: function () {

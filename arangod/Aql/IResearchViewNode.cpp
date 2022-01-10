@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -518,7 +518,7 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view,
     if (handler == Handlers.end()) {
       // no handler found for attribute
       aql::ExecutionPlan::invalidOptionAttribute(
-          query, "FOR", attributeName.c_str(), attributeName.size());
+          query, "unknown", "FOR", attributeName.c_str(), attributeName.size());
       continue;
     }
 
@@ -1001,7 +1001,7 @@ IResearchViewNode::IResearchViewNode(
       _scorers(std::move(scorers)) {
   TRI_ASSERT(_view);
   TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
-  TRI_ASSERT(LogicalView::category() == _view->category());
+  TRI_ASSERT(LogicalDataSource::Category::kView == _view->category());
 
   auto* ast = plan.getAst();
 
