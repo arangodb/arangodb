@@ -25,6 +25,7 @@
 #include "Aql/Query.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
+#include "Aql/PlanSnippet.h"
 #include "Aql/SortNode.h"
 #include "Transaction/StandaloneContext.h"
 #include "Basics/VelocyPackHelper.h"
@@ -118,6 +119,87 @@ std::string nodeNames(VPackSlice nodes) {
   return result;
 }
 
+struct BasicPlanRulesAsserter
+    : public arangodb::aql::WalkerWorkerBase<arangodb::aql::ExecutionNode> {
+  bool before(ExecutionNode* node) {
+    auto plan = node->getPlanSnippet();
+    // Every Node needs to have a plan
+    if (plan == nullptr) {
+      EXPECT_NE(plan, nullptr)
+          << "Node (" << node->id() << ") " << node->getTypeString()
+          << " is not assigned a server position!";
+    } else {
+      // Every Plan needs to follow the switching pattern
+      // We can only switch from Coordinator to DBServer
+      // and from DBServer back to Coordinator, no exceptions
+      EXPECT_EQ(plan->isOnCoordinator(), _hasToBeOnCoordinator);
+    }
+    if (!_switchToNextPlan) {
+      EXPECT_EQ(plan, _lastPlan)
+          << "We switched to a new plan, without doing the Remote dance";
+    }
+
+    // Some Nodes have specific position requirements
+    switch (node->getType()) {
+      case ExecutionNode::INSERT:
+      case ExecutionNode::UPDATE:
+      case ExecutionNode::REMOVE:
+      case ExecutionNode::REPLACE:
+      case ExecutionNode::UPSERT:
+      case ExecutionNode::ENUMERATE_COLLECTION:
+      case ExecutionNode::INDEX:
+      case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+      case ExecutionNode::MATERIALIZE: {
+        // Have to be on DBServer
+        EXPECT_FALSE(_hasToBeOnCoordinator);
+        break;
+      }
+      case ExecutionNode::TRAVERSAL: {
+        // Not handled yet
+        TRI_ASSERT(false);
+        break;
+      }
+      case ExecutionNode::SUBQUERY_END: {
+        _openSubqueries.emplace_back(plan);
+        break;
+      }
+      case ExecutionNode::SUBQUERY_START: {
+        auto endPlan = _openSubqueries.back();
+        _openSubqueries.pop_back();
+        EXPECT_EQ(endPlan->isOnCoordinator(), plan->isOnCoordinator())
+            << "Subquery start/end are not planned on the same server type";
+        if (!_hasToBeOnCoordinator) {
+          // If we are not on the Coordinator, then both SubqueryStart and
+          // SubqueryEnd have to be on the same Plan
+          EXPECT_EQ(endPlan, plan);
+        }
+        break;
+      }
+
+      default: {
+        // Nothing to Check
+        break;
+      }
+    }
+
+    if (node->getType() == ExecutionNode::REMOTE) {
+      // If we hit a remote the Next Plan has to be new.
+      // and we need to be on the other type of server
+      _switchToNextPlan = true;
+      _hasToBeOnCoordinator = !_hasToBeOnCoordinator;
+    }
+
+    _lastPlan = plan;
+    return false;
+  }
+
+ private:
+  bool _switchToNextPlan{true};
+  bool _hasToBeOnCoordinator{true};
+  std::shared_ptr<PlanSnippet> _lastPlan;
+  std::vector<std::shared_ptr<PlanSnippet>> _openSubqueries;
+};
+
 }  // namespace
 
 class DistributeQueryRuleTest : public ::testing::Test {
@@ -135,7 +217,9 @@ class DistributeQueryRuleTest : public ::testing::Test {
 #endif
     _query = Query::create(ctx, QueryString(queryString), bindParamVPack,
                            QueryOptions(optionsVPack->slice()));
-    return _query->getOptimizedPlan();
+    auto plan = _query->getOptimizedPlan();
+    assertPositionsAreValid(plan.get());
+    return plan;
   }
 
   std::shared_ptr<VPackBuilder> explainQuery(std::string const& queryString) {
@@ -200,6 +284,11 @@ class DistributeQueryRuleTest : public ::testing::Test {
       ASSERT_NE(casted, nullptr);
       asserter(casted);
     }
+  }
+
+  void assertPositionsAreValid(ExecutionPlan* plan) {
+    BasicPlanRulesAsserter walker;
+    plan->root()->walk(walker);
   }
 
   DistributeQueryRuleTest() {

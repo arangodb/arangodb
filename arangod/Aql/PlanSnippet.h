@@ -82,12 +82,23 @@ class PlanSnippet {
     arangodb::aql::SortElementVector _elements;
   };
 
+  // On Purpose empty private struct.
+  // This is just used to protect the PlanSnippet constructor
+  // to be only created in this class, but allow make_shared for it.
+  struct PrivateProtection {};
+
  public:
   static void optimizeAdjacentSnippets(
       std::shared_ptr<PlanSnippet> upperSnippet,
       std::shared_ptr<PlanSnippet> lowerSnippet);
 
   explicit PlanSnippet(ExecutionNode* node);
+
+  // This is an internal constructor for a PlanSnippet
+  // That needs to be created in case RemoteNodes cannot find adjacent
+  // snippets It on purpose uses a private struct as input, such that only this
+  // class is actually able to provide the input, but make_shard can pick it up.
+  PlanSnippet(PrivateProtection const& make_priv, ExecutionNode* usedNode);
 
   bool tryJoinAbove(ExecutionNode* node);
 
@@ -102,6 +113,8 @@ class PlanSnippet {
   void insertCommunicationNodes();
 
   bool isLastNodeInSnippet(ExecutionNode const* node) const;
+
+  void wrapSubqueryNode(SubqueryNode* node);
 
   ExecutionNode* getHighestNode() const;
   ExecutionNode* getLowestNode() const;

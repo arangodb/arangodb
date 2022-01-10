@@ -9839,11 +9839,38 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt,
           TRI_ASSERT(_lastSnippet != nullptr);
           n->setPlanSnippet(_lastSnippet);
         });
+        if (n->getType() == ExecutionNode::SUBQUERY) {
+          SubqueryNode* super = ExecutionNode::castTo<SubqueryNode*>(n);
+          ExecutionNode* sub = super->getSubquery();
+          // We can recursively run this walker
+          McHackiAlternative subqueryWalker{};
+          sub->walkSubqueriesFirst(subqueryWalker);
+
+          if (subqueryWalker.hasOnlySingleSnippet()) {
+            // We only have a single-snippet
+            // inherit the PlanSnippet of the subquery for
+            // the subquery node. This way we will add Distribute/Gather
+            // around the subquery, but not inside.
+            _lastSnippet = sub->getPlanSnippet();
+            _lastSnippet->wrapSubqueryNode(super);
+            return false;
+          } else {
+            // The subquery requires internal Communcation.
+            // We need to apply it
+            subqueryWalker.insertCommunicationNodes(
+                [&super](ExecutionNode* newRoot) {
+                  super->setSubquery(newRoot, true);
+                });
+          }
+
+          // We manually handled the subquery, the walker is not allowed to
+          // enter!
+        }
         if (_lastSnippet == nullptr) {
           // Initial Snippet
           _lastSnippet = std::make_shared<PlanSnippet>(n);
         } else {
-          // Try to enlarage last snippet upwards.
+          // Try to en large last snippet upwards.
           if (!_lastSnippet->tryJoinAbove(n)) {
             // Cannot join upwards. Need to create new snippet
             _lastSnippet = std::make_shared<PlanSnippet>(n);
@@ -9853,11 +9880,9 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt,
         return false;
       }
 
-      bool enterSubquery(arangodb::aql::ExecutionNode* /*super*/,
-                         arangodb::aql::ExecutionNode* /*sub*/) override {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_NOT_IMPLEMENTED,
-            "Subqueries not yet handled in distributeRule");
+      bool enterSubquery(arangodb::aql::ExecutionNode* super,
+                         arangodb::aql::ExecutionNode* sub) override {
+        // We manually handle subqueries in before step. No need to step inside
         return false;
       }
 
@@ -9882,7 +9907,8 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt,
         }
       }
 
-      void insertCommunicationNodes() {
+      void insertCommunicationNodes(
+          std::function<void(ExecutionNode*)> relinkRoot) {
         // TODO: This code does not branch on subqueries this way.
         // Will terminate by break,
         // Snippets are cycle free and non-overlapping, hence we will eventually
@@ -9908,18 +9934,29 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt,
           // loop has added nodes below the root.
           // => We need to relink the root
           auto newRoot = _lastSnippet->getLowestNode();
-          auto plan = newRoot->plan();
-          plan->root(newRoot, true);
+          relinkRoot(newRoot);
         }
+      }
+
+      bool hasOnlySingleSnippet() const {
+        // Can only be called  after the walk is completed
+        TRI_ASSERT(_lastSnippet != nullptr);
+        // At this point in the optimization every query branch
+        // needs to end in a Singleton node (mainquery, and each subquery)
+        // Hence if the top most node of our Snippet is a SINGLETON we only have
+        // a single snippet.
+        return _lastSnippet->getHighestNode()->getType() ==
+               ExecutionNode::SINGLETON;
       }
 
      private:
       std::shared_ptr<PlanSnippet> _lastSnippet{nullptr};
+    };
+    McHackiAlternative mcHackiWalker{};
+    plan->root()->walkSubqueriesFirst(mcHackiWalker);
 
-    } mcHackiWalker{};
-
-    plan->root()->walk(mcHackiWalker);
-    mcHackiWalker.insertCommunicationNodes();
+    mcHackiWalker.insertCommunicationNodes(
+        [&plan](ExecutionNode* newRoot) { plan->root(newRoot, true); });
 
     bool modified = true;
     opt->addPlan(std::move(plan), rule, modified);

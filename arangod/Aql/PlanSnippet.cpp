@@ -555,6 +555,15 @@ GatherNode::Parallelism PlanSnippet::GatherOutput::getGatherParallelism()
 
 bool PlanSnippet::DistributionInput::createKeys() const { return _createKeys; }
 
+PlanSnippet::PlanSnippet(PrivateProtection const&, ExecutionNode* node)
+    : _topMost{node},
+      _last{node},
+      _isOnCoordinator{true},
+      _distributeOn{nullptr} {
+  // We cannot plan nullptr;
+  TRI_ASSERT(node != nullptr);
+}
+
 PlanSnippet::PlanSnippet(ExecutionNode* node)
     : _topMost{node}, _last{node}, _distributeOn{nullptr} {
   // We cannot plan nullptr;
@@ -900,13 +909,13 @@ void PlanSnippet::assertInvariants() const {
 }
 
 void PlanSnippet::insertCommunicationNodes() {
-  // has to fullful all variants on first call.
+  // has to fulfill all variants on first call.
   // Will violate variants on second call, and after
   // this method is completed (_communicationNodesInserted == true);
   assertInvariants();
 
   if (!_isOnCoordinator) {
-    // The DBServer snippets decide how they want to be comunicated to.
+    // The DBServer snippets decide how they want to be communicated to.
     // Coordinator snippets do not need to modify the plan with communication
     // nodes
     if (_topMost->getType() != ExecutionNode::SINGLETON) {
@@ -937,25 +946,47 @@ void PlanSnippet::addRemoteAbove() {
       plan->createNode<RemoteNode>(plan, plan->nextId(), vocbase, "", "", "");
   TRI_ASSERT(remoteNode);
   plan->insertBefore(_topMost, remoteNode);
+  // Forward the PlanSnippet pointer to the RemoteNode
+  remoteNode->setPlanSnippet(_topMost->getPlanSnippet());
   _topMost = remoteNode;
 }
 
 void PlanSnippet::addDistributeAbove() {
   auto* plan = _topMost->plan();
+  // There always has to be a node above.
+  // A query can never start with a Distribute or ScatterNode.
+  // There always will be a singleton.
+  TRI_ASSERT(_topMost->hasDependency());
+  auto planSnippetAbove = _topMost->getFirstDependency()->getPlanSnippet();
   if (_distributeOn == nullptr) {
     // Scatter variant, we cannot distribute based on any known value
     auto scatterNode = plan->createNode<ScatterNode>(
         plan, plan->nextId(), ScatterNode::ScatterType::SHARD);
     TRI_ASSERT(scatterNode);
+    // If Above is on DBServer (not yet added nodes in between)
+    // Create a new PlanSnippet based on the Scatter;
+    if (!planSnippetAbove->isOnCoordinator()) {
+      planSnippetAbove =
+          std::make_shared<PlanSnippet>(PrivateProtection{}, scatterNode);
+    }
     plan->insertBefore(_topMost, scatterNode);
+    scatterNode->setPlanSnippet(planSnippetAbove);
     _topMost = scatterNode;
   } else {
     auto distNode = _distributeOn->createDistributeNode(plan);
     plan->insertBefore(_topMost, distNode);
+    // If Above is on DBServer (not yet added nodes in between)
+    // Create a new PlanSnippet based on the Distribute;
+    if (!planSnippetAbove->isOnCoordinator()) {
+      planSnippetAbove =
+          std::make_shared<PlanSnippet>(PrivateProtection{}, distNode);
+    }
     _topMost = distNode;
+    distNode->setPlanSnippet(planSnippetAbove);
     auto distInputNode = _distributeOn->createDistributeInputNode(plan);
     plan->insertBefore(_topMost, distInputNode);
     _topMost = distInputNode;
+    distInputNode->setPlanSnippet(planSnippetAbove);
   }
 }
 
@@ -965,8 +996,16 @@ void PlanSnippet::addRemoteBelow() {
   auto remoteNode =
       plan->createNode<RemoteNode>(plan, plan->nextId(), vocbase, "", "", "");
   TRI_ASSERT(remoteNode);
+  // Either take the PlanSnippet below us.
+  // If there is non, create a new one based on the remote node just created
+  // here.
+  auto planSnippetBelow =
+      _last->hasParent()
+          ? _last->getFirstParent()->getPlanSnippet()
+          : std::make_shared<PlanSnippet>(PrivateProtection{}, remoteNode);
   plan->insertAfter(_last, remoteNode);
   _last = remoteNode;
+  remoteNode->setPlanSnippet(planSnippetBelow);
 }
 
 void PlanSnippet::addCollectBelow() {
@@ -974,6 +1013,8 @@ void PlanSnippet::addCollectBelow() {
   auto collectNode = _gatherOutput.eventuallyCreateCollectNode(plan);
   if (collectNode != nullptr) {
     plan->insertAfter(_last, collectNode);
+    // Collect is on the DBServer, so inherit the snippet
+    collectNode->setPlanSnippet(_last->getPlanSnippet());
     _last = collectNode;
   }
 }
@@ -983,6 +1024,10 @@ void PlanSnippet::addGatherBelow() {
   auto gatherNode = _gatherOutput.createGatherNode(plan);
   TRI_ASSERT(gatherNode);
   plan->insertAfter(_last, gatherNode);
+  // We have inserted a remote just before
+  TRI_ASSERT(_last->getType() == ExecutionNode::REMOTE);
+  // We can inherit the PlanSnippet from the Remote node, which is Coordinator;
+  gatherNode->setPlanSnippet(_last->getPlanSnippet());
   _last = gatherNode;
 }
 
@@ -1024,4 +1069,16 @@ std::ostream& arangodb::aql::operator<<(std::ostream& os,
             << s._topMost->getTypeString() << "(" << s._topMost->id()
             << ") located on "
             << (s._isOnCoordinator ? "Coordinator" : "DBServer");
+}
+void PlanSnippet::wrapSubqueryNode(SubqueryNode* subquery) {
+  // We can only wrap if the end of this snippet is the root of the subquery
+  TRI_ASSERT(subquery->getSubquery() == _last);
+  // We can only wrap if the beginning of the subquery is the highest node in
+  // the snippet
+  TRI_ASSERT(_topMost->getType() == ExecutionNode::SINGLETON);
+  // As subqueries are part of the Node, this snippet now "only" needs to cover
+  // the SubqueryNode
+  _last = subquery;
+  _topMost = subquery;
+  // NOTE: all distribute and sort information is retained here.
 }
