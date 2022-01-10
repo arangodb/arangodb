@@ -119,8 +119,13 @@ const replicatedLogSetPlanTerm = function (database, logId, term) {
 };
 
 const replicatedLogSetPlan = function (database, logId, spec) {
-    global.ArangoAgency.set(`Plan/ReplicatedLogs/${database}/${logId}`, spec);
-    global.ArangoAgency.increaseVersion(`Plan/Version`);
+  global.ArangoAgency.set(`Plan/ReplicatedLogs/${database}/${logId}`, spec);
+  global.ArangoAgency.increaseVersion(`Plan/Version`);
+};
+
+const replicatedLogSetTarget = function (database, logId, spec) {
+  global.ArangoAgency.set(`Target/ReplicatedLogs/${database}/${logId}`, spec);
+  global.ArangoAgency.increaseVersion(`Target/Version`);
 };
 
 const replicatedLogDeletePlan = function (database, logId) {
@@ -212,3 +217,5 @@ exports.continueServer = continueServer;
 exports.nextUniqueLogId = nextUniqueLogId;
 exports.registerAgencyTestBegin = registerAgencyTestBegin;
 exports.registerAgencyTestEnd = registerAgencyTestEnd;
+exports.replicatedLogSetTarget = replicatedLogSetTarget;
+exports.getParticipantsObjectForServers = getParticipantsObjectForServers;
