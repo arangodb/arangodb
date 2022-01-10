@@ -558,6 +558,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/ReplicatedLogFeature.cpp
   Replication2/ReplicatedLog/ReplicatedLogMetrics.cpp
   Replication2/ReplicatedLog/Supervision.cpp
+  Replication2/ReplicatedLog/SupervisionAction.cpp
   Replication2/ReplicatedLog/SupervisionTypes.cpp
   Replication2/ReplicatedLog/types.cpp
   Replication2/ReplicatedState/AgencySpecification.cpp

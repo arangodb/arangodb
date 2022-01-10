@@ -103,8 +103,58 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_oneElectible) {
   EXPECT_EQ(electible, expectedElectible);
 }
 
+// TODO: election campaigns that fail
+
 struct LeaderStateMachineTest : ::testing::Test {};
 
+TEST_F(LeaderStateMachineTest, test_election) {
+  // We have no leader, so we have to first run a leadership campaign and then
+  // select a leader.
+  auto const& config = LogConfig(3, 3, 3, true);
+
+  auto current = LogCurrent();
+  current.localState = std::unordered_map<ParticipantId, LogCurrentLocalState>(
+      {{"A", LogCurrentLocalState(LogTerm{1},
+                                  TermIndexPair{LogTerm{1}, LogIndex{1}})},
+       {"B", LogCurrentLocalState(LogTerm{1},
+                                  TermIndexPair{LogTerm{1}, LogIndex{1}})},
+       {"C", LogCurrentLocalState(LogTerm{1},
+                                  TermIndexPair{LogTerm{1}, LogIndex{1}})}});
+  current.supervision = LogCurrentSupervision{};
+
+  auto plan = LogPlanSpecification(
+      LogId{1},
+      LogPlanTermSpecification(LogTerm{1}, config, std::nullopt,
+                               {{"A", {}}, {"B", {}}, {"C", {}}}),
+      config,
+      ParticipantsConfig{
+          .generation = 1,
+          .participants = {
+              {"A", ParticipantFlags{.forced = false, .excluded = false}},
+              {"B", ParticipantFlags{.forced = false, .excluded = false}},
+
+              {"C", ParticipantFlags{.forced = false, .excluded = false}}}});
+
+  auto health = ParticipantsHealth{
+      ._health = {
+          {"A", ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}},
+          {"B", ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}}}};
+
+  auto r = tryLeadershipElection(plan, current, health);
+  EXPECT_NE(r, nullptr);
+
+  EXPECT_EQ(r->type(), Action::ActionType::SuccessfulLeaderElectionAction)
+      << *r;
+
+  auto& action = dynamic_cast<SuccessfulLeaderElectionAction&>(*r);
+
+  auto possibleLeaders = std::set<ParticipantId>{"A", "B", "C"};
+  EXPECT_TRUE(possibleLeaders.contains(action._newLeader));
+}
+
+#if 0
 TEST_F(LeaderStateMachineTest, test_leader_intact) {
   auto const& config = LogConfig(3, 3, 3, true);
   auto log =
@@ -337,3 +387,4 @@ TEST_F(LeaderStateMachineTest, test_log_establish_leader_with_higher_term) {
 
   EXPECT_EQ(action._newLeader, "C") << *r;
 }
+#endif

@@ -61,8 +61,6 @@ auto checkLeaderHealth(LogPlanSpecification const& plan,
   }
 }
 
-using LogCurrentLocalStates =
-    std::unordered_map<ParticipantId, LogCurrentLocalState>;
 auto runElectionCampaign(LogCurrentLocalStates const& states,
                          ParticipantsHealth const& health, LogTerm term)
     -> LeaderElectionCampaign {

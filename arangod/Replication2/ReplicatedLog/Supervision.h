@@ -40,13 +40,22 @@ using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2::replicated_log {
 
+using LogCurrentLocalStates =
+    std::unordered_map<ParticipantId, LogCurrentLocalState>;
+
 // Check whether a log has been added to target
 auto checkLogAdded(const Log& log) -> std::unique_ptr<Action>;
 
 auto checkLeaderHealth(Log const& log, ParticipantsHealth const& health)
     -> std::unique_ptr<Action>;
 
-auto tryLeadershipElection(Log const& log, ParticipantsHealth const& health)
+auto runElectionCampaign(LogCurrentLocalStates const& states,
+                         ParticipantsHealth const& health, LogTerm term)
+    -> LeaderElectionCampaign;
+
+auto tryLeadershipElection(LogPlanSpecification const& plan,
+                           LogCurrent const& current,
+                           ParticipantsHealth const& health)
     -> std::unique_ptr<Action>;
 
 auto checkLogTargetParticipantFlags(LogTarget const& target,
