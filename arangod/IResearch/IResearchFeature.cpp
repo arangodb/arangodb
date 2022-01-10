@@ -553,17 +553,27 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
   auto flags = aql::Function::makeFlags(
       aql::Function::Flags::Deterministic, aql::Function::Flags::Cacheable,
       aql::Function::Flags::CanRunOnDBServerCluster,
+      aql::Function::Flags::CanRunOnDBServerOneShard,
+      aql::Function::Flags::CanUseInAnalyzer);
+
+  auto flagsNoAnalyzer = aql::Function::makeFlags(
+      aql::Function::Flags::Deterministic, aql::Function::Flags::Cacheable,
+      aql::Function::Flags::CanRunOnDBServerCluster,
       aql::Function::Flags::CanRunOnDBServerOneShard);
 
-  // (attribute, [ // "analyzer"|"type"|"string"|"numeric"|"bool"|"null" // ])
-  addFunction(functions, {"EXISTS", ".|.,.", flags, &dummyFilterFunc});
+  // (attribute, [ // "analyzer"|"type"|"string"|"numeric"|"bool"|"null" // ]).
+  // cannot be used in analyzers!
+  addFunction(functions,
+              {"EXISTS", ".|.,.", flagsNoAnalyzer, &dummyFilterFunc});
 
   // (attribute, [ '[' ] prefix [, prefix, ... ']' ] [,
   // scoring-limit|min-match-count ] [, scoring-limit ])
   addFunction(functions, {"STARTS_WITH", ".,.|.,.", flags, &startsWithFunc});
 
   // (attribute, input [, offset, input... ] [, analyzer])
-  addFunction(functions, {"PHRASE", ".,.|.+", flags, &dummyFilterFunc});
+  // cannot be used in analyzers!
+  addFunction(functions,
+              {"PHRASE", ".,.|.+", flagsNoAnalyzer, &dummyFilterFunc});
 
   // (filter expression [, filter expression, ... ], min match count)
   addFunction(functions, {"MIN_MATCH", ".,.|.+", flags, &minMatchFunc});
@@ -572,7 +582,8 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
   addFunction(functions, {"BOOST", ".,.", flags, &contextFunc});
 
   // (filter expression, analyzer)
-  addFunction(functions, {"ANALYZER", ".,.", flags, &contextFunc});
+  // cannot be used in analyzers!
+  addFunction(functions, {"ANALYZER", ".,.", flagsNoAnalyzer, &contextFunc});
 }
 
 namespace {
@@ -630,6 +641,7 @@ void registerScorers(aql::AqlFunctionFeature& functions) {
         std::transform(upperName.begin(), upperName.end(), upperName.begin(),
                        ::toupper);
 
+        // scorers are not usable in analyzers
         arangodb::iresearch::addFunction(
             functions, {
                            std::move(upperName), args.c_str(),

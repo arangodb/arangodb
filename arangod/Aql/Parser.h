@@ -142,13 +142,13 @@ class Parser {
   /// @brief a pointer to the start of the query string
   QueryString const& queryString() const { return _queryString; }
 
- private:
   /// @brief the query
   QueryContext& _query;
 
   /// @brief abstract syntax tree for the query, build during parsing
   Ast& _ast;
 
+  /// @brief query string (non-owning!)
   QueryString& _queryString;
 
   /// @brief lexer / scanner used when parsing the query (Aql/tokens.ll)

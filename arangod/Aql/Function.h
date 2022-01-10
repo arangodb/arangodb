@@ -76,14 +76,17 @@ struct Function {
     /// @brief whether or not the function may read documents from the database
     CanReadDocuments = 16,
 
+    /// @brief whether or not the function is usable in an analyzer
+    CanUseInAnalyzer = 32,
+
     /// @brief exclude the function from being evaluated during AST
     /// optimizations evaluation of function will only happen at query runtime
-    NoEval = 32,
+    NoEval = 64,
 
     /// @brief internal function, supposed to be inserted only by internal
     /// optimizations and transformations. not supposed to be used by end users
     /// and thus not documented in the official list of available AQL functions.
-    Internal = 64,
+    Internal = 128,
   };
 
   /// @brief helper for building flags

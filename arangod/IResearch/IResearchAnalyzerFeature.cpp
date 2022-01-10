@@ -378,7 +378,8 @@ void addFunctions(aql::AqlFunctionFeature& functions) {
           "TOKENS",  // name
           ".|.",     // positional arguments (data[,analyzer])
           // deterministic (true == called during AST optimization and will be
-          // used to calculate values for constant expressions)
+          // used to calculate values for constant expressions).
+          // not usable in analyzers!
           aql::Function::makeFlags(
               aql::Function::Flags::Deterministic,
               aql::Function::Flags::Cacheable,

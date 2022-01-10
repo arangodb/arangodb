@@ -429,6 +429,7 @@ set(LIB_ARANGO_AQL_SOURCES
 set(LIB_ARANGO_VOCBASE_SOURCES
   Aql/PlanCache.cpp
   Aql/QueryCursor.cpp
+  Aql/StandaloneCalculation.cpp
   Replication/DatabaseReplicationApplier.cpp
   Utils/CollectionNameResolver.cpp
   Utils/CursorRepository.cpp
@@ -1017,6 +1018,7 @@ target_link_libraries(arango_indexes date_interface)
 
 target_link_libraries(arango_iresearch arango_indexes)
 target_link_libraries(arango_iresearch arango_cluster_engine)
+target_link_libraries(arango_iresearch arango_vocbase)
 
 target_link_libraries(arango_metrics arango)
 target_link_libraries(arango_metrics arango::validation)
