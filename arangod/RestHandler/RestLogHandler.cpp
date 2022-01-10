@@ -269,7 +269,7 @@ RestStatus RestLogHandler::handleGetLog(const ReplicatedLogMethods& methods,
               status.toVelocyPack(buffer);
               generateOk(rest::ResponseCode::OK, buffer.slice());
             },
-            std::move(status));
+            status);
       }));
 }
 
