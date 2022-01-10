@@ -121,6 +121,35 @@ struct Task {
   IndexId id;
 };
 
+uint64_t computeAvg(std::atomic<uint64_t>& timeNum, uint64_t newTime) {
+  constexpr uint64_t kWindowSize{10};
+  auto const oldTimeNum =
+      timeNum.fetch_add((newTime << 32U) + 1, std::memory_order_relaxed);
+  auto const oldTime = oldTimeNum >> 32U;
+  auto const oldNum = oldTimeNum & std::numeric_limits<uint32_t>::max();
+  if (oldNum >= kWindowSize) {
+    timeNum.fetch_sub((oldTime / oldNum) + 1, std::memory_order_relaxed);
+  }
+  return (oldTime + newTime) / (oldNum + 1);
+}
+
+auto getIndexFeatures() {
+  return [](irs::type_info::type_id id) {
+    const irs::column_info info{
+        irs::type<irs::compression::none>::get(), {}, false};
+
+    if (irs::type<irs::Norm2>::id() == id) {
+      return std::make_pair(info, &irs::Norm2::MakeWriter);
+    }
+
+    if (irs::type<irs::Norm>::id() == id) {
+      return std::make_pair(info, &irs::Norm::MakeWriter);
+    }
+
+    return std::make_pair(info, irs::feature_writer_factory_t{});
+  };
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief total number of loaded links
 ////////////////////////////////////////////////////////////////////////////////
@@ -198,19 +227,6 @@ inline Result insertDocument(irs::index_writer::documents_context& ctx,
 
   return {};
 }
-
-uint64_t computeAvg(std::atomic<uint64_t>& timeNum, uint64_t newTime) {
-  constexpr uint64_t kWindowSize{10};
-  auto const oldTimeNum =
-      timeNum.fetch_add((newTime << 32U) + 1, std::memory_order_relaxed);
-  auto const oldTime = oldTimeNum >> 32U;
-  auto const oldNum = oldTimeNum & std::numeric_limits<uint32_t>::max();
-  if (oldNum >= kWindowSize) {
-    timeNum.fetch_sub((oldTime / oldNum) + 1, std::memory_order_relaxed);
-  }
-  return (oldTime + newTime) / (oldNum + 1);
-}
-
 }  // namespace
 
 namespace arangodb {
@@ -1072,17 +1088,13 @@ Result IResearchDataStore::initDataStore(
   irs::index_writer::init_options options;
   // Set 256MB limit during recovery. Actual "operational" limit will be set
   // later when this link will be added to the view.
-  options.segment_memory_max = 256 * (size_t(1) << 20);
-  options.lock_repository =
-      false;  // do not lock index, ArangoDB has its own lock
-  options.comparator =
-      sorted ? &_comparer : nullptr;  // set comparator if requested
-  options.features[irs::type<irs::granularity_prefix>::id()] = nullptr;
-  if (LinkVersion(version) < LinkVersion::MAX) {
-    options.features[irs::type<irs::norm>::id()] = &irs::norm::compute;
-  } else {
-    options.features[irs::type<irs::norm2>::id()] = &irs::norm2::compute;
-  }
+  options.segment_memory_max = 256 * (size_t{1} << 20);
+  // Do not lock index, ArangoDB has its own lock.
+  options.lock_repository = false;
+  // Set comparator if requested.
+  options.comparator = sorted ? &_comparer : nullptr;
+  // Set index features.
+  options.features = getIndexFeatures();
   // initialize commit callback
   options.meta_payload_provider = [this](uint64_t tick, irs::bstring& out) {
     _lastCommittedTick =
