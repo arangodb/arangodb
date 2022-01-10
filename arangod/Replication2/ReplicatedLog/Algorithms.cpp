@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -494,14 +494,7 @@ algorithms::CalculateCommitIndexOptions::CalculateCommitIndexOptions(
     std::size_t replicationFactor)
     : _writeConcern(writeConcern),
       _softWriteConcern(softWriteConcern),
-      _replicationFactor(replicationFactor) {
-  TRI_ASSERT(_writeConcern <= _softWriteConcern)
-      << "writeConcern > softWriteConcern " << _writeConcern << " > "
-      << _softWriteConcern;
-  TRI_ASSERT(_softWriteConcern <= _replicationFactor)
-      << "softWriteConcern > opt.replicationFactor " << _softWriteConcern
-      << " > " << _replicationFactor;
-}
+      _replicationFactor(replicationFactor) {}
 
 auto algorithms::calculateCommitIndex(
     std::vector<ParticipantStateTuple> const& indexes,

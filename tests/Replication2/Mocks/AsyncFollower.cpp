@@ -71,6 +71,11 @@ auto AsyncFollower::waitForLeaderAcked() -> WaitForFuture {
   return _follower->waitForLeaderAcked();
 }
 
+auto AsyncFollower::getLeader() const noexcept
+    -> std::optional<ParticipantId> const& {
+  return _follower->getLeader();
+}
+
 auto AsyncFollower::appendEntries(AppendEntriesRequest request)
     -> futures::Future<AppendEntriesResult> {
   std::unique_lock guard(_mutex);
