@@ -141,21 +141,19 @@ TEST_F(LeaderStateMachineTest, test_log_no_leader) {
                      LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}})}});
   logCurrent.supervision = LogCurrentSupervision{};
 
-  auto log = Log{
-      .current = logCurrent,
-      .plan = LogPlanSpecification(
-          LogId{1},
-          LogPlanTermSpecification(LogTerm{1}, config, std::nullopt,
-                                   {{"A", {}}, {"B", {}}, {"C", {}}}),
-          config,
-          ParticipantsConfig{
-              .generation = 1,
-              .participants = {
-                  {"A", ParticipantFlags{.forced = false, .excluded = false}},
-                  {"B", ParticipantFlags{.forced = false, .excluded = false}},
+  LogPlanSpecification plan(
+      LogId{1},
+      LogPlanTermSpecification(LogTerm{1}, config, std::nullopt,
+                               {{"A", {}}, {"B", {}}, {"C", {}}}),
+      config,
+      ParticipantsConfig{
+          .generation = 1,
+          .participants = {
+              {"A", ParticipantFlags{.forced = false, .excluded = false}},
+              {"B", ParticipantFlags{.forced = false, .excluded = false}},
+              {"C", ParticipantFlags{.forced = false, .excluded = false}}}});
 
-                  {"C",
-                   ParticipantFlags{.forced = false, .excluded = false}}}})};
+  auto log = Log{.current = logCurrent, .plan = std::move(plan)};
 
   auto health = ParticipantsHealth{
       ._health = {
@@ -194,23 +192,21 @@ TEST_F(LeaderStateMachineTest, test_log_with_dead_leader) {
                      LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}})}});
   logCurrent.supervision = LogCurrentSupervision{};
 
-  auto log = Log{
-      .current = logCurrent,
-      .plan = LogPlanSpecification(
-          LogId{1},
-          LogPlanTermSpecification(
-              LogTerm{1}, config,
-              LogPlanTermSpecification::Leader{"A", RebootId{42}},
-              {{"A", {}}, {"B", {}}, {"C", {}}}),
-          config,
-          ParticipantsConfig{
-              .generation = 1,
-              .participants = {
-                  {"A", ParticipantFlags{.forced = false, .excluded = false}},
-                  {"B", ParticipantFlags{.forced = false, .excluded = false}},
+  LogPlanSpecification plan(
+      LogId{1},
+      LogPlanTermSpecification(
+          LogTerm{1}, config,
+          LogPlanTermSpecification::Leader{"A", RebootId{42}},
+          {{"A", {}}, {"B", {}}, {"C", {}}}),
+      config,
+      ParticipantsConfig{
+          .generation = 1,
+          .participants = {
+              {"A", ParticipantFlags{.forced = false, .excluded = false}},
+              {"B", ParticipantFlags{.forced = false, .excluded = false}},
+              {"C", ParticipantFlags{.forced = false, .excluded = false}}}});
 
-                  {"C",
-                   ParticipantFlags{.forced = false, .excluded = false}}}})};
+  auto log = Log{.current = logCurrent, .plan = std::move(plan)};
 
   auto health = ParticipantsHealth{
       ._health = {
@@ -240,30 +236,28 @@ TEST_F(LeaderStateMachineTest, test_log_establish_leader) {
 
   auto logCurrent = LogCurrent();
   logCurrent.localState =
-      std::unordered_map<ParticipantId, LogCurrentLocalState>(
-          {{"A", LogCurrentLocalState(LogTerm{1},
-                                      TermIndexPair{LogTerm{1}, LogIndex{1}})},
-           {"B", LogCurrentLocalState(LogTerm{1},
-                                      TermIndexPair{LogTerm{1}, LogIndex{1}})},
-           {"C", LogCurrentLocalState(
-                     LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{42}})}});
+      std::unordered_map<ParticipantId, LogCurrentLocalState>{
+          {"A", LogCurrentLocalState(LogTerm{1},
+                                     TermIndexPair{LogTerm{1}, LogIndex{1}})},
+          {"B", LogCurrentLocalState(LogTerm{1},
+                                     TermIndexPair{LogTerm{1}, LogIndex{1}})},
+          {"C", LogCurrentLocalState(LogTerm{1},
+                                     TermIndexPair{LogTerm{1}, LogIndex{42}})}};
   logCurrent.supervision = LogCurrentSupervision{};
 
-  auto log = Log{
-      .current = logCurrent,
-      .plan = LogPlanSpecification(
-          LogId{1},
-          LogPlanTermSpecification(LogTerm{1}, config, std::nullopt,
-                                   {{"A", {}}, {"B", {}}, {"C", {}}}),
-          config,
-          ParticipantsConfig{
-              .generation = 1,
-              .participants = {
-                  {"A", ParticipantFlags{.forced = false, .excluded = false}},
-                  {"B", ParticipantFlags{.forced = false, .excluded = false}},
+  LogPlanSpecification plan(
+      LogId{1},
+      LogPlanTermSpecification(LogTerm{1}, config, std::nullopt,
+                               {{"A", {}}, {"B", {}}, {"C", {}}}),
+      config,
+      ParticipantsConfig{
+          .generation = 1,
+          .participants = {
+              {"A", ParticipantFlags{.forced = false, .excluded = false}},
+              {"B", ParticipantFlags{.forced = false, .excluded = false}},
+              {"C", ParticipantFlags{.forced = false, .excluded = false}}}});
 
-                  {"C",
-                   ParticipantFlags{.forced = false, .excluded = false}}}})};
+  auto log = Log{.current = logCurrent, .plan = std::move(plan)};
 
   auto health = ParticipantsHealth{
       ._health = {
@@ -284,7 +278,6 @@ TEST_F(LeaderStateMachineTest, test_log_establish_leader) {
   EXPECT_EQ(action._newLeader, "C") << *r;
 }
 
-#if 0
 TEST_F(LeaderStateMachineTest, test_log_establish_leader_with_higher_term) {
   // here we have a participant "C" with a *better* TermIndexPair than the
   // others because it has a higher LogTerm, but a lower LogIndex
@@ -293,30 +286,28 @@ TEST_F(LeaderStateMachineTest, test_log_establish_leader_with_higher_term) {
 
   auto logCurrent = LogCurrent();
   logCurrent.localState =
-      std::unordered_map<ParticipantId, LogCurrentLocalState>(
-          {{"A", LogCurrentLocalState(LogTerm{1},
-                                      TermIndexPair{LogTerm{1}, LogIndex{15}})},
-           {"B", LogCurrentLocalState(LogTerm{1},
-                                      TermIndexPair{LogTerm{1}, LogIndex{27}})},
-           {"C", LogCurrentLocalState(
-                     LogTerm{1}, TermIndexPair{LogTerm{4}, LogIndex{42}})}});
+      std::unordered_map<ParticipantId, LogCurrentLocalState>{
+          {"A", LogCurrentLocalState(LogTerm{1},
+                                     TermIndexPair{LogTerm{1}, LogIndex{15}})},
+          {"B", LogCurrentLocalState(LogTerm{1},
+                                     TermIndexPair{LogTerm{1}, LogIndex{27}})},
+          {"C", LogCurrentLocalState(LogTerm{1},
+                                     TermIndexPair{LogTerm{4}, LogIndex{42}})}};
   logCurrent.supervision = LogCurrentSupervision{};
 
-  auto log = Log{
-      .current = logCurrent,
-      .plan = LogPlanSpecification(
-          LogId{1},
-          LogPlanTermSpecification(LogTerm{1}, config, std::nullopt,
-                                   {{"A", {}}, {"B", {}}, {"C", {}}}),
-          config,
-          ParticipantsConfig{
-              .generation = 1,
-              .participants = {
-                  {"A", ParticipantFlags{.forced = false, .excluded = false}},
-                  {"B", ParticipantFlags{.forced = false, .excluded = false}},
+  LogPlanSpecification plan(
+      LogId{1},
+      LogPlanTermSpecification(LogTerm{1}, config, std::nullopt,
+                               {{"A", {}}, {"B", {}}, {"C", {}}}),
+      config,
+      ParticipantsConfig{
+          .generation = 1,
+          .participants = {
+              {"A", ParticipantFlags{.forced = false, .excluded = false}},
+              {"B", ParticipantFlags{.forced = false, .excluded = false}},
+              {"C", ParticipantFlags{.forced = false, .excluded = false}}}});
 
-                  {"C",
-                   ParticipantFlags{.forced = false, .excluded = false}}}})};
+  auto log = Log{.current = logCurrent, .plan = std::move(plan)};
 
   auto health = ParticipantsHealth{
       ._health = {
@@ -336,4 +327,3 @@ TEST_F(LeaderStateMachineTest, test_log_establish_leader_with_higher_term) {
 
   EXPECT_EQ(action._newLeader, "C") << *r;
 }
-#endif
