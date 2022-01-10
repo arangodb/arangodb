@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,6 +25,7 @@
 
 #include <memory>
 #include <unordered_map>
+#include <utility>
 
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
@@ -65,6 +67,14 @@ struct ReplicatedStateFeature {
   auto createReplicatedState(std::string_view name,
                              std::shared_ptr<replicated_log::ReplicatedLog> log)
       -> std::shared_ptr<ReplicatedStateBase>;
+
+  template<typename S>
+  auto createReplicatedStateAs(
+      std::string_view name, std::shared_ptr<replicated_log::ReplicatedLog> log)
+      -> std::shared_ptr<ReplicatedState<S>> {
+    return std::dynamic_pointer_cast<ReplicatedState<S>>(
+        createReplicatedState(name, std::move(log)));
+  }
 
  private:
   static void assertWasInserted(std::string_view name, bool wasInserted);

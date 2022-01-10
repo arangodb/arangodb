@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,6 +35,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
@@ -557,8 +558,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term,
     }
   } catch (std::exception const& e) {
     LOG_TOPIC("bedb8", DEBUG, Logger::AGENCY)
-        << "Exception during log append: " << __FILE__ << __LINE__ << " "
-        << e.what();
+        << "Exception during log append: " << e.what();
   }
 
   {
@@ -2077,12 +2077,11 @@ void Agent::setPersistedState(VPackSlice compaction) {
     CONDITION_LOCKER(guard, _waitForCV);
     _readDB = compaction;
     _commitIndex = arangodb::basics::StringUtils::uint64(
-        compaction.get("_key").copyString());
+        compaction.get(StaticStrings::KeyString).copyString());
     _local_index = _commitIndex.load(std::memory_order_relaxed);
     _waitForCV.broadcast();
   } catch (std::exception const& e) {
-    LOG_TOPIC("70844", ERR, Logger::AGENCY)
-        << e.what() << " " << __FILE__ << __LINE__;
+    LOG_TOPIC("70844", ERR, Logger::AGENCY) << e.what();
   }
 }
 
@@ -2182,8 +2181,7 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
       try {
         _config.eraseGossipPeer(endpoint);
       } catch (std::exception const& e) {
-        LOG_TOPIC("58f08", ERR, Logger::AGENCY)
-            << __FILE__ << ":" << __LINE__ << " " << e.what();
+        LOG_TOPIC("58f08", ERR, Logger::AGENCY) << e.what();
       }
     }
 
