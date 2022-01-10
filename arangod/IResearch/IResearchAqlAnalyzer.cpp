@@ -35,8 +35,6 @@
 #include "Aql/AqlCallList.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlFunctionFeature.h"
-#include "Aql/AqlTransaction.h"
-#include "Aql/ExpressionContext.h"
 #include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/Optimizer.h"
@@ -49,14 +47,14 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/FunctionUtils.h"
-#include "IResearchCommon.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
-#include "VelocyPackHelper.h"
-#include "VocBase/vocbase.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/SmartContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/vocbase.h"
 
 #include <Containers/HashSet.h>
 #include "VPackDeserializer/deserializer.h"
@@ -203,9 +201,8 @@ irs::analysis::analyzer::ptr make_slice(VPackSlice const& slice) {
   arangodb::iresearch::AqlAnalyzer::Options options;
   if (parse_options_slice(slice, options)) {
     auto validationRes = arangodb::aql::StandaloneCalculation::validateQuery(
-        arangodb::DatabaseFeature::getCalculationVocbase(),
-        std::string_view(options.queryString),
-        std::string_view(CALCULATION_PARAMETER_NAME));
+        arangodb::DatabaseFeature::getCalculationVocbase(), options.queryString,
+        CALCULATION_PARAMETER_NAME);
     if (validationRes.ok()) {
       return std::make_unique<arangodb::iresearch::AqlAnalyzer>(options);
     } else {
