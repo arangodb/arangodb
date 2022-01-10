@@ -1,10 +1,11 @@
 import React, { ChangeEvent } from "react";
 import { clone, pull } from "lodash";
-import { BaseFormState, Feature, FormProps } from "../constants";
+import { BaseFormState, Feature, FormState } from "../constants";
+import { FormProps } from "../../../utils/constants";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import Checkbox from "../../../components/pure-css/form/Checkbox";
 
-const FeatureForm = ({ formState, dispatch, disabled }: FormProps) => {
+const FeatureForm = ({ formState, dispatch, disabled }: FormProps<FormState>) => {
   const features = (formState as BaseFormState).features;
   const frequency = features.includes('frequency');
   const norm = features.includes('norm');
