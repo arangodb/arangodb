@@ -1,5 +1,4 @@
 import { JSONSchemaType } from 'ajv';
-import { Dispatch } from 'react';
 import _, { merge, partial } from 'lodash';
 
 export const typeNameMap = {
@@ -20,7 +19,6 @@ export const typeNameMap = {
 
 export type Feature = 'frequency' | 'norm' | 'position';
 type Features = Feature[];
-export type Int = number & { __int__: void };
 
 export type BaseFormState = {
   name: string;
@@ -38,48 +36,58 @@ export type DelimiterState = {
   };
 };
 
-type StemState = {
-  type: 'stem';
+export type LocaleProperty = {
   properties: {
     locale: string;
   };
 };
 
-type CaseProperty = 'lower' | 'upper' | 'none';
+export type StemState = LocaleProperty & {
+  type: 'stem';
+};
 
-type NormState = {
-  type: 'norm';
+export type CaseProperty = {
+  properties: {
+    case?: 'lower' | 'upper' | 'none';
+  };
+};
+
+export type AccentProperty = {
   properties: {
     accent?: boolean;
-    case?: CaseProperty;
-    locale: string;
   };
 };
 
-export type NGramBase = {
-  max?: Int;
-  min?: Int;
+export type NormState = LocaleProperty & CaseProperty & AccentProperty & {
+  type: 'norm';
+};
+
+export type NGramBaseProperty = {
+  max?: number;
+  min?: number;
   preserveOriginal?: boolean;
 };
 
 export type NGramState = {
   type: 'ngram';
-  properties: NGramBase & {
+  properties: NGramBaseProperty & {
     startMarker?: string;
     endMarker?: string;
     streamType?: 'binary' | 'utf8';
   };
 };
 
-export type TextState = {
+export type StopwordsProperty = {
+  properties: {
+    stopwords?: string[];
+  };
+};
+
+export type TextState = LocaleProperty & CaseProperty & AccentProperty & StopwordsProperty & {
   type: 'text';
   properties: {
-    case?: CaseProperty;
-    locale: string;
-    accent?: boolean;
     stemming?: boolean;
-    edgeNgram?: NGramBase;
-    stopwords?: string[];
+    edgeNgram?: NGramBaseProperty;
     stopwordsPath?: string;
   };
 };
@@ -90,36 +98,31 @@ export type AqlState = {
     queryString: string;
     collapsePositions?: boolean;
     keepNull?: boolean;
-    batchSize?: Int;
-    memoryLimit?: Int;
+    batchSize?: number;
+    memoryLimit?: number;
     returnType?: 'string' | 'number' | 'bool';
   };
 };
 
-export type StopwordsState = {
+export type StopwordsState = StopwordsProperty & {
   type: 'stopwords',
   properties: {
-    stopwords: string[];
     hex?: boolean;
   }
 };
 
-export type CollationState = {
+export type CollationState = LocaleProperty & {
   type: 'collation';
-  properties: {
-    locale: string;
-  };
 };
 
-export type SegmentationState = {
+export type SegmentationState = CaseProperty & {
   type: 'segmentation',
   properties: {
     break?: 'all' | 'alpha' | 'graphic';
-    case?: CaseProperty;
   };
 };
 
-type PipelineState = DelimiterState
+export type PipelineState = DelimiterState
   | StemState
   | NormState
   | NGramState
@@ -136,26 +139,28 @@ export type PipelineStates = {
   };
 };
 
-export type GeoOptions = {
-  maxCells?: Int;
-  minLevel?: Int;
-  maxLevel?: Int;
+export type GeoOptionsProperty = {
+  properties: {
+    options?: {
+      maxCells?: number;
+      minLevel?: number;
+      maxLevel?: number;
+    }
+  }
 };
 
-export type GeoJsonState = {
+export type GeoJsonState = GeoOptionsProperty & {
   type: 'geojson';
   properties: {
     type?: 'shape' | 'centroid' | 'point';
-    options?: GeoOptions;
   };
 };
 
-export type GeoPointState = {
+export type GeoPointState = GeoOptionsProperty & {
   type: 'geopoint';
   properties: {
     latitude?: string[];
     longitude?: string[];
-    options?: GeoOptions;
   };
 };
 
@@ -681,29 +686,4 @@ export const formSchema: JSONSchemaType<FormState> = {
       ' "stopwords", "collation", "segmentation", "pipeline", "geojson", "geopoint"'
   },
   required: ['name', 'features']
-};
-
-export type State = {
-  formState: FormState;
-  formCache: object;
-  show: boolean;
-  showJsonForm: boolean;
-  lockJsonForm: boolean;
-  renderKey: string;
-};
-
-export type DispatchArgs = {
-  type: string;
-  field?: {
-    path: string;
-    value?: any;
-  };
-  basePath?: string;
-  formState?: FormState;
-};
-
-export type FormProps = {
-  formState: BaseFormState | AnalyzerTypeState | FormState;
-  dispatch: Dispatch<DispatchArgs>;
-  disabled?: boolean;
 };
