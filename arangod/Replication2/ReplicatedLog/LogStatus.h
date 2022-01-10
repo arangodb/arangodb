@@ -142,6 +142,7 @@ struct LogStatus {
 struct GlobalStatus {
   agency::LogCurrentSupervision supervision;
   std::optional<LogStatus> logStatus;
+  std::optional<ServerID> leaderId;
   static auto fromVelocyPack(velocypack::Slice slice) -> GlobalStatus;
   void toVelocyPack(velocypack::Builder& builder) const;
 };

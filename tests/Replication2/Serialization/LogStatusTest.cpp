@@ -262,7 +262,8 @@ TEST(LogStatusTest, global_status) {
   auto supervision = agency::LogCurrentSupervision{};
   supervision.election = std::move(election);
 
-  auto status = GlobalStatus{supervision, LogStatus{UnconfiguredStatus{}}};
+  auto status =
+      GlobalStatus{supervision, LogStatus{UnconfiguredStatus{}}, "LeaderId"};
 
   VPackBuilder builder;
   status.toVelocyPack(builder);
@@ -279,7 +280,8 @@ TEST(LogStatusTest, global_status) {
     },
     "logStatus": {
       "role": "unconfigured"
-    }
+    },
+    "leaderId": "LeaderId"
   })"_vpack;
   auto statusSlice = velocypack::Slice(jsonBuffer->data());
   EXPECT_TRUE(VelocyPackHelper::equal(slice, statusSlice, true))
@@ -287,7 +289,13 @@ TEST(LogStatusTest, global_status) {
 
   builder.clear();
   status.logStatus = std::nullopt;
+  status.leaderId = std::nullopt;
   status.toVelocyPack(builder);
   status = GlobalStatus::fromVelocyPack(builder.slice());
   EXPECT_EQ(status.logStatus, std::nullopt);
+  EXPECT_EQ(status.leaderId, std::nullopt);
+
+  builder.clear();
+  status = GlobalStatus::fromVelocyPack(statusSlice);
+  EXPECT_EQ(status.leaderId, "LeaderId");
 }

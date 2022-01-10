@@ -231,14 +231,14 @@ struct ReplicatedLogMethodsCoordinator final
       if (ex.code() == TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED) {
         return GlobalStatus{
             replication2::agency::methods::getCurrentSupervision(vocbase, id),
-            std::nullopt};
+            std::nullopt, std::nullopt};
       }
       throw;
     }
 
     return network::sendRequest(pool, "server:" + leaderId,
                                 fuerte::RestVerb::Get, path)
-        .thenValue([&](network::Response&& resp) {
+        .thenValue([&, leaderId](network::Response&& resp) {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());
           }
@@ -249,7 +249,8 @@ struct ReplicatedLogMethodsCoordinator final
               replication2::replicated_log::LogStatus::fromVelocyPack(
                   resp.slice().get("result"));
           return GlobalStatus{.supervision = std::move(supervision),
-                              .logStatus = std::move(logStatus)};
+                              .logStatus = std::move(logStatus),
+                              .leaderId = leaderId};
         });
   }
 
