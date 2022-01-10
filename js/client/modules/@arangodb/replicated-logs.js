@@ -69,6 +69,20 @@ ArangoReplicatedLog.prototype.status = function() {
   return requestResult.result;
 };
 
+ArangoReplicatedLog.prototype.localStatus = function () {
+  let query = '/local-status';
+  let requestResult = this._database._connection.GET(this._baseurl() + query);
+  arangosh.checkRequestResult(requestResult);
+  return requestResult.result;
+};
+
+ArangoReplicatedLog.prototype.globalStatus = function () {
+  let query = '/global-status';
+  let requestResult = this._database._connection.GET(this._baseurl() + query);
+  arangosh.checkRequestResult(requestResult);
+  return requestResult.result;
+};
+
 ArangoReplicatedLog.prototype.head = function(limit) {
   let query = '/head';
   if (limit !== undefined) {

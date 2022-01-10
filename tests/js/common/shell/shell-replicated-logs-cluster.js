@@ -97,6 +97,15 @@ function ReplicatedLogsWriteSuite () {
       db._replicatedLog(logId).drop();
     },
 
+    testStatus : function () {
+      let log = db._replicatedLog(logId);
+      let status = log.status();
+      assertEqual(status.logStatus.local.commitIndex, 1);
+      assertTrue(status.logStatus.local.commitIndex, 1);
+      let globalStatus = log.globalStatus();
+      assertEqual(status, globalStatus);
+    },
+
     testInsert : function() {
       let log = db._replicatedLog(logId);
       let index = 0;
