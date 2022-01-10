@@ -2,12 +2,14 @@ import Ajv from "ajv";
 import ajvErrors from 'ajv-errors';
 import {
   AnalyzerTypeState,
-  AqlState, ClassificationState,
+  AqlState,
+  ClassificationState,
   CollationState,
   DelimiterState,
   formSchema,
   GeoJsonState,
-  GeoPointState, NearestNeighborsState,
+  GeoPointState,
+  NearestNeighborsState,
   NGramState,
   NormState,
   PipelineStates,
