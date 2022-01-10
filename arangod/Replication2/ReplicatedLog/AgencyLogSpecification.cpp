@@ -261,7 +261,7 @@ auto LogCurrent::Leader::toVelocyPack(VPackBuilder& builder) const -> void {
   builder.add(StaticStrings::ServerId, VPackValue(serverId));
   builder.add(VPackValue(StringCommittedParticipantsConfig));
   if (committedParticipantsConfig) {
-      committedParticipantsConfig->toVelocyPack(builder);
+    committedParticipantsConfig->toVelocyPack(builder);
   }
   builder.add("leadershipEstablished", VPackValue(leadershipEstablished));
   if (commitStatus) {

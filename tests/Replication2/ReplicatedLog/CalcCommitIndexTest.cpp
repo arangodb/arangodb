@@ -237,8 +237,9 @@ TEST_F(CalcCommitIndexTest, all_excluded) {
       participants, CalculateCommitIndexOptions{3, 3, 3}, LogIndex{1},
       LogIndex{50});
   EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_TRUE(std::holds_alternative<CommitFailReason::NonEligibleServerRequiredForQuorum>(
-      reason.value));
+  EXPECT_TRUE(
+      std::holds_alternative<
+          CommitFailReason::NonEligibleServerRequiredForQuorum>(reason.value));
   auto const& details =
       std::get<CommitFailReason::NonEligibleServerRequiredForQuorum>(
           reason.value);

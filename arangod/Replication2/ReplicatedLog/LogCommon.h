@@ -396,7 +396,8 @@ struct CommitFailReason {
     void toVelocyPack(velocypack::Builder& builder) const;
     friend auto operator==(
         NonEligibleServerRequiredForQuorum const& left,
-        NonEligibleServerRequiredForQuorum const& right) noexcept -> bool = default;
+        NonEligibleServerRequiredForQuorum const& right) noexcept
+        -> bool = default;
   };
   std::variant<NothingToCommit, QuorumSizeNotReached,
                ForcedParticipantNotInQuorum, NonEligibleServerRequiredForQuorum>
@@ -407,7 +408,8 @@ struct CommitFailReason {
       -> CommitFailReason;
   static auto withForcedParticipantNotInQuorum(ParticipantId who) noexcept
       -> CommitFailReason;
-  static auto withNonEligibleServerRequiredForQuorum(NonEligibleServerRequiredForQuorum::CandidateMap) noexcept
+  static auto withNonEligibleServerRequiredForQuorum(
+      NonEligibleServerRequiredForQuorum::CandidateMap) noexcept
       -> CommitFailReason;
 
   static auto fromVelocyPack(velocypack::Slice) -> CommitFailReason;

@@ -536,8 +536,7 @@ auto algorithms::calculateCommitIndex(
   for (auto const& p : indexes) {
     if (p.isFailed()) {
       candidates.emplace(
-          p.id,
-          CommitFailReason::NonEligibleServerRequiredForQuorum::kFailed);
+          p.id, CommitFailReason::NonEligibleServerRequiredForQuorum::kFailed);
     } else if (p.isExcluded()) {
       candidates.emplace(
           p.id,
