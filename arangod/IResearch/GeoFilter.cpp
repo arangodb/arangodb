@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -199,7 +199,7 @@ struct GeoState {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief corresponding stored field
   //////////////////////////////////////////////////////////////////////////////
-  const irs::columnstore_reader::column_reader* storedField;
+  const irs::column_reader* storedField;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief reader using for iterate over the terms
@@ -259,7 +259,7 @@ class GeoQuery final : public irs::filter::prepared {
     }
 
     auto* reader = state->storedField;
-    auto columnIt = reader ? reader->iterator() : nullptr;
+    auto columnIt = reader ? reader->iterator(false) : nullptr;
 
     if (!columnIt) {
       return irs::doc_iterator::empty();
@@ -356,7 +356,7 @@ std::pair<GeoStates, irs::bstring> prepareStates(
     auto& state = res.first.insert(segment);
     state.reader = reader;
     state.states = std::move(termStates);
-    state.storedField = segment.column_reader(field);
+    state.storedField = segment.column(field);
     termStates.clear();
   }
 

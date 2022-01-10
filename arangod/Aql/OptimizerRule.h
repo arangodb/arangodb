@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -357,6 +357,13 @@ struct OptimizerRule {
 #endif
 
   static_assert(scatterInClusterRule < parallelizeGatherRule);
+
+  static_assert(moveCalculationsUpRule < applySortLimitRule,
+                "sort-limit adds/moves limit nodes. And calculations should "
+                "not be moved up after that.");
+  static_assert(moveCalculationsUpRule2 < applySortLimitRule,
+                "sort-limit adds/moves limit nodes. And calculations should "
+                "not be moved up after that.");
 
   std::string_view name;
   RuleFunction func;

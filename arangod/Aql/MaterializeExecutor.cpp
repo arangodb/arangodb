@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -101,6 +101,15 @@ arangodb::aql::MaterializeExecutor<T>::produceRows(
     TRI_ASSERT(collection != nullptr);
     _readDocumentContext._inputRow = &input;
     _readDocumentContext._outputRow = &output;
+
+    TRI_IF_FAILURE("MaterializeExecutor::all_fail") { continue; }
+
+    TRI_IF_FAILURE("MaterializeExecutor::only_one") {
+      if (output.numRowsWritten() > 0) {
+        continue;
+      }
+    }
+
     written =
         collection->getPhysical()
             ->read(&_trx,

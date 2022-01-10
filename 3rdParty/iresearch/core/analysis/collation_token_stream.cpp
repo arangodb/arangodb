@@ -32,13 +32,11 @@
 
 #include "utils/vpack_utils.hpp"
 
-#include <string_view>
-
 namespace {
 
 using namespace irs;
 
-constexpr std::string_view LOCALE_PARAM_NAME {"locale"};
+constexpr VPackStringRef LOCALE_PARAM_NAME {"locale"};
 
 bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
   if (!slice.isString()) {

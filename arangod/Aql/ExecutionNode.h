@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -682,7 +682,7 @@ class EnumerateCollectionNode : public ExecutionNode,
                       unsigned flags) const override final;
 
  private:
-  /// @brief whether or not we want random iteration
+  /// @brief whether or not we want a random document from the collection
   bool _random;
 
   /// @brief a possible hint from the user regarding which index to use
@@ -771,7 +771,7 @@ class LimitNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief tell the node to fully count what it will limit
-  void setFullCount();
+  void setFullCount(bool enable = true);
 
   bool fullCount() const noexcept;
 

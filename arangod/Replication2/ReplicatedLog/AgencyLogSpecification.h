@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -45,6 +46,8 @@ struct LogPlanTermSpecification {
   };
   std::optional<Leader> leader;
 
+  // TODO remove the participants map here in favour of
+  //      LogPlanSpecification::participantsConfig::participants.
   struct Participant {};
   std::unordered_map<ParticipantId, Participant> participants;
 
@@ -132,6 +135,7 @@ struct LogCurrent {
   std::optional<LogCurrentSupervision> supervision;
 
   struct Leader {
+    ParticipantId serverId;
     LogTerm term;
     ParticipantsConfig committedParticipantsConfig;
 
@@ -139,6 +143,7 @@ struct LogCurrent {
     static auto fromVelocyPack(VPackSlice) -> Leader;
   };
 
+  // Will be nullopt until leadership has been established
   std::optional<Leader> leader;
 
   auto toVelocyPack(VPackBuilder&) const -> void;

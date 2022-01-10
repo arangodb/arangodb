@@ -274,7 +274,7 @@ class doc_iterator final : public irs::doc_iterator {
       const irs::posting& posting,
       const byte_block_pool::sliced_reader& freq,
       const byte_block_pool::sliced_reader* prox) {
-    doc_.value = 0;
+    std::get<document>(attrs_).value = 0;
     freq_.value = 0;
     cookie_ = 0;
     freq_in_ = freq;
@@ -307,16 +307,18 @@ class doc_iterator final : public irs::doc_iterator {
   }
 
   virtual doc_id_t value() const noexcept override {
-    return doc_.value;
+    return std::get<document>(attrs_).value;
   }
 
   virtual bool next() override {
+    auto& doc = std::get<document>(attrs_);
+
     if (freq_in_.eof()) {
       if (!posting_) {
         return false;
       }
 
-      doc_.value = posting_->doc;
+      doc.value = posting_->doc;
       freq_.value = posting_->freq;
 
       if (has_cookie_) {
@@ -336,16 +338,16 @@ class doc_iterator final : public irs::doc_iterator {
         }
 
         assert(delta < doc_limits::eof());
-        doc_.value += doc_id_t(delta);
+        doc.value += doc_id_t(delta);
 
         if (has_cookie_) {
           cookie_ += read_cookie(freq_in_);
         }
       } else {
-        doc_.value += irs::vread<uint32_t>(freq_in_);
+        doc.value += irs::vread<uint32_t>(freq_in_);
       }
 
-      assert(doc_.value != posting_->doc);
+      assert(doc.value != posting_->doc);
     }
 
     pos_.clear();
@@ -355,11 +357,10 @@ class doc_iterator final : public irs::doc_iterator {
 
  private:
   using attributes = std::tuple<
-    attribute_ptr<frequency>, attribute_ptr<position>>;
+    document, attribute_ptr<frequency>, attribute_ptr<position>>;
 
   const field_data* field_{};
   uint64_t cookie_{};
-  document doc_;
   frequency freq_;
   pos_iterator<byte_block_pool::sliced_reader> pos_;
   byte_block_pool::sliced_reader freq_in_;
@@ -731,8 +732,7 @@ class term_reader final : public irs::basic_term_reader,
 field_data::field_data(
     const string_ref& name,
     const features_t& features,
-    const field_features_t& field_features,
-    const feature_column_info_provider_t& feature_columns,
+    const feature_info_provider_t& feature_columns,
     std::deque<cached_column>& cached_features,
     columnstore_writer& columns,
     byte_block_pool::inserter& byte_writer,
@@ -745,32 +745,38 @@ field_data::field_data(
     int_writer_(&int_writer),
     proc_table_(TERM_PROCESSING_TABLES[size_t(random_access)]),
     last_doc_(doc_limits::invalid()) {
-  features_.reserve(field_features.size());
   for (const type_info::type_id feature : features) {
-    const auto it = field_features.find(feature);
+    assert(feature_columns);
+    auto [feature_column_info, feature_writer_factory] = feature_columns(feature);
 
-    if (IRS_UNLIKELY(it == field_features.end())) {
-      assert(false);
-      continue;
-    }
+    auto feature_writer = feature_writer_factory
+      ? (*feature_writer_factory)({})
+      : nullptr;
 
-    if (it->second) {
-      assert(feature_columns);
+    if (feature_writer) {
+      columnstore_writer::column_finalizer_f finalizer =
+          [writer = feature_writer.get()](bstring& out) {
+              writer->finish(out);
+              return string_ref::NIL;
+          };
 
       if (random_access) {
         // sorted index case
         auto* id = &meta_.features[feature];
         *id = field_limits::invalid();
-        auto& stream = cached_features.emplace_back(id, feature_columns(feature));
-
+        auto& stream = cached_features.emplace_back(
+            id, feature_column_info,
+            std::move(finalizer));
         features_.emplace_back(
-            it->second,
+            std::move(feature_writer),
             [stream = &stream.stream](doc_id_t doc) mutable -> column_output& {
               stream->prepare(doc);
               return *stream; });
       } else {
-        auto [id, handler] = columns.push_column(feature_columns(feature));
-        features_.emplace_back(it->second, std::move(handler));
+        auto [id, handler] = columns.push_column(
+            feature_column_info,
+            std::move(finalizer));
+        features_.emplace_back(std::move(feature_writer), std::move(handler));
         meta_.features[feature] = id;
       }
     } else {
@@ -1144,13 +1150,11 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
 // -----------------------------------------------------------------------------
 
 fields_data::fields_data(
-    const field_features_t& field_features,
-    const feature_column_info_provider_t& feature_columns,
+    const feature_info_provider_t& feature_info,
     std::deque<cached_column>& cached_features,
     const comparer* comparator /*= nullptr*/)
   : comparator_(comparator),
-    field_features_(&field_features),
-    feature_columns_(&feature_columns),
+    feature_info_(&feature_info),
     cached_features_(&cached_features),
     byte_writer_(byte_pool_.begin()),
     int_writer_(int_pool_.begin()) {
@@ -1172,8 +1176,8 @@ field_data* fields_data::emplace(
   if (!it->second) {
     try {
       fields_.emplace_back(
-        name, features, *field_features_,
-        *feature_columns_, *cached_features_, columns,
+        name, features,
+        *feature_info_, *cached_features_, columns,
         byte_writer_, int_writer_,
         index_features, (nullptr != comparator_));
     } catch (...) {

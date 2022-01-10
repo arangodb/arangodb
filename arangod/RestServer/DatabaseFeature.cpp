@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -833,7 +833,8 @@ ErrorCode DatabaseFeature::dropDatabase(std::string const& name,
           [&res, &vocbase](arangodb::LogicalDataSource& dataSource) -> bool {
         // skip LogicalCollection since their internal state is always in the
         // StorageEngine (optimization)
-        if (arangodb::LogicalCollection::category() == dataSource.category()) {
+        if (arangodb::LogicalDataSource::Category::kCollection ==
+            dataSource.category()) {
           return true;
         }
 

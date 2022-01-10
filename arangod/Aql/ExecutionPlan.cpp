@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -280,8 +280,8 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
                    value->isBoolValue()) {
           options->setRefactor(value);
         } else {
-          ExecutionPlan::invalidOptionAttribute(ast->query(), "TRAVERSAL",
-                                                name.data(), name.size());
+          ExecutionPlan::invalidOptionAttribute(
+              ast->query(), "unknown", "TRAVERSAL", name.data(), name.size());
         }
       }
     }
@@ -335,14 +335,52 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
         } else if (name == StaticStrings::GraphRefactorFlag) {
           options->setRefactor(value->getBoolValue());
         } else {
-          ExecutionPlan::invalidOptionAttribute(ast->query(), "SHORTEST_PATH",
-                                                name.data(), name.size());
+          ExecutionPlan::invalidOptionAttribute(ast->query(), "unknown",
+                                                "SHORTEST_PATH", name.data(),
+                                                name.size());
         }
       }
     }
   }
 
   return options;
+}
+
+// extract "maxProjections" from FOR options
+size_t extractMaxProjections(QueryContext& query, AstNode const* node) {
+  if (node != nullptr && node->type == AstNodeType::NODE_TYPE_OBJECT) {
+    for (size_t i = 0; i < node->numMembers(); i++) {
+      AstNode const* child = node->getMember(i);
+
+      if (child->type == AstNodeType::NODE_TYPE_OBJECT_ELEMENT) {
+        TRI_ASSERT(child->numMembers() > 0);
+        std::string_view name(child->getStringView());
+        if (name == arangodb::StaticStrings::IndexHintMaxProjections) {
+          AstNode const* value = child->getMember(0);
+          int64_t maxProjections = -1;
+
+          if (value->isNumericValue()) {
+            if (value->isIntValue()) {
+              maxProjections = value->getIntValue();
+            } else if (value->isDoubleValue()) {
+              maxProjections = static_cast<int64_t>(value->getDoubleValue());
+            }
+          }
+          if (maxProjections >= 0) {
+            // got a valid value
+            return static_cast<size_t>(maxProjections);
+          }
+          // will raise a warning, which can optionally abort the query
+          ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
+                                                name.data(), name.size());
+          break;
+        }
+      }
+    }
+  }
+
+  // default value
+  return DocumentProducingNode::kMaxProjections;
 }
 
 std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast,
@@ -438,9 +476,12 @@ ExecutionPlan::~ExecutionPlan() {
 }
 
 void ExecutionPlan::invalidOptionAttribute(QueryContext& query,
+                                           char const* errorReason,
                                            char const* operationName,
                                            char const* name, size_t length) {
-  std::string msg("usage of unknown OPTIONS attribute '");
+  std::string msg("usage of ");
+  msg.append(errorReason);
+  msg.append(" OPTIONS attribute '");
   msg.append(name, length);
   msg.append("' in ");
   msg.append(operationName);
@@ -937,7 +978,7 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
           options.ignoreErrors = value->isTrue();
         } else {
           if (addWarnings) {
-            invalidOptionAttribute(query, operationName, name.data(),
+            invalidOptionAttribute(query, "unknown", operationName, name.data(),
                                    name.size());
           }
         }
@@ -981,8 +1022,8 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
           }
         }
         if (!handled) {
-          invalidOptionAttribute(_ast->query(), "COLLECT", name.data(),
-                                 name.size());
+          invalidOptionAttribute(_ast->query(), "unknown", "COLLECT",
+                                 name.data(), name.size());
         }
       }
     }
@@ -1091,6 +1132,11 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
       ExecutionNode::castTo<EnumerateCollectionNode*>(en)->setCanReadOwnWrites(
           ReadOwnWrites::yes);
     }
+    size_t maxProjections = ::extractMaxProjections(_ast->query(), options);
+    auto* dn = dynamic_cast<DocumentProducingNode*>(en);
+    TRI_ASSERT(dn != nullptr);
+    dn->setMaxProjections(maxProjections);
+
   } else if (expression->type == NODE_TYPE_VIEW) {
     // second operand is a view
     std::string const viewName = expression->getString();
