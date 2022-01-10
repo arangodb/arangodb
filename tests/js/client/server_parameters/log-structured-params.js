@@ -30,9 +30,7 @@ const fs = require('fs');
 
 if (getOptions === true) {
   return {
-    'log.structured-param': ['database=true', 'url', 'username'],
-//    'log.structured-param': 'url',
-//    'log.structured-param': 'username',
+    'log.structured-param': ['database=true', 'url', 'username', "pregelId=false"],
   };
 }
 
@@ -45,23 +43,16 @@ function LoggerSuite() {
 
     testStartingParameters: function () {
       let res = arango.GET("/_admin/log/structured");
-      print(res);
-
-      let lines = res.split('\n');
-      for (let i = 0; lines.size(); ++i) {
-        print(lines[i]);
-        let msg = JSON.parse(lines[i]);
-        assertTrue(msg.hasOwnProperty("database"), msg);
-        assertTrue(msg.hasOwnProperty("username"), msg);
-        assertTrue(msg.hasOwnProperty("url"), msg);
-      }
-
-      },
+      assertTrue(res.hasOwnProperty("database"));
+      assertTrue(res.hasOwnProperty("username"));
+      assertTrue(res.hasOwnProperty("url"));
+      assertFalse(res.hasOwnProperty("pregelId"));
+    },
 
     testLogEntries: function() {
       let res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
 require('console').log("testmann: start"); 
-for (let i = 0; i < 50; ++i) {
+for (let i = 0; i < 10; ++i) {
   require('console').log("testmann: testi" + i);
 }
 require('console').log("testmann: done"); 
@@ -84,86 +75,32 @@ return require('internal').options()["log.output"];
           return line.match(/testmann: /);
         });
 
-        if (filtered.length === 52) {
+        if (filtered.length === 12) {
           break;
         }
 
         require("internal").sleep(0.5);
       }
-      assertEqual(52, filtered.length);
+      assertEqual(12, filtered.length);
 
       assertTrue(filtered[0].match(/testmann: start/));
-      for (let i = 1; i < 51; ++i) {
-        print(filtered[i]);
+      for (let i = 1; i < 11; ++i) {
         assertTrue(filtered[i].match(/testmann: testi\d+/));
-        let msg = JSON.parse(filtered[i]);
-        assertTrue(msg.hasOwnProperty("time"), msg);
-        assertTrue(msg.hasOwnProperty("pid"), msg);
-        assertTrue(msg.hasOwnProperty("level"), msg);
-        assertTrue(msg.hasOwnProperty("topic"), msg);
-        assertTrue(msg.hasOwnProperty("id"), msg);
-        assertFalse(msg.hasOwnProperty("hostname"), msg);
-        assertFalse(msg.hasOwnProperty("role"), msg);
-        assertFalse(msg.hasOwnProperty("tid"), msg);
-        assertTrue(msg.hasOwnProperty("database"), msg);
-        assertTrue(msg.hasOwnProperty("username"), msg);
-        assertTrue(msg.hasOwnProperty("url"), msg);
-        assertMatch(/^[a-f0-9]{5}/, msg.id, msg);
-        assertTrue(msg.hasOwnProperty("message"), msg);
-        assertEqual("testmann: testi" + (i - 1), msg.message, msg);
+        assertTrue(filtered[i].match("[database: _system]"));
+        assertTrue(filtered[i].match("[username: root]"));
+        assertTrue(filtered[i].match(`[url: /_admin/execute?returnBodyAsJSON=true]`));
       }
-      assertTrue(filtered[51].match(/testmann: done/));
+      assertTrue(filtered[11].match(/testmann: done/));
     },
 
     testLogNewEntries: function() {
       let res = arango.PUT("/_admin/log/structured", {"dog": true, "queryId": true, "database": false});
 
-      print("response ", res);
-
-      assertTrue(Array.isArray(res));
-      assertTrue(res.length > 0);
-
-      let logfile = res[res.length - 1].replace(/^file:\/\//, '');
-
-      // log is buffered, so give it a few tries until the log messages appear
-  //    let tries = 0;
-      let filtered = [];
-   //   while (++tries < 60) {
-        let content = fs.readFileSync(logfile, 'ascii');
-        let lines = content.split('\n');
-
-        filtered = lines.filter((line) => {
-          console.log(line);
-          return;
-        });
-
-   //     if (filtered.length === 52) {
-   //       break;
-   //     }
-
-   //     require("internal").sleep(0.5);
-   //   }
-      /*
-      for (let i = 1; i < 51; ++i) {
-        assertTrue(filtered[i].match(/testmann: testi\d+/));
-        let msg = JSON.parse(filtered[i]);
-        assertTrue(msg.hasOwnProperty("time"), msg);
-        assertTrue(msg.hasOwnProperty("pid"), msg);
-        assertTrue(msg.hasOwnProperty("level"), msg);
-        assertTrue(msg.hasOwnProperty("topic"), msg);
-        assertTrue(msg.hasOwnProperty("id"), msg);
-        assertFalse(msg.hasOwnProperty("hostname"), msg);
-        assertFalse(msg.hasOwnProperty("role"), msg);
-        assertFalse(msg.hasOwnProperty("tid"), msg);
-        assertTrue(msg.hasOwnProperty("database"), msg);
-        assertTrue(msg.hasOwnProperty("username"), msg);
-        assertTrue(msg.hasOwnProperty("url"), msg);
-        assertMatch(/^[a-f0-9]{5}/, msg.id, msg);
-        assertTrue(msg.hasOwnProperty("message"), msg);
-        assertEqual("testmann: testi" + (i - 1), msg.message, msg);
-      }
-      assertTrue(filtered[51].match(/testmann: done/));
-      */
+      assertTrue(res.hasOwnProperty("queryId"));
+      assertTrue(res.hasOwnProperty("url"));
+      assertTrue(res.hasOwnProperty("username"));
+      assertFalse(res.hasOwnProperty("dog"));
+      assertFalse(res.hasOwnProperty("database"));
     },
 
   };
