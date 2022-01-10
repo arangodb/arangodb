@@ -94,6 +94,9 @@ struct RocksDBMetadata final {
     return false;
 #endif
   }
+#else
+  // non-maintainer mode...
+  static constexpr bool tainted() const noexcept { return false; }
 #endif
 
   /**
