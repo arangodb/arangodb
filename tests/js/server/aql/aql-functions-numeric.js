@@ -5773,14 +5773,14 @@ function ahuacatlNumericFunctionsTestSuite () {
           [-10, 40, 5, 0, 0.1, 1.0000000000000458e-100],
           [41, 40, 5, 5, 0.7, 1]
         ].forEach(function (value) {
-          const [arg, origin, scale, offset, decay] = value;
+          const [arg, origin, scale, offset, decay, expected] = value;
 
           const query = `RETURN DECAY_GAUSS(${arg}, ${origin}, ${scale}, ${offset}, ${decay})`;
           let actual = getQueryResults(query);
-          assertAlmostEqual(value[5], actual[0], query + " " + JSON.stringify(value));
+          assertAlmostEqual(expected, actual[0], query + " " + JSON.stringify(value));
 
           actual = getQueryResults(`RETURN NOOPT(DECAY_GAUSS(${arg}, ${origin}, ${scale}, ${offset}, ${decay}))`);
-          assertAlmostEqual(value[5], actual[0], value, query + " " + JSON.stringify(value));
+          assertAlmostEqual(expected, actual[0], query + " " + JSON.stringify(value));
         });
     },
 
@@ -5794,14 +5794,14 @@ function ahuacatlNumericFunctionsTestSuite () {
           [0, 0, 0.001, 10, 0.2, 1],
           [41, 40, 5, 5, 0.7, 1]
         ].forEach(function (value) {
-          const [arg, origin, scale, offset, decay] = value;
+          const [arg, origin, scale, offset, decay, expected] = value;
 
           const query = `RETURN DECAY_EXP(${arg}, ${origin}, ${scale}, ${offset}, ${decay})`;
           let actual = getQueryResults(query);
-          assertAlmostEqual(value[5], actual[0], query + " " + JSON.stringify(value));
+          assertAlmostEqual(expected, actual[0], query + " " + JSON.stringify(value));
 
           actual = getQueryResults(`RETURN NOOPT(DECAY_EXP(${arg}, ${origin}, ${scale}, ${offset}, ${decay}))`);
-          assertAlmostEqual(value[5], actual[0], value, query + " " + JSON.stringify(value));
+          assertAlmostEqual(expected, actual[0], query + " " + JSON.stringify(value));
         });
     },
 
@@ -5815,14 +5815,14 @@ function ahuacatlNumericFunctionsTestSuite () {
           [1, 0, 10, 0, 0.2, 0.92],
           [-10, 40, 5, 0, 0.1, 0]
         ].forEach(function (value) {
-          const [arg, origin, scale, offset, decay] = value;
+          const [arg, origin, scale, offset, decay, expected] = value;
 
           const query = `RETURN DECAY_LINEAR(${arg}, ${origin}, ${scale}, ${offset}, ${decay})`;
           let actual = getQueryResults(query);
-          assertAlmostEqual(value[5], actual[0], query + " " + JSON.stringify(value));
+          assertAlmostEqual(expected, actual[0], query + " " + JSON.stringify(value));
 
           actual = getQueryResults(`RETURN NOOPT(DECAY_LINEAR(${arg}, ${origin}, ${scale}, ${offset}, ${decay}))`);
-          assertAlmostEqual(value[5], actual[0], value, query + " " + JSON.stringify(value));
+          assertAlmostEqual(expected, actual[0], query + " " + JSON.stringify(value));
         });
     },
     
