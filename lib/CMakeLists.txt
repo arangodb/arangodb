@@ -54,7 +54,7 @@ else()
 endif()
 
 if (USE_LOCAL_CLOCK_GETTIME)
-  set(LIB_CLOCK_GETTIME Utilities/clock_gettime.cpp Logger/LogStructuredParamsAllowList.h)
+  set(LIB_CLOCK_GETTIME Utilities/clock_gettime.cpp)
 endif ()
 
 add_library(arango STATIC
