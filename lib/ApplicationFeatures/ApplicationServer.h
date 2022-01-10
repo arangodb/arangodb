@@ -230,14 +230,11 @@ class ApplicationServer {
   // adds a feature to the application server. the application server
   // will take ownership of the feature object and destroy it in its
   // destructor
-  template<
-      typename Type, typename As = Type, typename... Args,
-      typename std::enable_if<std::is_base_of<ApplicationFeature, Type>::value,
-                              int>::type = 0,
-      typename std::enable_if<std::is_base_of<ApplicationFeature, As>::value,
-                              int>::type = 0,
-      typename std::enable_if<std::is_base_of<As, Type>::value, int>::type = 0>
+  template<typename Type, typename As = Type, typename... Args>
   As& addFeature(Args&&... args) {
+    static_assert(std::is_base_of_v<Type, As> || std::is_base_of_v<As, Type>);
+    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
+    static_assert(std::is_base_of_v<ApplicationFeature, As>);
     TRI_ASSERT(!hasFeature<As>());
     std::pair<FeatureMap::iterator, bool> result = _features.try_emplace(
         std::type_index(typeid(As)),
@@ -261,65 +258,44 @@ class ApplicationServer {
 
   // checks for the existence of a feature. will not throw when used for
   // a non-existing feature
-  template<typename Type,
-           typename std::enable_if<
-               std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0>
+  template<typename Type>
   bool hasFeature() const noexcept {
-    return hasFeature(std::type_index(typeid(Type)));
+    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
+    return hasFeature(std::type_index{typeid(Type)});
   }
 
   // returns a reference to a feature given the type. will throw when used for
   // a non-existing feature
-  template<
-      typename AsType,
-      typename std::enable_if<
-          std::is_base_of<ApplicationFeature, AsType>::value, int>::type = 0>
-  AsType& getFeature(std::type_index type) const {
+  template<typename As>
+  As& getFeature(std::type_index type) const {
+    static_assert(std::is_base_of_v<ApplicationFeature, As>);
     auto it = _features.find(type);
     if (it == _features.end()) {
       throwFeatureNotFoundException(type.name());
     }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto obj = dynamic_cast<AsType*>(it->second.get());
+    auto obj = dynamic_cast<As*>(it->second.get());
     TRI_ASSERT(obj != nullptr);
     return *obj;
 #else
-    return *static_cast<AsType*>(it->second.get());
+    return *static_cast<As*>(it->second.get());
 #endif
   }
 
   // returns a const reference to a feature. will throw when used for
   // a non-existing feature
-  template<typename Type, typename AsType = Type,
-           typename std::enable_if<
-               std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0,
-           typename std::enable_if<std::is_base_of<Type, AsType>::value ||
-                                       std::is_base_of<AsType, Type>::value,
-                                   int>::type = 0>
-  AsType& getFeature() const {
-    auto it = _features.find(std::type_index(typeid(Type)));
-    if (it == _features.end()) {
-      throwFeatureNotFoundException(typeid(Type).name());
-    }
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto obj = dynamic_cast<AsType*>(it->second.get());
-    TRI_ASSERT(obj != nullptr);
-    return *obj;
-#else
-    return *static_cast<AsType*>(it->second.get());
-#endif
+  template<typename Type, typename As = Type>
+  As& getFeature() const {
+    static_assert(std::is_base_of_v<Type, As> || std::is_base_of_v<As, Type>);
+    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
+    return getFeature<As>(std::type_index{typeid(Type)});
   }
 
   // returns the feature with the given name if known and enabled
   // throws otherwise
-  template<typename Type, typename AsType = Type,
-           typename std::enable_if<
-               std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0,
-           typename std::enable_if<std::is_base_of<Type, AsType>::value ||
-                                       std::is_base_of<AsType, Type>::value,
-                                   int>::type = 0>
-  AsType& getEnabledFeature() const {
-    AsType& feature = getFeature<Type, AsType>();
+  template<typename Type, typename As = Type>
+  As& getEnabledFeature() const {
+    As& feature = getFeature<Type, As>();
     if (!feature.isEnabled()) {
       throwFeatureNotEnabledException(typeid(Type).name());
     }
