@@ -335,10 +335,10 @@ void PathValidator<ProviderType, PathStore, vertexUniqueness,
                    edgeUniqueness>::reset() {
   if constexpr (vertexUniqueness != VertexUniquenessLevel::NONE) {
     _uniqueVertices.clear();
+  }
 
-    if constexpr (edgeUniqueness != EdgeUniquenessLevel::NONE) {
-      _uniqueEdges.clear();
-    }
+  if constexpr (edgeUniqueness != EdgeUniquenessLevel::NONE) {
+    _uniqueEdges.clear();
   }
 }
 

@@ -68,11 +68,9 @@ auto OneSidedEnumerator<Configuration>::destroyEngines() -> void {
 
 template<class Configuration>
 void OneSidedEnumerator<Configuration>::clear(bool keepPathStore) {
-  if (!keepPathStore) {
-    _interior.reset();
-  }
   _queue.clear();
   _results.clear();
+  _validator.reset();
 
   if (!keepPathStore) {
     _interior.reset();
