@@ -52,6 +52,9 @@ class RocksDBRecoveryManager;
 struct RocksDBMetadata final {
   friend class RocksDBRecoveryManager;
 
+  RocksDBMetadata(RocksDBMetadata const&) = delete;
+  RocksDBMetadata operator=(RocksDBMetadata const&) = delete;
+
   /// @brief collection count
   struct DocCount {
     rocksdb::SequenceNumber
@@ -73,6 +76,25 @@ struct RocksDBMetadata final {
 
  public:
   RocksDBMetadata();
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // marks document counts as tainted during testing
+  void setTainted() { _tainted = true; }
+#endif
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool tainted() const noexcept {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+    // if we use failure tests, the document counts may have been intentionally
+    // corrupted. the tainted state is set by the failure points that corrupt
+    // the counters.
+    return _tainted;
+#else
+    // if we don't use failure tests, the document counts are never tainted.
+    return false;
+#endif
+  }
+#endif
 
   /**
    * @brief Place a blocker to allow proper commit/serialize semantics
@@ -193,6 +215,11 @@ struct RocksDBMetadata final {
   // below values are updated immediately, but are not serialized
   std::atomic<uint64_t> _numberDocuments;
   std::atomic<RevisionId> _revisionId;
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // whether document counts are tainted during testing
+  bool _tainted = false;
+#endif
 };
 
 /// helper class for acquiring and releasing a blocker.
