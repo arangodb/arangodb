@@ -234,22 +234,24 @@ Query::~Query() {
     std::shared_ptr<transaction::Context> ctx, QueryString queryString,
     std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
     aql::QueryOptions options) {
-  // workaround to enable make_shared on a class with a private/protected
+  // workaround to enable make_shared with a class with a private/protected
   // constructor
-  struct MakeSharedQuery : public Query {
-    MakeSharedQuery(
-        std::shared_ptr<transaction::Context> ctx, QueryString queryString,
-        std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
-        aql::QueryOptions options)
-        : Query(std::move(ctx), std::move(queryString),
+  struct Container {
+    Container(std::shared_ptr<transaction::Context> ctx,
+              QueryString queryString,
+              std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
+              aql::QueryOptions options)
+        : query(std::move(ctx), std::move(queryString),
                 std::move(bindParameters), std::move(options)) {}
+    Query query;
   };
 
   TRI_ASSERT(ctx != nullptr);
 
-  return std::make_shared<MakeSharedQuery>(
-      std::move(ctx), std::move(queryString), std::move(bindParameters),
-      std::move(options));
+  auto s = std::make_shared<Container>(std::move(ctx), std::move(queryString),
+                                       std::move(bindParameters),
+                                       std::move(options));
+  return std::shared_ptr<Query>{std::move(s), &s->query};
 }
 
 /// @brief return the user that started the query
