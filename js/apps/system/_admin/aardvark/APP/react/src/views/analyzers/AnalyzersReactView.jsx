@@ -1,13 +1,13 @@
-/* global arangoHelper, frontendConfig, $ */
+/* global $ */
 
 import { isEqual, map, sortBy } from 'lodash';
-import minimatch from 'minimatch';
 import React, { useCallback, useEffect, useState } from 'react';
 import useSWR from 'swr';
+import { ArangoTable, ArangoTD, ArangoTH } from '../../components/arango/table';
 import Modal, { ModalBody, ModalFooter, ModalHeader } from '../../components/modal/Modal';
 import { Cell, Grid } from '../../components/pure-css/grid';
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
-import { getChangeHandler } from '../../utils/helpers';
+import { facetedFilter, getChangeHandler, isAdminUser, usePermissions } from '../../utils/helpers';
 import Actions from './Actions';
 import AddAnalyzer from './AddAnalyzer';
 import { typeNameMap } from './constants';
@@ -69,12 +69,11 @@ const toggleHeaderDropdown = () => {
   $('#analyzersDropdown2').slideToggle(200);
 };
 
+const facets = ['db', 'name', 'type'];
+
 const AnalyzersReactView = () => {
   const { data } = useSWR('/analyzer', (path) => getApiRouteForCurrentDB().get(path));
-  const { data: permData } = useSWR(
-    `/user/${arangoHelper.getCurrentJwtUsername()}/database/${frontendConfig.db}`,
-    (path) => getApiRouteForCurrentDB().get(path)
-  );
+  const permissions = usePermissions();
 
   const [filterExpr, setFilterExpr] = useState('');
   const [filteredAnalyzers, setFilteredAnalyzers] = useState([]);
@@ -98,36 +97,10 @@ const AnalyzersReactView = () => {
   };
 
   useEffect(() => {
-    let tempFilteredAnalyzers = analyzers;
-
-    if (filterExpr) {
-      try {
-        const filters = filterExpr.trim().split(/\s+/);
-
-        for (const filter of filters) {
-          const splitIndex = filter.indexOf(':');
-          const field = filter.slice(0, splitIndex);
-          const pattern = filter.slice(splitIndex + 1);
-
-          tempFilteredAnalyzers = tempFilteredAnalyzers.filter(
-            analyzer => minimatch(analyzer[field].toLowerCase(), `*${pattern.toLowerCase()}*`));
-        }
-      } catch (e) {
-        tempFilteredAnalyzers = tempFilteredAnalyzers.filter(analyzer => {
-          const normalizedPattern = `*${filterExpr.toLowerCase()}*`;
-
-          return ['db', 'name', 'type'].some(
-            field => minimatch(analyzer[field].toLowerCase(), normalizedPattern));
-        });
-      }
-    }
-
-    processAndSetFilteredAnalyzers(tempFilteredAnalyzers);
+    processAndSetFilteredAnalyzers(facetedFilter(filterExpr, analyzers, facets));
   }, [analyzers, filterExpr, processAndSetFilteredAnalyzers]);
 
-  if (data && permData) {
-    const permission = permData.body.result;
-
+  if (data) {
     if (!isEqual(map(data.body.result, 'name'), map(analyzers, 'name'))) {
       setAnalyzers(data.body.result);
       processAndSetFilteredAnalyzers(data.body.result);
@@ -177,16 +150,20 @@ const AnalyzersReactView = () => {
       <div className={'contentDiv'} id={'analyzersContent'} style={{ paddingTop: 0 }}>
         <Grid>
           <Cell size={'1'}>
-            <div className={'sectionHeader'}>
-              <div className={'title'}><AddAnalyzer analyzers={analyzers}/></div>
-            </div>
-            <table className={'arango-table'}>
+            {
+              isAdminUser(permissions)
+                ? <div className={'sectionHeader'}>
+                  <div className={'title'}><AddAnalyzer analyzers={analyzers}/></div>
+                </div>
+                : null
+            }
+            <ArangoTable className={'arango-table'}>
               <thead>
               <tr>
-                <th className={'arango-table-th table-cell0'}>DB</th>
-                <th className={'arango-table-th table-cell1'}>Name</th>
-                <th className={'arango-table-th table-cell2'}>Type</th>
-                <th className={'arango-table-th table-cell3'}>Actions</th>
+                <ArangoTH seq={0}>DB</ArangoTH>
+                <ArangoTH seq={1}>Name</ArangoTH>
+                <ArangoTH seq={2}>Type</ArangoTH>
+                <ArangoTH seq={3}>Actions</ArangoTH>
               </tr>
               </thead>
               <tbody>
@@ -194,22 +171,22 @@ const AnalyzersReactView = () => {
                 filteredAnalyzers.length
                   ? filteredAnalyzers.map((analyzer, idx) => (
                     <tr key={analyzer.name}>
-                      <td className={'arango-table-td table-cell0'}>{analyzer.db}</td>
-                      <td className={'arango-table-td table-cell1'}>{analyzer.name}</td>
-                      <td className={'arango-table-td table-cell2'}>{typeNameMap[analyzer.type]}</td>
-                      <td className={'arango-table-td table-cell3'}>
-                        <Actions analyzer={analyzer} permission={permission} modalCidSuffix={idx}/>
-                      </td>
+                      <ArangoTD seq={0}>{analyzer.db}</ArangoTD>
+                      <ArangoTD seq={1}>{analyzer.name}</ArangoTD>
+                      <ArangoTD seq={2}>{typeNameMap[analyzer.type]}</ArangoTD>
+                      <ArangoTD seq={3}>
+                        <Actions analyzer={analyzer} permission={permissions} modalCidSuffix={idx}/>
+                      </ArangoTD>
                     </tr>
                   ))
                   : <tr>
-                    <td className={'arango-table-td table-cell0'} colSpan={4}>
+                    <ArangoTD seq={0} colSpan={4}>
                       No analyzers found.
-                    </td>
+                    </ArangoTD>
                   </tr>
               }
               </tbody>
-            </table>
+            </ArangoTable>
           </Cell>
         </Grid>
       </div>

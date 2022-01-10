@@ -1,27 +1,20 @@
-import React from "react";
-import { DispatchArgs, FormProps, Int, PipelineStates, typeNameMap } from "../constants";
+import React, { Dispatch } from "react";
+import { AnalyzerTypeState, PipelineState, PipelineStates, typeNameMap } from "../constants";
+import { DispatchArgs, FormProps } from "../../../utils/constants";
 import { Cell, Grid } from "../../../components/pure-css/grid";
-import { getForm, getPath } from "../helpers";
+import { getForm } from "../helpers";
 import { omit } from "lodash";
 import TypeInput from "./inputs/TypeInput";
-import styled from 'styled-components';
+import { getPath } from "../../../utils/helpers";
+import { ArangoTable, ArangoTD } from "../../../components/arango/table";
+import { IconButton } from "../../../components/arango/buttons";
 
-const StyledButton = styled.button`
-  &&& {
-    margin-top: 10px;
-  }
-`;
-const StyledIcon = styled.i`
-  &&& {
-    margin-left: auto;
-  }
-`;
 const restrictedTypeNameMap = omit(typeNameMap, 'geojson', 'geopoint', 'pipeline', 'identity');
 
-const PipelineForm = ({ formState, dispatch, disabled }: FormProps) => {
-  const items = (formState as PipelineStates).properties.pipeline;
+const PipelineForm = ({ formState, dispatch, disabled }: FormProps<PipelineStates>) => {
+  const items = formState.properties.pipeline;
 
-  const removeItem = (index: Int) => {
+  const removeItem = (index: number) => {
     const tempItems = items.slice();
 
     tempItems.splice(index, 1);
@@ -34,11 +27,11 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps) => {
     });
   };
 
-  const getRemover = (index: Int) => () => {
+  const getRemover = (index: number) => () => {
     removeItem(index);
   };
 
-  const moveUp = (index: Int) => {
+  const moveUp = (index: number) => {
     const tempItems = items.slice();
     const item = tempItems[index];
     const prevItem = tempItems[index - 1];
@@ -53,7 +46,7 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps) => {
     });
   };
 
-  const moveDown = (index: Int) => {
+  const moveDown = (index: number) => {
     const tempItems = items.slice();
     const item = tempItems[index];
     const nextItem = tempItems[index + 1];
@@ -68,7 +61,7 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps) => {
     });
   };
 
-  const getShifter = (direction: 'up' | 'down', index: Int) => {
+  const getShifter = (direction: 'up' | 'down', index: number) => {
     switch (direction) {
       case 'up':
         return () => {
@@ -98,9 +91,9 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps) => {
     });
   };
 
-  const getWrappedDispatch = (index: Int) => (action: DispatchArgs) => {
+  const getWrappedDispatch = (index: number): Dispatch<DispatchArgs<PipelineState>> => (action: DispatchArgs<PipelineState>) => {
     action.basePath = getPath(`properties.pipeline[${index}]`, action.basePath);
-    dispatch(action);
+    (dispatch as unknown as Dispatch<DispatchArgs<PipelineState>>)(action);
   };
 
   return <Grid>
@@ -108,72 +101,65 @@ const PipelineForm = ({ formState, dispatch, disabled }: FormProps) => {
       disabled
         ? null
         : <Cell size={'1'}>
-          <button className={'button-warning'} onClick={addAnalyzer}>
-            <i className={'fa fa-plus'}/>&nbsp;Add Analyzer
-          </button>
+          <IconButton icon={'plus'} type={'warning'} onClick={addAnalyzer}>Add Analyzer</IconButton>
         </Cell>
     }
     <Cell size={'1'}>
-      <table className={'arango-table'} style={{
+      <ArangoTable style={{
         marginTop: 5,
         marginBottom: 5
       }}>
         <tbody>
         {
           items.map((item, idx) => {
+            const isFirst = idx === 0;
             const isLast = idx === items.length - 1;
-            const index = idx as Int;
-            const itemDispatch = getWrappedDispatch(index);
+            const itemDispatch = getWrappedDispatch(idx);
 
             return <tr key={idx} style={{ borderBottom: '1px  solid #DDD' }}>
-              <td className={'arango-table-td table-cell0'} valign={'middle'}>{idx + 1}.</td>
-              <td className={`arango-table-td table-cell1`}>
+              <ArangoTD seq={0}>{idx + 1}.</ArangoTD>
+              <ArangoTD seq={1}>
                 <Grid>
                   <Cell size={'3-4'}>
-                    <TypeInput formState={item} dispatch={itemDispatch} inline={true} key={idx}
+                    <TypeInput formState={item}
+                               dispatch={itemDispatch as Dispatch<DispatchArgs<AnalyzerTypeState>>}
+                               inline={true} key={idx}
                                typeNameMap={restrictedTypeNameMap} disabled={disabled}/>
                   </Cell>
                   {
                     disabled
                       ? null
                       : <Cell size={'1-4'}>
-                        <StyledButton className={'button-danger'} onClick={getRemover(index)}>
-                          <StyledIcon className={'fa fa-trash-o'}/>
-                        </StyledButton>&nbsp;
-                        <StyledButton className={'button-warning'} onClick={getShifter('up', index)}
-                                      disabled={index === 0}>
-                          <StyledIcon className={'fa fa-arrow-up'}/>
-                        </StyledButton>&nbsp;
-                        <StyledButton className={'button-warning'} onClick={getShifter('down', index)}
-                                      disabled={isLast}>
-                          <StyledIcon className={'fa fa-arrow-down'}/>
-                        </StyledButton>
+                        <IconButton icon={'trash-o'} type={'danger'} style={{ marginTop: 10 }}
+                                    onClick={getRemover(idx)}/>&nbsp;
+                        <IconButton icon={'arrow-up'} type={'warning'} style={{ marginTop: 10 }}
+                                    onClick={getShifter('up', idx)} disabled={isFirst}/>&nbsp;
+                        <IconButton icon={'arrow-down'} type={'warning'} style={{ marginTop: 10 }}
+                                    onClick={getShifter('down', idx)} disabled={isLast}/>
                       </Cell>
                   }
                   <Cell size={'1'}>
                     {
                       getForm({
                         formState: item,
-                        dispatch: itemDispatch,
+                        dispatch: itemDispatch as Dispatch<DispatchArgs<AnalyzerTypeState>>,
                         disabled
                       })
                     }
                   </Cell>
                 </Grid>
-              </td>
+              </ArangoTD>
             </tr>;
           })
         }
         </tbody>
-      </table>
+      </ArangoTable>
     </Cell>
     {
       disabled || items.length === 0
         ? null
         : <Cell size={'1'}>
-          <button className={'button-warning'} onClick={addAnalyzer}>
-            <i className={'fa fa-plus'}/>&nbsp;Add Analyzer
-          </button>
+          <IconButton icon={'plus'} type={'warning'} onClick={addAnalyzer}>Add Analyzer</IconButton>
         </Cell>
     }
   </Grid>;

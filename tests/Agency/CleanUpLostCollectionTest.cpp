@@ -43,8 +43,6 @@ const std::string COLLECTION = "collection";
 const std::string SHARD = "s99";
 const std::string SHARD_LEADER = "leader";
 const std::string SHARD_FOLLOWER1 = "follower1";
-const std::string FREE_SERVER = "free";
-const std::string FREE_SERVER2 = "free2";
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -74,24 +72,6 @@ Node createRootNode() {
   Node root("ROOT");
   root.handle<SET>(builder.slice());
   return root;
-}
-
-VPackBuilder createJob(std::string const& collection, std::string const& from,
-                       std::string const& to) {
-  VPackBuilder builder;
-  {
-    VPackObjectBuilder b(&builder);
-    builder.add("jobId", VPackValue("1"));
-    builder.add("creator", VPackValue("unittest"));
-    builder.add("type", VPackValue("moveShard"));
-    builder.add("database", VPackValue(DATABASE));
-    builder.add("collection", VPackValue(collection));
-    builder.add("shard", VPackValue(SHARD));
-    builder.add("fromServer", VPackValue(from));
-    builder.add("toServer", VPackValue(to));
-    builder.add("isLeader", VPackValue(from == SHARD_LEADER));
-  }
-  return builder;
 }
 
 class CleanUpLostCollectionTest : public ::testing::Test {

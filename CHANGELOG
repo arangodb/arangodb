@@ -27,6 +27,8 @@ devel
 
   The maximum number of attributes to store in `storedValues` is 32.
 
+* Fixed issue #15476: FATAL {crash} occurs on a simple query.
+
 * Added `disableIndex` index hint for AQL FOR loops. This index hint disables
   the usage of any index (except geo or full text indexes) and will cause a
   full scan over the collection.
