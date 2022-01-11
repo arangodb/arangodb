@@ -58,9 +58,8 @@ struct WaitForResult;
 struct ReplicatedLogMethods {
   static constexpr auto kDefaultLimit = std::size_t{10};
 
-  typedef std::variant<replication2::replicated_log::LogStatus,
-                       replication2::replicated_log::GlobalStatus>
-      GenericLogStatus;
+  using GenericLogStatus = std::variant<replication2::replicated_log::LogStatus,
+                       replication2::replicated_log::GlobalStatus>;
 
   virtual ~ReplicatedLogMethods() = default;
   virtual auto createReplicatedLog(agency::LogPlanSpecification const& spec)
