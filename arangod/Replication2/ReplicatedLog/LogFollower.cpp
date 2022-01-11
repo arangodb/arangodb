@@ -80,7 +80,7 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
     // hard to find out. Thus we increase the log level for this message to make
     // this more visible.
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-#define LOST_LOG_CORE_LOGLEVEL WARN
+#define LOST_LOG_CORE_LOGLEVEL INFO
 #else
 #define LOST_LOG_CORE_LOGLEVEL DEBUG
 #endif
