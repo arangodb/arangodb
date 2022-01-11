@@ -80,6 +80,9 @@ const createTermSpecification = function (term, servers, config, leader) {
     return spec;
 };
 
+const getServerHealth = function (serverId) {
+    return readAgencyValueAt(`Supervision/Health/${serverId}/Status`);
+};
 
 const dbservers = (function () {
     return global.ArangoClusterInfo.getDBServers().map((x) => x.serverId);
@@ -184,6 +187,42 @@ const continueServer = function (serverId) {
     }
 };
 
+const allServersHealthy = function () {
+    return function () {
+        for (const server of dbservers) {
+            const health = getServerHealth(server);
+            if (health !== "GOOD") {
+                return Error(`${server} is ${health}`);
+            }
+        }
+
+        return true;
+    };
+};
+
+const checkServerHealth = function (serverId, value) {
+    return function () {
+        return value === getServerHealth(serverId);
+    };
+};
+
+const serverHealthy = (serverId) => checkServerHealth(serverId, "GOOD");
+const serverFailed = (serverId) => checkServerHealth(serverId, "FAILED");
+
+const waitForServersHealth = function () {
+    waitFor(allServersHealthy());
+};
+
+const continueServerWaitOk = function (serverId) {
+    continueServer(serverId);
+    waitFor(serverHealthy(serverId));
+};
+
+const stopServerWaitFailed = function (serverId) {
+    continueServer(serverId);
+    waitFor(serverFailed(serverId));
+};
+
 const nextUniqueLogId = function() {
     return parseInt(global.ArangoClusterInfo.uniqid());
 };
@@ -212,3 +251,6 @@ exports.continueServer = continueServer;
 exports.nextUniqueLogId = nextUniqueLogId;
 exports.registerAgencyTestBegin = registerAgencyTestBegin;
 exports.registerAgencyTestEnd = registerAgencyTestEnd;
+exports.waitForServersHealth = waitForServersHealth;
+exports.continueServerWaitOk = continueServerWaitOk;
+exports.stopServerWaitFailed = stopServerWaitFailed;
