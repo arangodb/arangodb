@@ -103,14 +103,13 @@ auto methods::updateParticipantsConfigTrx(
       paths::plan()->replicatedLogs()->database(database)->log(to_string(id));
 
   return envelope.write()
-      .emplace_object(logPath->str(),
+      .emplace_object(logPath->participantsConfig()->str(),
                       [&](VPackBuilder& builder) {
                         participantsConfig.toVelocyPack(builder);
                       })
       .inc(paths::plan()->version()->str())
       .precs()
       .isNotEmpty(logPath->str())
-      .isEqual(logPath->participantsConfig()->str(), prevConfig.generation)
       .end();
 }
 
