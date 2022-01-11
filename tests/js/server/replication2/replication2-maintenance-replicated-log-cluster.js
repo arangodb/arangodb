@@ -168,10 +168,12 @@ const checkCommitFailReasonReport = function () {
       const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
       const leader = servers[0];
       const term = 1;
+      const generation = 1;
       replicatedLogSetPlan(database, logId, {
         id: logId,
         targetConfig,
         currentTerm: createTermSpecification(term, servers, targetConfig, leader),
+        participantsConfig: createParticipantsConfig(generation, servers),
       });
 
       waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
@@ -184,18 +186,20 @@ const checkCommitFailReasonReport = function () {
       const leader = servers[0];
       const followers = _.difference(servers, [leader]);
       const term = 1;
+      const generation = 1;
       replicatedLogSetPlan(database, logId, {
         id: logId,
         targetConfig,
         currentTerm: createTermSpecification(term, servers, targetConfig, leader),
+        participantsConfig: createParticipantsConfig(generation, servers),
       });
 
       waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
 
       const [followerA, followerB] = _.sampleSize(followers, 2);
-      replicatedLogUpdatePlanParticipantsFlags(database, logId, {
-        [followerA]: {excluded: true},
-        [followerB]: {excluded: true}
+      replicatedLogUpdatePlanParticipantsConfigParticipants(database, logId, {
+        [followerA]: {excluded: true, forced: false},
+        [followerB]: {excluded: true, forced: false},
       });
 
       waitFor(replicatedLogLeaderCommitFail(database, logId, "NonEligibleServerRequiredForQuorum"));
@@ -206,9 +210,9 @@ const checkCommitFailReasonReport = function () {
         assertEqual(status.candidates[followerB], "excluded");
       }
 
-      replicatedLogUpdatePlanParticipantsFlags(database, logId, {
-        [followerA]: undefined,
-        [followerB]: undefined
+      replicatedLogUpdatePlanParticipantsConfigParticipants(database, logId, {
+        [followerA]: {excluded: false, forced: false},
+        [followerB]: {excluded: true, forced: false},
       });
 
       waitFor(replicatedLogLeaderCommitFail(database, logId, undefined));
