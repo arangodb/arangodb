@@ -953,7 +953,13 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
      */
 
     // TODO [GraphRefactor]: Remove me!
-    opts->setRefactor(true);
+    if (ServerState::instance()->isSingleServer()) {
+      // By the current state, refactored graph traversal code is only enabled
+      // in the single server environment.
+      opts->setRefactor(true);
+    } else {
+      opts->setRefactor(false);
+    }
     LOG_DEVEL << "[GraphRefactor] Refactor enabled: " << std::boolalpha
               << opts->refactor();
 
@@ -1196,8 +1202,6 @@ void TraversalNode::prepareOptions() {
   Ast* ast = _plan->getAst();
 
   // Compute Edge Indexes. First default indexes:
-  LOG_DEVEL << "Prepare options.";
-
   for (size_t i = 0; i < numEdgeColls; ++i) {
     auto dir = _directions[i];
     switch (dir) {
