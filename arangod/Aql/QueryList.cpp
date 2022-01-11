@@ -114,11 +114,9 @@ QueryList::QueryList(QueryRegistryFeature& feature)
 }
 
 /// @brief insert a query
-bool QueryList::insert(Query* query) {
-  TRI_ASSERT(query != nullptr);
-
+bool QueryList::insert(Query& query) {
   // not enabled or no query string
-  if (!enabled() || query->queryString().empty()) {
+  if (!enabled() || query.queryString().empty()) {
     return false;
   }
 
@@ -130,7 +128,8 @@ bool QueryList::insert(Query* query) {
     }
 
     // return whether or not insertion worked
-    bool inserted = _current.insert({query->id(), query}).second;
+    bool inserted =
+        _current.insert({query.id(), query.shared_from_this()}).second;
     _queryRegistryFeature.trackQueryStart();
     return inserted;
   } catch (...) {
@@ -139,9 +138,7 @@ bool QueryList::insert(Query* query) {
 }
 
 /// @brief remove a query
-void QueryList::remove(Query* query) {
-  TRI_ASSERT(query != nullptr);
-
+void QueryList::remove(Query& query) {
   // we're intentionally not checking _enabled here...
 
   // note: there is the possibility that a query got inserted when the
@@ -149,7 +146,7 @@ void QueryList::remove(Query* query) {
   // is turned off. in this case, removal is forced so the contents of
   // the list are correct
 
-  TRI_ASSERT(!query->queryString().empty());
+  TRI_ASSERT(!query.queryString().empty());
 
   {
     // acquire the query list's write lock only for a short amount of
@@ -158,14 +155,14 @@ void QueryList::remove(Query* query) {
     // not required
     WRITE_LOCKER(writeLocker, _lock);
 
-    if (_current.erase(query->id()) == 0) {
+    if (_current.erase(query.id()) == 0) {
       // not found
       return;
     }
   }
 
   // elapsed time since query start
-  double const elapsed = elapsedSince(query->startTime());
+  double const elapsed = elapsedSince(query.startTime());
 
   _queryRegistryFeature.trackQueryEnd(elapsed);
 
@@ -173,7 +170,7 @@ void QueryList::remove(Query* query) {
     return;
   }
 
-  bool const isStreaming = query->queryOptions().stream;
+  bool const isStreaming = query.queryOptions().stream;
   double threshold =
       isStreaming ? _slowStreamingQueryThreshold.load(std::memory_order_relaxed)
                   : _slowQueryThreshold.load(std::memory_order_relaxed);
@@ -196,11 +193,11 @@ void QueryList::remove(Query* query) {
       size_t const maxQueryStringLength =
           _maxQueryStringLength.load(std::memory_order_relaxed);
 
-      std::string q = extractQueryString(*query, maxQueryStringLength);
+      std::string q = extractQueryString(query, maxQueryStringLength);
       std::string bindParameters;
       if (_trackBindVars) {
         // also log bind variables
-        auto bp = query->bindParameters();
+        auto bp = query.bindParameters();
         if (bp != nullptr && !bp->slice().isNone()) {
           bindParameters.append(", bind vars: ");
           bp->slice().toJson(bindParameters);
@@ -213,7 +210,7 @@ void QueryList::remove(Query* query) {
 
       std::string dataSources;
       if (_trackDataSources) {
-        auto const d = query->collectionNames();
+        auto const d = query.collectionNames();
         if (!d.empty()) {
           size_t i = 0;
           dataSources = ", data sources: [";
@@ -230,28 +227,28 @@ void QueryList::remove(Query* query) {
         }
       }
 
-      auto resultCode = query->resultCode();
+      auto resultCode = query.resultCode();
 
       LOG_TOPIC("8bcee", WARN, Logger::QUERIES)
           << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q
           << "'" << bindParameters << dataSources
-          << ", database: " << query->vocbase().name()
-          << ", user: " << query->user() << ", id: " << query->id()
-          << ", token: QRY" << query->id() << ", exit code: " << resultCode
+          << ", database: " << query.vocbase().name()
+          << ", user: " << query.user() << ", id: " << query.id()
+          << ", token: QRY" << query.id() << ", exit code: " << resultCode
           << ", took: " << Logger::FIXED(elapsed) << " s";
 
       // acquire the query list lock again
       WRITE_LOCKER(writeLocker, _lock);
 
       _slow.emplace_back(
-          query->id(), query->vocbase().name(), query->user(), std::move(q),
-          _trackBindVars ? query->bindParameters() : nullptr,
-          _trackDataSources ? query->collectionNames()
+          query.id(), query.vocbase().name(), query.user(), std::move(q),
+          _trackBindVars ? query.bindParameters() : nullptr,
+          _trackDataSources ? query.collectionNames()
                             : std::vector<std::string>(),
           now - elapsed, /* start timestamp */
           elapsed /* run time */,
-          query->killed() ? QueryExecutionState::ValueType::KILLED
-                          : QueryExecutionState::ValueType::FINISHED,
+          query.killed() ? QueryExecutionState::ValueType::KILLED
+                         : QueryExecutionState::ValueType::FINISHED,
           isStreaming, resultCode);
 
       // _slow is an std::list, but since c++11 the size() method of all
@@ -278,8 +275,11 @@ Result QueryList::kill(TRI_voc_tick_t id) {
     return {TRI_ERROR_QUERY_NOT_FOUND, "query ID not found in query list"};
   }
 
-  Query* query = (*it).second;
-  killQuery(*query, maxLength, false);
+  auto query = it->second.lock();
+  if (query) {
+    // if we cannot lock the query, it is already beeing destroyed
+    killQuery(*query, maxLength, false);
+  }
 
   return Result();
 }
@@ -295,13 +295,13 @@ uint64_t QueryList::kill(std::function<bool(Query&)> const& filter,
   READ_LOCKER(readLocker, _lock);
 
   for (auto& it : _current) {
-    Query& query = *(it.second);
+    auto query = it.second.lock();
 
-    if (!filter(query)) {
+    if (query == nullptr || !filter(*query)) {
       continue;
     }
 
-    killQuery(query, maxLength, silent);
+    killQuery(*query, maxLength, silent);
     ++killed;
   }
 
@@ -326,9 +326,10 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
     result.reserve(_current.size());
 
     for (auto const& it : _current) {
-      Query const* query = it.second;
-
-      TRI_ASSERT(query != nullptr);
+      auto query = it.second.lock();
+      if (query == nullptr) {
+        continue;
+      }
 
       // elapsed time since query start
       double const elapsed = elapsedSince(query->startTime());
