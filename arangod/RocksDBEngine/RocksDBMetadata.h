@@ -80,6 +80,8 @@ struct RocksDBMetadata final {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // marks document counts as tainted during testing
   void setTainted() { _tainted = true; }
+#else
+  static constexpr void setTainted() noexcept {}
 #endif
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
