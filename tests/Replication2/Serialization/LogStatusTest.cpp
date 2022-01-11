@@ -303,5 +303,6 @@ TEST(LogStatusTest, global_status) {
   status = GlobalStatus::fromVelocyPack(statusSlice);
   EXPECT_EQ(status.leaderId, "LeaderId");
   EXPECT_EQ(status.participants.size(), 1);
-  EXPECT_NE(status.participants.find(*status.leaderId), status.participants.end());
+  EXPECT_NE(status.participants.find(*status.leaderId),
+            status.participants.end());
 }
