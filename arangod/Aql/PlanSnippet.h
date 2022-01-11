@@ -110,7 +110,7 @@ class PlanSnippet {
 
   // Can only be called ONCE per snippet.
   // Afterwards the Snippet is ready to be deployed
-  void insertCommunicationNodes();
+  void insertCommunicationNodes(bool isInSubquery);
 
   bool isLastNodeInSnippet(ExecutionNode const* node) const;
 

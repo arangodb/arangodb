@@ -593,6 +593,7 @@ PlanSnippet::PlanSnippet(ExecutionNode* node)
       _isOnCoordinator = false;
       break;
     }
+    case ExecutionNode::SINGLETON:
     case ExecutionNode::RETURN:
     case ExecutionNode::SORT:
     case ExecutionNode::REMOTESINGLE:
@@ -628,7 +629,7 @@ bool PlanSnippet::tryJoinAbove(ExecutionNode* node) {
   bool didJoin = false;
   // NOTE: Do never add a DEFAULT case here.
   // We want the compiler to help us on new nodes
-  // in order to remind us that we need to implementat
+  // in order to remind us that we need to implement
   // their behaviour.
   switch (node->getType()) {
     case ExecutionNode::FILTER:
@@ -642,7 +643,7 @@ bool PlanSnippet::tryJoinAbove(ExecutionNode* node) {
     case ExecutionNode::ENUMERATE_LIST: {
       if (_isOnCoordinator || _distributeOn == nullptr ||
           !_distributeOn->createKeys()) {
-        // We cannot trivally include an ENUMERATE_LIST
+        // We cannot trivially include an ENUMERATE_LIST
         // if we need to generate the keys.
         // This operation has to be on the coordinator,
         // and has to be executed once for each row, so
@@ -719,7 +720,7 @@ bool PlanSnippet::tryJoinAbove(ExecutionNode* node) {
               _topMost = node;
               didJoin = true;
             }
-            // Otherwise we cannot include the origin of distribution
+            // Otherwise, we cannot include the origin of distribution
             break;
           }
         }
@@ -777,7 +778,7 @@ bool PlanSnippet::tryJoinBelow(ExecutionNode* node) {
   bool didJoin = false;
   // NOTE: Do never add a DEFAULT case here.
   // We want the compiler to help us on new nodes
-  // in order to remind us that we need to implementat
+  // in order to remind us that we need to implement
   // their behaviour.
   switch (node->getType()) {
     case ExecutionNode::FILTER:
@@ -807,7 +808,7 @@ bool PlanSnippet::tryJoinBelow(ExecutionNode* node) {
       break;
     }
     case ExecutionNode::SUBQUERY: {
-      // For now we do not optimize Subqueries
+      // For now, we do not optimize subqueries
       // We can optimize them by joining with what we have below and above
       break;
     }
@@ -908,7 +909,7 @@ void PlanSnippet::assertInvariants() const {
 #endif
 }
 
-void PlanSnippet::insertCommunicationNodes() {
+void PlanSnippet::insertCommunicationNodes(bool isInSubquery) {
   // has to fulfill all variants on first call.
   // Will violate variants on second call, and after
   // this method is completed (_communicationNodesInserted == true);
@@ -918,10 +919,28 @@ void PlanSnippet::insertCommunicationNodes() {
     // The DBServer snippets decide how they want to be communicated to.
     // Coordinator snippets do not need to modify the plan with communication
     // nodes
+
     if (_topMost->getType() != ExecutionNode::SINGLETON) {
       // If we end in singleton, there is no call back to coordinator required.
       // Otherwise, use Remote to connect to Coordinator
       // And place a Distribute or Scatter operation on the Coordinator
+      addRemoteAbove();
+      addDistributeAbove();
+    } else if (isInSubquery) {
+      // If we are part of a subquery, end in a singleton and
+      // create communication nodes, we need to split off the Singleton
+      // and let it reside in a Coordinator-Snippet, otherwise the
+      // subquery-splicing would need to keep track of the communication being
+      // off here.
+      // Unlink the Singleton from this snippet
+      TRI_ASSERT(_topMost->getType() == ExecutionNode::SINGLETON);
+      auto singleton = _topMost;
+      _topMost = _topMost->getFirstParent();
+      assertInvariants();
+
+      singleton->setPlanSnippet(std::make_shared<PlanSnippet>(singleton));
+
+      // Now do song and dance so inject communication
       addRemoteAbove();
       addDistributeAbove();
     }
@@ -932,11 +951,10 @@ void PlanSnippet::insertCommunicationNodes() {
     addCollectBelow();
     addRemoteBelow();
     addGatherBelow();
-  }
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _communicationNodesInserted = true;
+    _communicationNodesInserted = true;
 #endif
+  }
 }
 
 void PlanSnippet::addRemoteAbove() {

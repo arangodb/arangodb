@@ -8535,6 +8535,9 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt,
 
       {  // remove singleton
         ExecutionNode* const singleton = sq->getSubquery()->getSingleton();
+        // We need to rewire the planSnippets if we have them
+        auto planSnippet = singleton->getPlanSnippet();
+        start->setPlanSnippet(planSnippet);
         std::vector<ExecutionNode*> const parents = singleton->getParents();
         TRI_ASSERT(parents.size() == 1);
         auto oldSingletonParent = parents[0];
@@ -8595,6 +8598,8 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt,
       // Create new end node
       auto end = plan->createNode<SubqueryEndNode>(
           plan.get(), plan->nextId(), inVariable, sq->outVariable());
+      // We need to rewire the planSnippets if we have them
+      end->setPlanSnippet(sq->getPlanSnippet());
       // start and end inherit this property from the subquery node
       end->setIsInSplicedSubquery(sq->isInSplicedSubquery());
       // insert a SubqueryEndNode after the SubqueryNode sq
@@ -9855,16 +9860,35 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt,
             _lastSnippet->wrapSubqueryNode(super);
             return false;
           } else {
-            // The subquery requires internal Communcation.
+            // The subquery requires internal Communication.
             // We need to apply it
             subqueryWalker.insertCommunicationNodes(
                 [&super](ExecutionNode* newRoot) {
                   super->setSubquery(newRoot, true);
-                });
-          }
+                },
+                true);
+            // The SubqueryNode will retain the outer snippets.
+            // Internally it will directly communicate to other CoordinatorBased
+            // snippets in this case, on the root as well as on the singleton
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+            TRI_ASSERT(sub->getPlanSnippet() != nullptr);
+            TRI_ASSERT(sub->getPlanSnippet()->isOnCoordinator());
 
-          // We manually handled the subquery, the walker is not allowed to
-          // enter!
+            // Now manipulate the last snippet
+            auto single = sub->getSingleton();
+            // We always end up in a singleton
+            TRI_ASSERT(single != nullptr);
+            TRI_ASSERT(single->getType() == ExecutionNode::SINGLETON);
+            // The singleton needs to be part of a snippet
+            TRI_ASSERT(single->getPlanSnippet() != nullptr);
+            // The singleton has to be on the Coordinator, otherwise the
+            // CommunicationNodes are off.
+            TRI_ASSERT(single->getPlanSnippet()->isOnCoordinator());
+            // We cannot stay on the same snippet, that should have hit the
+            // hasOnlySingleSnippet() case.
+            TRI_ASSERT(single->getPlanSnippet() != sub->getPlanSnippet());
+#endif
+          }
         }
         if (_lastSnippet == nullptr) {
           // Initial Snippet
@@ -9908,14 +9932,14 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt,
       }
 
       void insertCommunicationNodes(
-          std::function<void(ExecutionNode*)> relinkRoot) {
+          std::function<void(ExecutionNode*)> relinkRoot, bool isInSubquery) {
         // TODO: This code does not branch on subqueries this way.
         // Will terminate by break,
         // Snippets are cycle free and non-overlapping, hence we will eventually
         // reach the snippet that does not have a dependency node
         auto s = _lastSnippet;
         while (true) {
-          s->insertCommunicationNodes();
+          s->insertCommunicationNodes(isInSubquery);
           auto n = s->getHighestNode();
           if (n->hasDependency()) {
             auto dep = n->getFirstDependency();
@@ -9956,7 +9980,7 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt,
     plan->root()->walkSubqueriesFirst(mcHackiWalker);
 
     mcHackiWalker.insertCommunicationNodes(
-        [&plan](ExecutionNode* newRoot) { plan->root(newRoot, true); });
+        [&plan](ExecutionNode* newRoot) { plan->root(newRoot, true); }, false);
 
     bool modified = true;
     opt->addPlan(std::move(plan), rule, modified);
@@ -9970,7 +9994,7 @@ void arangodb::aql::distributeQueryRule(Optimizer* opt,
    * useful or even required. ExecutionNodes are traversed bottom-up (in explain
    * output order), with depth-first subquery entering. This struct can be moved
    * out of this method. i just kept them in here for simplicity to move this
-   * rule into a seperate file. there is nothing from the scope required.
+   * rule into a separate file. there is nothing from the scope required.
    */
   struct RelevantNodesFinder
       : arangodb::aql::WalkerWorkerBase<arangodb::aql::ExecutionNode> {
