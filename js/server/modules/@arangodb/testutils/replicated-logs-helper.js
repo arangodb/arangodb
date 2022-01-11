@@ -209,10 +209,6 @@ const checkServerHealth = function (serverId, value) {
 const serverHealthy = (serverId) => checkServerHealth(serverId, "GOOD");
 const serverFailed = (serverId) => checkServerHealth(serverId, "FAILED");
 
-const waitForServersHealth = function () {
-    waitFor(allServersHealthy());
-};
-
 const continueServerWaitOk = function (serverId) {
     continueServer(serverId);
     waitFor(serverHealthy(serverId));
@@ -251,6 +247,6 @@ exports.continueServer = continueServer;
 exports.nextUniqueLogId = nextUniqueLogId;
 exports.registerAgencyTestBegin = registerAgencyTestBegin;
 exports.registerAgencyTestEnd = registerAgencyTestEnd;
-exports.waitForServersHealth = waitForServersHealth;
+exports.allServersHealthy = allServersHealthy;
 exports.continueServerWaitOk = continueServerWaitOk;
 exports.stopServerWaitFailed = stopServerWaitFailed;

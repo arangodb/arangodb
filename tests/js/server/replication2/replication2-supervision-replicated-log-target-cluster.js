@@ -37,7 +37,7 @@ const {
     replicatedLogDeletePlan,
     createTermSpecification,
     replicatedLogIsReady,
-    dbservers, waitForServersHealth,
+    dbservers, allServersHealthy,
     nextUniqueLogId,
     registerAgencyTestBegin, registerAgencyTestEnd,
 } = helper;
@@ -153,7 +153,7 @@ const replicatedLogSuite = function () {
         setUpAll, tearDownAll,
         setUp: registerAgencyTestBegin,
         tearDown: function (test) {
-            waitForServersHealth();
+            waitFor(allServersHealthy());
             registerAgencyTestEnd(test);
         },
 
