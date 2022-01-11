@@ -52,6 +52,7 @@ enum Operation {
   READ_UNLOCK,
   WRITE_LOCK,
   WRITE_UNLOCK,
+  PUSH_QUEUE,
 };
 
 using namespace arangodb::velocypack;

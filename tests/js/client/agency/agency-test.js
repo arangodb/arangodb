@@ -1007,6 +1007,60 @@ function agencyTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Test "push-queue" operator
+////////////////////////////////////////////////////////////////////////////////
+
+    testOpPushQueue : function () {
+      writeAndCheck([[{"/a/c/b":[1,2,3]}]]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":"max","len":4}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[1,2,3,"max"]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":3.141592653589793,"len":4}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[2,3,"max",3.141592653589793]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":3.141592653589793,"len":3}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:["max",3.141592653589793,3.141592653589793]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":"Hello","len":5}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:["max",3.141592653589793,3.141592653589793,"Hello"]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":"World","len":6}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:["max",3.141592653589793,3.141592653589793,"Hello","World"]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":1,"len":5}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[3.141592653589793,3.141592653589793,"Hello","World",1]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":2,"len":10}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[3.141592653589793,3.141592653589793,"Hello","World",1,2]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":3,"len":10}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[3.141592653589793,3.141592653589793,"Hello","World",1,2,3]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":4,"len":10}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[3.141592653589793,3.141592653589793,"Hello","World",1,2,3,4]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":5,"len":10}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[3.141592653589793,3.141592653589793,"Hello","World",1,2,3,4,5]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":6,"len":9}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[3.141592653589793,"Hello","World",1,2,3,4,5,6]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":7,"len":8}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:["World",1,2,3,4,5,6,7]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":8,"len":6}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[3,4,5,6,7,8]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":9,"len":5}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[5,6,7,8,9]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":10,"len":4}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[7,8,9,10]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":11,"len":3}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[9,10,11]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":12,"len":2}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[11,12]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":13,"len":1}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[13]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":14,"len":0}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[13]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":14,"len":0}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[13]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":15,"len":-1}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[13]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":16,"len":1000}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[13,16]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":17,"len":3}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[13,16,17]}}}]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Test "remove" operator
 ////////////////////////////////////////////////////////////////////////////////
 

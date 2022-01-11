@@ -612,6 +612,55 @@ ResultT<std::shared_ptr<Node>> Node::handle<ERASE>(VPackSlice const& slice) {
   return ResultT<std::shared_ptr<Node>>::success(nullptr);
 }
 
+/// Push to end while keeping a specified length
+template<>
+ResultT<std::shared_ptr<Node>> Node::handle<PUSH_QUEUE>(VPackSlice const& slice) {
+  VPackSlice v = slice.get("new");
+  if (VPackSlice l = slice.get("len"); l.isInteger()) {
+    if (v.isNone()) {
+      // key "new" not present
+      return ResultT<std::shared_ptr<Node>>::error(
+        TRI_ERROR_FAILED,
+        std::string("Operator push-queue without new value: ") + slice.toJson());
+    }
+    Builder tmp;
+    {
+      VPackArrayBuilder t(&tmp);
+      if (this->slice().isArray() && !lifetimeExpired()) {
+        auto tl = this->slice().length();
+        auto ol = l.getNumber<int64_t>();
+        if (ol <= 0) {
+          return ResultT<std::shared_ptr<Node>>::error(
+              TRI_ERROR_FAILED,
+              std::string(
+                  "Operator push-queue expects a len greater than 0: ") +
+                  slice.toJson());
+        }
+        if (tl >= uint64_t(ol)) {
+          for (size_t i = tl-ol+1; i < tl; ++i) {
+            tmp.add(this->slice()[i]);
+          }
+        } else {
+          for (auto const& old : VPackArrayIterator(this->slice())) {
+            tmp.add(old);
+          }
+        }
+      }
+      tmp.add(v);
+    }
+    *this = tmp.slice();
+    return ResultT<std::shared_ptr<Node>>::success(nullptr);
+  } else {
+    // key "len" not present or not integer
+    return ResultT<std::shared_ptr<Node>>::error(
+        TRI_ERROR_FAILED,
+        std::string("Operator push-queue without integer value len: ") +
+            slice.toJson());
+  }
+}
+
+
+
 /// Replace element from any place in array by new value
 template<>
 ResultT<std::shared_ptr<Node>> Node::handle<REPLACE>(VPackSlice const& slice) {
@@ -884,6 +933,8 @@ arangodb::ResultT<std::shared_ptr<Node>> Node::applyOp(VPackSlice slice) {
     return handle<DECREMENT>(slice);
   } else if (oper == "push") {  // "op":"push"
     return handle<PUSH>(slice);
+  } else if (oper == "push-queue") {  // "op":"push-queue"
+    return handle<PUSH_QUEUE>(slice);
   } else if (oper == "pop") {  // "op":"pop"
     return handle<POP>(slice);
   } else if (oper == "prepend") {  // "op":"prepend"
