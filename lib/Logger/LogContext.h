@@ -612,10 +612,12 @@ inline LogContext::EntryPtr LogContext::Current::pushImpl(V&& v) {
 }
 
 inline void LogContext::Current::popEntry(EntryPtr& entry) noexcept {
-  auto& local = LogContext::controlBlock();
-  TRI_ASSERT(entry._entry == local._logContext._tail);
-  local._logContext.popTail(local._entryCache);
-  entry._entry = nullptr;
+  if (entry._entry != nullptr) {
+    auto& local = LogContext::controlBlock();
+    TRI_ASSERT(entry._entry == local._logContext._tail);
+    local._logContext.popTail(local._entryCache);
+    entry._entry = nullptr;
+  }
 }
 
 inline LogContext::Entry* LogContext::pushEntry(std::unique_ptr<Entry> entry) noexcept {
