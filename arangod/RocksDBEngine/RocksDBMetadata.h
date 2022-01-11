@@ -96,7 +96,7 @@ struct RocksDBMetadata final {
   }
 #else
   // non-maintainer mode...
-  static constexpr bool tainted() const noexcept { return false; }
+  static constexpr bool tainted() noexcept { return false; }
 #endif
 
   /**
