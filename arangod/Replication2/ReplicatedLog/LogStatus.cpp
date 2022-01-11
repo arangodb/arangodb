@@ -246,7 +246,6 @@ auto LogStatus::asLeaderStatus() const noexcept -> LeaderStatus const* {
 
 namespace {
 inline constexpr std::string_view kSupervision = "supervision";
-inline constexpr std::string_view kLogStatus = "logStatus";
 inline constexpr std::string_view kLeaderId = "leaderId";
 }  // namespace
 
@@ -254,9 +253,12 @@ auto GlobalStatus::toVelocyPack(velocypack::Builder& builder) const -> void {
   VPackObjectBuilder ob(&builder);
   builder.add(VPackValue(kSupervision));
   supervision.toVelocyPack(builder);
-  if (logStatus.has_value()) {
-    builder.add(VPackValue(kLogStatus));
-    logStatus->toVelocyPack(builder);
+  {
+    VPackObjectBuilder ob2(&builder, StaticStrings::Participants);
+    for (auto const& [id, status] : participants) {
+      builder.add(VPackValue(id));
+      status.toVelocyPack(builder);
+    }
   }
   if (leaderId.has_value()) {
     builder.add(kLeaderId, VPackValue(*leaderId));
@@ -270,8 +272,11 @@ auto GlobalStatus::fromVelocyPack(VPackSlice slice) -> GlobalStatus {
       << "expected " << kSupervision << " key in GlobalStatus";
   status.supervision =
       agency::LogCurrentSupervision{agency::from_velocypack, sup};
-  if (auto logStatus = slice.get(kLogStatus); !logStatus.isNone()) {
-    status.logStatus = LogStatus::fromVelocyPack(logStatus);
+  for (auto [key, value] :
+       VPackObjectIterator(slice.get(StaticStrings::Participants))) {
+    auto id = ParticipantId{key.copyString()};
+    auto stat = LogStatus::fromVelocyPack(value);
+    status.participants.emplace(std::move(id), stat);
   }
   if (auto leaderId = slice.get(kLeaderId); !leaderId.isNone()) {
     status.leaderId = leaderId.copyString();

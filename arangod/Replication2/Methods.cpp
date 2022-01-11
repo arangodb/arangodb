@@ -231,7 +231,8 @@ struct ReplicatedLogMethodsCoordinator final
       if (ex.code() == TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED) {
         return GlobalStatus{
             replication2::agency::methods::getCurrentSupervision(vocbase, id),
-            std::nullopt, std::nullopt};
+            {},
+            std::nullopt};
       }
       throw;
     }
@@ -245,11 +246,13 @@ struct ReplicatedLogMethodsCoordinator final
 
           auto supervision =
               replication2::agency::methods::getCurrentSupervision(vocbase, id);
-          auto logStatus =
+          auto leaderStatus =
               replication2::replicated_log::LogStatus::fromVelocyPack(
                   resp.slice().get("result"));
+          auto participants = std::unordered_map<ParticipantId, LogStatus>{
+              {leaderId, std::move(leaderStatus)}};
           return GlobalStatus{.supervision = std::move(supervision),
-                              .logStatus = std::move(logStatus),
+                              .participants = std::move(participants),
                               .leaderId = leaderId};
         });
   }

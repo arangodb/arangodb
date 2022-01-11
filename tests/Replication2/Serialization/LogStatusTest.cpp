@@ -262,8 +262,10 @@ TEST(LogStatusTest, global_status) {
   auto supervision = agency::LogCurrentSupervision{};
   supervision.election = std::move(election);
 
-  auto status =
-      GlobalStatus{supervision, LogStatus{UnconfiguredStatus{}}, "LeaderId"};
+  auto participants = std::unordered_map<ParticipantId, LogStatus>{
+      {"LeaderId", LogStatus{UnconfiguredStatus{}}}};
+  auto status = GlobalStatus{
+      supervision, {{"LeaderId", LogStatus{UnconfiguredStatus{}}}}, "LeaderId"};
 
   VPackBuilder builder;
   status.toVelocyPack(builder);
@@ -278,8 +280,10 @@ TEST(LogStatusTest, global_status) {
         "details": {}
       }
     },
-    "logStatus": {
-      "role": "unconfigured"
+    "participants": {
+      "LeaderId": {
+        "role": "unconfigured"
+      }
     },
     "leaderId": "LeaderId"
   })"_vpack;
@@ -288,14 +292,16 @@ TEST(LogStatusTest, global_status) {
       << "expected " << slice.toJson() << " found " << statusSlice.toJson();
 
   builder.clear();
-  status.logStatus = std::nullopt;
+  status.participants.clear();
   status.leaderId = std::nullopt;
   status.toVelocyPack(builder);
   status = GlobalStatus::fromVelocyPack(builder.slice());
-  EXPECT_EQ(status.logStatus, std::nullopt);
+  EXPECT_EQ(status.participants.size(), 0);
   EXPECT_EQ(status.leaderId, std::nullopt);
 
   builder.clear();
   status = GlobalStatus::fromVelocyPack(statusSlice);
   EXPECT_EQ(status.leaderId, "LeaderId");
+  EXPECT_EQ(status.participants.size(), 1);
+  EXPECT_NE(status.participants.find(*status.leaderId), status.participants.end());
 }

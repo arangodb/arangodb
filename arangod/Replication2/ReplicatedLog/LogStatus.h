@@ -136,13 +136,13 @@ struct LogStatus {
 };
 
 /**
-* @brief Provides a more general view of what's currently going on, without
-* completely relying on the leader.
+ * @brief Provides a more general view of what's currently going on, without
+ * completely relying on the leader.
  */
 struct GlobalStatus {
   agency::LogCurrentSupervision supervision;
-  std::optional<LogStatus> logStatus;
-  std::optional<ServerID> leaderId;
+  std::unordered_map<ParticipantId, LogStatus> participants;
+  std::optional<ParticipantId> leaderId;
   static auto fromVelocyPack(velocypack::Slice slice) -> GlobalStatus;
   void toVelocyPack(velocypack::Builder& builder) const;
 };
