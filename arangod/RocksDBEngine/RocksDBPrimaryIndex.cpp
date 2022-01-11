@@ -374,7 +374,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
     } while (true);
   }
 
-  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(CoveringCallback const& cb, size_t limit) override {
     ensureIterator();
     TRI_ASSERT(_trx->state()->isRunning());
     TRI_ASSERT(_iterator != nullptr);

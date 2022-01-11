@@ -229,9 +229,9 @@ bool supportsFilterNode(
 constexpr irs::payload NoPayload;
 
 inline irs::doc_iterator::ptr pkColumn(irs::sub_reader const& segment) {
-  auto const* reader = segment.column_reader(DocumentPrimaryKey::PK());
+  auto const* reader = segment.column(DocumentPrimaryKey::PK());
 
-  return reader ? reader->iterator() : nullptr;
+  return reader ? reader->iterator(false) : nullptr;
 }
 
 /// @brief  Struct represents value of a Projections[i]
@@ -246,10 +246,10 @@ struct CoveringValue {
     value = &NoPayload;
     // FIXME: this is cheap. Keep it here?
     auto extraValuesReader =
-        column.empty() ? rdr.sort() : rdr.column_reader(column);
+        column.empty() ? rdr.sort() : rdr.column(column);
     // FIXME: this is expensive - move it to get and do lazily?
     if (ADB_LIKELY(extraValuesReader)) {
-      itr = extraValuesReader->iterator();
+      itr = extraValuesReader->iterator(false);
       TRI_ASSERT(itr);
       if (ADB_LIKELY(itr)) {
         value = irs::get<irs::payload>(*itr);

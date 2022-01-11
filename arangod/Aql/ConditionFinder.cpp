@@ -129,6 +129,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
       }
 
       std::vector<transaction::Methods::IndexHandle> usedIndexes;
+      bool oneIndexCondition{false};
       auto [filtering, sorting] = condition->findIndexes(
           node, usedIndexes, sortCondition.get(), oneIndexCondition);
 

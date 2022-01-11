@@ -498,6 +498,11 @@ class FilterContext {
     return _analyzerProvider;
   }
 
+  arangodb::iresearch::FieldMeta::Analyzer const& contextAnalyzer()
+      const noexcept {
+    return _analyzer;
+  }
+
  private:
   AnalyzerProvider const* _analyzerProvider;
   // need shared_ptr since pool could be deleted from the feature
@@ -2513,6 +2518,12 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
           return rv;
         }
 
+        if (!filter && !analyzer._pool) {
+          // use default context analyzer for the optimization stage
+          // if actual analyzer could not be evaluated for now
+          analyzer = filterCtx.contextAnalyzer();
+        }
+
         TRI_ASSERT(analyzer._pool);
         if (!analyzer._pool) {
           return {TRI_ERROR_INTERNAL, "analyzer not found"};
@@ -3517,6 +3528,12 @@ Result fromFuncPhrase(char const* funcName, irs::boolean_filter* filter,
       return rv;
     }
 
+    if (!filter && !analyzerPool._pool) {
+      // use default context analyzer for the optimization stage
+      // if actual analyzer could not be evaluated for now
+      analyzerPool = filterCtx.contextAnalyzer();
+    }
+
     TRI_ASSERT(analyzerPool._pool);
     if (!analyzerPool._pool) {
       return {TRI_ERROR_BAD_PARAMETER};
@@ -3687,6 +3704,13 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
     if (rv.fail()) {
       return rv;
     }
+
+    if (!filter && !analyzerPool._pool) {
+      // use default context analyzer for the optimization stage
+      // if actual analyzer could not be evaluated for now
+      analyzerPool = filterCtx.contextAnalyzer();
+    }
+
     TRI_ASSERT(analyzerPool._pool);
     if (!analyzerPool._pool) {
       return {TRI_ERROR_BAD_PARAMETER};
