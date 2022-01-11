@@ -11,12 +11,13 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
       - name: Get changed files within arangod, client-tools (arangosh), lib, & tests
-        run: echo "CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} -- arangod/ client-tools/ lib/ tests/ | grep -e ".*\.cpp$" -e ".*\.hpp$" -e ".*\.cc$" -e ".*\.c$" -e ".*\.h$" | xargs)" >> $GITHUB_ENV
+        run: echo "CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} -- arangod/ client-tools/ lib/ tests/ | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$' | xargs)" >> $GITHUB_ENV
       - name: Echo changed files
         run: echo $CHANGED_FILES
       - name: arangodb-clang-format
