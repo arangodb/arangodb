@@ -37,10 +37,15 @@ namespace arangodb::replication2::replicated_log {
 struct Action {
   enum class ActionType {
     EmptyAction,
+    AddLogToPlanAction,
     UpdateTermAction,
     SuccessfulLeaderElectionAction,
     FailedLeaderElectionAction,
-    ImpossibleCampaignAction
+    ImpossibleCampaignAction,
+    UpdateParticipantFlagsAction,
+    AddParticipantToPlanAction,
+    RemoveParticipantFromPlanAction,
+    UpdateLogConfigAction
   };
   virtual void execute() = 0;
   virtual ActionType type() const = 0;
@@ -53,6 +58,9 @@ auto operator<<(std::ostream& os, Action::ActionType const& action)
     -> std::ostream&;
 auto operator<<(std::ostream& os, Action const& action) -> std::ostream&;
 
+// Empty Action
+// TODO: we currently use a mix of nullptr and EmptyAction; should only use one
+// of them.
 struct EmptyAction : Action {
   EmptyAction(){};
   void execute() override{};
@@ -61,6 +69,19 @@ struct EmptyAction : Action {
 };
 auto to_string(EmptyAction action) -> std::string;
 auto operator<<(std::ostream& os, EmptyAction const& action) -> std::ostream&;
+
+// AddLogToPlanAction
+struct AddLogToPlanAction : Action {
+  AddLogToPlanAction(){};
+  void execute() override{};
+  ActionType type() const override {
+    return Action::ActionType::AddLogToPlanAction;
+  };
+  void toVelocyPack(VPackBuilder& builder) const override;
+};
+auto to_string(AddLogToPlanAction const& action) -> std::string;
+auto operator<<(std::ostream& os, AddLogToPlanAction const& action)
+    -> std::ostream&;
 
 struct UpdateTermAction : Action {
   UpdateTermAction(LogPlanTermSpecification const& newTerm)
@@ -121,4 +142,45 @@ struct ImpossibleCampaignAction : Action {
 auto to_string(ImpossibleCampaignAction const& action) -> std::string;
 auto operator<<(std::ostream& os, ImpossibleCampaignAction const& action)
     -> std::ostream&;
+
+struct UpdateParticipantFlagsAction : Action {
+  UpdateParticipantFlagsAction(){};
+  ActionType type() const override {
+    return Action::ActionType::UpdateParticipantFlagsAction;
+  };
+
+  void execute() override{};
+  void toVelocyPack(VPackBuilder& builder) const override;
+};
+
+struct AddParticipantToPlanAction : Action {
+  AddParticipantToPlanAction(){};
+  ActionType type() const override {
+    return Action::ActionType::AddParticipantToPlanAction;
+  };
+
+  void execute() override{};
+  void toVelocyPack(VPackBuilder& builder) const override;
+};
+
+struct RemoveParticipantFromPlanAction : Action {
+  RemoveParticipantFromPlanAction(){};
+  ActionType type() const override {
+    return Action::ActionType::RemoveParticipantFromPlanAction;
+  };
+
+  void execute() override{};
+  void toVelocyPack(VPackBuilder& builder) const override;
+};
+
+struct UpdateLogConfigAction : Action {
+  UpdateLogConfigAction(){};
+  ActionType type() const override {
+    return Action::ActionType::UpdateLogConfigAction;
+  };
+
+  void execute() override{};
+  void toVelocyPack(VPackBuilder& builder) const override;
+};
+
 }  // namespace arangodb::replication2::replicated_log

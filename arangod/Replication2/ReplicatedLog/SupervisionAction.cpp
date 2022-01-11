@@ -33,6 +33,9 @@ auto to_string(Action::ActionType action) -> std::string_view {
     case Action::ActionType::EmptyAction: {
       return "Empty";
     } break;
+    case Action::ActionType::AddLogToPlanAction: {
+      return "AddLogToPlan";
+    } break;
     case Action::ActionType::FailedLeaderElectionAction: {
       return "FailedLeaderElection";
     } break;
@@ -45,6 +48,18 @@ auto to_string(Action::ActionType action) -> std::string_view {
     case Action::ActionType::ImpossibleCampaignAction: {
       return "ImpossibleCampaignAction";
     } break;
+    case Action::ActionType::UpdateParticipantFlagsAction: {
+      return "UpdateParticipantFlags";
+    } break;
+    case Action::ActionType::AddParticipantToPlanAction: {
+      return "AddParticipantToPlanAction";
+    } break;
+    case Action::ActionType::RemoveParticipantFromPlanAction: {
+      return "RemoveParticipantFromPlan";
+    } break;
+    case Action::ActionType::UpdateLogConfigAction: {
+      return "UpdateLogConfig";
+    } break;
   }
   return "this-value-is-here-to-shut-up-the-compiler-if-this-is-reached-that-"
          "is-a-bug";
@@ -56,6 +71,12 @@ auto operator<<(std::ostream& os, Action::ActionType const& action)
 }
 
 void EmptyAction::toVelocyPack(VPackBuilder& builder) const {
+  auto ob = VPackObjectBuilder(&builder);
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(to_string(type())));
+}
+
+void AddLogToPlanAction::toVelocyPack(VPackBuilder& builder) const {
   auto ob = VPackObjectBuilder(&builder);
   builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(type())));
@@ -108,6 +129,31 @@ void SuccessfulLeaderElectionAction::toVelocyPack(VPackBuilder& builder) const {
 
   builder.add(VPackValue("newTerm"));
   _newTerm.toVelocyPack(builder);
+}
+
+void UpdateParticipantFlagsAction::toVelocyPack(VPackBuilder& builder) const {
+  auto ob = VPackObjectBuilder(&builder);
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(to_string(type())));
+}
+
+void AddParticipantToPlanAction::toVelocyPack(VPackBuilder& builder) const {
+  auto ob = VPackObjectBuilder(&builder);
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(to_string(type())));
+}
+
+void RemoveParticipantFromPlanAction::toVelocyPack(
+    VPackBuilder& builder) const {
+  auto ob = VPackObjectBuilder(&builder);
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(to_string(type())));
+}
+
+void UpdateLogConfigAction::toVelocyPack(VPackBuilder& builder) const {
+  auto ob = VPackObjectBuilder(&builder);
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(to_string(type())));
 }
 
 }  // namespace arangodb::replication2::replicated_log

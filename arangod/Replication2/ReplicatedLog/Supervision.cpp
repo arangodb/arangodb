@@ -31,6 +31,8 @@
 #include "Random/RandomGenerator.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2::replicated_log {
@@ -38,9 +40,9 @@ namespace arangodb::replication2::replicated_log {
 auto checkLogAdded(const Log& log) -> std::unique_ptr<Action> {
   if (!log.plan) {
     // action that creates Plan entry for log
-    return nullptr;
+    return std::make_unique<AddLogToPlanAction>();
   }
-  return nullptr;
+  return std::make_unique<EmptyAction>();
 }
 
 auto checkLeaderHealth(LogPlanSpecification const& plan,
@@ -54,7 +56,7 @@ auto checkLeaderHealth(LogPlanSpecification const& plan,
       health.validRebootId(plan.currentTerm->leader->serverId,
                            plan.currentTerm->leader->rebootId)) {
     // Current leader is all healthy so nothing to do.
-    return nullptr;
+    return std::make_unique<EmptyAction>();
   } else {
     // Leader is not healthy; start a new term
     auto newTerm = *plan.currentTerm;
@@ -164,7 +166,7 @@ auto checkLeaderPresent(LogPlanSpecification const& plan,
   if (!current.leader) {
     return tryLeadershipElection(plan, current, health);
   } else {
-    return nullptr;
+    return std::make_unique<EmptyAction>();
   }
 }
 
@@ -180,12 +182,12 @@ auto checkLogTargetParticipantFlags(LogTarget const& target,
       // participant is in plan, check whether flags are the same
       if (targetFlags != planParticipant->second) {
         // Flags changed, so we need to commit new flags for this participant
-        return nullptr;
+        return std::make_unique<UpdateParticipantFlagsAction>();
       };
     }
   }
   // nothing changed, nothing to do
-  return nullptr;
+  return std::make_unique<EmptyAction>();
 }
 
 auto checkLogTargetParticipantAdded(LogTarget const& target,
@@ -199,10 +201,10 @@ auto checkLogTargetParticipantAdded(LogTarget const& target,
     if (auto const& planParticipant = pps.find(targetParticipant);
         planParticipant == pps.end()) {
       // Here's a participant that is not in plan yet; we add it
-      return nullptr;
+      return std::make_unique<AddParticipantToPlanAction>();
     }
   }
-  return nullptr;
+  return std::make_unique<EmptyAction>();
 }
 
 auto checkLogTargetParticipantRemoved(LogTarget const& target,
@@ -214,10 +216,10 @@ auto checkLogTargetParticipantRemoved(LogTarget const& target,
   // Check whether a participant has been removed
   for (auto const& [planParticipant, _] : pps) {
     if (!tps.contains(planParticipant)) {
-      return nullptr;
+      return std::make_unique<RemoveParticipantFromPlanAction>();
     }
   }
-  return nullptr;
+  return std::make_unique<EmptyAction>();
 }
 
 // Check whether the Target configuration differs from Plan
@@ -227,9 +229,14 @@ auto checkLogTargetConfig(LogTarget const& target,
     -> std::unique_ptr<Action> {
   if (target.config != plan.targetConfig) {
     // Validity check on config?
-    return nullptr;
+    return std::make_unique<UpdateLogConfigAction>();
   }
-  return nullptr;
+  return std::make_unique<EmptyAction>();
+}
+
+auto isEmptyAction(std::unique_ptr<Action>& action) {
+  return (action == nullptr) or
+         (action->type() == Action::ActionType::EmptyAction);
 }
 
 // The main function
@@ -238,37 +245,46 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
   // check whether this log exists in plan;
   // If it doesn't the action is to create the log
 
-  if (auto action = checkLogAdded(log)) {
+  if (auto action = checkLogAdded(log); !isEmptyAction(action)) {
     return action;
   }
 
   // TODO do we access current here? if so, check it must be present at this
   // point
-  if (auto action = checkLeaderPresent(*log.plan, *log.current, health)) {
+  if (auto action = checkLeaderPresent(*log.plan, *log.current, health);
+      !isEmptyAction(action)) {
+    LOG_DEVEL << "Leader is not present, election outcome";
     return action;
   }
 
+  LOG_DEVEL << "Asserting healthy leader here";
   TRI_ASSERT(log.plan->currentTerm->leader);
+  LOG_DEVEL << "have healthy leader";
 
   // If the leader is unhealthy, we need to create a new term
   // in the next round we should be electing a new leader above
-  if (auto action = checkLeaderHealth(*log.plan, health)) {
+  if (auto action = checkLeaderHealth(*log.plan, health);
+      !isEmptyAction(action)) {
     return action;
   }
 
-  if (auto action = checkLogTargetParticipantFlags(log.target, *log.plan)) {
+  if (auto action = checkLogTargetParticipantFlags(log.target, *log.plan);
+      !isEmptyAction(action)) {
     return action;
   }
 
-  if (auto action = checkLogTargetParticipantAdded(log.target, *log.plan)) {
+  if (auto action = checkLogTargetParticipantAdded(log.target, *log.plan);
+      !isEmptyAction(action)) {
     return action;
   }
 
-  if (auto action = checkLogTargetParticipantRemoved(log.target, *log.plan)) {
+  if (auto action = checkLogTargetParticipantRemoved(log.target, *log.plan);
+      !isEmptyAction(action)) {
     return action;
   }
 
-  if (auto action = checkLogTargetConfig(log.target, *log.plan)) {
+  if (auto action = checkLogTargetConfig(log.target, *log.plan);
+      !isEmptyAction(action)) {
     return action;
   }
 
