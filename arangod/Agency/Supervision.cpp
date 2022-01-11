@@ -2527,14 +2527,14 @@ auto parseSomethingFromNode(Node const& n) -> T {
 }
 
 template<typename T>
-auto parseIfExists(Node const& root, std::string const& url) -> std::optional<T> {
-  if (auto node = root.get(url);
-      node.has_value()) {
+auto parseIfExists(Node const& root, std::string const& url)
+    -> std::optional<T> {
+  if (auto node = root.get(url); node.has_value()) {
     return parseSomethingFromNode<T>(node->get());
   }
   return std::nullopt;
 }
-}
+}  // namespace
 
 void Supervision::checkReplicatedLogs() {
   _lock.assertLockedByCurrentThread();
@@ -2585,7 +2585,9 @@ void Supervision::checkReplicatedLogs() {
 
       auto action = checkReplicatedLog(Log{target, plan, current}, info);
       if (action != nullptr) {
-        action->execute(); // TODO write something into the envelope
+        envelope = action->execute(
+            dbName,
+            std::move(envelope));  // TODO write something into the envelope
       }
     }
   }

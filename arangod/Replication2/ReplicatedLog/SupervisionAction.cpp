@@ -25,7 +25,12 @@
 #include "velocypack/velocypack-common.h"
 #include "velocypack/velocypack-aliases.h"
 
+#include "Agency/AgencyPaths.h"
+
+#include "Logger/LogMacros.h"
+
 using namespace arangodb::replication2::agency;
+namespace paths = arangodb::cluster::paths::aliases;
 
 namespace arangodb::replication2::replicated_log {
 auto to_string(Action::ActionType action) -> std::string_view {
@@ -81,6 +86,21 @@ void AddLogToPlanAction::toVelocyPack(VPackBuilder& builder) const {
   builder.add(VPackValue("type"));
   builder.add(VPackValue(to_string(type())));
 }
+
+auto AddLogToPlanAction::execute(std::string dbName,
+                                 arangodb::agency::envelope envelope)
+    -> arangodb::agency::envelope {
+  auto path =
+      paths::plan()->replicatedLogs()->database(dbName)->log(_spec.id)->str();
+
+  return envelope.write()
+      .emplace_object(
+          path, [&](VPackBuilder& builder) { _spec.toVelocyPack(builder); })
+      .inc(paths::plan()->version()->str())
+      .precs()
+      .isEmpty(path)
+      .end();
+};
 
 void UpdateTermAction::toVelocyPack(VPackBuilder& builder) const {
   auto ob = VPackObjectBuilder(&builder);

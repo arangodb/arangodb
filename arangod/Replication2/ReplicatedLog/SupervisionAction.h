@@ -26,6 +26,7 @@
 #include "velocypack/velocypack-common.h"
 #include "velocypack/velocypack-aliases.h"
 
+#include "Agency/TransactionBuilder.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/SupervisionTypes.h"
@@ -47,7 +48,9 @@ struct Action {
     RemoveParticipantFromPlanAction,
     UpdateLogConfigAction
   };
-  virtual void execute() = 0;
+  virtual auto execute(std::string dbName, arangodb::agency::envelope envelope)
+      -> arangodb::agency::envelope = 0;
+
   virtual ActionType type() const = 0;
   virtual void toVelocyPack(VPackBuilder& builder) const = 0;
   virtual ~Action() = default;
@@ -63,7 +66,10 @@ auto operator<<(std::ostream& os, Action const& action) -> std::ostream&;
 // of them.
 struct EmptyAction : Action {
   EmptyAction(){};
-  void execute() override{};
+  auto execute(std::string dbName, arangodb::agency::envelope envelope)
+      -> arangodb::agency::envelope override {
+    return envelope;
+  };
   ActionType type() const override { return Action::ActionType::EmptyAction; };
   void toVelocyPack(VPackBuilder& builder) const override;
 };
@@ -72,12 +78,15 @@ auto operator<<(std::ostream& os, EmptyAction const& action) -> std::ostream&;
 
 // AddLogToPlanAction
 struct AddLogToPlanAction : Action {
-  AddLogToPlanAction(){};
-  void execute() override{};
+  AddLogToPlanAction(LogPlanSpecification const& spec) : _spec(spec){};
+  auto execute(std::string dbName, arangodb::agency::envelope envelope)
+      -> arangodb::agency::envelope override;
   ActionType type() const override {
     return Action::ActionType::AddLogToPlanAction;
   };
   void toVelocyPack(VPackBuilder& builder) const override;
+
+  LogPlanSpecification const _spec;
 };
 auto to_string(AddLogToPlanAction const& action) -> std::string;
 auto operator<<(std::ostream& os, AddLogToPlanAction const& action)
@@ -86,7 +95,10 @@ auto operator<<(std::ostream& os, AddLogToPlanAction const& action)
 struct UpdateTermAction : Action {
   UpdateTermAction(LogPlanTermSpecification const& newTerm)
       : _newTerm(newTerm){};
-  void execute() override{};
+  auto execute(std::string dbName, arangodb::agency::envelope envelope)
+      -> arangodb::agency::envelope override {
+    return envelope;
+  };
   ActionType type() const override {
     return Action::ActionType::UpdateTermAction;
   };
@@ -103,7 +115,10 @@ struct LeaderElectionCampaign;
 
 struct SuccessfulLeaderElectionAction : Action {
   SuccessfulLeaderElectionAction(){};
-  void execute() override{};
+  auto execute(std::string dbName, arangodb::agency::envelope envelope)
+      -> arangodb::agency::envelope override {
+    return envelope;
+  };
   ActionType type() const override {
     return Action::ActionType::SuccessfulLeaderElectionAction;
   };
@@ -119,7 +134,10 @@ auto operator<<(std::ostream& os, SuccessfulLeaderElectionAction const& action)
 
 struct FailedLeaderElectionAction : Action {
   FailedLeaderElectionAction(){};
-  void execute() override{};
+  auto execute(std::string dbName, arangodb::agency::envelope envelope)
+      -> arangodb::agency::envelope override {
+    return envelope;
+  };
   ActionType type() const override {
     return Action::ActionType::FailedLeaderElectionAction;
   };
@@ -133,7 +151,10 @@ auto operator<<(std::ostream& os, FailedLeaderElectionAction const& action)
 
 struct ImpossibleCampaignAction : Action {
   ImpossibleCampaignAction(){};
-  void execute() override{};
+  auto execute(std::string dbName, arangodb::agency::envelope envelope)
+      -> arangodb::agency::envelope override {
+    return envelope;
+  };
   ActionType type() const override {
     return Action::ActionType::ImpossibleCampaignAction;
   };
@@ -149,7 +170,10 @@ struct UpdateParticipantFlagsAction : Action {
     return Action::ActionType::UpdateParticipantFlagsAction;
   };
 
-  void execute() override{};
+  auto execute(std::string dbName, arangodb::agency::envelope envelope)
+      -> arangodb::agency::envelope override {
+    return envelope;
+  };
   void toVelocyPack(VPackBuilder& builder) const override;
 };
 
@@ -159,7 +183,10 @@ struct AddParticipantToPlanAction : Action {
     return Action::ActionType::AddParticipantToPlanAction;
   };
 
-  void execute() override{};
+  auto execute(std::string dbName, arangodb::agency::envelope envelope)
+      -> arangodb::agency::envelope override {
+    return envelope;
+  };
   void toVelocyPack(VPackBuilder& builder) const override;
 };
 
@@ -169,7 +196,10 @@ struct RemoveParticipantFromPlanAction : Action {
     return Action::ActionType::RemoveParticipantFromPlanAction;
   };
 
-  void execute() override{};
+  auto execute(std::string dbName, arangodb::agency::envelope envelope)
+      -> arangodb::agency::envelope override {
+    return envelope;
+  };
   void toVelocyPack(VPackBuilder& builder) const override;
 };
 
@@ -179,7 +209,10 @@ struct UpdateLogConfigAction : Action {
     return Action::ActionType::UpdateLogConfigAction;
   };
 
-  void execute() override{};
+  auto execute(std::string dbName, arangodb::agency::envelope envelope)
+      -> arangodb::agency::envelope override {
+    return envelope;
+  };
   void toVelocyPack(VPackBuilder& builder) const override;
 };
 

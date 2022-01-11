@@ -40,7 +40,11 @@ namespace arangodb::replication2::replicated_log {
 auto checkLogAdded(const Log& log) -> std::unique_ptr<Action> {
   if (!log.plan) {
     // action that creates Plan entry for log
-    return std::make_unique<AddLogToPlanAction>();
+    auto const spec = LogPlanSpecification(
+        log.target.id, std::nullopt, log.target.config,
+        ParticipantsConfig{.participants = log.target.participants});
+
+    return std::make_unique<AddLogToPlanAction>(spec);
   }
   return std::make_unique<EmptyAction>();
 }
@@ -163,9 +167,11 @@ auto checkLeaderPresent(LogPlanSpecification const& plan,
                         LogCurrent const& current,
                         ParticipantsHealth const& health)
     -> std::unique_ptr<Action> {
-  if (!current.leader) {
+  if (!current.leader.has_value()) {
+    LOG_DEVEL << "leader does not have a value, trying leadership election";
     return tryLeadershipElection(plan, current, health);
   } else {
+    LOG_DEVEL << "leader present";
     return std::make_unique<EmptyAction>();
   }
 }
@@ -251,15 +257,20 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
 
   // TODO do we access current here? if so, check it must be present at this
   // point
+  TRI_ASSERT(log.plan.has_value());
+
+  if (!log.current.has_value()) {
+    return std::make_unique<EmptyAction>();
+  }
+  TRI_ASSERT(log.current.has_value());
+
   if (auto action = checkLeaderPresent(*log.plan, *log.current, health);
       !isEmptyAction(action)) {
     LOG_DEVEL << "Leader is not present, election outcome";
     return action;
   }
 
-  LOG_DEVEL << "Asserting healthy leader here";
   TRI_ASSERT(log.plan->currentTerm->leader);
-  LOG_DEVEL << "have healthy leader";
 
   // If the leader is unhealthy, we need to create a new term
   // in the next round we should be electing a new leader above
