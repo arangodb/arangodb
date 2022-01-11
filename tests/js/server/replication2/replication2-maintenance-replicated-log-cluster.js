@@ -1,4 +1,5 @@
 /*jshint strict: true */
+/*global assertEqual */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,6 +98,121 @@ const replicatedLogParticipantsFlag = function (logId, flags, generation = undef
     }
 
     return true;
+  };
+};
+
+const replicatedLogLeaderCommitFail = function (database, logId, expected) {
+  return function () {
+    let {current} = readReplicatedLogAgency(database, logId);
+    if (current === undefined) {
+      return Error("current not yet defined");
+    }
+    if (!current.leader) {
+      return Error("Leader has not yet established its term");
+    }
+
+    const status = current.leader.commitStatus;
+    if (expected === undefined) {
+      if (status !== undefined) {
+        return Error(`CommitStatus not yet cleared, current-value = ${status.reason}`);
+      }
+    } else {
+      if (status === undefined) {
+        return Error("CommitStatus not yet set.");
+      } else if (status.reason !== expected) {
+        return Error(`CommitStatus not as expected, found ${status.reason}; expected ${expected}`);
+      }
+    }
+
+    return true;
+  };
+};
+
+const {setUpAll, tearDownAll} = (function () {
+  let previousDatabase, databaseExisted = true;
+  return {
+    setUpAll: function () {
+      previousDatabase = db._name();
+      if (!_.includes(db._databases(), database)) {
+        db._createDatabase(database);
+        databaseExisted = false;
+      }
+      db._useDatabase(database);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase(previousDatabase);
+      if (!databaseExisted) {
+        db._dropDatabase(database);
+      }
+    },
+  };
+}());
+
+const targetConfig = {
+  writeConcern: 2,
+  softWriteConcern: 2,
+  replicationFactor: 3,
+  waitForSync: false,
+};
+
+const checkCommitFailReasonReport = function () {
+
+  return {
+    setUpAll, tearDownAll,
+    setUp: registerAgencyTestBegin,
+    tearDown: registerAgencyTestEnd,
+
+    testNothingToCommit: function () {
+      const logId = nextUniqueLogId();
+      const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
+      const leader = servers[0];
+      const term = 1;
+      replicatedLogSetPlan(database, logId, {
+        id: logId,
+        targetConfig,
+        currentTerm: createTermSpecification(term, servers, targetConfig, leader),
+      });
+
+      waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
+      waitFor(replicatedLogLeaderCommitFail(database, logId, undefined));
+    },
+
+    testCheckExcludedServers: function () {
+      const logId = nextUniqueLogId();
+      const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
+      const leader = servers[0];
+      const followers = _.difference(servers, [leader]);
+      const term = 1;
+      replicatedLogSetPlan(database, logId, {
+        id: logId,
+        targetConfig,
+        currentTerm: createTermSpecification(term, servers, targetConfig, leader),
+      });
+
+      waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
+
+      const [followerA, followerB] = _.sampleSize(followers, 2);
+      replicatedLogUpdatePlanParticipantsFlags(database, logId, {
+        [followerA]: {excluded: true},
+        [followerB]: {excluded: true}
+      });
+
+      waitFor(replicatedLogLeaderCommitFail(database, logId, "NonEligibleServerRequiredForQuorum"));
+      {
+        const {current} = readReplicatedLogAgency(database, logId);
+        const status = current.leader.commitStatus;
+        assertEqual(status.candidates[followerA], "excluded");
+        assertEqual(status.candidates[followerB], "excluded");
+      }
+
+      replicatedLogUpdatePlanParticipantsFlags(database, logId, {
+        [followerA]: undefined,
+        [followerB]: undefined
+      });
+
+      waitFor(replicatedLogLeaderCommitFail(database, logId, undefined));
+    },
   };
 };
 
@@ -311,5 +427,7 @@ const replicatedLogSuite = function () {
   };
 };
 
+
 jsunity.run(replicatedLogSuite);
+jsunity.run(checkCommitFailReasonReport);
 return jsunity.done();
