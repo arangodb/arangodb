@@ -3625,7 +3625,7 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
   }
 
   auto threshold = FilterConstants::DefaultNgramMatchThreshold;
-  arangodb::iresearch::FieldMeta::Analyzer analyzerPool;
+  arangodb::iresearch::FieldMeta::Analyzer analyzerPool{nullptr, ""};
 
   if (argc > 3) {  // 4 args given. 3rd is threshold
     ScopedAqlValue tmpValue;
