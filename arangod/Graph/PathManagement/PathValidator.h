@@ -60,6 +60,11 @@ class PathValidator {
   using Step = typename Provider::Step;
 
  public:
+  using ProviderImpl = Provider;
+  using PathStoreImpl = PathStore;
+  using VertexUniquenessImpl = VertexUniquenessLevel;
+  using EdgeUniquenessImpl = EdgeUniquenessLevel;
+
   PathValidator(Provider& provider, PathStore& store,
                 PathValidatorOptions opts);
   ~PathValidator();

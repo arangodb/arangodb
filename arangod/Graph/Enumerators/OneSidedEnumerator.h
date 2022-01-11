@@ -58,6 +58,7 @@ class OneSidedEnumerator : public TraversalEnumerator {
   using Step = typename Configuration::Step;  // public due to tracer access
   using Provider = typename Configuration::Provider;
   using Store = typename Configuration::Store;
+  using Validator = typename Configuration::Validator;
 
   using ResultPathType = SingleProviderPathResult<Provider, Store, Step>;
 

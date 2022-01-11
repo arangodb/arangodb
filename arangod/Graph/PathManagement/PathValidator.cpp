@@ -42,11 +42,11 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-template<class ProviderType, class PathStore,
+template<class Provider, class PathStore,
          VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness>
-PathValidator<ProviderType, PathStore, vertexUniqueness,
-              edgeUniqueness>::PathValidator(ProviderType& provider,
+PathValidator<Provider, PathStore, vertexUniqueness,
+              edgeUniqueness>::PathValidator(Provider& provider,
                                              PathStore& store,
                                              PathValidatorOptions opts)
     : _store(store), _provider(provider), _options(std::move(opts)) {}
