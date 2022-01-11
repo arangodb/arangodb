@@ -48,7 +48,7 @@ function testSuite() {
       urls.forEach((url) => {
         try {
           let res = arango.PUT(`/_admin/aardvark/foxxes/url?mount=${mount}`, { url });
-          assertFalse(res.error, url);
+          assertFalse(res.error, { res, url });
         } finally {
           try {
             FoxxManager.uninstall(mount);
