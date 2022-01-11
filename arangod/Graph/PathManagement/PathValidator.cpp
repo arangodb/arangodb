@@ -224,6 +224,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   }
 
   // evaluate if vertex needs to be pruned
+  ValidationResult res{ValidationResult::Type::TAKE};
   if (_options.usesPrune()) {
     // TODO [GraphRefactor]: Possible performance optimization. Please double
     // check if we can do better then using three different types of builders
@@ -262,8 +263,12 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
       }
     }
     if (evaluator->evaluate()) {
-      return ValidationResult{ValidationResult::Type::PRUNE};
+      res.combine(ValidationResult::Type::PRUNE);
     }
+  }
+
+  if (res.isPruned() && res.isFiltered()) {
+    return res;
   }
 
   // Evaluate depth-based vertex expressions
@@ -299,11 +304,11 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
 
     TRI_ASSERT(!evaluator->needsPath());
     if (!evaluator->evaluate()) {
-      return ValidationResult{ValidationResult::Type::FILTER};
+      res.combine(ValidationResult::Type::FILTER);
     }
   }
 
-  return ValidationResult{ValidationResult::Type::TAKE};
+  return res;
 }
 
 template<class ProviderType, class PathStore,
