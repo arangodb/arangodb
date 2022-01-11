@@ -65,19 +65,18 @@ ClusterQuery::~ClusterQuery() {
 /*static*/ std::shared_ptr<ClusterQuery> ClusterQuery::create(
     QueryId id, std::shared_ptr<transaction::Context> ctx,
     aql::QueryOptions options) {
-  // workaround to enable make_shared with a class with a private/protected
+  // workaround to enable make_shared on a class with a private/protected
   // constructor
-  struct Container {
-    Container(QueryId id, std::shared_ptr<transaction::Context> ctx,
-              aql::QueryOptions options)
-        : query(id, std::move(ctx), std::move(options)) {}
-    ClusterQuery query;
+  struct MakeSharedQuery : public ClusterQuery {
+    MakeSharedQuery(QueryId id, std::shared_ptr<transaction::Context> ctx,
+                    aql::QueryOptions options)
+        : ClusterQuery(id, std::move(ctx), std::move(options)) {}
   };
 
   TRI_ASSERT(ctx != nullptr);
 
-  auto s = std::make_shared<Container>(id, std::move(ctx), std::move(options));
-  return std::shared_ptr<ClusterQuery>{std::move(s), &s->query};
+  return std::make_shared<MakeSharedQuery>(id, std::move(ctx),
+                                           std::move(options));
 }
 
 void ClusterQuery::prepareClusterQuery(
