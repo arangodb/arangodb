@@ -285,7 +285,7 @@ static void JS_Status(v8::FunctionCallbackInfo<v8::Value> const& args) {
         r.toVelocyPack(response);
         return response;
       },
-      result);
+      std::move(result));
   TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
   TRI_V8_TRY_CATCH_END
 }
