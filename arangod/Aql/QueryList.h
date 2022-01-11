@@ -25,6 +25,7 @@
 
 #include <cmath>
 #include <list>
+#include <memory>
 #include <optional>
 
 #include "Aql/QueryExecutionState.h"
@@ -199,10 +200,10 @@ class QueryList {
   }
 
   /// @brief enter a query
-  bool insert(Query*);
+  bool insert(Query&);
 
   /// @brief remove a query
-  void remove(Query*);
+  void remove(Query&);
 
   /// @brief kills a query
   Result kill(TRI_voc_tick_t id);
@@ -241,7 +242,7 @@ class QueryList {
   arangodb::basics::ReadWriteLock _lock;
 
   /// @brief list of current queries, protected by _lock
-  std::unordered_map<TRI_voc_tick_t, Query*> _current;
+  std::unordered_map<TRI_voc_tick_t, std::weak_ptr<Query>> _current;
 
   /// @brief list of slow queries, protected by _lock
   std::list<QueryEntryCopy> _slow;

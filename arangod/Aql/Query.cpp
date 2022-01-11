@@ -1135,7 +1135,7 @@ void Query::init(bool createProfile) {
   TRI_ASSERT(_queryProfile == nullptr);
   // adds query to QueryList which is needed for /_api/query/current
   if (createProfile && !ServerState::instance()->isDBServer()) {
-    _queryProfile = std::make_unique<QueryProfile>(this);
+    _queryProfile = std::make_unique<QueryProfile>(*this);
   }
   enterState(QueryExecutionState::ValueType::INITIALIZATION);
 
@@ -1630,7 +1630,9 @@ void Query::debugKillQuery() {
     isInRegistry = registry->queryIsRegistered(vocbase().name(), _queryId);
   }
   TRI_ASSERT(isInList || isStreaming || isInRegistry ||
-             _execState == QueryExecutionState::ValueType::FINALIZATION);
+             _execState == QueryExecutionState::ValueType::FINALIZATION)
+      << "_execState " << (int)_execState.load() << " queryList->enabled() "
+      << queryList->enabled();
   kill();
 #endif
 }
