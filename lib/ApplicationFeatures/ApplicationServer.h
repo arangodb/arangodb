@@ -198,7 +198,9 @@ class ApplicationServer {
   std::shared_ptr<options::ProgramOptions> options() const { return _options; }
 
   // return the server state
-  TEST_VIRTUAL State state() const { return _state; }
+  TEST_VIRTUAL State state() const {
+    return _state.load(std::memory_order_acquire);
+  }
 
   void addReporter(ProgressHandler reporter) {
     _progressReports.emplace_back(reporter);
