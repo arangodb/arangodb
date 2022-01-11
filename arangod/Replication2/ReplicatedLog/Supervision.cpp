@@ -29,6 +29,7 @@
 #include "Basics/Exceptions.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Random/RandomGenerator.h"
+#include "Replication2/ReplicatedLog/SupervisionAction.h"
 
 using namespace arangodb::replication2::agency;
 
@@ -45,6 +46,10 @@ auto checkLogAdded(const Log& log) -> std::unique_ptr<Action> {
 auto checkLeaderHealth(LogPlanSpecification const& plan,
                        ParticipantsHealth const& health)
     -> std::unique_ptr<Action> {
+  // TODO: if we assert this here, we assume we're always called
+  //       with non std::nullopt currentTerm and leader
+  TRI_ASSERT(plan.currentTerm != std::nullopt);
+  TRI_ASSERT(plan.currentTerm->leader != std::nullopt);
   if (health.isHealthy(plan.currentTerm->leader->serverId) &&
       health.validRebootId(plan.currentTerm->leader->serverId,
                            plan.currentTerm->leader->rebootId)) {
@@ -152,6 +157,17 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
   }
 }
 
+auto checkLeaderPresent(LogPlanSpecification const& plan,
+                        LogCurrent const& current,
+                        ParticipantsHealth const& health)
+    -> std::unique_ptr<Action> {
+  if (!current.leader) {
+    return tryLeadershipElection(plan, current, health);
+  } else {
+    return nullptr;
+  }
+}
+
 auto checkLogTargetParticipantFlags(LogTarget const& target,
                                     LogPlanSpecification const& plan)
     -> std::unique_ptr<Action> {
@@ -219,7 +235,45 @@ auto checkLogTargetConfig(LogTarget const& target,
 // The main function
 auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
     -> std::unique_ptr<Action> {
-  return nullptr;
+  // check whether this log exists in plan;
+  // If it doesn't the action is to create the log
+
+  if (auto action = checkLogAdded(log)) {
+    return action;
+  }
+
+  // TODO do we access current here? if so, check it must be present at this
+  // point
+  if (auto action = checkLeaderPresent(*log.plan, *log.current, health)) {
+    return action;
+  }
+
+  TRI_ASSERT(log.plan->currentTerm->leader);
+
+  // If the leader is unhealthy, we need to create a new term
+  // in the next round we should be electing a new leader above
+  if (auto action = checkLeaderHealth(*log.plan, health)) {
+    return action;
+  }
+
+  if (auto action = checkLogTargetParticipantFlags(log.target, *log.plan)) {
+    return action;
+  }
+
+  if (auto action = checkLogTargetParticipantAdded(log.target, *log.plan)) {
+    return action;
+  }
+
+  if (auto action = checkLogTargetParticipantRemoved(log.target, *log.plan)) {
+    return action;
+  }
+
+  if (auto action = checkLogTargetConfig(log.target, *log.plan)) {
+    return action;
+  }
+
+  // Nothing todo
+  return std::make_unique<EmptyAction>();
 }
 
 }  // namespace arangodb::replication2::replicated_log

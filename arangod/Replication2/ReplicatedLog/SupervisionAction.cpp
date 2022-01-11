@@ -30,6 +30,9 @@ using namespace arangodb::replication2::agency;
 namespace arangodb::replication2::replicated_log {
 auto to_string(Action::ActionType action) -> std::string_view {
   switch (action) {
+    case Action::ActionType::EmptyAction: {
+      return "Empty";
+    } break;
     case Action::ActionType::FailedLeaderElectionAction: {
       return "FailedLeaderElection";
     } break;
@@ -50,6 +53,12 @@ auto to_string(Action::ActionType action) -> std::string_view {
 auto operator<<(std::ostream& os, Action::ActionType const& action)
     -> std::ostream& {
   return os << to_string(action);
+}
+
+void EmptyAction::toVelocyPack(VPackBuilder& builder) const {
+  auto ob = VPackObjectBuilder(&builder);
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(to_string(type())));
 }
 
 void UpdateTermAction::toVelocyPack(VPackBuilder& builder) const {

@@ -36,6 +36,7 @@ namespace arangodb::replication2::replicated_log {
 
 struct Action {
   enum class ActionType {
+    EmptyAction,
     UpdateTermAction,
     SuccessfulLeaderElectionAction,
     FailedLeaderElectionAction,
@@ -51,6 +52,15 @@ auto to_string(Action::ActionType action) -> std::string_view;
 auto operator<<(std::ostream& os, Action::ActionType const& action)
     -> std::ostream&;
 auto operator<<(std::ostream& os, Action const& action) -> std::ostream&;
+
+struct EmptyAction : Action {
+  EmptyAction(){};
+  void execute() override{};
+  ActionType type() const override { return Action::ActionType::EmptyAction; };
+  void toVelocyPack(VPackBuilder& builder) const override;
+};
+auto to_string(EmptyAction action) -> std::string;
+auto operator<<(std::ostream& os, EmptyAction const& action) -> std::ostream&;
 
 struct UpdateTermAction : Action {
   UpdateTermAction(LogPlanTermSpecification const& newTerm)
