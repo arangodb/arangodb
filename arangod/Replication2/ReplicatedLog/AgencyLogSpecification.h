@@ -137,13 +137,17 @@ struct LogCurrent {
   struct Leader {
     ParticipantId serverId;
     LogTerm term;
-    ParticipantsConfig committedParticipantsConfig;
+    // optional because the leader might not have committed anything
+    std::optional<ParticipantsConfig> committedParticipantsConfig;
+    bool leadershipEstablished;
+    // will be set after 5s if leader is unable to establish leadership
+    std::optional<replicated_log::CommitFailReason> commitStatus;
 
     auto toVelocyPack(VPackBuilder&) const -> void;
     static auto fromVelocyPack(VPackSlice) -> Leader;
   };
 
-  // Will be nullopt until leadership has been established
+  // Will be nullopt until a leader has been assumed leadership
   std::optional<Leader> leader;
 
   auto toVelocyPack(VPackBuilder&) const -> void;

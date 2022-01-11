@@ -509,11 +509,16 @@ auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
           throw ParticipantResignedException(
               TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
         }
+        auto commitFailReason = std::optional<CommitFailReason>{};
+        if (leaderData.calculateCommitLag() > std::chrono::seconds{20}) {
+          commitFailReason = leaderData._lastCommitFailReason;
+        }
         return QuickLogStatus{
             .role = ParticipantRole::kLeader,
             .term = term,
             .local = leaderData.getLocalStatistics(),
             .leadershipEstablished = leaderData._leadershipEstablished,
+            .commitFailReason = commitFailReason,
             .activeParticipantsConfig = leaderData.activeParticipantsConfig,
             .committedParticipantsConfig =
                 leaderData.committedParticipantsConfig};
