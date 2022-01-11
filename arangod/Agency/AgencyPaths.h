@@ -914,9 +914,12 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
                 return Participants::make_shared(shared_from_this());
               }
 
-              class Generation : public StaticComponent<Generation, ParticipantsConfig> {
+              class Generation
+                  : public StaticComponent<Generation, ParticipantsConfig> {
                public:
-                constexpr char const* component() const noexcept { return "generation"; }
+                constexpr char const* component() const noexcept {
+                  return "generation";
+                }
 
                 using BaseType::StaticComponent;
               };
