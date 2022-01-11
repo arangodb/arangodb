@@ -143,7 +143,7 @@ using TracedDFSEnumerator = OneSidedEnumerator<
     DFSConfiguration<Provider, vertexUniqueness, edgeUniqueness, true>>;
 
 // Weighted Traversal Enumerator implementation
-// TODO: Needs to be renamed as soon as we replace the existing variant, whic
+// TODO: Needs to be renamed as soon as we replace the existing variant, which
 // occupies this name
 template<class Provider, VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness>
