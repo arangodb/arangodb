@@ -223,23 +223,23 @@ struct ReplicatedLogMethodsCoordinator final
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "local-status");
     network::RequestOptions opts;
     opts.database = vocbase.name();
-    ServerID leaderId;
 
-    try {
-      leaderId = getLogLeader(id);
-    } catch (basics::Exception const& ex) {
-      if (ex.code() == TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED) {
+    auto leader = clusterInfo.getReplicatedLogLeader(opts.database, id);
+    if (leader.fail()) {
+      if (leader.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED)) {
         return GlobalStatus{
             replication2::agency::methods::getCurrentSupervision(vocbase, id),
             {},
             std::nullopt};
+      } else {
+        THROW_ARANGO_EXCEPTION(leader.result());
       }
-      throw;
     }
+    auto leaderId = std::move(*leader);
 
     return network::sendRequest(pool, "server:" + leaderId,
                                 fuerte::RestVerb::Get, path)
-        .thenValue([&, leaderId](network::Response&& resp) {
+        .thenValue([&, leaderId](network::Response&& resp) mutable {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());
           }
@@ -253,7 +253,7 @@ struct ReplicatedLogMethodsCoordinator final
               {leaderId, std::move(leaderStatus)}};
           return GlobalStatus{.supervision = std::move(supervision),
                               .participants = std::move(participants),
-                              .leaderId = leaderId};
+                              .leaderId = std::move(leaderId)};
         });
   }
 
