@@ -39,6 +39,7 @@ struct Action {
   enum class ActionType {
     EmptyAction,
     AddLogToPlanAction,
+    CreateInitialTermAction,
     UpdateTermAction,
     SuccessfulLeaderElectionAction,
     FailedLeaderElectionAction,
@@ -91,6 +92,18 @@ struct AddLogToPlanAction : Action {
 auto to_string(AddLogToPlanAction const& action) -> std::string;
 auto operator<<(std::ostream& os, AddLogToPlanAction const& action)
     -> std::ostream&;
+
+struct CreateInitialTermAction : Action {
+  CreateInitialTermAction(){};
+  auto execute(std::string dbName, arangodb::agency::envelope envelope)
+      -> arangodb::agency::envelope override {
+    return envelope;
+  };
+  ActionType type() const override {
+    return Action::ActionType::CreateInitialTermAction;
+  };
+  void toVelocyPack(VPackBuilder& builder) const override;
+};
 
 struct UpdateTermAction : Action {
   UpdateTermAction(LogPlanTermSpecification const& newTerm)

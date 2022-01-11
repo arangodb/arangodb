@@ -49,6 +49,14 @@ auto checkLogAdded(const Log& log) -> std::unique_ptr<Action> {
   return std::make_unique<EmptyAction>();
 }
 
+auto checkTermPresent(LogPlanSpecification const& plan)
+    -> std::unique_ptr<Action> {
+  if (!plan.currentTerm) {
+    return std::make_unique<CreateInitialTermAction>();
+  }
+  return std::make_unique<EmptyAction>();
+}
+
 auto checkLeaderHealth(LogPlanSpecification const& plan,
                        ParticipantsHealth const& health)
     -> std::unique_ptr<Action> {
@@ -167,7 +175,8 @@ auto checkLeaderPresent(LogPlanSpecification const& plan,
                         LogCurrent const& current,
                         ParticipantsHealth const& health)
     -> std::unique_ptr<Action> {
-  if (!current.leader.has_value()) {
+  // currentTerm has no leader
+  if (!plan.currentTerm->leader.has_value()) {
     return tryLeadershipElection(plan, current, health);
   } else {
     return std::make_unique<EmptyAction>();
@@ -261,17 +270,17 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
   // but also don't implode
   TRI_ASSERT(log.plan.has_value());
 
+  /*
   if (!log.current.has_value()) {
     return std::make_unique<EmptyAction>();
-  }
+  }*/
 
-  // TODO: maybe we should just keep to reporting no progress above,
-  // not implode on an assert.
-  TRI_ASSERT(log.current.has_value());
+  if (auto action = checkTermPresent(*log.plan); !isEmptyAction(action)) {
+    return action;
+  }
 
   if (auto action = checkLeaderPresent(*log.plan, *log.current, health);
       !isEmptyAction(action)) {
-    LOG_DEVEL << "Leader is not present, election outcome";
     return action;
   }
   //

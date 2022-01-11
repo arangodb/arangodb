@@ -47,6 +47,9 @@ auto to_string(Action::ActionType action) -> std::string_view {
     case Action::ActionType::SuccessfulLeaderElectionAction: {
       return "SuccessfulLeaderElection";
     } break;
+    case Action::ActionType::CreateInitialTermAction: {
+      return "CreateInitialTermAction";
+    } break;
     case Action::ActionType::UpdateTermAction: {
       return "UpdateTermAction";
     } break;
@@ -101,6 +104,12 @@ auto AddLogToPlanAction::execute(std::string dbName,
       .isEmpty(path)
       .end();
 };
+
+void CreateInitialTermAction::toVelocyPack(VPackBuilder& builder) const {
+  auto ob = VPackObjectBuilder(&builder);
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(to_string(type())));
+}
 
 void UpdateTermAction::toVelocyPack(VPackBuilder& builder) const {
   auto ob = VPackObjectBuilder(&builder);
