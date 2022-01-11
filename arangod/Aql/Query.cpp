@@ -1433,9 +1433,6 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 }  // namespace
 
 aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
-  ScopeGuard endQueryGuard(
-      [this]() noexcept { unregisterQueryInTransactionState(); });
-
   ShutdownState exp = _shutdownState.load(std::memory_order_relaxed);
   if (exp == ShutdownState::Done) {
     return ExecutionState::DONE;
@@ -1448,6 +1445,9 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
                                               std::memory_order_relaxed)) {
     return ExecutionState::WAITING;  // someone else got here
   }
+
+  ScopeGuard endQueryGuard(
+      [this]() noexcept { unregisterQueryInTransactionState(); });
 
   enterState(QueryExecutionState::ValueType::FINALIZATION);
 
