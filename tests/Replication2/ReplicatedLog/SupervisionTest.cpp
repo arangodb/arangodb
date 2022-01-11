@@ -271,7 +271,8 @@ TEST_F(LeaderStateMachineTest, test_leader_intact) {
 
   auto r = checkLeaderHealth(plan, health);
 
-  EXPECT_EQ(r, nullptr);
+  EXPECT_NE(r, nullptr);
+  EXPECT_EQ(r->type(), Action::ActionType::EmptyAction);
 }
 
 struct SupervisionLogTest : ::testing::Test {};

@@ -186,7 +186,8 @@ auto checkLogTargetParticipantFlags(LogTarget const& target,
       // participant is in plan, check whether flags are the same
       if (targetFlags != planParticipant->second) {
         // Flags changed, so we need to commit new flags for this participant
-        return std::make_unique<UpdateParticipantFlagsAction>();
+        return std::make_unique<UpdateParticipantFlagsAction>(targetParticipant,
+                                                              targetFlags);
       };
     }
   }
@@ -205,7 +206,8 @@ auto checkLogTargetParticipantAdded(LogTarget const& target,
     if (auto const& planParticipant = pps.find(targetParticipant);
         planParticipant == pps.end()) {
       // Here's a participant that is not in plan yet; we add it
-      return std::make_unique<AddParticipantToPlanAction>();
+      return std::make_unique<AddParticipantToPlanAction>(targetParticipant,
+                                                          targetFlags);
     }
   }
   return std::make_unique<EmptyAction>();
@@ -220,7 +222,7 @@ auto checkLogTargetParticipantRemoved(LogTarget const& target,
   // Check whether a participant has been removed
   for (auto const& [planParticipant, _] : pps) {
     if (!tps.contains(planParticipant)) {
-      return std::make_unique<RemoveParticipantFromPlanAction>();
+      return std::make_unique<RemoveParticipantFromPlanAction>(planParticipant);
     }
   }
   return std::make_unique<EmptyAction>();
@@ -233,7 +235,7 @@ auto checkLogTargetConfig(LogTarget const& target,
     -> std::unique_ptr<Action> {
   if (target.config != plan.targetConfig) {
     // Validity check on config?
-    return std::make_unique<UpdateLogConfigAction>();
+    return std::make_unique<UpdateLogConfigAction>(target.config);
   }
   return std::make_unique<EmptyAction>();
 }

@@ -165,7 +165,9 @@ auto operator<<(std::ostream& os, ImpossibleCampaignAction const& action)
     -> std::ostream&;
 
 struct UpdateParticipantFlagsAction : Action {
-  UpdateParticipantFlagsAction(){};
+  UpdateParticipantFlagsAction(ParticipantId const& participant,
+                               ParticipantFlags const& flags)
+      : _participant(participant), _flags(flags){};
   ActionType type() const override {
     return Action::ActionType::UpdateParticipantFlagsAction;
   };
@@ -175,10 +177,15 @@ struct UpdateParticipantFlagsAction : Action {
     return envelope;
   };
   void toVelocyPack(VPackBuilder& builder) const override;
+
+  ParticipantId _participant;
+  ParticipantFlags _flags;
 };
 
 struct AddParticipantToPlanAction : Action {
-  AddParticipantToPlanAction(){};
+  AddParticipantToPlanAction(ParticipantId const& participant,
+                             ParticipantFlags const& flags)
+      : _participant(participant), _flags(flags){};
   ActionType type() const override {
     return Action::ActionType::AddParticipantToPlanAction;
   };
@@ -188,10 +195,14 @@ struct AddParticipantToPlanAction : Action {
     return envelope;
   };
   void toVelocyPack(VPackBuilder& builder) const override;
+
+  ParticipantId _participant;
+  ParticipantFlags _flags;
 };
 
 struct RemoveParticipantFromPlanAction : Action {
-  RemoveParticipantFromPlanAction(){};
+  RemoveParticipantFromPlanAction(ParticipantId const& participant)
+      : _participant(participant){};
   ActionType type() const override {
     return Action::ActionType::RemoveParticipantFromPlanAction;
   };
@@ -201,10 +212,12 @@ struct RemoveParticipantFromPlanAction : Action {
     return envelope;
   };
   void toVelocyPack(VPackBuilder& builder) const override;
+
+  ParticipantId _participant;
 };
 
 struct UpdateLogConfigAction : Action {
-  UpdateLogConfigAction(){};
+  UpdateLogConfigAction(LogConfig const& config) : _config(config){};
   ActionType type() const override {
     return Action::ActionType::UpdateLogConfigAction;
   };
@@ -214,6 +227,8 @@ struct UpdateLogConfigAction : Action {
     return envelope;
   };
   void toVelocyPack(VPackBuilder& builder) const override;
+
+  LogConfig _config;
 };
 
 }  // namespace arangodb::replication2::replicated_log
