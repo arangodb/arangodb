@@ -528,7 +528,7 @@ auto algorithms::calculateCommitIndex(
     }
   }
 
-  // This happens when to many servers are either excluded or failed;
+  // This happens when too many servers are either excluded or failed;
   // this certainly means we could not reach a quorum;
   // indexes cannot be empty because this particular case would've been handled
   // above by comparing actualWriteConcern to 0;
