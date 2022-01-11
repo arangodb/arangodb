@@ -245,8 +245,7 @@ struct CoveringValue {
     itr.reset();
     value = &NoPayload;
     // FIXME: this is cheap. Keep it here?
-    auto extraValuesReader =
-        column.empty() ? rdr.sort() : rdr.column(column);
+    auto extraValuesReader = column.empty() ? rdr.sort() : rdr.column(column);
     // FIXME: this is expensive - move it to get and do lazily?
     if (ADB_LIKELY(extraValuesReader)) {
       itr = extraValuesReader->iterator(false);
