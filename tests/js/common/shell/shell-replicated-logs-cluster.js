@@ -29,11 +29,29 @@ const internal = require("internal");
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
 
+const getLeaderStatus = function(id) {
+  let status = db._replicatedLog(id).status();
+  const leaderId = status.leaderId;
+  if (leaderId === undefined) {
+    console.info(`leader not available for replicated log ${id}`);
+    return null;
+  }
+  if (status.participants === undefined || status.participants[leaderId] === undefined) {
+    console.info(`participants status not available for replicated log ${id}`);
+    return null;
+  }
+  if (status.participants[leaderId].role === "leader") {
+    console.info(`leader not available for replicated log ${id}`);
+    return null;
+  }
+  return status.participants[leaderId];
+};
+
 const waitForLeader = function (id) {
   while (true) {
     try {
-      let status = db._replicatedLog(id).status();
-      if ("logStatus" in status && status.logStatus.role === "leader") {
+      let status = getLeaderStatus(id);
+      if (status !== null) {
         break;
       }
     } catch (err) {
@@ -99,10 +117,11 @@ function ReplicatedLogsWriteSuite () {
 
     testStatus : function () {
       let log = db._replicatedLog(logId);
-      let status = log.status();
-      assertEqual(status.logStatus.local.commitIndex, 1);
-      assertTrue(status.logStatus.local.commitIndex, 1);
+      let leaderStatus = getLeaderStatus(logId);
+      assertEqual(leaderStatus.local.commitIndex, 1);
+      assertTrue(leaderStatus.local.commitIndex, 1);
       let globalStatus = log.globalStatus();
+      let status = log.status();
       assertEqual(status, globalStatus);
     },
 
@@ -117,8 +136,8 @@ function ReplicatedLogsWriteSuite () {
         assertTrue(next > index);
         index = next;
       }
-      let status = log.status();
-      assertTrue(status.logStatus.local.commitIndex >= index);
+      let leaderStatus = getLeaderStatus(logId);
+      assertTrue(leaderStatus.local.commitIndex >= index);
     },
 
     testMultiInsert : function() {
@@ -136,8 +155,8 @@ function ReplicatedLogsWriteSuite () {
             indexes[1] < indexes[2]);
         index = indexes[indexes.length - 1];
       }
-      let status = log.status();
-      assertTrue(status.logStatus.local.commitIndex >= index);
+      let leaderStatus = getLeaderStatus(logId);
+      assertTrue(leaderStatus.local.commitIndex >= index);
     },
 
     testHeadTail : function() {
@@ -198,11 +217,11 @@ function ReplicatedLogsWriteSuite () {
       for (let i = 0; i < 2000; i++) {
         log.insert({foo: i});
       }
-      const s1 = log.status();
-      assertEqual(s1.logStatus.local.firstIndex, 1);
+      let s1 = getLeaderStatus(logId);
+      assertEqual(s1.local.firstIndex, 1);
       log.release(1500);
-      let s2 = log.status();
-      assertEqual(s2.logStatus.local.firstIndex, 1501);
+      let s2 = getLeaderStatus(logId);
+      assertEqual(s2.local.firstIndex, 1501);
     },
 
     testPoll : function() {

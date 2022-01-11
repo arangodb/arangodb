@@ -49,9 +49,12 @@ const waitForReplicatedLogAvailable = function (id) {
     while (true) {
         try {
             let status = db._replicatedLog(id).status();
-            if ("logStatus" in status && status.logStatus.role === "leader") {
+            const leaderId = status.leaderId;
+            if (leaderId !== undefined && status.participants !== undefined &&
+                status.participants[leaderId].role === "leader") {
                 break;
             }
+            console.info("replicated log not yet available");
         } catch (err) {
             const errors = [
                 ERRORS.ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED.code,
@@ -241,7 +244,7 @@ const replicatedLogSuite = function () {
             assertEqual(globalStatus.leaderId, leader);
             let localStatus = helper.getLocalStatus(logId, leader);
             assertEqual(localStatus.role, "leader");
-            assertEqual(globalStatus.logStatus, localStatus);
+            assertEqual(globalStatus.participants[leader], localStatus);
             localStatus = helper.getLocalStatus(logId, servers[1]);
             assertEqual(localStatus.role, "follower");
 
