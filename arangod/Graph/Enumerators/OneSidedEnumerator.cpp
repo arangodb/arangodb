@@ -138,7 +138,8 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
     _stats.incrFiltered();
   }
 
-  if (step.getDepth() >= _options.getMinDepth() && !res.isFiltered()) {
+  if (step.getDepth() >= _options.getMinDepth() && !res.isFiltered() &&
+      !res.isPruned()) {
     // Include it in results.
     _results.emplace_back(step);
   }
