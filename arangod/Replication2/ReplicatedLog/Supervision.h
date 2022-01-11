@@ -46,6 +46,12 @@ using LogCurrentLocalStates =
 // Check whether a log has been added to target
 auto checkLogAdded(const Log& log) -> std::unique_ptr<Action>;
 
+//
+auto checkLeaderPresent(LogPlanSpecification const& plan,
+                        LogCurrent const& current,
+                        ParticipantsHealth const& health)
+    -> std::unique_ptr<Action>;
+
 auto checkLeaderHealth(LogPlanSpecification const& plan,
                        ParticipantsHealth const& health)
     -> std::unique_ptr<Action>;

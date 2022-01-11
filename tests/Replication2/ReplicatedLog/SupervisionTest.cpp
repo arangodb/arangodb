@@ -273,3 +273,90 @@ TEST_F(LeaderStateMachineTest, test_leader_intact) {
 
   EXPECT_EQ(r, nullptr);
 }
+
+struct SupervisionLogTest : ::testing::Test {};
+
+TEST_F(SupervisionLogTest, test_log_created) {
+  auto const config = LogConfig(3, 2, 3, true);
+  auto const participants = LogTarget::Participants{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}},
+      {"B", ParticipantFlags{.forced = false, .excluded = false}},
+
+      {"C", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto r = checkLogAdded(Log{.target = LogTarget{.id = LogId{44},
+                                                 .participants = participants,
+                                                 .config = config}});
+
+  EXPECT_NE(r, nullptr);
+  EXPECT_EQ(r->type(), Action::ActionType::AddLogToPlanAction) << *r;
+
+  auto& action = dynamic_cast<AddLogToPlanAction&>(*r);
+
+  EXPECT_EQ(action._spec.targetConfig, config);
+  //  EXPECT_EQ(action._spec.participantsConfig, participants);
+
+  // TODO check that the plan spec contains the required info
+}
+
+TEST_F(SupervisionLogTest, test_log_present) {
+  auto const config = LogConfig(3, 2, 3, true);
+  auto const participants = LogTarget::Participants{
+      {"A", ParticipantFlags{.forced = false, .excluded = false}},
+      {"B", ParticipantFlags{.forced = false, .excluded = false}},
+
+      {"C", ParticipantFlags{.forced = false, .excluded = false}}};
+
+  auto r = checkLogAdded(Log{.target = LogTarget{.id = LogId{44},
+                                                 .participants = participants,
+                                                 .config = config},
+                             .plan = LogPlanSpecification{}});
+
+  EXPECT_NE(r, nullptr);
+  EXPECT_EQ(r->type(), Action::ActionType::EmptyAction) << *r;
+}
+
+TEST_F(SupervisionLogTest, test_checkleader_present) {
+  // We have no leader, so we have to first run a leadership campaign and then
+  // select a leader.
+  auto const& config = LogConfig(3, 3, 3, true);
+
+  auto current = LogCurrent();
+  current.localState = std::unordered_map<ParticipantId, LogCurrentLocalState>(
+      {{"A", LogCurrentLocalState(LogTerm{1},
+                                  TermIndexPair{LogTerm{1}, LogIndex{1}})},
+       {"B", LogCurrentLocalState(LogTerm{1},
+                                  TermIndexPair{LogTerm{1}, LogIndex{1}})},
+       {"C", LogCurrentLocalState(LogTerm{1},
+                                  TermIndexPair{LogTerm{1}, LogIndex{1}})}});
+  current.supervision = LogCurrentSupervision{};
+  current.leader = LogCurrent::Leader{};  // it doesn't matter that the leader
+                                          // is empty since we only check for
+                                          // the presence of a value
+
+  auto plan = LogPlanSpecification(
+      LogId{1},
+      LogPlanTermSpecification(
+          LogTerm{1}, config,
+          LogPlanTermSpecification::Leader{"A", RebootId{1}},
+          {{"A", {}}, {"B", {}}, {"C", {}}}),
+      config,
+      ParticipantsConfig{
+          .generation = 1,
+          .participants = {
+              {"A", ParticipantFlags{.forced = false, .excluded = false}},
+              {"B", ParticipantFlags{.forced = false, .excluded = false}},
+
+              {"C", ParticipantFlags{.forced = false, .excluded = false}}}});
+
+  auto health = ParticipantsHealth{
+      ._health = {
+          {"A", ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}},
+          {"B", ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}}}};
+
+  auto r = checkLeaderPresent(plan, current, health);
+  EXPECT_NE(r, nullptr);
+  EXPECT_EQ(r->type(), Action::ActionType::EmptyAction) << *r;
+}

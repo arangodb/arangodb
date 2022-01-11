@@ -168,10 +168,8 @@ auto checkLeaderPresent(LogPlanSpecification const& plan,
                         ParticipantsHealth const& health)
     -> std::unique_ptr<Action> {
   if (!current.leader.has_value()) {
-    LOG_DEVEL << "leader does not have a value, trying leadership election";
     return tryLeadershipElection(plan, current, health);
   } else {
-    LOG_DEVEL << "leader present";
     return std::make_unique<EmptyAction>();
   }
 }
@@ -257,11 +255,16 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
 
   // TODO do we access current here? if so, check it must be present at this
   // point
+  // TODO: maybe we should report an error here; we won't make any progress,
+  // but also don't implode
   TRI_ASSERT(log.plan.has_value());
 
   if (!log.current.has_value()) {
     return std::make_unique<EmptyAction>();
   }
+
+  // TODO: maybe we should just keep to reporting no progress above,
+  // not implode on an assert.
   TRI_ASSERT(log.current.has_value());
 
   if (auto action = checkLeaderPresent(*log.plan, *log.current, health);
@@ -269,7 +272,9 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
     LOG_DEVEL << "Leader is not present, election outcome";
     return action;
   }
-
+  //
+  // TODO: maybe we should report an error here; we won't make any progress,
+  // but also don't implode
   TRI_ASSERT(log.plan->currentTerm->leader);
 
   // If the leader is unhealthy, we need to create a new term
