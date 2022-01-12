@@ -33,8 +33,6 @@ namespace iresearch {
 
 LogTopic TOPIC(::TYPE, LogLevel::INFO);
 
-std::string_view const IRESEARCH_INVERTED_INDEX_TYPE = "inverted";
-
 arangodb::LogicalDataSource::Type const& dataSourceType() {
   static auto& type =
       arangodb::LogicalDataSource::Type::emplace(std::string_view(TYPE));
