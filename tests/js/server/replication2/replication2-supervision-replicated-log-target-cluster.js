@@ -43,7 +43,7 @@ const {
     registerAgencyTestBegin, registerAgencyTestEnd,
 } = helper;
 
-const database = '_system'; // TODO change to something else
+const database = "replication2_test_db";
 
 const waitForReplicatedLogAvailable = function (id) {
     while (true) {
@@ -246,10 +246,10 @@ const replicatedLogSuite = function () {
             let globalStatus = log.status();
             assertEqual(globalStatus.supervision, {});
             assertEqual(globalStatus.leaderId, leader);
-            let localStatus = helper.getLocalStatus(logId, leader);
+            let localStatus = helper.getLocalStatus(database, logId, leader);
             assertEqual(localStatus.role, "leader");
-            assertEqual(globalStatus.participants[leader], localStatus);
-            localStatus = helper.getLocalStatus(logId, servers[1]);
+            assertEqual(globalStatus.participants[leader], localStatus, database);
+            localStatus = helper.getLocalStatus(database, logId, servers[1]);
             assertEqual(localStatus.role, "follower");
 
             stopServer(leader);

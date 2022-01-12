@@ -208,9 +208,9 @@ const checkRequestResult = function (requestResult) {
     return requestResult;
 };
 
-const getLocalStatus = function(logId, serverId) {
+const getLocalStatus = function(database, logId, serverId) {
     let url = getServerUrl(serverId);
-    const res = request.get(`${url}/_api/log/${logId}/local-status`);
+    const res = request.get(`${url}/_db/${database}/_api/log/${logId}/local-status`);
     checkRequestResult(res);
     return res.json.result;
 };
