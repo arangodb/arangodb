@@ -614,14 +614,16 @@ ResultT<std::shared_ptr<Node>> Node::handle<ERASE>(VPackSlice const& slice) {
 
 /// Push to end while keeping a specified length
 template<>
-ResultT<std::shared_ptr<Node>> Node::handle<PUSH_QUEUE>(VPackSlice const& slice) {
+ResultT<std::shared_ptr<Node>> Node::handle<PUSH_QUEUE>(
+    VPackSlice const& slice) {
   VPackSlice v = slice.get("new");
   if (VPackSlice l = slice.get("len"); l.isInteger()) {
     if (v.isNone()) {
       // key "new" not present
       return ResultT<std::shared_ptr<Node>>::error(
-        TRI_ERROR_FAILED,
-        std::string("Operator push-queue without new value: ") + slice.toJson());
+          TRI_ERROR_FAILED,
+          std::string("Operator push-queue without new value: ") +
+              slice.toJson());
     }
     Builder tmp;
     {
@@ -637,7 +639,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<PUSH_QUEUE>(VPackSlice const& slice)
                   slice.toJson());
         }
         if (tl >= uint64_t(ol)) {
-          for (size_t i = tl-ol+1; i < tl; ++i) {
+          for (size_t i = tl - ol + 1; i < tl; ++i) {
             tmp.add(this->slice()[i]);
           }
         } else {
@@ -660,8 +662,6 @@ ResultT<std::shared_ptr<Node>> Node::handle<PUSH_QUEUE>(VPackSlice const& slice)
             slice.toJson());
   }
 }
-
-
 
 /// Replace element from any place in array by new value
 template<>
