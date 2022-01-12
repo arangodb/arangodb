@@ -40,7 +40,7 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-#define useOptimize 1
+#define useOptimize 0
 
 namespace {
 
@@ -204,10 +204,10 @@ struct BasicPlanRulesAsserter
 
 class DistributeQueryRuleTest : public ::testing::Test {
  protected:
-  mocks::MockCoordinator server;
+  static inline std::unique_ptr<mocks::MockCoordinator> server;
 
   std::unique_ptr<ExecutionPlan> optimizeQuery(std::string const& queryString) {
-    auto ctx = std::make_shared<StandaloneContext>(server.getSystemDatabase());
+    auto ctx = std::make_shared<StandaloneContext>(server->getSystemDatabase());
     auto const bindParamVPack = VPackParser::fromJson("{}");
 #if useOptimize
     auto const optionsVPack = VPackParser::fromJson(
@@ -223,7 +223,7 @@ class DistributeQueryRuleTest : public ::testing::Test {
   }
 
   std::shared_ptr<VPackBuilder> explainQuery(std::string const& queryString) {
-    auto ctx = std::make_shared<StandaloneContext>(server.getSystemDatabase());
+    auto ctx = std::make_shared<StandaloneContext>(server->getSystemDatabase());
     auto const bindParamVPack = VPackParser::fromJson("{}");
 #if useOptimize
     auto const optionsVPack = VPackParser::fromJson(
@@ -287,41 +287,48 @@ class DistributeQueryRuleTest : public ::testing::Test {
   }
 
   void assertPositionsAreValid(ExecutionPlan* plan) {
+#if useOptimize
     BasicPlanRulesAsserter walker;
     plan->root()->walk(walker);
+#endif
   }
 
-  DistributeQueryRuleTest() {
+  DistributeQueryRuleTest() {}
+
+  static void SetUpTestCase() {
+    server = std::make_unique<mocks::MockCoordinator>();
     // We can register them, but then the API will call count, and the servers
     // do not respond. Now we just get "no endpoint found" but this seems to be
     // okay :shrug: server.registerFakedDBServer("DB1");
     // server.registerFakedDBServer("DB2");
-    server.createCollection(server.getSystemDatabase().name(), "collection",
-                            {{"s100", "DB1"}, {"s101", "DB2"}},
-                            TRI_col_type_e::TRI_COL_TYPE_DOCUMENT);
+    server->createCollection(server->getSystemDatabase().name(), "collection",
+                             {{"s100", "DB1"}, {"s101", "DB2"}},
+                             TRI_col_type_e::TRI_COL_TYPE_DOCUMENT);
 
     // this collection has the same number of shards as "collection", but it is
     // not necessarily sharded in the same way
-    server.createCollection(server.getSystemDatabase().name(),
-                            "otherCollection",
-                            {{"s110", "DB1"}, {"s111", "DB2"}},
-                            TRI_col_type_e::TRI_COL_TYPE_DOCUMENT);
+    server->createCollection(server->getSystemDatabase().name(),
+                             "otherCollection",
+                             {{"s110", "DB1"}, {"s111", "DB2"}},
+                             TRI_col_type_e::TRI_COL_TYPE_DOCUMENT);
 
     // this collection is sharded like "collection"
     auto optionsVPack = VPackParser::fromJson(
         R"json({"distributeShardsLike": "collection"})json");
-    server.createCollection(
-        server.getSystemDatabase().name(), "followerCollection",
+    server->createCollection(
+        server->getSystemDatabase().name(), "followerCollection",
         {{"s120", "DB1"}, {"s121", "DB2"}},
         TRI_col_type_e::TRI_COL_TYPE_DOCUMENT, optionsVPack->slice());
 
     // this collection has custom shard keys
     optionsVPack = VPackParser::fromJson(R"json({"shardKeys": ["id"]})json");
-    server.createCollection(
-        server.getSystemDatabase().name(), "customKeysCollection",
+    server->createCollection(
+        server->getSystemDatabase().name(), "customKeysCollection",
         {{"s123", "DB1"}, {"s234", "DB2"}},
         TRI_col_type_e::TRI_COL_TYPE_DOCUMENT, optionsVPack->slice());
   }
+
+  static void TearDownTestCase() { server.reset(); }
 
  private:
   std::shared_ptr<Query> _query{nullptr};
@@ -601,6 +608,43 @@ TEST_F(DistributeQueryRuleTest, distributed_collect) {
                                // No attribute path given
                                EXPECT_TRUE(sortElement.attributePath.empty());
                              });
+}
+
+TEST_F(DistributeQueryRuleTest, distributed_collect_then_sort) {
+  // We first have a collect
+  // Then sort on partial output of collect, to make sure the
+  // collect could not deliver the ordering in the first place
+  // and we require the sort node to exist
+  auto queryString = R"aql(
+    FOR x IN collection
+      COLLECT val = x.value, val2 = x.value2
+      SORT val2
+      RETURN val)aql";
+  auto plan = optimizeQuery(queryString);
+
+  LOG_DEVEL << nodeNames(*plan);
+  assertNodesMatch(
+      *plan, {"SingletonNode", "EnumerateCollectionNode", "CalculationNode",
+              "CalculationNode", "CollectNode", "RemoteNode", "GatherNode",
+              "CollectNode", "SortNode", "ReturnNode"});
+}
+
+TEST_F(DistributeQueryRuleTest, distributed_sort_then_collect) {
+  // We first have a sort, then a collect
+  // The SORT can be applied on DBServers, then we collect
+  // and merge on Coordinator
+  auto queryString = R"aql(
+    FOR x IN collection
+      SORT x.value2
+      COLLECT val = x.value
+      RETURN val)aql";
+  auto plan = optimizeQuery(queryString);
+
+  LOG_DEVEL << nodeNames(*plan);
+  assertNodesMatch(
+      *plan, {"SingletonNode", "EnumerateCollectionNode", "CalculationNode",
+              "SortNode", "CalculationNode", "CollectNode", "RemoteNode",
+              "GatherNode", "CollectNode", "SortNode", "ReturnNode"});
 }
 
 TEST_F(DistributeQueryRuleTest, distributed_subquery_dbserver) {
