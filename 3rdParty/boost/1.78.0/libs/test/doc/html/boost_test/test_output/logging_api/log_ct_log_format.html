@@ -1,0 +1,127 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Predefined log format selection</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Test">
+<link rel="up" href="../logging_api.html" title="Logging API">
+<link rel="prev" href="log_ct_log_level.html" title="Log level configuration">
+<link rel="next" href="custom_log_formatter.html" title="Custom log format support">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="log_ct_log_level.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../logging_api.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="custom_log_formatter.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_test.test_output.logging_api.log_ct_log_format"></a><a class="link" href="log_ct_log_format.html" title="Predefined log format selection">Predefined
+        log format selection</a>
+</h4></div></div></div>
+<p>
+          The select at compile time the log format from the list of the formats
+          supplied by the <span class="emphasis"><em>Unit Test Framework</em></span>
+        </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">unit_test_log</span><span class="special">.</span><span class="identifier">set_format</span><span class="special">(</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">output_format</span> <span class="special">);</span>
+</pre>
+<p>
+          or for adding a format:
+        </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">unit_test_log</span><span class="special">.</span><span class="identifier">add_format</span><span class="special">(</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">output_format</span> <span class="special">);</span>
+</pre>
+<div class="caution"><table border="0" summary="Caution">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../../../../../../../doc/src/images/caution.png"></td>
+<th align="left">Caution</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            <code class="computeroutput"><a class="link" href="../../../boost/unit_test/unit_test_log_t.html#idm47294-bb">boost::unit_test::unit_test_log_t::set_format</a></code>
+            above disables all formatters but the one provided as argument.
+          </p></td></tr>
+</table></div>
+<div class="tip"><table border="0" summary="Tip">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../../../../../../../doc/src/images/tip.png"></td>
+<th align="left">Tip</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            See <code class="computeroutput"><a class="link" href="../../../boost/unit_test/unit_test_log_t.html#idm47294-bb">boost::unit_test::unit_test_log_t::set_format</a></code>
+            and <code class="computeroutput"><a class="link" href="../../../header/boost/test/detail/global_typedef_hpp.html#boost.unit_test.output_format">boost::unit_test::output_format</a></code>
+            for more details
+          </p></td></tr>
+</table></div>
+<p>
+          In regular circumstances you shouldn't use this interface. Prefer to use
+          runtime parameters <a class="link" href="../../utf_reference/rt_param_reference/log_format.html" title="log_format"><code class="computeroutput"><span class="special">--</span><span class="identifier">log_format</span></code></a>
+          or <a class="link" href="../../utf_reference/rt_param_reference/logger.html" title="logger"><code class="computeroutput"><span class="special">--</span><span class="identifier">logger</span></code></a>
+          for predefined log format selection.
+        </p>
+<h6>
+<a name="boost_test.test_output.logging_api.log_ct_log_format.h0"></a>
+          <span class="phrase"><a name="boost_test.test_output.logging_api.log_ct_log_format.example_descr"></a></span><a class="link" href="log_ct_log_format.html#boost_test.test_output.logging_api.log_ct_log_format.example_descr">Example:
+          Compile-time log format selection</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Code
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">example</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">;</span>
+
+<span class="keyword">struct</span> <span class="identifier">MyConfig</span> <span class="special">{</span>
+  <span class="identifier">MyConfig</span><span class="special">()</span> <span class="special">{</span>
+    <span class="identifier">unit_test_log</span><span class="special">.</span><span class="identifier">set_format</span><span class="special">(</span> <span class="identifier">OF_XML</span> <span class="special">);</span>
+  <span class="special">}</span>
+  <span class="special">~</span><span class="identifier">MyConfig</span><span class="special">()</span> <span class="special">{}</span>
+<span class="special">};</span>
+
+<span class="identifier">BOOST_TEST_GLOBAL_CONFIGURATION</span><span class="special">(</span> <span class="identifier">MyConfig</span> <span class="special">);</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span> <span class="identifier">test_case0</span> <span class="special">)</span> <span class="special">{</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span> <span class="keyword">false</span> <span class="special">);</span>
+<span class="special">}</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Output
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">example</span> <span class="special">--</span><span class="identifier">report_level</span><span class="special">=</span><span class="identifier">no</span>
+<span class="special">&lt;</span><span class="identifier">TestLog</span><span class="special">&gt;&lt;</span><span class="identifier">Error</span> <span class="identifier">file</span><span class="special">=</span><span class="string">"test.cpp"</span> <span class="identifier">line</span><span class="special">=</span><span class="string">"23"</span><span class="special">&gt;</span><span class="identifier">check</span> <span class="keyword">false</span> <span class="identifier">failed</span><span class="special">&lt;/</span><span class="identifier">Error</span><span class="special">&gt;&lt;/</span><span class="identifier">TestLog</span><span class="special">&gt;</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2020 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="log_ct_log_level.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../logging_api.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="custom_log_formatter.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

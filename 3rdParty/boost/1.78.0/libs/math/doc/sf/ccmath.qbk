@@ -1,0 +1,148 @@
+[/
+Copyright (c) 2021 Matt Borland
+Use, modification and distribution are subject to the
+Boost Software License, Version 1.0. (See accompanying file
+LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section:ccmath Constexpr CMath]
+
+[heading Description]
+
+`Constexpr` implementations of the functionality found in `<cmath>`.
+In a `constexpr` context the functions will use an implementation defined in boost.
+If the context is not `constexpr` the functionality will be directly from the STL implementation of `<cmath>` used by the compiler.
+All functions that take an `Integer` type and return a `double` simply cast the `Integer` argument to a `double`.
+All of the following functions require C++17 or greater.
+
+[heading Synopsis]
+
+``
+    #include <boost/math/ccmath/ccmath.hpp>
+``
+    namespace boost::math::ccmath {
+
+        template <typename T>
+        inline constexpr bool isinf(T x);
+
+        template <typename T>
+        inline constexpr bool isnan(T x);
+
+        template <typename Real>
+        inline constexpr Real sqrt(Real x);
+
+        template <typename Integer>
+        inline constexpr double sqrt(Integer x);
+
+        template <typename T>
+        inline constexpr T abs(T x);
+
+        template <typename T, std::enable_if_t<std::is_unsigned_v<T>, bool> = true>
+        inline constexpr int abs(T x);
+
+        template <typename T>
+        inline constexpr T fabs(T x);
+
+        template <typename T>
+        inline constexpr bool isfinite(T x);
+
+        template <typename T>
+        inline constexpr bool isnormal(T x);
+
+        template <typename T>
+        inline constexpr int fpclassify(T x);
+
+        template <typename Real>
+        inline constexpr Real frexp(Real arg, int* exp);
+
+        template <typename Integer>
+        inline constexpr double frexp(Integer arg, int* exp);
+
+        template <typename Real>
+        inline constexpr Real ldexp(Real arg, int exp);
+
+        template <typename Integer>
+        inline constexpr double ldexp(Integer arg, int exp);
+
+        template <typename Integer>
+        struct div_t {Integer quot; Integer rem;};
+
+        template <typename Integer>
+        inline constexpr div_t<Integer> div(Integer x, Integer y);
+
+        template <typename Real>
+        inline constexpr Real logb(Real arg);
+
+        template <typename Integer>
+        inline constexpr double logb(Integer arg);
+
+        template <typename T>
+        inline constexpr int ilogb(T arg);
+
+        template <typename Real>
+        inline constexpr Real scalbn(Real x, int exp) noexcept
+
+        template <typename Integer>
+        inline constexpr double scalbn(Integer x, int exp) noexcept
+
+        template <typename Real>
+        inline constexpr Real scalbln(Real x, long exp) noexcept
+
+        template <typename Integer>
+        inline constexpr double scalbln(Integer x, long exp) noexcept
+
+        template <typename Real>
+        inline constexpr Real floor(Real arg) noexcept
+
+        template <typename Integer>
+        inline constexpr double floor(Integer arg) noexcept
+
+        template <typename Real>
+        inline constexpr Real ceil(Real arg) noexcept
+
+        template <typename Integer>
+        inline constexpr double ceil(Integer arg) noexcept
+
+        template <typename Real>
+        inline constexpr Real trunc(Real arg) noexcept
+
+        template <typename Integer>
+        inline constexpr double trunc(Integer arg) noexcept
+
+        template <typename Real>
+        inline constexpr Real modf(Real x, Real* iptr) noexcept
+
+        template <typename Real>
+        inline constexpr Real round(Real arg) noexcept
+
+        template <typename Integer>
+        inline constexpr double round(Integer arg) noexcept
+
+        template <typename T>
+        inline constexpr long lround(T arg)
+
+        template <typename T>
+        inline constexpr long long llround(T arg)
+
+        template <typename Real>
+        inline constexpr Real fmod(Real x, Real y) noexcept
+
+        template <typename Arithmetic1, typename Arithmetic2>
+        inline constexpr Promoted fmod(Arithmetic1 x, Arithmetic2 y) noexcept
+        The Promoted return type will have at least double prescision, but be up to the highest precision argument.
+        
+        template <typename Real>
+        inline constexpr Real remainder(Real x, Real y) noexcept
+
+        template <typename Arithmetic1, typename Arithmetic2>
+        inline constexpr Promoted remainder(Arithmetic1 x, Arithmetic2 y) noexcept
+
+        template <typename Real>
+        inline constexpr Real copysign(Real mag, Real sgn) noexcept
+
+        template <typename Arithmetic1, typename Arithmetic2>
+        inline constexpr Promoted copysign(Arithmetic1 mag, Arithmetic2 sgn) noexcept
+
+    } // Namespaces
+
+[endsect] [/section:ccmath Constexpr CMath]

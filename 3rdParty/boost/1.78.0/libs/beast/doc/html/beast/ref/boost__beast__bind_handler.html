@@ -1,0 +1,147 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>bind_handler</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Beast">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__beast__buffer_bytes.html" title="buffer_bytes">
+<link rel="next" href="boost__beast__bind_front_handler.html" title="bind_front_handler">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__buffer_bytes.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__bind_front_handler.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="beast.ref.boost__beast__bind_handler"></a><a class="link" href="boost__beast__bind_handler.html" title="bind_handler">bind_handler</a>
+</h4></div></div></div>
+<p>
+        <a class="indexterm" name="idm73780"></a>
+      </p>
+<p>
+        Bind parameters to a completion handler, creating a new handler.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__bind_handler.h0"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__bind_handler.synopsis"></a></span><a class="link" href="boost__beast__bind_handler.html#beast.ref.boost__beast__bind_handler.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="../../../../../../boost/beast/core/bind_handler.hpp" target="_top">boost/beast/core/bind_handler.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <a href="../../../../../../doc/html/boost_asio/reference/Handler.html" target="_top"><span class="emphasis"><em>Handler</em></span></a><span class="special">,</span>
+    <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span>
+<span class="emphasis"><em>implementation-defined</em></span>
+<span class="identifier">bind_handler</span><span class="special">(</span>
+    <span class="identifier">Handler</span><span class="special">&amp;&amp;</span> <span class="identifier">handler</span><span class="special">,</span>
+    <span class="identifier">Args</span><span class="special">&amp;&amp;...</span> <span class="identifier">args</span><span class="special">);</span>
+</pre>
+<h5>
+<a name="beast.ref.boost__beast__bind_handler.h1"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__bind_handler.description"></a></span><a class="link" href="boost__beast__bind_handler.html#beast.ref.boost__beast__bind_handler.description">Description</a>
+      </h5>
+<p>
+        This function creates a new handler which, when invoked, calls the original
+        handler with the list of bound arguments. Any parameters passed in the invocation
+        will be substituted for placeholders present in the list of bound arguments.
+        Parameters which are not matched to placeholders are silently discarded.
+        The passed handler and arguments are forwarded into the returned handler,
+        whose associated allocator and associated executor will will be the same
+        as those of the original handler.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__bind_handler.h2"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__bind_handler.example"></a></span><a class="link" href="boost__beast__bind_handler.html#beast.ref.boost__beast__bind_handler.example">Example</a>
+      </h5>
+<p>
+        This function posts the invocation of the specified completion handler with
+        bound arguments:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">AsyncReadStream</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">ReadHandler</span><span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">signal_aborted</span> <span class="special">(</span><span class="identifier">AsyncReadStream</span><span class="special">&amp;</span> <span class="identifier">stream</span><span class="special">,</span> <span class="identifier">ReadHandler</span><span class="special">&amp;&amp;</span> <span class="identifier">handler</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">net</span><span class="special">::</span><span class="identifier">post</span><span class="special">(</span>
+        <span class="identifier">stream</span><span class="special">.</span><span class="identifier">get_executor</span><span class="special">(),</span>
+        <span class="identifier">bind_handler</span> <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">forward</span> <span class="special">&lt;</span><span class="identifier">ReadHandler</span><span class="special">&gt;</span> <span class="special">(</span><span class="identifier">handler</span><span class="special">),</span>
+            <span class="identifier">net</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">operation_aborted</span><span class="special">,</span> <span class="number">0</span><span class="special">));</span>
+<span class="special">}</span>
+</pre>
+<h5>
+<a name="beast.ref.boost__beast__bind_handler.h3"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__bind_handler.parameters"></a></span><a class="link" href="boost__beast__bind_handler.html#beast.ref.boost__beast__bind_handler.parameters">Parameters</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">handler</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  The handler to wrap. The implementation takes ownership of the
+                  handler by performing a decay-copy.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">args</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  A list of arguments to bind to the handler. The arguments are forwarded
+                  into the returned object. These arguments may include placeholders,
+                  which will operate in a fashion identical to a call to <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">bind</span></code>.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__buffer_bytes.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__bind_front_handler.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

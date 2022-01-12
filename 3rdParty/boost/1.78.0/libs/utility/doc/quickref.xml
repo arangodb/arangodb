@@ -1,0 +1,497 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE library PUBLIC "-//Boost//DTD BoostBook XML V1.0//EN" "../../../tools/boostbook/dtd/boostbook.dtd">
+
+<!--
+    Copyright (c) 2021, Alan Freitas
+
+    Distributed under the Boost Software License, Version 1.0.
+
+    See accompanying file LICENSE_1_0.txt
+    or copy at http://boost.org/LICENSE_1_0.txt
+-->
+
+<!-- See also https://tdg.docbook.org/tdg/5.1/ -->
+
+<!-- Doxygen reference -->
+<informaltable frame="all">
+    <tgroup cols="4">
+        <colspec colname="a"/>
+        <colspec colname="b"/>
+        <colspec colname="c"/>
+        <colspec colname="d"/>
+
+        <thead>
+            <row>
+                <entry valign="center" namest="a" nameend="a">
+                    <bridgehead renderas="sect2">Base from Member</bridgehead>
+                </entry>
+                <entry valign="center" namest="b" nameend="b">
+                    <bridgehead renderas="sect2">Call Traits</bridgehead>
+                </entry>
+                <entry valign="center" namest="c" nameend="c">
+                    <bridgehead renderas="sect2">Compressed Pair</bridgehead>
+                </entry>
+                <entry valign="center" namest="d" nameend="d">
+                    <bridgehead renderas="sect2">In-place Factory</bridgehead>
+                </entry>
+            </row>
+        </thead>
+        <tbody>
+            <row>
+                <!-- base_from_member -->
+                <entry valign="top">
+                    <bridgehead renderas="sect3">Classes</bridgehead>
+                    <simplelist type="vert" columns="1">
+                        <member>
+                            <link linkend="boost.base_from_member">base_from_member</link>
+                        </member>
+                    </simplelist>
+                </entry>
+
+                <!-- call_traits -->
+                <entry valign="top">
+                    <bridgehead renderas="sect3">Type Traits</bridgehead>
+                    <simplelist type="vert" columns="1">
+                        <member>
+                            <link linkend="boost.call_traits">call_traits</link>
+                        </member>
+                        <member>
+                            <link linkend="boost.call_traits">call_traits&lt;T&amp;&gt;</link>
+                        </member>
+                        <member>
+                            <link linkend="boost.call_traits">call_traits&lt;T[N]&gt;
+                            </link>
+                        </member>
+                        <member>
+                            <link linkend="boost.call_traits">call_traits&lt;const
+                                T[N]&gt;
+                            </link>
+                        </member>
+                    </simplelist>
+                </entry>
+
+                <!-- compressed_pair -->
+                <entry valign="top">
+                    <bridgehead renderas="sect3">Classes</bridgehead>
+                    <simplelist type="vert" columns="1">
+                        <member>
+                            <link linkend="boost.compressed_pair">compressed_pair</link>
+                        </member>
+                    </simplelist>
+
+                    <bridgehead renderas="sect3">Functions</bridgehead>
+                    <simplelist type="vert" columns="1">
+                        <member>
+                            <link linkend="header.boost.detail.compressed_pair_hpp">swap</link>
+                        </member>
+                    </simplelist>
+                </entry>
+
+                <!-- in_place_factory -->
+                <entry valign="top">
+                    <bridgehead renderas="sect3">Classes</bridgehead>
+                    <simplelist type="vert" columns="1">
+                        <member>
+                            <link linkend="boost.in_place_factory_base">in_place_factory_base</link>
+                        </member>
+                        <member>
+                            <link linkend="boost.typed_in_place_factory_base">typed_in_place_factory_base
+                            </link>
+                        </member>
+                    </simplelist>
+                </entry>
+            </row>
+        </tbody>
+    </tgroup>
+
+    <tgroup cols="5">
+        <colspec colname="a"/>
+        <colspec colname="b"/>
+        <colspec colname="c"/>
+        <colspec colname="d"/>
+        <colspec colname="e"/>
+
+        <thead>
+            <row>
+                <entry valign="center" namest="a" nameend="e">
+                    <bridgehead renderas="sect2">Operators</bridgehead>
+                </entry>
+            </row>
+        </thead>
+
+        <tbody>
+            <row>
+                <entry valign="top">
+                    <!-- 13 classes per cell -->
+                    <bridgehead renderas="sect3">Classes (1 of 5)</bridgehead>
+                    <simplelist type="vert" columns="1">
+                        <member>
+                            <link linkend="sec:arithmetic">additive1</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">additive2</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">arithmetic1</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">arithmetic2</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">bidirectional_iteratable</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">
+                                bidirectional_iterator_helper
+                            </link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">bitwise1</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">bitwise2</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">decrementable</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">dereferenceable</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">equality_comparable1</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">equality_comparable2</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">equivalent1</link>
+                        </member>
+                    </simplelist>
+                </entry>
+
+                <entry valign="top">
+                    <bridgehead renderas="sect3">Classes (2 of 5)</bridgehead>
+                    <simplelist type="vert" columns="1">
+                        <member>
+                            <link linkend="sec:arithmetic">equivalent2</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">euclidean_ring_operators1
+                            </link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">euclidean_ring_operators2
+                            </link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">field_operators1</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">field_operators2</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">forward_iteratable</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">forward_iterator_helper</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">incrementable</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">indexable</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">input_iteratable</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">input_iterator_helper</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">integer_arithmetic1</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">integer_arithmetic2</link>
+                        </member>
+                    </simplelist>
+                </entry>
+
+                <entry valign="top">
+                    <bridgehead renderas="sect3">Classes (3 of 5)</bridgehead>
+                    <simplelist type="vert" columns="1">
+                        <member>
+                            <link linkend="sec:arithmetic">integer_multiplicative1</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">integer_multiplicative2</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">is_chained_base</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">less_than_comparable1</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">less_than_comparable2</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">multiplicative1</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">multiplicative2</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">operators</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">operators2</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">operators&lt;T,T&gt;</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">
+                                ordered_euclidean_ring_operators1
+                            </link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">
+                                ordered_euclidean_ring_operators2
+                            </link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">
+                                ordered_euclidian_ring_operators1
+                            </link>
+                        </member>
+                    </simplelist>
+                </entry>
+
+                <entry valign="top">
+                    <bridgehead renderas="sect3">Classes (4 of 5)</bridgehead>
+                    <simplelist type="vert" columns="1">
+                        <member>
+                            <link linkend="sec:arithmetic">
+                                ordered_euclidian_ring_operators2
+                            </link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">ordered_field_operators1</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">ordered_field_operators2</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">ordered_ring_operators1</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">ordered_ring_operators2</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">output_iteratable</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">output_iterator_helper</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">partially_ordered1</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">partially_ordered2</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">random_access_iteratable</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">
+                                random_access_iterator_helper
+                            </link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">ring_operators1</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">ring_operators2</link>
+                        </member>
+                    </simplelist>
+                </entry>
+
+                <entry valign="top">
+                    <bridgehead renderas="sect3">Classes (5 of 5)</bridgehead>
+                    <simplelist type="vert" columns="1">
+                        <member>
+                            <link linkend="sec:arithmetic">shiftable1</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">shiftable2</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">totally_ordered1</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">totally_ordered2</link>
+                        </member>
+                        <member>
+                            <link linkend="sec:arithmetic">unit_steppable</link>
+                        </member>
+                    </simplelist>
+                    <bridgehead renderas="sect3">Type Traits</bridgehead>
+                    <simplelist type="vert" columns="1">
+                        <member>
+                            <link linkend="sec:arithmetic">is_chained_base</link>
+                        </member>
+                    </simplelist>
+                </entry>
+            </row>
+        </tbody>
+    </tgroup>
+
+    <tgroup cols="5">
+        <colspec colname="a"/>
+        <colspec colname="b"/>
+        <colspec colname="c"/>
+        <colspec colname="d"/>
+        <colspec colname="e"/>
+
+        <thead>
+            <row>
+                <entry valign="center" namest="a" nameend="a">
+                    <bridgehead renderas="sect2">Result of</bridgehead>
+                </entry>
+                <entry valign="center" namest="b" nameend="d">
+                    <bridgehead renderas="sect2">String View</bridgehead>
+                </entry>
+                <entry valign="center" namest="e" nameend="e">
+                    <bridgehead renderas="sect2">Value Init</bridgehead>
+                </entry>
+            </row>
+        </thead>
+
+        <tbody>
+            <row>
+                <!-- result_of -->
+                <entry valign="top">
+                    <bridgehead renderas="sect3">Type Traits</bridgehead>
+                    <simplelist type="vert" columns="1">
+                        <member>
+                            <link linkend="boost.result_of">result_of</link>
+                        </member>
+                        <member>
+                            <link linkend="boost.tr1_result_of">tr1_result_of</link>
+                        </member>
+                    </simplelist>
+                </entry>
+
+                <!-- string_view -->
+                <entry valign="top">
+                    <bridgehead renderas="sect3">Aliases</bridgehead>
+                    <simplelist type="vert" columns="1">
+                        <member>
+                            <link linkend="boost.basic_string_view">string_view</link>
+                        </member>
+                        <member>
+                            <link linkend="boost.basic_string_view">u16string_ref</link>
+                        </member>
+                        <member>
+                            <link linkend="boost.basic_string_view">u16string_view</link>
+                        </member>
+                        <member>
+                            <link linkend="boost.basic_string_view">u32string_ref</link>
+                        </member>
+                        <member>
+                            <link linkend="boost.basic_string_view">u32string_view</link>
+                        </member>
+                        <member>
+                            <link linkend="boost.basic_string_view">wstring_ref</link>
+                        </member>
+                        <member>
+                            <link linkend="boost.basic_string_view">wstring_view</link>
+                        </member>
+                        <member>
+                            <link linkend="boost.basic_string_view">string_ref</link>
+                        </member>
+                    </simplelist>
+                </entry>
+
+                <entry valign="top">
+                    <bridgehead renderas="sect3">Classes</bridgehead>
+                    <simplelist type="vert" columns="1">
+                        <member>
+                            <link linkend="boost.basic_string_view">basic_string_ref</link>
+                        </member>
+                        <member>
+                            <link linkend="boost.basic_string_view">basic_string_view</link>
+                        </member>
+                    </simplelist>
+                    <bridgehead renderas="sect3">Functions</bridgehead>
+                    <simplelist type="vert" columns="1">
+                        <member>
+                            <link linkend="boost.hash_range">hash_range</link>
+                        </member>
+                        <member>
+                            <link linkend="boost.hash_value">hash_value</link>
+                        </member>
+                    </simplelist>
+                </entry>
+
+                <entry valign="top">
+                    <bridgehead renderas="sect3">Operators</bridgehead>
+                    <simplelist type="vert" columns="1">
+                        <member>
+                            <link linkend="header.boost.utility.string_view_hpp">operator==</link>
+                        </member>
+                        <member>
+                            <link linkend="header.boost.utility.string_view_hpp">operator!=</link>
+                        </member>
+                        <member>
+                            <link linkend="header.boost.utility.string_view_hpp">operator&lt;</link>
+                        </member>
+                        <member>
+                            <link linkend="header.boost.utility.string_view_hpp">operator&lt;=</link>
+                        </member>
+                        <member>
+                            <link linkend="header.boost.utility.string_view_hpp">operator&gt;</link>
+                        </member>
+                        <member>
+                            <link linkend="header.boost.utility.string_view_hpp">operator&gt;=</link>
+                        </member>
+                        <member>
+                            <link linkend="header.boost.utility.string_view_hpp">operator&lt;&lt;</link>
+                        </member>
+                    </simplelist>
+                </entry>
+
+                <!-- value_init -->
+                <entry valign="top">
+                        <bridgehead renderas="sect3">Classes</bridgehead>
+                        <simplelist type="vert" columns="1">
+                            <member>
+                                <link linkend="boost.initialized">initialized</link>
+                            </member>
+                            <member>
+                                <link linkend="boost.initialized_value_t">initialized_value_t</link>
+                            </member>
+                            <member>
+                                <link linkend="boost.value_initialized">value_initialized</link>
+                            </member>
+                        </simplelist>
+                        <bridgehead renderas="sect3">Functions</bridgehead>
+                        <simplelist type="vert" columns="1">
+                            <member>
+                                <link linkend="header.boost.utility.value_init_hpp">get</link>
+                            </member>
+                            <member>
+                                <link linkend="header.boost.utility.value_init_hpp">swap</link>
+                            </member>
+                        </simplelist>
+                        <bridgehead renderas="sect3">Constants</bridgehead>
+                        <simplelist type="vert" columns="1">
+                            <member>
+                                <link linkend="boost.initialized_value">initialized_value</link>
+                            </member>
+                        </simplelist>
+                </entry>
+            </row>
+        </tbody>
+    </tgroup>
+</informaltable>

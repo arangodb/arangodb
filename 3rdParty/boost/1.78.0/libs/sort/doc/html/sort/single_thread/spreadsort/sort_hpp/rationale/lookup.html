@@ -1,0 +1,57 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Lookup Table?</title>
+<link rel="stylesheet" href="../../../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../../../index.html" title="Boost.Sort">
+<link rel="up" href="../rationale.html" title="Rationale">
+<link rel="prev" href="optimization.html" title="Unused X86 optimization">
+<link rel="next" href="../../definitions.html" title="Definitions">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="optimization.html"><img src="../../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../rationale.html"><img src="../../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../../index.html"><img src="../../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../definitions.html"><img src="../../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h6 class="title">
+<a name="sort.single_thread.spreadsort.sort_hpp.rationale.lookup"></a><a class="link" href="lookup.html" title="Lookup Table?">Lookup
+            Table?</a>
+</h6></div></div></div>
+<p>
+              The ideal way to optimize the constants would be to have a carefully-tuned
+              lookup-table instead of the <code class="computeroutput">get_max_count</code> function, but
+              4 tuning variables is simpler, <code class="computeroutput">get_max_count</code> enforces
+              worst-case performance minimization rules, and such a lookup table
+              would be difficult to optimize for cross-platform performance.
+            </p>
+<p>
+              Alternatively, <code class="computeroutput">get_max_count</code> could be used to generate
+              a static lookup table. This hasn't been done due to concerns about
+              cross-platform compatibility and flexibility.
+            </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2014-2017 Steven
+      Ross, Francisco Tapia, Orson Peters<p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="optimization.html"><img src="../../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../rationale.html"><img src="../../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../../index.html"><img src="../../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../definitions.html"><img src="../../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

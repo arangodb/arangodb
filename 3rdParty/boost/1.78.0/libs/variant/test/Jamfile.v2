@@ -1,0 +1,69 @@
+#  Boost.Variant Library test Jamfile
+#
+#  Copyright (C) 2003, Eric Friedman, Itay Maman.
+#  Copyright (C) 2013-2021 Antony Polukhin.
+#
+# Use, modification and distribution is subject to the Boost Software License,
+# Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+#
+
+import testing ;
+
+local below_cpp11 = 98 03 ;
+local below_cpp14 = 98 03 0x 11 ;
+local since_cpp20 = 2a 20 latest ;
+
+project
+    : requirements
+        <toolset>msvc:<asynch-exceptions>on
+    ;
+test-suite variant
+     :
+    [ run test1.cpp class_a.cpp : : : : variant_test1 ]
+    [ run test2.cpp : : : : variant_test2 ]
+    [ run test3.cpp : : : : variant_test3 ]
+    [ run test3.cpp : : : <rtti>off <define>BOOST_NO_RTTI <define>BOOST_NO_TYPEID : variant_test3_no_rtti ]
+    [ run test4.cpp class_a.cpp : : : : variant_test4 ]
+    [ run test5.cpp : : : : variant_test5 ]
+    [ run test6.cpp : : : : variant_test6 ]
+    [ run test7.cpp : : : : variant_test7 ]
+    [ run test8.cpp : : : : variant_test8 ]
+    [ run test9.cpp : : : : variant_test9 ]
+    [ run recursive_variant_test.cpp ]
+    [ run variant_reference_test.cpp ]
+    [ run variant_comparison_test.cpp ]
+    [ run variant_visit_internal_linkage.cpp : : : "<cxxstd>$(below_cpp14)"\:<build>no ]
+    [ run variant_visit_test.cpp ]
+    [ run variant_get_test.cpp ]
+    [ compile-fail variant_rvalue_get_with_ampersand_test.cpp ]
+    [ compile-fail no_rvalue_to_nonconst_visitation.cpp ]
+    [ compile fusion_interop.cpp : "<cxxstd>$(below_cpp11)"\:<build>no ]
+    [ run variant_polymorphic_get_test.cpp ]
+    [ run variant_multivisit_test.cpp ]
+    [ run hash_variant_test.cpp ]
+    [ run rvalue_test.cpp ]
+    [ run variant_nonempty_check.cpp ]
+    [ run recursive_variant_test.cpp : : : <define>BOOST_NO_EXCEPTIONS
+      <toolset>gcc-4.3:<cxxflags>-fno-exceptions
+      <toolset>gcc-4.4:<cxxflags>-fno-exceptions
+      <toolset>gcc-4.5:<cxxflags>-fno-exceptions
+      <toolset>gcc-4.6:<cxxflags>-fno-exceptions
+      <toolset>gcc-4.7:<cxxflags>-fno-exceptions
+      <toolset>gcc-4.8:<cxxflags>-fno-exceptions
+      <toolset>clang:<cxxflags>-fno-exceptions
+      : variant_noexcept_test
+    ]
+    [ run recursive_variant_test.cpp : : : <rtti>off <define>BOOST_NO_RTTI <define>BOOST_NO_TYPEID : variant_no_rtti_test ]
+    [ run hash_recursive_variant_test.cpp ]
+    [ run variant_swap_test.cpp ]
+    [ run auto_visitors.cpp ]
+    [ run issue42.cpp ]
+    [ run issue53.cpp ]
+    [ run overload_selection.cpp : : : "<cxxstd>$(since_cpp20)"\:<build>no ]
+    [ run recursive_wrapper_move_test.cpp ]
+    [ run variant_over_joint_view_test.cpp ]
+    [ run const_ref_apply_visitor.cpp ]
+   ; 
+
+

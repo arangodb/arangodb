@@ -1,0 +1,240 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Parametrized test cases</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Test">
+<link rel="up" href="../test_cases.html" title="Test cases">
+<link rel="prev" href="test_organization_templates.html" title="Template test cases">
+<link rel="next" href="../test_tree.html" title="Test tree">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="test_organization_templates.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_cases.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../test_tree.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_test.tests_organization.test_cases.param_test"></a><a class="link" href="param_test.html" title="Parametrized test cases">Parametrized
+        test cases</a>
+</h4></div></div></div>
+<div class="caution"><table border="0" summary="Caution">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../../../../../../../doc/src/images/caution.png"></td>
+<th align="left">Caution</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            the functionalities presented on this page have been superseded by the
+            <a class="link" href="test_case_generation.html" title="Data-driven test cases">Data-driven
+            test case</a> facility.
+          </p></td></tr>
+</table></div>
+<p>
+          Some tests are required to be repeated for a series of different input
+          parameters. One way to achieve this is manually register a test case for
+          each parameter as in the previous examples. You can also invoke a test
+          function with all parameters manually from within your test case, like
+          this:
+        </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">single_test</span><span class="special">(</span> <span class="keyword">int</span> <span class="identifier">i</span> <span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_CHECK</span><span class="special">(</span> <span class="comment">/* test assertion */</span> <span class="special">);</span>
+<span class="special">}</span>
+
+<span class="keyword">void</span> <span class="identifier">combined_test</span><span class="special">()</span>
+<span class="special">{</span>
+  <span class="keyword">int</span> <span class="identifier">params</span><span class="special">[]</span> <span class="special">=</span> <span class="special">{</span> <span class="number">1</span><span class="special">,</span> <span class="number">2</span><span class="special">,</span> <span class="number">3</span><span class="special">,</span> <span class="number">4</span><span class="special">,</span> <span class="number">5</span> <span class="special">};</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">for_each</span><span class="special">(</span> <span class="identifier">params</span><span class="special">,</span> <span class="identifier">params</span><span class="special">+</span><span class="number">5</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">single_test</span> <span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+          The <span class="emphasis"><em>Unit Test Framework</em></span> presents a better solution
+          for this problem: the unary function based test case, also referred as
+          <span class="emphasis"><em>parametrized test case</em></span>. The unary test function can
+          be a free function, unary functor (for example created with <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span></code>) or unary method of a class with
+          bound test class instance). The test function is converted into test case
+          using the macro <code class="computeroutput"><span class="identifier">BOOST_PARAM_TEST_CASE</span></code>.
+          The macro expects a collection of parameters (passed as two input iterators)
+          and an unary test function:
+        </p>
+<pre class="programlisting"><span class="identifier">BOOST_PARAM_TEST_CASE</span><span class="special">(</span><span class="identifier">test_function</span><span class="special">,</span> <span class="identifier">params_begin</span><span class="special">,</span> <span class="identifier">params_end</span><span class="special">);</span>
+</pre>
+<p>
+          <code class="computeroutput"><span class="identifier">BOOST_PARAM_TEST_CASE</span></code> creates
+          an instance of the test case generator. When passed to the method <code class="computeroutput"><a class="link" href="../../../boost/unit_test/test_suite.html#idm46713-bb">test_suite::add</a></code>,
+          the generator produces a separate sub test case for each parameter in the
+          parameters collection and registers it immediately in a test suite. Each
+          test case is based on a test function with the parameter bound by value,
+          even if the test function expects a parameter by reference. The fact that
+          parameter value is stored along with bound test function releases you from
+          necessity to manage parameters lifetime. For example, they can be defined
+          in the test module initialization function scope.
+        </p>
+<p>
+          All sub test case names are deduced from the macro argument <code class="computeroutput"><span class="identifier">test_function</span></code>. If you prefer to assign
+          different names, you have to use the underlying <code class="computeroutput"><a class="link" href="../../../header/boost/test/parameterized_test_hpp.html" title="Header &lt;boost/test/parameterized_test.hpp&gt;">make_test_case</a></code> interface
+          instead. Both test cases creation and registration are performed in the
+          test module initialization function.
+        </p>
+<p>
+          The parametrized test case facility is preferable to the approach in the
+          example above, since execution of each sub test case is guarded and counted
+          independently. It produces a better test log/results report (in example
+          above in case of failure you can't say which parameter is at fault) and
+          allows you to test against all parameters even if one of them causes termination
+          a particular sub test case.
+        </p>
+<p>
+          In comparison with a manual test case registration for each parameter approach
+          the parametrized test case facility is more concise and easily extensible.
+        </p>
+<p>
+          In following simple example the same test, implemented in <code class="computeroutput"><span class="identifier">free_test_function</span></code>, is performed for
+          5 different parameters. The parameters are defined in the test module initialization
+          function scope. The master test suite contains 5 independent test cases.
+        </p>
+<h6>
+<a name="boost_test.tests_organization.test_cases.param_test.h0"></a>
+          <span class="phrase"><a name="boost_test.tests_organization.test_cases.param_test.example_descr"></a></span><a class="link" href="param_test.html#boost_test.tests_organization.test_cases.param_test.example_descr">Example:
+          Unary free function based test case</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Code
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">parameterized_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">;</span>
+
+<span class="keyword">void</span> <span class="identifier">free_test_function</span><span class="special">(</span> <span class="keyword">int</span> <span class="identifier">i</span> <span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">4</span> <span class="comment">/* test assertion */</span> <span class="special">);</span>
+<span class="special">}</span>
+
+<span class="identifier">test_suite</span><span class="special">*</span> <span class="identifier">init_unit_test_suite</span><span class="special">(</span> <span class="keyword">int</span> <span class="comment">/*argc*/</span><span class="special">,</span> <span class="keyword">char</span><span class="special">*</span> <span class="comment">/*argv*/</span><span class="special">[]</span> <span class="special">)</span>
+<span class="special">{</span>
+  <span class="keyword">int</span> <span class="identifier">params</span><span class="special">[]</span> <span class="special">=</span> <span class="special">{</span> <span class="number">1</span><span class="special">,</span> <span class="number">2</span><span class="special">,</span> <span class="number">3</span><span class="special">,</span> <span class="number">4</span><span class="special">,</span> <span class="number">5</span> <span class="special">};</span>
+
+  <span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span>
+    <span class="identifier">add</span><span class="special">(</span> <span class="identifier">BOOST_PARAM_TEST_CASE</span><span class="special">(</span> <span class="special">&amp;</span><span class="identifier">free_test_function</span><span class="special">,</span> <span class="identifier">params</span><span class="special">,</span> <span class="identifier">params</span><span class="special">+</span><span class="number">5</span> <span class="special">)</span> <span class="special">);</span>
+
+  <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Output
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">example</span>
+<span class="identifier">Running</span> <span class="number">5</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">15</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"free_test_function"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">4</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">4</span> <span class="special">&gt;=</span> <span class="number">4</span><span class="special">]</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">15</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"free_test_function"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">4</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">5</span> <span class="special">&gt;=</span> <span class="number">4</span><span class="special">]</span>
+
+<span class="special">***</span> <span class="number">2</span> <span class="identifier">failures</span> <span class="identifier">are</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">the</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"Master Test Suite"</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<p>
+          Next example is similar, but instead of a free function it uses a method
+          of a class. Even though parameters are passed into test method by reference
+          you can still define them in the test module initialization function scope.
+          This example employs the alternative test module initialization function
+          specification.
+        </p>
+<h6>
+<a name="boost_test.tests_organization.test_cases.param_test.h1"></a>
+          <span class="phrase"><a name="boost_test.tests_organization.test_cases.param_test.example_descr0"></a></span><a class="link" href="param_test.html#boost_test.tests_organization.test_cases.param_test.example_descr0">Example:
+          Unary class method based test case</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Code
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_ALTERNATIVE_INIT_API</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">tools</span><span class="special">/</span><span class="identifier">floating_point_comparison</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">parameterized_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">bind</span><span class="special">/</span><span class="identifier">bind</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">;</span>
+<span class="keyword">namespace</span> <span class="identifier">tt</span><span class="special">=</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">test_tools</span><span class="special">;</span>
+
+
+<span class="keyword">class</span> <span class="identifier">test_class</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="keyword">void</span> <span class="identifier">test_method</span><span class="special">(</span> <span class="keyword">double</span> <span class="identifier">d</span> <span class="special">)</span>
+  <span class="special">{</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span> <span class="identifier">d</span> <span class="special">*</span> <span class="number">100</span> <span class="special">==</span> <span class="special">(</span><span class="keyword">double</span><span class="special">)(</span><span class="keyword">int</span><span class="special">)(</span><span class="identifier">d</span><span class="special">*</span><span class="number">100</span><span class="special">),</span> <span class="identifier">tt</span><span class="special">::</span><span class="identifier">tolerance</span><span class="special">(</span><span class="number">0.0001</span><span class="special">)</span> <span class="special">);</span>
+  <span class="special">}</span>
+<span class="special">}</span> <span class="identifier">tester</span><span class="special">;</span>
+
+<span class="keyword">bool</span> <span class="identifier">init_unit_test</span><span class="special">()</span>
+<span class="special">{</span>
+  <span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">;</span>
+  <span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">placeholders</span><span class="special">::</span><span class="identifier">_1</span><span class="special">;</span>
+  <span class="keyword">double</span> <span class="identifier">params</span><span class="special">[]</span> <span class="special">=</span> <span class="special">{</span> <span class="number">1.</span><span class="special">,</span> <span class="number">1.1</span><span class="special">,</span> <span class="number">1.01</span><span class="special">,</span> <span class="number">1.001</span><span class="special">,</span> <span class="number">1.0001</span> <span class="special">};</span>
+
+  <span class="identifier">boost</span><span class="special">::</span><span class="identifier">function</span><span class="special">&lt;</span><span class="keyword">void</span> <span class="special">(</span><span class="keyword">double</span><span class="special">)&gt;</span> <span class="identifier">test_method</span> <span class="special">=</span> <span class="identifier">bind</span><span class="special">(</span> <span class="special">&amp;</span><span class="identifier">test_class</span><span class="special">::</span><span class="identifier">test_method</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">tester</span><span class="special">,</span> <span class="identifier">_1</span><span class="special">);</span>
+
+  <span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span>
+    <span class="identifier">add</span><span class="special">(</span> <span class="identifier">BOOST_PARAM_TEST_CASE</span><span class="special">(</span> <span class="identifier">test_method</span><span class="special">,</span> <span class="identifier">params</span><span class="special">,</span> <span class="identifier">params</span><span class="special">+</span><span class="number">5</span> <span class="special">)</span> <span class="special">);</span>
+
+  <span class="keyword">return</span> <span class="keyword">true</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Output
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">example</span>
+<span class="identifier">Running</span> <span class="number">5</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">23</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test_method"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">d</span> <span class="special">*</span> <span class="number">100</span> <span class="special">==</span> <span class="special">(</span><span class="keyword">double</span><span class="special">)(</span><span class="keyword">int</span><span class="special">)(</span><span class="identifier">d</span><span class="special">*</span><span class="number">100</span><span class="special">)</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">1.0001</span> <span class="special">*</span> <span class="number">100</span> <span class="special">!=</span> <span class="number">100</span><span class="special">].</span> <span class="identifier">Relative</span> <span class="identifier">difference</span> <span class="identifier">exceeds</span> <span class="identifier">tolerance</span> <span class="special">[</span><span class="number">0.001</span> <span class="special">&gt;</span> <span class="number">0.0001</span><span class="special">]</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">23</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test_method"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">d</span> <span class="special">*</span> <span class="number">100</span> <span class="special">==</span> <span class="special">(</span><span class="keyword">double</span><span class="special">)(</span><span class="keyword">int</span><span class="special">)(</span><span class="identifier">d</span><span class="special">*</span><span class="number">100</span><span class="special">)</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">1.0001</span> <span class="special">*</span> <span class="number">100</span> <span class="special">!=</span> <span class="number">100</span><span class="special">].</span> <span class="identifier">Relative</span> <span class="identifier">difference</span> <span class="identifier">exceeds</span> <span class="identifier">tolerance</span> <span class="special">[</span><span class="number">0.0001</span> <span class="special">&gt;</span> <span class="number">0.0001</span><span class="special">]</span>
+
+<span class="special">***</span> <span class="number">2</span> <span class="identifier">failures</span> <span class="identifier">are</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">the</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"Master Test Suite"</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2020 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="test_organization_templates.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_cases.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../test_tree.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

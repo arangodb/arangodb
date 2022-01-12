@@ -1,0 +1,1546 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Generic Iterators</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Iterator">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Iterator">
+<link rel="prev" href="concepts/traversal.html" title="Traversal">
+<link rel="next" href="generic/adaptor.html" title="Iterator Adaptor">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="concepts/traversal.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="generic/adaptor.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="iterator.generic"></a><a class="link" href="generic.html" title="Generic Iterators">Generic Iterators</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="generic.html#iterator.generic.facade">Iterator Facade</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="generic.html#iterator.generic.facade.facade_reference">Reference</a></span></dt>
+<dt><span class="section"><a href="generic.html#iterator.generic.facade.facade_tutorial">Tutorial</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="generic/adaptor.html">Iterator Adaptor</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="generic/adaptor.html#iterator.generic.adaptor.adaptor_reference">Reference</a></span></dt>
+<dt><span class="section"><a href="generic/adaptor.html#iterator.generic.adaptor.adaptor_tutorial">Tutorial</a></span></dt>
+</dl></dd>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="iterator.generic.facade"></a><a class="link" href="generic.html#iterator.generic.facade" title="Iterator Facade">Iterator Facade</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="generic.html#iterator.generic.facade.facade_reference">Reference</a></span></dt>
+<dt><span class="section"><a href="generic.html#iterator.generic.facade.facade_tutorial">Tutorial</a></span></dt>
+</dl></div>
+<p>
+        While the iterator interface is rich, there is a core subset of the interface
+        that is necessary for all the functionality. We have identified the following
+        core behaviors for iterators:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            dereferencing
+          </li>
+<li class="listitem">
+            incrementing
+          </li>
+<li class="listitem">
+            decrementing
+          </li>
+<li class="listitem">
+            equality comparison
+          </li>
+<li class="listitem">
+            random-access motion
+          </li>
+<li class="listitem">
+            distance measurement
+          </li>
+</ul></div>
+<p>
+        In addition to the behaviors listed above, the core interface elements include
+        the associated types exposed through iterator traits: <code class="computeroutput"><span class="identifier">value_type</span></code>,
+        <code class="computeroutput"><span class="identifier">reference</span></code>, <code class="computeroutput"><span class="identifier">difference_type</span></code>, and <code class="computeroutput"><span class="identifier">iterator_category</span></code>.
+      </p>
+<p>
+        Iterator facade uses the Curiously Recurring Template Pattern (CRTP) [Cop95]_
+        so that the user can specify the behavior of <code class="computeroutput"><span class="identifier">iterator_facade</span></code>
+        in a derived class. Former designs used policy objects to specify the behavior,
+        but that approach was discarded for several reasons:
+      </p>
+<p>
+        1. the creation and eventual copying of the policy object may create overhead
+        that can be avoided with the current approach.
+      </p>
+<p>
+        2. The policy object approach does not allow for custom constructors on the
+        created iterator types, an essential feature if <code class="computeroutput"><span class="identifier">iterator_facade</span></code>
+        should be used in other library implementations.
+      </p>
+<p>
+        3. Without the use of CRTP, the standard requirement that an iterator's
+        <code class="computeroutput"><span class="keyword">operator</span><span class="special">++</span></code>
+        returns the iterator type itself would mean that all iterators built with
+        the library would have to be specializations of <code class="computeroutput"><span class="identifier">iterator_facade</span><span class="special">&lt;...&gt;</span></code>, rather than something more descriptive
+        like <code class="computeroutput"><span class="identifier">indirect_iterator</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">*&gt;</span></code>.
+        Cumbersome type generator metafunctions would be needed to build new parameterized
+        iterators, and a separate <code class="computeroutput"><span class="identifier">iterator_adaptor</span></code>
+        layer would be impossible.
+      </p>
+<h3>
+<a name="iterator.generic.facade.h0"></a>
+        <span class="phrase"><a name="iterator.generic.facade.usage"></a></span><a class="link" href="generic.html#iterator.generic.facade.usage">Usage</a>
+      </h3>
+<p>
+        The user of <code class="computeroutput"><span class="identifier">iterator_facade</span></code>
+        derives his iterator class from a specialization of <code class="computeroutput"><span class="identifier">iterator_facade</span></code>
+        and passes the derived iterator class as <code class="computeroutput"><span class="identifier">iterator_facade</span></code>'s
+        first template parameter. The order of the other template parameters have
+        been carefully chosen to take advantage of useful defaults. For example,
+        when defining a constant lvalue iterator, the user can pass a const-qualified
+        version of the iterator's <code class="computeroutput"><span class="identifier">value_type</span></code>
+        as <code class="computeroutput"><span class="identifier">iterator_facade</span></code>'s <code class="computeroutput"><span class="identifier">Value</span></code> parameter and omit the <code class="computeroutput"><span class="identifier">Reference</span></code> parameter which follows.
+      </p>
+<p>
+        The derived iterator class must define member functions implementing the
+        iterator's core behaviors. The following table describes expressions which
+        are required to be valid depending on the category of the derived iterator
+        type. These member functions are described briefly below and in more detail
+        in the iterator facade requirements.
+      </p>
+<div class="table">
+<a name="iterator.generic.facade.core_interface"></a><p class="title"><b>Table 1.10. Core Interface</b></p>
+<div class="table-contents"><table class="table" summary="Core Interface">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Expression
+                </p>
+              </th>
+<th>
+                <p>
+                  Effects
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">i</span><span class="special">.</span><span class="identifier">dereference</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Access the value referred to
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">i</span><span class="special">.</span><span class="identifier">equal</span><span class="special">(</span><span class="identifier">j</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Compare for equality with <code class="computeroutput"><span class="identifier">j</span></code>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">i</span><span class="special">.</span><span class="identifier">increment</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Advance by one position
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">i</span><span class="special">.</span><span class="identifier">decrement</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Retreat by one position
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">i</span><span class="special">.</span><span class="identifier">advance</span><span class="special">(</span><span class="identifier">n</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Advance by <code class="computeroutput"><span class="identifier">n</span></code> positions
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">i</span><span class="special">.</span><span class="identifier">distance_to</span><span class="special">(</span><span class="identifier">j</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Measure the distance to <code class="computeroutput"><span class="identifier">j</span></code>
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+        In addition to implementing the core interface functions, an iterator derived
+        from <code class="computeroutput"><span class="identifier">iterator_facade</span></code> typically
+        defines several constructors. To model any of the standard iterator concepts,
+        the iterator must at least have a copy constructor. Also, if the iterator
+        type <code class="computeroutput"><span class="identifier">X</span></code> is meant to be automatically
+        interoperate with another iterator type <code class="computeroutput"><span class="identifier">Y</span></code>
+        (as with constant and mutable iterators) then there must be an implicit conversion
+        from <code class="computeroutput"><span class="identifier">X</span></code> to <code class="computeroutput"><span class="identifier">Y</span></code>
+        or from <code class="computeroutput"><span class="identifier">Y</span></code> to <code class="computeroutput"><span class="identifier">X</span></code> (but not both), typically implemented
+        as a conversion constructor. Finally, if the iterator is to model Forward
+        Traversal Iterator or a more-refined iterator concept, a default constructor
+        is required.
+      </p>
+<h3>
+<a name="iterator.generic.facade.h1"></a>
+        <span class="phrase"><a name="iterator.generic.facade.iterator_core_access"></a></span><a class="link" href="generic.html#iterator.generic.facade.iterator_core_access">Iterator
+        Core Access</a>
+      </h3>
+<p>
+        <code class="computeroutput"><span class="identifier">iterator_facade</span></code> and the operator
+        implementations need to be able to access the core member functions in the
+        derived class. Making the core member functions public would expose an implementation
+        detail to the user. The design used here ensures that implementation details
+        do not appear in the public interface of the derived iterator type.
+      </p>
+<p>
+        Preventing direct access to the core member functions has two advantages.
+        First, there is no possibility for the user to accidently use a member function
+        of the iterator when a member of the value_type was intended. This has been
+        an issue with smart pointer implementations in the past. The second and main
+        advantage is that library implementers can freely exchange a hand-rolled
+        iterator implementation for one based on <code class="computeroutput"><span class="identifier">iterator_facade</span></code>
+        without fear of breaking code that was accessing the public core member functions
+        directly.
+      </p>
+<p>
+        In a naive implementation, keeping the derived class' core member functions
+        private would require it to grant friendship to <code class="computeroutput"><span class="identifier">iterator_facade</span></code>
+        and each of the seven operators. In order to reduce the burden of limiting
+        access, <code class="computeroutput"><span class="identifier">iterator_core_access</span></code>
+        is provided, a class that acts as a gateway to the core member functions
+        in the derived iterator class. The author of the derived class only needs
+        to grant friendship to <code class="computeroutput"><span class="identifier">iterator_core_access</span></code>
+        to make his core member functions available to the library.
+      </p>
+<p>
+        <code class="computeroutput"><span class="identifier">iterator_core_access</span></code> will
+        be typically implemented as an empty class containing only private static
+        member functions which invoke the iterator core member functions. There is,
+        however, no need to standardize the gateway protocol. Note that even if
+        <code class="computeroutput"><span class="identifier">iterator_core_access</span></code> used
+        public member functions it would not open a safety loophole, as every core
+        member function preserves the invariants of the iterator.
+      </p>
+<h3>
+<a name="iterator.generic.facade.h2"></a>
+        <span class="phrase"><a name="iterator.generic.facade.operator"></a></span><a class="link" href="generic.html#iterator.generic.facade.operator"><code class="computeroutput"><span class="keyword">operator</span><span class="special">[]</span></code></a>
+      </h3>
+<p>
+        The indexing operator for a generalized iterator presents special challenges.
+        A random access iterator's <code class="computeroutput"><span class="keyword">operator</span><span class="special">[]</span></code> is only required to return something convertible
+        to its <code class="computeroutput"><span class="identifier">value_type</span></code>. Requiring
+        that it return an lvalue would rule out currently-legal random-access iterators
+        which hold the referenced value in a data member (e.g. |counting|_), because
+        <code class="computeroutput"><span class="special">*(</span><span class="identifier">p</span><span class="special">+</span><span class="identifier">n</span><span class="special">)</span></code>
+        is a reference into the temporary iterator <code class="computeroutput"><span class="identifier">p</span><span class="special">+</span><span class="identifier">n</span></code>, which
+        is destroyed when <code class="computeroutput"><span class="keyword">operator</span><span class="special">[]</span></code>
+        returns.
+      </p>
+<p>
+        .. |counting| replace:: <code class="computeroutput"><span class="identifier">counting_iterator</span></code>
+      </p>
+<p>
+        Writable iterators built with <code class="computeroutput"><span class="identifier">iterator_facade</span></code>
+        implement the semantics required by the preferred resolution to <code class="computeroutput"><span class="identifier">issue</span> <span class="number">299</span></code>_
+        and adopted by proposal n1550_: the result of <code class="computeroutput"><span class="identifier">p</span><span class="special">[</span><span class="identifier">n</span><span class="special">]</span></code>
+        is an object convertible to the iterator's <code class="computeroutput"><span class="identifier">value_type</span></code>,
+        and <code class="computeroutput"><span class="identifier">p</span><span class="special">[</span><span class="identifier">n</span><span class="special">]</span> <span class="special">=</span>
+        <span class="identifier">x</span></code> is equivalent to <code class="computeroutput"><span class="special">*(</span><span class="identifier">p</span> <span class="special">+</span>
+        <span class="identifier">n</span><span class="special">)</span> <span class="special">=</span> <span class="identifier">x</span></code> (Note:
+        This result object may be implemented as a proxy containing a copy of <code class="computeroutput"><span class="identifier">p</span><span class="special">+</span><span class="identifier">n</span></code>).
+        This approach will work properly for any random-access iterator regardless
+        of the other details of its implementation. A user who knows more about the
+        implementation of her iterator is free to implement an <code class="computeroutput"><span class="keyword">operator</span><span class="special">[]</span></code> that returns an lvalue in the derived iterator
+        class; it will hide the one supplied by <code class="computeroutput"><span class="identifier">iterator_facade</span></code>
+        from clients of her iterator.
+      </p>
+<p>
+        .. _n1550: http://www.open-std.org/JTC1/SC22/WG21/docs/papers/2003/n1550.htm
+      </p>
+<p>
+        .. _<code class="computeroutput"><span class="identifier">issue</span> <span class="number">299</span></code>:
+        http://www.open-std.org/jtc1/sc22/wg21/docs/lwg-active.html#299
+      </p>
+<p>
+        .. _<code class="computeroutput"><span class="keyword">operator</span> <span class="identifier">arrow</span></code>:
+      </p>
+<h3>
+<a name="iterator.generic.facade.h3"></a>
+        <span class="phrase"><a name="iterator.generic.facade.operator0"></a></span><a class="link" href="generic.html#iterator.generic.facade.operator0"><code class="computeroutput"><span class="keyword">operator</span><span class="special">-&gt;</span></code></a>
+      </h3>
+<p>
+        The <code class="computeroutput"><span class="identifier">reference</span></code> type of a readable
+        iterator (and today's input iterator) need not in fact be a reference, so
+        long as it is convertible to the iterator's <code class="computeroutput"><span class="identifier">value_type</span></code>.
+        When the <code class="computeroutput"><span class="identifier">value_type</span></code> is a
+        class, however, it must still be possible to access members through <code class="computeroutput"><span class="keyword">operator</span><span class="special">-&gt;</span></code>.
+        Therefore, an iterator whose <code class="computeroutput"><span class="identifier">reference</span></code>
+        type is not in fact a reference must return a proxy containing a copy of
+        the referenced value from its <code class="computeroutput"><span class="keyword">operator</span><span class="special">-&gt;</span></code>.
+      </p>
+<p>
+        The return types for <code class="computeroutput"><span class="identifier">iterator_facade</span></code>'s
+        <code class="computeroutput"><span class="keyword">operator</span><span class="special">-&gt;</span></code>
+        and <code class="computeroutput"><span class="keyword">operator</span><span class="special">[]</span></code>
+        are not explicitly specified. Instead, those types are described in terms
+        of a set of requirements, which must be satisfied by the <code class="computeroutput"><span class="identifier">iterator_facade</span></code>
+        implementation.
+      </p>
+<p>
+        .. [Cop95] [Coplien, 1995] Coplien, J., Curiously Recurring Template Patterns,
+        C++ Report, February 1995, pp. 24-27.
+      </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="iterator.generic.facade.facade_reference"></a><a class="link" href="generic.html#iterator.generic.facade.facade_reference" title="Reference">Reference</a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span>
+    <span class="keyword">class</span> <span class="identifier">Derived</span>
+  <span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Value</span>
+  <span class="special">,</span> <span class="keyword">class</span> <span class="identifier">CategoryOrTraversal</span>
+  <span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Reference</span>  <span class="special">=</span> <span class="identifier">Value</span><span class="special">&amp;</span>
+  <span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Difference</span> <span class="special">=</span> <span class="identifier">ptrdiff_t</span>
+<span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">iterator_facade</span> <span class="special">{</span>
+ <span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">typedef</span> <span class="identifier">remove_const</span><span class="special">&lt;</span><span class="identifier">Value</span><span class="special">&gt;::</span><span class="identifier">type</span> <span class="identifier">value_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">Reference</span> <span class="identifier">reference</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">Value</span><span class="special">\*</span> <span class="identifier">pointer</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">Difference</span> <span class="identifier">difference_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="comment">/* see below__ \*/</span> <span class="identifier">iterator_category</span><span class="special">;</span>
+
+    <span class="identifier">reference</span> <span class="keyword">operator</span><span class="special">\*()</span> <span class="keyword">const</span><span class="special">;</span>
+    <span class="comment">/* see below__ \*/</span> <span class="keyword">operator</span><span class="special">-&gt;()</span> <span class="keyword">const</span><span class="special">;</span>
+    <span class="comment">/* see below__ \*/</span> <span class="keyword">operator</span><span class="special">[](</span><span class="identifier">difference_type</span> <span class="identifier">n</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+    <span class="identifier">Derived</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">++();</span>
+    <span class="identifier">Derived</span> <span class="keyword">operator</span><span class="special">++(</span><span class="keyword">int</span><span class="special">);</span>
+    <span class="identifier">Derived</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">--();</span>
+    <span class="identifier">Derived</span> <span class="keyword">operator</span><span class="special">--(</span><span class="keyword">int</span><span class="special">);</span>
+    <span class="identifier">Derived</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">+=(</span><span class="identifier">difference_type</span> <span class="identifier">n</span><span class="special">);</span>
+    <span class="identifier">Derived</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">-=(</span><span class="identifier">difference_type</span> <span class="identifier">n</span><span class="special">);</span>
+    <span class="identifier">Derived</span> <span class="keyword">operator</span><span class="special">-(</span><span class="identifier">difference_type</span> <span class="identifier">n</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+ <span class="keyword">protected</span><span class="special">:</span>
+    <span class="keyword">typedef</span> <span class="identifier">iterator_facade</span> <span class="identifier">iterator_facade</span><span class="special">\</span><span class="identifier">_</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="comment">// Comparison operators</span>
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Dr1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D1</span><span class="special">,</span>
+          <span class="keyword">class</span> <span class="identifier">Dr2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D2</span><span class="special">&gt;</span>
+<span class="keyword">typename</span> <span class="identifier">enable_if_interoperable</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">Dr2</span><span class="special">,</span><span class="keyword">bool</span><span class="special">&gt;::</span><span class="identifier">type</span> <span class="comment">// exposition</span>
+<span class="keyword">operator</span> <span class="special">==(</span><span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">V1</span><span class="special">,</span><span class="identifier">TC1</span><span class="special">,</span><span class="identifier">R1</span><span class="special">,</span><span class="identifier">D1</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span>
+            <span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">V2</span><span class="special">,</span><span class="identifier">TC2</span><span class="special">,</span><span class="identifier">R2</span><span class="special">,</span><span class="identifier">D2</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Dr1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D1</span><span class="special">,</span>
+          <span class="keyword">class</span> <span class="identifier">Dr2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D2</span><span class="special">&gt;</span>
+<span class="keyword">typename</span> <span class="identifier">enable_if_interoperable</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">Dr2</span><span class="special">,</span><span class="keyword">bool</span><span class="special">&gt;::</span><span class="identifier">type</span>
+<span class="keyword">operator</span> <span class="special">!=(</span><span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">V1</span><span class="special">,</span><span class="identifier">TC1</span><span class="special">,</span><span class="identifier">R1</span><span class="special">,</span><span class="identifier">D1</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span>
+            <span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">V2</span><span class="special">,</span><span class="identifier">TC2</span><span class="special">,</span><span class="identifier">R2</span><span class="special">,</span><span class="identifier">D2</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Dr1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D1</span><span class="special">,</span>
+          <span class="keyword">class</span> <span class="identifier">Dr2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D2</span><span class="special">&gt;</span>
+<span class="keyword">typename</span> <span class="identifier">enable_if_interoperable</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">Dr2</span><span class="special">,</span><span class="keyword">bool</span><span class="special">&gt;::</span><span class="identifier">type</span>
+<span class="keyword">operator</span> <span class="special">&lt;(</span><span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">V1</span><span class="special">,</span><span class="identifier">TC1</span><span class="special">,</span><span class="identifier">R1</span><span class="special">,</span><span class="identifier">D1</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span>
+           <span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">V2</span><span class="special">,</span><span class="identifier">TC2</span><span class="special">,</span><span class="identifier">R2</span><span class="special">,</span><span class="identifier">D2</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Dr1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D1</span><span class="special">,</span>
+          <span class="keyword">class</span> <span class="identifier">Dr2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D2</span><span class="special">&gt;</span>
+<span class="keyword">typename</span> <span class="identifier">enable_if_interoperable</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">Dr2</span><span class="special">,</span><span class="keyword">bool</span><span class="special">&gt;::</span><span class="identifier">type</span>
+<span class="keyword">operator</span> <span class="special">&lt;=(</span><span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">V1</span><span class="special">,</span><span class="identifier">TC1</span><span class="special">,</span><span class="identifier">R1</span><span class="special">,</span><span class="identifier">D1</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span>
+            <span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">V2</span><span class="special">,</span><span class="identifier">TC2</span><span class="special">,</span><span class="identifier">R2</span><span class="special">,</span><span class="identifier">D2</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Dr1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D1</span><span class="special">,</span>
+          <span class="keyword">class</span> <span class="identifier">Dr2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D2</span><span class="special">&gt;</span>
+<span class="keyword">typename</span> <span class="identifier">enable_if_interoperable</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">Dr2</span><span class="special">,</span><span class="keyword">bool</span><span class="special">&gt;::</span><span class="identifier">type</span>
+<span class="keyword">operator</span> <span class="special">&gt;(</span><span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">V1</span><span class="special">,</span><span class="identifier">TC1</span><span class="special">,</span><span class="identifier">R1</span><span class="special">,</span><span class="identifier">D1</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span>
+           <span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">V2</span><span class="special">,</span><span class="identifier">TC2</span><span class="special">,</span><span class="identifier">R2</span><span class="special">,</span><span class="identifier">D2</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Dr1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D1</span><span class="special">,</span>
+          <span class="keyword">class</span> <span class="identifier">Dr2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D2</span><span class="special">&gt;</span>
+<span class="keyword">typename</span> <span class="identifier">enable_if_interoperable</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">Dr2</span><span class="special">,</span><span class="keyword">bool</span><span class="special">&gt;::</span><span class="identifier">type</span>
+<span class="keyword">operator</span> <span class="special">&gt;=(</span><span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">V1</span><span class="special">,</span><span class="identifier">TC1</span><span class="special">,</span><span class="identifier">R1</span><span class="special">,</span><span class="identifier">D1</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span>
+            <span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">V2</span><span class="special">,</span><span class="identifier">TC2</span><span class="special">,</span><span class="identifier">R2</span><span class="special">,</span><span class="identifier">D2</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">);</span>
+
+<span class="comment">// Iterator difference</span>
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Dr1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D1</span><span class="special">,</span>
+          <span class="keyword">class</span> <span class="identifier">Dr2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D2</span><span class="special">&gt;</span>
+<span class="comment">/* see below__ \*/</span>
+<span class="keyword">operator</span><span class="special">-(</span><span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">V1</span><span class="special">,</span><span class="identifier">TC1</span><span class="special">,</span><span class="identifier">R1</span><span class="special">,</span><span class="identifier">D1</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span>
+          <span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">V2</span><span class="special">,</span><span class="identifier">TC2</span><span class="special">,</span><span class="identifier">R2</span><span class="special">,</span><span class="identifier">D2</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">);</span>
+
+<span class="comment">// Iterator addition</span>
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Dr</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D</span><span class="special">&gt;</span>
+<span class="identifier">Derived</span> <span class="keyword">operator</span><span class="special">+</span> <span class="special">(</span><span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr</span><span class="special">,</span><span class="identifier">V</span><span class="special">,</span><span class="identifier">TC</span><span class="special">,</span><span class="identifier">R</span><span class="special">,</span><span class="identifier">D</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;,</span>
+                   <span class="keyword">typename</span> <span class="identifier">Derived</span><span class="special">::</span><span class="identifier">difference_type</span> <span class="identifier">n</span><span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Dr</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D</span><span class="special">&gt;</span>
+<span class="identifier">Derived</span> <span class="keyword">operator</span><span class="special">+</span> <span class="special">(</span><span class="keyword">typename</span> <span class="identifier">Derived</span><span class="special">::</span><span class="identifier">difference_type</span> <span class="identifier">n</span><span class="special">,</span>
+                   <span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr</span><span class="special">,</span><span class="identifier">V</span><span class="special">,</span><span class="identifier">TC</span><span class="special">,</span><span class="identifier">R</span><span class="special">,</span><span class="identifier">D</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+</pre>
+<p>
+          __ <code class="computeroutput"><span class="identifier">iterator</span> <span class="identifier">category</span></code>_
+        </p>
+<p>
+          __ <code class="computeroutput"><span class="keyword">operator</span> <span class="identifier">arrow</span></code>_
+        </p>
+<p>
+          __ brackets_
+        </p>
+<p>
+          __ minus_
+        </p>
+<p>
+          .. _<code class="computeroutput"><span class="identifier">iterator</span> <span class="identifier">category</span></code>:
+        </p>
+<p>
+          The <code class="computeroutput"><span class="identifier">iterator_category</span></code> member
+          of <code class="computeroutput"><span class="identifier">iterator_facade</span></code> is
+        </p>
+<p>
+          .. parsed-literal::
+        </p>
+<pre class="programlisting"><span class="special">*</span><span class="identifier">iterator</span><span class="special">-</span><span class="identifier">category</span><span class="special">*\</span> <span class="special">(</span><span class="identifier">CategoryOrTraversal</span><span class="special">,</span> <span class="identifier">reference</span><span class="special">,</span> <span class="identifier">value_type</span><span class="special">)</span>
+</pre>
+<p>
+          where <span class="bold"><strong>iterator-category</strong></span> is defined as
+          follows:
+        </p>
+<p>
+          .. include:: facade_iterator_category.rst
+        </p>
+<p>
+          The <code class="computeroutput"><span class="identifier">enable_if_interoperable</span></code>
+          template used above is for exposition purposes. The member operators should
+          only be in an overload set provided the derived types <code class="computeroutput"><span class="identifier">Dr1</span></code>
+          and <code class="computeroutput"><span class="identifier">Dr2</span></code> are interoperable,
+          meaning that at least one of the types is convertible to the other. The
+          <code class="computeroutput"><span class="identifier">enable_if_interoperable</span></code>
+          approach uses SFINAE to take the operators out of the overload set when
+          the types are not interoperable. The operators should behave <span class="bold"><strong>as-if</strong></span> <code class="computeroutput"><span class="identifier">enable_if_interoperable</span></code>
+          were defined to be:
+        </p>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">bool</span><span class="special">,</span> <span class="keyword">typename</span><span class="special">&gt;</span> <span class="identifier">enable_if_interoperable_impl</span>
+<span class="special">{};</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="identifier">enable_if_interoperable_impl</span><span class="special">&lt;</span><span class="keyword">true</span><span class="special">,</span><span class="identifier">T</span><span class="special">&gt;</span>
+<span class="special">{</span> <span class="keyword">typedef</span> <span class="identifier">T</span> <span class="identifier">type</span><span class="special">;</span> <span class="special">};</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Dr1</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Dr2</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">enable_if_interoperable</span>
+  <span class="special">:</span> <span class="identifier">enable_if_interoperable_impl</span><span class="special">&lt;</span>
+        <span class="identifier">is_convertible</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">Dr2</span><span class="special">&gt;::</span><span class="identifier">value</span> <span class="special">||</span> <span class="identifier">is_convertible</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">Dr1</span><span class="special">&gt;::</span><span class="identifier">value</span>
+      <span class="special">,</span> <span class="identifier">T</span>
+    <span class="special">&gt;</span>
+<span class="special">{};</span>
+</pre>
+<h3>
+<a name="iterator.generic.facade.facade_reference.h0"></a>
+          <span class="phrase"><a name="iterator.generic.facade.facade_reference.requirements"></a></span><a class="link" href="generic.html#iterator.generic.facade.facade_reference.requirements">Requirements</a>
+        </h3>
+<p>
+          The following table describes the typical valid expressions on <code class="computeroutput"><span class="identifier">iterator_facade</span></code>'s <code class="computeroutput"><span class="identifier">Derived</span></code>
+          parameter, depending on the iterator concept(s) it will model. The operations
+          in the first column must be made accessible to member functions of class
+          <code class="computeroutput"><span class="identifier">iterator_core_access</span></code>. In
+          addition, <code class="computeroutput"><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">Derived</span><span class="special">*&gt;(</span><span class="identifier">iterator_facade</span><span class="special">*)</span></code>
+          shall be well-formed.
+        </p>
+<p>
+          In the table below, <code class="computeroutput"><span class="identifier">F</span></code> is
+          <code class="computeroutput"><span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">,</span><span class="identifier">V</span><span class="special">,</span><span class="identifier">C</span><span class="special">,</span><span class="identifier">R</span><span class="special">,</span><span class="identifier">D</span><span class="special">&gt;</span></code>, <code class="computeroutput"><span class="identifier">a</span></code>
+          is an object of type <code class="computeroutput"><span class="identifier">X</span></code>,
+          <code class="computeroutput"><span class="identifier">b</span></code> and <code class="computeroutput"><span class="identifier">c</span></code>
+          are objects of type <code class="computeroutput"><span class="keyword">const</span> <span class="identifier">X</span></code>, <code class="computeroutput"><span class="identifier">n</span></code>
+          is an object of <code class="computeroutput"><span class="identifier">F</span><span class="special">::</span><span class="identifier">difference_type</span></code>, <code class="computeroutput"><span class="identifier">y</span></code>
+          is a constant object of a single pass iterator type interoperable with
+          <code class="computeroutput"><span class="identifier">X</span></code>, and <code class="computeroutput"><span class="identifier">z</span></code>
+          is a constant object of a random access traversal iterator type interoperable
+          with <code class="computeroutput"><span class="identifier">X</span></code>.
+        </p>
+<p>
+          .. _<code class="computeroutput"><span class="identifier">core</span> <span class="identifier">operations</span></code>:
+        </p>
+<p>
+          .. topic:: <code class="computeroutput"><span class="identifier">iterator_facade</span></code>
+          Core Operations
+        </p>
+<div class="table">
+<a name="iterator.generic.facade.facade_reference.core_operations"></a><p class="title"><b>Table 1.11. Core Operations</b></p>
+<div class="table-contents"><table class="table" summary="Core Operations">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Expression
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Return Type
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Assertion/Note
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Used to implement Iterator Concept(s)
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">c</span><span class="special">.</span><span class="identifier">dereference</span><span class="special">()</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">F</span><span class="special">::</span><span class="identifier">reference</span></code>
+                  </p>
+                </td>
+<td>
+                </td>
+<td>
+                  <p>
+                    Readable Iterator, Writable Iterator
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">c</span><span class="special">.</span><span class="identifier">equal</span><span class="special">(</span><span class="identifier">y</span><span class="special">)</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    convertible to bool
+                  </p>
+                </td>
+<td>
+                  <p>
+                    true iff <code class="computeroutput"><span class="identifier">c</span></code> and
+                    <code class="computeroutput"><span class="identifier">y</span></code> refer to the
+                    same position
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Single Pass Iterator
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">increment</span><span class="special">()</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    unused
+                  </p>
+                </td>
+<td>
+                </td>
+<td>
+                  <p>
+                    Incrementable Iterator
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">decrement</span><span class="special">()</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    unused
+                  </p>
+                </td>
+<td>
+                </td>
+<td>
+                  <p>
+                    Bidirectional Traversal Iterator
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">advance</span><span class="special">(</span><span class="identifier">n</span><span class="special">)</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    unused
+                  </p>
+                </td>
+<td>
+                </td>
+<td>
+                  <p>
+                    Random Access Traversal Iterator
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">c</span><span class="special">.</span><span class="identifier">distance_to</span><span class="special">(</span><span class="identifier">z</span><span class="special">)</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    convertible to <code class="computeroutput"><span class="identifier">F</span><span class="special">::</span><span class="identifier">difference_type</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    equivalent to <code class="computeroutput"><span class="identifier">distance</span><span class="special">(</span><span class="identifier">c</span><span class="special">,</span> <span class="identifier">X</span><span class="special">(</span><span class="identifier">z</span><span class="special">))</span></code>.
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Random Access Traversal Iterator
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><h3>
+<a name="iterator.generic.facade.facade_reference.h1"></a>
+          <span class="phrase"><a name="iterator.generic.facade.facade_reference.operations"></a></span><a class="link" href="generic.html#iterator.generic.facade.facade_reference.operations">Operations</a>
+        </h3>
+<p>
+          The operations in this section are described in terms of operations on
+          the core interface of <code class="computeroutput"><span class="identifier">Derived</span></code>
+          which may be inaccessible (i.e. private). The implementation should access
+          these operations through member functions of class <code class="computeroutput"><span class="identifier">iterator_core_access</span></code>.
+        </p>
+<pre class="programlisting"><span class="identifier">reference</span> <span class="keyword">operator</span><span class="special">*()</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<p>
+          <span class="bold"><strong>Returns:</strong></span> <code class="computeroutput"><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">Derived</span>
+          <span class="keyword">const</span><span class="special">*&gt;(</span><span class="keyword">this</span><span class="special">)-&gt;</span><span class="identifier">dereference</span><span class="special">()</span></code>
+        </p>
+<pre class="programlisting"><span class="keyword">operator</span><span class="special">-&gt;()</span> <span class="keyword">const</span><span class="special">;</span> <span class="special">(</span><span class="identifier">see</span> <span class="identifier">below__</span><span class="special">)</span>
+</pre>
+<p>
+          __ <code class="computeroutput"><span class="keyword">operator</span> <span class="identifier">arrow</span></code>_
+        </p>
+<p>
+          <span class="bold"><strong>Returns:</strong></span> If <code class="computeroutput"><span class="identifier">reference</span></code>
+          is a reference type, an object of type <code class="computeroutput"><span class="identifier">pointer</span></code>
+          equal to: <code class="computeroutput"><span class="special">&amp;</span><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">Derived</span>
+          <span class="keyword">const</span><span class="special">*&gt;(</span><span class="keyword">this</span><span class="special">)-&gt;</span><span class="identifier">dereference</span><span class="special">()</span></code>
+          Otherwise returns an object of unspecified type such that, <code class="computeroutput"><span class="special">(*</span><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">Derived</span>
+          <span class="keyword">const</span><span class="special">*&gt;(</span><span class="keyword">this</span><span class="special">))-&gt;</span><span class="identifier">m</span></code> is equivalent to <code class="computeroutput"><span class="special">(</span><span class="identifier">w</span> <span class="special">=</span> <span class="special">**</span><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">Derived</span>
+          <span class="keyword">const</span><span class="special">*&gt;(</span><span class="keyword">this</span><span class="special">),</span> <span class="identifier">w</span><span class="special">.</span><span class="identifier">m</span><span class="special">)</span></code> for some temporary object <code class="computeroutput"><span class="identifier">w</span></code> of type <code class="computeroutput"><span class="identifier">value_type</span></code>.
+        </p>
+<p>
+          .. _brackets:
+        </p>
+<pre class="programlisting"><span class="special">*</span><span class="identifier">unspecified</span><span class="special">*</span> <span class="keyword">operator</span><span class="special">[](</span><span class="identifier">difference_type</span> <span class="identifier">n</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<p>
+          <span class="bold"><strong>Returns:</strong></span> an object convertible to <code class="computeroutput"><span class="identifier">value_type</span></code>. For constant objects <code class="computeroutput"><span class="identifier">v</span></code> of type <code class="computeroutput"><span class="identifier">value_type</span></code>,
+          and <code class="computeroutput"><span class="identifier">n</span></code> of type <code class="computeroutput"><span class="identifier">difference_type</span></code>, <code class="computeroutput"><span class="special">(*</span><span class="keyword">this</span><span class="special">)[</span><span class="identifier">n</span><span class="special">]</span> <span class="special">=</span> <span class="identifier">v</span></code>
+          is equivalent to <code class="computeroutput"><span class="special">*(*</span><span class="keyword">this</span>
+          <span class="special">+</span> <span class="identifier">n</span><span class="special">)</span> <span class="special">=</span> <span class="identifier">v</span></code>,
+          and <code class="computeroutput"><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">value_type</span> <span class="keyword">const</span><span class="special">&amp;&gt;((*</span><span class="keyword">this</span><span class="special">)[</span><span class="identifier">n</span><span class="special">])</span></code>
+          is equivalent to <code class="computeroutput"><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">value_type</span>
+          <span class="keyword">const</span><span class="special">&amp;&gt;(*(*</span><span class="keyword">this</span> <span class="special">+</span> <span class="identifier">n</span><span class="special">))</span></code>
+        </p>
+<pre class="programlisting"><span class="identifier">Derived</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">++();</span>
+</pre>
+<p>
+          <span class="bold"><strong>Effects:</strong></span>
+        </p>
+<pre class="programlisting">  <span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">Derived</span><span class="special">*&gt;(</span><span class="keyword">this</span><span class="special">)-&gt;</span><span class="identifier">increment</span><span class="special">();</span>
+  <span class="keyword">return</span> <span class="special">*</span><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">Derived</span><span class="special">*&gt;(</span><span class="keyword">this</span><span class="special">);</span>
+
+<span class="identifier">Derived</span> <span class="keyword">operator</span><span class="special">++(</span><span class="keyword">int</span><span class="special">);</span>
+</pre>
+<p>
+          <span class="bold"><strong>Effects:</strong></span>
+        </p>
+<pre class="programlisting">  <span class="identifier">Derived</span> <span class="identifier">tmp</span><span class="special">(</span><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">Derived</span> <span class="keyword">const</span><span class="special">*&gt;(</span><span class="keyword">this</span><span class="special">));</span>
+  <span class="special">++*</span><span class="keyword">this</span><span class="special">;</span>
+  <span class="keyword">return</span> <span class="identifier">tmp</span><span class="special">;</span>
+
+<span class="identifier">Derived</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">--();</span>
+</pre>
+<p>
+          <span class="bold"><strong>Effects:</strong></span>
+        </p>
+<pre class="programlisting">    <span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">Derived</span><span class="special">*&gt;(</span><span class="keyword">this</span><span class="special">)-&gt;</span><span class="identifier">decrement</span><span class="special">();</span>
+    <span class="keyword">return</span> <span class="special">*</span><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">Derived</span><span class="special">*&gt;(</span><span class="keyword">this</span><span class="special">);</span>
+
+<span class="identifier">Derived</span> <span class="keyword">operator</span><span class="special">--(</span><span class="keyword">int</span><span class="special">);</span>
+</pre>
+<p>
+          <span class="bold"><strong>Effects:</strong></span>
+        </p>
+<pre class="programlisting">  <span class="identifier">Derived</span> <span class="identifier">tmp</span><span class="special">(</span><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">Derived</span> <span class="keyword">const</span><span class="special">*&gt;(</span><span class="keyword">this</span><span class="special">));</span>
+  <span class="special">--*</span><span class="keyword">this</span><span class="special">;</span>
+  <span class="keyword">return</span> <span class="identifier">tmp</span><span class="special">;</span>
+
+
+<span class="identifier">Derived</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">+=(</span><span class="identifier">difference_type</span> <span class="identifier">n</span><span class="special">);</span>
+</pre>
+<p>
+          <span class="bold"><strong>Effects:</strong></span>
+        </p>
+<pre class="programlisting">    <span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">Derived</span><span class="special">*&gt;(</span><span class="keyword">this</span><span class="special">)-&gt;</span><span class="identifier">advance</span><span class="special">(</span><span class="identifier">n</span><span class="special">);</span>
+    <span class="keyword">return</span> <span class="special">*</span><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">Derived</span><span class="special">*&gt;(</span><span class="keyword">this</span><span class="special">);</span>
+
+
+<span class="identifier">Derived</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">-=(</span><span class="identifier">difference_type</span> <span class="identifier">n</span><span class="special">);</span>
+</pre>
+<p>
+          <span class="bold"><strong>Effects:</strong></span>
+        </p>
+<pre class="programlisting">    <span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">Derived</span><span class="special">*&gt;(</span><span class="keyword">this</span><span class="special">)-&gt;</span><span class="identifier">advance</span><span class="special">(-</span><span class="identifier">n</span><span class="special">);</span>
+    <span class="keyword">return</span> <span class="special">*</span><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">Derived</span><span class="special">*&gt;(</span><span class="keyword">this</span><span class="special">);</span>
+
+
+<span class="identifier">Derived</span> <span class="keyword">operator</span><span class="special">-(</span><span class="identifier">difference_type</span> <span class="identifier">n</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<p>
+          <span class="bold"><strong>Effects:</strong></span>
+        </p>
+<pre class="programlisting">  <span class="identifier">Derived</span> <span class="identifier">tmp</span><span class="special">(</span><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">Derived</span> <span class="keyword">const</span><span class="special">*&gt;(</span><span class="keyword">this</span><span class="special">));</span>
+  <span class="keyword">return</span> <span class="identifier">tmp</span> <span class="special">-=</span> <span class="identifier">n</span><span class="special">;</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Dr</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D</span><span class="special">&gt;</span>
+<span class="identifier">Derived</span> <span class="keyword">operator</span><span class="special">+</span> <span class="special">(</span><span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr</span><span class="special">,</span><span class="identifier">V</span><span class="special">,</span><span class="identifier">TC</span><span class="special">,</span><span class="identifier">R</span><span class="special">,</span><span class="identifier">D</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;,</span>
+                   <span class="keyword">typename</span> <span class="identifier">Derived</span><span class="special">::</span><span class="identifier">difference_type</span> <span class="identifier">n</span><span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Dr</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D</span><span class="special">&gt;</span>
+<span class="identifier">Derived</span> <span class="keyword">operator</span><span class="special">+</span> <span class="special">(</span><span class="keyword">typename</span> <span class="identifier">Derived</span><span class="special">::</span><span class="identifier">difference_type</span> <span class="identifier">n</span><span class="special">,</span>
+                   <span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr</span><span class="special">,</span><span class="identifier">V</span><span class="special">,</span><span class="identifier">TC</span><span class="special">,</span><span class="identifier">R</span><span class="special">,</span><span class="identifier">D</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+</pre>
+<p>
+          <span class="bold"><strong>Effects:</strong></span>
+        </p>
+<pre class="programlisting">  <span class="identifier">Derived</span> <span class="identifier">tmp</span><span class="special">(</span><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">Derived</span> <span class="keyword">const</span><span class="special">*&gt;(</span><span class="keyword">this</span><span class="special">));</span>
+  <span class="keyword">return</span> <span class="identifier">tmp</span> <span class="special">+=</span> <span class="identifier">n</span><span class="special">;</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Dr1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D1</span><span class="special">,</span>
+          <span class="keyword">class</span> <span class="identifier">Dr2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D2</span><span class="special">&gt;</span>
+<span class="keyword">typename</span> <span class="identifier">enable_if_interoperable</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">Dr2</span><span class="special">,</span><span class="keyword">bool</span><span class="special">&gt;::</span><span class="identifier">type</span>
+<span class="keyword">operator</span> <span class="special">==(</span><span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">V1</span><span class="special">,</span><span class="identifier">TC1</span><span class="special">,</span><span class="identifier">R1</span><span class="special">,</span><span class="identifier">D1</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span>
+            <span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">V2</span><span class="special">,</span><span class="identifier">TC2</span><span class="special">,</span><span class="identifier">R2</span><span class="special">,</span><span class="identifier">D2</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">);</span>
+</pre>
+<p>
+          <span class="bold"><strong>Returns:</strong></span>
+        </p>
+<pre class="programlisting">  if <code class="computeroutput"><span class="identifier">is_convertible</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">Dr1</span><span class="special">&gt;::</span><span class="identifier">value</span></code>
+
+  then
+    <code class="computeroutput"><span class="special">((</span><span class="identifier">Dr1</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">lhs</span><span class="special">).</span><span class="identifier">equal</span><span class="special">((</span><span class="identifier">Dr2</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">rhs</span><span class="special">)</span></code>.
+
+  Otherwise,
+    <code class="computeroutput"><span class="special">((</span><span class="identifier">Dr2</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">rhs</span><span class="special">).</span><span class="identifier">equal</span><span class="special">((</span><span class="identifier">Dr1</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">lhs</span><span class="special">)</span></code>.
+</pre>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Dr1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D1</span><span class="special">,</span>
+          <span class="keyword">class</span> <span class="identifier">Dr2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D2</span><span class="special">&gt;</span>
+<span class="keyword">typename</span> <span class="identifier">enable_if_interoperable</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">Dr2</span><span class="special">,</span><span class="keyword">bool</span><span class="special">&gt;::</span><span class="identifier">type</span>
+<span class="keyword">operator</span> <span class="special">!=(</span><span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">V1</span><span class="special">,</span><span class="identifier">TC1</span><span class="special">,</span><span class="identifier">R1</span><span class="special">,</span><span class="identifier">D1</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span>
+            <span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">V2</span><span class="special">,</span><span class="identifier">TC2</span><span class="special">,</span><span class="identifier">R2</span><span class="special">,</span><span class="identifier">D2</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">);</span>
+</pre>
+<p>
+          <span class="bold"><strong>Returns:</strong></span>
+        </p>
+<pre class="programlisting">  if <code class="computeroutput"><span class="identifier">is_convertible</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">Dr1</span><span class="special">&gt;::</span><span class="identifier">value</span></code>
+
+  then
+    <code class="computeroutput"><span class="special">!((</span><span class="identifier">Dr1</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">lhs</span><span class="special">).</span><span class="identifier">equal</span><span class="special">((</span><span class="identifier">Dr2</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">rhs</span><span class="special">)</span></code>.
+
+  Otherwise,
+    <code class="computeroutput"><span class="special">!((</span><span class="identifier">Dr2</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">rhs</span><span class="special">).</span><span class="identifier">equal</span><span class="special">((</span><span class="identifier">Dr1</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">lhs</span><span class="special">)</span></code>.
+</pre>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Dr1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D1</span><span class="special">,</span>
+          <span class="keyword">class</span> <span class="identifier">Dr2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D2</span><span class="special">&gt;</span>
+<span class="keyword">typename</span> <span class="identifier">enable_if_interoperable</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">Dr2</span><span class="special">,</span><span class="keyword">bool</span><span class="special">&gt;::</span><span class="identifier">type</span>
+<span class="keyword">operator</span> <span class="special">&lt;(</span><span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">V1</span><span class="special">,</span><span class="identifier">TC1</span><span class="special">,</span><span class="identifier">R1</span><span class="special">,</span><span class="identifier">D1</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span>
+           <span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">V2</span><span class="special">,</span><span class="identifier">TC2</span><span class="special">,</span><span class="identifier">R2</span><span class="special">,</span><span class="identifier">D2</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">);</span>
+</pre>
+<p>
+          <span class="bold"><strong>Returns:</strong></span>
+        </p>
+<pre class="programlisting">  if <code class="computeroutput"><span class="identifier">is_convertible</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">Dr1</span><span class="special">&gt;::</span><span class="identifier">value</span></code>
+
+  then
+    <code class="computeroutput"><span class="special">((</span><span class="identifier">Dr1</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">lhs</span><span class="special">).</span><span class="identifier">distance_to</span><span class="special">((</span><span class="identifier">Dr2</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">rhs</span><span class="special">)</span> <span class="special">&lt;</span> <span class="number">0</span></code>.
+
+  Otherwise,
+    <code class="computeroutput"><span class="special">((</span><span class="identifier">Dr2</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">rhs</span><span class="special">).</span><span class="identifier">distance_to</span><span class="special">((</span><span class="identifier">Dr1</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">lhs</span><span class="special">)</span> <span class="special">&gt;</span> <span class="number">0</span></code>.
+</pre>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Dr1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D1</span><span class="special">,</span>
+          <span class="keyword">class</span> <span class="identifier">Dr2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D2</span><span class="special">&gt;</span>
+<span class="keyword">typename</span> <span class="identifier">enable_if_interoperable</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">Dr2</span><span class="special">,</span><span class="keyword">bool</span><span class="special">&gt;::</span><span class="identifier">type</span>
+<span class="keyword">operator</span> <span class="special">&lt;=(</span><span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">V1</span><span class="special">,</span><span class="identifier">TC1</span><span class="special">,</span><span class="identifier">R1</span><span class="special">,</span><span class="identifier">D1</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span>
+            <span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">V2</span><span class="special">,</span><span class="identifier">TC2</span><span class="special">,</span><span class="identifier">R2</span><span class="special">,</span><span class="identifier">D2</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">);</span>
+</pre>
+<p>
+          <span class="bold"><strong>Returns:</strong></span>
+        </p>
+<pre class="programlisting">  if <code class="computeroutput"><span class="identifier">is_convertible</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">Dr1</span><span class="special">&gt;::</span><span class="identifier">value</span></code>
+
+  then
+    <code class="computeroutput"><span class="special">((</span><span class="identifier">Dr1</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">lhs</span><span class="special">).</span><span class="identifier">distance_to</span><span class="special">((</span><span class="identifier">Dr2</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">rhs</span><span class="special">)</span> <span class="special">&lt;=</span> <span class="number">0</span></code>.
+
+  Otherwise,
+    <code class="computeroutput"><span class="special">((</span><span class="identifier">Dr2</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">rhs</span><span class="special">).</span><span class="identifier">distance_to</span><span class="special">((</span><span class="identifier">Dr1</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">lhs</span><span class="special">)</span> <span class="special">&gt;=</span> <span class="number">0</span></code>.
+</pre>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Dr1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D1</span><span class="special">,</span>
+          <span class="keyword">class</span> <span class="identifier">Dr2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D2</span><span class="special">&gt;</span>
+<span class="keyword">typename</span> <span class="identifier">enable_if_interoperable</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">Dr2</span><span class="special">,</span><span class="keyword">bool</span><span class="special">&gt;::</span><span class="identifier">type</span>
+<span class="keyword">operator</span> <span class="special">&gt;(</span><span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">V1</span><span class="special">,</span><span class="identifier">TC1</span><span class="special">,</span><span class="identifier">R1</span><span class="special">,</span><span class="identifier">D1</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span>
+           <span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">V2</span><span class="special">,</span><span class="identifier">TC2</span><span class="special">,</span><span class="identifier">R2</span><span class="special">,</span><span class="identifier">D2</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">);</span>
+</pre>
+<p>
+          <span class="bold"><strong>Returns:</strong></span>
+        </p>
+<pre class="programlisting">  if <code class="computeroutput"><span class="identifier">is_convertible</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">Dr1</span><span class="special">&gt;::</span><span class="identifier">value</span></code>
+
+  then
+    <code class="computeroutput"><span class="special">((</span><span class="identifier">Dr1</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">lhs</span><span class="special">).</span><span class="identifier">distance_to</span><span class="special">((</span><span class="identifier">Dr2</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">rhs</span><span class="special">)</span> <span class="special">&gt;</span> <span class="number">0</span></code>.
+
+  Otherwise,
+    <code class="computeroutput"><span class="special">((</span><span class="identifier">Dr2</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">rhs</span><span class="special">).</span><span class="identifier">distance_to</span><span class="special">((</span><span class="identifier">Dr1</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">lhs</span><span class="special">)</span> <span class="special">&lt;</span> <span class="number">0</span></code>.
+</pre>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Dr1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D1</span><span class="special">,</span>
+          <span class="keyword">class</span> <span class="identifier">Dr2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D2</span><span class="special">&gt;</span>
+<span class="keyword">typename</span> <span class="identifier">enable_if_interoperable</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">Dr2</span><span class="special">,</span><span class="keyword">bool</span><span class="special">&gt;::</span><span class="identifier">type</span>
+<span class="keyword">operator</span> <span class="special">&gt;=(</span><span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">V1</span><span class="special">,</span><span class="identifier">TC1</span><span class="special">,</span><span class="identifier">R1</span><span class="special">,</span><span class="identifier">D1</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span>
+            <span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">V2</span><span class="special">,</span><span class="identifier">TC2</span><span class="special">,</span><span class="identifier">R2</span><span class="special">,</span><span class="identifier">D2</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">);</span>
+</pre>
+<p>
+          <span class="bold"><strong>Returns:</strong></span>
+        </p>
+<pre class="programlisting">  if <code class="computeroutput"><span class="identifier">is_convertible</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">Dr1</span><span class="special">&gt;::</span><span class="identifier">value</span></code>
+
+  then
+    <code class="computeroutput"><span class="special">((</span><span class="identifier">Dr1</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">lhs</span><span class="special">).</span><span class="identifier">distance_to</span><span class="special">((</span><span class="identifier">Dr2</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">rhs</span><span class="special">)</span> <span class="special">&gt;=</span> <span class="number">0</span></code>.
+
+  Otherwise,
+    <code class="computeroutput"><span class="special">((</span><span class="identifier">Dr2</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">rhs</span><span class="special">).</span><span class="identifier">distance_to</span><span class="special">((</span><span class="identifier">Dr1</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">lhs</span><span class="special">)</span> <span class="special">&lt;=</span> <span class="number">0</span></code>.
+</pre>
+<p>
+          .. _minus:
+        </p>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Dr1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D1</span><span class="special">,</span>
+          <span class="keyword">class</span> <span class="identifier">Dr2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">V2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TC2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">D2</span><span class="special">&gt;</span>
+<span class="keyword">typename</span> <span class="identifier">enable_if_interoperable</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">difference</span><span class="special">&gt;::</span><span class="identifier">type</span>
+<span class="keyword">operator</span> <span class="special">-(</span><span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">,</span><span class="identifier">V1</span><span class="special">,</span><span class="identifier">TC1</span><span class="special">,</span><span class="identifier">R1</span><span class="special">,</span><span class="identifier">D1</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span>
+           <span class="identifier">iterator_facade</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">V2</span><span class="special">,</span><span class="identifier">TC2</span><span class="special">,</span><span class="identifier">R2</span><span class="special">,</span><span class="identifier">D2</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">);</span>
+</pre>
+<p>
+          <span class="bold"><strong>Return Type:</strong></span>
+        </p>
+<pre class="programlisting">  if <code class="computeroutput"><span class="identifier">is_convertible</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">Dr1</span><span class="special">&gt;::</span><span class="identifier">value</span></code>
+
+   then
+    <code class="computeroutput"><span class="identifier">difference</span></code> shall be
+    <code class="computeroutput"><span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="identifier">Dr1</span><span class="special">&gt;::</span><span class="identifier">difference_type</span></code>.
+
+   Otherwise
+    <code class="computeroutput"><span class="identifier">difference</span></code> shall be <code class="computeroutput"><span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">&gt;::</span><span class="identifier">difference_type</span></code>
+</pre>
+<p>
+          <span class="bold"><strong>Returns:</strong></span>
+        </p>
+<pre class="programlisting">  if <code class="computeroutput"><span class="identifier">is_convertible</span><span class="special">&lt;</span><span class="identifier">Dr2</span><span class="special">,</span><span class="identifier">Dr1</span><span class="special">&gt;::</span><span class="identifier">value</span></code>
+
+  then
+    <code class="computeroutput"><span class="special">-((</span><span class="identifier">Dr1</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">lhs</span><span class="special">).</span><span class="identifier">distance_to</span><span class="special">((</span><span class="identifier">Dr2</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">rhs</span><span class="special">)</span></code>.
+
+  Otherwise,
+    <code class="computeroutput"><span class="special">((</span><span class="identifier">Dr2</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">rhs</span><span class="special">).</span><span class="identifier">distance_to</span><span class="special">((</span><span class="identifier">Dr1</span> <span class="keyword">const</span><span class="special">&amp;)</span><span class="identifier">lhs</span><span class="special">)</span></code>.
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="iterator.generic.facade.facade_tutorial"></a><a class="link" href="generic.html#iterator.generic.facade.facade_tutorial" title="Tutorial">Tutorial</a>
+</h4></div></div></div>
+<p>
+          In this section we'll walk through the implementation of a few iterators
+          using <code class="computeroutput"><span class="identifier">iterator_facade</span></code>,
+          based around the simple example of a linked list of polymorphic objects.
+          This example was inspired by a <a href="http://thread.gmane.org/gmane.comp.lib.boost.user/5100" target="_top"><code class="computeroutput"><span class="identifier">posting</span></code></a> by Keith Macdonald on
+          the <a href="http://www.boost.org/more/mailing_lists.htm#users" target="_top"><code class="computeroutput"><span class="identifier">Boost</span><span class="special">-</span><span class="identifier">Users</span></code></a> mailing list.
+        </p>
+<h3>
+<a name="iterator.generic.facade.facade_tutorial.h0"></a>
+          <span class="phrase"><a name="iterator.generic.facade.facade_tutorial.the_problem"></a></span><a class="link" href="generic.html#iterator.generic.facade.facade_tutorial.the_problem">The Problem</a>
+        </h3>
+<p>
+          Say we've written a polymorphic linked list node base class:
+        </p>
+<pre class="programlisting"><span class="preprocessor"># include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+
+<span class="keyword">struct</span> <span class="identifier">node_base</span>
+<span class="special">{</span>
+    <span class="identifier">node_base</span><span class="special">()</span> <span class="special">:</span> <span class="identifier">m_next</span><span class="special">(</span><span class="number">0</span><span class="special">)</span> <span class="special">{}</span>
+
+    <span class="comment">// Each node manages all of its tail nodes</span>
+    <span class="keyword">virtual</span> <span class="special">~</span><span class="identifier">node_base</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">delete</span> <span class="identifier">m_next</span><span class="special">;</span> <span class="special">}</span>
+
+    <span class="comment">// Access the rest of the list</span>
+    <span class="identifier">node_base</span><span class="special">*</span> <span class="identifier">next</span><span class="special">()</span> <span class="keyword">const</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">m_next</span><span class="special">;</span> <span class="special">}</span>
+
+    <span class="comment">// print to the stream</span>
+    <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">print</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span><span class="special">&amp;</span> <span class="identifier">s</span><span class="special">)</span> <span class="keyword">const</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+
+    <span class="comment">// double the value</span>
+    <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">double_me</span><span class="special">()</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+
+    <span class="keyword">void</span> <span class="identifier">append</span><span class="special">(</span><span class="identifier">node_base</span><span class="special">*</span> <span class="identifier">p</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="keyword">if</span> <span class="special">(</span><span class="identifier">m_next</span><span class="special">)</span>
+            <span class="identifier">m_next</span><span class="special">-&gt;</span><span class="identifier">append</span><span class="special">(</span><span class="identifier">p</span><span class="special">);</span>
+        <span class="keyword">else</span>
+            <span class="identifier">m_next</span> <span class="special">=</span> <span class="identifier">p</span><span class="special">;</span>
+    <span class="special">}</span>
+
+ <span class="keyword">private</span><span class="special">:</span>
+    <span class="identifier">node_base</span><span class="special">*</span> <span class="identifier">m_next</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<p>
+          Lists can hold objects of different types by linking together specializations
+          of the following template:
+        </p>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">node</span> <span class="special">:</span> <span class="identifier">node_base</span>
+<span class="special">{</span>
+    <span class="identifier">node</span><span class="special">(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">)</span>
+      <span class="special">:</span> <span class="identifier">m_value</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span>
+    <span class="special">{}</span>
+
+    <span class="keyword">void</span> <span class="identifier">print</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span><span class="special">&amp;</span> <span class="identifier">s</span><span class="special">)</span> <span class="keyword">const</span> <span class="special">{</span> <span class="identifier">s</span> <span class="special">&lt;&lt;</span> <span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">m_value</span><span class="special">;</span> <span class="special">}</span>
+    <span class="keyword">void</span> <span class="identifier">double_me</span><span class="special">()</span> <span class="special">{</span> <span class="identifier">m_value</span> <span class="special">+=</span> <span class="identifier">m_value</span><span class="special">;</span> <span class="special">}</span>
+
+ <span class="keyword">private</span><span class="special">:</span>
+    <span class="identifier">T</span> <span class="identifier">m_value</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<p>
+          And we can print any node using the following streaming operator:
+        </p>
+<pre class="programlisting"><span class="keyword">inline</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">&lt;&lt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span><span class="special">&amp;</span> <span class="identifier">s</span><span class="special">,</span> <span class="identifier">node_base</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">n</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">n</span><span class="special">.</span><span class="identifier">print</span><span class="special">(</span><span class="identifier">s</span><span class="special">);</span>
+    <span class="keyword">return</span> <span class="identifier">s</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+          Our first challenge is to build an appropriate iterator over these lists.
+        </p>
+<h3>
+<a name="iterator.generic.facade.facade_tutorial.h1"></a>
+          <span class="phrase"><a name="iterator.generic.facade.facade_tutorial.a_basic_iterator_using_iterator_"></a></span><a class="link" href="generic.html#iterator.generic.facade.facade_tutorial.a_basic_iterator_using_iterator_">A
+          Basic Iterator Using <code class="computeroutput"><span class="identifier">iterator_facade</span></code></a>
+        </h3>
+<p>
+          We will construct a <code class="computeroutput"><span class="identifier">node_iterator</span></code>
+          class using inheritance from <code class="computeroutput"><span class="identifier">iterator_facade</span></code>
+          to implement most of the iterator's operations.
+        </p>
+<pre class="programlisting"><span class="preprocessor"># include</span> <span class="string">"node.hpp"</span>
+<span class="preprocessor"># include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">iterator</span><span class="special">/</span><span class="identifier">iterator_facade</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">class</span> <span class="identifier">node_iterator</span>
+  <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">iterator_facade</span><span class="special">&lt;...&gt;</span>
+<span class="special">{</span>
+   <span class="special">...</span>
+<span class="special">};</span>
+</pre>
+<h3>
+<a name="iterator.generic.facade.facade_tutorial.h2"></a>
+          <span class="phrase"><a name="iterator.generic.facade.facade_tutorial.template_arguments_for_iterator_"></a></span><a class="link" href="generic.html#iterator.generic.facade.facade_tutorial.template_arguments_for_iterator_">Template
+          Arguments for <code class="computeroutput"><span class="identifier">iterator_facade</span></code></a>
+        </h3>
+<p>
+          <code class="computeroutput"><span class="identifier">iterator_facade</span></code> has several
+          template parameters, so we must decide what types to use for the arguments.
+          The parameters are <code class="computeroutput"><span class="identifier">Derived</span></code>,
+          <code class="computeroutput"><span class="identifier">Value</span></code>, <code class="computeroutput"><span class="identifier">CategoryOrTraversal</span></code>,
+          <code class="computeroutput"><span class="identifier">Reference</span></code>, and <code class="computeroutput"><span class="identifier">Difference</span></code>.
+        </p>
+<h4>
+<a name="iterator.generic.facade.facade_tutorial.h3"></a>
+          <span class="phrase"><a name="iterator.generic.facade.facade_tutorial.derived"></a></span><a class="link" href="generic.html#iterator.generic.facade.facade_tutorial.derived"><code class="computeroutput"><span class="identifier">Derived</span></code></a>
+        </h4>
+<p>
+          Because <code class="computeroutput"><span class="identifier">iterator_facade</span></code>
+          is meant to be used with the CRTP [Cop95]_ the first parameter is the iterator
+          class name itself, <code class="computeroutput"><span class="identifier">node_iterator</span></code>.
+        </p>
+<h4>
+<a name="iterator.generic.facade.facade_tutorial.h4"></a>
+          <span class="phrase"><a name="iterator.generic.facade.facade_tutorial.value"></a></span><a class="link" href="generic.html#iterator.generic.facade.facade_tutorial.value"><code class="computeroutput"><span class="identifier">Value</span></code></a>
+        </h4>
+<p>
+          The <code class="computeroutput"><span class="identifier">Value</span></code> parameter determines
+          the <code class="computeroutput"><span class="identifier">node_iterator</span></code>'s <code class="computeroutput"><span class="identifier">value_type</span></code>. In this case, we are iterating
+          over <code class="computeroutput"><span class="identifier">node_base</span></code> objects,
+          so <code class="computeroutput"><span class="identifier">Value</span></code> will be <code class="computeroutput"><span class="identifier">node_base</span></code>.
+        </p>
+<h4>
+<a name="iterator.generic.facade.facade_tutorial.h5"></a>
+          <span class="phrase"><a name="iterator.generic.facade.facade_tutorial.categoryortraversal"></a></span><a class="link" href="generic.html#iterator.generic.facade.facade_tutorial.categoryortraversal"><code class="computeroutput"><span class="identifier">CategoryOrTraversal</span></code></a>
+        </h4>
+<p>
+          Now we have to determine which <code class="computeroutput"><span class="identifier">iterator</span>
+          <span class="identifier">traversal</span> <span class="identifier">concept</span></code>_
+          our <code class="computeroutput"><span class="identifier">node_iterator</span></code> is going
+          to model. Singly-linked lists only have forward links, so our iterator
+          can't can't be a <code class="computeroutput"><span class="identifier">bidirectional</span>
+          <span class="identifier">traversal</span> <span class="identifier">iterator</span></code>_.
+          Our iterator should be able to make multiple passes over the same linked
+          list (unlike, say, an <code class="computeroutput"><span class="identifier">istream_iterator</span></code>
+          which consumes the stream it traverses), so it must be a <code class="computeroutput"><span class="identifier">forward</span> <span class="identifier">traversal</span>
+          <span class="identifier">iterator</span></code>_. Therefore, we'll pass
+          <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">forward_traversal_tag</span></code> in this position
+          <a name="category"></a>_.
+        </p>
+<p>
+          .. <a name="category0"></a><code class="computeroutput"><span class="identifier">iterator_facade</span></code>
+          also supports old-style category tags, so we could have passed <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">forward_iterator_tag</span></code> here; either way,
+          the resulting iterator's <code class="computeroutput"><span class="identifier">iterator_category</span></code>
+          will end up being <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">forward_iterator_tag</span></code>.
+        </p>
+<h4>
+<a name="iterator.generic.facade.facade_tutorial.h6"></a>
+          <span class="phrase"><a name="iterator.generic.facade.facade_tutorial.reference"></a></span><a class="link" href="generic.html#iterator.generic.facade.facade_tutorial.reference"><code class="computeroutput"><span class="identifier">Reference</span></code></a>
+        </h4>
+<p>
+          The <code class="computeroutput"><span class="identifier">Reference</span></code> argument
+          becomes the type returned by <code class="computeroutput"><span class="identifier">node_iterator</span></code>'s
+          dereference operation, and will also be the same as <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="identifier">node_iterator</span><span class="special">&gt;::</span><span class="identifier">reference</span></code>.
+          The library's default for this parameter is <code class="computeroutput"><span class="identifier">Value</span><span class="special">&amp;</span></code>; since <code class="computeroutput"><span class="identifier">node_base</span><span class="special">&amp;</span></code> is a good choice for the iterator's
+          <code class="computeroutput"><span class="identifier">reference</span></code> type, we can
+          omit this argument, or pass <code class="computeroutput"><span class="identifier">use_default</span></code>.
+        </p>
+<h4>
+<a name="iterator.generic.facade.facade_tutorial.h7"></a>
+          <span class="phrase"><a name="iterator.generic.facade.facade_tutorial.difference"></a></span><a class="link" href="generic.html#iterator.generic.facade.facade_tutorial.difference"><code class="computeroutput"><span class="identifier">Difference</span></code></a>
+        </h4>
+<p>
+          The <code class="computeroutput"><span class="identifier">Difference</span></code> argument
+          determines how the distance between two <code class="computeroutput"><span class="identifier">node_iterator</span></code>s
+          will be measured and will also be the same as <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="identifier">node_iterator</span><span class="special">&gt;::</span><span class="identifier">difference_type</span></code>.
+          The library's default for <code class="computeroutput"><span class="identifier">Difference</span></code>
+          is <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">ptrdiff_t</span></code>, an appropriate type for measuring
+          the distance between any two addresses in memory, and one that works for
+          almost any iterator, so we can omit this argument, too.
+        </p>
+<p>
+          The declaration of <code class="computeroutput"><span class="identifier">node_iterator</span></code>
+          will therefore look something like:
+        </p>
+<pre class="programlisting"><span class="preprocessor"># include</span> <span class="string">"node.hpp"</span>
+<span class="preprocessor"># include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">iterator</span><span class="special">/</span><span class="identifier">iterator_facade</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">class</span> <span class="identifier">node_iterator</span>
+  <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">iterator_facade</span><span class="special">&lt;</span>
+        <span class="identifier">node_iterator</span>
+      <span class="special">,</span> <span class="identifier">node_base</span>
+      <span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">forward_traversal_tag</span>
+    <span class="special">&gt;</span>
+<span class="special">{</span>
+   <span class="special">...</span>
+<span class="special">};</span>
+</pre>
+<h3>
+<a name="iterator.generic.facade.facade_tutorial.h8"></a>
+          <span class="phrase"><a name="iterator.generic.facade.facade_tutorial.constructors_and_data_members"></a></span><a class="link" href="generic.html#iterator.generic.facade.facade_tutorial.constructors_and_data_members">Constructors
+          and Data Members</a>
+        </h3>
+<p>
+          Next we need to decide how to represent the iterator's position. This representation
+          will take the form of data members, so we'll also need to write constructors
+          to initialize them. The <code class="computeroutput"><span class="identifier">node_iterator</span></code>'s
+          position is quite naturally represented using a pointer to a <code class="computeroutput"><span class="identifier">node_base</span></code>. We'll need a constructor to
+          build an iterator from a <code class="computeroutput"><span class="identifier">node_base</span><span class="special">*</span></code>, and a default constructor to satisfy
+          the <code class="computeroutput"><span class="identifier">forward</span> <span class="identifier">traversal</span>
+          <span class="identifier">iterator</span></code>_ requirements <a name="default"></a>_. Our <code class="computeroutput"><span class="identifier">node_iterator</span></code>
+          then becomes:
+        </p>
+<pre class="programlisting"><span class="preprocessor"># include</span> <span class="string">"node.hpp"</span>
+<span class="preprocessor"># include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">iterator</span><span class="special">/</span><span class="identifier">iterator_facade</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">class</span> <span class="identifier">node_iterator</span>
+  <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">iterator_facade</span><span class="special">&lt;</span>
+        <span class="identifier">node_iterator</span>
+      <span class="special">,</span> <span class="identifier">node_base</span>
+      <span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">forward_traversal_tag</span>
+    <span class="special">&gt;</span>
+<span class="special">{</span>
+ <span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">node_iterator</span><span class="special">()</span>
+      <span class="special">:</span> <span class="identifier">m_node</span><span class="special">(</span><span class="number">0</span><span class="special">)</span>
+    <span class="special">{}</span>
+
+    <span class="keyword">explicit</span> <span class="identifier">node_iterator</span><span class="special">(</span><span class="identifier">node_base</span><span class="special">*</span> <span class="identifier">p</span><span class="special">)</span>
+      <span class="special">:</span> <span class="identifier">m_node</span><span class="special">(</span><span class="identifier">p</span><span class="special">)</span>
+    <span class="special">{}</span>
+
+ <span class="keyword">private</span><span class="special">:</span>
+    <span class="special">...</span>
+    <span class="identifier">node_base</span><span class="special">*</span> <span class="identifier">m_node</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<p>
+          .. <a name="default0"></a>Technically, the C++ standard places almost no
+          requirements on a default-constructed iterator, so if we were really concerned
+          with efficiency, we could've written the default constructor to leave
+          <code class="computeroutput"><span class="identifier">m_node</span></code> uninitialized.
+        </p>
+<h3>
+<a name="iterator.generic.facade.facade_tutorial.h9"></a>
+          <span class="phrase"><a name="iterator.generic.facade.facade_tutorial.implementing_the_core_operations"></a></span><a class="link" href="generic.html#iterator.generic.facade.facade_tutorial.implementing_the_core_operations">Implementing
+          the Core Operations</a>
+        </h3>
+<p>
+          The last step is to implement the <code class="computeroutput"><span class="identifier">core</span>
+          <span class="identifier">operations</span></code>_ required by the concepts
+          we want our iterator to model. Referring to the table__, we can see that
+          the first three rows are applicable because <code class="computeroutput"><span class="identifier">node_iterator</span></code>
+          needs to satisfy the requirements for <code class="computeroutput"><span class="identifier">readable</span>
+          <span class="identifier">iterator</span></code>_, <code class="computeroutput"><span class="identifier">single</span>
+          <span class="identifier">pass</span> <span class="identifier">iterator</span></code>_,
+          and <code class="computeroutput"><span class="identifier">incrementable</span> <span class="identifier">iterator</span></code>_.
+        </p>
+<p>
+          __ <code class="computeroutput"><span class="identifier">core</span> <span class="identifier">operations</span></code>_
+        </p>
+<p>
+          We therefore need to supply <code class="computeroutput"><span class="identifier">dereference</span></code>,
+          <code class="computeroutput"><span class="identifier">equal</span></code>, and <code class="computeroutput"><span class="identifier">increment</span></code> members. We don't want these
+          members to become part of <code class="computeroutput"><span class="identifier">node_iterator</span></code>'s
+          public interface, so we can make them private and grant friendship to
+          <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">iterator_core_access</span></code>, a "back-door"
+          that <code class="computeroutput"><span class="identifier">iterator_facade</span></code> uses
+          to get access to the core operations:
+        </p>
+<pre class="programlisting"><span class="preprocessor"># include</span> <span class="string">"node.hpp"</span>
+<span class="preprocessor"># include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">iterator</span><span class="special">/</span><span class="identifier">iterator_facade</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">class</span> <span class="identifier">node_iterator</span>
+  <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">iterator_facade</span><span class="special">&lt;</span>
+        <span class="identifier">node_iterator</span>
+      <span class="special">,</span> <span class="identifier">node_base</span>
+      <span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">forward_traversal_tag</span>
+    <span class="special">&gt;</span>
+<span class="special">{</span>
+ <span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">node_iterator</span><span class="special">()</span>
+      <span class="special">:</span> <span class="identifier">m_node</span><span class="special">(</span><span class="number">0</span><span class="special">)</span> <span class="special">{}</span>
+
+    <span class="keyword">explicit</span> <span class="identifier">node_iterator</span><span class="special">(</span><span class="identifier">node_base</span><span class="special">*</span> <span class="identifier">p</span><span class="special">)</span>
+      <span class="special">:</span> <span class="identifier">m_node</span><span class="special">(</span><span class="identifier">p</span><span class="special">)</span> <span class="special">{}</span>
+
+ <span class="keyword">private</span><span class="special">:</span>
+    <span class="keyword">friend</span> <span class="keyword">class</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">iterator_core_access</span><span class="special">;</span>
+
+    <span class="keyword">void</span> <span class="identifier">increment</span><span class="special">()</span> <span class="special">{</span> <span class="identifier">m_node</span> <span class="special">=</span> <span class="identifier">m_node</span><span class="special">-&gt;</span><span class="identifier">next</span><span class="special">();</span> <span class="special">}</span>
+
+    <span class="keyword">bool</span> <span class="identifier">equal</span><span class="special">(</span><span class="identifier">node_iterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="keyword">return</span> <span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">m_node</span> <span class="special">==</span> <span class="identifier">other</span><span class="special">.</span><span class="identifier">m_node</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="identifier">node_base</span><span class="special">&amp;</span> <span class="identifier">dereference</span><span class="special">()</span> <span class="keyword">const</span> <span class="special">{</span> <span class="keyword">return</span> <span class="special">*</span><span class="identifier">m_node</span><span class="special">;</span> <span class="special">}</span>
+
+    <span class="identifier">node_base</span><span class="special">*</span> <span class="identifier">m_node</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<p>
+          Voila; a complete and conforming readable, forward-traversal iterator!
+          For a working example of its use, see <a href="../../../example/node_iterator1.cpp" target="_top">this program</a>.
+        </p>
+<p>
+          __ ../../example/node_iterator1.cpp
+        </p>
+<h3>
+<a name="iterator.generic.facade.facade_tutorial.h10"></a>
+          <span class="phrase"><a name="iterator.generic.facade.facade_tutorial.a_constant_node_iterator"></a></span><a class="link" href="generic.html#iterator.generic.facade.facade_tutorial.a_constant_node_iterator">A
+          constant <code class="computeroutput"><span class="identifier">node_iterator</span></code></a>
+        </h3>
+<div class="blurb">
+<div class="titlepage"><div><div><p class="title"><b></b></p></div></div></div>
+<p>
+          <span class="bold"><strong>Constant and Mutable iterators</strong></span><br>
+          <br> The term **mutable iterator** means an iterator through which the
+          object it references (its "referent") can be modified. A **constant
+          iterator** is one which doesn't allow modification of its referent.<br>
+          <br> The words <span class="bold"><strong>constant</strong></span> and <span class="bold"><strong>mutable</strong></span> don't refer to the ability to modify the
+          iterator itself. For example, an <code class="computeroutput"><span class="keyword">int</span>
+          <span class="keyword">const</span><span class="special">*</span></code>
+          is a non-<code class="computeroutput"><span class="keyword">const</span></code> <span class="bold"><strong>constant
+          iterator</strong></span>, which can be incremented but doesn't allow modification
+          of its referent, and <code class="computeroutput"><span class="keyword">int</span><span class="special">*</span>
+          <span class="keyword">const</span></code> is a <code class="computeroutput"><span class="keyword">const</span></code>
+          <span class="bold"><strong>mutable iterator</strong></span>, which cannot be modified
+          but which allows modification of its referent.<br> <br> Confusing?
+          We agree, but those are the standard terms. It probably doesn't help much
+          that a container's constant iterator is called <code class="computeroutput"><span class="identifier">const_iterator</span></code>.
+        </p>
+</div>
+<p>
+          Now, our <code class="computeroutput"><span class="identifier">node_iterator</span></code>
+          gives clients access to both <code class="computeroutput"><span class="identifier">node</span></code>\
+          's <code class="computeroutput"><span class="identifier">print</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span><span class="special">&amp;)</span>
+          <span class="keyword">const</span></code> member function, but also
+          its mutating <code class="computeroutput"><span class="identifier">double_me</span><span class="special">()</span></code> member. If we wanted to build a <span class="bold"><strong>constant</strong></span> <code class="computeroutput"><span class="identifier">node_iterator</span></code>,
+          we'd only have to make three changes:
+        </p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">const_node_iterator</span>
+  <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">iterator_facade</span><span class="special">&lt;</span>
+        <span class="identifier">const_node_iterator</span>
+      <span class="special">,</span> <span class="identifier">node_base</span> <span class="special">**</span><span class="keyword">const</span><span class="special">**</span>
+      <span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">forward_traversal_tag</span>
+    <span class="special">&gt;</span>
+<span class="special">{</span>
+ <span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">const_node_iterator</span><span class="special">()</span>
+      <span class="special">:</span> <span class="identifier">m_node</span><span class="special">(</span><span class="number">0</span><span class="special">)</span> <span class="special">{}</span>
+
+    <span class="keyword">explicit</span> <span class="identifier">const_node_iterator</span><span class="special">(</span><span class="identifier">node_base</span><span class="special">*</span> <span class="identifier">p</span><span class="special">)</span>
+      <span class="special">:</span> <span class="identifier">m_node</span><span class="special">(</span><span class="identifier">p</span><span class="special">)</span> <span class="special">{}</span>
+
+ <span class="keyword">private</span><span class="special">:</span>
+    <span class="keyword">friend</span> <span class="keyword">class</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">iterator_core_access</span><span class="special">;</span>
+
+    <span class="keyword">void</span> <span class="identifier">increment</span><span class="special">()</span> <span class="special">{</span> <span class="identifier">m_node</span> <span class="special">=</span> <span class="identifier">m_node</span><span class="special">-&gt;</span><span class="identifier">next</span><span class="special">();</span> <span class="special">}</span>
+
+    <span class="keyword">bool</span> <span class="identifier">equal</span><span class="special">(</span><span class="identifier">const_node_iterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="keyword">return</span> <span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">m_node</span> <span class="special">==</span> <span class="identifier">other</span><span class="special">.</span><span class="identifier">m_node</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="identifier">node_base</span> <span class="special">**</span><span class="keyword">const</span><span class="special">**\</span> <span class="special">&amp;</span> <span class="identifier">dereference</span><span class="special">()</span> <span class="keyword">const</span> <span class="special">{</span> <span class="keyword">return</span> <span class="special">\*</span><span class="identifier">m_node</span><span class="special">;</span> <span class="special">}</span>
+
+    <span class="identifier">node_base</span> <span class="special">**</span><span class="keyword">const</span><span class="special">**\</span> <span class="special">*</span> <span class="identifier">m_node</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<div class="blurb">
+<div class="titlepage"><div><div><p class="title"><b></b></p></div></div></div>
+<p>
+          <code class="computeroutput"><span class="keyword">const</span></code> and an iterator's <code class="computeroutput"><span class="identifier">value_type</span></code><br> <br> The C++ standard
+          requires an iterator's <code class="computeroutput"><span class="identifier">value_type</span></code>
+          <span class="bold"><strong>not</strong></span> be <code class="computeroutput"><span class="keyword">const</span></code>-qualified,
+          so <code class="computeroutput"><span class="identifier">iterator_facade</span></code> strips
+          the <code class="computeroutput"><span class="keyword">const</span></code> from its <code class="computeroutput"><span class="identifier">Value</span></code> parameter in order to produce the
+          iterator's <code class="computeroutput"><span class="identifier">value_type</span></code>.
+          Making the <code class="computeroutput"><span class="identifier">Value</span></code> argument
+          <code class="computeroutput"><span class="keyword">const</span></code> provides a useful hint
+          to <code class="computeroutput"><span class="identifier">iterator_facade</span></code> that
+          the iterator is a <span class="bold"><strong>constant iterator</strong></span>, and
+          the default <code class="computeroutput"><span class="identifier">Reference</span></code> argument
+          will be correct for all lvalue iterators.
+        </p>
+</div>
+<p>
+          As a matter of fact, <code class="computeroutput"><span class="identifier">node_iterator</span></code>
+          and <code class="computeroutput"><span class="identifier">const_node_iterator</span></code>
+          are so similar that it makes sense to factor the common code out into a
+          template as follows:
+        </p>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Value</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">node_iter</span>
+  <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">iterator_facade</span><span class="special">&lt;</span>
+        <span class="identifier">node_iter</span><span class="special">&lt;</span><span class="identifier">Value</span><span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">Value</span>
+      <span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">forward_traversal_tag</span>
+    <span class="special">&gt;</span>
+<span class="special">{</span>
+ <span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">node_iter</span><span class="special">()</span>
+      <span class="special">:</span> <span class="identifier">m_node</span><span class="special">(</span><span class="number">0</span><span class="special">)</span> <span class="special">{}</span>
+
+    <span class="keyword">explicit</span> <span class="identifier">node_iter</span><span class="special">(</span><span class="identifier">Value</span><span class="special">*</span> <span class="identifier">p</span><span class="special">)</span>
+      <span class="special">:</span> <span class="identifier">m_node</span><span class="special">(</span><span class="identifier">p</span><span class="special">)</span> <span class="special">{}</span>
+
+ <span class="keyword">private</span><span class="special">:</span>
+    <span class="keyword">friend</span> <span class="keyword">class</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">iterator_core_access</span><span class="special">;</span>
+
+    <span class="keyword">bool</span> <span class="identifier">equal</span><span class="special">(</span><span class="identifier">node_iter</span><span class="special">&lt;</span><span class="identifier">Value</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="keyword">return</span> <span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">m_node</span> <span class="special">==</span> <span class="identifier">other</span><span class="special">.</span><span class="identifier">m_node</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="keyword">void</span> <span class="identifier">increment</span><span class="special">()</span>
+    <span class="special">{</span> <span class="identifier">m_node</span> <span class="special">=</span> <span class="identifier">m_node</span><span class="special">-&gt;</span><span class="identifier">next</span><span class="special">();</span> <span class="special">}</span>
+
+    <span class="identifier">Value</span><span class="special">&amp;</span> <span class="identifier">dereference</span><span class="special">()</span> <span class="keyword">const</span>
+    <span class="special">{</span> <span class="keyword">return</span> <span class="special">*</span><span class="identifier">m_node</span><span class="special">;</span> <span class="special">}</span>
+
+    <span class="identifier">Value</span><span class="special">*</span> <span class="identifier">m_node</span><span class="special">;</span>
+<span class="special">};</span>
+<span class="keyword">typedef</span> <span class="identifier">node_iter</span><span class="special">&lt;</span><span class="identifier">node_base</span><span class="special">&gt;</span> <span class="identifier">node_iterator</span><span class="special">;</span>
+<span class="keyword">typedef</span> <span class="identifier">node_iter</span><span class="special">&lt;</span><span class="identifier">node_base</span> <span class="keyword">const</span><span class="special">&gt;</span> <span class="identifier">node_const_iterator</span><span class="special">;</span>
+</pre>
+<h3>
+<a name="iterator.generic.facade.facade_tutorial.h11"></a>
+          <span class="phrase"><a name="iterator.generic.facade.facade_tutorial.interoperability"></a></span><a class="link" href="generic.html#iterator.generic.facade.facade_tutorial.interoperability">Interoperability</a>
+        </h3>
+<p>
+          Our <code class="computeroutput"><span class="identifier">const_node_iterator</span></code>
+          works perfectly well on its own, but taken together with <code class="computeroutput"><span class="identifier">node_iterator</span></code> it doesn't quite meet expectations.
+          For example, we'd like to be able to pass a <code class="computeroutput"><span class="identifier">node_iterator</span></code>
+          where a <code class="computeroutput"><span class="identifier">node_const_iterator</span></code>
+          was expected, just as you can with <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">list</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span></code>'s <code class="computeroutput"><span class="identifier">iterator</span></code>
+          and <code class="computeroutput"><span class="identifier">const_iterator</span></code>. Furthermore,
+          given a <code class="computeroutput"><span class="identifier">node_iterator</span></code> and
+          a <code class="computeroutput"><span class="identifier">node_const_iterator</span></code> into
+          the same list, we should be able to compare them for equality.
+        </p>
+<p>
+          This expected ability to use two different iterator types together is known
+          as |interoperability|_. Achieving interoperability in our case is as simple
+          as templatizing the <code class="computeroutput"><span class="identifier">equal</span></code>
+          function and adding a templatized converting constructor <a name="broken"></a>_
+          <a name="random"></a>_:
+        </p>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Value</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">node_iter</span>
+  <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">iterator_facade</span><span class="special">&lt;</span>
+        <span class="identifier">node_iter</span><span class="special">&lt;</span><span class="identifier">Value</span><span class="special">&gt;</span>
+      <span class="special">,</span> <span class="identifier">Value</span>
+      <span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">forward_traversal_tag</span>
+    <span class="special">&gt;</span>
+<span class="special">{</span>
+ <span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">node_iter</span><span class="special">()</span>
+      <span class="special">:</span> <span class="identifier">m_node</span><span class="special">(</span><span class="number">0</span><span class="special">)</span> <span class="special">{}</span>
+
+    <span class="keyword">explicit</span> <span class="identifier">node_iter</span><span class="special">(</span><span class="identifier">Value</span><span class="special">*</span> <span class="identifier">p</span><span class="special">)</span>
+      <span class="special">:</span> <span class="identifier">m_node</span><span class="special">(</span><span class="identifier">p</span><span class="special">)</span> <span class="special">{}</span>
+
+    <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">OtherValue</span><span class="special">&gt;</span>
+    <span class="identifier">node_iter</span><span class="special">(</span><span class="identifier">node_iter</span><span class="special">&lt;</span><span class="identifier">OtherValue</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span>
+      <span class="special">:</span> <span class="identifier">m_node</span><span class="special">(</span><span class="identifier">other</span><span class="special">.</span><span class="identifier">m_node</span><span class="special">)</span> <span class="special">{}</span>
+
+ <span class="keyword">private</span><span class="special">:</span>
+    <span class="keyword">friend</span> <span class="keyword">class</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">iterator_core_access</span><span class="special">;</span>
+    <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span><span class="special">&gt;</span> <span class="keyword">friend</span> <span class="keyword">class</span> <span class="identifier">node_iter</span><span class="special">;</span>
+
+    <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">OtherValue</span><span class="special">&gt;</span>
+    <span class="keyword">bool</span> <span class="identifier">equal</span><span class="special">(</span><span class="identifier">node_iter</span><span class="special">&lt;</span><span class="identifier">OtherValue</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="keyword">return</span> <span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">m_node</span> <span class="special">==</span> <span class="identifier">other</span><span class="special">.</span><span class="identifier">m_node</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="keyword">void</span> <span class="identifier">increment</span><span class="special">()</span>
+    <span class="special">{</span> <span class="identifier">m_node</span> <span class="special">=</span> <span class="identifier">m_node</span><span class="special">-&gt;</span><span class="identifier">next</span><span class="special">();</span> <span class="special">}</span>
+
+    <span class="identifier">Value</span><span class="special">&amp;</span> <span class="identifier">dereference</span><span class="special">()</span> <span class="keyword">const</span>
+    <span class="special">{</span> <span class="keyword">return</span> <span class="special">*</span><span class="identifier">m_node</span><span class="special">;</span> <span class="special">}</span>
+
+    <span class="identifier">Value</span><span class="special">*</span> <span class="identifier">m_node</span><span class="special">;</span>
+<span class="special">};</span>
+<span class="keyword">typedef</span> <span class="identifier">impl</span><span class="special">::</span><span class="identifier">node_iterator</span><span class="special">&lt;</span><span class="identifier">node_base</span><span class="special">&gt;</span> <span class="identifier">node_iterator</span><span class="special">;</span>
+<span class="keyword">typedef</span> <span class="identifier">impl</span><span class="special">::</span><span class="identifier">node_iterator</span><span class="special">&lt;</span><span class="identifier">node_base</span> <span class="keyword">const</span><span class="special">&gt;</span> <span class="identifier">node_const_iterator</span><span class="special">;</span>
+</pre>
+<p>
+          .. |interoperability| replace:: **interoperability** .. _interoperability:
+          new-iter-concepts.html#interoperable-iterators-lib-interoperable-iterators
+        </p>
+<p>
+          .. <a name="broken0"></a>If you're using an older compiler and it can't
+          handle this example, see the <code class="computeroutput"><span class="identifier">example</span>
+          <span class="identifier">code</span></code>__ for workarounds.
+        </p>
+<p>
+          .. <a name="random0"></a>If <code class="computeroutput"><span class="identifier">node_iterator</span></code>
+          had been a <code class="computeroutput"><span class="identifier">random</span> <span class="identifier">access</span>
+          <span class="identifier">traversal</span> <span class="identifier">iterator</span></code>_,
+          we'd have had to templatize its <code class="computeroutput"><span class="identifier">distance_to</span></code>
+          function as well.
+        </p>
+<p>
+          __ ../../example/node_iterator2.hpp
+        </p>
+<p>
+          You can see an example program which exercises our interoperable iterators
+          <a href="../../../example/node_iterator2.cpp" target="_top">here</a>.
+        </p>
+<h3>
+<a name="iterator.generic.facade.facade_tutorial.h12"></a>
+          <span class="phrase"><a name="iterator.generic.facade.facade_tutorial.telling_the_truth"></a></span><a class="link" href="generic.html#iterator.generic.facade.facade_tutorial.telling_the_truth">Telling
+          the Truth</a>
+        </h3>
+<p>
+          Now <code class="computeroutput"><span class="identifier">node_iterator</span></code> and
+          <code class="computeroutput"><span class="identifier">node_const_iterator</span></code> behave
+          exactly as you'd expect... almost. We can compare them and we can convert
+          in one direction: from <code class="computeroutput"><span class="identifier">node_iterator</span></code>
+          to <code class="computeroutput"><span class="identifier">node_const_iterator</span></code>.
+          If we try to convert from <code class="computeroutput"><span class="identifier">node_const_iterator</span></code>
+          to <code class="computeroutput"><span class="identifier">node_iterator</span></code>, we'll
+          get an error when the converting constructor tries to initialize <code class="computeroutput"><span class="identifier">node_iterator</span></code>'s <code class="computeroutput"><span class="identifier">m_node</span></code>,
+          a <code class="computeroutput"><span class="identifier">node</span><span class="special">*</span></code>
+          with a <code class="computeroutput"><span class="identifier">node</span> <span class="keyword">const</span><span class="special">*</span></code>. So what's the problem?
+        </p>
+<p>
+          The problem is that <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span></code>|is_convertible|_<code class="computeroutput"><span class="special">&lt;</span><span class="identifier">node_const_iterator</span><span class="special">,</span><span class="identifier">node_iterator</span><span class="special">&gt;::</span><span class="identifier">value</span></code> will be <code class="computeroutput"><span class="keyword">true</span></code>,
+          but it should be <code class="computeroutput"><span class="keyword">false</span></code>. |is_convertible|_
+          lies because it can only see as far as the <span class="bold"><strong>declaration</strong></span>
+          of <code class="computeroutput"><span class="identifier">node_iter</span></code>'s converting
+          constructor, but can't look inside at the <span class="bold"><strong>definition</strong></span>
+          to make sure it will compile. A perfect solution would make <code class="computeroutput"><span class="identifier">node_iter</span></code>'s converting constructor disappear
+          when the <code class="computeroutput"><span class="identifier">m_node</span></code> conversion
+          would fail.
+        </p>
+<p>
+          .. |is_convertible| replace:: <code class="computeroutput"><span class="identifier">is_convertible</span></code>
+          .. _is_convertible: ../../type_traits/index.html#relationships
+        </p>
+<p>
+          In fact, that sort of magic is possible using |enable_if|__. By rewriting
+          the converting constructor as follows, we can remove it from the overload
+          set when it's not appropriate:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">type_traits</span><span class="special">/</span><span class="identifier">is_convertible</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">utility</span><span class="special">/</span><span class="identifier">enable_if</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+  <span class="special">...</span>
+
+<span class="keyword">private</span><span class="special">:</span>
+  <span class="keyword">struct</span> <span class="identifier">enabler</span> <span class="special">{};</span>
+
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">OtherValue</span><span class="special">&gt;</span>
+  <span class="identifier">node_iter</span><span class="special">(</span>
+      <span class="identifier">node_iter</span><span class="special">&lt;</span><span class="identifier">OtherValue</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span>
+    <span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">enable_if</span><span class="special">&lt;</span>
+          <span class="identifier">boost</span><span class="special">::</span><span class="identifier">is_convertible</span><span class="special">&lt;</span><span class="identifier">OtherValue</span><span class="special">*,</span><span class="identifier">Value</span><span class="special">*&gt;</span>
+        <span class="special">,</span> <span class="identifier">enabler</span>
+      <span class="special">&gt;::</span><span class="identifier">type</span> <span class="special">=</span> <span class="identifier">enabler</span><span class="special">()</span>
+  <span class="special">)</span>
+    <span class="special">:</span> <span class="identifier">m_node</span><span class="special">(</span><span class="identifier">other</span><span class="special">.</span><span class="identifier">m_node</span><span class="special">)</span> <span class="special">{}</span>
+</pre>
+<p>
+          .. |enable_if| replace:: <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">enable_if</span></code>
+          __ ../../utility/enable_if.html
+        </p>
+<h3>
+<a name="iterator.generic.facade.facade_tutorial.h13"></a>
+          <span class="phrase"><a name="iterator.generic.facade.facade_tutorial.wrap_up"></a></span><a class="link" href="generic.html#iterator.generic.facade.facade_tutorial.wrap_up">Wrap
+          Up</a>
+        </h3>
+<p>
+          This concludes our <code class="computeroutput"><span class="identifier">iterator_facade</span></code>
+          tutorial, but before you stop reading we urge you to take a look at |iterator_adaptor|__.
+          There's another way to approach writing these iterators which might even
+          be superior.
+        </p>
+<p>
+          .. |iterator_adaptor| replace:: <code class="computeroutput"><span class="identifier">iterator_adaptor</span></code>
+          __ iterator_adaptor.html
+        </p>
+<p>
+          .. _<code class="computeroutput"><span class="identifier">iterator</span> <span class="identifier">traversal</span>
+          <span class="identifier">concept</span></code>: new-iter-concepts.html#iterator-traversal-concepts-lib-iterator-traversal
+          .. _<code class="computeroutput"><span class="identifier">readable</span> <span class="identifier">iterator</span></code>:
+          new-iter-concepts.html#readable-iterators-lib-readable-iterators .. _<code class="computeroutput"><span class="identifier">lvalue</span> <span class="identifier">iterator</span></code>:
+          new-iter-concepts.html#lvalue-iterators-lib-lvalue-iterators .. _<code class="computeroutput"><span class="identifier">single</span> <span class="identifier">pass</span>
+          <span class="identifier">iterator</span></code>: new-iter-concepts.html#single-pass-iterators-lib-single-pass-iterators
+          .. _<code class="computeroutput"><span class="identifier">incrementable</span> <span class="identifier">iterator</span></code>:
+          new-iter-concepts.html#incrementable-iterators-lib-incrementable-iterators
+          .. _<code class="computeroutput"><span class="identifier">forward</span> <span class="identifier">traversal</span>
+          <span class="identifier">iterator</span></code>: new-iter-concepts.html#forward-traversal-iterators-lib-forward-traversal-iterators
+          .. _<code class="computeroutput"><span class="identifier">bidirectional</span> <span class="identifier">traversal</span>
+          <span class="identifier">iterator</span></code>: new-iter-concepts.html#bidirectional-traversal-iterators-lib-bidirectional-traversal-iterators
+          .. _<code class="computeroutput"><span class="identifier">random</span> <span class="identifier">access</span>
+          <span class="identifier">traversal</span> <span class="identifier">iterator</span></code>:
+          new-iter-concepts.html#random-access-traversal-iterators-lib-random-access-traversal-iterators
+        </p>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2003, 2005 David Abrahams Jeremy Siek Thomas
+      Witt<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at &lt;ulink url="http://www.boost.org/LICENSE_1_0.txt"&gt;
+        http://www.boost.org/LICENSE_1_0.txt &lt;/ulink&gt;)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="concepts/traversal.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="generic/adaptor.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Runtime parameters</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Test">
+<link rel="up" href="../index.html" title="Boost.Test">
+<link rel="prev" href="test_output/summary.html" title="Summary of the API for controlling the output">
+<link rel="next" href="runtime_config/test_unit_filtering.html" title="Test unit filtering">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="test_output/summary.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="runtime_config/test_unit_filtering.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_test.runtime_config"></a><a class="link" href="runtime_config.html" title="Runtime parameters">Runtime parameters</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="runtime_config/test_unit_filtering.html">Test unit
+      filtering</a></span></dt>
+<dt><span class="section"><a href="runtime_config/custom_command_line_arguments.html">Custom
+      command line arguments</a></span></dt>
+<dt><span class="section"><a href="runtime_config/summary.html">Summary of run-time
+      parameters</a></span></dt>
+</dl></div>
+<h5>
+<a name="boost_test.runtime_config.h0"></a>
+      <span class="phrase"><a name="boost_test.runtime_config.boost_test_runtime_parameters"></a></span><a class="link" href="runtime_config.html#boost_test.runtime_config.boost_test_runtime_parameters">Boost.Test
+      runtime parameters</a>
+    </h5>
+<p>
+      The <span class="emphasis"><em>Unit Test Framework</em></span> supports multiple parameters that
+      affect test module execution. To set the parameter's value you can either use
+      a runtime configuration subsystem interface from within the test module initialization
+      function or you can specify the value at runtime during test module invocation.
+    </p>
+<p>
+      The <span class="emphasis"><em>Unit Test Framework</em></span> provides two ways to set a parameter
+      at runtime: by specifying a command line argument and by setting an environment
+      variable. The command line argument always overrides the corresponding environment
+      variable.
+    </p>
+<p>
+      During test module initialization the <span class="emphasis"><em>Unit Test Framework</em></span>
+      parses the command line and excludes all parameters that belong to it and their
+      values from the argument list. The rest of command line is forwarded to the
+      test module initialization function supplied by you. The command line argument
+      format expected by the <span class="emphasis"><em>Unit Test Framework</em></span> is:
+    </p>
+<pre class="programlisting">  --&lt;command_line_argument_name&gt;=&lt;argument_value&gt;
+</pre>
+<p>
+      The command line argument name is case sensitive. It is required to match exactly
+      the name in parameter specification. There should not be any spaces between
+      '=' and either command line argument name or argument value.
+    </p>
+<p>
+      The corresponding environment variable name is also case sensitive and is required
+      to exactly match the name in the parameter specification.
+    </p>
+<p>
+      All information about the currently supported parameters of the <span class="emphasis"><em>Unit
+      Test Framework</em></span> is summarized in the <a class="link" href="runtime_config/summary.html" title="Summary of run-time parameters">summary
+      section</a>.
+    </p>
+<h5>
+<a name="boost_test.runtime_config.h1"></a>
+      <span class="phrase"><a name="boost_test.runtime_config.test_filtering"></a></span><a class="link" href="runtime_config.html#boost_test.runtime_config.test_filtering">Test
+      filtering</a>
+    </h5>
+<p>
+      The <span class="emphasis"><em>Unit Test Framework</em></span> provides an extensive filtering
+      facility making it easy to run a specific test or a subset of tests. The <a class="link" href="runtime_config/test_unit_filtering.html" title="Test unit filtering">section on filtering</a>
+      gives all the details for the command line interface.
+    </p>
+<p>
+      Additionally, <a class="link" href="tests_organization/test_tree/test_suite.html" title="Test suite">test-suites</a>
+      and <a class="link" href="tests_organization/tests_grouping.html" title="Grouping tests into logical units by labels">labels</a>
+      may be used in order to construct subset of tests in an efficient and easy
+      way, while decorators (eg. <a class="link" href="utf_reference/test_org_reference/decorator_enabled.html" title="enabled / disabled (decorator)"><code class="computeroutput"><span class="identifier">disabled</span></code></a>, <a class="link" href="utf_reference/test_org_reference/decorator_precondition.html" title="precondition (decorator)"><code class="computeroutput"><span class="identifier">precondition</span></code></a>) can be used to set the
+      default run status of a test case.
+    </p>
+<h5>
+<a name="boost_test.runtime_config.h2"></a>
+      <span class="phrase"><a name="boost_test.runtime_config.custom_runtime_parameters"></a></span><a class="link" href="runtime_config.html#boost_test.runtime_config.custom_runtime_parameters">Custom
+      runtime parameters</a>
+    </h5>
+<p>
+      It is possible to extend further the command line interface by providing a
+      custom command line interpretation logic. There are several ways on how to
+      integrate this logic in the <span class="emphasis"><em>Unit Test Framework</em></span> and this
+      is explained in details in the section <a class="link" href="runtime_config/custom_command_line_arguments.html" title="Custom command line arguments">Custom
+      runtime parameters</a>.
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2020 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="test_output/summary.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="runtime_config/test_unit_filtering.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

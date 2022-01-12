@@ -1,0 +1,247 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Class output_test_stream</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../../header/boost/test/tools/output_test_stream_hpp.html" title="Header &lt;boost/test/tools/output_test_stream.hpp&gt;">
+<link rel="prev" href="../../header/boost/test/tools/output_test_stream_hpp.html" title="Header &lt;boost/test/tools/output_test_stream.hpp&gt;">
+<link rel="next" href="../../header/boost/test/tree/observer_hpp.html" title="Header &lt;boost/test/tree/observer.hpp&gt;">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../header/boost/test/tools/output_test_stream_hpp.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../header/boost/test/tools/output_test_stream_hpp.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../header/boost/test/tree/observer_hpp.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.test_tools.output_test_stream"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class output_test_stream</span></h2>
+<p>boost::test_tools::output_test_stream — Class to be used to simplify testing of ostream-based output operations. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../header/boost/test/tools/output_test_stream_hpp.html" title="Header &lt;boost/test/tools/output_test_stream.hpp&gt;">boost/test/tools/output_test_stream.hpp</a>&gt;
+
+</span>
+<span class="keyword">class</span> <a class="link" href="output_test_stream.html" title="Class output_test_stream">output_test_stream</a> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">wrapped_stream</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// <a class="link" href="output_test_stream.html#boost.test_tools.output_test_streamconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <span class="keyword">explicit</span> <a class="link" href="output_test_stream.html#idm46168-bb"><span class="identifier">output_test_stream</span></a><span class="special">(</span><span class="identifier">const_string</span> <span class="special">=</span> <span class="identifier">const_string</span><span class="special">(</span><span class="special">)</span><span class="special">,</span> <span class="keyword">bool</span> <span class="special">=</span> <span class="keyword">true</span><span class="special">,</span> 
+                              <span class="keyword">bool</span> <span class="special">=</span> <span class="keyword">true</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="output_test_stream.html#idm46187-bb"><span class="special">~</span><span class="identifier">output_test_stream</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="output_test_stream.html#idm46112-bb">public member functions</a></span>
+  <span class="keyword">virtual</span> <a class="link" href="assertion_result.html" title="Class assertion_result">assertion_result</a> <a class="link" href="output_test_stream.html#idm46113-bb"><span class="identifier">is_empty</span></a><span class="special">(</span><span class="keyword">bool</span> <span class="special">=</span> <span class="keyword">true</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <a class="link" href="assertion_result.html" title="Class assertion_result">assertion_result</a> <a class="link" href="output_test_stream.html#idm46124-bb"><span class="identifier">check_length</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> <span class="keyword">bool</span> <span class="special">=</span> <span class="keyword">true</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <a class="link" href="assertion_result.html" title="Class assertion_result">assertion_result</a> <a class="link" href="output_test_stream.html#idm46139-bb"><span class="identifier">is_equal</span></a><span class="special">(</span><span class="identifier">const_string</span><span class="special">,</span> <span class="keyword">bool</span> <span class="special">=</span> <span class="keyword">true</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <a class="link" href="assertion_result.html" title="Class assertion_result">assertion_result</a> <a class="link" href="output_test_stream.html#idm46154-bb"><span class="identifier">match_pattern</span></a><span class="special">(</span><span class="keyword">bool</span> <span class="special">=</span> <span class="keyword">true</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="output_test_stream.html#idm46165-bb"><span class="identifier">flush</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="output_test_stream.html#idm46188-bb">protected member functions</a></span>
+  <span class="keyword">virtual</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="output_test_stream.html#idm46189-bb"><span class="identifier">get_stream_string_representation</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="output_test_stream.html#idm46194-bb">private member functions</a></span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="output_test_stream.html#idm46195-bb"><span class="identifier">length</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="output_test_stream.html#idm46198-bb"><span class="identifier">sync</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idm57402"></a><h2>Description</h2>
+<div class="refsect2">
+<a name="idm57404"></a><h3>
+<a name="boost.test_tools.output_test_streamconstruct-copy-destruct"></a><code class="computeroutput">output_test_stream</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idm46168-bb"></a><span class="identifier">output_test_stream</span><span class="special">(</span><span class="identifier">const_string</span> pattern_file_name <span class="special">=</span> <span class="identifier">const_string</span><span class="special">(</span><span class="special">)</span><span class="special">,</span> 
+                            <span class="keyword">bool</span> match_or_save <span class="special">=</span> <span class="keyword">true</span><span class="special">,</span> 
+                            <span class="keyword">bool</span> text_or_binary <span class="special">=</span> <span class="keyword">true</span><span class="special">)</span><span class="special">;</span></pre>Constructor. <p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">match_or_save</code></span></p></td>
+<td><p>if true, the pattern file will be read, otherwise it will be written </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">pattern_file_name</code></span></p></td>
+<td><p>indicates the name of the file for matching. If the string is empty, the standard input or output streams are used instead (depending on match_or_save) </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">text_or_binary</code></span></p></td>
+<td><p>if false, opens the stream in binary mode. Otherwise the stream is opened with default flags and the carriage returns are ignored. </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem"><pre class="literallayout"><a name="idm46187-bb"></a><span class="special">~</span><span class="identifier">output_test_stream</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="idm57461"></a><h3>
+<a name="idm46112-bb"></a><code class="computeroutput">output_test_stream</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <a class="link" href="assertion_result.html" title="Class assertion_result">assertion_result</a> <a name="idm46113-bb"></a><span class="identifier">is_empty</span><span class="special">(</span><span class="keyword">bool</span> flush_stream <span class="special">=</span> <span class="keyword">true</span><span class="special">)</span><span class="special">;</span></pre>Checks if the stream is empty. <p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">flush_stream</code></span></p></td>
+<td><p>if true, flushes the stream after the call </p></td>
+</tr></tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <a class="link" href="assertion_result.html" title="Class assertion_result">assertion_result</a> 
+<a name="idm46124-bb"></a><span class="identifier">check_length</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> length<span class="special">,</span> <span class="keyword">bool</span> flush_stream <span class="special">=</span> <span class="keyword">true</span><span class="special">)</span><span class="special">;</span></pre>Checks the length of the stream. <p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">flush_stream</code></span></p></td>
+<td><p>if true, flushes the stream after the call. Set to false to call additional checks on the same content. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">length</code></span></p></td>
+<td><p>target length </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <a class="link" href="assertion_result.html" title="Class assertion_result">assertion_result</a> <a name="idm46139-bb"></a><span class="identifier">is_equal</span><span class="special">(</span><span class="identifier">const_string</span> arg_<span class="special">,</span> <span class="keyword">bool</span> flush_stream <span class="special">=</span> <span class="keyword">true</span><span class="special">)</span><span class="special">;</span></pre>Checks the content of the stream against a string. <p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">arg_</code></span></p></td>
+<td><p>the target stream </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">flush_stream</code></span></p></td>
+<td><p>if true, flushes the stream after the call. </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <a class="link" href="assertion_result.html" title="Class assertion_result">assertion_result</a> <a name="idm46154-bb"></a><span class="identifier">match_pattern</span><span class="special">(</span><span class="keyword">bool</span> flush_stream <span class="special">=</span> <span class="keyword">true</span><span class="special">)</span><span class="special">;</span></pre>Checks the content of the stream against a pattern file. <p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">flush_stream</code></span></p></td>
+<td><p>if true, flushes/resets the stream after the call. </p></td>
+</tr></tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idm46165-bb"></a><span class="identifier">flush</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Flushes the stream. </li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="idm57587"></a><h3>
+<a name="idm46188-bb"></a><code class="computeroutput">output_test_stream</code> protected member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a name="idm46189-bb"></a><span class="identifier">get_stream_string_representation</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Returns the string representation of the stream. <p>May be overriden in order to mutate the string before the matching operations. </p>
+</li></ol></div>
+</div>
+<div class="refsect2">
+<a name="idm57606"></a><h3>
+<a name="idm46194-bb"></a><code class="computeroutput">output_test_stream</code> private member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="idm46195-bb"></a><span class="identifier">length</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Length of the stream. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm46198-bb"></a><span class="identifier">sync</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Synching the stream into an internal string representation. </li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2020 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../header/boost/test/tools/output_test_stream_hpp.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../header/boost/test/tools/output_test_stream_hpp.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../header/boost/test/tree/observer_hpp.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

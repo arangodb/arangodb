@@ -1,0 +1,59 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>when_any, a dubious alternative</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter 1. Fiber">
+<link rel="up" href="../when_any.html" title="when_any">
+<link rel="prev" href="when_any__heterogeneous_types.html" title="when_any, heterogeneous types">
+<link rel="next" href="../when_all_functionality.html" title="when_all functionality">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="when_any__heterogeneous_types.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../when_any.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../when_all_functionality.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="fiber.when_any.when_any.when_any__a_dubious_alternative"></a><a class="link" href="when_any__a_dubious_alternative.html" title="when_any, a dubious alternative">when_any,
+        a dubious alternative</a>
+</h4></div></div></div>
+<p>
+          Certain topics in C++ can arouse strong passions, and exceptions are no
+          exception. We cannot resist mentioning — for purely informational purposes
+          — that when you need only the <span class="emphasis"><em>first</em></span> result from some
+          number of concurrently-running fibers, it would be possible to pass a
+          <code class="literal">shared_ptr&lt;<a class="link" href="../../synchronization/futures/promise.html#class_promise"><code class="computeroutput">promise&lt;&gt;</code></a>&gt;</code> to the
+          participating fibers, then cause the initiating fiber to call <a class="link" href="../../synchronization/futures/future.html#future_get"><code class="computeroutput">future::get()</code></a> on
+          its <a class="link" href="../../synchronization/futures/future.html#class_future"><code class="computeroutput">future&lt;&gt;</code></a>. The first fiber to call <a class="link" href="../../synchronization/futures/promise.html#promise_set_value"><code class="computeroutput">promise::set_value()</code></a> on
+          that shared <code class="computeroutput"><span class="identifier">promise</span></code> will
+          succeed; subsequent <code class="computeroutput"><span class="identifier">set_value</span><span class="special">()</span></code> calls on the same <code class="computeroutput"><span class="identifier">promise</span></code>
+          instance will throw <code class="computeroutput"><span class="identifier">future_error</span></code>.
+        </p>
+<p>
+          Use this information at your own discretion. Beware the dark side.
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2013 Oliver Kowalke<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="when_any__heterogeneous_types.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../when_any.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../when_all_functionality.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

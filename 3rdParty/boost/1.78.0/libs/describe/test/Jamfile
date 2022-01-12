@@ -1,0 +1,91 @@
+# Copyright 2020 Peter Dimov
+# Distributed under the Boost Software License, Version 1.0.
+# https://www.boost.org/LICENSE_1_0.txt
+
+import testing ;
+
+project : requirements
+  <warnings>extra
+  <toolset>msvc:<warnings-as-errors>on
+  <toolset>clang:<warnings-as-errors>on
+  <toolset>gcc:<warnings-as-errors>on
+  <toolset>msvc-14.0:<cxxflags>"-wd4100"
+  <toolset>clang:<cxxflags>"-Wno-unused-private-field" ;
+
+run quick.cpp ;
+
+run pp_for_each_test.cpp ;
+run pp_is_paren_test.cpp ;
+run pp_is_empty_test.cpp ;
+run pp_call_test.cpp ;
+run pp_parse_test.cpp ;
+run pp_name_test.cpp ;
+run pp_pointer_test.cpp ;
+
+run enumerators_test.cpp ;
+run empty_enum_test.cpp ;
+run trailing_comma_test.cpp ;
+run nested_enum_test.cpp ;
+
+run compute_base_modifiers.cpp ;
+run bases_test.cpp ;
+
+run members_test.cpp ;
+run members_test2.cpp ;
+run members_test3.cpp ;
+run members_test4.cpp ;
+run members_test5.cpp ;
+run members_test6.cpp ;
+run members_test7.cpp
+  : : : <toolset>msvc-14.0:<build>no ;
+run members_test8.cpp ;
+
+run overloaded_test.cpp ;
+run overloaded_test2.cpp ;
+
+compile test_d_type.cpp ;
+
+compile-fail enum_struct_fail.cpp ;
+compile-fail struct_enum_fail.cpp ;
+
+run class_template_test.cpp ;
+
+run has_enumerators_test.cpp ;
+run has_bases_test.cpp ;
+run has_members_test.cpp ;
+
+run enum_to_string_test.cpp ;
+run enum_from_string_test.cpp ;
+
+run operator_eq_test.cpp ;
+run operator_lt_test.cpp ;
+
+run descriptor_by_name_test.cpp ;
+run descriptor_by_pointer_test.cpp ;
+
+compile unnamed_namespace_test.cpp ;
+compile unnamed_namespace_test2.cpp ;
+
+# examples
+
+obj describe_cxx14 : describe_cxx14.cpp ;
+explicit describe_cxx14 ;
+
+local CXX14 = [ check-target-builds describe_cxx14 describe_cxx14 : : <build>no ] ;
+
+local JSON = <library>/boost//json/<warnings>off "<toolset>msvc-14.0:<build>no" "<toolset>msvc-14.2:<cxxflags>-wd5104" ;
+local SERIALIZATION = <library>/boost//serialization/<warnings>off "-<toolset>clang:<warnings-as-errors>on" ;
+
+run ../example/printing_enums_ct.cpp : : : $(CXX14) ;
+run ../example/printing_enums_rt.cpp : : : $(CXX14) ;
+run ../example/enum_to_string.cpp : : : $(CXX14) ;
+run ../example/string_to_enum.cpp : : : $(CXX14) ;
+run ../example/print_function.cpp : : : $(CXX14) ;
+run ../example/to_json.cpp : : : $(CXX14) $(JSON) ;
+run ../example/from_json.cpp : : : $(CXX14) $(JSON) ;
+run ../example/serialization.cpp : : : $(CXX14) $(SERIALIZATION) ;
+run ../example/json_rpc.cpp : : : $(CXX14) $(JSON) ;
+run ../example/hash_value.cpp : : : $(CXX14) ;
+run ../example/equality.cpp : : : $(CXX14) ;
+link ../example/console.cpp : $(CXX14) $(JSON) ;
+run ../example/struct_to_tuple.cpp : : : $(CXX14) ;

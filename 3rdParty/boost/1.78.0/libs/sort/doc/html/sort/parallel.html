@@ -1,0 +1,533 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>3.- Parallel Algorithms</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Sort">
+<link rel="up" href="../index.html" title="Boost.Sort">
+<link rel="prev" href="single_thread/windows_single/complex_benchmarks.html" title="Complex (Several Types)">
+<link rel="next" href="parallel/sample_sort.html" title="3.2.- Sample_Sort">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="single_thread/windows_single/complex_benchmarks.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="parallel/sample_sort.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="sort.parallel"></a><a class="link" href="parallel.html" title="3.- Parallel Algorithms">3.- Parallel Algorithms</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="parallel.html#sort.parallel.block_indirect_sort">3.1- block_indirect_sort</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="parallel.html#sort.parallel.block_indirect_sort.block_description">Description</a></span></dt>
+<dt><span class="section"><a href="parallel.html#sort.parallel.block_indirect_sort.block_benchmark">Benchmark</a></span></dt>
+<dt><span class="section"><a href="parallel.html#sort.parallel.block_indirect_sort.block_programming">Programming</a></span></dt>
+<dt><span class="section"><a href="parallel.html#sort.parallel.block_indirect_sort.block_internal">Internal
+        Description</a></span></dt>
+<dt><span class="section"><a href="parallel.html#sort.parallel.block_indirect_sort.design_process">Design
+        Process</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="parallel/sample_sort.html">3.2.- Sample_Sort</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="parallel/sample_sort.html#sort.parallel.sample_sort.sample_description">Description</a></span></dt>
+<dt><span class="section"><a href="parallel/sample_sort/sample_programming.html">Programming</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="parallel/parallel_stable_sort.html">3.3.- Parallel_stable_sort</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="parallel/parallel_stable_sort.html#sort.parallel.parallel_stable_sort.parallel_description">Description</a></span></dt>
+<dt><span class="section"><a href="parallel/parallel_stable_sort/parallel_programming.html">Programming</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="parallel/linux_parallel.html">3.4- Linux Benchmarks</a></span></dt>
+<dt><span class="section"><a href="parallel/windows_parallel.html">3.5- Windows Benchmark</a></span></dt>
+</dl></div>
+<div class="blockquote"><blockquote class="blockquote">
+<h5>
+<a name="sort.parallel.h0"></a>
+        <span class="phrase"><a name="sort.parallel.parallel_algorithms"></a></span><a class="link" href="parallel.html#sort.parallel.parallel_algorithms"><span class="underline">Parallel Algorithms</span></a>
+      </h5>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+          This table provides a brief description of the parallel algorithms of the
+          library.
+        </p>
+<p>
+          <span class="bold"><strong>
+<pre class="programlisting">                      |       |                        |                              |
+Algorithm             |Stable |   Additional memory    |Best, average, and worst case |
+----------------------+-------+------------------------+------------------------------+
+block_indirect_sort   |  no   |block_size * num_threads| N, N LogN , N LogN           |
+sample_sort           |  yes  |        N               | N, N LogN , N LogN           |
+parallel_stable_sort  |  yes  |      N / 2             | N, N LogN , N LogN           |
+                      |       |                        |                              |
+</pre>
+          </strong></span>
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <span class="bold"><strong>Sample_sort</strong></span> is a implementation of
+              the <span class="bold"><strong><a href="https://en.wikipedia.org/wiki/Samplesort" target="_top">Samplesort
+              algorithm</a></strong></span> done by Francisco Tapia.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Parallel_stable_sort</strong></span> is based on the
+              samplesort algorithm, but using a half of the memory used by sample_sort,
+              conceived and implemented by Francisco Tapia.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Block_indirect_sort</strong></span> is a novel parallel
+              sort algorithm, very fast, with low additional memory consumption,
+              conceived and implemented by Francisco Tapia.
+            </li>
+</ul></div>
+<p>
+          The <span class="bold"><strong>block_size</strong></span> is an internal parameter
+          of the algorithm, which in order to achieve the highest speed, changes
+          according to the size of the objects to sort according to the next table.
+          The strings use a block_size of 128.
+        </p>
+<p>
+          <span class="bold"><strong>
+<pre class="programlisting">                                |        |         |         |         |         |         |          |
+object size (bytes)             | 1 - 15 | 16 - 31 | 32 - 63 | 64 - 127|128 - 255|256 - 511| 512 -    |
+--------------------------------+--------+---------+---------+---------+---------+---------+----------+
+block_size (number of elements) |  4096  |  2048   |   1024  |   768   |   512   |   256   |  128     |
+                                |        |         |         |         |         |         |          |
+</pre>
+          </strong></span>
+        </p>
+</blockquote></div>
+<h5>
+<a name="sort.parallel.h1"></a>
+        <span class="phrase"><a name="sort.parallel.thread_specification"></a></span><a class="link" href="parallel.html#sort.parallel.thread_specification"><span class="underline">Thread Specification</span></a>
+      </h5>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+          The parallel algorithms have a integer parameter indicating the <span class="bold"><strong>number of threads</strong></span> to use in the sorting process,
+          which always is the last value in the call.
+        </p>
+<p>
+          The default value (if left unspecified) is the number of HW threads of
+          the machine where the program is running provided by std::thread::hardware_concurrency().
+          If the number is 1 or 0, the algorithm runs with only 1 thread.
+        </p>
+<p>
+          The number of threads is not a fixed number, but is calculated in each
+          execution. The number of threads passed can be greater than the number
+          of hardware threads on the machine. We can pass 100 threads in a machine
+          with 4 HW threads, and in the same mode we can pass a function as (std::thread::hardware_concurrency()
+          / 4 ). If this value is 0, the program is executed with 1 thread.
+        </p>
+</blockquote></div>
+<h5>
+<a name="sort.parallel.h2"></a>
+        <span class="phrase"><a name="sort.parallel.programming"></a></span><a class="link" href="parallel.html#sort.parallel.programming"><span class="underline">Programming</span></a>
+      </h5>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+          You only need to include the file boost/sort/sort.hpp to use these algorithms.
+        </p>
+<p>
+          All the algorithms run in the namespace boost::sort
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">sort</span><span class="special">/</span><span class="identifier">sort</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+          The parallel algorithms have 4 invocation formats:
+        </p>
+<pre class="programlisting"><span class="identifier">algorithm</span> <span class="special">(</span> <span class="identifier">first</span> <span class="identifier">iterator</span><span class="special">,</span> <span class="identifier">last</span> <span class="identifier">iterator</span><span class="special">,</span> <span class="identifier">comparison</span> <span class="identifier">object</span><span class="special">,</span> <span class="identifier">number</span> <span class="identifier">of</span> <span class="identifier">threads</span> <span class="special">)</span>
+<span class="identifier">algorithm</span> <span class="special">(</span> <span class="identifier">first</span> <span class="identifier">iterator</span><span class="special">,</span> <span class="identifier">last</span> <span class="identifier">iterator</span><span class="special">,</span> <span class="identifier">comparison</span> <span class="identifier">object</span> <span class="special">)</span>
+<span class="identifier">algorithm</span> <span class="special">(</span> <span class="identifier">first</span> <span class="identifier">iterator</span><span class="special">,</span> <span class="identifier">last</span> <span class="identifier">iterator</span><span class="special">,</span> <span class="identifier">number</span> <span class="identifier">of</span> <span class="identifier">threads</span> <span class="special">)</span>
+<span class="identifier">algorithm</span> <span class="special">(</span> <span class="identifier">first</span> <span class="identifier">iterator</span><span class="special">,</span> <span class="identifier">last</span> <span class="identifier">iterator</span> <span class="special">)</span>
+</pre>
+<p>
+          These algorithms need a <span class="bold"><strong>C++11 compliant compiler</strong></span>,
+          but don't need any other code or library. With older compilers correct
+          operation isn't guaranteed.
+        </p>
+<p>
+          If the number of threads is unspecified, use the result of std::thread::hardware_concurrency()
+        </p>
+<p>
+          These algorithms use a <span class="bold"><strong>comparison object</strong></span>,
+          in the same way as the standard library sort algorithms. If you don't define
+          it, the comparison object defaults to std::less, which uses the &lt; operator
+          internally for comparisons.
+        </p>
+<p>
+          These algorithms are <span class="bold"><strong>exception safe</strong></span>, meaning
+          that, the exceptions generated by the algorithms guarantee the integrity
+          of the objects to sort, but not their relative order. If the exception
+          is generated inside the objects (in the move or copy constructors) the
+          results are undefined.
+        </p>
+</blockquote></div>
+</blockquote></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="sort.parallel.block_indirect_sort"></a><a class="link" href="parallel.html#sort.parallel.block_indirect_sort" title="3.1- block_indirect_sort">3.1- block_indirect_sort</a>
+</h3></div></div></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="sort.parallel.block_indirect_sort.block_description"></a><a class="link" href="parallel.html#sort.parallel.block_indirect_sort.block_description" title="Description">Description</a>
+</h4></div></div></div>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+            <span class="bold"><strong>BLOCK_INDIRECT_SORT</strong></span> is a new unstable
+            parallel sort, conceived and implemented by Francisco Jose Tapia for
+            the Boost Library.
+          </p>
+<p>
+            The most important characteristics of this algorithm are the <span class="bold"><strong>speed</strong></span> and the <span class="bold"><strong>low memory
+            consumption</strong></span>.
+          </p>
+<p>
+            <span class="bold"><strong>
+<pre class="programlisting">                      |       |                        |                              |
+Algorithm             |Stable |   Additional memory    |Best, average, and worst case |
+----------------------+-------+------------------------+------------------------------+
+block_indirect_sort   |  no   |block_size * num_threads|     N, N LogN, N LogN        |
+                      |       |                        |                              |
+</pre>
+            </strong></span>
+          </p>
+<p>
+            The block_size is an internal parameter of the algorithm, which in order
+            to achieve the highest speed, changes according with the size of the
+            objects to sort according to the next table.The strings use a block_size
+            of 128.
+          </p>
+<p>
+            <span class="bold"><strong>
+<pre class="programlisting">                                |        |         |         |         |         |         |          |
+object size (bytes)             | 1 - 15 | 16 - 31 | 32 - 63 | 64 - 127|128 - 255|256 - 511| 512 -    |
+--------------------------------+--------+---------+---------+---------+---------+---------+----------+
+block_size (number of elements) |  4096  |  2048   |   1024  |   768   |   512   |   256   |  128     |
+                                |        |         |         |         |         |         |          |
+</pre>
+            </strong></span>
+          </p>
+</blockquote></div>
+</div>
+<p>
+        <br>
+      </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="sort.parallel.block_indirect_sort.block_benchmark"></a><a class="link" href="parallel.html#sort.parallel.block_indirect_sort.block_benchmark" title="Benchmark">Benchmark</a>
+</h4></div></div></div>
+<div class="blockquote"><blockquote class="blockquote"><p>
+            Sorting 100 000 000 64 bits numbers, the measured memory used was: <span class="bold"><strong>
+<pre class="programlisting">                                  |             |             |
+Algorithm                         | Time (secs) | Memory used |
+----------------------------------+-------------+-------------+
+Open MP Parallel Sort             |   1.1990    |  1564 MB    |
+Threading Building Blocks (TBB)   |   1.6411    |   789 MB    |
+Block Indirect Sort               |   0.9270    |   790 MB    |
+                                  |             |             |
+</pre>
+            </strong></span>
+          </p></blockquote></div>
+</div>
+<p>
+        <br>
+      </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="sort.parallel.block_indirect_sort.block_programming"></a><a class="link" href="parallel.html#sort.parallel.block_indirect_sort.block_programming" title="Programming">Programming</a>
+</h4></div></div></div>
+<div class="blockquote"><blockquote class="blockquote">
+<h5>
+<a name="sort.parallel.block_indirect_sort.block_programming.h0"></a>
+            <span class="phrase"><a name="sort.parallel.block_indirect_sort.block_programming.thread_specification"></a></span><a class="link" href="parallel.html#sort.parallel.block_indirect_sort.block_programming.thread_specification"><span class="underline">Thread specification</span></a>
+          </h5>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+              This algorithm has an integer parameter indicating the <span class="bold"><strong>number
+              of threads</strong></span> to use in the sorting process, which always is
+              the last value in the call. The default value (if left unspecified)
+              is the number of HW threads of the machine where the program is running
+              provided by std::thread::hardware_concurrency().
+            </p>
+<p>
+              If the number is 1 or 0, the algorithm runs with only 1 thread.
+            </p>
+<p>
+              The number of threads is not a fixed number, but is calculated in each
+              execution. The number of threads passed can be greater than the number
+              of hardware threads on the machine. We can pass 100 threads in a machine
+              with 4 HW threads, and in the same mode we can pass a function as (std::thread::hardware_concurrency()
+              / 4 ). If this value is 0, the program is executed with 1 thread.
+            </p>
+</blockquote></div>
+<h5>
+<a name="sort.parallel.block_indirect_sort.block_programming.h1"></a>
+            <span class="phrase"><a name="sort.parallel.block_indirect_sort.block_programming.programming"></a></span><a class="link" href="parallel.html#sort.parallel.block_indirect_sort.block_programming.programming"><span class="underline">Programming</span></a>
+          </h5>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+              You only need to include the file boost/sort/sort.hpp to use this algorithm
+            </p>
+<p>
+              The algorithm runs in the namespace boost::sort
+            </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">sort</span><span class="special">/</span><span class="identifier">sort</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">iter_t</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">block_indirect_sort</span> <span class="special">(</span><span class="identifier">iter_t</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">iter_t</span> <span class="identifier">last</span><span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">iter_t</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">compare</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">block_indirect_sort</span> <span class="special">(</span><span class="identifier">iter_t</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">iter_t</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">compare</span> <span class="identifier">comp</span><span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">iter_t</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">block_indirect_sort</span> <span class="special">(</span><span class="identifier">iter_t</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">iter_t</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">uint32_t</span> <span class="identifier">num_thread</span><span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">iter_t</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">compare</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">block_indirect_sort</span> <span class="special">(</span><span class="identifier">iter_t</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">iter_t</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">compare</span> <span class="identifier">comp</span><span class="special">,</span> <span class="identifier">uint32_t</span> <span class="identifier">num_thread</span><span class="special">);</span>
+</pre>
+<p>
+              This algorithm needs a <span class="bold"><strong>C++11 compliant compiler</strong></span>.
+              You don't need any other code or library. With older compilers correct
+              operation is not guaranteed.
+            </p>
+<p>
+              If the number of threads is unspecified, use the result of std::thread::hardware_concurrency()
+            </p>
+<p>
+              This algorithm uses a <span class="bold"><strong>comparison object</strong></span>,
+              in the same way as the standard library sort algorithms. If not defined,
+              the comparison object is std::less, which uses the &lt; operator internally.
+            </p>
+<p>
+              This algorithm is <span class="bold"><strong>exception safe</strong></span>,
+              meaning that, the exceptions generated by the algorithm guarantee the
+              integrity of the objects to sort, but not their relative order. If
+              the exception is generated inside the objects (in the move or in the
+              copy constructor.. ) the results can be unpredictable.
+            </p>
+</blockquote></div>
+</blockquote></div>
+</div>
+<p>
+        <br>
+      </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="sort.parallel.block_indirect_sort.block_internal"></a><a class="link" href="parallel.html#sort.parallel.block_indirect_sort.block_internal" title="Internal Description">Internal
+        Description</a>
+</h4></div></div></div>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+            There are two primary categories of parallelization in sorting algorithms.
+          </p>
+<h5>
+<a name="sort.parallel.block_indirect_sort.block_internal.h0"></a>
+            <span class="phrase"><a name="sort.parallel.block_indirect_sort.block_internal.subdivision_algorithms"></a></span><a class="link" href="parallel.html#sort.parallel.block_indirect_sort.block_internal.subdivision_algorithms"><span class="underline">Subdivision Algorithms</span></a>
+          </h5>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+              Filter the data and generate two or more parts. Each part obtained
+              is filtered and divided by other threads. This filter and division
+              process is done until the size of the part is smaller than a predefined
+              size, then is sorted by a single thread.
+            </p>
+<p>
+              The algorithm most frequently used in the filter and sorting is quick
+              sort
+            </p>
+<p>
+              These algorithms are fast with a small number of threads, but are inefficient
+              with a great number of threads. Examples of this category are
+            </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                  Intel Threading Building Blocks (TBB)
+                </li>
+<li class="listitem">
+                  Microsoft PPL Parallel Sort.
+                </li>
+</ul></div>
+</blockquote></div>
+<h5>
+<a name="sort.parallel.block_indirect_sort.block_internal.h1"></a>
+            <span class="phrase"><a name="sort.parallel.block_indirect_sort.block_internal.merging_algorithms"></a></span><a class="link" href="parallel.html#sort.parallel.block_indirect_sort.block_internal.merging_algorithms"><span class="underline">Merging Algorithms</span></a>
+          </h5>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+              Divide the data in parts, and each part is sorted by a thread. When
+              the parts are sorted, they are merged to obtain the final results.
+              These algorithms need additional memory for the merge, usually the
+              same size as the data.
+            </p>
+<p>
+              With a small number of threads, these algorithms have similar speed
+              to the subdivision algorithms, but with many threads are much faster.
+            </p>
+<p>
+              Examples of this category are
+            </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                  GCC Parallel Sort (based on OpenMP)
+                </li>
+<li class="listitem">
+                  Microsoft PPL Parallel Buffered Sort
+                </li>
+</ul></div>
+<p>
+              This generates an <span class="bold"><strong>undesirable duality</strong></span>.
+              With a small number of threads the optimal algorithm is not the optimal
+              for a big number of threads.
+            </p>
+<p>
+              For this reason, the SW designed for a <span class="bold"><strong>small
+              machine</strong></span> is <span class="bold"><strong>inadequate</strong></span> for
+              a <span class="bold"><strong>big machine</strong></span> and vice versa.
+            </p>
+<p>
+              Using only <span class="bold"><strong>merging algorithms</strong></span>, has
+              the <span class="bold"><strong>problem of the additional memory</strong></span>
+              used, usually of the same size as the data.
+            </p>
+</blockquote></div>
+<h5>
+<a name="sort.parallel.block_indirect_sort.block_internal.h2"></a>
+            <span class="phrase"><a name="sort.parallel.block_indirect_sort.block_internal.new_parallel_sort_algorithm_bloc"></a></span><a class="link" href="parallel.html#sort.parallel.block_indirect_sort.block_internal.new_parallel_sort_algorithm_bloc"><span class="underline">New Parallel Sort Algorithm (Block Indirect Sort)</span></a>
+          </h5>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+              This algorithm, named Block Indirect Sort, created for processors connected
+              with shared memory, is a hybrid algorithm.
+            </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                  With small number of threads, it is a subdivision algorithm.
+                </li>
+<li class="listitem">
+                  With many threads it is a merging algorithm, with a small auxiliary
+                  memory ( block_size * number of threads).
+                </li>
+</ul></div>
+<p>
+              This algorithm <span class="bold"><strong>eliminates the duality</strong></span>.
+              The same code has <span class="bold"><strong>optimal performance</strong></span>
+              with a small and a big number of threads.
+            </p>
+<p>
+              The number of threads to use is evaluated in each execution. When the
+              program runs with a <span class="bold"><strong>small number of threads</strong></span>
+              the algorithm internally uses a <span class="bold"><strong>subdivision algorithm</strong></span>
+              and has similar performance to TBB, and when run with <span class="bold"><strong>many
+              threads</strong></span>, it internally uses the <span class="bold"><strong>new
+              algorithm</strong></span> and has the performance of GCC Parallel Sort,
+              with the additional advantage of <span class="bold"><strong>reduced memory
+              consumption</strong></span>.
+            </p>
+</blockquote></div>
+</blockquote></div>
+</div>
+<p>
+        <br>
+      </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="sort.parallel.block_indirect_sort.design_process"></a><a class="link" href="parallel.html#sort.parallel.block_indirect_sort.design_process" title="Design Process">Design
+        Process</a>
+</h4></div></div></div>
+<div class="blockquote"><blockquote class="blockquote">
+<h5>
+<a name="sort.parallel.block_indirect_sort.design_process.h0"></a>
+            <span class="phrase"><a name="sort.parallel.block_indirect_sort.design_process.initial_idea"></a></span><a class="link" href="parallel.html#sort.parallel.block_indirect_sort.design_process.initial_idea"><span class="underline">Initial Idea</span></a>
+          </h5>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+              The <span class="bold"><strong>initial idea</strong></span>, was to build a
+              <span class="bold"><strong>merge algorithm</strong></span>, to be <span class="bold"><strong>fast
+              with many threads, with a low additional memory</strong></span>.
+            </p>
+<p>
+              This algortihm is <span class="bold"><strong>not based in any other idea
+              or algorithm</strong></span>. The technique used in the algorithm (indirect
+              blocks) <span class="bold"><strong>is new, and had been conceived and implemented
+              for this algorithm</strong></span>.
+            </p>
+<p>
+              As sample of their results, we can see the the sorting 100 000 000
+              64 bits numbers, ramdomly generated, in a machine with 12 threads.
+            </p>
+<p>
+              <span class="bold"><strong>
+<pre class="programlisting">                                  |             |             |
+Algorithm                         | Time (secs) | Memory used |
+----------------------------------+-------------+-------------+
+Open MP Parallel Sort             |   1.1990    |  1564 MB    |
+Threading Building Blocks (TBB)   |   1.6411    |   789 MB    |
+Block Indirect Sort               |   0.9270    |   790 MB    |
+                                  |             |             |
+</pre>
+              </strong></span>
+            </p>
+<p>
+              The best words about this algorithm are expressed by their <span class="bold"><strong><a class="link" href="parallel/linux_parallel.html" title="3.4- Linux Benchmarks">Benchmarks
+              results</a></strong></span>
+            </p>
+</blockquote></div>
+<h5>
+<a name="sort.parallel.block_indirect_sort.design_process.h1"></a>
+            <span class="phrase"><a name="sort.parallel.block_indirect_sort.design_process.design_process"></a></span><a class="link" href="parallel.html#sort.parallel.block_indirect_sort.design_process.design_process"><span class="underline">Design process</span></a>
+          </h5>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+              The process had been <span class="bold"><strong>long and very hard</strong></span>,
+              mainly, by the uncertainty about if the ideas are correct and run so
+              fast as need for to be useful. This is complicated by the fact that
+              we can’t be sure of the efficiency until the last part of the code
+              is done and the first benchmark has run.
+            </p>
+<p>
+              But it had been a <span class="bold"><strong>very exciting process</strong></span>,
+              each time a problem is resolved, a new internal algorithm is designed,
+              tested …, and see, step by step, the advance of the process.
+            </p>
+<p>
+              I discovered <span class="bold"><strong>many new problems</strong></span> during
+              this process, unknown until now, which forced me to design <span class="bold"><strong>new internal algorithms</strong></span> to resolve them, and
+              divide the work in many parts to execute in parallel mode. Due to this,
+              you can find many nice algorithms inside the sorting algorithm written
+              to resolve and parallelize the internal problems.
+            </p>
+<p>
+              If you are interested in a detailed description of the algorithm, you
+              can find it here : <span class="bold"><strong><a href="../../papers/block_indirect_sort_en.pdf" target="_top">block_indirect_sort_en.pdf</a></strong></span>.
+            </p>
+</blockquote></div>
+</blockquote></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2014-2017 Steven
+      Ross, Francisco Tapia, Orson Peters<p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="single_thread/windows_single/complex_benchmarks.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="parallel/sample_sort.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

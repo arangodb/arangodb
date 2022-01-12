@@ -1,0 +1,93 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Function template indexed</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Histogram">
+<link rel="up" href="../../histogram/reference.html#header.boost.histogram.indexed_hpp" title="Header &lt;boost/histogram/indexed.hpp&gt;">
+<link rel="prev" href="coverage.html" title="Type coverage">
+<link rel="next" href="indexed_idm11966.html" title="Function template indexed">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="coverage.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../histogram/reference.html#header.boost.histogram.indexed_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="indexed_idm11966.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.histogram.indexed_idm11941"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Function template indexed</span></h2>
+<p>boost::histogram::indexed — Generates an indexed range of <a href="https://en.cppreference.com/w/cpp/named_req/ForwardIterator" target="_top">forward iterators</a> over the histogram cells.</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../histogram/reference.html#header.boost.histogram.indexed_hpp" title="Header &lt;boost/histogram/indexed.hpp&gt;">boost/histogram/indexed.hpp</a>&gt;
+
+</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Histogram<span class="special">&gt;</span> 
+  <span class="keyword">auto</span> <span class="identifier">indexed</span><span class="special">(</span><span class="identifier">Histogram</span> <span class="special">&amp;&amp;</span> hist<span class="special">,</span> <span class="identifier">coverage</span> cov <span class="special">=</span> <span class="identifier">coverage</span><span class="special">::</span><span class="identifier">inner</span><span class="special">)</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idm14234"></a><h2>Description</h2>
+<p>Use this in a range-based for loop:</p>
+<pre class="programlisting"><span class="keyword">for</span> <span class="special">(</span><span class="keyword">auto</span><span class="special">&amp;&amp;</span> <span class="identifier">x</span> <span class="special">:</span> <span class="identifier">indexed</span><span class="special">(</span><span class="identifier">hist</span><span class="special">)</span><span class="special">)</span> <span class="special">{</span> <span class="special">...</span> <span class="special">}</span>
+</pre>
+<p>This generates an optimized loop which is nearly always faster than a hand-written loop over the histogram cells. The iterators dereference to an <code class="computeroutput"><a class="link" href="indexed_range/accessor.html" title="Class accessor">indexed_range::accessor</a></code>, which has methods to query the current indices and bins and acts like a pointer to the cell value. The returned iterators are forward iterators. They can be stored in a container, but may not be used after the life-time of the histogram ends.</p>
+<p>
+
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">cov</code></span></p></td>
+<td><p>Iterate over all or only inner bins (optional, default: inner). </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">hist</code></span></p></td>
+<td><p>Reference to the histogram. </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p><a class="link" href="indexed_range.html" title="Class template indexed_range">indexed_range</a></p></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Hans
+      Dembinski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="coverage.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../histogram/reference.html#header.boost.histogram.indexed_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="indexed_idm11966.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+    "key": "describe",
+    "name": "Describe",
+    "authors": [
+        "Peter Dimov"
+    ],
+    "maintainers": [
+        "Peter Dimov <pdimov -at- gmail.com>"
+    ],
+    "description": "A C++14 reflection library.",
+    "category": [
+        "Emulation",
+        "Metaprogramming"
+    ]
+}

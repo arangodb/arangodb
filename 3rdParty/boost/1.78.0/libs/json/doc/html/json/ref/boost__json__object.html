@@ -1,0 +1,785 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>object</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.JSON">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__json__monotonic_resource/release.html" title="monotonic_resource::release">
+<link rel="next" href="boost__json__object/allocator_type.html" title="object::allocator_type">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__json__monotonic_resource/release.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__json__object/allocator_type.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="json.ref.boost__json__object"></a><a class="link" href="boost__json__object.html" title="object">object</a>
+</h4></div></div></div>
+<p>
+        A dynamically sized associative container of JSON key/value pairs.
+      </p>
+<h5>
+<a name="json.ref.boost__json__object.h0"></a>
+        <span class="phrase"><a name="json.ref.boost__json__object.synopsis"></a></span><a class="link" href="boost__json__object.html#json.ref.boost__json__object.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="https://github.com/cppalliance/json/blob/master/include/boost/json/object.hpp" target="_top">boost/json/object.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">object</span>
+</pre>
+<h5>
+<a name="json.ref.boost__json__object.h1"></a>
+        <span class="phrase"><a name="json.ref.boost__json__object.types"></a></span><a class="link" href="boost__json__object.html#json.ref.boost__json__object.types">Types</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/allocator_type.html" title="object::allocator_type">allocator_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type of <span class="emphasis"><em>Allocator</em></span> returned by <a class="link" href="boost__json__object/get_allocator.html" title="object::get_allocator"><code class="computeroutput"><span class="identifier">get_allocator</span></code></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/const_iterator.html" title="object::const_iterator">const_iterator</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  A const random access iterator to an element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/const_pointer.html" title="object::const_pointer">const_pointer</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  A const pointer to an element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/const_reference.html" title="object::const_reference">const_reference</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  A const reference to an element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/const_reverse_iterator.html" title="object::const_reverse_iterator">const_reverse_iterator</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  A const reverse random access iterator to an element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/difference_type.html" title="object::difference_type">difference_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type used to represent signed integers.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/iterator.html" title="object::iterator">iterator</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  A random access iterator to an element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/key_type.html" title="object::key_type">key_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type of keys.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/mapped_type.html" title="object::mapped_type">mapped_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type of mapped values.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/pointer.html" title="object::pointer">pointer</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  A pointer to an element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/reference.html" title="object::reference">reference</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  A reference to an element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/reverse_iterator.html" title="object::reverse_iterator">reverse_iterator</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  A reverse random access iterator to an element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/size_type.html" title="object::size_type">size_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type used to represent unsigned integers.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/value_type.html" title="object::value_type">value_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The element type.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="json.ref.boost__json__object.h2"></a>
+        <span class="phrase"><a name="json.ref.boost__json__object.member_functions"></a></span><a class="link" href="boost__json__object.html#json.ref.boost__json__object.member_functions">Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/at.html" title="object::at">at</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Access the specified element, with bounds checking.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/begin.html" title="object::begin">begin</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return an iterator to the first element. <br> <span class="silver">—</span><br>
+                  Return a const iterator to the first element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/capacity.html" title="object::capacity">capacity</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the number of elements that can be held in currently allocated
+                  memory.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/cbegin.html" title="object::cbegin">cbegin</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a const iterator to the first element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/cend.html" title="object::cend">cend</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a const iterator to the element following the last element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/clear.html" title="object::clear">clear</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Erase all elements.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/contains.html" title="object::contains">contains</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return <code class="computeroutput"><span class="keyword">true</span></code> if the
+                  key is found.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/count.html" title="object::count">count</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Count the number of elements with a specific key.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/crbegin.html" title="object::crbegin">crbegin</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a const reverse iterator to the first element of the reversed
+                  container.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/crend.html" title="object::crend">crend</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a const reverse iterator to the element following the last
+                  element of the reversed container.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/emplace.html" title="object::emplace">emplace</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Construct an element in-place.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/empty.html" title="object::empty">empty</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return whether there are no elements.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/end.html" title="object::end">end</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return an iterator to the element following the last element.
+                  <br> <span class="silver">—</span><br> Return a const
+                  iterator to the element following the last element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/erase.html" title="object::erase">erase</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Erase an element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/find.html" title="object::find">find</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Find an element with a specific key.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/get_allocator.html" title="object::get_allocator">get_allocator</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the associated <a class="link" href="boost__json__memory_resource.html" title="memory_resource"><code class="computeroutput"><span class="identifier">memory_resource</span></code></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/if_contains.html" title="object::if_contains">if_contains</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a pointer to the value if the key is found, or null.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/insert.html" title="object::insert">insert</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Insert elements.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/insert_or_assign.html" title="object::insert_or_assign">insert_or_assign</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Insert an element or assign to the current element if the key already
+                  exists.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/object.html" title="object::object">object</a> <span class="silver">[constructor]</span></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Default constructor. <br> <span class="silver">—</span><br>
+                  Constructor. <br> <span class="silver">—</span><br> Move
+                  constructor. <br> <span class="silver">—</span><br> Pilfer
+                  constructor. <br> <span class="silver">—</span><br> Copy
+                  constructor. <br> <span class="silver">—</span><br> Construct
+                  from initializer-list.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/operator_eq_.html" title="object::operator=">operator=</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Copy assignment. <br> <span class="silver">—</span><br>
+                  Move assignment. <br> <span class="silver">—</span><br>
+                  Assignment.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/operator_lb__rb_.html" title="object::operator[]">operator[]</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Access or insert the specified element.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/rbegin.html" title="object::rbegin">rbegin</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a reverse iterator to the first element of the reversed
+                  container. <br> <span class="silver">—</span><br> Return
+                  a const reverse iterator to the first element of the reversed container.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/rend.html" title="object::rend">rend</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a reverse iterator to the element following the last element
+                  of the reversed container. <br> <span class="silver">—</span><br>
+                  Return a const reverse iterator to the element following the last
+                  element of the reversed container.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/reserve.html" title="object::reserve">reserve</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Increase the capacity to at least a certain amount.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/size.html" title="object::size">size</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the number of elements.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/storage.html" title="object::storage">storage</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the associated <a class="link" href="boost__json__memory_resource.html" title="memory_resource"><code class="computeroutput"><span class="identifier">memory_resource</span></code></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/swap.html" title="object::swap">swap</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Swap two objects.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/_dtor_object.html" title="object::~object">~object</a> <span class="silver">[destructor]</span></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Destructor.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="json.ref.boost__json__object.h3"></a>
+        <span class="phrase"><a name="json.ref.boost__json__object.static_member_functions"></a></span><a class="link" href="boost__json__object.html#json.ref.boost__json__object.static_member_functions">Static Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/max_size.html" title="object::max_size">max_size</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the maximum number of elements any object can hold.
+                </p>
+              </td>
+</tr></tbody>
+</table></div>
+<h5>
+<a name="json.ref.boost__json__object.h4"></a>
+        <span class="phrase"><a name="json.ref.boost__json__object.friends"></a></span><a class="link" href="boost__json__object.html#json.ref.boost__json__object.friends">Friends</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/operator_not__eq_.html" title="object::operator!=">operator!=</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return <code class="computeroutput"><span class="keyword">true</span></code> if two
+                  objects are not equal.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/operator_eq__eq_.html" title="object::operator==">operator==</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return <code class="computeroutput"><span class="keyword">true</span></code> if two
+                  objects are equal.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__object/swap.html" title="object::swap">swap</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Swap two objects.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="json.ref.boost__json__object.h5"></a>
+        <span class="phrase"><a name="json.ref.boost__json__object.description"></a></span><a class="link" href="boost__json__object.html#json.ref.boost__json__object.description">Description</a>
+      </h5>
+<p>
+        This is an associative container whose elements are key/value pairs with
+        unique keys.
+      </p>
+<p>
+        The elements are stored contiguously; iterators are ordinary pointers, allowing
+        random access pointer arithmetic for retrieving elements. In addition, the
+        container maintains an internal index to speed up find operations, reducing
+        the average complexity for most lookups and insertions.
+      </p>
+<p>
+        Reallocations are usually costly operations in terms of performance, as elements
+        are copied and the internal index must be rebuilt. The <a class="link" href="boost__json__object/reserve.html" title="object::reserve"><code class="computeroutput"><span class="identifier">reserve</span></code></a> function can be used to
+        eliminate reallocations if the number of elements is known beforehand.
+      </p>
+<h5>
+<a name="json.ref.boost__json__object.h6"></a>
+        <span class="phrase"><a name="json.ref.boost__json__object.allocators"></a></span><a class="link" href="boost__json__object.html#json.ref.boost__json__object.allocators">Allocators</a>
+      </h5>
+<p>
+        All elements stored in the container, and their children if any, will use
+        the same memory resource that was used to construct the container.
+      </p>
+<h5>
+<a name="json.ref.boost__json__object.h7"></a>
+        <span class="phrase"><a name="json.ref.boost__json__object.thread_safety"></a></span><a class="link" href="boost__json__object.html#json.ref.boost__json__object.thread_safety">Thread
+        Safety</a>
+      </h5>
+<p>
+        Non-const member functions may not be called concurrently with any other
+        member functions.
+      </p>
+<h5>
+<a name="json.ref.boost__json__object.h8"></a>
+        <span class="phrase"><a name="json.ref.boost__json__object.satisfies"></a></span><a class="link" href="boost__json__object.html#json.ref.boost__json__object.satisfies">Satisfies</a>
+      </h5>
+<p>
+        <a href="https://en.cppreference.com/w/cpp/named_req/ContiguousContainer" target="_top"><span class="emphasis"><em>ContiguousContainer</em></span></a>,
+        <a href="https://en.cppreference.com/w/cpp/named_req/ReversibleContainer" target="_top"><span class="emphasis"><em>ReversibleContainer</em></span></a>,
+        and <a href="https://en.cppreference.com/w/cpp/named_req/SequenceContainer" target="_top"><span class="emphasis"><em>SequenceContainer</em></span></a>.
+      </p>
+<p>
+        Convenience header <code class="literal">&lt;<a href="https://github.com/cppalliance/json/blob/master/include/boost/json.hpp" target="_top">boost/json.hpp</a>&gt;</code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Vinnie Falco<br>Copyright © 2020 Krystian Stasiowski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__json__monotonic_resource/release.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__json__object/allocator_type.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,993 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>History</title>
+<link rel="stylesheet" href="../../multiprecision.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Multiprecision">
+<link rel="up" href="../map.html" title="Roadmap">
+<link rel="prev" href="../map.html" title="Roadmap">
+<link rel="next" href="todo.html" title="TODO">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../map.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../map.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="todo.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_multiprecision.map.hist"></a><a class="link" href="hist.html" title="History">History</a>
+</h3></div></div></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h0"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_4_0_2_boost_1_78"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_4_0_2_boost_1_78">Multiprecision-4.0.2
+        (Boost-1.78)</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Rework rational_adaptor to remove dependency on Boost.Rational and improve
+            performance.
+          </li>
+<li class="listitem">
+            Fix issue with type_traits and clang, see <a href="https://github.com/boostorg/multiprecision/issues/383" target="_top">#383</a>.
+          </li>
+<li class="listitem">
+            Fixed buggy Lehmer's GCD routine, see <a href="https://github.com/boostorg/multiprecision/issues/370" target="_top">#370</a>.
+          </li>
+<li class="listitem">
+            Fix mpc_complex constructors so that lossy conversions are explicit,
+            see <a href="https://github.com/boostorg/multiprecision/issues/363" target="_top">#363</a>.
+          </li>
+<li class="listitem">
+            Correct miscellaneous configuration issues (Intel intrinsic usage and
+            Apple clang).
+          </li>
+<li class="listitem">
+            Correct some iostream operators for unsigned char types.
+          </li>
+<li class="listitem">
+            Correct mpq_rational conversions to integer types, see <a href="https://github.com/boostorg/multiprecision/issues/342" target="_top">#342</a>.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h1"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_4_0_1_boost_1_77"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_4_0_1_boost_1_77">Multiprecision-4.0.1
+        (Boost-1.77)</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Much improved Karatsuba sqrt for cpp_int/cpp_bin_float.
+          </li>
+<li class="listitem">
+            Added C++11 compatible <code class="computeroutput"><span class="identifier">to_string</span></code>
+            free function.
+          </li>
+<li class="listitem">
+            Fixed bug in Lehmer GCD code, see <a href="https://github.com/boostorg/multiprecision/issues/322" target="_top">#322</a>.
+          </li>
+<li class="listitem">
+            Fixed debug_adaptor/logged_adaptor to work better with complex, rational
+            and interval types, see <a href="https://github.com/boostorg/multiprecision/issues/329" target="_top">#329</a>.
+          </li>
+<li class="listitem">
+            Big update to mixed-variable precision arithmetic code with better options
+            and thread safety, see <a class="link" href="../tut/variable.html" title="Variable Precision Arithmetic">docs</a>.
+          </li>
+<li class="listitem">
+            Fixed up hashing of bools and enums when creating hash values.
+          </li>
+<li class="listitem">
+            Improved conversions to and from enum types.
+          </li>
+<li class="listitem">
+            Restricted use of Intel intrinsics to when we really are building for
+            Intel even though the header may be available, see <a href="https://github.com/boostorg/multiprecision/issues/321" target="_top">#321</a>.
+          </li>
+<li class="listitem">
+            Tidied up Lanczos approximation usage, in conjunction with Boost.Math
+            this improves the reliability and accuracy of many special functions.
+          </li>
+<li class="listitem">
+            Fix use of libtommath deprecated features.
+          </li>
+<li class="listitem">
+            Fixed missing sqrt overload, see <a href="https://github.com/boostorg/multiprecision/issues/319" target="_top">#319</a>.
+          </li>
+<li class="listitem">
+            Added Karatsuba multiplication to cpp_dec_float to bring it into line
+            with the other types in this library.
+          </li>
+<li class="listitem">
+            Added some minor optimizations to mpfr comparison operators.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h2"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_4_0_0_boost_1_76"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_4_0_0_boost_1_76">Multiprecision-4.0.0
+        (Boost-1.76)</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <span class="bold"><strong>BREAKING CHANGE</strong></span>: Massive refactoring
+            and code simpification makes C++11 an absolute requirement.
+          </li>
+<li class="listitem">
+            Use BOOST_TRY/CATCH in headers so code can be use din s=exception-free
+            environments.
+          </li>
+<li class="listitem">
+            Correct corner case in pow, fixes <a href="https://github.com/boostorg/multiprecision/issues/277" target="_top">#277</a>.
+          </li>
+<li class="listitem">
+            Correct exception type thrown to match docs in lsb/msb: fixes <a href="https://github.com/boostorg/multiprecision/issues/257" target="_top">#257</a>.
+          </li>
+<li class="listitem">
+            Allow moves and operators between related but different types (ie types
+            with the same allocator), fixes <a href="https://github.com/boostorg/multiprecision/issues/278" target="_top">#278</a>.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h3"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_3_2_5_boost_1_75"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_3_2_5_boost_1_75">Multiprecision-3.2.5
+        (Boost-1.75)</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Much improved gcd and modulus operations for <a class="link" href="../tut/ints/cpp_int.html" title="cpp_int">cpp_int</a>.
+          </li>
+<li class="listitem">
+            Improved addition/subtraction routines for <a class="link" href="../tut/ints/cpp_int.html" title="cpp_int">cpp_int</a>
+            via Intel's intrinsics.
+          </li>
+<li class="listitem">
+            <a class="link" href="../tut/ints/gmp_int.html" title="gmp_int">gmp_int</a>:
+            add better conversion routines for <code class="computeroutput"><span class="keyword">long</span>
+            <span class="keyword">long</span></code> and <code class="computeroutput"><span class="identifier">__int128</span></code>.
+          </li>
+<li class="listitem">
+            <a class="link" href="../tut/floats/mpfr_float.html" title="mpfr_float">mpfr_float</a>:
+            Fix <code class="computeroutput"><span class="identifier">log1p</span></code> corner case.
+          </li>
+<li class="listitem">
+            Improve accuracy of complex tan/tanh.
+          </li>
+<li class="listitem">
+            Improve accuracy of trig functions for <a class="link" href="../tut/floats/cpp_bin_float.html" title="cpp_bin_float">cpp_bin_float</a>.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h4"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_3_2_4_boost_1_73"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_3_2_4_boost_1_73">Multiprecision-3.2.4
+        (Boost-1.73)</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            IMPORTANT: Mark C++03 support as deprecated and due for removal in 2021.
+          </li>
+<li class="listitem">
+            Big update to <a class="link" href="../tut/ints/cpp_int.html" title="cpp_int">cpp_int</a>
+            adds faster Karatsuba and Coomba multiplication routines.
+          </li>
+<li class="listitem">
+            Fix conversion of <a class="link" href="../tut/rational/gmp_rational.html" title="gmp_rational">gmp_rational</a>
+            to <code class="computeroutput"><span class="keyword">long</span> <span class="keyword">double</span></code>
+            and <code class="computeroutput"><span class="identifier">__float128</span></code>, fixes
+            <a href="https://github.com/boostorg/multiprecision/issues/178" target="_top">#178</a>.
+          </li>
+<li class="listitem">
+            Fix up libtommath support to function with the latest libtom releases.
+          </li>
+<li class="listitem">
+            Fix up some incompatibilities with the latest Intel C++ compiler.
+          </li>
+<li class="listitem">
+            Fix up <code class="computeroutput"><span class="keyword">constexpr</span></code> arithmetic
+            support for forthcoming MSVC release.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h5"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_3_2_3_boost_1_72"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_3_2_3_boost_1_72">Multiprecision-3.2.3
+        (Boost-1.72)</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+            Big <code class="computeroutput"><span class="keyword">constexpr</span></code> update allows
+            <a class="link" href="../tut/ints/cpp_int.html" title="cpp_int">cpp_int</a>
+            and <a class="link" href="../tut/floats/float128.html" title="float128">float128</a>
+            arithmetic to be fully <code class="computeroutput"><span class="keyword">constexpr</span></code>
+            with gcc and clang 9 or later, or any compiler supporting <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">is_constant_evaluated</span><span class="special">()</span></code>.
+          </li></ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h6"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_3_1_3_boost_1_71"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_3_1_3_boost_1_71">Multiprecision-3.1.3
+        (Boost-1.71)</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Support hexfloat io-formatting for float128.
+          </li>
+<li class="listitem">
+            Fix various bugs in variable precision interconversions.
+          </li>
+<li class="listitem">
+            Respect uppercase for '0x' prefix outputs.
+          </li>
+<li class="listitem">
+            Incorporate some unit tests from the Etherium project.
+          </li>
+<li class="listitem">
+            Fix some gcc warnings.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h7"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_3_1_2_boost_1_70"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_3_1_2_boost_1_70">Multiprecision-3.1.2
+        (Boost-1.70)</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Fix various conversion issues in the traits classes, check for compatibility
+            with Boost.Optional.
+          </li>
+<li class="listitem">
+            Prevent instantiation of <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span></code>
+            on any old type when checking for convertibility. See <a href="https://github.com/boostorg/multiprecision/issues/98" target="_top">#98</a>.
+          </li>
+<li class="listitem">
+            Update variable precision code to accound for arbitrary precision integers.
+            See <a href="https://github.com/boostorg/multiprecision/issues/103" target="_top">#103</a>.
+          </li>
+<li class="listitem">
+            Add support for XML serialization archives.
+          </li>
+<li class="listitem">
+            Fix bug in fixed precision iostream formatting in <code class="computeroutput"><span class="identifier">mpf_float</span></code>
+            and <code class="computeroutput"><span class="identifier">mpfr_float</span></code>. See
+            <a href="https://github.com/boostorg/multiprecision/issues/113" target="_top">#113</a>.
+          </li>
+<li class="listitem">
+            Add more overloads for special functions which are better handled natively
+            by MPFR.
+          </li>
+<li class="listitem">
+            Fixed bug in generic <code class="computeroutput"><span class="identifier">exp</span></code>
+            implementation which could cause invariant failure.
+          </li>
+<li class="listitem">
+            Fixed generic conversion from float to integer to avoid undefined behaviour.
+            See <a href="https://github.com/boostorg/multiprecision/issues/110" target="_top">#110</a>.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h8"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_3_1_1_boost_1_69"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_3_1_1_boost_1_69">Multiprecision-3.1.1
+        (Boost-1.69)</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Big update to better support variable precision types so that the precision
+            of the result is always the largest of all the arguments.
+          </li>
+<li class="listitem">
+            Add support for allocators that are <code class="computeroutput"><span class="identifier">final</span></code>
+            in <a class="link" href="../tut/ints/cpp_int.html" title="cpp_int">cpp_int</a>.
+          </li>
+<li class="listitem">
+            Removed use of deprecated Boost.Endian in favour of Predef.
+          </li>
+<li class="listitem">
+            Add support for <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string_view</span></code>.
+          </li>
+<li class="listitem">
+            Fixed minor bug in constant initialization. See <a href="https://github.com/boostorg/multiprecision/issues/67" target="_top">#67</a>.
+          </li>
+<li class="listitem">
+            Make assignment of non-finite value to <code class="computeroutput"><span class="identifier">cpp_int</span></code>
+            a runtime errors. See <a href="https://github.com/boostorg/multiprecision/issues/58" target="_top">#58</a>.
+          </li>
+<li class="listitem">
+            Added typedefs for <code class="computeroutput"><span class="identifier">cpp_bin_float_oct</span></code>
+            and <code class="computeroutput"><span class="identifier">cpp_complex_oct</span></code>.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h9"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_3_1_0_boost_1_68"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_3_1_0_boost_1_68">Multiprecision-3.1.0
+        (Boost-1.68)</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Support added for complex multiprecision numbers.
+          </li>
+<li class="listitem">
+            Changed conversion to unsigned integer types to be truncating to match
+            standard defined behaviour.
+          </li>
+<li class="listitem">
+            Correct bug in MPFR string formatting.
+          </li>
+<li class="listitem">
+            Fix undefined behaviour in cpp_dec_float conversion from long long.
+          </li>
+<li class="listitem">
+            Add support for Eigen interoperability.
+          </li>
+<li class="listitem">
+            float128.hpp: Fix Intel on Windows build.
+          </li>
+<li class="listitem">
+            Fix type used in temporaries when expanding expression templates containing
+            mixed expressions.
+          </li>
+<li class="listitem">
+            Fix infinite loop in gmp_float to fixed-point string conversion.
+          </li>
+<li class="listitem">
+            Update the expression templates to issue static_asserts with better error
+            messages when you try and do something unsupported.
+          </li>
+<li class="listitem">
+            Fix bug in cpp_int where incrementing to zero doesn't set the sign correctly.
+          </li>
+<li class="listitem">
+            Remove erroneous use of std::move, and rely on NVRO instead.
+          </li>
+<li class="listitem">
+            Fix up support for changes to MPIR-3.0.
+          </li>
+<li class="listitem">
+            Fix various conversion errors in cpp_bin_float when the exponent type
+            is a <code class="computeroutput"><span class="keyword">long</span> <span class="keyword">long</span></code>,
+            or else we're converting to an integer that is wider than we are.
+          </li>
+<li class="listitem">
+            Fix compatibility issue with GCC-8 caused by the introduction of <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">byte</span></code>.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h10"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_3_0_0_boost_1_67"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_3_0_0_boost_1_67">Multiprecision-3.0.0
+        (Boost-1.67)</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <span class="bold"><strong>Breaking Change:</strong></span> When converting a multiprecision
+            integer to a narrower type, if the value is too large (or negative) to
+            fit in the smaller type, then the result is either the maximum (or minimum)
+            value of the target type. This was always the intended behaviour, but
+            was somewhat haphazardly enforced before. If you really do want just
+            the low order N bits of a value, then you will need to mask these out
+            prior to the case, for example: <code class="computeroutput"><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="keyword">unsigned</span><span class="special">&gt;(~</span><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="keyword">unsigned</span><span class="special">&gt;(</span><span class="number">0</span><span class="special">)</span> <span class="special">&amp;</span> <span class="identifier">my_value</span><span class="special">)</span></code>.
+            Note that technically (to avoid undefined behaviour) you should do the
+            same thing with <a href="https://en.cppreference.com/w/cpp/language/types" target="_top">fundamental
+            (built-in)</a> integer types too. See <a href="https://svn.boost.org/trac/boost/ticket/13109" target="_top">#13109</a>.
+          </li>
+<li class="listitem">
+            Fix bug in conversion of decimal to rational types (zero needs special
+            handling), see <a href="https://svn.boost.org/trac/boost/ticket/13148" target="_top">#13148</a>.
+          </li>
+<li class="listitem">
+            Fix conversion from cpp_bin_float to a wider <a href="https://en.cppreference.com/w/cpp/language/types" target="_top">fundamental
+            (built-in)</a> integer type, see <a href="https://svn.boost.org/trac/boost/ticket/13301" target="_top">#13301</a>.
+          </li>
+<li class="listitem">
+            Improve performance heurists used in cpp_bin_float exp function.
+          </li>
+<li class="listitem">
+            Fix bug in floor/ceil and cpp_bin_float when the exponent type is wider
+            than an int, see <a href="https://svn.boost.org/trac/boost/ticket/13264" target="_top">#13264</a>.
+          </li>
+<li class="listitem">
+            Disable explicit conversion operator when the target type is already
+            constructible from this type, see <a href="https://github.com/boostorg/multiprecision/issues/30" target="_top">#30</a>.
+          </li>
+<li class="listitem">
+            Fix support for changes new to MPIR-3.0, see <a href="https://svn.boost.org/trac/boost/ticket/13124" target="_top">#13124</a>.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h11"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_2_3_2_boost_1_65"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_2_3_2_boost_1_65">Multiprecision-2.3.2
+        (Boost-1.65)</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Updated expression templates to store arithmetic literals directly in
+            the expression template to prevent dangling references, see <a href="https://github.com/boostorg/multiprecision/issues/19" target="_top">#19</a>.
+          </li>
+<li class="listitem">
+            Fix various issues with huge values and overflow in the trig, pow and
+            exp functions, see <a href="https://github.com/boostorg/multiprecision/issues/24" target="_top">#24</a>.
+          </li>
+<li class="listitem">
+            Fix error handling of checked cpp_int multiply that could cause some
+            overflows to be missed.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h12"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_2_3_1_boost_1_64"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_2_3_1_boost_1_64">Multiprecision-2.3.1
+        (Boost-1.64)</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            In <code class="computeroutput"><span class="identifier">cpp_bin_float</span></code> prevent
+            double rounding when converting to a denormalized float. See <a href="https://svn.boost.org/trac/boost/ticket/12527" target="_top">#12527</a>.
+          </li>
+<li class="listitem">
+            Fix bug in integer sqrt for very small integers. See <a href="https://svn.boost.org/trac/boost/ticket/12559" target="_top">#12559</a>.
+          </li>
+<li class="listitem">
+            Fix conversion to signed-zero in <code class="computeroutput"><span class="identifier">cpp_bin_float</span></code>.
+          </li>
+<li class="listitem">
+            Change <code class="computeroutput"><span class="identifier">cpp_bin_float</span></code>
+            rounding code to round at arbitrary location so we can use it for conversions,
+            see <a href="https://svn.boost.org/trac/boost/ticket/12527" target="_top">#12527</a>.
+          </li>
+<li class="listitem">
+            Improve performance of 128-bit bit-scan operations.
+          </li>
+<li class="listitem">
+            Fix subtraction of very small quantities in <code class="computeroutput"><span class="identifier">cpp_bin_float</span></code>.
+            See: <a href="https://svn.boost.org/trac/boost/ticket/12580" target="_top">#12580</a>.
+          </li>
+<li class="listitem">
+            Bring error handling into line with C99 Annex F. See <a href="https://svn.boost.org/trac/boost/ticket/12581" target="_top">#12581</a>.
+          </li>
+<li class="listitem">
+            Fix bitwise export of trivial <code class="computeroutput"><span class="identifier">cpp_int</span></code>'s,
+            see <a href="https://svn.boost.org/trac/boost/ticket/12627" target="_top">#12627</a>.
+          </li>
+<li class="listitem">
+            Fix <code class="computeroutput"><span class="identifier">ilogb</span></code> (and code that
+            uses it) to consistently return the smallest value of the exponent type
+            when the argument is zero, see <a href="https://svn.boost.org/trac/boost/ticket/12625" target="_top">#12625</a>.
+          </li>
+<li class="listitem">
+            Allow conversion from <code class="computeroutput"><a class="link" href="../tut/floats/float128.html" title="float128">float128</a></code>
+            to <code class="computeroutput"><span class="identifier">cpp_bin_float</span></code>.
+          </li>
+<li class="listitem">
+            Fix bug in left shift of <code class="computeroutput"><span class="identifier">cpp_int</span></code>
+            which would result in bit-loss, see <a href="https://svn.boost.org/trac/boost/ticket/12790" target="_top">#12790</a>.
+          </li>
+<li class="listitem">
+            Fixed bugs in bounded but variable precision <code class="computeroutput"><span class="identifier">cpp_int</span></code>'s
+            caused by over-aggressive constexpr optimization, see <a href="https://svn.boost.org/trac/boost/ticket/12798" target="_top">#12798</a>.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h13"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_2_3_0_boost_1_63"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_2_3_0_boost_1_63">Multiprecision-2.3.0
+        (Boost-1.63)</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Added support for all the C99 math functions.
+          </li>
+<li class="listitem">
+            Extended generic-interconversions to handle narrowing cases as well,
+            changed convert_to member function and hence explicit conversion operators
+            to use the same conversion code as the explicit constructors.
+          </li>
+<li class="listitem">
+            Fix IO stream parsing error, see <a href="https://svn.boost.org/trac/boost/ticket/12488" target="_top">#12488</a>.
+          </li>
+<li class="listitem">
+            Make default constructed floating point types all zero for consistency,
+            see <a href="https://svn.boost.org/trac/boost/ticket/12500" target="_top">#12500</a>.
+          </li>
+<li class="listitem">
+            Fix conversion of cpp_bin_float to float/double/long double when the
+            exponent value would overflow an int, see <a href="https://svn.boost.org/trac/boost/ticket/12512" target="_top">#12512</a>.
+          </li>
+<li class="listitem">
+            Fix cpp_bin_float subtractions that yield signed-zeros, see <a href="https://svn.boost.org/trac/boost/ticket/12524" target="_top">#12524</a>.
+          </li>
+<li class="listitem">
+            Fix ceil/trunc/round applied to cpp_bin_float and yielding a signed zero,
+            see <a href="https://svn.boost.org/trac/boost/ticket/12525" target="_top">#12525</a>.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h14"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_2_2_8_boost_1_62"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_2_2_8_boost_1_62">Multiprecision-2.2.8
+        (Boost-1.62)</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Added support for hashing via <code class="computeroutput"><span class="identifier">Boost</span><span class="special">.</span><span class="identifier">Hash</span></code>
+            or <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">hash</span></code>.
+          </li>
+<li class="listitem">
+            Fixed some arithmetic operations in cpp_bin_float and cpp_dec_float that
+            should generate a NaN, see <a href="https://svn.boost.org/trac/boost/ticket/12157" target="_top">#12157</a>.
+          </li>
+<li class="listitem">
+            Prevent inadvertant instantiation of variable-precision <code class="computeroutput"><span class="identifier">mpfr_float_backend</span></code> with fixed allocation.
+          </li>
+<li class="listitem">
+            Fixed division over/underflow in cpp_bin_float, see <a href="https://svn.boost.org/trac/boost/ticket/12167" target="_top">#12167</a>.
+          </li>
+<li class="listitem">
+            Added support for signed-zeros throughout the library, including support
+            for <code class="computeroutput"><span class="identifier">signbit</span></code> and <code class="computeroutput"><span class="identifier">copysign</span></code>, mpfr, float128, and cpp_bin_float
+            types should now respect signed-zeros correctly.
+          </li>
+<li class="listitem">
+            Fixed bug in conversion of cpp_bin_float infinities to double etc, see
+            <a href="https://svn.boost.org/trac/boost/ticket/12196" target="_top">#12196</a>.
+          </li>
+<li class="listitem">
+            Fix add and subtract of cpp_bin_float when the exponents would overflow.,
+            see <a href="https://svn.boost.org/trac/boost/ticket/12198" target="_top">#12198</a>.
+          </li>
+<li class="listitem">
+            Improve variable-precision support in mpfr and mpf backends, allow these
+            types to be used with Boost.Math.
+          </li>
+<li class="listitem">
+            Fixed bug in subtraction of signed infinities in cpp_bin_float, see
+            <a href="https://svn.boost.org/trac/boost/ticket/12209" target="_top">#12209</a>.
+          </li>
+<li class="listitem">
+            Fix result of sqrt(infinity) in cpp_bin_float (result should be infinity),
+            see <a href="https://svn.boost.org/trac/boost/ticket/12227" target="_top">#12227</a>.
+          </li>
+<li class="listitem">
+            Added workaround in gmp.hpp for recent MPIR releases which are not quite
+            source-compatible with GMP on Windows x64.
+          </li>
+<li class="listitem">
+            Allow <code class="computeroutput"><span class="identifier">cpp_int</span></code> code to
+            be used with /RTCc with MSVC.
+          </li>
+<li class="listitem">
+            Fix conversion of <code class="computeroutput"><span class="identifier">cpp_int</span></code>
+            to signed integer when the result is INT_MIN, see <a href="https://svn.boost.org/trac/boost/ticket/12343" target="_top">#12343</a>.
+          </li>
+<li class="listitem">
+            Update uBlas support to match latest uBlas code.
+          </li>
+<li class="listitem">
+            Fix some errors present when building on big-endian machines (not all
+            <code class="computeroutput"><span class="identifier">cpp_int</span></code> constructors
+            are available on non-little-endian machines).
+          </li>
+<li class="listitem">
+            Fix fencepost error in rational to float conversion routines, see <a href="https://svn.boost.org/trac/boost/ticket/12327" target="_top">#12327</a>.
+          </li>
+<li class="listitem">
+            Fix some Oracle C++ compiler compatibility issues.
+          </li>
+<li class="listitem">
+            Add modf support to complete C90 compatibility.
+          </li>
+<li class="listitem">
+            Fix self assignment bug in expression template code for expressions such
+            as <code class="computeroutput"><span class="identifier">a</span> <span class="special">=</span>
+            <span class="identifier">a</span> <span class="special">*</span>
+            <span class="identifier">a</span> <span class="special">*</span>
+            <span class="identifier">a</span></code>, see <a href="https://svn.boost.org/trac/boost/ticket/12408" target="_top">#12408</a>.
+          </li>
+<li class="listitem">
+            Fixed some compiler errors that occur when converting from <code class="computeroutput"><span class="identifier">cpp_int</span></code> to <code class="computeroutput"><span class="identifier">cpp_bin_float</span></code>.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h15"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_2_2_7_boost_1_61"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_2_2_7_boost_1_61">Multiprecision-2.2.7
+        (Boost-1.61)</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Fixed bug in stream input for integer types, see <a href="https://svn.boost.org/trac/boost/ticket/11857" target="_top">#11857</a>.
+          </li>
+<li class="listitem">
+            Fixed some ambiguous conversions involving expression templates see
+            <a href="https://svn.boost.org/trac/boost/ticket/11922" target="_top">#11922</a>.
+          </li>
+<li class="listitem">
+            Add expression template aware min/max overloads see <a href="https://svn.boost.org/trac/boost/ticket/11149" target="_top">#11149</a>.
+          </li>
+<li class="listitem">
+            Fix bug in right shifting negative small integers in cpp_int see <a href="https://svn.boost.org/trac/boost/ticket/11999" target="_top">#11999</a>.
+          </li>
+<li class="listitem">
+            Use memmove for bitshifts in cpp_int when possible see <a href="https://svn.boost.org/trac/boost/ticket/9233" target="_top">#9233</a>.
+          </li>
+<li class="listitem">
+            Use memcpy for data import into cpp_int where possible, see <a href="https://svn.boost.org/trac/boost/ticket/9235" target="_top">#9235</a>.
+          </li>
+<li class="listitem">
+            Changed <code class="computeroutput"><span class="identifier">cpp_bin_float</span><span class="special">.</span><span class="identifier">convert_to</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;()</span></code> to a function template rather than
+            proceding via <code class="computeroutput"><span class="keyword">long</span> <span class="keyword">double</span></code>
+            to avoid double-rounding bug, see <a href="https://svn.boost.org/trac/boost/ticket/12039" target="_top">#12039</a>.
+          </li>
+<li class="listitem">
+            Fixed conversions from NaNs and Infinities, see <a href="https://svn.boost.org/trac/boost/ticket/12112" target="_top">#12112</a>.
+          </li>
+<li class="listitem">
+            Enabled better support for Clang on Windows.
+          </li>
+<li class="listitem">
+            Fixed handling of NaNs and Infinities in basic arithmetic for cpp_dec_float
+            and cpp_bin_float, see <a href="https://svn.boost.org/trac/boost/ticket/12090" target="_top">#12090</a>.
+          </li>
+<li class="listitem">
+            Fixed fencepost error in cpp_bin_float subtraction.
+          </li>
+<li class="listitem">
+            Fixed double-rounding in conversion to float routines for cpp_bin_float,
+            see <a href="https://svn.boost.org/trac/boost/ticket/12039" target="_top">#12039</a>.
+          </li>
+<li class="listitem">
+            Make float128 denorm aware, see <a href="https://svn.boost.org/trac/boost/ticket/12075" target="_top">#12075</a>.
+          </li>
+<li class="listitem">
+            Allow the library and tests to be used without exception handling support,
+            see <a href="https://svn.boost.org/trac/boost/ticket/12070" target="_top">#12070</a>.
+          </li>
+<li class="listitem">
+            Fixed buggy comparison operator overloads for boost::rational.
+          </li>
+<li class="listitem">
+            Added some workarounds for Oracle C++.
+          </li>
+<li class="listitem">
+            Fixed some missing typecasts for cases where cpp_int's limb_type is wider
+            than unsigned.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h16"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_2_2_6_boost_1_60"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_2_2_6_boost_1_60">Multiprecision-2.2.6
+        (Boost-1.60)</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Fixed result of Miller Rabin primality test for value 2, see <a href="https://svn.boost.org/trac/boost/ticket/11495" target="_top">#11495</a>.
+          </li>
+<li class="listitem">
+            Improved initialization of cpp_int from very large strings of hex or
+            octal digits, see <a href="https://svn.boost.org/trac/boost/ticket/11590" target="_top">#11590</a>.
+          </li>
+<li class="listitem">
+            Fixed fmod behaviour for negative divisors, see <a href="https://svn.boost.org/trac/boost/ticket/11641" target="_top">#11641</a>.
+          </li>
+<li class="listitem">
+            Fixed infinite division loop in cpp_int special case, see <a href="https://svn.boost.org/trac/boost/ticket/11648" target="_top">#11648</a>.
+          </li>
+<li class="listitem">
+            Patched missing return statement in <a href="https://svn.boost.org/trac/boost/ticket/11762" target="_top">#11762</a>.
+          </li>
+<li class="listitem">
+            Fixed mixed mode arithmetic compiler error in <a href="https://svn.boost.org/trac/boost/ticket/11764" target="_top">#11764</a>.
+          </li>
+<li class="listitem">
+            Fixed over-aggressive use of noexcept in <a href="https://svn.boost.org/trac/boost/ticket/11826" target="_top">#11826</a>.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h17"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_2_2_5_boost_1_59"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_2_2_5_boost_1_59">Multiprecision-2.2.5
+        (Boost-1.59)</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Depricated boost/multiprecision/random.hpp as it's no longer needed,
+            updated random examples to match.
+          </li>
+<li class="listitem">
+            Fixed a bug in <code class="computeroutput"><span class="identifier">cpp_int</span></code>
+            right shift operator when shifting negative values - semantics now gives
+            the same values as shifting 2's compliment integers, though not the same
+            bit pattern.
+          </li>
+<li class="listitem">
+            Fixed support for GCC-4.6.4 in C++0x mode by disabling conditional noexcept
+            suppoprt for that compiler see <a href="https://svn.boost.org/trac/boost/ticket/11402" target="_top">#11402</a>.
+          </li>
+<li class="listitem">
+            Suppressed numerous compiler warnings.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h18"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_2_2_4_boost_1_58"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_2_2_4_boost_1_58">Multiprecision-2.2.4
+        (Boost-1.58)</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Changed <code class="computeroutput"><span class="identifier">frexp</span></code> to always
+            be non-expression template generating, see: <a href="https://svn.boost.org/trac/boost/ticket/10993" target="_top">10993</a>.
+          </li>
+<li class="listitem">
+            Improved support of cpp_dec_float on Cygwin and other platforms with
+            missing long double support, see <a href="https://svn.boost.org/trac/boost/ticket/10924" target="_top">10924</a>.
+          </li>
+<li class="listitem">
+            Improved noexcept support and added some more tests, see <a href="https://svn.boost.org/trac/boost/ticket/10990" target="_top">10990</a>.
+          </li>
+<li class="listitem">
+            Various workarounds applied for Intel-15.0 and Solaris-12.4 compilers.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h19"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_2_2_3_boost_1_57"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_2_2_3_boost_1_57">Multiprecision-2.2.3
+        (Boost-1.57)</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Changed rational to float conversions to exactly round to nearest, see
+            <a href="https://svn.boost.org/trac/boost/ticket/10085" target="_top">10085</a>.
+          </li>
+<li class="listitem">
+            Added improved generic float to rational conversions.
+          </li>
+<li class="listitem">
+            Fixed rare bug in exponent function for <a class="link" href="../tut/floats/cpp_bin_float.html" title="cpp_bin_float">cpp_bin_float</a>.
+          </li>
+<li class="listitem">
+            Fixed various minor documentation issues.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h20"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_2_2_2_boost_1_56"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_2_2_2_boost_1_56">Multiprecision-2.2.2
+        (Boost-1.56)</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Change floating-point to rational conversions to be implicit, see <a href="https://svn.boost.org/trac/boost/ticket/10082" target="_top">10082</a>.
+          </li>
+<li class="listitem">
+            Fix definition of checked_cpp_rational typedef.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h21"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_2_2_1"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_2_2_1">Multiprecision-2.2.1</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+            Fix bug in assignment from string in cpp_int, see <a href="https://svn.boost.org/trac/boost/ticket/9936" target="_top">9936</a>.
+          </li></ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h22"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.multiprecision_2_2_0"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.multiprecision_2_2_0">Multiprecision-2.2.0</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Moved to Boost.Multiprecision specific version number - we have one breaking
+            change in Boost-1.54 which makes this major version 2, plus two releases
+            with new features since then.
+          </li>
+<li class="listitem">
+            Added new <a class="link" href="../tut/floats/cpp_bin_float.html" title="cpp_bin_float">cpp_bin_float</a>
+            backend for binary floating-point.
+          </li>
+<li class="listitem">
+            Added MSVC-specific #include for compiler intrinsics, see <a href="https://svn.boost.org/trac/boost/ticket/9336" target="_top">9336</a>.
+          </li>
+<li class="listitem">
+            Fixed various typos in docs, see <a href="https://svn.boost.org/trac/boost/ticket/9432" target="_top">9432</a>.
+          </li>
+<li class="listitem">
+            Fixed <a class="link" href="../tut/rational/gmp_rational.html" title="gmp_rational">gmp_rational</a>
+            to allow move-copy from an already copied-from object, see <a href="https://svn.boost.org/trac/boost/ticket/9497" target="_top">9497</a>.
+          </li>
+<li class="listitem">
+            Added list of values for numeric_limits.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h23"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.boost_1_55"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.boost_1_55">Boost-1.55</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Added support for Boost.Serialization.
+          </li>
+<li class="listitem">
+            Suppressed some GCC warnings. See <a href="https://svn.boost.org/trac/boost/ticket/8872" target="_top">8872</a>.
+          </li>
+<li class="listitem">
+            Fixed bug in pow for large integer arguments. See <a href="https://svn.boost.org/trac/boost/ticket/8809" target="_top">8809</a>.
+          </li>
+<li class="listitem">
+            Fixed bug in pow for calculation of 0<sup>N</sup>. See <a href="https://svn.boost.org/trac/boost/ticket/8798" target="_top">8798</a>.
+          </li>
+<li class="listitem">
+            Fixed bug in fixed precision cpp_int IO code that causes conversion to
+            string to fail when the bit count is very small (less than CHAR_BIT).
+            See <a href="https://svn.boost.org/trac/boost/ticket/8745" target="_top">8745</a>.
+          </li>
+<li class="listitem">
+            Fixed bug in cpp_int that causes left shift to fail when a fixed precision
+            type would overflow. See <a href="https://svn.boost.org/trac/boost/ticket/8741" target="_top">8741</a>.
+          </li>
+<li class="listitem">
+            Fixed some cosmetic warnings from cpp_int. See <a href="https://svn.boost.org/trac/boost/ticket/8748" target="_top">8748</a>.
+          </li>
+<li class="listitem">
+            Fixed calls to functions which are required to be macros in C99. See
+            <a href="https://svn.boost.org/trac/boost/ticket/8732" target="_top">8732</a>.
+          </li>
+<li class="listitem">
+            Fixed bug that causes construction from INT_MIN, LONG_MIN etc to fail
+            in cpp_int. See <a href="https://svn.boost.org/trac/boost/ticket/8711" target="_top">8711</a>.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h24"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.1_54"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.1_54">1.54</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <span class="bold"><strong>Breaking change</strong></span> renamed <code class="computeroutput"><span class="identifier">rational_adapter</span></code> to <code class="computeroutput"><span class="identifier">rational_adaptor</span></code>.
+          </li>
+<li class="listitem">
+            Add support for <a href="http://perso.ens-lyon.fr/nathalie.revol/software.html" target="_top">MPFI</a>.
+          </li>
+<li class="listitem">
+            Add logged_adaptor.
+          </li>
+<li class="listitem">
+            Add support for 128-bit floats via GCC's <code class="computeroutput"><span class="identifier">__float128</span></code>
+            or Intel's <code class="computeroutput"><span class="identifier">_Quad</span></code> data
+            types.
+          </li>
+<li class="listitem">
+            Add support for user-defined literals in cpp_int, improve <code class="computeroutput"><span class="keyword">constexpr</span></code> support.
+          </li>
+<li class="listitem">
+            Fixed bug in integer division of <code class="computeroutput"><span class="identifier">cpp_int</span></code>
+            that results in incorrect sign of <code class="computeroutput"><span class="identifier">cpp_int</span></code>
+            when both arguments are small enough to fit in a <code class="computeroutput"><span class="identifier">double_limb_type</span></code>.
+            See <a href="https://svn.boost.org/trac/boost/ticket/8126" target="_top">8126</a>.
+          </li>
+<li class="listitem">
+            Fixed bug in subtraction of a single limb in <code class="computeroutput"><span class="identifier">cpp_int</span></code>
+            that results in incorrect value when the result should have a 0 in the
+            last limb: <a href="https://svn.boost.org/trac/boost/ticket/8133" target="_top">8133</a>.
+          </li>
+<li class="listitem">
+            Fixed bug in <code class="computeroutput"><span class="identifier">cpp_int</span></code>
+            where division of 0 by something doesn't get zero in the result: <a href="https://svn.boost.org/trac/boost/ticket/8160" target="_top">8160</a>.
+          </li>
+<li class="listitem">
+            Fixed bug in some transcendental functions that caused incorrect return
+            values when variables are reused, for example with <code class="computeroutput"><span class="identifier">a</span>
+            <span class="special">=</span> <span class="identifier">pow</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span> <span class="identifier">b</span><span class="special">)</span></code>. See <a href="https://svn.boost.org/trac/boost/ticket/8326" target="_top">8326</a>.
+          </li>
+<li class="listitem">
+            Fixed some assignment operations in the mpfr and gmp backends to be safe
+            if the target has been moved from: <a href="https://svn.boost.org/trac/boost/ticket/8326" target="_top">8667</a>.
+          </li>
+<li class="listitem">
+            Fixed bug in <code class="computeroutput"><span class="identifier">cpp_int</span></code>
+            that gives incorrect answer for 0%N for large N: <a href="https://svn.boost.org/trac/boost/ticket/8670" target="_top">8670</a>.
+          </li>
+<li class="listitem">
+            Fixed set_precision in mpfr backend so it doesn't trample over an existing
+            value: <a href="https://svn.boost.org/trac/boost/ticket/8692" target="_top">8692</a>.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h25"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.1_53"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.1_53">1.53</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            First Release.
+          </li>
+<li class="listitem">
+            Fix bug in <a href="https://svn.boost.org/trac/boost/ticket/7878" target="_top">cpp_int
+            division</a>.
+          </li>
+<li class="listitem">
+            Fix issue <a href="https://svn.boost.org/trac/boost/ticket/7806" target="_top">#7806</a>.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h26"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.post_review_changes"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.post_review_changes">Post
+        review changes</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Non-expression template operators further optimised with rvalue reference
+            support.
+          </li>
+<li class="listitem">
+            Many functions made <code class="computeroutput"><span class="identifier">constexp</span></code>.
+          </li>
+<li class="listitem">
+            Differentiate between explicit and implicit conversions in the number
+            constructor.
+          </li>
+<li class="listitem">
+            Removed "mp_" prefix from types.
+          </li>
+<li class="listitem">
+            Allowed mixed precision arithmetic.
+          </li>
+<li class="listitem">
+            Changed ExpressionTemplates parameter to class <code class="computeroutput"><span class="identifier">number</span></code>
+            to use enumerated values rather than true/false.
+          </li>
+<li class="listitem">
+            Changed ExpressionTemplate parameter default value to use a traits class
+            so that the default value depends on the backend used.
+          </li>
+<li class="listitem">
+            Added support for fused-multiply-add/subtract with GMP support.
+          </li>
+<li class="listitem">
+            Tweaked expression template unpacking to use fewer temporaries when the
+            LHS also appears in the RHS.
+          </li>
+<li class="listitem">
+            Refactored <code class="computeroutput"><span class="identifier">cpp_int_backend</span></code>
+            based on review comments with new template parameter structure.
+          </li>
+<li class="listitem">
+            Added additional template parameter to <code class="computeroutput"><span class="identifier">mpfr_float_backend</span></code>
+            to allow stack-based allocation.
+          </li>
+<li class="listitem">
+            Added section on mixed precision arithmetic, and added support for operations
+            yielding a higher precision result than either of the arguments.
+          </li>
+<li class="listitem">
+            Added overloads of integer-specific functions for <a href="https://en.cppreference.com/w/cpp/language/types" target="_top">fundamental
+            (built-in)</a> integer types.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_multiprecision.map.hist.h27"></a>
+        <span class="phrase"><a name="boost_multiprecision.map.hist.pre_review_history"></a></span><a class="link" href="hist.html#boost_multiprecision.map.hist.pre_review_history">Pre-review
+        history</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            2011-2012, John Maddock adds an expression template enabled front-end
+            to Christopher's code, and adds support for other backends.
+          </li>
+<li class="listitem">
+            2011, Christopher Kormanyos publishes the decimal floating-point code
+            under the Boost Software Licence. The code is published as: <a href="http://doi.acm.org/10.1145/1916461.1916469" target="_top">"Algorithm
+            910: A Portable C++ Multiple-Precision System for Special-Function Calculations"</a>,
+            in ACM TOMS, {VOL 37, ISSUE 4, (February 2011)} (C) ACM, 2011.
+          </li>
+<li class="listitem">
+            2002-2011, Christopher Kormanyos develops the all C++ decimal arithmetic
+            floating-point code.
+          </li>
+</ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2002-2020 John
+      Maddock and Christopher Kormanyos<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../map.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../map.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="todo.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

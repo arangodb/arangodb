@@ -1,0 +1,61 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>construct&lt;T&gt; - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/advanced/constructors/metaprogrammg1.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/advanced/constructors.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/advanced/constructors/metaprogrammg3.html"><img src="../../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both">construct<T></h1></div></div></div>
+  <p>First, we need a base definition for <code>make&lt;T&gt;</code>:</p>
+
+<div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span><span class="err"> </span><span class="nc">T</span><span class="o">&gt;</span> <span class="k">struct</span> <span class="n">make</span>
+<span class="p">{</span>
+  <span class="n">outcome</span><span class="o">::</span><span class="n">result</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="k">operator</span><span class="p">()()</span> <span class="k">const</span> <span class="k">noexcept</span>
+  <span class="p">{</span>                                            <span class="c1">//
+</span><span class="c1"></span>    <span class="k">static_assert</span><span class="p">(</span><span class="o">!</span><span class="n">std</span><span class="o">::</span><span class="n">is_same</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span> <span class="n">T</span><span class="o">&gt;::</span><span class="n">value</span><span class="p">,</span>  <span class="c1">//
+</span><span class="c1"></span>                  <span class="s">&#34;make&lt;T&gt;() was not specialised for the type T supplied&#34;</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/constructors.cpp#L158" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<p>This fails a static assert if the type is ever instantiated unspecialised.</p>
+
+<p>We then specialise for <code>make&lt;file_handle&gt;</code>:</p>
+
+<div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="k">template</span> <span class="o">&lt;&gt;</span> <span class="k">struct</span> <span class="n">make</span><span class="o">&lt;</span><span class="n">file_handle</span><span class="o">&gt;</span>
+<span class="p">{</span>
+  <span class="n">file_handle</span><span class="o">::</span><span class="n">path_type</span> <span class="n">_path</span><span class="p">;</span>
+  <span class="n">file_handle</span><span class="o">::</span><span class="n">mode</span> <span class="n">_mode</span><span class="p">{</span><span class="n">file_handle</span><span class="o">::</span><span class="n">mode</span><span class="o">::</span><span class="n">read</span><span class="p">};</span>
+  <span class="c1">// Any other args, default initialised if necessary, follow here ...
+</span><span class="c1"></span>
+  <span class="n">outcome</span><span class="o">::</span><span class="n">result</span><span class="o">&lt;</span><span class="n">file_handle</span><span class="o">&gt;</span> <span class="k">operator</span><span class="p">()()</span> <span class="k">const</span> <span class="k">noexcept</span>  <span class="c1">//
+</span><span class="c1"></span>  <span class="p">{</span>
+    <span class="k">return</span> <span class="n">file_handle</span><span class="o">::</span><span class="n">file</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">_path</span><span class="p">));</span>
+  <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/constructors.cpp#L169" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<p>Because this is a struct, we can list initialise <code>make</code>, and use
+default member initialisers to implement default arguments. This can get
+you surprisingly far before you need to start writing custom constructors.</p>
+
+<p>But in more complex code, you will usually provide all the initialisation overloads that
+you would for the constructors of your main type. You then implement a single phase 2 constructing
+function which accepts <code>make&lt;YOURTYPE&gt;</code> as input, and construct solely from
+that source.</p>
+
+
+        </div><p><small>Last revised: February 08, 2019 at 22:18:08 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/advanced/constructors/metaprogrammg1.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/advanced/constructors.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/advanced/constructors/metaprogrammg3.html"><img src="../../../images/next.png" alt="Next"></a></div></body>
+</html>

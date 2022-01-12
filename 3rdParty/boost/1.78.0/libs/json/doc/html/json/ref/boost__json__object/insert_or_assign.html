@@ -1,0 +1,185 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>object::insert_or_assign</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter 1. Boost.JSON">
+<link rel="up" href="../boost__json__object.html" title="object">
+<link rel="prev" href="insert/overload3.html" title="object::insert (3 of 3 overloads)">
+<link rel="next" href="emplace.html" title="object::emplace">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="insert/overload3.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__json__object.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="emplace.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="json.ref.boost__json__object.insert_or_assign"></a><a class="link" href="insert_or_assign.html" title="object::insert_or_assign">object::insert_or_assign</a>
+</h5></div></div></div>
+<p>
+          <a class="indexterm" name="idm25869"></a>
+        </p>
+<p>
+          Insert an element or assign to the current element if the key already exists.
+        </p>
+<h6>
+<a name="json.ref.boost__json__object.insert_or_assign.h0"></a>
+          <span class="phrase"><a name="json.ref.boost__json__object.insert_or_assign.synopsis"></a></span><a class="link" href="insert_or_assign.html#json.ref.boost__json__object.insert_or_assign.synopsis">Synopsis</a>
+        </h6>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <span class="identifier">M</span><span class="special">&gt;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span> <span class="identifier">iterator</span><span class="special">,</span> <span class="keyword">bool</span> <span class="special">&gt;</span>
+<span class="identifier">insert_or_assign</span><span class="special">(</span>
+    <span class="identifier">string_view</span> <span class="identifier">key</span><span class="special">,</span>
+    <span class="identifier">M</span><span class="special">&amp;&amp;</span> <span class="identifier">m</span><span class="special">);</span>
+</pre>
+<h6>
+<a name="json.ref.boost__json__object.insert_or_assign.h1"></a>
+          <span class="phrase"><a name="json.ref.boost__json__object.insert_or_assign.description"></a></span><a class="link" href="insert_or_assign.html#json.ref.boost__json__object.insert_or_assign.description">Description</a>
+        </h6>
+<p>
+          If the key equivalent to <code class="computeroutput"><span class="identifier">key</span></code>
+          already exists in the container. assigns <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">forward</span><span class="special">&lt;</span><span class="identifier">M</span><span class="special">&gt;(</span><span class="identifier">obj</span><span class="special">)</span></code> to the <code class="computeroutput"><span class="identifier">mapped</span>
+          <span class="identifier">type</span></code> corresponding to the key.
+          Otherwise, inserts the new value at the end as if by insert, constructing
+          it from <code class="computeroutput"><span class="identifier">value_type</span><span class="special">(</span><span class="identifier">key</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">forward</span><span class="special">&lt;</span><span class="identifier">M</span><span class="special">&gt;(</span><span class="identifier">obj</span><span class="special">))</span></code>.
+          If the insertion occurs and results in a rehashing of the container, all
+          iterators are invalidated. Otherwise, iterators are not affected. References
+          are not invalidated. Rehashing occurs only if the new number of elements
+          is greater than <a class="link" href="capacity.html" title="object::capacity"><code class="computeroutput"><span class="identifier">capacity</span><span class="special">()</span></code></a>.
+        </p>
+<h6>
+<a name="json.ref.boost__json__object.insert_or_assign.h2"></a>
+          <span class="phrase"><a name="json.ref.boost__json__object.insert_or_assign.complexity"></a></span><a class="link" href="insert_or_assign.html#json.ref.boost__json__object.insert_or_assign.complexity">Complexity</a>
+        </h6>
+<p>
+          Amortized constant on average, worst case linear in <a class="link" href="size.html" title="object::size"><code class="computeroutput"><span class="identifier">size</span><span class="special">()</span></code></a>.
+        </p>
+<h6>
+<a name="json.ref.boost__json__object.insert_or_assign.h3"></a>
+          <span class="phrase"><a name="json.ref.boost__json__object.insert_or_assign.exception_safety"></a></span><a class="link" href="insert_or_assign.html#json.ref.boost__json__object.insert_or_assign.exception_safety">Exception
+          Safety</a>
+        </h6>
+<p>
+          Strong guarantee. Calls to <code class="computeroutput"><span class="identifier">memory_resource</span><span class="special">::</span><span class="identifier">allocate</span></code>
+          may throw.
+        </p>
+<h6>
+<a name="json.ref.boost__json__object.insert_or_assign.h4"></a>
+          <span class="phrase"><a name="json.ref.boost__json__object.insert_or_assign.return_value"></a></span><a class="link" href="insert_or_assign.html#json.ref.boost__json__object.insert_or_assign.return_value">Return
+          Value</a>
+        </h6>
+<p>
+          A <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span></code> where <code class="computeroutput"><span class="identifier">first</span></code>
+          is an iterator to the existing or inserted element, and <code class="computeroutput"><span class="identifier">second</span></code>
+          is <code class="computeroutput"><span class="keyword">true</span></code> if the insertion took
+          place or <code class="computeroutput"><span class="keyword">false</span></code> if the assignment
+          took place.
+        </p>
+<h6>
+<a name="json.ref.boost__json__object.insert_or_assign.h5"></a>
+          <span class="phrase"><a name="json.ref.boost__json__object.insert_or_assign.parameters"></a></span><a class="link" href="insert_or_assign.html#json.ref.boost__json__object.insert_or_assign.parameters">Parameters</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Name
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">key</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The key used for lookup and insertion
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">m</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The value to insert or assign
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<h6>
+<a name="json.ref.boost__json__object.insert_or_assign.h6"></a>
+          <span class="phrase"><a name="json.ref.boost__json__object.insert_or_assign.exceptions"></a></span><a class="link" href="insert_or_assign.html#json.ref.boost__json__object.insert_or_assign.exceptions">Exceptions</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Type
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Thrown On
+                  </p>
+                </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">length_error</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    if key is too long
+                  </p>
+                </td>
+</tr></tbody>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Vinnie Falco<br>Copyright © 2020 Krystian Stasiowski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="insert/overload3.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__json__object.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="emplace.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

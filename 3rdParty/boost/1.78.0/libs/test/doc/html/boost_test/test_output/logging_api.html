@@ -1,0 +1,69 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Logging API</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../test_output.html" title="Controlling outputs">
+<link rel="prev" href="report_formats/report_xml_format.html" title="XML based report output format">
+<link rel="next" href="logging_api/log_ct_output_stream_redirection.html" title="Log output stream redirection">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="report_formats/report_xml_format.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_output.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="logging_api/log_ct_output_stream_redirection.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_test.test_output.logging_api"></a><a class="link" href="logging_api.html" title="Logging API">Logging API</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="logging_api/log_ct_output_stream_redirection.html">Log
+        output stream redirection</a></span></dt>
+<dt><span class="section"><a href="logging_api/log_ct_log_level.html">Log
+        level configuration</a></span></dt>
+<dt><span class="section"><a href="logging_api/log_ct_log_format.html">Predefined
+        log format selection</a></span></dt>
+<dt><span class="section"><a href="logging_api/custom_log_formatter.html">Custom
+        log format support</a></span></dt>
+</dl></div>
+<p>
+        While many test log configuration tasks can be performed at runtime using
+        predefined framework parameters, the <span class="emphasis"><em>Unit Test Framework</em></span>
+        provides a compile time interface as well. The interface gives you full power
+        over what, where and how to log. The interface of the logger is provided
+        by singleton class <code class="computeroutput"><a class="link" href="../../boost/unit_test/unit_test_log_t.html" title="Class unit_test_log_t">boost::unit_test::unit_test_log_t</a></code>
+        and is accessible through local file scope reference to single instance of
+        this class
+      </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">unit_test_log</span>
+</pre>
+<p>
+        In order to install customization of the logger, the <span class="emphasis"><em>Unit Test
+        Framework</em></span> provides the <a class="link" href="../utf_reference/link_references/link_boost_test_global_configuration.html" title="BOOST_TEST_GLOBAL_CONFIGURATION"><code class="computeroutput"><span class="identifier">BOOST_TEST_GLOBAL_CONFIGURATION</span></code></a>
+        facility that acts in a similar fashion to a global fixture.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2020 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="report_formats/report_xml_format.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_output.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="logging_api/log_ct_output_stream_redirection.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

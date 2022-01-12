@@ -1,0 +1,474 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Filter Iterator</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Iterator">
+<link rel="up" href="../specialized.html" title="Specialized Adaptors">
+<link rel="prev" href="../specialized.html" title="Specialized Adaptors">
+<link rel="next" href="function_output.html" title="Function Output Iterator">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../specialized.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../specialized.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="function_output.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="iterator.specialized.filter"></a><a class="link" href="filter.html" title="Filter Iterator">Filter Iterator</a>
+</h3></div></div></div>
+<p>
+        The filter iterator adaptor creates a view of an iterator range in which
+        some elements of the range are skipped. A predicate function object controls
+        which elements are skipped. When the predicate is applied to an element,
+        if it returns <code class="computeroutput"><span class="keyword">true</span></code> then the
+        element is retained and if it returns <code class="computeroutput"><span class="keyword">false</span></code>
+        then the element is skipped over. When skipping over elements, it is necessary
+        for the filter adaptor to know when to stop so as to avoid going past the
+        end of the underlying range. A filter iterator is therefore constructed with
+        pair of iterators indicating the range of elements in the unfiltered sequence
+        to be traversed.
+      </p>
+<h3>
+<a name="iterator.specialized.filter.h0"></a>
+        <span class="phrase"><a name="iterator.specialized.filter.example"></a></span><a class="link" href="filter.html#iterator.specialized.filter.example">Example</a>
+      </h3>
+<p>
+        This example uses <code class="computeroutput"><span class="identifier">filter_iterator</span></code>
+        and then <code class="computeroutput"><span class="identifier">make_filter_iterator</span></code>
+        to output only the positive integers from an array of integers. Then <code class="computeroutput"><span class="identifier">make_filter_iterator</span></code> is is used to output
+        the integers greater than <code class="computeroutput"><span class="special">-</span><span class="number">2</span></code>.
+      </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">is_positive_number</span> <span class="special">{</span>
+  <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">()(</span><span class="keyword">int</span> <span class="identifier">x</span><span class="special">)</span> <span class="special">{</span> <span class="keyword">return</span> <span class="number">0</span> <span class="special">&lt;</span> <span class="identifier">x</span><span class="special">;</span> <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+  <span class="keyword">int</span> <span class="identifier">numbers_</span><span class="special">[]</span> <span class="special">=</span> <span class="special">{</span> <span class="number">0</span><span class="special">,</span> <span class="special">-</span><span class="number">1</span><span class="special">,</span> <span class="number">4</span><span class="special">,</span> <span class="special">-</span><span class="number">3</span><span class="special">,</span> <span class="number">5</span><span class="special">,</span> <span class="number">8</span><span class="special">,</span> <span class="special">-</span><span class="number">2</span> <span class="special">};</span>
+  <span class="keyword">const</span> <span class="keyword">int</span> <span class="identifier">N</span> <span class="special">=</span> <span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">numbers_</span><span class="special">)/</span><span class="keyword">sizeof</span><span class="special">(</span><span class="keyword">int</span><span class="special">);</span>
+
+  <span class="keyword">typedef</span> <span class="keyword">int</span><span class="special">*</span> <span class="identifier">base_iterator</span><span class="special">;</span>
+  <span class="identifier">base_iterator</span> <span class="identifier">numbers</span><span class="special">(</span><span class="identifier">numbers_</span><span class="special">);</span>
+
+  <span class="comment">// Example using filter_iterator</span>
+  <span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">filter_iterator</span><span class="special">&lt;</span><span class="identifier">is_positive_number</span><span class="special">,</span> <span class="identifier">base_iterator</span><span class="special">&gt;</span>
+    <span class="identifier">FilterIter</span><span class="special">;</span>
+
+  <span class="identifier">is_positive_number</span> <span class="identifier">predicate</span><span class="special">;</span>
+  <span class="identifier">FilterIter</span> <span class="identifier">filter_iter_first</span><span class="special">(</span><span class="identifier">predicate</span><span class="special">,</span> <span class="identifier">numbers</span><span class="special">,</span> <span class="identifier">numbers</span> <span class="special">+</span> <span class="identifier">N</span><span class="special">);</span>
+  <span class="identifier">FilterIter</span> <span class="identifier">filter_iter_last</span><span class="special">(</span><span class="identifier">predicate</span><span class="special">,</span> <span class="identifier">numbers</span> <span class="special">+</span> <span class="identifier">N</span><span class="special">,</span> <span class="identifier">numbers</span> <span class="special">+</span> <span class="identifier">N</span><span class="special">);</span>
+
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">copy</span><span class="special">(</span><span class="identifier">filter_iter_first</span><span class="special">,</span> <span class="identifier">filter_iter_last</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream_iterator</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span><span class="special">,</span> <span class="string">" "</span><span class="special">));</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+  <span class="comment">// Example using make_filter_iterator()</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">copy</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_filter_iterator</span><span class="special">&lt;</span><span class="identifier">is_positive_number</span><span class="special">&gt;(</span><span class="identifier">numbers</span><span class="special">,</span> <span class="identifier">numbers</span> <span class="special">+</span> <span class="identifier">N</span><span class="special">),</span>
+            <span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_filter_iterator</span><span class="special">&lt;</span><span class="identifier">is_positive_number</span><span class="special">&gt;(</span><span class="identifier">numbers</span> <span class="special">+</span> <span class="identifier">N</span><span class="special">,</span> <span class="identifier">numbers</span> <span class="special">+</span> <span class="identifier">N</span><span class="special">),</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream_iterator</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span><span class="special">,</span> <span class="string">" "</span><span class="special">));</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+  <span class="comment">// Another example using make_filter_iterator()</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">copy</span><span class="special">(</span>
+      <span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_filter_iterator</span><span class="special">(</span>
+          <span class="identifier">std</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">greater</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">placeholders</span><span class="special">::</span><span class="identifier">_1</span><span class="special">,</span> <span class="special">-</span><span class="number">2</span><span class="special">)</span>
+        <span class="special">,</span> <span class="identifier">numbers</span><span class="special">,</span> <span class="identifier">numbers</span> <span class="special">+</span> <span class="identifier">N</span><span class="special">)</span>
+
+    <span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_filter_iterator</span><span class="special">(</span>
+          <span class="identifier">std</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">greater</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">placeholders</span><span class="special">::</span><span class="identifier">_1</span><span class="special">,</span> <span class="special">-</span><span class="number">2</span><span class="special">)</span>
+        <span class="special">,</span> <span class="identifier">numbers</span> <span class="special">+</span> <span class="identifier">N</span><span class="special">,</span> <span class="identifier">numbers</span> <span class="special">+</span> <span class="identifier">N</span><span class="special">)</span>
+
+    <span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream_iterator</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span><span class="special">,</span> <span class="string">" "</span><span class="special">)</span>
+  <span class="special">);</span>
+
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+  <span class="keyword">return</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">exit_success</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        The output is:
+      </p>
+<pre class="programlisting">4 5 8
+4 5 8
+0 -1 4 5 8
+</pre>
+<p>
+        The source code for this example can be found <a href="../../../../example/filter_iterator_example.cpp" target="_top">here</a>.
+      </p>
+<h3>
+<a name="iterator.specialized.filter.h1"></a>
+        <span class="phrase"><a name="iterator.specialized.filter.reference"></a></span><a class="link" href="filter.html#iterator.specialized.filter.reference">Reference</a>
+      </h3>
+<h4>
+<a name="iterator.specialized.filter.h2"></a>
+        <span class="phrase"><a name="iterator.specialized.filter.synopsis"></a></span><a class="link" href="filter.html#iterator.specialized.filter.synopsis">Synopsis</a>
+      </h4>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Predicate</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Iterator</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">filter_iterator</span>
+<span class="special">{</span>
+ <span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">typedef</span> <span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="identifier">Iterator</span><span class="special">&gt;::</span><span class="identifier">value_type</span> <span class="identifier">value_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="identifier">Iterator</span><span class="special">&gt;::</span><span class="identifier">reference</span> <span class="identifier">reference</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="identifier">Iterator</span><span class="special">&gt;::</span><span class="identifier">pointer</span> <span class="identifier">pointer</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="identifier">Iterator</span><span class="special">&gt;::</span><span class="identifier">difference_type</span> <span class="identifier">difference_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="comment">/* see below */</span> <span class="identifier">iterator_category</span><span class="special">;</span>
+
+    <span class="identifier">filter_iterator</span><span class="special">();</span>
+    <span class="identifier">filter_iterator</span><span class="special">(</span><span class="identifier">Predicate</span> <span class="identifier">f</span><span class="special">,</span> <span class="identifier">Iterator</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">Iterator</span> <span class="identifier">end</span> <span class="special">=</span> <span class="identifier">Iterator</span><span class="special">());</span>
+    <span class="identifier">filter_iterator</span><span class="special">(</span><span class="identifier">Iterator</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">Iterator</span> <span class="identifier">end</span> <span class="special">=</span> <span class="identifier">Iterator</span><span class="special">());</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">OtherIterator</span><span class="special">&gt;</span>
+    <span class="identifier">filter_iterator</span><span class="special">(</span>
+        <span class="identifier">filter_iterator</span><span class="special">&lt;</span><span class="identifier">Predicate</span><span class="special">,</span> <span class="identifier">OtherIterator</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">t</span>
+        <span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">enable_if_convertible</span><span class="special">&lt;</span><span class="identifier">OtherIterator</span><span class="special">,</span> <span class="identifier">Iterator</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">*</span> <span class="special">=</span> <span class="number">0</span> <span class="comment">// exposition</span>
+        <span class="special">);</span>
+    <span class="identifier">Predicate</span> <span class="identifier">predicate</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+    <span class="identifier">Iterator</span> <span class="identifier">end</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+    <span class="identifier">Iterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">base</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+    <span class="identifier">reference</span> <span class="keyword">operator</span><span class="special">*()</span> <span class="keyword">const</span><span class="special">;</span>
+    <span class="identifier">filter_iterator</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">++();</span>
+<span class="keyword">private</span><span class="special">:</span>
+    <span class="identifier">Predicate</span> <span class="identifier">m_pred</span><span class="special">;</span> <span class="comment">// exposition only</span>
+    <span class="identifier">Iterator</span> <span class="identifier">m_iter</span><span class="special">;</span>  <span class="comment">// exposition only</span>
+    <span class="identifier">Iterator</span> <span class="identifier">m_end</span><span class="special">;</span>   <span class="comment">// exposition only</span>
+<span class="special">};</span>
+</pre>
+<p>
+        If <code class="computeroutput"><span class="identifier">Iterator</span></code> models Readable
+        Lvalue Iterator and Bidirectional Traversal Iterator then <code class="computeroutput"><span class="identifier">iterator_category</span></code>
+        is convertible to <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">bidirectional_iterator_tag</span></code>. Otherwise,
+        if <code class="computeroutput"><span class="identifier">Iterator</span></code> models Readable
+        Lvalue Iterator and Forward Traversal Iterator then <code class="computeroutput"><span class="identifier">iterator_category</span></code>
+        is convertible to <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">forward_iterator_tag</span></code>. Otherwise <code class="computeroutput"><span class="identifier">iterator_category</span></code> is convertible to <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">input_iterator_tag</span></code>.
+      </p>
+<h4>
+<a name="iterator.specialized.filter.h3"></a>
+        <span class="phrase"><a name="iterator.specialized.filter.requirements"></a></span><a class="link" href="filter.html#iterator.specialized.filter.requirements">Requirements</a>
+      </h4>
+<p>
+        The <code class="computeroutput"><span class="identifier">Iterator</span></code> argument shall
+        meet the requirements of Readable Iterator and Single Pass Iterator or it
+        shall meet the requirements of Input Iterator.
+      </p>
+<p>
+        The <code class="computeroutput"><span class="identifier">Predicate</span></code> argument must
+        be Assignable, Copy Constructible, and the expression <code class="computeroutput"><span class="identifier">p</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span></code>
+        must be valid where <code class="computeroutput"><span class="identifier">p</span></code> is
+        an object of type <code class="computeroutput"><span class="identifier">Predicate</span></code>,
+        <code class="computeroutput"><span class="identifier">x</span></code> is an object of type <code class="computeroutput"><span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="identifier">Iterator</span><span class="special">&gt;::</span><span class="identifier">value_type</span></code>, and where the type of <code class="computeroutput"><span class="identifier">p</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span></code> must be convertible to <code class="computeroutput"><span class="keyword">bool</span></code>.
+      </p>
+<h4>
+<a name="iterator.specialized.filter.h4"></a>
+        <span class="phrase"><a name="iterator.specialized.filter.concepts"></a></span><a class="link" href="filter.html#iterator.specialized.filter.concepts">Concepts</a>
+      </h4>
+<p>
+        The concepts that <code class="computeroutput"><span class="identifier">filter_iterator</span></code>
+        models are dependent on which concepts the <code class="computeroutput"><span class="identifier">Iterator</span></code>
+        argument models, as specified in the following tables.
+      </p>
+<div class="table">
+<a name="iterator.specialized.filter.traversal"></a><p class="title"><b>Table 1.12. Traversal</b></p>
+<div class="table-contents"><table class="table" summary="Traversal">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  If <code class="computeroutput"><span class="identifier">Iterator</span></code> models
+                </p>
+              </th>
+<th>
+                <p>
+                  then <code class="computeroutput"><span class="identifier">filter_iterator</span></code>
+                  models
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  Single Pass Iterator
+                </p>
+              </td>
+<td>
+                <p>
+                  Single Pass Iterator
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  Forward Traversal Iterator
+                </p>
+              </td>
+<td>
+                <p>
+                  Forward Traversal Iterator
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  Bidirectional Traversal Iterator
+                </p>
+              </td>
+<td>
+                <p>
+                  Bidirectional Traversal Iterator
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><div class="table">
+<a name="iterator.specialized.filter.access"></a><p class="title"><b>Table 1.13. Access</b></p>
+<div class="table-contents"><table class="table" summary="Access">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  If <code class="computeroutput"><span class="identifier">Iterator</span></code> models
+                </p>
+              </th>
+<th>
+                <p>
+                  then <code class="computeroutput"><span class="identifier">filter_iterator</span></code>
+                  models
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  Readable Iterator
+                </p>
+              </td>
+<td>
+                <p>
+                  Readable Iterator
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  Writable Iterator
+                </p>
+              </td>
+<td>
+                <p>
+                  Writable Iterator
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  Lvalue Iterator
+                </p>
+              </td>
+<td>
+                <p>
+                  Lvalue Iterator
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><div class="table">
+<a name="iterator.specialized.filter.c_03"></a><p class="title"><b>Table 1.14. C++03</b></p>
+<div class="table-contents"><table class="table" summary="C++03">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  If <code class="computeroutput"><span class="identifier">Iterator</span></code> models
+                </p>
+              </th>
+<th>
+                <p>
+                  then <code class="computeroutput"><span class="identifier">filter_iterator</span></code>
+                  models
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  Readable Iterator, Single Pass Iterator
+                </p>
+              </td>
+<td>
+                <p>
+                  Input Iterator
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  Readable Lvalue Iterator, Forward Traversal Iterator
+                </p>
+              </td>
+<td>
+                <p>
+                  Forward Iterator
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  Writable Lvalue Iterator, Forward Traversal Iterator
+                </p>
+              </td>
+<td>
+                <p>
+                  Mutable Forward Iterator
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  Writable Lvalue Iterator, Bidirectional Iterator
+                </p>
+              </td>
+<td>
+                <p>
+                  Mutable Bidirectional Iterator
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+        <code class="computeroutput"><span class="identifier">filter_iterator</span><span class="special">&lt;</span><span class="identifier">P1</span><span class="special">,</span> <span class="identifier">X</span><span class="special">&gt;</span></code> is interoperable with <code class="computeroutput"><span class="identifier">filter_iterator</span><span class="special">&lt;</span><span class="identifier">P2</span><span class="special">,</span> <span class="identifier">Y</span><span class="special">&gt;</span></code>
+        if and only if <code class="computeroutput"><span class="identifier">X</span></code> is interoperable
+        with <code class="computeroutput"><span class="identifier">Y</span></code>.
+      </p>
+<h4>
+<a name="iterator.specialized.filter.h5"></a>
+        <span class="phrase"><a name="iterator.specialized.filter.operations"></a></span><a class="link" href="filter.html#iterator.specialized.filter.operations">Operations</a>
+      </h4>
+<p>
+        In addition to those operations required by the concepts that <code class="computeroutput"><span class="identifier">filter_iterator</span></code> models, <code class="computeroutput"><span class="identifier">filter_iterator</span></code>
+        provides the following operations.
+      </p>
+<pre class="programlisting"><span class="identifier">filter_iterator</span><span class="special">();</span>
+</pre>
+<p>
+        <span class="bold"><strong>Requires: </strong></span><code class="computeroutput"><span class="identifier">Predicate</span></code>
+        and <code class="computeroutput"><span class="identifier">Iterator</span></code> must be Default
+        Constructible.<br> <span class="bold"><strong>Effects: </strong></span> Constructs
+        a <code class="computeroutput"><span class="identifier">filter_iterator</span></code> whose<code class="computeroutput"><span class="identifier">m_pred</span></code>, <code class="computeroutput"><span class="identifier">m_iter</span></code>,
+        and <code class="computeroutput"><span class="identifier">m_end</span></code> members are a default
+        constructed.
+      </p>
+<pre class="programlisting"><span class="identifier">filter_iterator</span><span class="special">(</span><span class="identifier">Predicate</span> <span class="identifier">f</span><span class="special">,</span> <span class="identifier">Iterator</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">Iterator</span> <span class="identifier">end</span> <span class="special">=</span> <span class="identifier">Iterator</span><span class="special">());</span>
+</pre>
+<p>
+        <span class="bold"><strong>Effects: </strong></span> Constructs a <code class="computeroutput"><span class="identifier">filter_iterator</span></code>
+        where <code class="computeroutput"><span class="identifier">m_iter</span></code> is either the
+        first position in the range <code class="computeroutput"><span class="special">[</span><span class="identifier">x</span><span class="special">,</span><span class="identifier">end</span><span class="special">)</span></code> such that <code class="computeroutput"><span class="identifier">f</span><span class="special">(*</span><span class="identifier">m_iter</span><span class="special">)</span> <span class="special">==</span> <span class="keyword">true</span></code>
+        or else<code class="computeroutput"><span class="identifier">m_iter</span> <span class="special">==</span>
+        <span class="identifier">end</span></code>. The member <code class="computeroutput"><span class="identifier">m_pred</span></code>
+        is constructed from <code class="computeroutput"><span class="identifier">f</span></code> and
+        <code class="computeroutput"><span class="identifier">m_end</span></code> from <code class="computeroutput"><span class="identifier">end</span></code>.
+      </p>
+<pre class="programlisting"><span class="identifier">filter_iterator</span><span class="special">(</span><span class="identifier">Iterator</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">Iterator</span> <span class="identifier">end</span> <span class="special">=</span> <span class="identifier">Iterator</span><span class="special">());</span>
+</pre>
+<p>
+        <span class="bold"><strong>Requires: </strong></span> <code class="computeroutput"><span class="identifier">Predicate</span></code>
+        must be Default Constructible and <code class="computeroutput"><span class="identifier">Predicate</span></code>
+        is a class type (not a function pointer).<br> <span class="bold"><strong>Effects:
+        </strong></span> Constructs a <code class="computeroutput"><span class="identifier">filter_iterator</span></code>
+        where <code class="computeroutput"><span class="identifier">m_iter</span></code> is either the
+        first position in the range <code class="computeroutput"><span class="special">[</span><span class="identifier">x</span><span class="special">,</span><span class="identifier">end</span><span class="special">)</span></code> such that <code class="computeroutput"><span class="identifier">m_pred</span><span class="special">(*</span><span class="identifier">m_iter</span><span class="special">)</span> <span class="special">==</span> <span class="keyword">true</span></code>
+        or else<code class="computeroutput"><span class="identifier">m_iter</span> <span class="special">==</span>
+        <span class="identifier">end</span></code>. The member <code class="computeroutput"><span class="identifier">m_pred</span></code>
+        is default constructed.
+      </p>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">OtherIterator</span><span class="special">&gt;</span>
+<span class="identifier">filter_iterator</span><span class="special">(</span>
+    <span class="identifier">filter_iterator</span><span class="special">&lt;</span><span class="identifier">Predicate</span><span class="special">,</span> <span class="identifier">OtherIterator</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">t</span>
+    <span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">enable_if_convertible</span><span class="special">&lt;</span><span class="identifier">OtherIterator</span><span class="special">,</span> <span class="identifier">Iterator</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">*</span> <span class="special">=</span> <span class="number">0</span> <span class="comment">// exposition</span>
+    <span class="special">);</span>
+</pre>
+<p>
+        <span class="bold"><strong>Requires: </strong></span> <code class="computeroutput"><span class="identifier">OtherIterator</span></code>
+        is implicitly convertible to <code class="computeroutput"><span class="identifier">Iterator</span></code>.<br>
+        <span class="bold"><strong>Effects: </strong></span> Constructs a filter iterator whose
+        members are copied from <code class="computeroutput"><span class="identifier">t</span></code>.
+      </p>
+<pre class="programlisting"><span class="identifier">Predicate</span> <span class="identifier">predicate</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<p>
+        <span class="bold"><strong>Returns: </strong></span> <code class="computeroutput"><span class="identifier">m_pred</span></code>
+      </p>
+<pre class="programlisting"><span class="identifier">Ierator</span> <span class="identifier">end</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<p>
+        <span class="bold"><strong>Returns: </strong></span> <code class="computeroutput"><span class="identifier">m_end</span></code>
+      </p>
+<pre class="programlisting"><span class="identifier">Iterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">base</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<p>
+        <span class="bold"><strong>Returns: </strong></span> <code class="computeroutput"><span class="identifier">m_iterator</span></code>
+      </p>
+<pre class="programlisting"><span class="identifier">reference</span> <span class="keyword">operator</span><span class="special">*()</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<p>
+        <span class="bold"><strong>Returns: </strong></span> <code class="computeroutput"><span class="special">*</span><span class="identifier">m_iter</span></code>
+      </p>
+<pre class="programlisting"><span class="identifier">filter_iterator</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">++();</span>
+</pre>
+<p>
+        <span class="bold"><strong>Effects: </strong></span> Increments <code class="computeroutput"><span class="identifier">m_iter</span></code>
+        and then continues to increment <code class="computeroutput"><span class="identifier">m_iter</span></code>
+        until either <code class="computeroutput"><span class="identifier">m_iter</span> <span class="special">==</span>
+        <span class="identifier">m_end</span></code> or <code class="computeroutput"><span class="identifier">m_pred</span><span class="special">(*</span><span class="identifier">m_iter</span><span class="special">)</span> <span class="special">==</span> <span class="keyword">true</span></code>.<br>
+        <span class="bold"><strong>Returns: </strong></span> <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2003, 2005 David Abrahams Jeremy Siek Thomas
+      Witt<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at &lt;ulink url="http://www.boost.org/LICENSE_1_0.txt"&gt;
+        http://www.boost.org/LICENSE_1_0.txt &lt;/ulink&gt;)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../specialized.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../specialized.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="function_output.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

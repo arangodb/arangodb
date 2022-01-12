@@ -1,0 +1,153 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Why spreadsort?</title>
+<link rel="stylesheet" href="../../../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../../../index.html" title="Boost.Sort">
+<link rel="up" href="../rationale.html" title="Rationale">
+<link rel="prev" href="hybrid_radix.html" title="Hybrid Radix">
+<link rel="next" href="unstable_sort.html" title="Unstable Sorting">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="hybrid_radix.html"><img src="../../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../rationale.html"><img src="../../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../../index.html"><img src="../../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="unstable_sort.html"><img src="../../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h6 class="title">
+<a name="sort.single_thread.spreadsort.sort_hpp.rationale.why_spreadsort"></a><a class="link" href="why_spreadsort.html" title="Why spreadsort?">Why
+            spreadsort?</a>
+</h6></div></div></div>
+<p>
+              The <code class="literal"><code class="computeroutput"><a class="link" href="../../../../../boost/sort/spreadsort/spreadsort_idm2302.html" title="Function template spreadsort">spreadsort</a></code></code>
+              algorithm used in this library is designed to provide best possible
+              worst-case performance, while still being cache-friendly. It provides
+              the better of <span class="emphasis"><em>𝑶(N*log(K/S + S))</em></span> and <span class="emphasis"><em>𝑶(N*log(N))</em></span>
+              worst-case time, where <span class="emphasis"><em>K</em></span> is the log of the range.
+              The log of the range is normally the length in bits of the data type;
+              32 for a 32-bit integer.
+            </p>
+<p>
+              <code class="computeroutput">flash_sort</code> (another hybrid algorithm), by comparison is
+              <span class="emphasis"><em>𝑶(N)</em></span> for evenly distributed lists. The problem
+              is, <code class="computeroutput">flash_sort</code> is merely an MSD <a href="http://en.wikipedia.org/wiki/Radix_sort" target="_top">radix
+              sort</a> combined with <span class="emphasis"><em>𝑶(N*N)</em></span> insertion sort
+              to deal with small subsets where the MSD Radix Sort is inefficient,
+              so it is inefficient with chunks of data around the size at which it
+              switches to <code class="computeroutput">insertion_sort</code>, and ends up operating as an
+              enhanced MSD Radix Sort. For uneven distributions this makes it especially
+              inefficient.
+            </p>
+<p>
+              <code class="literal"><code class="computeroutput"><a class="link" href="../../../../../boost/sort/spreadsort/integer_sort_idm1895.html" title="Function template integer_sort">integer_sort</a></code></code>
+              and <code class="literal"><code class="computeroutput"><a class="link" href="../../../../../boost/sort/spreadsort/float_sort_idm1775.html" title="Function template float_sort">float_sort</a></code></code>
+              use <a href="http://en.wikipedia.org/wiki/Introsort" target="_top">introsort</a>
+              instead, which provides <span class="emphasis"><em>𝑶(N*log(N))</em></span> performance
+              for these medium-sized pieces. Also, <code class="computeroutput">flash_sort</code>'s <span class="emphasis"><em>𝑶(N)</em></span>
+              performance for even distributions comes at the cost of cache misses,
+              which on modern architectures are extremely expensive, and in testing
+              on modern systems ends up being slower than cutting up the data in
+              multiple, cache-friendly steps. Also worth noting is that on most modern
+              computers, <code class="computeroutput">log2(available RAM)/log2(L1 cache size)</code> is
+              around 3, where a cache miss takes more than 3 times as long as an
+              in-cache random-access, and the size of <span class="emphasis"><em>max_splits</em></span>
+              is tuned to the size of the cache. On a computer where cache misses
+              aren't this expensive, <span class="emphasis"><em>max_splits</em></span> could be increased
+              to a large value, or eliminated entirely, and <code class="computeroutput">integer_sort/float_sort</code>
+              would have the same <span class="emphasis"><em>𝑶(N)</em></span> performance on even distributions.
+            </p>
+<p>
+              Adaptive Left Radix (ALR) is similar to <code class="computeroutput">flash_sort</code>, but
+              more cache-friendly. It still uses insertion_sort. Because ALR uses
+              <span class="emphasis"><em>𝑶(N*N)</em></span> <code class="computeroutput">insertion_sort</code>, it isn't efficient
+              to use the comparison-based fallback sort on large lists, and if the
+              data is clustered in small chunks just over the fallback size with
+              a few outliers, radix-based sorting iterates many times doing little
+              sorting with high overhead. Asymptotically, ALR is still <span class="emphasis"><em>𝑶(N*log(K/S
+              + S))</em></span>, but with a very small <span class="emphasis"><em>S</em></span> (about
+              2 in the worst case), which compares unfavorably with the 11 default
+              value of <span class="emphasis"><em>max_splits</em></span> for Spreadsort.
+            </p>
+<p>
+              ALR also does not have the <span class="emphasis"><em>𝑶(N*log(N))</em></span> fallback,
+              so for small lists that are not evenly distributed it is extremely
+              inefficient. See the <code class="computeroutput">alrbreaker</code> and <code class="computeroutput">binaryalrbreaker</code>
+              testcases for examples; either replace the call to sort with a call
+              to ALR and update the ALR_THRESHOLD at the top, or as a quick comparison
+              make <code class="computeroutput">get_max_count return ALR_THRESHOLD</code> (20 by default
+              based upon the paper). These small tests take 4-10 times as long with
+              ALR as <a href="http://en.cppreference.com/w/cpp/algorithm/sort" target="_top">std::sort</a>
+              in the author's testing, depending on the test system, because they
+              are trying to sort a highly uneven distribution. Normal Spreadsort
+              does much better with them, because <code class="computeroutput">get_max_count</code> is designed
+              around minimizing worst-case runtime.
+            </p>
+<p>
+              <code class="computeroutput">burst_sort</code> is an efficient hybrid algorithm for strings
+              that uses substantial additional memory.
+            </p>
+<p>
+              <code class="literal"><code class="computeroutput"><a class="link" href="../../../../../boost/sort/spreadsort/string_sort_idm2523.html" title="Function template string_sort">string_sort</a></code></code>
+              uses minimal additional memory by comparison. Speed comparisons between
+              the two haven't been made, but the better memory efficiency makes
+              <code class="literal"><code class="computeroutput"><a class="link" href="../../../../../boost/sort/spreadsort/string_sort_idm2523.html" title="Function template string_sort">string_sort</a></code></code>
+              more general.
+            </p>
+<p>
+              <code class="computeroutput">postal_sort</code> and <code class="literal"><code class="computeroutput"><a class="link" href="../../../../../boost/sort/spreadsort/string_sort_idm2523.html" title="Function template string_sort">string_sort</a></code></code>
+              are similar. A direct performance comparison would be welcome, but
+              an efficient version of <code class="computeroutput">postal_sort</code> was not found in a
+              search for source.
+            </p>
+<p>
+              <code class="literal"><code class="computeroutput"><a class="link" href="../../../../../boost/sort/spreadsort/string_sort_idm2523.html" title="Function template string_sort">string_sort</a></code></code>
+              is most similar to the <a href="http://en.wikipedia.org/wiki/American_flag_sort" target="_top">American
+              flag sort</a> algorithm. The main difference is that it doesn't
+              bother trying to optimize how empty buckets/piles are handled, instead
+              just checking to see if all characters at the current index are equal.
+              Other differences are using <a href="http://en.cppreference.com/w/cpp/algorithm/sort" target="_top">std::sort</a>
+              as the fallback algorithm, and a larger fallback size (256 vs. 16),
+              which makes empty pile handling less important.
+            </p>
+<p>
+              Another difference is not applying the stack-size restriction. Because
+              of the equality check in <code class="literal"><code class="computeroutput"><a class="link" href="../../../../../boost/sort/spreadsort/string_sort_idm2523.html" title="Function template string_sort">string_sort</a></code></code>,
+              it would take <span class="emphasis"><em>m*m</em></span> memory worth of strings to force
+              <code class="literal"><code class="computeroutput"><a class="link" href="../../../../../boost/sort/spreadsort/string_sort_idm2523.html" title="Function template string_sort">string_sort</a></code></code>
+              to create a stack of depth <span class="emphasis"><em>m</em></span>. This problem isn't
+              a realistic one on modern systems with multi-megabyte stacksize limits,
+              where main memory would be exhausted holding the long strings necessary
+              to exceed the stacksize limit. <code class="literal"><code class="computeroutput"><a class="link" href="../../../../../boost/sort/spreadsort/string_sort_idm2523.html" title="Function template string_sort">string_sort</a></code></code>
+              can be thought of as modernizing <a href="http://en.wikipedia.org/wiki/American_flag_sort" target="_top">American
+              flag sort</a> to take advantage of <a href="http://en.wikipedia.org/wiki/Introsort" target="_top">introsort</a>
+              as a fallback algorithm. In the author's testing, <a href="http://en.wikipedia.org/wiki/American_flag_sort" target="_top">American
+              flag sort</a> (on <code class="computeroutput">std::strings</code>) had comparable runtime
+              to <a href="http://en.wikipedia.org/wiki/Introsort" target="_top">introsort</a>,
+              but making a hybrid of the two allows reduced overhead and substantially
+              superior performance.
+            </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2014-2017 Steven
+      Ross, Francisco Tapia, Orson Peters<p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="hybrid_radix.html"><img src="../../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../rationale.html"><img src="../../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../../index.html"><img src="../../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="unstable_sort.html"><img src="../../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

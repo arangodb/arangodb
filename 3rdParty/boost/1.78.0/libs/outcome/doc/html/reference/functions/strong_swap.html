@@ -1,0 +1,34 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>void strong_swap(bool &amp;all_good, T &amp;a, T &amp;b) - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../reference/functions/error_from_exception.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../reference/functions.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../reference/functions/try_throw_std_exception_from_error.html"><img src="../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both"><code>void strong_swap(bool &amp;all_good, T &amp;a, T &amp;b)</code></h1></div></div></div>
+  <p>The standard <code>swap()</code> function provides the weak guarantee i.e. that no resources are lost. This ADL discovered function provides the strong guarantee instead: that if any of these operations throw an exception (i) move construct to temporary (ii) move assign <code>b</code> to <code>a</code> (iii) move assign temporary to <code>b</code>, an attempt is made to restore the exact pre-swapped state upon entry, and if that recovery too fails, then the boolean <code>all_good</code> will be false during stack unwind from the exception throw, to indicate that state has been lost.</p>
+
+<p>This function is used within <code>basic_result::</code><a href="../../reference/types/basic_result/swap.html" class="api-reference"><code>swap(basic_result &amp;)</code></a>
+ if, and only if, either or both of <code>value_type</code> or <code>error_type</code> have a throwing move constructor or move assignment. It permits you to customise the implementation of the strong guarantee swap in Outcome with a more efficient implementation.</p>
+
+<p><em>Overridable</em>: By Argument Dependent Lookup (ADL).</p>
+
+<p><em>Requires</em>: That <code>T</code> is both move constructible and move assignable.</p>
+
+<p><em>Namespace</em>: <code>BOOST_OUTCOME_V2_NAMESPACE</code></p>
+
+<p><em>Header</em>: <code>&lt;boost/outcome/basic_result.hpp&gt;</code></p>
+
+
+        </div><p><small>Last revised: June 24, 2019 at 21:09:37 &#43;0100</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../reference/functions/error_from_exception.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../reference/functions.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../reference/functions/try_throw_std_exception_from_error.html"><img src="../../images/next.png" alt="Next"></a></div></body>
+</html>

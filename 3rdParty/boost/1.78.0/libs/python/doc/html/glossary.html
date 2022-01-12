@@ -1,0 +1,81 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Chapter 6. Glossary</title>
+<link rel="stylesheet" href="boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Boost.Python">
+<link rel="up" href="index.html" title="Boost.Python">
+<link rel="prev" href="faq/is_boost_python_thread_aware_com.html" title="Is Boost.Python thread-aware/compatible with multiple interpreters?">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="faq/is_boost_python_thread_aware_com.html"><img src="images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="images/home.png" alt="Home"></a>
+</div>
+<div class="chapter">
+<div class="titlepage"><div><div><h1 class="title">
+<a name="glossary"></a>Chapter 6. Glossary</h1></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">arity <a name="arity"></a></span></dt>
+<dd><p>
+            The number of argumnts accepted by a function or member function. Unless
+            otherwise specified, the hidden <code class="computeroutput"><span class="keyword">this</span></code>
+            argument to member functions is not counted when specifying arity.
+          </p></dd>
+<dt><span class="term">ntbs <a name="ntbs"></a></span></dt>
+<dd><p>
+            Null-Terminated Byte String, or 'C'-string. C++ string literals are
+            <span class="bold"><strong>ntbs</strong></span>es. An <span class="bold"><strong>ntbs</strong></span>
+            must never be null.
+          </p></dd>
+<dt><span class="term">raise <a name="raise"></a></span></dt>
+<dd><p>
+            Exceptions in Python are "raised", not "thrown",
+            as they are in C++. When this documentation says that some Python exception
+            is "raised" in the context of C++ code, it means that the corresponding
+            Python exception is set via the <a href="http://www.python.org/doc/current/api/exceptionHandling.html" target="_top">Python/'C'
+            API</a>, and <code class="computeroutput"><span class="identifier">throw_error_already_set</span><span class="special">()</span></code> is called.
+          </p></dd>
+<dt><span class="term">POD <a name="pod"></a></span></dt>
+<dd><p>
+            A technical term from the C++ standard. Short for "Plain Ol'Data":
+            A POD-struct is an aggregate class that has no non-static data members
+            of type pointer to member, non-POD-struct, non-POD-union (or array of
+            such types) or reference, and has no user-defined copy assign- ment operator
+            and no user-defined destructor. Similarly, a POD-union is an aggregate
+            union that has no non-static data members of type pointer to member,
+            non-POD-struct, non-POD-union (or array of such types) or reference,
+            and has no user-defined copy assignment operator and no user-defined
+            destructor. A POD class is a class that is either a POD-struct or a POD-union.
+            An aggregate is an array or a class (clause 9) with no user-declared
+            constructors (12.1), no private or protected non-static data members
+            (clause 11), no base classes (clause 10), and no virtual functions (10.3).
+          </p></dd>
+<dt><span class="term">ODR <a name="odr"></a></span></dt>
+<dd><p>
+            The "One Definition Rule", which says that any entity in a
+            C++ program must have the same definition in all translation units (object
+            files) which make up a program.
+          </p></dd>
+</dl>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2002-2015 David
+      Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="faq/is_boost_python_thread_aware_com.html"><img src="images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="images/home.png" alt="Home"></a>
+</div>
+</body>
+</html>
