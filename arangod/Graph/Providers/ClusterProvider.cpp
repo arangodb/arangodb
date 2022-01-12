@@ -36,6 +36,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 
+#include <utility>
 #include <vector>
 
 using namespace arangodb;
@@ -70,25 +71,23 @@ VertexType getEdgeDestination(arangodb::velocypack::Slice edge,
 }
 }  // namespace
 
-namespace arangodb {
-namespace graph {
+namespace arangodb::graph {
 auto operator<<(std::ostream& out, ClusterProvider::Step const& step)
     -> std::ostream& {
   out << step._vertex.getID();
   return out;
 }
-}  // namespace graph
 }  // namespace arangodb
 
 ClusterProvider::Step::Step(VertexType v)
-    : _vertex(v), _edge(), _fetched(false) {}
+    : _vertex(std::move(v)), _edge(), _fetched(false) {}
 
 ClusterProvider::Step::Step(VertexType v, EdgeType edge, size_t prev)
-    : BaseStep(prev), _vertex(v), _edge(std::move(edge)), _fetched(false) {}
+    : BaseStep(prev), _vertex(std::move(v)), _edge(std::move(edge)), _fetched(false) {}
 
 ClusterProvider::Step::Step(VertexType v, EdgeType edge, size_t prev,
                             bool fetched)
-    : BaseStep(prev), _vertex(v), _edge(std::move(edge)), _fetched(fetched) {}
+    : BaseStep(prev), _vertex(std::move(v)), _edge(std::move(edge)), _fetched(fetched) {}
 
 ClusterProvider::Step::~Step() = default;
 
@@ -102,7 +101,7 @@ ClusterProvider::Step::StepType const& ClusterProvider::Step::Edge::getID()
 }
 bool ClusterProvider::Step::Edge::isValid() const { return !_edge.empty(); };
 
-bool ClusterProvider::Step::isResponsible(transaction::Methods* trx) const {
+bool ClusterProvider::Step::isResponsible(transaction::Methods* trx) {
   return true;
 }
 
@@ -127,13 +126,13 @@ void ClusterProvider::clear() {
   _vertexConnectedEdges.clear();
 }
 
-auto ClusterProvider::startVertex(VertexType vertex, size_t depth,
+auto ClusterProvider::startVertex(const VertexType& vertex, size_t depth,
                                   double weight) -> Step {
   LOG_TOPIC("da308", TRACE, Logger::GRAPHS)
       << "<ClusterProvider> Start Vertex:" << vertex;
   // Create the default initial step.
   TRI_ASSERT(weight == 0.0);  // Not implemented yet
-  return Step(_opts.getCache()->persistString(vertex));
+  return {_opts.getCache()->persistString(vertex)};
 }
 
 void ClusterProvider::fetchVerticesFromEngines(
@@ -208,7 +207,7 @@ void ClusterProvider::fetchVerticesFromEngines(
       if (!_opts.getCache()->isVertexCached(vertexKey)) {
         // Will be protected by the datalake.
         // We flag to retain the payload.
-        _opts.getCache()->cacheVertex(std::move(vertexKey), pair.value);
+        _opts.getCache()->cacheVertex(vertexKey, pair.value);
         needToRetainPayload = true;
       }
     }
@@ -240,10 +239,10 @@ void ClusterProvider::fetchVerticesFromEngines(
       // (e.g. it does not exist)
       _query->warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
                                          lE->getVertexIdentifier().toString());
-      _opts.getCache()->cacheVertex(std::move(lE->getVertexIdentifier()),
+      _opts.getCache()->cacheVertex(lE->getVertexIdentifier(),
                                     VPackSlice::nullSlice());
     }
-    result.emplace_back(std::move(lE));
+    result.emplace_back(lE);
   }
 }
 
@@ -395,7 +394,7 @@ auto ClusterProvider::fetch(std::vector<Step*> const& looseEnds)
   LOG_TOPIC("03c1b", TRACE, Logger::GRAPHS) << "<ClusterProvider> Fetching...";
   std::vector<Step*> result{};
 
-  if (looseEnds.size() > 0) {
+  if (!looseEnds.empty()) {
     result.reserve(looseEnds.size());
     fetchVerticesFromEngines(looseEnds, result);
     _stats.addHttpRequests(_opts.engines()->size() * looseEnds.size());
