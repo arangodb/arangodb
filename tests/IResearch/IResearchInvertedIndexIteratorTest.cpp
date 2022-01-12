@@ -370,42 +370,39 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering) {
 
     auto docCallback = [&expectedDocs, &docs](
                            arangodb::LocalDocumentId token,
-                           arangodb::IndexIterator::CoveringData* data) {
+                           arangodb::IndexIterator::CoveringData& data) {
       docs.push_back(token);
-      EXPECT_NE(data, nullptr);
-      if (data) {
-        EXPECT_TRUE(data->isArray());
-        auto invalid = data->at(5);
-        EXPECT_TRUE(invalid.isNone());
-        {
-          auto slice0 = data->at(0);
-          EXPECT_TRUE(slice0.isString());
-          if (slice0.isString()) {
-            EXPECT_EQ(slice0.copyString(),
-                      expectedDocs[token]->slice().get("a").copyString());
-          }
-          auto slice1 = data->at(1);
-          EXPECT_TRUE(slice1.isString());
-          if (slice1.isString()) {
-            EXPECT_EQ(slice1.copyString(),
-                      expectedDocs[token]->slice().get("b").copyString());
-          }
+      EXPECT_TRUE(data.isArray());
+      auto invalid = data.at(5);
+      EXPECT_TRUE(invalid.isNone());
+      {
+        auto slice0 = data.at(0);
+        EXPECT_TRUE(slice0.isString());
+        if (slice0.isString()) {
+          EXPECT_EQ(slice0.copyString(),
+                    expectedDocs[token]->slice().get("a").copyString());
         }
-        {
-          auto slice2 = data->at(2);
-          EXPECT_TRUE(slice2.isString());
-          if (slice2.isString()) {
-            EXPECT_EQ(slice2.copyString(),
-                      expectedDocs[token]->slice().get("a").copyString());
-          }
+        auto slice1 = data.at(1);
+        EXPECT_TRUE(slice1.isString());
+        if (slice1.isString()) {
+          EXPECT_EQ(slice1.copyString(),
+                    expectedDocs[token]->slice().get("b").copyString());
         }
-        {
-          auto slice3 = data->at(3);
-          EXPECT_TRUE(slice3.isString());
-          if (slice3.isString()) {
-            EXPECT_EQ(slice3.copyString(),
-                      expectedDocs[token]->slice().get("b").copyString());
-          }
+      }
+      {
+        auto slice2 = data.at(2);
+        EXPECT_TRUE(slice2.isString());
+        if (slice2.isString()) {
+          EXPECT_EQ(slice2.copyString(),
+                    expectedDocs[token]->slice().get("a").copyString());
+        }
+      }
+      {
+        auto slice3 = data.at(3);
+        EXPECT_TRUE(slice3.isString());
+        if (slice3.isString()) {
+          EXPECT_EQ(slice3.copyString(),
+                    expectedDocs[token]->slice().get("b").copyString());
         }
       }
       return true;
@@ -436,42 +433,39 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_next_array) {
 
     auto docCallback = [&expectedDocs, &docs](
                            arangodb::LocalDocumentId token,
-                           arangodb::IndexIterator::CoveringData* data) {
+                           arangodb::IndexIterator::CoveringData& data) {
       docs.push_back(token);
-      EXPECT_NE(data, nullptr);
-      if (data) {
-        EXPECT_TRUE(data->isArray());
-        auto invalid = data->at(5);
-        EXPECT_TRUE(invalid.isNone());
-        {
-          auto slice0 = data->at(0);
-          EXPECT_TRUE(slice0.isString());
-          if (slice0.isString()) {
-            EXPECT_EQ(slice0.copyString(),
-                      expectedDocs[token]->slice().get("a").copyString());
-          }
-          auto slice1 = data->at(1);
-          EXPECT_TRUE(slice1.isString());
-          if (slice1.isString()) {
-            EXPECT_EQ(slice1.copyString(),
-                      expectedDocs[token]->slice().get("b").copyString());
-          }
+      EXPECT_TRUE(data.isArray());
+      auto invalid = data.at(5);
+      EXPECT_TRUE(invalid.isNone());
+      {
+        auto slice0 = data.at(0);
+        EXPECT_TRUE(slice0.isString());
+        if (slice0.isString()) {
+          EXPECT_EQ(slice0.copyString(),
+                    expectedDocs[token]->slice().get("a").copyString());
         }
-        {
-          auto slice2 = data->at(2);
-          EXPECT_TRUE(slice2.isString());
-          if (slice2.isString()) {
-            EXPECT_EQ(slice2.copyString(),
-                      expectedDocs[token]->slice().get("a").copyString());
-          }
+        auto slice1 = data.at(1);
+        EXPECT_TRUE(slice1.isString());
+        if (slice1.isString()) {
+          EXPECT_EQ(slice1.copyString(),
+                    expectedDocs[token]->slice().get("b").copyString());
         }
-        {
-          auto slice3 = data->at(3);
-          EXPECT_TRUE(slice3.isString());
-          if (slice3.isString()) {
-            EXPECT_EQ(slice3.copyString(),
-                      expectedDocs[token]->slice().get("b").copyString());
-          }
+      }
+      {
+        auto slice2 = data.at(2);
+        EXPECT_TRUE(slice2.isString());
+        if (slice2.isString()) {
+          EXPECT_EQ(slice2.copyString(),
+                    expectedDocs[token]->slice().get("a").copyString());
+        }
+      }
+      {
+        auto slice3 = data.at(3);
+        EXPECT_TRUE(slice3.isString());
+        if (slice3.isString()) {
+          EXPECT_EQ(slice3.copyString(),
+                    expectedDocs[token]->slice().get("b").copyString());
         }
       }
       return true;
@@ -502,42 +496,39 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_next_subarray) {
 
     auto docCallback = [&expectedDocs, &docs](
                            arangodb::LocalDocumentId token,
-                           arangodb::IndexIterator::CoveringData* data) {
+                           arangodb::IndexIterator::CoveringData& data) {
       docs.push_back(token);
-      EXPECT_NE(data, nullptr);
-      if (data) {
-        EXPECT_TRUE(data->isArray());
-        auto invalid = data->at(5);
-        EXPECT_TRUE(invalid.isNone());
-        {
-          auto slice0 = data->at(0);
-          EXPECT_TRUE(slice0.isString());
-          if (slice0.isString()) {
-            EXPECT_EQ(slice0.copyString(),
-                      expectedDocs[token]->slice().get("a").copyString());
-          }
-          auto slice1 = data->at(1);
-          EXPECT_TRUE(slice1.isString());
-          if (slice1.isString()) {
-            EXPECT_EQ(slice1.copyString(),
-                      expectedDocs[token]->slice().get("b").copyString());
-          }
+      EXPECT_TRUE(data.isArray());
+      auto invalid = data.at(5);
+      EXPECT_TRUE(invalid.isNone());
+      {
+        auto slice0 = data.at(0);
+        EXPECT_TRUE(slice0.isString());
+        if (slice0.isString()) {
+          EXPECT_EQ(slice0.copyString(),
+                    expectedDocs[token]->slice().get("a").copyString());
         }
-        {
-          auto slice2 = data->at(2);
-          EXPECT_TRUE(slice2.isString());
-          if (slice2.isString()) {
-            EXPECT_EQ(slice2.copyString(),
-                      expectedDocs[token]->slice().get("a").copyString());
-          }
+        auto slice1 = data.at(1);
+        EXPECT_TRUE(slice1.isString());
+        if (slice1.isString()) {
+          EXPECT_EQ(slice1.copyString(),
+                    expectedDocs[token]->slice().get("b").copyString());
         }
-        {
-          auto slice3 = data->at(3);
-          EXPECT_TRUE(slice3.isString());
-          if (slice3.isString()) {
-            EXPECT_EQ(slice3.copyString(),
-                      expectedDocs[token]->slice().get("b").copyString());
-          }
+      }
+      {
+        auto slice2 = data.at(2);
+        EXPECT_TRUE(slice2.isString());
+        if (slice2.isString()) {
+          EXPECT_EQ(slice2.copyString(),
+                    expectedDocs[token]->slice().get("a").copyString());
+        }
+      }
+      {
+        auto slice3 = data.at(3);
+        EXPECT_TRUE(slice3.isString());
+        if (slice3.isString()) {
+          EXPECT_EQ(slice3.copyString(),
+                    expectedDocs[token]->slice().get("b").copyString());
         }
       }
       return true;
@@ -571,50 +562,47 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering_skip) {
 
     auto docCallback = [&expectedDocs, &docs](
                            arangodb::LocalDocumentId token,
-                           arangodb::IndexIterator::CoveringData* data) {
+                           arangodb::IndexIterator::CoveringData& data) {
       docs.push_back(token);
-      EXPECT_NE(data, nullptr);
-      if (data) {
-        EXPECT_TRUE(data->isArray());
-        auto invalid = data->at(5);
-        EXPECT_TRUE(invalid.isNone());
-        {
-          auto slice0 = data->at(0);
-          EXPECT_TRUE(slice0.isString());
-          if (slice0.isString()) {
-            EXPECT_EQ(slice0.copyString(),
-                      expectedDocs[token]->slice().get("a").copyString());
-          }
-          auto slice1 = data->at(1);
-          EXPECT_TRUE(slice1.isString());
-          if (slice1.isString()) {
-            EXPECT_EQ(slice1.copyString(),
-                      expectedDocs[token]->slice().get("b").copyString());
-          }
+      EXPECT_TRUE(data.isArray());
+      auto invalid = data.at(5);
+      EXPECT_TRUE(invalid.isNone());
+      {
+        auto slice0 = data.at(0);
+        EXPECT_TRUE(slice0.isString());
+        if (slice0.isString()) {
+          EXPECT_EQ(slice0.copyString(),
+                    expectedDocs[token]->slice().get("a").copyString());
         }
-        {
-          auto slice2 = data->at(2);
-          EXPECT_TRUE(slice2.isString());
-          if (slice2.isString()) {
-            EXPECT_EQ(slice2.copyString(),
-                      expectedDocs[token]->slice().get("a").copyString());
-          }
+        auto slice1 = data.at(1);
+        EXPECT_TRUE(slice1.isString());
+        if (slice1.isString()) {
+          EXPECT_EQ(slice1.copyString(),
+                    expectedDocs[token]->slice().get("b").copyString());
         }
-        {
-          auto slice3 = data->at(3);
-          EXPECT_TRUE(slice3.isString());
-          if (slice3.isString()) {
-            EXPECT_EQ(slice3.copyString(),
-                      expectedDocs[token]->slice().get("b").copyString());
-          }
+      }
+      {
+        auto slice2 = data.at(2);
+        EXPECT_TRUE(slice2.isString());
+        if (slice2.isString()) {
+          EXPECT_EQ(slice2.copyString(),
+                    expectedDocs[token]->slice().get("a").copyString());
         }
-        {
-          auto slice4 = data->at(4);
-          EXPECT_TRUE(slice4.isString());
-          if (slice4.isString()) {
-            EXPECT_EQ(slice4.copyString(),
-                      expectedDocs[token]->slice().get("c").copyString());
-          }
+      }
+      {
+        auto slice3 = data.at(3);
+        EXPECT_TRUE(slice3.isString());
+        if (slice3.isString()) {
+          EXPECT_EQ(slice3.copyString(),
+                    expectedDocs[token]->slice().get("b").copyString());
+        }
+      }
+      {
+        auto slice4 = data.at(4);
+        EXPECT_TRUE(slice4.isString());
+        if (slice4.isString()) {
+          EXPECT_EQ(slice4.copyString(),
+                    expectedDocs[token]->slice().get("c").copyString());
         }
       }
       return true;
@@ -727,67 +715,64 @@ TEST_F(IResearchInvertedIndexIteratorSortedTest, test_nextCovering_full) {
     std::vector<arangodb::LocalDocumentId> docs;
     auto docCallback = [&expectedDocs, &docs](
                            arangodb::LocalDocumentId token,
-                           arangodb::IndexIterator::CoveringData* data) {
+                           arangodb::IndexIterator::CoveringData& data) {
       docs.push_back(token);
-      EXPECT_NE(data, nullptr);
-      if (data) {
-        EXPECT_TRUE(data->isArray());
-        // sort columns counts also as stored so ivalid index is not 5 but 7
-        auto invalid = data->at(7);
-        EXPECT_TRUE(invalid.isNone());
-        auto invalid2 = data->at(1000);
-        EXPECT_TRUE(invalid2.isNone());
-        {
-          auto slice0 = data->at(0);
-          EXPECT_TRUE(slice0.isString());
-          if (slice0.isString()) {
-            EXPECT_EQ(slice0.copyString(),
-                      expectedDocs[token]->slice().get("a").copyString());
-          }
-          auto slice1 = data->at(1);
-          EXPECT_TRUE(slice1.isString());
-          if (slice1.isString()) {
-            EXPECT_EQ(slice1.copyString(),
-                      expectedDocs[token]->slice().get("b").copyString());
-          }
+      EXPECT_TRUE(data.isArray());
+      // sort columns counts also as stored so ivalid index is not 5 but 7
+      auto invalid = data.at(7);
+      EXPECT_TRUE(invalid.isNone());
+      auto invalid2 = data.at(1000);
+      EXPECT_TRUE(invalid2.isNone());
+      {
+        auto slice0 = data.at(0);
+        EXPECT_TRUE(slice0.isString());
+        if (slice0.isString()) {
+          EXPECT_EQ(slice0.copyString(),
+                    expectedDocs[token]->slice().get("a").copyString());
         }
-        {
-          auto slice2 = data->at(2);
-          EXPECT_TRUE(slice2.isString());
-          if (slice2.isString()) {
-            EXPECT_EQ(slice2.copyString(),
-                      expectedDocs[token]->slice().get("a").copyString());
-          }
-          auto slice3 = data->at(3);
-          EXPECT_TRUE(slice3.isString());
-          if (slice3.isString()) {
-            EXPECT_EQ(slice3.copyString(),
-                      expectedDocs[token]->slice().get("b").copyString());
-          }
+        auto slice1 = data.at(1);
+        EXPECT_TRUE(slice1.isString());
+        if (slice1.isString()) {
+          EXPECT_EQ(slice1.copyString(),
+                    expectedDocs[token]->slice().get("b").copyString());
         }
-        {
-          auto slice4 = data->at(4);
-          EXPECT_TRUE(slice4.isString());
-          if (slice4.isString()) {
-            EXPECT_EQ(slice4.copyString(),
-                      expectedDocs[token]->slice().get("a").copyString());
-          }
+      }
+      {
+        auto slice2 = data.at(2);
+        EXPECT_TRUE(slice2.isString());
+        if (slice2.isString()) {
+          EXPECT_EQ(slice2.copyString(),
+                    expectedDocs[token]->slice().get("a").copyString());
         }
-        {
-          auto slice5 = data->at(5);
-          EXPECT_TRUE(slice5.isString());
-          if (slice5.isString()) {
-            EXPECT_EQ(slice5.copyString(),
-                      expectedDocs[token]->slice().get("b").copyString());
-          }
+        auto slice3 = data.at(3);
+        EXPECT_TRUE(slice3.isString());
+        if (slice3.isString()) {
+          EXPECT_EQ(slice3.copyString(),
+                    expectedDocs[token]->slice().get("b").copyString());
         }
-        {
-          auto slice6 = data->at(6);
-          EXPECT_TRUE(slice6.isString());
-          if (slice6.isString()) {
-            EXPECT_EQ(slice6.copyString(),
-                      expectedDocs[token]->slice().get("c").copyString());
-          }
+      }
+      {
+        auto slice4 = data.at(4);
+        EXPECT_TRUE(slice4.isString());
+        if (slice4.isString()) {
+          EXPECT_EQ(slice4.copyString(),
+                    expectedDocs[token]->slice().get("a").copyString());
+        }
+      }
+      {
+        auto slice5 = data.at(5);
+        EXPECT_TRUE(slice5.isString());
+        if (slice5.isString()) {
+          EXPECT_EQ(slice5.copyString(),
+                    expectedDocs[token]->slice().get("b").copyString());
+        }
+      }
+      {
+        auto slice6 = data.at(6);
+        EXPECT_TRUE(slice6.isString());
+        if (slice6.isString()) {
+          EXPECT_EQ(slice6.copyString(),
+                    expectedDocs[token]->slice().get("c").copyString());
         }
       }
       return true;

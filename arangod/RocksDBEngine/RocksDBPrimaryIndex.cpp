@@ -163,7 +163,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
         _index->lookupKey(_trx, _key->slice().stringView(), canReadOwnWrites());
     if (documentId.isSet()) {
       auto data = SliceCoveringData(_key->slice());
-      cb(documentId, &data);
+      cb(documentId, data);
     }
     return false;
   }
@@ -273,7 +273,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
           _index->lookupKey(_trx, (*_iterator).stringView(), ReadOwnWrites::no);
       if (documentId.isSet()) {
         auto data = SliceCoveringData(*_iterator);
-        cb(documentId, &data);
+        cb(documentId, data);
         --limit;
       }
 
@@ -400,7 +400,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       builder->add(
           VPackValuePair(key.data(), key.size(), VPackValueType::String));
       auto data = SliceCoveringData(builder->slice());
-      cb(documentId, &data);
+      cb(documentId, data);
 
       --limit;
       if constexpr (reverse) {

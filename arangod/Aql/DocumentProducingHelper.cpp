@@ -332,7 +332,7 @@ IndexIterator::CoveringCallback aql::getCallback(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context) {
   return [&context](LocalDocumentId const& token,
-                    IndexIterator::CoveringData* covering) {
+                    IndexIterator::CoveringData& covering) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it

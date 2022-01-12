@@ -106,7 +106,7 @@ class Projections {
 
   /// @brief extract projections from a covering index
   void toVelocyPackFromIndex(arangodb::velocypack::Builder& b,
-                             IndexIterator::CoveringData* covering,
+                             IndexIterator::CoveringData& covering,
                              transaction::Methods const* trxPtr) const;
 
   /// @brief serialize the projections to velocypack

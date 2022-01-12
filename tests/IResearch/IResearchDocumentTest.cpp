@@ -3448,35 +3448,35 @@ TEST_F(
       },
       [](auto& server, auto const& it) {
         assertField<irs::numeric_token_stream, true>(server, *it,
-                                                     mangleNumeric("array.id"));
+                                                     mangleNumeric("array[*].id"));
       },
       [](auto& server, auto const& it) {
         assertField<IdentityAnalyzer, true>(
-            server, *it, mangleInvertedIndexStringIdentity("array.id"));
+            server, *it, mangleInvertedIndexStringIdentity("array[*].id"));
       },
       [](auto& server, auto const& it) {
         assertField<IdentityAnalyzer, true>(
-            server, *it, mangleInvertedIndexStringIdentity("array.id"));
+            server, *it, mangleInvertedIndexStringIdentity("array[*].id"));
       },
       [](auto& server, auto const& it) {
         assertField<irs::null_token_stream>(server, *it,
-                                            mangleNull("array.id"));
+                                            mangleNull("array[*].id"));
       },
       [](auto& server, auto const& it) {
         assertField<IdentityAnalyzer, true>(
-            server, *it, mangleInvertedIndexStringIdentity("array.subobj.id"));
+            server, *it, mangleInvertedIndexStringIdentity("array[*].subobj.id"));
       },
       [](auto& server, auto const& it) {
         assertField<irs::null_token_stream>(server, *it,
-                                            mangleNull("array.subobj.id"));
+                                            mangleNull("array[*].subobj.id"));
       },
       [](auto& server, auto const& it) {
         assertField<IdentityAnalyzer, true>(
-            server, *it, mangleInvertedIndexStringIdentity("array.subobj.id"));
+            server, *it, mangleInvertedIndexStringIdentity("array[*].subobj.id"));
       },
       [](auto& server, auto const& it) {
         assertField<irs::numeric_token_stream, true>(
-            server, *it, mangleNumeric("array.subobj.id"));
+            server, *it, mangleNumeric("array[*].subobj.id"));
       },
   };
 

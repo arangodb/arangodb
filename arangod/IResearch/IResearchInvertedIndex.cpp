@@ -677,7 +677,7 @@ class IResearchInvertedIndexIterator final
                 }
               } else if constexpr (withCovering) {
                 _projections.seek(_doc->value);
-                if (callback(documentId, &_projections)) {
+                if (callback(documentId, _projections)) {
                   --limit;
                 }
               } else {
@@ -810,7 +810,7 @@ class IResearchInvertedIndexMergeIterator final
               }
             } else if constexpr (withCovering) {
               segment.projections.seek(segment.doc->value);
-              if (callback(documentId, &segment.projections)) {
+              if (callback(documentId, segment.projections)) {
                 --limit;
               }
             } else {

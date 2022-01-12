@@ -151,7 +151,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 
     if (s.ok()) {
       auto data = SliceCoveringData(RocksDBKey::indexedVPack(_key.ref()));
-      cb(LocalDocumentId(RocksDBValue::documentId(ps)), &data);
+      cb(LocalDocumentId(RocksDBValue::documentId(ps)), data);
     }
 
     // there is at most one element, so we are done now
@@ -270,7 +270,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
           _index->_unique ? RocksDBValue::documentId(_iterator->value())
                           : RocksDBKey::indexDocumentId(key));
       auto data = SliceCoveringData(RocksDBKey::indexedVPack(key));
-      cb(documentId, &data);
+      cb(documentId, data);
 
       if (!advance()) {
         // validate that Iterator is in a good shape and hasn't failed

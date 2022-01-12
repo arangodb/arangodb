@@ -107,7 +107,7 @@ class IndexIterator {
                              velocypack::Slice doc)>
       DocumentCallback;
   typedef std::function<bool(LocalDocumentId const& token,
-                             CoveringData* covering)>
+                             CoveringData& covering)>
       CoveringCallback;
   typedef std::function<bool(LocalDocumentId const& token,
                              velocypack::Slice extra)>

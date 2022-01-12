@@ -84,7 +84,7 @@ IndexIterator::CoveringCallback getCallback(
     IndexNode::IndexValuesRegisters const& outNonMaterializedIndRegs) {
   return [&context, &index, &outNonMaterializedIndVars,
           &outNonMaterializedIndRegs](LocalDocumentId const& token,
-                                      IndexIterator::CoveringData* covering) {
+                                      IndexIterator::CoveringData& covering) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -105,7 +105,7 @@ IndexIterator::CoveringCallback getCallback(
     if (context.hasFilter()) {
       struct filterContext {
         IndexNode::IndexValuesVars const& outNonMaterializedIndVars;
-        IndexIterator::CoveringData* covering;
+        IndexIterator::CoveringData& covering;
       };
       filterContext fc{outNonMaterializedIndVars, covering};
 
@@ -119,14 +119,14 @@ IndexIterator::CoveringCallback getCallback(
         }
         velocypack::Slice s;
         // hash/skiplist/persistent
-        if (fc.covering->isArray()) {
-          TRI_ASSERT(it->second < fc.covering->length());
-          if (ADB_UNLIKELY(it->second >= fc.covering->length())) {
+        if (fc.covering.isArray()) {
+          TRI_ASSERT(it->second < fc.covering.length());
+          if (ADB_UNLIKELY(it->second >= fc.covering.length())) {
             return AqlValue();
           }
-          s = fc.covering->at(it->second);
+          s = fc.covering.at(it->second);
         } else {  // primary/edge
-          s = fc.covering->value();
+          s = fc.covering.value();
         }
         if (doCopy) {
           return AqlValue(AqlValueHintCopy(s.start()));
@@ -151,13 +151,13 @@ IndexIterator::CoveringCallback getCallback(
       output.moveValueInto(registerId, input, guard);
 
       // hash/skiplist/persistent
-      if (covering->isArray()) {
+      if (covering.isArray()) {
         for (auto const& indReg : outNonMaterializedIndRegs.second) {
-          TRI_ASSERT(indReg.first < covering->length());
-          if (ADB_UNLIKELY(indReg.first >= covering->length())) {
+          TRI_ASSERT(indReg.first < covering.length());
+          if (ADB_UNLIKELY(indReg.first >= covering.length())) {
             return false;
           }
-          auto s = covering->at(indReg.first);
+          auto s = covering.at(indReg.first);
           AqlValue v(s);
           AqlValueGuard guard{v, true};
           TRI_ASSERT(!output.isFull());
@@ -169,7 +169,7 @@ IndexIterator::CoveringCallback getCallback(
         if (ADB_UNLIKELY(indReg == outNonMaterializedIndRegs.second.cend())) {
           return false;
         }
-        AqlValue v(covering->value());
+        AqlValue v(covering.value());
         AqlValueGuard guard{v, true};
         TRI_ASSERT(!output.isFull());
         output.moveValueInto(indReg->second, input, guard);
