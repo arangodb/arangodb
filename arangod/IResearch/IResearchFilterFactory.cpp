@@ -486,9 +486,7 @@ class FilterContext {
 
   arangodb::iresearch::FieldMeta::Analyzer const& fieldAnalyzer(
       std::string_view name) const {
-    if (_analyzerProvider == nullptr ||
-        _analyzer._shortName !=  // always use non-default overriden analyzer
-            irs::type<arangodb::iresearch::IdentityAnalyzer>::name()) {
+    if (_analyzerProvider == nullptr) {
       return _analyzer;
     }
     return (*_analyzerProvider)(name);
@@ -623,8 +621,8 @@ Result byTerm(irs::by_term* filter, aql::AstNode const& attribute,
               ScopedAqlValue const& value, QueryContext const& ctx,
               FilterContext const& filterCtx) {
   std::string name;
-  if (filter &&
-      !arangodb::iresearch::nameFromAttributeAccess(name, attribute, ctx)) {
+  if (filter && !arangodb::iresearch::nameFromAttributeAccess(
+                    name, attribute, ctx, !filterCtx.isSearchFilter())) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Failed to generate field name from node "s.append(
                 aql::AstNode::toString(&attribute))};
@@ -663,7 +661,8 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attribute,
 
   std::string name;
 
-  if (filter && !nameFromAttributeAccess(name, attribute, ctx)) {
+  if (filter && !nameFromAttributeAccess(name, attribute, ctx,
+                                         !filterCtx.isSearchFilter())) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Failed to generate field name from node "s.append(
                 aql::AstNode::toString(&attribute))};
@@ -699,7 +698,8 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
                QueryContext const& ctx, FilterContext const& filterCtx) {
   std::string name;
 
-  if (filter && !nameFromAttributeAccess(name, attributeNode, ctx)) {
+  if (filter && !nameFromAttributeAccess(name, attributeNode, ctx,
+                                         !filterCtx.isSearchFilter())) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Failed to generate field name from node "s.append(
                 aql::AstNode::toString(&attributeNode))};
@@ -1021,7 +1021,8 @@ Result byRange(irs::boolean_filter* filter,
   TRI_ASSERT(node.value && node.value->isDeterministic());
 
   std::string name;
-  if (filter && !nameFromAttributeAccess(name, *node.attribute, ctx)) {
+  if (filter && !nameFromAttributeAccess(name, *node.attribute, ctx,
+                                         !filterCtx.isSearchFilter())) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Failed to generate field name from node "s.append(
                 aql::AstNode::toString(node.attribute))};
@@ -1119,8 +1120,10 @@ Result fromFuncGeoInRange(char const* funcName, irs::boolean_filter* filter,
   size_t fieldNodeIdx = 1;
   size_t centroidNodeIdx = 2;
 
-  if (!arangodb::iresearch::checkAttributeAccess(fieldNode, *ctx.ref)) {
-    if (!arangodb::iresearch::checkAttributeAccess(centroidNode, *ctx.ref)) {
+  if (!arangodb::iresearch::checkAttributeAccess(fieldNode, *ctx.ref,
+                                                 !filterCtx.isSearchFilter())) {
+    if (!arangodb::iresearch::checkAttributeAccess(
+            centroidNode, *ctx.ref, !filterCtx.isSearchFilter())) {
       return {TRI_ERROR_BAD_PARAMETER,
               "'"s.append(funcName).append(
                   "' AQL function: Unable to find argument denoting an "
@@ -1196,7 +1199,8 @@ Result fromFuncGeoInRange(char const* funcName, irs::boolean_filter* filter,
   if (filter) {
     std::string name;
 
-    if (!nameFromAttributeAccess(name, *fieldNode, ctx)) {
+    if (!nameFromAttributeAccess(name, *fieldNode, ctx,
+                                 !filterCtx.isSearchFilter())) {
       return error::failedToGenerateName(funcName, fieldNodeIdx);
     }
 
@@ -1251,8 +1255,10 @@ Result fromGeoDistanceInterval(
   size_t fieldNodeIdx = 1;
   size_t centroidNodeIdx = 2;
 
-  if (!arangodb::iresearch::checkAttributeAccess(fieldNode, *ctx.ref)) {
-    if (!arangodb::iresearch::checkAttributeAccess(centroidNode, *ctx.ref)) {
+  if (!arangodb::iresearch::checkAttributeAccess(fieldNode, *ctx.ref,
+                                                 !filterCtx.isSearchFilter())) {
+    if (!arangodb::iresearch::checkAttributeAccess(
+            centroidNode, *ctx.ref, !filterCtx.isSearchFilter())) {
       return {TRI_ERROR_BAD_PARAMETER};
     }
 
@@ -1302,7 +1308,8 @@ Result fromGeoDistanceInterval(
   if (filter) {
     std::string name;
 
-    if (!nameFromAttributeAccess(name, *fieldNode, ctx)) {
+    if (!nameFromAttributeAccess(name, *fieldNode, ctx,
+                                 !filterCtx.isSearchFilter())) {
       return error::failedToGenerateName(GEO_DISTANCE_FUNC, fieldNodeIdx);
     }
 
@@ -1364,7 +1371,8 @@ Result fromInterval(irs::boolean_filter* filter, QueryContext const& ctx,
 
   arangodb::iresearch::NormalizedCmpNode normNode;
 
-  if (!arangodb::iresearch::normalizeCmpNode(node, *ctx.ref, normNode)) {
+  if (!arangodb::iresearch::normalizeCmpNode(
+          node, *ctx.ref, !filterCtx.isSearchFilter(), normNode)) {
     if (arangodb::iresearch::normalizeGeoDistanceCmpNode(node, *ctx.ref,
                                                          normNode)) {
       if (fromGeoDistanceInterval(filter, normNode, ctx, filterCtx).ok()) {
@@ -1392,7 +1400,8 @@ Result fromBinaryEq(irs::boolean_filter* filter, QueryContext const& ctx,
 
   arangodb::iresearch::NormalizedCmpNode normalized;
 
-  if (!arangodb::iresearch::normalizeCmpNode(node, *ctx.ref, normalized)) {
+  if (!arangodb::iresearch::normalizeCmpNode(
+          node, *ctx.ref, !filterCtx.isSearchFilter(), normalized)) {
     if (arangodb::iresearch::normalizeGeoDistanceCmpNode(node, *ctx.ref,
                                                          normalized)) {
       if (fromGeoDistanceInterval(filter, normalized, ctx, filterCtx).ok()) {
@@ -1732,14 +1741,16 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
       return fromExpression(filter, ctx, filterCtx, node);
     }
     size_t const n = valueNode->numMembers();
-    if (!arangodb::iresearch::checkAttributeAccess(attributeNode, *ctx.ref)) {
+    if (!arangodb::iresearch::checkAttributeAccess(
+            attributeNode, *ctx.ref, !filterCtx.isSearchFilter())) {
       // no attribute access specified in attribute node, try to
       // find it in value node
       bool attributeAccessFound = false;
       for (size_t i = 0; i < n; ++i) {
         attributeAccessFound |=
             (nullptr != arangodb::iresearch::checkAttributeAccess(
-                            valueNode->getMemberUnchecked(i), *ctx.ref));
+                            valueNode->getMemberUnchecked(i), *ctx.ref,
+                            !filterCtx.isSearchFilter()));
       }
       if (!attributeAccessFound) {
         return fromExpression(filter, ctx, filterCtx, node);
@@ -1779,8 +1790,8 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
       toNormalize.addMember(attributeNode);
       toNormalize.addMember(member);
       toNormalize.flags = member->flags;
-      if (!arangodb::iresearch::normalizeCmpNode(toNormalize, *ctx.ref,
-                                                 normalized)) {
+      if (!arangodb::iresearch::normalizeCmpNode(
+              toNormalize, *ctx.ref, !filterCtx.isSearchFilter(), normalized)) {
         if (!filter) {
           // can't evaluate non constant filter before the execution
           if (filterCtx.isSearchFilter()) {
@@ -1818,7 +1829,8 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
   }
 
   if (!node.isDeterministic() ||
-      !arangodb::iresearch::checkAttributeAccess(attributeNode, *ctx.ref) ||
+      !arangodb::iresearch::checkAttributeAccess(attributeNode, *ctx.ref,
+                                                 !filterCtx.isSearchFilter()) ||
       arangodb::iresearch::findReference(*valueNode, *ctx.ref)) {
     return fromExpression(filter, ctx, filterCtx, node);
   }
@@ -1857,7 +1869,8 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
                                        filterCtx.analyzerProvider()};
 
       std::string fieldName;
-      if (filter && !nameFromAttributeAccess(fieldName, *attributeNode, ctx)) {
+      if (filter && !nameFromAttributeAccess(fieldName, *attributeNode, ctx,
+                                             !filterCtx.isSearchFilter())) {
         return {TRI_ERROR_BAD_PARAMETER,
                 "Failed to generate field name from node " +
                     aql::AstNode::toString(attributeNode)};
@@ -1902,7 +1915,8 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
 
   size_t const n = valueNode->numMembers();
 
-  if (!arangodb::iresearch::checkAttributeAccess(attributeNode, *ctx.ref)) {
+  if (!arangodb::iresearch::checkAttributeAccess(attributeNode, *ctx.ref,
+                                                 !filterCtx.isSearchFilter())) {
     // no attribute access specified in attribute node, try to
     // find it in value node
 
@@ -1910,7 +1924,8 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
     for (size_t i = 0; i < n; ++i) {
       attributeAccessFound |=
           (nullptr != arangodb::iresearch::checkAttributeAccess(
-                          valueNode->getMemberUnchecked(i), *ctx.ref));
+                          valueNode->getMemberUnchecked(i), *ctx.ref,
+                          !filterCtx.isSearchFilter()));
     }
 
     if (!attributeAccessFound) {
@@ -1964,8 +1979,8 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
     toNormalize.addMember(member);
     toNormalize.flags = member->flags;  // attributeNode is deterministic here
 
-    if (!arangodb::iresearch::normalizeCmpNode(toNormalize, *ctx.ref,
-                                               normalized)) {
+    if (!arangodb::iresearch::normalizeCmpNode(
+            toNormalize, *ctx.ref, !filterCtx.isSearchFilter(), normalized)) {
       if (!filter) {
         // can't evaluate non constant filter before the execution
         if (filterCtx.isSearchFilter()) {
@@ -2028,7 +2043,8 @@ Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
   TRI_ASSERT(attributeNode);
 
   if (!node.isDeterministic() ||
-      !arangodb::iresearch::checkAttributeAccess(attributeNode, *ctx.ref) ||
+      !arangodb::iresearch::checkAttributeAccess(attributeNode, *ctx.ref,
+                                                 !filterCtx.isSearchFilter()) ||
       arangodb::iresearch::findReference(*valueNode, *ctx.ref)) {
     return fromExpression(filter, ctx, filterCtx, node);
   }
@@ -2407,7 +2423,7 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
 
   // 1st argument defines a field
   auto const* fieldArg = arangodb::iresearch::checkAttributeAccess(
-      args.getMemberUnchecked(0), *ctx.ref);
+      args.getMemberUnchecked(0), *ctx.ref, !filterCtx.isSearchFilter());
 
   if (!fieldArg) {
     return error::invalidAttribute(funcName, 1);
@@ -2417,8 +2433,8 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
   std::string fieldName;
   auto const isIndexFilter = filterCtx.isSearchFilter();
 
-  if (filter && !arangodb::iresearch::nameFromAttributeAccess(fieldName,
-                                                              *fieldArg, ctx)) {
+  if (filter && !arangodb::iresearch::nameFromAttributeAccess(
+                    fieldName, *fieldArg, ctx, !filterCtx.isSearchFilter())) {
     return error::failedToGenerateName(funcName, 1);
   }
 
@@ -2802,7 +2818,7 @@ class ArgsTraits<VPackSlice> {
 };
 
 typedef std::function<Result(char const*, size_t const, char const*,
-                             irs::by_phrase*, QueryContext const&, VPackSlice,
+                             irs::by_phrase*, QueryContext const&,  FilterContext const&, VPackSlice,
                              size_t, irs::analysis::analyzer*)>
     ConversionPhraseHandler;
 
@@ -2839,7 +2855,7 @@ Result oneArgumentfromFuncPhrase(char const* funcName,
 // {<TERM>: [ '[' ] <term> [ ']' ] }
 Result fromFuncPhraseTerm(char const* funcName, size_t funcArgumentPosition,
                           char const* subFuncName, irs::by_phrase* filter,
-                          QueryContext const& ctx, VPackSlice elem,
+                          QueryContext const& ctx, FilterContext const&, VPackSlice elem,
                           size_t firstOffset,
                           irs::analysis::analyzer* /*analyzer*/ = nullptr) {
   irs::string_ref term;
@@ -2861,7 +2877,7 @@ Result fromFuncPhraseTerm(char const* funcName, size_t funcArgumentPosition,
 // {<STARTS_WITH>: [ '[' ] <term> [ ']' ] }
 Result fromFuncPhraseStartsWith(
     char const* funcName, size_t funcArgumentPosition, char const* subFuncName,
-    irs::by_phrase* filter, QueryContext const& ctx, VPackSlice elem,
+    irs::by_phrase* filter, QueryContext const& ctx, FilterContext const&, VPackSlice elem,
     size_t firstOffset, irs::analysis::analyzer* /*analyzer*/ = nullptr) {
   irs::string_ref term;
   auto res = oneArgumentfromFuncPhrase(funcName, funcArgumentPosition,
@@ -2882,7 +2898,7 @@ Result fromFuncPhraseStartsWith(
 Result fromFuncPhraseLike(char const* funcName,
                           size_t const funcArgumentPosition,
                           char const* subFuncName, irs::by_phrase* filter,
-                          QueryContext const& ctx, VPackSlice elem,
+                          QueryContext const& ctx, FilterContext const&, VPackSlice elem,
                           size_t firstOffset,
                           irs::analysis::analyzer* /*analyzer*/ = nullptr) {
   irs::string_ref term;
@@ -2904,7 +2920,9 @@ Result fromFuncPhraseLike(char const* funcName,
 template<size_t First, typename ElementType,
          typename ElementTraits = ArgsTraits<ElementType>>
 Result getLevenshteinArguments(char const* funcName, bool isFilter,
-                               QueryContext const& ctx, ElementType const& args,
+                               QueryContext const& ctx,
+                               FilterContext const& filterCtx,
+                               ElementType const& args,
                                aql::AstNode const** field,
                                typename ElementTraits::ValueType& targetValue,
                                irs::by_edit_distance_options& opts,
@@ -2928,7 +2946,7 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
     TRI_ASSERT(field);
     // (0 - First) argument defines a field
     *field = arangodb::iresearch::checkAttributeAccess(
-        args.getMemberUnchecked(0), *ctx.ref);
+        args.getMemberUnchecked(0), *ctx.ref, !filterCtx.isSearchFilter());
 
     if (!*field) {
       return error::invalidAttribute(funcName, 1);
@@ -3037,7 +3055,7 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
 Result fromFuncPhraseLevenshteinMatch(
     char const* funcName, size_t const funcArgumentPosition,
     char const* subFuncName, irs::by_phrase* filter, QueryContext const& ctx,
-    VPackSlice array, size_t firstOffset,
+    FilterContext const& filterCtx, VPackSlice array, size_t firstOffset,
     irs::analysis::analyzer* /*analyzer*/ = nullptr) {
   if (!array.isArray()) {
     return {TRI_ERROR_BAD_PARAMETER,
@@ -3052,7 +3070,7 @@ Result fromFuncPhraseLevenshteinMatch(
   VPackSlice targetValue;
   irs::by_edit_distance_options opts;
   auto res = getLevenshteinArguments<1>(
-      subFuncName, filter != nullptr, ctx, array, nullptr, targetValue, opts,
+      subFuncName, filter != nullptr, ctx, filterCtx, array, nullptr, targetValue, opts,
       getSubFuncErrorSuffix(funcName, funcArgumentPosition));
   if (res.fail()) {
     return res;
@@ -3101,7 +3119,7 @@ template<typename ElementType, typename ElementTraits = ArgsTraits<ElementType>>
 Result fromFuncPhraseTerms(char const* funcName,
                            size_t const funcArgumentPosition,
                            char const* subFuncName, irs::by_phrase* filter,
-                           QueryContext const& ctx, ElementType const& array,
+                           QueryContext const& ctx, FilterContext const&, ElementType const& array,
                            size_t firstOffset,
                            irs::analysis::analyzer* analyzer = nullptr) {
   if (!array.isArray()) {
@@ -3169,14 +3187,12 @@ Result fromFuncPhraseTerms(char const* funcName,
 
 template<size_t First, typename ElementType,
          typename ElementTraits = ArgsTraits<ElementType>>
-Result getInRangeArguments(char const* funcName, bool isFilter,
-                           QueryContext const& ctx, ElementType const& args,
-                           aql::AstNode const** field,
-                           typename ElementTraits::ValueType& min,
-                           bool& minInclude,
-                           typename ElementTraits::ValueType& max,
-                           bool& maxInclude, bool& ret,
-                           std::string const& errorSuffix = std::string()) {
+Result getInRangeArguments(
+    char const* funcName, bool isFilter, QueryContext const& ctx,
+    FilterContext const& filterCtx, ElementType const& args,
+    aql::AstNode const** field, typename ElementTraits::ValueType& min,
+    bool& minInclude, typename ElementTraits::ValueType& max, bool& maxInclude,
+    bool& ret, std::string const& errorSuffix = std::string()) {
   if (!ElementTraits::isDeterministic(args)) {
     return error::nondeterministicArgs(funcName).withError(
         [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
@@ -3193,7 +3209,7 @@ Result getInRangeArguments(char const* funcName, bool isFilter,
     TRI_ASSERT(field);
     // (0 - First) argument defines a field
     *field = arangodb::iresearch::checkAttributeAccess(
-        args.getMemberUnchecked(0), *ctx.ref);
+        args.getMemberUnchecked(0), *ctx.ref, !filterCtx.isSearchFilter());
 
     if (!*field) {
       return error::invalidAttribute(funcName, 1);
@@ -3254,7 +3270,7 @@ Result getInRangeArguments(char const* funcName, bool isFilter,
 Result fromFuncPhraseInRange(char const* funcName,
                              size_t const funcArgumentPosition,
                              char const* subFuncName, irs::by_phrase* filter,
-                             QueryContext const& ctx, VPackSlice array,
+                             QueryContext const& ctx, FilterContext const& filterCtx, VPackSlice array,
                              size_t firstOffset,
                              irs::analysis::analyzer* /*analyzer*/ = nullptr) {
   if (!array.isArray()) {
@@ -3274,7 +3290,7 @@ Result fromFuncPhraseInRange(char const* funcName,
   auto minInclude = false;
   auto maxInclude = false;
   auto ret = false;
-  auto res = getInRangeArguments<1>(subFuncName, filter != nullptr, ctx, array,
+  auto res = getInRangeArguments<1>(subFuncName, filter != nullptr, ctx, filterCtx, array,
                                     nullptr, min, minInclude, max, maxInclude,
                                     ret, errorSuffix);
   if (res.fail() || ret) {
@@ -3324,7 +3340,7 @@ std::map<irs::string_ref, ConversionPhraseHandler> const
 Result processPhraseArgObjectType(char const* funcName,
                                   size_t const funcArgumentPosition,
                                   irs::by_phrase* filter,
-                                  QueryContext const& ctx, VPackSlice object,
+                                  QueryContext const& ctx, FilterContext const& filterCtx, VPackSlice object,
                                   size_t firstOffset,
                                   irs::analysis::analyzer* analyzer = nullptr) {
   TRI_ASSERT(object.isObject());
@@ -3353,7 +3369,7 @@ Result processPhraseArgObjectType(char const* funcName,
                   .append("'")};
     }
     return entry->second(funcName, funcArgumentPosition, entry->first.c_str(),
-                         filter, ctx, value, firstOffset, analyzer);
+                         filter, ctx, filterCtx, value, firstOffset, analyzer);
   } else {
     return {TRI_ERROR_BAD_PARAMETER,
             "'"s.append(funcName)
@@ -3412,7 +3428,7 @@ Result processPhraseArgs(char const* funcName, irs::by_phrase* phrase,
           offset = 0;
           continue;
         } else {
-          auto res = fromFuncPhraseTerms(funcName, idx, TERMS_FUNC, phrase, ctx,
+          auto res = fromFuncPhraseTerms(funcName, idx, TERMS_FUNC, phrase, ctx, filterCtx,
                                          ElementTraits::valueSlice(valueArg),
                                          offset, analyzer);
           if (res.fail()) {
@@ -3424,7 +3440,7 @@ Result processPhraseArgs(char const* funcName, irs::by_phrase* phrase,
         }
       }
     } else if (valueArg.isObject()) {
-      auto res = processPhraseArgObjectType(funcName, idx, phrase, ctx,
+      auto res = processPhraseArgObjectType(funcName, idx, phrase, ctx, filterCtx,
                                             ElementTraits::valueSlice(valueArg),
                                             offset);
       if (res.fail()) {
@@ -3506,7 +3522,7 @@ Result fromFuncPhrase(char const* funcName, irs::boolean_filter* filter,
   // ...........................................................................
 
   auto const* fieldArg = arangodb::iresearch::checkAttributeAccess(
-      args.getMemberUnchecked(0), *ctx.ref);
+      args.getMemberUnchecked(0), *ctx.ref, !filterCtx.isSearchFilter());
 
   if (!fieldArg) {
     return error::invalidAttribute(funcName, 1);
@@ -3553,7 +3569,8 @@ Result fromFuncPhrase(char const* funcName, irs::boolean_filter* filter,
   if (filter) {
     std::string name;
 
-    if (!arangodb::iresearch::nameFromAttributeAccess(name, *fieldArg, ctx)) {
+    if (!arangodb::iresearch::nameFromAttributeAccess(
+            name, *fieldArg, ctx, !filterCtx.isSearchFilter())) {
       return error::failedToGenerateName(funcName, 1);
     }
 
@@ -3607,7 +3624,7 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
 
   // 1st argument defines a field
   auto const* field = arangodb::iresearch::checkAttributeAccess(
-      args.getMemberUnchecked(0), *ctx.ref);
+      args.getMemberUnchecked(0), *ctx.ref, !filterCtx.isSearchFilter());
 
   if (!field) {
     return error::invalidAttribute(funcName, 1);
@@ -3720,7 +3737,8 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
   if (filter) {
     std::string name;
 
-    if (!nameFromAttributeAccess(name, *field, ctx)) {
+    if (!nameFromAttributeAccess(name, *field, ctx,
+                                 !filterCtx.isSearchFilter())) {
       auto message = "'"s.append(funcName).append(
           "' AQL function: Failed to generate field name from the 1st "
           "argument");
@@ -3783,7 +3801,8 @@ Result fromFuncStartsWith(char const* funcName, irs::boolean_filter* filter,
 
   // 1st argument defines a field
   auto const* field = arangodb::iresearch::checkAttributeAccess(
-      args.getMemberUnchecked(currentArgNum), *ctx.ref);
+      args.getMemberUnchecked(currentArgNum), *ctx.ref,
+      !filterCtx.isSearchFilter());
 
   if (!field) {
     return error::invalidAttribute(funcName, currentArgNum + 1);
@@ -3879,7 +3898,8 @@ Result fromFuncStartsWith(char const* funcName, irs::boolean_filter* filter,
   if (filter) {
     std::string name;
 
-    if (!nameFromAttributeAccess(name, *field, ctx)) {
+    if (!nameFromAttributeAccess(name, *field, ctx,
+                                 !filterCtx.isSearchFilter())) {
       return error::failedToGenerateName(funcName, 1);
     }
 
@@ -3935,7 +3955,7 @@ Result fromFuncInRange(char const* funcName, irs::boolean_filter* filter,
   auto maxInclude = false;
   auto ret = false;
   auto res =
-      getInRangeArguments<0>(funcName, filter != nullptr, ctx, args, &field,
+      getInRangeArguments<0>(funcName, filter != nullptr, ctx, filterCtx, args, &field,
                              min, minInclude, max, maxInclude, ret);
   if (res.fail() || ret) {
     return res;
@@ -3970,7 +3990,7 @@ Result fromFuncLike(char const* funcName, irs::boolean_filter* filter,
 
   // 1st argument defines a field
   auto const* field = arangodb::iresearch::checkAttributeAccess(
-      args.getMemberUnchecked(0), *ctx.ref);
+      args.getMemberUnchecked(0), *ctx.ref, !filterCtx.isSearchFilter());
 
   if (!field) {
     return error::invalidAttribute(funcName, 1);
@@ -3991,7 +4011,8 @@ Result fromFuncLike(char const* funcName, irs::boolean_filter* filter,
   if (filter) {
     std::string name;
 
-    if (!nameFromAttributeAccess(name, *field, ctx)) {
+    if (!nameFromAttributeAccess(name, *field, ctx,
+                                 !filterCtx.isSearchFilter())) {
       return error::failedToGenerateName(funcName, 1);
     }
 
@@ -4022,8 +4043,9 @@ Result fromFuncLevenshteinMatch(char const* funcName,
   aql::AstNode const* field = nullptr;
   ScopedAqlValue targetValue;
   irs::by_edit_distance_options opts;
-  auto res = getLevenshteinArguments<0>(funcName, filter != nullptr, ctx, args,
-                                        &field, targetValue, opts);
+  auto res =
+      getLevenshteinArguments<0>(funcName, filter != nullptr, ctx, filterCtx,
+                                 args, &field, targetValue, opts);
   if (res.fail()) {
     return res;
   }
@@ -4031,7 +4053,8 @@ Result fromFuncLevenshteinMatch(char const* funcName,
   if (filter) {
     std::string name;
 
-    if (!nameFromAttributeAccess(name, *field, ctx)) {
+    if (!nameFromAttributeAccess(name, *field, ctx,
+                                 !filterCtx.isSearchFilter())) {
       return error::failedToGenerateName(funcName, 1);
     }
 
@@ -4070,8 +4093,10 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
   size_t fieldNodeIdx = 1;
   size_t shapeNodeIdx = 2;
 
-  if (!arangodb::iresearch::checkAttributeAccess(fieldNode, *ctx.ref)) {
-    if (!arangodb::iresearch::checkAttributeAccess(shapeNode, *ctx.ref)) {
+  if (!arangodb::iresearch::checkAttributeAccess(fieldNode, *ctx.ref,
+                                                 !filterCtx.isSearchFilter())) {
+    if (!arangodb::iresearch::checkAttributeAccess(
+            shapeNode, *ctx.ref, !filterCtx.isSearchFilter())) {
       return {TRI_ERROR_BAD_PARAMETER,
               "'"s.append(funcName).append(
                   "' AQL function: Unable to find argument denoting an "
@@ -4141,7 +4166,8 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
   if (filter) {
     std::string name;
 
-    if (!nameFromAttributeAccess(name, *fieldNode, ctx)) {
+    if (!nameFromAttributeAccess(name, *fieldNode, ctx,
+                                 !filterCtx.isSearchFilter())) {
       return error::failedToGenerateName(funcName, fieldNodeIdx);
     }
 

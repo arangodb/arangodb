@@ -48,28 +48,67 @@ irs::string_ref const BOOL_SUFFIX("\0_b", 3);
 irs::string_ref const NUMERIC_SUFFIX("\0_d", 3);
 irs::string_ref const STRING_SUFFIX("\0_s", 3);
 
-void mangleType(std::string& name) { name += TYPE_DELIMITER; }
+void mangleType(std::string& name) {
+  // remove the last expansion as it could be omitted accodring to our
+  // indicies behaviour
+  if (name.ends_with("[*]")) {
+    name.resize(name.size() - 3);
+  }
+  name += TYPE_DELIMITER;
+}
 
-void mangleAnalyzer(std::string& name) { name += ANALYZER_DELIMITER; }
+void mangleAnalyzer(std::string& name) {
+  // remove the last expansion as it could be omitted accodring to our
+  // indicies behaviour
+  if (name.ends_with("[*]")) {
+    name.resize(name.size() - 3);
+  }
+  name += ANALYZER_DELIMITER;
+}
 
 void mangleNull(std::string& name) {
+  // remove the last expansion as it could be omitted accodring to our
+  // indicies behaviour
+  if (name.ends_with("[*]")) {
+    name.resize(name.size() - 3);
+  }
   name.append(NULL_SUFFIX.c_str(), NULL_SUFFIX.size());
 }
 
 void mangleBool(std::string& name) {
+  // remove the last expansion as it could be omitted accodring to our
+  // indicies behaviour
+  if (name.ends_with("[*]")) {
+    name.resize(name.size() - 3);
+  }
   name.append(BOOL_SUFFIX.c_str(), BOOL_SUFFIX.size());
 }
 
 void mangleNumeric(std::string& name) {
+  // remove the last expansion as it could be omitted accodring to our
+  // indicies behaviour
+  if (name.ends_with("[*]")) {
+    name.resize(name.size() - 3);
+  }
   name.append(NUMERIC_SUFFIX.c_str(), NUMERIC_SUFFIX.size());
 }
 
 void mangleString(std::string& name) {
+  // remove the last expansion as it could be omitted accodring to our
+  // indicies behaviour
+  if (name.ends_with("[*]")) {
+    name.resize(name.size() - 3);
+  }
   name.append(STRING_SUFFIX.c_str(), STRING_SUFFIX.size());
 }
 
 void mangleField(std::string& name, bool isSearchFilter,
                  iresearch::FieldMeta::Analyzer const& analyzer) {
+  // remove the last expansion as it could be omitted accodring to our
+  // indicies behaviour
+  if (name.ends_with("[*]")) {
+    name.resize(name.size() - 3);
+  }
   if (isSearchFilter || analyzer._pool->requireMangled()) {
     name += ANALYZER_DELIMITER;
     name += analyzer._shortName;

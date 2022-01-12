@@ -1116,19 +1116,6 @@ bool InvertedIndexFieldMeta::init(
         std::vector<basics::AttributeName> fieldParts;
         TRI_ParseAttributeString(val.stringView(), fieldParts, true);
         TRI_ASSERT(!fieldParts.empty());
-        // we only allow expansion of the last field
-        if (fieldParts.rend() !=
-            std::find_if(++fieldParts.rbegin(), fieldParts.rend(),
-                         [](basics::AttributeName const& a) {
-                           return a.shouldExpand;
-                         })) {
-          LOG_TOPIC("43bda", ERR, iresearch::TOPIC)
-              << "Error parsing field: '" << val.stringView() << "'. "
-              << "Expansion is allowed only for the last path part.";
-          errorField = fieldsFieldName + "[" +
-                       basics::StringUtils::itoa(itr.index()) + "]";
-          return false;
-        }
         _fields.emplace_back(
             std::move(fieldParts),
             FieldMeta::Analyzer(

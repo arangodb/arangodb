@@ -115,9 +115,12 @@ class IResearchInvertedIndexConditionTest
     arangodb::IndexId id(1);
     arangodb::iresearch::InvertedIndexFieldMeta meta;
     std::string errorField;
-    meta.init(server.server(),
-              getInvertedIndexPropertiesSlice(id, fields).slice(), false,
-              errorField, _vocbase->name());
+    if (!meta.init(server.server(),
+                   getInvertedIndexPropertiesSlice(id, fields).slice(), false,
+                   errorField, _vocbase->name())) {
+      SCOPED_TRACE(testing::Message("Init failed:") << errorField);
+      ASSERT_TRUE(false);
+    }
     auto indexFields =
         arangodb::iresearch::IResearchInvertedIndex::fields(meta);
     arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection,
@@ -352,6 +355,7 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_equality_expansion) {
   std::string queryString = "FOR d IN test FILTER d.a[*] == 'value' RETURN d ";
   std::vector<std::string> fields = {"a"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
   estimateFilterCondition(queryString, fields, expected);
 }
 
@@ -954,7 +958,8 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_expansion) {
 }
 
 TEST_F(IResearchInvertedIndexConditionTest, test_with_expansion_array_op) {
-  std::string queryString = "FOR d IN test FILTER ['a', 'b'] ALL IN d.a RETURN d ";
+  std::string queryString =
+      "FOR d IN test FILTER ['a', 'b'] ALL IN d.a RETURN d ";
   std::vector<std::string> fields = {"a[*]"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   expected.supportsCondition = true;
@@ -969,17 +974,28 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_expansion_explicit) {
   estimateFilterCondition(queryString, fields, expected);
 }
 
-TEST_F(IResearchInvertedIndexConditionTest, test_with_expansion_array_op_explicit) {
-  std::string queryString = "FOR d IN test FILTER ['a', 'b'] ALL IN d.a[*] RETURN d ";
+TEST_F(IResearchInvertedIndexConditionTest,
+       test_with_expansion_non_array_explicit) {
+  std::string queryString = "FOR d IN test FILTER d.a[*] == 'value' RETURN d ";
+  std::vector<std::string> fields = {"a"};
+  auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
+  estimateFilterCondition(queryString, fields, expected);
+}
+
+TEST_F(IResearchInvertedIndexConditionTest,
+       test_with_expansion_array_op_explicit) {
+  std::string queryString =
+      "FOR d IN test FILTER ['a', 'b'] ALL IN d.a[*] RETURN d ";
   std::vector<std::string> fields = {"a[*]"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   expected.supportsCondition = true;
   estimateFilterCondition(queryString, fields, expected);
 }
 
-
 TEST_F(IResearchInvertedIndexConditionTest, test_with_expansion_sub) {
-  std::string queryString = "FOR d IN test FILTER d.a[*].b == 'value' RETURN d ";
+  std::string queryString =
+      "FOR d IN test FILTER d.a[*].b == 'value' RETURN d ";
   std::vector<std::string> fields = {"a[*].b"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   expected.supportsCondition = true;
@@ -987,7 +1003,8 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_expansion_sub) {
 }
 
 TEST_F(IResearchInvertedIndexConditionTest, test_with_expansion_array_op_sub) {
-  std::string queryString = "FOR d IN test FILTER ['a', 'b'] ALL IN d.a[*].b RETURN d ";
+  std::string queryString =
+      "FOR d IN test FILTER ['a', 'b'] ALL IN d.a[*].b RETURN d ";
   std::vector<std::string> fields = {"a[*].b"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   expected.supportsCondition = true;
@@ -1001,24 +1018,29 @@ TEST_F(IResearchInvertedIndexConditionTest, test_with_expansion_sub_miss) {
   estimateFilterCondition(queryString, fields, expected);
 }
 
-TEST_F(IResearchInvertedIndexConditionTest, test_with_expansion_array_op_sub_miss) {
-  std::string queryString = "FOR d IN test FILTER ['a', 'b'] ALL IN d.a.b RETURN d ";
+TEST_F(IResearchInvertedIndexConditionTest,
+       test_with_expansion_array_op_sub_miss) {
+  std::string queryString =
+      "FOR d IN test FILTER ['a', 'b'] ALL IN d.a.b RETURN d ";
   std::vector<std::string> fields = {"a[*].missing"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   estimateFilterCondition(queryString, fields, expected);
 }
 
-TEST_F(IResearchInvertedIndexConditionTest, test_with_expansion_sub_miss_explicit) {
-  std::string queryString = "FOR d IN test FILTER d.a[*].b == 'value' RETURN d ";
+TEST_F(IResearchInvertedIndexConditionTest,
+       test_with_expansion_sub_miss_explicit) {
+  std::string queryString =
+      "FOR d IN test FILTER d.a[*].b == 'value' RETURN d ";
   std::vector<std::string> fields = {"a[*].missing"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   estimateFilterCondition(queryString, fields, expected);
 }
 
-TEST_F(IResearchInvertedIndexConditionTest, test_with_expansion_array_op_sub_miss_explicit) {
-  std::string queryString = "FOR d IN test FILTER ['a', 'b'] ALL IN d.a[*].b RETURN d ";
+TEST_F(IResearchInvertedIndexConditionTest,
+       test_with_expansion_array_op_sub_miss_explicit) {
+  std::string queryString =
+      "FOR d IN test FILTER ['a', 'b'] ALL IN d.a[*].b RETURN d ";
   std::vector<std::string> fields = {"a[*].missing"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
   estimateFilterCondition(queryString, fields, expected);
 }
-

@@ -58,26 +58,26 @@ class SimpleDataSetProvider {
     return {
         {arangodb::LocalDocumentId(1),
          arangodb::velocypack::Parser::fromJson(
-             R"({"a":"1", "b":"2", "c":"1longlonglonglonglonglonglonglonglonglonglonglonglong"})")},
+             R"({"a":"1", "b":"2", "c":"1longlonglonglonglonglonglonglonglonglonglonglonglong", "arr":[1,2,3]})")},
         {arangodb::LocalDocumentId(2),
          arangodb::velocypack::Parser::fromJson(
-             R"({"a":"2", "b":"1", "c":"2longlonglonglonglonglonglonglonglonglonglonglonglong"})")},
+             R"({"a":"2", "b":"1", "c":"2longlonglonglonglonglonglonglonglonglonglonglonglong", "subarr":[{"val":1}]})")},
         {arangodb::LocalDocumentId(3),
          arangodb::velocypack::Parser::fromJson(
-             R"({"a":"2", "b":"2", "c":"3longlonglonglonglonglonglonglonglonglonglonglonglong"})")},
+             R"({"a":"2", "b":"2", "c":"3longlonglonglonglonglonglonglonglonglonglonglonglong", "subarr":[{"val":1}], "arr":[3,4,5]})")},
         {arangodb::LocalDocumentId(4),
          arangodb::velocypack::Parser::fromJson(
-             R"({"a":"1", "b":"1", "c":"4longlonglonglonglonglonglonglonglonglonglonglonglong"})")},
+             R"({"a":"1", "b":"1", "c":"4longlonglonglonglonglonglonglonglonglonglonglonglong", "subarr":[{"val":3}], "arr":[4,5]})")},
         {arangodb::LocalDocumentId(5),
          arangodb::velocypack::Parser::fromJson(
-             R"({"a":"3", "b":"3", "c":"5longlonglonglonglonglonglonglonglonglonglonglonglong"})")}};
+             R"({"a":"3", "b":"3", "c":"5longlonglonglonglonglonglonglonglonglonglonglonglong", "arr":[1,2,3]})")}};
   }
 
   static StoredFields storedFields() {
     return {{"a", "b"}, {"a"}, {"b"}, {"c"}};
   }
 
-  static Fields indexFields() { return {"a", "b"}; }
+  static Fields indexFields() { return {"a", "b", "arr[*]", "subarr[*].val"}; }
 
   static SortFields sortFields() { return {}; }
 };
@@ -417,6 +417,137 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering) {
     ASSERT_EQ(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(2)),
               docs.end());
     ASSERT_EQ(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(5)),
+              docs.end());
+    ASSERT_FALSE(iterator->hasMore());
+  };
+  executeIteratorTest(queryString, test);
+}
+
+TEST_F(IResearchInvertedIndexIteratorTest, test_next_array) {
+  std::string queryString{
+      R"(FOR d IN col FILTER d.arr[*] == 1 RETURN d)"};
+  auto expectedDocs = data();
+  auto test = [&expectedDocs](arangodb::IndexIterator* iterator) {
+    ASSERT_NE(iterator, nullptr);
+    ASSERT_TRUE(iterator->hasMore());
+    ASSERT_TRUE(iterator->hasCovering());
+    ASSERT_FALSE(iterator->hasExtra());
+    std::vector<arangodb::LocalDocumentId> docs;
+
+    auto docCallback = [&expectedDocs, &docs](
+                           arangodb::LocalDocumentId token,
+                           arangodb::IndexIterator::CoveringData* data) {
+      docs.push_back(token);
+      EXPECT_NE(data, nullptr);
+      if (data) {
+        EXPECT_TRUE(data->isArray());
+        auto invalid = data->at(5);
+        EXPECT_TRUE(invalid.isNone());
+        {
+          auto slice0 = data->at(0);
+          EXPECT_TRUE(slice0.isString());
+          if (slice0.isString()) {
+            EXPECT_EQ(slice0.copyString(),
+                      expectedDocs[token]->slice().get("a").copyString());
+          }
+          auto slice1 = data->at(1);
+          EXPECT_TRUE(slice1.isString());
+          if (slice1.isString()) {
+            EXPECT_EQ(slice1.copyString(),
+                      expectedDocs[token]->slice().get("b").copyString());
+          }
+        }
+        {
+          auto slice2 = data->at(2);
+          EXPECT_TRUE(slice2.isString());
+          if (slice2.isString()) {
+            EXPECT_EQ(slice2.copyString(),
+                      expectedDocs[token]->slice().get("a").copyString());
+          }
+        }
+        {
+          auto slice3 = data->at(3);
+          EXPECT_TRUE(slice3.isString());
+          if (slice3.isString()) {
+            EXPECT_EQ(slice3.copyString(),
+                      expectedDocs[token]->slice().get("b").copyString());
+          }
+        }
+      }
+      return true;
+    };
+    ASSERT_FALSE(iterator->nextCovering(docCallback, 1000));
+    ASSERT_EQ(docs.size(), 2);
+    // we can't assume order of the documents. 
+    ASSERT_NE(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(1)),
+              docs.end());
+    ASSERT_NE(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(5)),
+              docs.end());
+    ASSERT_FALSE(iterator->hasMore());
+  };
+  executeIteratorTest(queryString, test);
+}
+
+TEST_F(IResearchInvertedIndexIteratorTest, test_next_subarray) {
+  std::string queryString{
+      R"(FOR d IN col FILTER d.subarr[*].val == 1 RETURN d)"};
+  auto expectedDocs = data();
+  auto test = [&expectedDocs](arangodb::IndexIterator* iterator) {
+    ASSERT_NE(iterator, nullptr);
+    ASSERT_TRUE(iterator->hasMore());
+    ASSERT_TRUE(iterator->hasMore());
+    ASSERT_TRUE(iterator->hasCovering());
+    ASSERT_FALSE(iterator->hasExtra());
+    std::vector<arangodb::LocalDocumentId> docs;
+
+    auto docCallback = [&expectedDocs, &docs](
+                           arangodb::LocalDocumentId token,
+                           arangodb::IndexIterator::CoveringData* data) {
+      docs.push_back(token);
+      EXPECT_NE(data, nullptr);
+      if (data) {
+        EXPECT_TRUE(data->isArray());
+        auto invalid = data->at(5);
+        EXPECT_TRUE(invalid.isNone());
+        {
+          auto slice0 = data->at(0);
+          EXPECT_TRUE(slice0.isString());
+          if (slice0.isString()) {
+            EXPECT_EQ(slice0.copyString(),
+                      expectedDocs[token]->slice().get("a").copyString());
+          }
+          auto slice1 = data->at(1);
+          EXPECT_TRUE(slice1.isString());
+          if (slice1.isString()) {
+            EXPECT_EQ(slice1.copyString(),
+                      expectedDocs[token]->slice().get("b").copyString());
+          }
+        }
+        {
+          auto slice2 = data->at(2);
+          EXPECT_TRUE(slice2.isString());
+          if (slice2.isString()) {
+            EXPECT_EQ(slice2.copyString(),
+                      expectedDocs[token]->slice().get("a").copyString());
+          }
+        }
+        {
+          auto slice3 = data->at(3);
+          EXPECT_TRUE(slice3.isString());
+          if (slice3.isString()) {
+            EXPECT_EQ(slice3.copyString(),
+                      expectedDocs[token]->slice().get("b").copyString());
+          }
+        }
+      }
+      return true;
+    };
+    ASSERT_FALSE(iterator->nextCovering(docCallback, 1000));
+    ASSERT_EQ(docs.size(), 2);
+    // we can't assume order of the documents. 
+    ASSERT_NE(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(2)),
+              docs.end());
+    ASSERT_NE(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(3)),
               docs.end());
     ASSERT_FALSE(iterator->hasMore());
   };

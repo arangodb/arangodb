@@ -800,6 +800,9 @@ void InvertedIndexFieldIterator::next() {
           _nameBuffer.append(a.name);
           isFirst = false;
         }
+        if (!_begin->expansion.empty()) {
+          _nameBuffer.append("[*]");
+        }
         for (auto& a : _begin->expansion) {
           _nameBuffer += NESTING_LEVEL_DELIMITER;
           _nameBuffer.append(a.name);

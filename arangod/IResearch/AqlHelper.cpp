@@ -474,7 +474,7 @@ bool normalizeGeoDistanceCmpNode(aql::AstNode const& in,
 }
 
 bool normalizeCmpNode(aql::AstNode const& in, aql::Variable const& ref,
-                      NormalizedCmpNode& out) {
+                      bool allowExpansion, NormalizedCmpNode& out) {
   static_assert(
       adjacencyChecker<aql::AstNodeType>::checkAdjacency<
           aql::NODE_TYPE_OPERATOR_BINARY_GE, aql::NODE_TYPE_OPERATOR_BINARY_GT,
@@ -501,8 +501,8 @@ bool normalizeCmpNode(aql::AstNode const& in, aql::Variable const& ref,
   auto const* value = in.getMemberUnchecked(1);
   TRI_ASSERT(value);
 
-  if (!iresearch::checkAttributeAccess(attribute, ref)) {
-    if (!iresearch::checkAttributeAccess(value, ref)) {
+  if (!iresearch::checkAttributeAccess(attribute, ref, allowExpansion)) {
+    if (!iresearch::checkAttributeAccess(value, ref, allowExpansion)) {
       // no suitable attribute access node found
       return false;
     }
@@ -660,8 +660,11 @@ bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
 }
 
 bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
-                             QueryContext const& ctx) {
-  struct {
+                             QueryContext const& ctx, bool allowExpansion) {
+  struct AttributeChecker {
+
+    AttributeChecker(bool expansion) : _expansion(expansion) {}
+
     bool attributeAccess(aql::AstNode const& node) {
       irs::string_ref strValue;
 
@@ -674,8 +677,12 @@ bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
       return true;
     }
 
-    bool expansion(aql::AstNode const&) const {
-      return false;  // do not support [*]
+    bool expansion(aql::AstNode const&) {
+      if (!_expansion) {
+        return false;
+      }
+      str_->append("[*]");
+      return true;
     }
 
     bool indexAccess(aql::AstNode const& node) {
@@ -720,11 +727,12 @@ bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
       (*str_) += NESTING_LIST_OFFSET_SUFFIX;
     }
 
+    bool _expansion;
     ScopedAqlValue value_;
     std::string* str_;
     QueryContext const* ctx_;
     char buf_[21];  // enough to hold all numbers up to 64-bits
-  } builder;
+  } builder(allowExpansion);
 
   name.clear();
   builder.str_ = &name;
@@ -736,16 +744,19 @@ bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
 }
 
 aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
-                                         aql::Variable const& ref) noexcept {
-  struct {
+                                         aql::Variable const& ref,
+                                         bool allowExpansion) noexcept {
+  struct AttributeChecker {
+    AttributeChecker(bool expansion) : _expansion(expansion) {}
+
     bool attributeAccess(aql::AstNode const&) const { return true; }
 
     bool indexAccess(aql::AstNode const&) const { return true; }
 
-    bool expansion(aql::AstNode const&) const {
-      return false;  // do not support [*]
-    }
-  } checker;
+    bool expansion(aql::AstNode const&) const { return _expansion; }
+
+    bool _expansion;
+  } checker(allowExpansion);
 
   aql::AstNode const* head = nullptr;
 

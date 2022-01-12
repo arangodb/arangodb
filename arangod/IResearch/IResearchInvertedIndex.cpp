@@ -163,15 +163,18 @@ struct CheckFieldsAccess {
   CheckFieldsAccess(
       QueryContext const& ctx, aql::Variable const& ref,
       std::vector<std::vector<basics::AttributeName>> const& fields)
-      : _ctx(ctx), _ref(ref) {
-    _fields.insert(std::begin(fields), std::end(fields));
-  }
+      : _ctx(ctx), _ref(ref), _fields(fields) {}
 
   bool operator()(std::string_view name) const {
     try {
       _parsed.clear();
-      TRI_ParseAttributeString(name, _parsed, false);
-      if (_fields.find(_parsed) == _fields.end()) {
+      TRI_ParseAttributeString(name, _parsed, true);
+      if (std::find_if(std::begin(_fields), std::end(_fields),
+                       [&parsed = std::as_const(_parsed)](
+                           std::vector<basics::AttributeName> const& f) {
+                         return basics::AttributeName::isIdentical(f, parsed,
+                                                                   true);
+                       }) == _fields.end()) {
         LOG_TOPIC("bf92f", TRACE, arangodb::iresearch::TOPIC)
             << "Attribute '" << name << "' is not covered by index";
         return false;
@@ -188,11 +191,7 @@ struct CheckFieldsAccess {
   mutable std::vector<arangodb::basics::AttributeName> _parsed;
   QueryContext const& _ctx;
   aql::Variable const& _ref;
-  using atr_ref =
-      std::reference_wrapper<std::vector<basics::AttributeName> const>;
-  std::unordered_set<atr_ref, std::hash<std::vector<basics::AttributeName>>,
-                     std::equal_to<std::vector<basics::AttributeName>>>
-      _fields;
+  std::vector<std::vector<basics::AttributeName>> const& _fields;
 };
 
 bool supportsFilterNode(
@@ -212,7 +211,7 @@ bool supportsFilterNode(
                                  nullptr, nullptr, reference};
 
   if (!visitAllAttributeAccess(
-          node, *reference, queryCtx,
+          node, *reference, true, queryCtx,
           CheckFieldsAccess(queryCtx, *reference, fields))) {
     LOG_TOPIC("d2beb", TRACE, arangodb::iresearch::TOPIC)
         << "Found unknown attribute access. Skipping index " << id.id();
@@ -1087,8 +1086,7 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
     }
     if (_meta._sort.empty()) {
       // FIXME: we should use non-sorted iterator in case we are not "covering"
-      // SORT!
-      //        bot options flag sorted is always true
+      // SORT but options flag sorted is always true
       return std::make_unique<IResearchInvertedIndexIterator>(
           collection, trx, node, this, reference, mutableConditionIdx,
           extraFieldName);
