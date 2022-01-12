@@ -626,10 +626,10 @@ ResultT<std::shared_ptr<Node>> Node::handle<PUSH_QUEUE>(VPackSlice const& slice)
     Builder tmp;
     {
       VPackArrayBuilder t(&tmp);
+      auto ol = l.getNumber<int64_t>();
       if (this->slice().isArray() && !lifetimeExpired()) {
         auto tl = this->slice().length();
-        auto ol = l.getNumber<int64_t>();
-        if (ol <= 0) {
+        if (ol < 0) {
           return ResultT<std::shared_ptr<Node>>::error(
               TRI_ERROR_FAILED,
               std::string(
@@ -646,7 +646,9 @@ ResultT<std::shared_ptr<Node>> Node::handle<PUSH_QUEUE>(VPackSlice const& slice)
           }
         }
       }
-      tmp.add(v);
+      if (ol > 0) {
+        tmp.add(v);
+      }
     }
     *this = tmp.slice();
     return ResultT<std::shared_ptr<Node>>::success(nullptr);

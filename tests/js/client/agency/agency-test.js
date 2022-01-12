@@ -1049,15 +1049,17 @@ function agencyTestSuite () {
       writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":13,"len":1}}]]);
       assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[13]}}}]);
       writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":14,"len":0}}]]);
-      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[13]}}}]);
-      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":14,"len":0}}]]);
-      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[13]}}}]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[]}}}]);
       writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":15,"len":-1}}]]);
-      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[13]}}}]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[]}}}]);
       writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":16,"len":1000}}]]);
-      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[13,16]}}}]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[16]}}}]);
       writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":17,"len":3}}]]);
-      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[13,16,17]}}}]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[16,17]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":18,"len":3}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[16,17,18]}}}]);
+      writeAndCheck([[{"/a/c/b":{"op":"push-queue","new":19,"len":4}}]]);
+      assertEqual(readAndCheck([["/a/c/b"]]), [{a:{c:{b:[16,17,18,19]}}}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
