@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1085,8 +1085,7 @@ arangodb::Result arangodb::maintenance::phaseOne(
                            feature, report, shardActionMap, localLogs);
     } catch (std::exception const& e) {
       LOG_TOPIC("55938", ERR, Logger::MAINTENANCE)
-          << "Error executing plan: " << e.what() << ". " << __FILE__ << ":"
-          << __LINE__;
+          << "Error executing plan: " << e.what();
     }
   }
 
@@ -1296,24 +1295,43 @@ static auto reportCurrentReplicatedLogLeader(
   TRI_ASSERT(status.role ==
              replication2::replicated_log::ParticipantRole::kLeader)
       << "expected participant with leader role";
-  if (status.leadershipEstablished) {
-    // must have a value after leadership has been established
-    TRI_ASSERT(status.committedParticipantsConfig != nullptr);
-    // check if either there is no entry in current yet, the term has changed or
-    // the participant config generation has changed.
-    bool const requiresUpdate =
-        currentLeader == nullptr ||
-        currentLeader->term != status.getCurrentTerm() ||
-        status.committedParticipantsConfig->generation !=
-            currentLeader->committedParticipantsConfig.generation;
 
-    if (requiresUpdate) {
-      replication2::agency::LogCurrent::Leader leader;
-      leader.term = *status.getCurrentTerm();
-      leader.serverId = serverId;
-      leader.committedParticipantsConfig = *status.committedParticipantsConfig;
-      return leader;
+  bool const requiresUpdate = std::invoke([&] {
+    // check if either there is no entry in current yet, the term has changed
+    // or the participant config generation has changed or if leadership was
+    // established in the meantime
+    if (currentLeader == nullptr ||
+        currentLeader->term != status.getCurrentTerm() ||
+        currentLeader->leadershipEstablished != status.leadershipEstablished ||
+        currentLeader->commitStatus != status.commitFailReason) {
+      return true;
     }
+
+    // check if the committed participants config needs an update
+    if (status.committedParticipantsConfig != nullptr) {
+      if (currentLeader->committedParticipantsConfig.has_value()) {
+        return currentLeader->committedParticipantsConfig->generation !=
+               status.committedParticipantsConfig->generation;
+      }
+      return true;
+    }
+
+    return false;
+  });
+
+  if (requiresUpdate) {
+    std::optional<arangodb::replication2::ParticipantsConfig>
+        committedParticipantsConfig;
+    if (status.committedParticipantsConfig != nullptr) {
+      committedParticipantsConfig = *status.committedParticipantsConfig;
+    }
+    replication2::agency::LogCurrent::Leader leader;
+    leader.term = *status.getCurrentTerm();
+    leader.serverId = serverId;
+    leader.leadershipEstablished = status.leadershipEstablished;
+    leader.commitStatus = status.commitFailReason;
+    leader.committedParticipantsConfig = std::move(committedParticipantsConfig);
+    return leader;
   }
 
   return std::nullopt;

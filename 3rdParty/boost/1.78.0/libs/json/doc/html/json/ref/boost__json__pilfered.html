@@ -1,0 +1,157 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>pilfered</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.JSON">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__json__parser/release.html" title="parser::release">
+<link rel="next" href="boost__json__pilfered/pilfered.html" title="pilfered::pilfered">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__json__parser/release.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__json__pilfered/pilfered.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="json.ref.boost__json__pilfered"></a><a class="link" href="boost__json__pilfered.html" title="pilfered">pilfered</a>
+</h4></div></div></div>
+<p>
+        Tag wrapper to specify pilfer-construction.
+      </p>
+<h5>
+<a name="json.ref.boost__json__pilfered.h0"></a>
+        <span class="phrase"><a name="json.ref.boost__json__pilfered.synopsis"></a></span><a class="link" href="boost__json__pilfered.html#json.ref.boost__json__pilfered.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="https://github.com/cppalliance/json/blob/master/include/boost/json/pilfer.hpp" target="_top">boost/json/pilfer.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">pilfered</span>
+</pre>
+<h5>
+<a name="json.ref.boost__json__pilfered.h1"></a>
+        <span class="phrase"><a name="json.ref.boost__json__pilfered.member_functions"></a></span><a class="link" href="boost__json__pilfered.html#json.ref.boost__json__pilfered.member_functions">Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__pilfered/get.html" title="pilfered::get">get</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a reference to the pilferable object.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__pilfered/operator_arrow_.html" title="pilfered::operator-&gt;">operator-&gt;</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a pointer to the pilferable object.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__json__pilfered/pilfered.html" title="pilfered::pilfered">pilfered</a> <span class="silver">[constructor]</span></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Constructor.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="json.ref.boost__json__pilfered.h2"></a>
+        <span class="phrase"><a name="json.ref.boost__json__pilfered.description"></a></span><a class="link" href="boost__json__pilfered.html#json.ref.boost__json__pilfered.description">Description</a>
+      </h5>
+<p>
+        This wrapper is used to specify a pilfer constructor overload.
+      </p>
+<h5>
+<a name="json.ref.boost__json__pilfered.h3"></a>
+        <span class="phrase"><a name="json.ref.boost__json__pilfered.example"></a></span><a class="link" href="boost__json__pilfered.html#json.ref.boost__json__pilfered.example">Example</a>
+      </h5>
+<p>
+        A pilfer constructor accepts a single argument of type <a class="link" href="boost__json__pilfered.html" title="pilfered"><code class="computeroutput"><span class="identifier">pilfered</span></code></a> and throws nothing:
+      </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">T</span>
+<span class="special">{</span>
+    <span class="identifier">T</span><span class="special">(</span> <span class="identifier">pilfered</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span> <span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<h5>
+<a name="json.ref.boost__json__pilfered.h4"></a>
+        <span class="phrase"><a name="json.ref.boost__json__pilfered.remarks"></a></span><a class="link" href="boost__json__pilfered.html#json.ref.boost__json__pilfered.remarks">Remarks</a>
+      </h5>
+<p>
+        The constructor should not be marked explicit.
+      </p>
+<h5>
+<a name="json.ref.boost__json__pilfered.h5"></a>
+        <span class="phrase"><a name="json.ref.boost__json__pilfered.see_also"></a></span><a class="link" href="boost__json__pilfered.html#json.ref.boost__json__pilfered.see_also">See
+        Also</a>
+      </h5>
+<p>
+        <a class="link" href="boost__json__pilfer.html" title="pilfer"><code class="computeroutput"><span class="identifier">pilfer</span></code></a>,
+        <a class="link" href="boost__json__is_pilfer_constructible.html" title="is_pilfer_constructible"><code class="computeroutput"><span class="identifier">is_pilfer_constructible</span></code></a>, <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0308r0.html" target="_top">Valueless
+        Variants Considered Harmful</a>
+      </p>
+<p>
+        Convenience header <code class="literal">&lt;<a href="https://github.com/cppalliance/json/blob/master/include/boost/json.hpp" target="_top">boost/json.hpp</a>&gt;</code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Vinnie Falco<br>Copyright © 2020 Krystian Stasiowski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__json__parser/release.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__json__pilfered/pilfered.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

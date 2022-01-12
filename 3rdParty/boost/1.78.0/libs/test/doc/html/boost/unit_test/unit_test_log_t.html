@@ -1,0 +1,337 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Class unit_test_log_t</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../../header/boost/test/unit_test_log_hpp.html" title="Header &lt;boost/test/unit_test_log.hpp&gt;">
+<link rel="prev" href="log/end.html" title="Struct end">
+<link rel="next" href="../../BOOST_TEST_LOG_ENTRY.html" title="Macro BOOST_TEST_LOG_ENTRY">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="log/end.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../header/boost/test/unit_test_log_hpp.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../BOOST_TEST_LOG_ENTRY.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.unit_test.unit_test_log_t"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class unit_test_log_t</span></h2>
+<p>boost::unit_test::unit_test_log_t — Manages the sets of loggers, their streams and log levels. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../header/boost/test/unit_test_log_hpp.html" title="Header &lt;boost/test/unit_test_log.hpp&gt;">boost/test/unit_test_log.hpp</a>&gt;
+
+</span>
+<span class="keyword">class</span> <a class="link" href="unit_test_log_t.html" title="Class unit_test_log_t">unit_test_log_t</a> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">test_observer</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+
+  <span class="comment">// <a class="link" href="unit_test_log_t.html#idm47143-bb">public member functions</a></span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="unit_test_log_t.html#idm47144-bb"><span class="identifier">test_start</span></a><span class="special">(</span><span class="identifier">counter_t</span><span class="special">,</span> <span class="identifier">test_unit_id</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="unit_test_log_t.html#idm47153-bb"><span class="identifier">test_finish</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="unit_test_log_t.html#idm47160-bb"><span class="identifier">test_aborted</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="unit_test_log_t.html#idm47168-bb"><span class="identifier">test_unit_start</span></a><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="unit_test_log_t.html#idm47176-bb"><span class="identifier">test_unit_finish</span></a><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">unsigned</span> <span class="keyword">long</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="unit_test_log_t.html#idm47186-bb"><span class="identifier">test_unit_skipped</span></a><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">const_string</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="unit_test_log_t.html#idm47193-bb"><span class="identifier">test_unit_aborted</span></a><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="unit_test_log_t.html#idm47207-bb"><span class="identifier">test_unit_timed_out</span></a><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="unit_test_log_t.html#idm47215-bb"><span class="identifier">exception_caught</span></a><span class="special">(</span><a class="link" href="../execution_exception.html" title="Class execution_exception">execution_exception</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">int</span> <a class="link" href="unit_test_log_t.html#idm47223-bb"><span class="identifier">priority</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="unit_test_log_t.html#idm47226-bb"><span class="identifier">set_stream</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="unit_test_log_t.html#idm47233-bb"><span class="identifier">set_stream</span></a><span class="special">(</span><span class="identifier">output_format</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">*</span> <a class="link" href="unit_test_log_t.html#idm47247-bb"><span class="identifier">get_stream</span></a><span class="special">(</span><span class="identifier">output_format</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">log_level</span> <a class="link" href="unit_test_log_t.html#idm47259-bb"><span class="identifier">set_threshold_level</span></a><span class="special">(</span><span class="identifier">log_level</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">log_level</span> <a class="link" href="unit_test_log_t.html#idm47268-bb"><span class="identifier">set_threshold_level</span></a><span class="special">(</span><span class="identifier">output_format</span><span class="special">,</span> <span class="identifier">log_level</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="unit_test_log_t.html#idm47284-bb"><span class="identifier">add_format</span></a><span class="special">(</span><span class="identifier">output_format</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="unit_test_log_t.html#idm47294-bb"><span class="identifier">set_format</span></a><span class="special">(</span><span class="identifier">output_format</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="unit_test_log_formatter.html" title="Class unit_test_log_formatter">unit_test_log_formatter</a> <span class="special">*</span> <a class="link" href="unit_test_log_t.html#idm47301-bb"><span class="identifier">get_formatter</span></a><span class="special">(</span><span class="identifier">output_format</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="unit_test_log_t.html#idm47315-bb"><span class="identifier">set_formatter</span></a><span class="special">(</span><a class="link" href="unit_test_log_formatter.html" title="Class unit_test_log_formatter">unit_test_log_formatter</a> <span class="special">*</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="unit_test_log_t.html#idm47337-bb"><span class="identifier">add_formatter</span></a><span class="special">(</span><a class="link" href="unit_test_log_formatter.html" title="Class unit_test_log_formatter">unit_test_log_formatter</a> <span class="special">*</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="unit_test_log_t.html#idm47353-bb"><span class="identifier">set_checkpoint</span></a><span class="special">(</span><span class="identifier">const_string</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> 
+                      <span class="identifier">const_string</span> <span class="special">=</span> <span class="identifier">const_string</span><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="unit_test_log_t.html" title="Class unit_test_log_t">unit_test_log_t</a> <span class="special">&amp;</span> <a class="link" href="unit_test_log_t.html#idm47362-bb"><span class="keyword">operator</span><span class="special">&lt;&lt;</span></a><span class="special">(</span><a class="link" href="log/begin.html" title="Struct begin">log::begin</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="unit_test_log_t.html" title="Class unit_test_log_t">unit_test_log_t</a> <span class="special">&amp;</span> <a class="link" href="unit_test_log_t.html#idm47368-bb"><span class="keyword">operator</span><span class="special">&lt;&lt;</span></a><span class="special">(</span><a class="link" href="log/end.html" title="Struct end">log::end</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="unit_test_log_t.html" title="Class unit_test_log_t">unit_test_log_t</a> <span class="special">&amp;</span> <a class="link" href="unit_test_log_t.html#idm47374-bb"><span class="keyword">operator</span><span class="special">&lt;&lt;</span></a><span class="special">(</span><span class="identifier">log_level</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="unit_test_log_t.html" title="Class unit_test_log_t">unit_test_log_t</a> <span class="special">&amp;</span> <a class="link" href="unit_test_log_t.html#idm47379-bb"><span class="keyword">operator</span><span class="special">&lt;&lt;</span></a><span class="special">(</span><span class="identifier">const_string</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="unit_test_log_t.html" title="Class unit_test_log_t">unit_test_log_t</a> <span class="special">&amp;</span> <a class="link" href="unit_test_log_t.html#idm47384-bb"><span class="keyword">operator</span><span class="special">&lt;&lt;</span></a><span class="special">(</span><span class="identifier">lazy_ostream</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="unit_test_log_t.html#idm47389-bb"><span class="keyword">operator</span><span class="special">(</span><span class="special">)</span></a><span class="special">(</span><span class="identifier">log_level</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="unit_test_log_t.html#idm47394-bb"><span class="identifier">configure</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="unit_test_log_t.html#idm47397-bb"><span class="identifier">test_unit_skipped</span></a><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="unit_test_log_t.html#idm47403-bb"><span class="identifier">assertion_result</span></a><span class="special">(</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">assertion_result</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idm61424"></a><h2>Description</h2>
+<p>The Boost.Test framework allows for having several formatters/loggers at the same time, each of which having their own log level and output stream.</p>
+<p>This class serves the purpose of</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>exposing an interface to the test framework (as a <a class="link" href="test_observer.html" title="Class test_observer">boost::unit_test::test_observer</a>)</p></li>
+<li class="listitem"><p>exposing an interface to the testing tools</p></li>
+<li class="listitem"><p>managing several loggers</p></li>
+</ul></div>
+<p>
+</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Accesses to the functions exposed by this class are made through the singleton <code class="computeroutput">boost::unit_test::unit_test_log</code>.</p></td></tr>
+</table></div>
+<p>
+Users/developers willing to implement their own formatter need to:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>implement a <a class="link" href="unit_test_log_formatter.html" title="Class unit_test_log_formatter">boost::unit_test::unit_test_log_formatter</a> that will output the desired format</p></li>
+<li class="listitem"><p>register the formatter during a eg. global fixture using the method <code class="computeroutput">set_formatter</code> (though the framework singleton).</p></li>
+</ul></div>
+<p>
+</p>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../../../../../../doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>this observer has a higher priority than the <a class="link" href="results_collector_t.html" title="Class results_collector_t">boost::unit_test::results_collector_t</a>. This means that the various <a class="link" href="test_results.html" title="Class test_results">boost::unit_test::test_results</a> associated to each test unit may not be available at the time the <code class="computeroutput">test_unit_start</code>, <code class="computeroutput">test_unit_finish</code> ... are called.</p></td></tr>
+</table></div>
+<p>
+</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p><a class="link" href="test_observer.html" title="Class test_observer">boost::unit_test::test_observer</a></p></li>
+<li class="listitem"><p><a class="link" href="unit_test_log_formatter.html" title="Class unit_test_log_formatter">boost::unit_test::unit_test_log_formatter</a> </p></li>
+</ul></div>
+<p>
+</p>
+<p>
+</p>
+<p>
+</p>
+<div class="refsect2">
+<a name="idm61464"></a><h3>
+<a name="idm47143-bb"></a><code class="computeroutput">unit_test_log_t</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm47144-bb"></a><span class="identifier">test_start</span><span class="special">(</span><span class="identifier">counter_t</span><span class="special">,</span> <span class="identifier">test_unit_id</span><span class="special">)</span><span class="special">;</span></pre>Called before the framework starts executing the test cases. <p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm47153-bb"></a><span class="identifier">test_finish</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Called after the framework ends executing the test cases. <div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>The call is made with a reversed priority order. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm47160-bb"></a><span class="identifier">test_aborted</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Called when a critical error is detected. <p>The critical errors are mainly the signals sent by the system and caught by the Boost.Test framework. Since the running binary may be in incoherent/instable state, the test execution is aborted and all remaining tests are discarded.</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>may be called before test_observer::test_unit_finish() </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm47168-bb"></a><span class="identifier">test_unit_start</span><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre>Called before the framework starts executing a test unit. <p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm47176-bb"></a><span class="identifier">test_unit_finish</span><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">unsigned</span> <span class="keyword">long</span><span class="special">)</span><span class="special">;</span></pre>Called at each end of a test unit. <p>
+</p>
+</li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm47186-bb"></a><span class="identifier">test_unit_skipped</span><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">const_string</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm47193-bb"></a><span class="identifier">test_unit_aborted</span><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre>Called when a test unit indicates a fatal error. <p>A fatal error happens when</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>a strong assertion (with <code class="computeroutput">REQUIRE</code>) fails, which indicates that the test case cannot continue</p></li>
+<li class="listitem"><p>an unexpected exception is caught by the Boost.Test framework </p></li>
+</ul></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm47207-bb"></a><span class="identifier">test_unit_timed_out</span><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre>Called when the test timed out. <p>This function is called to signal that a test unit (case or suite) timed out. A valid test unit is available through boost::unit_test::framework::current_test_unit </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm47215-bb"></a><span class="identifier">exception_caught</span><span class="special">(</span><a class="link" href="../execution_exception.html" title="Class execution_exception">execution_exception</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre>Called when an exception is intercepted. <p>In case an exception is intercepted, this call happens before the call to test_unit_aborted in order to log additional data about the exception. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">int</span> <a name="idm47223-bb"></a><span class="identifier">priority</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>The priority indicates the order at which this observer is initialized and tore down in the UTF framework. The order is lowest to highest priority. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idm47226-bb"></a><span class="identifier">set_stream</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre>Sets the stream for all loggers. <p>This will override the log sink/stream of all loggers, whether enabled or not. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idm47233-bb"></a><span class="identifier">set_stream</span><span class="special">(</span><span class="identifier">output_format</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre>Sets the stream for specific logger. <div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Has no effect if the specified format is not found </p></td></tr>
+</table></div>
+<p>
+</p>
+<p><b>Since Boost 1.62 . </b></p>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">*</span> <a name="idm47247-bb"></a><span class="identifier">get_stream</span><span class="special">(</span><span class="identifier">output_format</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Returns a pointer to the stream associated to specific logger. <div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Returns a null pointer if the format is not found </p></td></tr>
+</table></div>
+<p>
+</p>
+<p><b>Since Boost 1.67 . </b></p>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">log_level</span> <a name="idm47259-bb"></a><span class="identifier">set_threshold_level</span><span class="special">(</span><span class="identifier">log_level</span><span class="special">)</span><span class="special">;</span></pre>Sets the threshold level for all loggers/formatters. <p>This will override the log level of all loggers, whether enabled or not. 
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>the minimum of the previous log level of all formatters (new in Boost 1.73) </p></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">log_level</span> <a name="idm47268-bb"></a><span class="identifier">set_threshold_level</span><span class="special">(</span><span class="identifier">output_format</span><span class="special">,</span> <span class="identifier">log_level</span><span class="special">)</span><span class="special">;</span></pre>Sets the threshold/log level of a specific format. <div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Has no effect if the specified format is not found </p></td></tr>
+</table></div>
+<p>
+</p>
+<p><b>Since Boost 1.62. </b></p>
+<p>
+
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>the previous log level of the corresponding formatter (new in Boost 1.73) </p></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idm47284-bb"></a><span class="identifier">add_format</span><span class="special">(</span><span class="identifier">output_format</span><span class="special">)</span><span class="special">;</span></pre>Add a format to the set of loggers. <p>Adding a logger means that the specified logger is enabled. The log level is managed by the formatter itself and specifies what events are forwarded to the underlying formatter. </p>
+<p><b>Since Boost 1.62 . </b></p>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idm47294-bb"></a><span class="identifier">set_format</span><span class="special">(</span><span class="identifier">output_format</span><span class="special">)</span><span class="special">;</span></pre>Sets the format of the logger. <p>This will become the only active format of the logs. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="unit_test_log_formatter.html" title="Class unit_test_log_formatter">unit_test_log_formatter</a> <span class="special">*</span> <a name="idm47301-bb"></a><span class="identifier">get_formatter</span><span class="special">(</span><span class="identifier">output_format</span><span class="special">)</span><span class="special">;</span></pre>Returns the logger instance for a specific format. <p>
+</p>
+<p><b>Since Boost 1.62 . </b></p>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>the logger/formatter instance, or <code class="computeroutput"></code>(unit_test_log_formatter*)0 if the format is not found. </p></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idm47315-bb"></a><span class="identifier">set_formatter</span><span class="special">(</span><a class="link" href="unit_test_log_formatter.html" title="Class unit_test_log_formatter">unit_test_log_formatter</a> <span class="special">*</span><span class="special">)</span><span class="special">;</span></pre>Sets the logger instance. <p>The specified logger becomes the unique active one. The custom log formatter has the format <code class="computeroutput">OF_CUSTOM_LOGGER</code>. If such a format exists already, its formatter gets replaced by the one given in argument.</p>
+<p>The log level and output stream of the new formatter are taken from the currently active logger. In case several loggers are active, the order of priority is CUSTOM, HRF, XML, and JUNIT. If (unit_test_log_formatter*)0 is given as argument, the custom logger (if any) is removed.</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top">
+<p>The ownership of the pointer is transferred to the Boost.Test framework. This call is equivalent to</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>a call to <code class="computeroutput">add_formatter</code> </p></li>
+<li class="listitem"><p>a call to <code class="computeroutput">set_format(OF_CUSTOM_LOGGER)</code> </p></li>
+<li class="listitem"><p>a configuration of the newly added logger with a previously configured stream and log level. </p></li>
+</ul></div>
+<p>
+</p>
+</td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idm47337-bb"></a><span class="identifier">add_formatter</span><span class="special">(</span><a class="link" href="unit_test_log_formatter.html" title="Class unit_test_log_formatter">unit_test_log_formatter</a> <span class="special">*</span> the_formatter<span class="special">)</span><span class="special">;</span></pre>Adds a custom log formatter to the set of formatters. <p>The specified logger is added with the format <code class="computeroutput">OF_CUSTOM_LOGGER</code>, such that it can be futher selected or its stream/log level can be specified. If there is already a custom logger (with <code class="computeroutput">OF_CUSTOM_LOGGER</code>), then the existing one gets replaced by the one given in argument. The provided logger is added with an enabled state. If (unit_test_log_formatter*)0 is given as argument, the custom logger (if any) is removed and no other action is performed.</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>The ownership of the pointer is transferred to the Boost.Test framework. </p></td></tr>
+</table></div>
+<p>
+</p>
+<p><b>Since Boost 1.62 . </b></p>
+<p>
+</p>
+</li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">void</span> <a name="idm47353-bb"></a><span class="identifier">set_checkpoint</span><span class="special">(</span><span class="identifier">const_string</span> file<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> line_num<span class="special">,</span> 
+                    <span class="identifier">const_string</span> msg <span class="special">=</span> <span class="identifier">const_string</span><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a class="link" href="unit_test_log_t.html" title="Class unit_test_log_t">unit_test_log_t</a> <span class="special">&amp;</span> <a name="idm47362-bb"></a><span class="keyword">operator</span><span class="special">&lt;&lt;</span><span class="special">(</span><a class="link" href="log/begin.html" title="Struct begin">log::begin</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a class="link" href="unit_test_log_t.html" title="Class unit_test_log_t">unit_test_log_t</a> <span class="special">&amp;</span> <a name="idm47368-bb"></a><span class="keyword">operator</span><span class="special">&lt;&lt;</span><span class="special">(</span><a class="link" href="log/end.html" title="Struct end">log::end</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a class="link" href="unit_test_log_t.html" title="Class unit_test_log_t">unit_test_log_t</a> <span class="special">&amp;</span> <a name="idm47374-bb"></a><span class="keyword">operator</span><span class="special">&lt;&lt;</span><span class="special">(</span><span class="identifier">log_level</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a class="link" href="unit_test_log_t.html" title="Class unit_test_log_t">unit_test_log_t</a> <span class="special">&amp;</span> <a name="idm47379-bb"></a><span class="keyword">operator</span><span class="special">&lt;&lt;</span><span class="special">(</span><span class="identifier">const_string</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a class="link" href="unit_test_log_t.html" title="Class unit_test_log_t">unit_test_log_t</a> <span class="special">&amp;</span> <a name="idm47384-bb"></a><span class="keyword">operator</span><span class="special">&lt;&lt;</span><span class="special">(</span><span class="identifier">lazy_ostream</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="idm47389-bb"></a><span class="keyword">operator</span><span class="special">(</span><span class="special">)</span><span class="special">(</span><span class="identifier">log_level</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idm47394-bb"></a><span class="identifier">configure</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Prepares internal states after log levels, streams and format has been set up. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm47397-bb"></a><span class="identifier">test_unit_skipped</span><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre>backward compatibility </li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm47403-bb"></a><span class="identifier">assertion_result</span><span class="special">(</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">assertion_result</span><span class="special">)</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2020 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="log/end.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../header/boost/test/unit_test_log_hpp.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../BOOST_TEST_LOG_ENTRY.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

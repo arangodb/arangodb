@@ -1,0 +1,26 @@
+#
+# Copyright (c) 2003-2021 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+
+lib uring ; # LINUX
+lib ws2_32 ; # NT
+lib mswsock ; # NT
+
+project
+  : requirements
+    <library>/boost/system//boost_system
+    <library>/boost/thread//boost_thread
+    <define>BOOST_ALL_NO_LIB=1
+    <threading>multi
+    <target-os>linux:<define>BOOST_ASIO_HAS_IO_URING=1
+    <target-os>linux:<library>uring
+    <target-os>windows:<define>_WIN32_WINNT=0x0600
+    <target-os>windows,<toolset>gcc:<library>ws2_32
+    <target-os>windows,<toolset>gcc:<library>mswsock
+  ;
+
+exe async_file_copy : async_file_copy.cpp ;
+exe blocking_file_copy : blocking_file_copy.cpp ;

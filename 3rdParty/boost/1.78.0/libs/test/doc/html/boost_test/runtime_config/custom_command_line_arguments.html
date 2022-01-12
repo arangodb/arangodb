@@ -1,0 +1,722 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Custom command line arguments</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../runtime_config.html" title="Runtime parameters">
+<link rel="prev" href="test_unit_filtering.html" title="Test unit filtering">
+<link rel="next" href="summary.html" title="Summary of run-time parameters">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="test_unit_filtering.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../runtime_config.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="summary.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_test.runtime_config.custom_command_line_arguments"></a><a class="link" href="custom_command_line_arguments.html" title="Custom command line arguments">Custom
+      command line arguments</a>
+</h3></div></div></div>
+<p>
+        It is possible to pass custom command line arguments to the test module.
+        The general format for passing custom arguments is the following:
+      </p>
+<pre class="programlisting"><span class="special">&lt;</span><span class="identifier">boost_test_module</span><span class="special">&gt;</span> <span class="special">[&lt;</span><span class="identifier">boost_test_arg1</span><span class="special">&gt;...]</span> <span class="special">[--</span> <span class="special">[&lt;</span><span class="identifier">custom_parameter1</span><span class="special">&gt;...]</span>
+</pre>
+<p>
+        This means that everything that is passed after "<code class="computeroutput"><span class="special">--</span></code>"
+        is considered as a custom parameter and will not be intercepted nor interpreted
+        by the <span class="emphasis"><em>Unit Test Framework</em></span>. This avoids any troubleshooting
+        between the <span class="emphasis"><em>Unit Test Framework</em></span> parameters and the custom
+        ones.
+      </p>
+<p>
+        There are several use cases for accessing the arguments passed on the command
+        line:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            instantiating an object used in test cases and which is dependant on
+            parameters external to the test-module: the name of the graphic card,
+            the credentials for a database connection, etc. The rest of the test
+            module would check that the functions in test are not sensitive to this
+            type of parametrization. One can also imagine running this same test
+            module with different parameters (different graphic cards...) in a batched
+            manner,
+          </li>
+<li class="listitem">
+            modifying the test tree by adding or parametrizing test cases: the arguments
+            passed on the command line may contain for instance a set of parameters
+            that define test cases.
+          </li>
+</ul></div>
+<p>
+        In the first scenario, <a class="link" href="custom_command_line_arguments.html#ref_consuming_cmd_test_case">test cases</a>
+        or fixtures, including <a class="link" href="custom_command_line_arguments.html#ref_consuming_cmd_global_fixture">global
+        fixtures</a>, may be used. Since those are part of the test tree, they
+        can benefit from the <span class="emphasis"><em>Unit Test Framework</em></span> rich set of
+        assertions and controlled execution environment.
+      </p>
+<p>
+        In the second scenario, the command line argument interact directly with
+        the content of the test tree: by passing specific arguments, different set
+        of tests are created. There are mainly two options for achieving this: using
+        a dedicated <a class="link" href="custom_command_line_arguments.html#ref_consuming_cmd_init_function">initialization
+        function</a> or using <a class="link" href="custom_command_line_arguments.html#ref_consuming_cmd_dataset">data driven</a>
+        test cases. The error handling of the command line parameters needs however
+        to be adapted.
+      </p>
+<a name="ref_consuming_cmd_test_case"></a><h5>
+<a name="boost_test.runtime_config.custom_command_line_arguments.h0"></a>
+        <span class="phrase"><a name="boost_test.runtime_config.custom_command_line_arguments.consuming_custom_arguments_from_"></a></span><a class="link" href="custom_command_line_arguments.html#boost_test.runtime_config.custom_command_line_arguments.consuming_custom_arguments_from_">Consuming
+        custom arguments from a test case</a>
+      </h5>
+<p>
+        The <a class="link" href="../tests_organization/test_tree/master_test_suite.html" title="Master test suite">master
+        test suite</a> collects the custom arguments passed to the test module
+        in the following way:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">argv</span><span class="special">[</span><span class="number">0</span><span class="special">]</span></code>, usually
+            set by the operating system as the executable name, remains unchanged
+          </li>
+<li class="listitem">
+            any argument interpreted by the test module is removed from <code class="computeroutput"><span class="identifier">argv</span></code>
+          </li>
+<li class="listitem">
+            the empty token <code class="computeroutput"><span class="special">--</span></code> is removed
+            as well
+          </li>
+<li class="listitem">
+            any additional argument passed after the empty token is reported in
+            <code class="computeroutput"><span class="identifier">argv</span></code> starting at index
+            <code class="computeroutput"><span class="number">1</span></code>
+          </li>
+</ul></div>
+<h6>
+<a name="boost_test.runtime_config.custom_command_line_arguments.h1"></a>
+        <span class="phrase"><a name="boost_test.runtime_config.custom_command_line_arguments.example_descr"></a></span><a class="link" href="custom_command_line_arguments.html#boost_test.runtime_config.custom_command_line_arguments.example_descr">Example:
+        Basic custom command line</a>
+      </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                <p>
+                  Code
+                </p>
+              </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">runtime_configuration1</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">;</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test_accessing_command_line</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">BOOST_TEST_REQUIRE</span><span class="special">(</span> <span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argc</span> <span class="special">==</span> <span class="number">3</span> <span class="special">);</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span> <span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argv</span><span class="special">[</span><span class="number">1</span><span class="special">]</span> <span class="special">==</span> <span class="string">"--specific-param"</span> <span class="special">);</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span> <span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argv</span><span class="special">[</span><span class="number">2</span><span class="special">]</span> <span class="special">==</span> <span class="string">"'additional value with quotes'"</span> <span class="special">);</span>
+    <span class="identifier">BOOST_TEST_MESSAGE</span><span class="special">(</span> <span class="string">"'argv[0]' contains "</span> <span class="special">&lt;&lt;</span> <span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argv</span><span class="special">[</span><span class="number">0</span><span class="special">]</span> <span class="special">);</span>
+<span class="special">}</span>
+</pre>
+              </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                <p>
+                  Output
+                </p>
+              </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">runtime_configuration1</span> <span class="special">--</span><span class="identifier">log_level</span><span class="special">=</span><span class="identifier">all</span> <span class="special">--</span><span class="identifier">no_color</span> <span class="special">--</span> <span class="special">--</span><span class="identifier">specific</span><span class="special">-</span><span class="identifier">param</span> <span class="string">"'additional value with quotes'"</span>
+<span class="identifier">Running</span> <span class="number">1</span> <span class="identifier">test</span> <span class="keyword">case</span><span class="special">...</span>
+<span class="identifier">Entering</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"runtime_configuration"</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">14</span><span class="special">:</span> <span class="identifier">Entering</span> <span class="identifier">test</span> <span class="keyword">case</span> <span class="string">"test_accessing_command_line"</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">16</span><span class="special">:</span> <span class="identifier">info</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argc</span> <span class="special">==</span> <span class="number">3</span> <span class="identifier">has</span> <span class="identifier">passed</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">17</span><span class="special">:</span> <span class="identifier">info</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argv</span><span class="special">[</span><span class="number">1</span><span class="special">]</span> <span class="special">==</span> <span class="string">"--specific-param"</span> <span class="identifier">has</span> <span class="identifier">passed</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">18</span><span class="special">:</span> <span class="identifier">info</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argv</span><span class="special">[</span><span class="number">2</span><span class="special">]</span> <span class="special">==</span> <span class="string">"'additional value with quotes'"</span> <span class="identifier">has</span> <span class="identifier">passed</span>
+<span class="char">'argv[0]'</span> <span class="identifier">contains</span> <span class="identifier">runtime_configuration1</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">14</span><span class="special">:</span> <span class="identifier">Leaving</span> <span class="identifier">test</span> <span class="keyword">case</span> <span class="string">"test_accessing_command_line"</span><span class="special">;</span> <span class="identifier">testing</span> <span class="identifier">time</span><span class="special">:</span> <span class="number">178u</span><span class="identifier">s</span>
+<span class="identifier">Leaving</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"runtime_configuration"</span><span class="special">;</span> <span class="identifier">testing</span> <span class="identifier">time</span><span class="special">:</span> <span class="number">220u</span><span class="identifier">s</span>
+
+<span class="special">***</span> <span class="identifier">No</span> <span class="identifier">errors</span> <span class="identifier">detected</span>
+</pre>
+              </td></tr></tbody>
+</table></div>
+<a name="ref_consuming_cmd_global_fixture"></a><h5>
+<a name="boost_test.runtime_config.custom_command_line_arguments.h2"></a>
+        <span class="phrase"><a name="boost_test.runtime_config.custom_command_line_arguments.consuming_custom_arguments_from0"></a></span><a class="link" href="custom_command_line_arguments.html#boost_test.runtime_config.custom_command_line_arguments.consuming_custom_arguments_from0">Consuming
+        custom arguments from a global fixture</a>
+      </h5>
+<p>
+        Another possibility for consuming the custom command line arguments would
+        be from within a <a class="link" href="../tests_organization/fixtures/global.html" title="Global fixture">global
+        fixture</a>. This is especially useful when external parameters are needed
+        for instantiating global objects used in the test module.
+      </p>
+<p>
+        The usage is the same as for test cases. The following example runs the test
+        module twice with different arguments, and illustrate the feature.
+      </p>
+<div class="tip"><table border="0" summary="Tip">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../../../../../../doc/src/images/tip.png"></td>
+<th align="left">Tip</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          The global fixture can check for the correctness of the custom arguments
+          and may abort the full run of the test module.
+        </p></td></tr>
+</table></div>
+<h6>
+<a name="boost_test.runtime_config.custom_command_line_arguments.h3"></a>
+        <span class="phrase"><a name="boost_test.runtime_config.custom_command_line_arguments.example_descr0"></a></span><a class="link" href="custom_command_line_arguments.html#boost_test.runtime_config.custom_command_line_arguments.example_descr0">Example:
+        Command line arguments interpreted in a global fixtures</a>
+      </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                <p>
+                  Code
+                </p>
+              </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">runtime_configuration2</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">;</span>
+
+<span class="comment">/// The interface with the device driver.</span>
+<span class="keyword">class</span> <span class="identifier">DeviceInterface</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="comment">// acquires a specific device based on its name</span>
+    <span class="keyword">static</span> <span class="identifier">DeviceInterface</span><span class="special">*</span> <span class="identifier">factory</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">device_name</span><span class="special">);</span>
+    <span class="keyword">virtual</span> <span class="special">~</span><span class="identifier">DeviceInterface</span><span class="special">(){}</span>
+
+    <span class="keyword">virtual</span> <span class="keyword">bool</span> <span class="identifier">setup</span><span class="special">()</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+    <span class="keyword">virtual</span> <span class="keyword">bool</span> <span class="identifier">teardown</span><span class="special">()</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+    <span class="keyword">virtual</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">get_device_name</span><span class="special">()</span> <span class="keyword">const</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="keyword">class</span> <span class="identifier">MockDevice</span><span class="special">:</span> <span class="keyword">public</span> <span class="identifier">DeviceInterface</span> <span class="special">{</span>
+    <span class="keyword">bool</span> <span class="identifier">setup</span><span class="special">()</span> <span class="identifier">final</span> <span class="special">{</span>
+        <span class="keyword">return</span> <span class="keyword">true</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">bool</span> <span class="identifier">teardown</span><span class="special">()</span> <span class="identifier">final</span> <span class="special">{</span>
+        <span class="keyword">return</span> <span class="keyword">true</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">get_device_name</span><span class="special">()</span> <span class="keyword">const</span> <span class="special">{</span>
+        <span class="keyword">return</span> <span class="string">"mock_device"</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="identifier">DeviceInterface</span><span class="special">*</span> <span class="identifier">DeviceInterface</span><span class="special">::</span><span class="identifier">factory</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">device_name</span><span class="special">)</span> <span class="special">{</span>
+    <span class="keyword">if</span><span class="special">(</span><span class="identifier">device_name</span> <span class="special">==</span> <span class="string">"mock_device"</span><span class="special">)</span> <span class="special">{</span>
+        <span class="keyword">return</span> <span class="keyword">new</span> <span class="identifier">MockDevice</span><span class="special">();</span>
+    <span class="special">}</span>
+    <span class="keyword">return</span> <span class="keyword">nullptr</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">struct</span> <span class="identifier">CommandLineDeviceInit</span> <span class="special">{</span>
+  <span class="identifier">CommandLineDeviceInit</span><span class="special">()</span> <span class="special">{</span>
+      <span class="identifier">BOOST_TEST_REQUIRE</span><span class="special">(</span> <span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argc</span> <span class="special">==</span> <span class="number">3</span> <span class="special">);</span>
+      <span class="identifier">BOOST_TEST_REQUIRE</span><span class="special">(</span> <span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argv</span><span class="special">[</span><span class="number">1</span><span class="special">]</span> <span class="special">==</span> <span class="string">"--device-name"</span> <span class="special">);</span>
+  <span class="special">}</span>
+  <span class="keyword">void</span> <span class="identifier">setup</span><span class="special">()</span> <span class="special">{</span>
+      <span class="identifier">device</span> <span class="special">=</span> <span class="identifier">DeviceInterface</span><span class="special">::</span><span class="identifier">factory</span><span class="special">(</span><span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argv</span><span class="special">[</span><span class="number">2</span><span class="special">]);</span>
+      <span class="identifier">BOOST_TEST_REQUIRE</span><span class="special">(</span>
+        <span class="identifier">device</span> <span class="special">!=</span> <span class="keyword">nullptr</span><span class="special">,</span>
+        <span class="string">"Cannot create the device "</span> <span class="special">&lt;&lt;</span> <span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argv</span><span class="special">[</span><span class="number">2</span><span class="special">]</span> <span class="special">);</span>
+      <span class="identifier">BOOST_TEST_REQUIRE</span><span class="special">(</span>
+        <span class="identifier">device</span><span class="special">-&gt;</span><span class="identifier">setup</span><span class="special">(),</span>
+        <span class="string">"Cannot initialize the device "</span> <span class="special">&lt;&lt;</span> <span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argv</span><span class="special">[</span><span class="number">2</span><span class="special">]</span> <span class="special">);</span>
+  <span class="special">}</span>
+  <span class="keyword">void</span> <span class="identifier">teardown</span><span class="special">()</span> <span class="special">{</span>
+      <span class="keyword">if</span><span class="special">(</span><span class="identifier">device</span><span class="special">)</span> <span class="special">{</span>
+        <span class="identifier">BOOST_TEST</span><span class="special">(</span>
+          <span class="identifier">device</span><span class="special">-&gt;</span><span class="identifier">teardown</span><span class="special">(),</span>
+          <span class="string">"Cannot tear-down the device "</span> <span class="special">&lt;&lt;</span> <span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argv</span><span class="special">[</span><span class="number">2</span><span class="special">]);</span>
+      <span class="special">}</span>
+      <span class="keyword">delete</span> <span class="identifier">device</span><span class="special">;</span>
+  <span class="special">}</span>
+  <span class="keyword">static</span> <span class="identifier">DeviceInterface</span> <span class="special">*</span><span class="identifier">device</span><span class="special">;</span>
+<span class="special">};</span>
+<span class="identifier">DeviceInterface</span><span class="special">*</span> <span class="identifier">CommandLineDeviceInit</span><span class="special">::</span><span class="identifier">device</span> <span class="special">=</span> <span class="keyword">nullptr</span><span class="special">;</span>
+
+<span class="identifier">BOOST_TEST_GLOBAL_FIXTURE</span><span class="special">(</span> <span class="identifier">CommandLineDeviceInit</span> <span class="special">);</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">check_device_has_meaningful_name</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">CommandLineDeviceInit</span><span class="special">::</span><span class="identifier">device</span><span class="special">-&gt;</span><span class="identifier">get_device_name</span><span class="special">()</span> <span class="special">!=</span> <span class="string">""</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+              </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                <p>
+                  Output
+                </p>
+              </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor"># Example</span> <span class="identifier">run</span> <span class="number">1</span>
+<span class="special">&gt;</span> <span class="identifier">runtime_configuration2</span> <span class="special">--</span><span class="identifier">log_level</span><span class="special">=</span><span class="identifier">all</span>  <span class="special">--</span> <span class="special">--</span><span class="identifier">some</span><span class="special">-</span><span class="identifier">wrong</span><span class="special">-</span><span class="identifier">random</span><span class="special">-</span><span class="identifier">string</span> <span class="identifier">mock_device</span>
+<span class="identifier">Running</span> <span class="number">1</span> <span class="identifier">test</span> <span class="keyword">case</span><span class="special">...</span>
+<span class="identifier">Entering</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"runtime_configuration2"</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">46</span><span class="special">:</span> <span class="identifier">info</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argc</span> <span class="special">==</span> <span class="number">3</span> <span class="identifier">has</span> <span class="identifier">passed</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">47</span><span class="special">:</span> <span class="identifier">fatal</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"runtime_configuration2"</span><span class="special">:</span> <span class="identifier">critical</span> <span class="identifier">check</span> <span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argv</span><span class="special">[</span><span class="number">1</span><span class="special">]</span> <span class="special">==</span> <span class="string">"--device-name"</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[--</span><span class="identifier">some</span><span class="special">-</span><span class="identifier">wrong</span><span class="special">-</span><span class="identifier">random</span><span class="special">-</span><span class="identifier">string</span> <span class="special">!=</span> <span class="special">--</span><span class="identifier">device</span><span class="special">-</span><span class="identifier">name</span><span class="special">]</span>
+<span class="identifier">Leaving</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"runtime_configuration2"</span>
+
+<span class="special">***</span> <span class="identifier">The</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"runtime_configuration2"</span> <span class="identifier">was</span> <span class="identifier">aborted</span><span class="special">;</span> <span class="identifier">see</span> <span class="identifier">standard</span> <span class="identifier">output</span> <span class="keyword">for</span> <span class="identifier">details</span>
+<span class="special">***</span> <span class="number">1</span> <span class="identifier">failure</span> <span class="identifier">is</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">the</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"runtime_configuration2"</span>
+
+<span class="preprocessor"># Example</span> <span class="identifier">run</span> <span class="number">2</span>
+<span class="special">&gt;</span> <span class="identifier">runtime_configuration2</span> <span class="special">--</span><span class="identifier">log_level</span><span class="special">=</span><span class="identifier">all</span> <span class="special">--</span> <span class="special">--</span><span class="identifier">device</span><span class="special">-</span><span class="identifier">name</span> <span class="identifier">mock_device</span>
+<span class="identifier">Running</span> <span class="number">1</span> <span class="identifier">test</span> <span class="keyword">case</span><span class="special">...</span>
+<span class="identifier">Entering</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"runtime_configuration2"</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">46</span><span class="special">:</span> <span class="identifier">info</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argc</span> <span class="special">==</span> <span class="number">3</span> <span class="identifier">has</span> <span class="identifier">passed</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">47</span><span class="special">:</span> <span class="identifier">info</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argv</span><span class="special">[</span><span class="number">1</span><span class="special">]</span> <span class="special">==</span> <span class="string">"--device-name"</span> <span class="identifier">has</span> <span class="identifier">passed</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">53</span><span class="special">:</span> <span class="identifier">info</span><span class="special">:</span> <span class="identifier">check</span> <span class="char">'Cannot create the device mock_device'</span> <span class="identifier">has</span> <span class="identifier">passed</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">56</span><span class="special">:</span> <span class="identifier">info</span><span class="special">:</span> <span class="identifier">check</span> <span class="char">'Cannot initialize the device mock_device'</span> <span class="identifier">has</span> <span class="identifier">passed</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">72</span><span class="special">:</span> <span class="identifier">Entering</span> <span class="identifier">test</span> <span class="keyword">case</span> <span class="string">"check_device_has_meaningful_name"</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">74</span><span class="special">:</span> <span class="identifier">info</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">CommandLineDeviceInit</span><span class="special">::</span><span class="identifier">device</span><span class="special">-&gt;</span><span class="identifier">get_device_name</span><span class="special">()</span> <span class="special">!=</span> <span class="string">""</span> <span class="identifier">has</span> <span class="identifier">passed</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">72</span><span class="special">:</span> <span class="identifier">Leaving</span> <span class="identifier">test</span> <span class="keyword">case</span> <span class="string">"check_device_has_meaningful_name"</span><span class="special">;</span> <span class="identifier">testing</span> <span class="identifier">time</span><span class="special">:</span> <span class="number">127u</span><span class="identifier">s</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">62</span><span class="special">:</span> <span class="identifier">info</span><span class="special">:</span> <span class="identifier">check</span> <span class="char">'Cannot tear-down the device mock_device'</span> <span class="identifier">has</span> <span class="identifier">passed</span>
+<span class="identifier">Leaving</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"runtime_configuration2"</span><span class="special">;</span> <span class="identifier">testing</span> <span class="identifier">time</span><span class="special">:</span> <span class="number">177u</span><span class="identifier">s</span>
+
+<span class="special">***</span> <span class="identifier">No</span> <span class="identifier">errors</span> <span class="identifier">detected</span>
+</pre>
+              </td></tr></tbody>
+</table></div>
+<p>
+        The above example instantiates a specific device through the <code class="computeroutput"><span class="identifier">DeviceInterface</span><span class="special">::</span><span class="identifier">factory</span></code> member function. The name of the
+        device to instantiate is passed via the command line argument <code class="computeroutput"><span class="special">--</span><span class="identifier">device</span><span class="special">-</span><span class="identifier">name</span></code>,
+        and the instantiated device is available through the global object <code class="computeroutput"><span class="identifier">CommandLineDeviceInit</span><span class="special">::</span><span class="identifier">device</span></code>. The module requires <code class="computeroutput"><span class="number">3</span></code> arguments on the command line:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argv</span><span class="special">[</span><span class="number">0</span><span class="special">]</span></code> is the
+            test module name as explained in the previous paragraph
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argv</span><span class="special">[</span><span class="number">1</span><span class="special">]</span></code> should
+            be equal to <code class="computeroutput"><span class="special">--</span><span class="identifier">device</span><span class="special">-</span><span class="identifier">name</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argv</span><span class="special">[</span><span class="number">2</span><span class="special">]</span></code> should
+            be the name of the device to instantiate
+          </li>
+</ul></div>
+<p>
+        As it can be seen in the shell outputs, any command line argument consumed
+        by the <span class="emphasis"><em>Unit Test Framework</em></span> is removed from <code class="computeroutput"><span class="identifier">argc</span></code> / <code class="computeroutput"><span class="identifier">argv</span></code>.
+        Since global fixtures are running in the <span class="emphasis"><em>Unit Test Framework</em></span>
+        controlled environment, any fatal error reported by the fixture (through
+        the <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_test_universal_macro.html" title="BOOST_TEST"><code class="computeroutput"><span class="identifier">BOOST_TEST_REQUIRE</span></code></a> assertion) aborts
+        the test execution. Non fatal errors on the other hand do not abort the test-module
+        and are reported as assertion failure, and would not prevent the execution
+        of the test case <code class="computeroutput"><span class="identifier">check_device_has_meaningful_name</span></code>.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          It is possible to have several global fixtures in a test module, spread
+          over several compilation units. Each of those fixture may in turn be accessing
+          a specific part of the command line.
+        </p></td></tr>
+</table></div>
+<a name="ref_consuming_cmd_init_function"></a><h5>
+<a name="boost_test.runtime_config.custom_command_line_arguments.h4"></a>
+        <span class="phrase"><a name="boost_test.runtime_config.custom_command_line_arguments.parametrizing_the_test_tree_from"></a></span><a class="link" href="custom_command_line_arguments.html#boost_test.runtime_config.custom_command_line_arguments.parametrizing_the_test_tree_from">Parametrizing
+        the test tree from command line in the initialization function</a>
+      </h5>
+<p>
+        The initialization function are described in details in this <a class="link" href="../adv_scenarios/test_module_init_overview.html" title="Test module's initialization">section</a>.
+        The initialization function is called before any other test or fixture, and
+        before entering the master test suite. The initialization function is not
+        considered as a test-case, although it is called under the controlled execution
+        environment of the <span class="emphasis"><em>Unit Test Framework</em></span>. This means that:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            the errors will be properly handled,
+          </li>
+<li class="listitem">
+            loggers are not fully operational,
+          </li>
+<li class="listitem">
+            it is not possible to use the <span class="emphasis"><em>Unit Test Framework</em></span>
+            assertion macros like <a class="link" href="../utf_reference/testing_tool_ref/assertion_boost_test_universal_macro.html" title="BOOST_TEST"><code class="computeroutput"><span class="identifier">BOOST_TEST</span></code></a> as it is not a test-case.
+          </li>
+</ul></div>
+<p>
+        The following example shows how to use the command line arguments parsing
+        described above to create/add new test cases to the test tree. It also shows
+        very limited support to messages (does not work for all loggers), and error
+        handling.
+      </p>
+<h6>
+<a name="boost_test.runtime_config.custom_command_line_arguments.h5"></a>
+        <span class="phrase"><a name="boost_test.runtime_config.custom_command_line_arguments.example_descr1"></a></span><a class="link" href="custom_command_line_arguments.html#boost_test.runtime_config.custom_command_line_arguments.example_descr1">Example:
+        Init function parametrized from the command line</a>
+      </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                <p>
+                  Code
+                </p>
+              </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_ALTERNATIVE_INIT_API</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">functional</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">sstream</span><span class="special">&gt;</span>
+
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">;</span>
+
+<span class="keyword">void</span> <span class="identifier">test_function</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span><span class="special">)</span> <span class="special">{</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">i</span> <span class="special">&gt;=</span> <span class="number">1</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="comment">// helper</span>
+<span class="keyword">int</span> <span class="identifier">read_integer</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span><span class="identifier">str</span><span class="special">)</span> <span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">istringstream</span> <span class="identifier">buff</span><span class="special">(</span> <span class="identifier">str</span> <span class="special">);</span>
+  <span class="keyword">int</span> <span class="identifier">number</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+  <span class="identifier">buff</span> <span class="special">&gt;&gt;</span> <span class="identifier">number</span><span class="special">;</span>
+  <span class="keyword">if</span><span class="special">(</span><span class="identifier">buff</span><span class="special">.</span><span class="identifier">fail</span><span class="special">())</span> <span class="special">{</span>
+    <span class="comment">// it is also possible to raise a boost.test specific exception.</span>
+    <span class="keyword">throw</span> <span class="identifier">framework</span><span class="special">::</span><span class="identifier">setup_error</span><span class="special">(</span><span class="string">"Argument '"</span> <span class="special">+</span> <span class="identifier">str</span> <span class="special">+</span> <span class="string">"' not integer"</span><span class="special">);</span>
+  <span class="special">}</span>
+  <span class="keyword">return</span> <span class="identifier">number</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">bool</span> <span class="identifier">init_unit_test</span><span class="special">()</span>
+<span class="special">{</span>
+  <span class="keyword">int</span> <span class="identifier">argc</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argc</span><span class="special">;</span>
+  <span class="keyword">char</span><span class="special">**</span> <span class="identifier">argv</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argv</span><span class="special">;</span>
+
+  <span class="keyword">if</span><span class="special">(</span> <span class="identifier">argc</span> <span class="special">&lt;=</span> <span class="number">1</span><span class="special">)</span> <span class="special">{</span>
+      <span class="keyword">return</span> <span class="keyword">false</span><span class="special">;</span> <span class="comment">// returning false to indicate an error</span>
+  <span class="special">}</span>
+
+  <span class="keyword">if</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">(</span><span class="identifier">argv</span><span class="special">[</span><span class="number">1</span><span class="special">])</span> <span class="special">==</span> <span class="string">"--create-parametrized"</span> <span class="special">)</span> <span class="special">{</span>
+    <span class="keyword">if</span><span class="special">(</span><span class="identifier">argc</span> <span class="special">&lt;</span> <span class="number">3</span><span class="special">)</span> <span class="special">{</span>
+      <span class="comment">// the logging availability depends on the logger type</span>
+      <span class="identifier">BOOST_TEST_MESSAGE</span><span class="special">(</span><span class="string">"Not enough parameters"</span><span class="special">);</span>
+      <span class="keyword">return</span> <span class="keyword">false</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="keyword">int</span> <span class="identifier">number_tests</span> <span class="special">=</span> <span class="identifier">read_integer</span><span class="special">(</span><span class="identifier">argv</span><span class="special">[</span><span class="number">2</span><span class="special">]);</span>
+    <span class="keyword">int</span> <span class="identifier">test_start</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+    <span class="keyword">if</span><span class="special">(</span><span class="identifier">argc</span> <span class="special">&gt;</span> <span class="number">3</span><span class="special">)</span> <span class="special">{</span>
+        <span class="identifier">test_start</span> <span class="special">=</span> <span class="identifier">read_integer</span><span class="special">(</span><span class="identifier">argv</span><span class="special">[</span><span class="number">3</span><span class="special">]);</span>
+    <span class="special">}</span>
+
+    <span class="keyword">for</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="identifier">test_start</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="identifier">number_tests</span><span class="special">;</span> <span class="identifier">i</span><span class="special">++)</span> <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostringstream</span> <span class="identifier">ostr</span><span class="special">;</span>
+        <span class="identifier">ostr</span> <span class="special">&lt;&lt;</span> <span class="string">"name "</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span><span class="special">;</span>
+        <span class="comment">// create test-cases, avoiding duplicate names</span>
+        <span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span>
+            <span class="identifier">add</span><span class="special">(</span> <span class="identifier">BOOST_TEST_CASE_NAME</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(&amp;</span><span class="identifier">test_function</span><span class="special">,</span> <span class="identifier">i</span><span class="special">),</span> <span class="identifier">ostr</span><span class="special">.</span><span class="identifier">str</span><span class="special">().</span><span class="identifier">c_str</span><span class="special">()</span> <span class="special">)</span> <span class="special">);</span>
+    <span class="special">}</span>
+  <span class="special">}</span>
+  <span class="keyword">return</span> <span class="keyword">true</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+              </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                <p>
+                  Output
+                </p>
+              </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor"># Example</span> <span class="identifier">run</span> <span class="number">1</span>
+<span class="special">&gt;</span> <span class="identifier">runtime_configuration3</span> <span class="special">--</span><span class="identifier">log_level</span><span class="special">=</span><span class="identifier">all</span>  <span class="special">--</span> <span class="special">--</span><span class="identifier">create</span><span class="special">-</span><span class="identifier">parametrized</span> <span class="number">3</span>
+<span class="identifier">Running</span> <span class="number">3</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="identifier">Entering</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"Master Test Suite"</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">59</span><span class="special">:</span> <span class="identifier">Entering</span> <span class="identifier">test</span> <span class="keyword">case</span> <span class="string">"name 0"</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">17</span><span class="special">:</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"name 0"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">i</span> <span class="special">&gt;=</span> <span class="number">1</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">0</span> <span class="special">&lt;</span> <span class="number">1</span><span class="special">]</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">59</span><span class="special">:</span> <span class="identifier">Leaving</span> <span class="identifier">test</span> <span class="keyword">case</span> <span class="string">"name 0"</span><span class="special">;</span> <span class="identifier">testing</span> <span class="identifier">time</span><span class="special">:</span> <span class="number">179u</span><span class="identifier">s</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">59</span><span class="special">:</span> <span class="identifier">Entering</span> <span class="identifier">test</span> <span class="keyword">case</span> <span class="string">"name 1"</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">17</span><span class="special">:</span> <span class="identifier">info</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">i</span> <span class="special">&gt;=</span> <span class="number">1</span> <span class="identifier">has</span> <span class="identifier">passed</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">59</span><span class="special">:</span> <span class="identifier">Leaving</span> <span class="identifier">test</span> <span class="keyword">case</span> <span class="string">"name 1"</span><span class="special">;</span> <span class="identifier">testing</span> <span class="identifier">time</span><span class="special">:</span> <span class="number">45u</span><span class="identifier">s</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">59</span><span class="special">:</span> <span class="identifier">Entering</span> <span class="identifier">test</span> <span class="keyword">case</span> <span class="string">"name 2"</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">17</span><span class="special">:</span> <span class="identifier">info</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">i</span> <span class="special">&gt;=</span> <span class="number">1</span> <span class="identifier">has</span> <span class="identifier">passed</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">59</span><span class="special">:</span> <span class="identifier">Leaving</span> <span class="identifier">test</span> <span class="keyword">case</span> <span class="string">"name 2"</span><span class="special">;</span> <span class="identifier">testing</span> <span class="identifier">time</span><span class="special">:</span> <span class="number">34u</span><span class="identifier">s</span>
+<span class="identifier">Leaving</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"Master Test Suite"</span><span class="special">;</span> <span class="identifier">testing</span> <span class="identifier">time</span><span class="special">:</span> <span class="number">443u</span><span class="identifier">s</span>
+
+<span class="special">***</span> <span class="number">1</span> <span class="identifier">failure</span> <span class="identifier">is</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">the</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"Master Test Suite"</span>
+
+<span class="preprocessor"># Example</span> <span class="identifier">run</span> <span class="number">2</span>
+<span class="special">&gt;</span> <span class="identifier">runtime_configuration3</span> <span class="special">--</span><span class="identifier">log_level</span><span class="special">=</span><span class="identifier">all</span>  <span class="special">--</span> <span class="special">--</span><span class="identifier">create</span><span class="special">-</span><span class="identifier">parametrized</span>
+<span class="identifier">Not</span> <span class="identifier">enough</span> <span class="identifier">parameters</span>
+<span class="identifier">Test</span> <span class="identifier">setup</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">runtime_error</span><span class="special">:</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="identifier">initialization</span> <span class="identifier">failed</span>
+
+<span class="preprocessor"># Example</span> <span class="identifier">run</span> <span class="number">3</span>
+<span class="special">&gt;</span> <span class="identifier">runtime_configuration3</span> <span class="special">--</span><span class="identifier">log_level</span><span class="special">=</span><span class="identifier">all</span>  <span class="special">--</span> <span class="special">--</span><span class="identifier">create</span><span class="special">-</span><span class="identifier">parametrized</span> <span class="identifier">dummy</span>
+<span class="identifier">Test</span> <span class="identifier">setup</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">framework</span><span class="special">::</span><span class="identifier">setup_error</span><span class="special">:</span> <span class="identifier">Argument</span> <span class="char">'dummy'</span> <span class="keyword">not</span> <span class="identifier">integer</span>
+</pre>
+              </td></tr></tbody>
+</table></div>
+<p>
+        As seen in this example, the error handling is quite different than a regular
+        test-case:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            For the <span class="emphasis"><em>alternative</em></span> initialization API (see <a class="link" href="../utf_reference/link_references/link_boost_test_alternative_init_macro.html" title="BOOST_TEST_ALTERNATIVE_INIT_API"><code class="computeroutput"><span class="identifier">BOOST_TEST_ALTERNATIVE_INIT_API</span></code></a>),
+            the easiest way to indicate an error would be to return <code class="computeroutput"><span class="keyword">false</span></code> in case of failure.
+          </li>
+<li class="listitem">
+            For the <span class="emphasis"><em>obsolete</em></span> and <span class="emphasis"><em>alternative</em></span>,
+            raising an exception such as <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">runtime_error</span></code>
+            or <code class="computeroutput"><a class="link" href="../../boost/unit_test/framework/setup_error.html" title="Struct setup_error">boost::unit_test::framework::setup_error</a></code>
+            as above works as well.
+          </li>
+</ul></div>
+<a name="ref_consuming_cmd_dataset"></a><h5>
+<a name="boost_test.runtime_config.custom_command_line_arguments.h6"></a>
+        <span class="phrase"><a name="boost_test.runtime_config.custom_command_line_arguments.data_driven_test_cases_parametri"></a></span><a class="link" href="custom_command_line_arguments.html#boost_test.runtime_config.custom_command_line_arguments.data_driven_test_cases_parametri">Data-driven
+        test cases parametrized from the command line</a>
+      </h5>
+<p>
+        It is possible to use the command line arguments to manipulate the dataset
+        generated by a data-drive test case.
+      </p>
+<p>
+        By default, datasets are created before entering the <code class="computeroutput"><span class="identifier">main</span></code>
+        of the test module, and try to be efficient in the number of copies of their
+        arguments. It is however possible to indicate a delay for the evaluation
+        of the dataset by constructing the dataset with the <code class="computeroutput"><span class="identifier">make_delayed</span></code>
+        function.
+      </p>
+<p>
+        With the <code class="computeroutput"><span class="identifier">make_delayed</span></code>, the
+        construction of the dataset will happen at the same time as the construction
+        of the test tree during the test module initialization, and not before. It
+        is this way possible to access the <a class="link" href="../tests_organization/test_tree/master_test_suite.html" title="Master test suite">master
+        test suite</a> and its command line arguments.
+      </p>
+<p>
+        The example below shows a complex dataset generation from the content of
+        an external file. The data contained in the file participates to the definition
+        of the test case.
+      </p>
+<h6>
+<a name="boost_test.runtime_config.custom_command_line_arguments.h7"></a>
+        <span class="phrase"><a name="boost_test.runtime_config.custom_command_line_arguments.example_descr2"></a></span><a class="link" href="custom_command_line_arguments.html#boost_test.runtime_config.custom_command_line_arguments.example_descr2">Example:
+        Dataset test case parametrized from the command line</a>
+      </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                <p>
+                  Code
+                </p>
+              </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">runtime_configuration4</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">data</span><span class="special">/</span><span class="identifier">test_case</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">functional</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">sstream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">fstream</span><span class="special">&gt;</span>
+
+<span class="comment">// this dataset loads a file that contains a list of strings</span>
+<span class="comment">// this list is used to create a dataset test case.</span>
+<span class="keyword">class</span> <span class="identifier">file_dataset</span>
+<span class="special">{</span>
+<span class="keyword">private</span><span class="special">:</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">m_filename</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">m_line_start</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">m_line_end</span><span class="special">;</span>
+
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">enum</span> <span class="special">{</span> <span class="identifier">arity</span> <span class="special">=</span> <span class="number">2</span> <span class="special">};</span>
+
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">file_dataset</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">line_start</span> <span class="special">=</span> <span class="number">0</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">line_end</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">(-</span><span class="number">1</span><span class="special">))</span>
+    <span class="special">:</span> <span class="identifier">m_line_start</span><span class="special">(</span><span class="identifier">line_start</span><span class="special">)</span>
+    <span class="special">,</span> <span class="identifier">m_line_end</span><span class="special">(</span><span class="identifier">line_end</span><span class="special">)</span>
+    <span class="special">{</span>
+      <span class="keyword">int</span> <span class="identifier">argc</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argc</span><span class="special">;</span>
+      <span class="keyword">char</span><span class="special">**</span> <span class="identifier">argv</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">framework</span><span class="special">::</span><span class="identifier">master_test_suite</span><span class="special">().</span><span class="identifier">argv</span><span class="special">;</span>
+
+      <span class="keyword">if</span><span class="special">(</span><span class="identifier">argc</span> <span class="special">!=</span> <span class="number">3</span><span class="special">)</span>
+        <span class="keyword">throw</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">logic_error</span><span class="special">(</span><span class="string">"Incorrect number of arguments"</span><span class="special">);</span>
+      <span class="keyword">if</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">(</span><span class="identifier">argv</span><span class="special">[</span><span class="number">1</span><span class="special">])</span> <span class="special">!=</span> <span class="string">"--test-file"</span><span class="special">)</span>
+        <span class="keyword">throw</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">logic_error</span><span class="special">(</span><span class="string">"First argument != '--test-file'"</span><span class="special">);</span>
+      <span class="keyword">if</span><span class="special">(!(</span><span class="identifier">m_line_start</span> <span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">(-</span><span class="number">1</span><span class="special">)))</span>
+        <span class="keyword">throw</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">logic_error</span><span class="special">(</span><span class="string">"Incorrect line start/end"</span><span class="special">);</span>
+
+      <span class="identifier">m_filename</span> <span class="special">=</span> <span class="identifier">argv</span><span class="special">[</span><span class="number">2</span><span class="special">];</span>
+
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">ifstream</span> <span class="identifier">file</span><span class="special">(</span><span class="identifier">m_filename</span><span class="special">);</span>
+      <span class="keyword">if</span><span class="special">(!</span><span class="identifier">file</span><span class="special">.</span><span class="identifier">is_open</span><span class="special">())</span>
+        <span class="keyword">throw</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">logic_error</span><span class="special">(</span><span class="string">"Cannot open the file '"</span> <span class="special">+</span> <span class="identifier">m_filename</span> <span class="special">+</span> <span class="string">"'"</span><span class="special">);</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">nb_lines</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">count_if</span><span class="special">(</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">istreambuf_iterator</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;(</span><span class="identifier">file</span><span class="special">),</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">istreambuf_iterator</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;(),</span>
+        <span class="special">[](</span><span class="keyword">char</span> <span class="identifier">c</span><span class="special">){</span> <span class="keyword">return</span> <span class="identifier">c</span> <span class="special">==</span> <span class="char">'\n'</span><span class="special">;});</span>
+
+      <span class="identifier">m_line_end</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">min</span><span class="special">)(</span><span class="identifier">nb_lines</span><span class="special">,</span> <span class="identifier">m_line_end</span><span class="special">);</span>
+      <span class="keyword">if</span><span class="special">(!(</span><span class="identifier">m_line_start</span> <span class="special">&lt;=</span> <span class="identifier">m_line_end</span><span class="special">))</span>
+        <span class="keyword">throw</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">logic_error</span><span class="special">(</span><span class="string">"Incorrect line start/end"</span><span class="special">);</span>
+    <span class="special">}</span>
+
+    <span class="keyword">struct</span> <span class="identifier">iterator</span> <span class="special">{</span>
+        <span class="identifier">iterator</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">filename</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">line_start</span><span class="special">)</span>
+        <span class="special">:</span> <span class="identifier">file</span><span class="special">(</span><span class="identifier">filename</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">ios</span><span class="special">::</span><span class="identifier">binary</span><span class="special">)</span> <span class="special">{</span>
+          <span class="keyword">if</span><span class="special">(!</span><span class="identifier">file</span><span class="special">.</span><span class="identifier">is_open</span><span class="special">())</span>
+            <span class="keyword">throw</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">runtime_error</span><span class="special">(</span><span class="string">"Cannot open the file"</span><span class="special">);</span>
+          <span class="keyword">for</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="identifier">line_start</span><span class="special">;</span> <span class="identifier">i</span><span class="special">++)</span> <span class="special">{</span>
+            <span class="identifier">getline</span><span class="special">(</span><span class="identifier">file</span><span class="special">,</span> <span class="identifier">m_current_line</span><span class="special">);</span>
+          <span class="special">}</span>
+        <span class="special">}</span>
+
+        <span class="keyword">auto</span> <span class="keyword">operator</span><span class="special">*()</span> <span class="keyword">const</span> <span class="special">-&gt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">float</span><span class="special">,</span> <span class="keyword">float</span><span class="special">&gt;</span> <span class="special">{</span>
+          <span class="keyword">float</span> <span class="identifier">a</span><span class="special">,</span> <span class="identifier">b</span><span class="special">;</span>
+          <span class="identifier">std</span><span class="special">::</span><span class="identifier">istringstream</span> <span class="identifier">istr</span><span class="special">(</span><span class="identifier">m_current_line</span><span class="special">);</span>
+          <span class="identifier">istr</span> <span class="special">&gt;&gt;</span> <span class="identifier">a</span> <span class="special">&gt;&gt;</span> <span class="identifier">b</span><span class="special">;</span>
+          <span class="keyword">return</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">float</span><span class="special">,</span> <span class="keyword">float</span><span class="special">&gt;(</span><span class="identifier">a</span><span class="special">,</span> <span class="identifier">b</span><span class="special">);</span>
+        <span class="special">}</span>
+
+        <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">++()</span> <span class="special">{</span>
+          <span class="identifier">getline</span><span class="special">(</span><span class="identifier">file</span><span class="special">,</span> <span class="identifier">m_current_line</span><span class="special">);</span>
+        <span class="special">}</span>
+    <span class="keyword">private</span><span class="special">:</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">ifstream</span> <span class="identifier">file</span><span class="special">;</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">m_current_line</span><span class="special">;</span>
+    <span class="special">};</span>
+
+    <span class="comment">// size of the DS</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">data</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">size</span><span class="special">()</span> <span class="keyword">const</span> <span class="special">{</span>
+      <span class="keyword">return</span> <span class="identifier">m_line_end</span> <span class="special">-</span> <span class="identifier">m_line_start</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="comment">// iterator over the lines of the file</span>
+    <span class="identifier">iterator</span> <span class="identifier">begin</span><span class="special">()</span> <span class="keyword">const</span>   <span class="special">{</span>
+      <span class="keyword">return</span> <span class="identifier">iterator</span><span class="special">(</span><span class="identifier">m_filename</span><span class="special">,</span> <span class="identifier">m_line_start</span><span class="special">);</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">unit_test</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">data</span> <span class="special">{</span>
+
+<span class="keyword">namespace</span> <span class="identifier">monomorphic</span> <span class="special">{</span>
+  <span class="keyword">template</span> <span class="special">&lt;&gt;</span>
+  <span class="keyword">struct</span> <span class="identifier">is_dataset</span><span class="special">&lt;</span><span class="identifier">file_dataset</span><span class="special">&gt;</span> <span class="special">:</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mpl</span><span class="special">::</span><span class="identifier">true_</span> <span class="special">{};</span>
+<span class="special">}</span>
+<span class="special">}}}</span>
+
+<span class="identifier">BOOST_DATA_TEST_CASE</span><span class="special">(</span><span class="identifier">command_line_test_file</span><span class="special">,</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">data</span><span class="special">::</span><span class="identifier">make_delayed</span><span class="special">&lt;</span><span class="identifier">file_dataset</span><span class="special">&gt;(</span> <span class="number">3</span><span class="special">,</span> <span class="number">10</span> <span class="special">),</span>
+    <span class="identifier">input</span><span class="special">,</span> <span class="identifier">expected</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">input</span> <span class="special">&lt;=</span> <span class="identifier">expected</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+              </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                <p>
+                  Output
+                </p>
+              </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor"># content</span> <span class="identifier">of</span> <span class="identifier">the</span> <span class="identifier">file</span>
+<span class="special">&gt;</span> <span class="identifier">more</span> <span class="identifier">test_file</span><span class="special">.</span><span class="identifier">txt</span>
+<span class="number">10.2</span> <span class="number">30.4</span>
+<span class="number">10.3</span> <span class="number">30.2</span>
+<span class="number">15.987984</span> <span class="number">15.9992</span>
+<span class="number">15.997984</span> <span class="number">15.9962</span>
+
+<span class="preprocessor"># Example</span> <span class="identifier">run</span> <span class="number">1</span>
+<span class="special">&gt;</span> <span class="identifier">runtime_configuration4</span> <span class="special">--</span><span class="identifier">log_level</span><span class="special">=</span><span class="identifier">all</span>  <span class="special">--</span> <span class="special">--</span><span class="identifier">test</span><span class="special">-</span><span class="identifier">file</span> <span class="identifier">test_file</span><span class="special">.</span><span class="identifier">txt</span>
+<span class="identifier">Running</span> <span class="number">2</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="identifier">Entering</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"runtime_configuration4"</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">107</span><span class="special">:</span> <span class="identifier">Entering</span> <span class="identifier">test</span> <span class="identifier">suite</span> <span class="string">"command_line_test_file"</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">107</span><span class="special">:</span> <span class="identifier">Entering</span> <span class="identifier">test</span> <span class="keyword">case</span> <span class="string">"_0"</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">108</span><span class="special">:</span> <span class="identifier">info</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">input</span> <span class="special">&lt;=</span> <span class="identifier">expected</span> <span class="identifier">has</span> <span class="identifier">passed</span>
+<span class="identifier">Assertion</span> <span class="identifier">occurred</span> <span class="identifier">in</span> <span class="identifier">a</span> <span class="identifier">following</span> <span class="identifier">context</span><span class="special">:</span>
+    <span class="identifier">input</span> <span class="special">=</span> <span class="number">15.9879837</span><span class="special">;</span> <span class="identifier">expected</span> <span class="special">=</span> <span class="number">15.9991999</span><span class="special">;</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">107</span><span class="special">:</span> <span class="identifier">Leaving</span> <span class="identifier">test</span> <span class="keyword">case</span> <span class="string">"_0"</span><span class="special">;</span> <span class="identifier">testing</span> <span class="identifier">time</span><span class="special">:</span> <span class="number">433u</span><span class="identifier">s</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">107</span><span class="special">:</span> <span class="identifier">Entering</span> <span class="identifier">test</span> <span class="keyword">case</span> <span class="string">"_1"</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">108</span><span class="special">:</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"command_line_test_file/_1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">input</span> <span class="special">&lt;=</span> <span class="identifier">expected</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">15.9979839</span> <span class="special">&gt;</span> <span class="number">15.9961996</span><span class="special">]</span>
+<span class="identifier">Failure</span> <span class="identifier">occurred</span> <span class="identifier">in</span> <span class="identifier">a</span> <span class="identifier">following</span> <span class="identifier">context</span><span class="special">:</span>
+    <span class="identifier">input</span> <span class="special">=</span> <span class="number">15.9979839</span><span class="special">;</span> <span class="identifier">expected</span> <span class="special">=</span> <span class="number">15.9961996</span><span class="special">;</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">107</span><span class="special">:</span> <span class="identifier">Leaving</span> <span class="identifier">test</span> <span class="keyword">case</span> <span class="string">"_1"</span><span class="special">;</span> <span class="identifier">testing</span> <span class="identifier">time</span><span class="special">:</span> <span class="number">114u</span><span class="identifier">s</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">107</span><span class="special">:</span> <span class="identifier">Leaving</span> <span class="identifier">test</span> <span class="identifier">suite</span> <span class="string">"command_line_test_file"</span><span class="special">;</span> <span class="identifier">testing</span> <span class="identifier">time</span><span class="special">:</span> <span class="number">616u</span><span class="identifier">s</span>
+<span class="identifier">Leaving</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"runtime_configuration4"</span><span class="special">;</span> <span class="identifier">testing</span> <span class="identifier">time</span><span class="special">:</span> <span class="number">881u</span><span class="identifier">s</span>
+
+<span class="special">***</span> <span class="number">1</span> <span class="identifier">failure</span> <span class="identifier">is</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">the</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"runtime_configuration4"</span>
+
+<span class="preprocessor"># Example</span> <span class="identifier">run</span> <span class="number">2</span>
+<span class="special">&gt;</span> <span class="identifier">runtime_configuration4</span> <span class="special">--</span><span class="identifier">log_level</span><span class="special">=</span><span class="identifier">all</span>  <span class="special">--</span> <span class="special">--</span><span class="identifier">test</span><span class="special">-</span><span class="identifier">file</span> <span class="identifier">non</span><span class="special">-</span><span class="identifier">existant</span><span class="special">.</span><span class="identifier">txt</span>
+<span class="identifier">Test</span> <span class="identifier">setup</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">Cannot</span> <span class="identifier">open</span> <span class="identifier">the</span> <span class="identifier">file</span> <span class="char">'non-existant.txt'</span>
+
+<span class="preprocessor"># Example</span> <span class="identifier">run</span> <span class="number">3</span>
+<span class="special">&gt;</span> <span class="identifier">runtime_configuration4</span> <span class="special">--</span><span class="identifier">log_level</span><span class="special">=</span><span class="identifier">all</span>
+<span class="identifier">Test</span> <span class="identifier">setup</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">Incorrect</span> <span class="identifier">number</span> <span class="identifier">of</span> <span class="identifier">arguments</span>
+</pre>
+              </td></tr></tbody>
+</table></div>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Using <code class="computeroutput"><span class="identifier">make_delayed</span></code>, the
+            tests generated from a dataset are instantiated during the framework
+            setup. This let the dataset generator access the <code class="computeroutput"><span class="identifier">argc</span></code>
+            and <code class="computeroutput"><span class="identifier">argv</span></code> of the master
+            test suite.
+          </li>
+<li class="listitem">
+            The generation of the test-cases out of this dataset happens before the
+            global fixture are reached (and before any test cases), and after the
+            initialization function.
+          </li>
+<li class="listitem">
+            The generator of the dataset is <span class="bold"><strong>not</strong></span>
+            considered being a test case and the <span class="emphasis"><em>Unit Test Framework</em></span>
+            assertions are not accessible. However, the <span class="emphasis"><em>Unit Test Framework</em></span>
+            will catch the exceptions raised during the generation of the test-cases
+            by the dataset. To report an error, a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">logic_error</span></code>
+            or <code class="computeroutput"><a class="link" href="../../boost/unit_test/framework/setup_error.html" title="Struct setup_error">boost::unit_test::framework::setup_error</a></code>
+            can be raised and will be reported by the <span class="emphasis"><em>Unit Test Framework</em></span>.
+          </li>
+</ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2020 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="test_unit_filtering.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../runtime_config.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="summary.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

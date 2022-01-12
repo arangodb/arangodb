@@ -1,0 +1,44 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+
+    <meta http-equiv="content-type" content="text/html; charset=windows-1252">
+    <title>BOOST_PP_IS_STANDARD</title>
+    <link rel="stylesheet" type="text/css" href="../styles.css">
+  </head>
+  <body>
+    <div style="margin-left: 0px;"> The <b>BOOST_PP_IS_STANDARD </b>macro
+      specifies whether the compiler's preprocessor is a standard
+      conforming one or not.<br>
+    </div>
+    <h4>Usage</h4>
+    <div class="code"><b>BOOST_PP_IS_STANDARD()</b><br>
+    </div>
+    <b>Remarks</b>
+    <div> The macro is a <i>function-like</i> macro taking no
+      parameters. It is used to check if the compiler's preprocessor is
+      standard conforming. One use for the end-user is to see if <a
+        href="../topics/limitations.html">limitations</a> can be
+      changed, since changes will only take affect for standard
+      conforming preprocessors. The macro expands to 1 if
+      the compiler's preprocessor is standard conforming and 0 if it is
+      not.</div>
+    <b>Requirements</b>
+    <div> <b>Header:</b> &nbsp;<a
+        href="../headers/config/variadics.html">&lt;boost/preprocessor/config/config.hpp&gt;</a>
+    </div>
+    <h4>Sample Code</h4>
+    <div>
+      <pre>// Beginning of source file<br><br>#include &lt;<a href="../headers/config/variadics.html">boost/preprocessor/config/config.hpp</a>&gt;<br><br>#if <a href="variadics.html">BOOST_PP_IS_STANDARD()</a><br>#define BOOST_PP_LIMIT_MAG 512<br>#endif<br><br>#include &lt;boost/preprocessor/arithmetic.hpp&gt; // etc.<br></pre>
+    </div>
+    <hr size="1">
+    <div style="margin-left: 0px;"> <i>© Copyright Edward Diener 2020</i>
+    </div>
+    <div style="margin-left: 0px;">
+      <p><small>Distributed under the Boost Software License, Version
+          1.0.
+          (See accompanying file <a href="../../../../LICENSE_1_0.txt">LICENSE_1_0.txt</a>
+          or copy at <a href="http://www.boost.org/LICENSE_1_0.txt">www.boost.org/LICENSE_1_0.txt</a>)</small></p>
+    </div>
+  </body>
+</html>

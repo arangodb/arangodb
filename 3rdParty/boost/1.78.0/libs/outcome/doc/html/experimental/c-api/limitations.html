@@ -1,0 +1,81 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Limitations - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../experimental/c-api.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../experimental/c-api.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../experimental/c-api/example.html"><img src="../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both">Limitations</h1></div></div></div>
+  <p>C++ has excellent two-way compatibility with the C ABI, but there are some
+limitations you must observe to write C++ code which C code can call without
+marshalling at the ABI boundary:</p>
+
+<ol>
+<li><p>A C++ function may not throw exceptions if it is safe to call from C, and
+so should always be marked <code>noexcept</code>.</p></li>
+
+<li><p>A C++ function should be annotated with <code>extern &quot;C&quot;</code> to prevent its symbol
+being mangled, and thus give it the C rather than C++ ABI.</p></li>
+
+<li><p>You cannot use overloading in your <code>extern &quot;C&quot;</code> functions.</p></li>
+
+<li><p>You may only use types in your C++ function declaration for which these traits are both true:</p>
+
+<ul>
+<li><a href="http://en.cppreference.com/w/cpp/types/is_standard_layout"><code>std::is_standard_layout_v&lt;T&gt;</code></a></li>
+<li><a href="http://en.cppreference.com/w/cpp/types/is_trivially_copyable"><code>std::is_trivially_copyable_v&lt;T&gt;</code></a></li>
+</ul>
+
+<p>(Note that <code>std::is_trivially_copyable_v&lt;T&gt;</code> requires trivial destruction,
+but NOT trivial construction. This means that C++ can do non-trivial construction
+of otherwise trivial types)</p></li>
+</ol>
+
+<hr />
+
+<p>The above is what the standard officially requires for <em>well defined</em> C and C++ interop.
+However, all of the three major compilers MSVC, GCC and clang are considerably more relaxed.
+In those three major compilers, &ldquo;almost-standard-layout&rdquo; C++ types work fine in C.</p>
+
+<p>&ldquo;Almost-standard-layout&rdquo; C++ types have these requirements:</p>
+
+<ol>
+<li>No virtual functions or virtual base classes i.e.
+<a href="http://en.cppreference.com/w/cpp/types/is_polymorphic"><code>std::is_polymorphic_v&lt;T&gt;</code></a>
+must be false. This is because the vptrs offset the proper front of the data layout
+in an unknowable way to C.</li>
+<li>Non-static data members of reference type appear to C as pointers. You
+must never supply from C to C++ a non-null pointer which is seen as a reference in C++.</li>
+<li>C++ inheritance is seen in C data layout as if the most derived class has nested
+variables of the inherited types at the top, in order of inheritance.</li>
+<li>Types with non-trivial destructors work fine so long as at least move construction
+and assignment is the same as
+copying bits like <code>memcpy()</code>. You just need to make sure instances of the type return
+to C++, and don&rsquo;t get orphaned in C. This was referred to in previous pages in this
+section as &ldquo;move relocating&rdquo; types.</li>
+</ol>
+
+<p>Experimental Outcome&rsquo;s support for being used from C does not meet the current strict
+requirements, and thus relies on the (very common) implementation defined behaviour just
+described (it is hoped that future C++ standards can relax the requirements to those
+just described).</p>
+
+<p>Specifically, proposed <code>status_code</code> is an almost-standard-layout type,
+and thus while it can&rsquo;t be returned from <code>extern &quot;C&quot;</code> functions as the compiler
+will complain, it is perfectly safe to return from C++ functions to C code on the
+three major compilers, as it is an &ldquo;almost-standard-layout&rdquo; C++ type if <code>T</code> is
+an &ldquo;almost-standard-layout&rdquo; C++ type.</p>
+
+
+        </div><p><small>Last revised: February 05, 2019 at 17:14:18 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../experimental/c-api.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../experimental/c-api.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../experimental/c-api/example.html"><img src="../../images/next.png" alt="Next"></a></div></body>
+</html>

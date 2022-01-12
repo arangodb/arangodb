@@ -1,0 +1,6 @@
+{{- if in .Site.Title "Boost." }}
+<center><img src="{{.Get 0}}"></center>
+{{- else }}
+{{ .Inner }}
+<noscript><center><img src="{{.Get 0}}"></center></noscript>
+{{- end }}

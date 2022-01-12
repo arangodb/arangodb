@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -701,13 +701,13 @@ Result IResearchView::link(AsyncLinkPtr const& link) {
     _links.try_emplace(cid, link);
   } else if (ServerState::instance()->isSingleServer() && !itr->second) {
     itr->second = link;
-    linkPtr->properties(_meta);
+    linkPtr->propertiesUnsafe(_meta);
 
     return {};  // single-server persisted cid placeholder substituted with
                 // actual link
   } else if (itr->second && itr->second->empty()) {
     itr->second = link;
-    linkPtr->properties(_meta);
+    linkPtr->propertiesUnsafe(_meta);
 
     return {};  // a previous link instance was unload()ed and a new instance is
                 // linking
@@ -729,7 +729,7 @@ Result IResearchView::link(AsyncLinkPtr const& link) {
     return res;
   }
 
-  return linkPtr->properties(_meta);
+  return linkPtr->propertiesUnsafe(_meta);
 }
 
 Result IResearchView::commit() {

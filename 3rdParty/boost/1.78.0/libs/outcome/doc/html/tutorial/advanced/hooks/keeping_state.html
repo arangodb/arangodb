@@ -1,0 +1,78 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Keeping state - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/advanced/hooks.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/advanced/hooks.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/advanced/hooks/adl_bridging.html"><img src="../../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both">Keeping state</h1></div></div></div>
+  <p>The first thing we are going to need is somewhere to store the stack backtrace.
+We could take the easier route and simply store it into an allocated block and
+keep the pointer as a custom payload in a <code>result&lt;T, std::pair&lt;error_code, std::unique_ptr&lt;stack_backtrace&gt;&gt;&gt;</code>
+(see previous section on <a href="../../payload">Custom payloads</a>). But let us assume that we care so deeply about bounded execution times
+that ever calling <code>malloc</code> is unacceptable.</p>
+
+<p>We therefore are going to need some completely static and trivially typed storage
+perhaps kept per-thread to avoid the need to keep mutexes.</p>
+
+<div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="cm">/* Outcome&#39;s hook mechanism works vis ADL, so we will need a custom namespace
+</span><span class="cm">to ensure the hooks apply only to the types declared in this namespace only
+</span><span class="cm">*/</span>
+<span class="k">namespace</span> <span class="n">error_code_extended</span>
+<span class="p">{</span>
+  <span class="c1">// The extra error information we will keep
+</span><span class="c1"></span>  <span class="k">struct</span> <span class="n">extended_error_info</span>
+  <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">array</span><span class="o">&lt;</span><span class="kt">void</span> <span class="o">*</span><span class="p">,</span> <span class="mi">16</span><span class="o">&gt;</span> <span class="n">backtrace</span><span class="p">;</span>  <span class="c1">// The backtrace
+</span><span class="c1"></span>    <span class="n">size_t</span> <span class="n">items</span><span class="p">;</span>                      <span class="c1">// Items in backtrace array which are valid
+</span><span class="c1"></span>  <span class="p">};</span>
+  <span class="k">struct</span> <span class="n">mythreadlocaldata_t</span>
+  <span class="p">{</span>
+    <span class="c1">// Keep 16 slots of extended error info as a ringbuffer
+</span><span class="c1"></span>    <span class="n">extended_error_info</span> <span class="n">slots</span><span class="p">[</span><span class="mi">16</span><span class="p">];</span>
+    <span class="c1">// The current oldest slot
+</span><span class="c1"></span>    <span class="n">uint16_t</span> <span class="n">current</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+
+    <span class="c1">// Return the oldest slot
+</span><span class="c1"></span>    <span class="n">extended_error_info</span> <span class="o">&amp;</span><span class="n">next</span><span class="p">()</span> <span class="p">{</span> <span class="k">return</span> <span class="n">slots</span><span class="p">[(</span><span class="n">current</span><span class="o">++</span><span class="p">)</span> <span class="o">%</span> <span class="mi">16</span><span class="p">];</span> <span class="p">}</span>
+
+    <span class="c1">// Retrieve a previously stored slot, detecting if it is stale
+</span><span class="c1"></span>    <span class="n">extended_error_info</span> <span class="o">*</span><span class="n">get</span><span class="p">(</span><span class="n">uint16_t</span> <span class="n">idx</span><span class="p">)</span>
+    <span class="p">{</span>
+      <span class="c1">// If the idx is stale, return not found
+</span><span class="c1"></span>      <span class="k">if</span><span class="p">(</span><span class="n">idx</span> <span class="o">-</span> <span class="n">current</span> <span class="o">&gt;=</span> <span class="mi">16</span><span class="p">)</span>
+      <span class="p">{</span>
+        <span class="k">return</span> <span class="k">nullptr</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="k">return</span> <span class="n">slots</span> <span class="o">+</span> <span class="p">(</span><span class="n">idx</span> <span class="o">%</span> <span class="mi">16</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">};</span>
+
+  <span class="c1">// Meyers&#39; singleton returning a thread local data structure for this thread
+</span><span class="c1"></span>  <span class="kr">inline</span> <span class="n">mythreadlocaldata_t</span> <span class="o">&amp;</span><span class="n">mythreadlocaldata</span><span class="p">()</span>
+  <span class="p">{</span>
+    <span class="k">static</span> <span class="k">thread_local</span> <span class="n">mythreadlocaldata_t</span> <span class="n">v</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">v</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/error_code_extended.cpp#L52" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<p>The extended error info is kept in a sixteen item long, thread local, ring buffer. We continuously
+increment the current index pointer which is a 16 bit value which will wrap after
+65,535. This lets us detect an attempt to access recycled storage, and thus return
+item-not-found instead of the wrong extended error info.</p>
+
+
+        </div><p><small>Last revised: February 08, 2019 at 22:18:08 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/advanced/hooks.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/advanced/hooks.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/advanced/hooks/adl_bridging.html"><img src="../../../images/next.png" alt="Next"></a></div></body>
+</html>

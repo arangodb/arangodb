@@ -1,0 +1,269 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Variable-Precision Newton Evaluation</title>
+<link rel="stylesheet" href="../../../../multiprecision.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../../index.html" title="Chapter 1. Boost.Multiprecision">
+<link rel="up" href="../fp_eg.html" title="Examples">
+<link rel="prev" href="poly_eg.html" title="Polynomial Evaluation">
+<link rel="next" href="gauss_lagerre_quadrature.html" title="Gauss-Laguerre quadrature">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="poly_eg.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../fp_eg.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="gauss_lagerre_quadrature.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="boost_multiprecision.tut.floats.fp_eg.variable_precision"></a><a class="link" href="variable_precision.html" title="Variable-Precision Newton Evaluation">Variable-Precision
+          Newton Evaluation</a>
+</h5></div></div></div>
+<p>
+            This example illustrates the use of variable-precision arithmetic with
+            the <code class="computeroutput"><span class="identifier">mpfr_float</span></code> number
+            type. We'll calculate the median of the beta distribution to an absurdly
+            high precision and compare the accuracy and times taken for various methods.
+            That is, we want to calculate the value of <code class="computeroutput"><span class="identifier">x</span></code>
+            for which <span class="emphasis"><em>I<sub>x</sub>(a, b) = 0.5</em></span>.
+          </p>
+<p>
+            Ultimately we'll use Newtons method and set the precision of mpfr_float
+            to have just enough digits at each iteration.
+          </p>
+<p>
+            The full source of the this program is in <a href="http://www.boost.org/doc/libs/release/libs/multiprecision/doc/html/../../example/mpfr_precision.cpp" target="_top">../../example/mpfr_precision.cpp</a>
+          </p>
+<p>
+            We'll skip over the #includes and using declations, and go straight to
+            some support code, first off a simple stopwatch for performance measurement:
+          </p>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">clock_type</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">stopwatch</span> <span class="special">{</span> <span class="comment">/*details \*/</span> <span class="special">};</span>
+</pre>
+<p>
+            We'll use <code class="computeroutput"><span class="identifier">stopwatch</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">chono</span><span class="special">::</span><span class="identifier">high_resolution_clock</span><span class="special">&gt;</span></code>
+            as our performance measuring device.
+          </p>
+<p>
+            We also have a small utility class for controlling the current precision
+            of mpfr_float:
+          </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">scoped_precision</span>
+<span class="special">{</span>
+   <span class="keyword">unsigned</span> <span class="identifier">p</span><span class="special">;</span>
+   <span class="identifier">scoped_precision</span><span class="special">(</span><span class="keyword">unsigned</span> <span class="identifier">new_p</span><span class="special">)</span> <span class="special">:</span> <span class="identifier">p</span><span class="special">(</span><span class="identifier">mpfr_float</span><span class="special">::</span><span class="identifier">default_precision</span><span class="special">())</span>
+   <span class="special">{</span>
+      <span class="identifier">mpfr_float</span><span class="special">::</span><span class="identifier">default_precision</span><span class="special">(</span><span class="identifier">new_p</span><span class="special">);</span>
+   <span class="special">}</span>
+   <span class="special">~</span><span class="identifier">scoped_precision</span><span class="special">()</span>
+   <span class="special">{</span>
+      <span class="identifier">mpfr_float</span><span class="special">::</span><span class="identifier">default_precision</span><span class="special">(</span><span class="identifier">p</span><span class="special">);</span>
+   <span class="special">}</span>
+<span class="special">};</span>
+</pre>
+<p>
+            We'll begin with a reference method that simply calls the Boost.Math
+            function <code class="computeroutput"><span class="identifier">ibeta_inv</span></code> and
+            uses the full working precision of the arguments throughout. Our reference
+            function takes 3 arguments:
+          </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                The 2 parameters <code class="computeroutput"><span class="identifier">a</span></code>
+                and <code class="computeroutput"><span class="identifier">b</span></code> of the beta
+                distribution, and
+              </li>
+<li class="listitem">
+                The number of decimal digits precision to achieve in the result.
+              </li>
+</ul></div>
+<p>
+            We begin by setting the default working precision to that requested,
+            and then, since we don't know where our arguments <code class="computeroutput"><span class="identifier">a</span></code>
+            and <code class="computeroutput"><span class="identifier">b</span></code> have been or what
+            precision they have, we make a copy of them - note that since copying
+            also copies the precision as well as the value, we have to set the precision
+            expicitly with a second argument to the copy. Then we can simply return
+            the result of <code class="computeroutput"><span class="identifier">ibeta_inv</span></code>:
+          </p>
+<pre class="programlisting"><span class="identifier">mpfr_float</span> <span class="identifier">beta_distribution_median_method_1</span><span class="special">(</span><span class="identifier">mpfr_float</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">a_</span><span class="special">,</span> <span class="identifier">mpfr_float</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">b_</span><span class="special">,</span> <span class="keyword">unsigned</span> <span class="identifier">digits10</span><span class="special">)</span>
+<span class="special">{</span>
+   <span class="identifier">scoped_precision</span> <span class="identifier">sp</span><span class="special">(</span><span class="identifier">digits10</span><span class="special">);</span>
+   <span class="identifier">mpfr_float</span> <span class="identifier">half</span><span class="special">(</span><span class="number">0.5</span><span class="special">),</span> <span class="identifier">a</span><span class="special">(</span><span class="identifier">a_</span><span class="special">,</span> <span class="identifier">digits10</span><span class="special">),</span> <span class="identifier">b</span><span class="special">(</span><span class="identifier">b_</span><span class="special">,</span> <span class="identifier">digits10</span><span class="special">);</span>
+   <span class="keyword">return</span> <span class="identifier">ibeta_inv</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span> <span class="identifier">b</span><span class="special">,</span> <span class="identifier">half</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+            You be wondering why we needed to change the precision of our variables
+            <code class="computeroutput"><span class="identifier">a</span></code> and <code class="computeroutput"><span class="identifier">b</span></code>
+            as well as setting the default - there are in fact two ways in which
+            this can go wrong if we don't do that:
+          </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                The variables have too much precision - this will cause all arithmetic
+                operations involving those types to be promoted to the higher precision
+                wasting precious calculation time.
+              </li>
+<li class="listitem">
+                The variables have too little precision - this will cause expressions
+                involving only those variables to be calculated at the lower precision
+                - for example if we calculate <code class="computeroutput"><span class="identifier">exp</span><span class="special">(</span><span class="identifier">a</span><span class="special">)</span></code> internally, this will be evaluated
+                at the precision of <code class="computeroutput"><span class="identifier">a</span></code>,
+                and not the current default.
+              </li>
+</ul></div>
+<p>
+            Since our reference method carries out all calculations at the full precision
+            requested, an obvious refinement would be to calculate a first approximation
+            to <code class="computeroutput"><span class="keyword">double</span></code> precision and
+            then to use Newton steps to refine it further.
+          </p>
+<p>
+            Our function begins the same as before: set the new default precision
+            and then make copies of our arguments at the correct precision. We then
+            call <code class="computeroutput"><span class="identifier">ibeta_inv</span></code> with all
+            double precision arguments, promote the result to an <code class="computeroutput"><span class="identifier">mpfr_float</span></code>
+            and perform Newton steps to obtain the result. Note that our termination
+            condition is somewhat crude: we simply assume that we have approximately
+            14 digits correct from the double-precision approximation and that the
+            precision doubles with each step. We also cheat, and use an internal
+            Boost.Math function that calculates <span class="emphasis"><em>I<sub>x</sub>(a, b)</em></span> and
+            its derivative in one go:
+          </p>
+<pre class="programlisting"><span class="identifier">mpfr_float</span> <span class="identifier">beta_distribution_median_method_2</span><span class="special">(</span><span class="identifier">mpfr_float</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">a_</span><span class="special">,</span> <span class="identifier">mpfr_float</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">b_</span><span class="special">,</span> <span class="keyword">unsigned</span> <span class="identifier">digits10</span><span class="special">)</span>
+<span class="special">{</span>
+   <span class="identifier">scoped_precision</span> <span class="identifier">sp</span><span class="special">(</span><span class="identifier">digits10</span><span class="special">);</span>
+   <span class="identifier">mpfr_float</span> <span class="identifier">half</span><span class="special">(</span><span class="number">0.5</span><span class="special">),</span> <span class="identifier">a</span><span class="special">(</span><span class="identifier">a_</span><span class="special">,</span> <span class="identifier">digits10</span><span class="special">),</span> <span class="identifier">b</span><span class="special">(</span><span class="identifier">b_</span><span class="special">,</span> <span class="identifier">digits10</span><span class="special">);</span>
+   <span class="identifier">mpfr_float</span> <span class="identifier">guess</span> <span class="special">=</span> <span class="identifier">ibeta_inv</span><span class="special">((</span><span class="keyword">double</span><span class="special">)</span><span class="identifier">a</span><span class="special">,</span> <span class="special">(</span><span class="keyword">double</span><span class="special">)</span><span class="identifier">b</span><span class="special">,</span> <span class="number">0.5</span><span class="special">);</span>
+   <span class="keyword">unsigned</span> <span class="identifier">current_digits</span> <span class="special">=</span> <span class="number">14</span><span class="special">;</span>
+   <span class="identifier">mpfr_float</span> <span class="identifier">f</span><span class="special">,</span> <span class="identifier">f1</span><span class="special">;</span>
+   <span class="keyword">while</span> <span class="special">(</span><span class="identifier">current_digits</span> <span class="special">&lt;</span> <span class="identifier">digits10</span><span class="special">)</span>
+   <span class="special">{</span>
+      <span class="identifier">f</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">math</span><span class="special">::</span><span class="identifier">detail</span><span class="special">::</span><span class="identifier">ibeta_imp</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span> <span class="identifier">b</span><span class="special">,</span> <span class="identifier">guess</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">math</span><span class="special">::</span><span class="identifier">policies</span><span class="special">::</span><span class="identifier">policy</span><span class="special">&lt;&gt;(),</span> <span class="keyword">false</span><span class="special">,</span> <span class="keyword">true</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">f1</span><span class="special">)</span> <span class="special">-</span> <span class="identifier">half</span><span class="special">;</span>
+      <span class="identifier">guess</span> <span class="special">-=</span> <span class="identifier">f</span> <span class="special">/</span> <span class="identifier">f1</span><span class="special">;</span>
+      <span class="identifier">current_digits</span> <span class="special">*=</span> <span class="number">2</span><span class="special">;</span>
+   <span class="special">}</span>
+   <span class="keyword">return</span> <span class="identifier">guess</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+            Before we refine the method further, it might be wise to take stock and
+            see how methods 1 and 2 compare. We'll ask them both for 1500 digit precision,
+            and compare against the value produced by <code class="computeroutput"><span class="identifier">ibeta_inv</span></code>
+            at 1700 digits. Here's what the results look like:
+          </p>
+<pre class="programlisting">Method 1 time = 0.611647
+Relative error: 2.99991e-1501
+Method 2 time = 0.646746
+Relative error: 7.55843e-1501
+</pre>
+<p>
+            Clearly they are both equally accurate, but Method 1 is actually faster
+            and our plan for improved performance hasn't actually worked. It turns
+            out that we're not actually comparing like with like, because <code class="computeroutput"><span class="identifier">ibeta_inv</span></code> uses Halley iteration internally
+            which churns out more digits of precision rather more rapidly than Newton
+            iteration. So the time we save by refining an initial <code class="computeroutput"><span class="keyword">double</span></code>
+            approximation, then loose it again by taking more iterations to get to
+            the result.
+          </p>
+<p>
+            Time for a more refined approach. It follows the same form as Method
+            2, but now we set the working precision within the Newton iteration loop,
+            to just enough digits to cover the expected precision at each step. That
+            means we also create new copies of our arguments at the correct precision
+            within the loop, and likewise change the precision of the current <code class="computeroutput"><span class="identifier">guess</span></code> each time through:
+          </p>
+<pre class="programlisting"><span class="identifier">mpfr_float</span> <span class="identifier">beta_distribution_median_method_3</span><span class="special">(</span><span class="identifier">mpfr_float</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">a_</span><span class="special">,</span> <span class="identifier">mpfr_float</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">b_</span><span class="special">,</span> <span class="keyword">unsigned</span> <span class="identifier">digits10</span><span class="special">)</span>
+<span class="special">{</span>
+   <span class="identifier">mpfr_float</span> <span class="identifier">guess</span> <span class="special">=</span> <span class="identifier">ibeta_inv</span><span class="special">((</span><span class="keyword">double</span><span class="special">)</span><span class="identifier">a_</span><span class="special">,</span> <span class="special">(</span><span class="keyword">double</span><span class="special">)</span><span class="identifier">b_</span><span class="special">,</span> <span class="number">0.5</span><span class="special">);</span>
+   <span class="keyword">unsigned</span> <span class="identifier">current_digits</span> <span class="special">=</span> <span class="number">14</span><span class="special">;</span>
+   <span class="identifier">mpfr_float</span> <span class="identifier">f</span><span class="special">(</span><span class="number">0</span><span class="special">,</span> <span class="identifier">current_digits</span><span class="special">),</span> <span class="identifier">f1</span><span class="special">(</span><span class="number">0</span><span class="special">,</span> <span class="identifier">current_digits</span><span class="special">),</span> <span class="identifier">delta</span><span class="special">(</span><span class="number">1</span><span class="special">);</span>
+   <span class="keyword">while</span> <span class="special">(</span><span class="identifier">current_digits</span> <span class="special">&lt;</span> <span class="identifier">digits10</span><span class="special">)</span>
+   <span class="special">{</span>
+      <span class="identifier">current_digits</span> <span class="special">*=</span> <span class="number">2</span><span class="special">;</span>
+      <span class="identifier">scoped_precision</span> <span class="identifier">sp</span><span class="special">((</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">min</span><span class="special">)(</span><span class="identifier">current_digits</span><span class="special">,</span> <span class="identifier">digits10</span><span class="special">));</span>
+      <span class="identifier">mpfr_float</span> <span class="identifier">a</span><span class="special">(</span><span class="identifier">a_</span><span class="special">,</span> <span class="identifier">mpfr_float</span><span class="special">::</span><span class="identifier">default_precision</span><span class="special">()),</span> <span class="identifier">b</span><span class="special">(</span><span class="identifier">b_</span><span class="special">,</span> <span class="identifier">mpfr_float</span><span class="special">::</span><span class="identifier">default_precision</span><span class="special">());</span>
+      <span class="identifier">guess</span><span class="special">.</span><span class="identifier">precision</span><span class="special">(</span><span class="identifier">mpfr_float</span><span class="special">::</span><span class="identifier">default_precision</span><span class="special">());</span>
+      <span class="identifier">f</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">math</span><span class="special">::</span><span class="identifier">detail</span><span class="special">::</span><span class="identifier">ibeta_imp</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span> <span class="identifier">b</span><span class="special">,</span> <span class="identifier">guess</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">math</span><span class="special">::</span><span class="identifier">policies</span><span class="special">::</span><span class="identifier">policy</span><span class="special">&lt;&gt;(),</span> <span class="keyword">false</span><span class="special">,</span> <span class="keyword">true</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">f1</span><span class="special">)</span> <span class="special">-</span> <span class="number">0.5f</span><span class="special">;</span>
+      <span class="identifier">guess</span> <span class="special">-=</span> <span class="identifier">f</span> <span class="special">/</span> <span class="identifier">f1</span><span class="special">;</span>
+   <span class="special">}</span>
+   <span class="keyword">return</span> <span class="identifier">guess</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+            The new performance results look much more promising:
+          </p>
+<pre class="programlisting">Method 1 time = 0.591244
+Relative error: 2.99991e-1501
+Method 2 time = 0.622679
+Relative error: 7.55843e-1501
+Method 3 time = 0.143393
+Relative error: 4.03898e-1501
+</pre>
+<p>
+            This time we're 4x faster than <code class="computeroutput"><span class="identifier">ibeta_inv</span></code>,
+            and no doubt that could be improved a little more by carefully optimising
+            the number of iterations and the method (Halley vs Newton) taken.
+          </p>
+<p>
+            Finally, here's the driver code for the above methods:
+          </p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+   <span class="keyword">try</span> <span class="special">{</span>
+      <span class="identifier">mpfr_float</span> <span class="identifier">a</span><span class="special">(</span><span class="number">10</span><span class="special">),</span> <span class="identifier">b</span><span class="special">(</span><span class="number">20</span><span class="special">);</span>
+
+      <span class="identifier">mpfr_float</span> <span class="identifier">true_value</span> <span class="special">=</span> <span class="identifier">beta_distribution_median_method_1</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span> <span class="identifier">b</span><span class="special">,</span> <span class="number">1700</span><span class="special">);</span>
+
+      <span class="identifier">stopwatch</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">high_resolution_clock</span><span class="special">&gt;</span> <span class="identifier">my_stopwatch</span><span class="special">;</span>
+
+      <span class="identifier">mpfr_float</span> <span class="identifier">v1</span> <span class="special">=</span> <span class="identifier">beta_distribution_median_method_1</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span> <span class="identifier">b</span><span class="special">,</span> <span class="number">1500</span><span class="special">);</span>
+      <span class="keyword">float</span> <span class="identifier">hp_time</span> <span class="special">=</span> <span class="identifier">my_stopwatch</span><span class="special">.</span><span class="identifier">elapsed</span><span class="special">();</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Method 1 time = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">hp_time</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Relative error: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">math</span><span class="special">::</span><span class="identifier">relative_difference</span><span class="special">(</span><span class="identifier">v1</span><span class="special">,</span> <span class="identifier">true_value</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+      <span class="identifier">my_stopwatch</span><span class="special">.</span><span class="identifier">reset</span><span class="special">();</span>
+      <span class="identifier">mpfr_float</span> <span class="identifier">v2</span> <span class="special">=</span> <span class="identifier">beta_distribution_median_method_2</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span> <span class="identifier">b</span><span class="special">,</span> <span class="number">1500</span><span class="special">);</span>
+      <span class="identifier">hp_time</span> <span class="special">=</span> <span class="identifier">my_stopwatch</span><span class="special">.</span><span class="identifier">elapsed</span><span class="special">();</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Method 2 time = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">hp_time</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Relative error: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">math</span><span class="special">::</span><span class="identifier">relative_difference</span><span class="special">(</span><span class="identifier">v2</span><span class="special">,</span> <span class="identifier">true_value</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+      <span class="identifier">my_stopwatch</span><span class="special">.</span><span class="identifier">reset</span><span class="special">();</span>
+      <span class="identifier">mpfr_float</span> <span class="identifier">v3</span> <span class="special">=</span> <span class="identifier">beta_distribution_median_method_3</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span> <span class="identifier">b</span><span class="special">,</span> <span class="number">1500</span><span class="special">);</span>
+      <span class="identifier">hp_time</span> <span class="special">=</span> <span class="identifier">my_stopwatch</span><span class="special">.</span><span class="identifier">elapsed</span><span class="special">();</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Method 3 time = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">hp_time</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Relative error: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">math</span><span class="special">::</span><span class="identifier">relative_difference</span><span class="special">(</span><span class="identifier">v3</span><span class="special">,</span> <span class="identifier">true_value</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+   <span class="special">}</span>
+   <span class="keyword">catch</span> <span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span><span class="special">&amp;</span> <span class="identifier">e</span><span class="special">)</span>
+   <span class="special">{</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Found exception with message: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">e</span><span class="special">.</span><span class="identifier">what</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+   <span class="special">}</span>
+   <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2002-2020 John
+      Maddock and Christopher Kormanyos<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="poly_eg.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../fp_eg.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="gauss_lagerre_quadrature.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

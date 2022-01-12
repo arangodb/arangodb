@@ -1,0 +1,420 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>model::box</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter 1. Geometry">
+<link rel="up" href="../models.html" title="Models">
+<link rel="prev" href="model_multi_polygon.html" title="model::multi_polygon">
+<link rel="next" href="model_ring.html" title="model::ring">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="model_multi_polygon.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../models.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="model_ring.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="geometry.reference.models.model_box"></a><a class="link" href="model_box.html" title="model::box">model::box</a>
+</h4></div></div></div>
+<p>
+          <a class="indexterm" name="idm78903"></a><a class="indexterm" name="idm78905"></a>
+Class box: defines a box made of two describing points.
+        </p>
+<h6>
+<a name="geometry.reference.models.model_box.h0"></a>
+          <span class="phrase"><a name="geometry.reference.models.model_box.description"></a></span><a class="link" href="model_box.html#geometry.reference.models.model_box.description">Description</a>
+        </h6>
+<p>
+          Box is always described by a min_corner() and a max_corner() point. If
+          another rectangle is used, use linear_ring or polygon.
+        </p>
+<h6>
+<a name="geometry.reference.models.model_box.h1"></a>
+          <span class="phrase"><a name="geometry.reference.models.model_box.model_of"></a></span><a class="link" href="model_box.html#geometry.reference.models.model_box.model_of">Model
+          of</a>
+        </h6>
+<p>
+          <a class="link" href="../concepts/concept_box.html" title="Box Concept">Box Concept</a>
+        </p>
+<h6>
+<a name="geometry.reference.models.model_box.h2"></a>
+          <span class="phrase"><a name="geometry.reference.models.model_box.synopsis"></a></span><a class="link" href="model_box.html#geometry.reference.models.model_box.synopsis">Synopsis</a>
+        </h6>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Point</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">model</span><span class="special">::</span><span class="identifier">box</span>
+<span class="special">{</span>
+  <span class="comment">// ...</span>
+<span class="special">};</span>
+</pre>
+<p>
+        </p>
+<h6>
+<a name="geometry.reference.models.model_box.h3"></a>
+          <span class="phrase"><a name="geometry.reference.models.model_box.template_parameter_s_"></a></span><a class="link" href="model_box.html#geometry.reference.models.model_box.template_parameter_s_">Template
+          parameter(s)</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Parameter
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                  <p>
+                    typename Point
+                  </p>
+                </td>
+<td>
+                  <p>
+                    point type. The box takes a point type as template parameter.
+                    The point type can be any point type. It can be 2D but can also
+                    be 3D or more dimensional. The box can also take a latlong point
+                    type as template parameter.
+                  </p>
+                </td>
+</tr></tbody>
+</table></div>
+<h6>
+<a name="geometry.reference.models.model_box.h4"></a>
+          <span class="phrase"><a name="geometry.reference.models.model_box.constructor_s_"></a></span><a class="link" href="model_box.html#geometry.reference.models.model_box.constructor_s_">Constructor(s)</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Function
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Parameters
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+</p>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="identifier">box</span><span class="special">()</span></pre>
+<p>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Default constructor, no initialization.
+                  </p>
+                </td>
+<td>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+</p>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">P</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">enable_if_t</span><span class="special">&lt;</span> <span class="special">!</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">is_copy_constructible</span><span class="special">&lt;</span> <span class="identifier">P</span> <span class="special">&gt;::</span><span class="identifier">value</span><span class="special">,</span> <span class="keyword">int</span> <span class="special">&gt;&gt;</span>
+<span class="identifier">box</span><span class="special">(</span><span class="identifier">Point</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">min_corner</span><span class="special">,</span> <span class="identifier">Point</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">max_corner</span><span class="special">)</span></pre>
+<p>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Constructor taking the minimum corner point and the maximum corner
+                    point.
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>Point const &amp;</strong></span>: <span class="emphasis"><em>min_corner</em></span>:
+                  </p>
+                  <p>
+                    <span class="bold"><strong>Point const &amp;</strong></span>: <span class="emphasis"><em>max_corner</em></span>:
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+</p>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">P</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">enable_if_t</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">is_copy_constructible</span><span class="special">&lt;</span> <span class="identifier">P</span> <span class="special">&gt;::</span><span class="identifier">value</span><span class="special">,</span> <span class="keyword">int</span> <span class="special">&gt;&gt;</span>
+<span class="identifier">box</span><span class="special">(</span><span class="identifier">Point</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">min_corner</span><span class="special">,</span> <span class="identifier">Point</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">max_corner</span><span class="special">)</span></pre>
+<p>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Constructor taking the minimum corner point and the maximum corner
+                    point.
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>Point const &amp;</strong></span>: <span class="emphasis"><em>min_corner</em></span>:
+                  </p>
+                  <p>
+                    <span class="bold"><strong>Point const &amp;</strong></span>: <span class="emphasis"><em>max_corner</em></span>:
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<h6>
+<a name="geometry.reference.models.model_box.h5"></a>
+          <span class="phrase"><a name="geometry.reference.models.model_box.member_function_s_"></a></span><a class="link" href="model_box.html#geometry.reference.models.model_box.member_function_s_">Member
+          Function(s)</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Function
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Parameters
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Returns
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+</p>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="keyword">constexpr</span> <span class="identifier">Point</span> <span class="keyword">const</span>  <span class="special">&amp;</span> <span class="identifier">min_corner</span><span class="special">()</span></pre>
+<p>
+                  </p>
+                </td>
+<td>
+                </td>
+<td>
+                </td>
+<td>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+</p>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="keyword">constexpr</span> <span class="identifier">Point</span> <span class="keyword">const</span>  <span class="special">&amp;</span> <span class="identifier">max_corner</span><span class="special">()</span></pre>
+<p>
+                  </p>
+                </td>
+<td>
+                </td>
+<td>
+                </td>
+<td>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+</p>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="identifier">Point</span> <span class="special">&amp;</span> <span class="identifier">min_corner</span><span class="special">()</span></pre>
+<p>
+                  </p>
+                </td>
+<td>
+                </td>
+<td>
+                </td>
+<td>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+</p>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="identifier">Point</span> <span class="special">&amp;</span> <span class="identifier">max_corner</span><span class="special">()</span></pre>
+<p>
+                  </p>
+                </td>
+<td>
+                </td>
+<td>
+                </td>
+<td>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<h6>
+<a name="geometry.reference.models.model_box.h6"></a>
+          <span class="phrase"><a name="geometry.reference.models.model_box.header"></a></span><a class="link" href="model_box.html#geometry.reference.models.model_box.header">Header</a>
+        </h6>
+<p>
+          Either
+        </p>
+<p>
+          <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">geometry</span><span class="special">/</span><span class="identifier">geometries</span><span class="special">/</span><span class="identifier">geometries</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+        </p>
+<p>
+          Or
+        </p>
+<p>
+          <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">geometry</span><span class="special">/</span><span class="identifier">geometries</span><span class="special">/</span><span class="identifier">box</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+        </p>
+<h6>
+<a name="geometry.reference.models.model_box.h7"></a>
+          <span class="phrase"><a name="geometry.reference.models.model_box.examples"></a></span><a class="link" href="model_box.html#geometry.reference.models.model_box.examples">Examples</a>
+        </h6>
+<p>
+          Declaration and use of the Boost.Geometry model::box, modelling the Box
+          Concept
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">geometry</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">bg</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="identifier">bg</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">point</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">,</span> <span class="number">2</span><span class="special">,</span> <span class="identifier">bg</span><span class="special">::</span><span class="identifier">cs</span><span class="special">::</span><span class="identifier">cartesian</span><span class="special">&gt;</span> <span class="identifier">point_t</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">bg</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">box</span><span class="special">&lt;</span><span class="identifier">point_t</span><span class="special">&gt;</span> <span class="identifier">box_t</span><span class="special">;</span>
+
+    <span class="identifier">box_t</span> <span class="identifier">box1</span><span class="special">;</span> <a class="co" name="geometry.reference.models.model_box.c0" href="model_box.html#geometry.reference.models.model_box.c1"><img src="../../../../../../../doc/src/images/callouts/1.png" alt="1" border="0"></a>
+    <span class="identifier">box_t</span> <span class="identifier">box2</span><span class="special">(</span><span class="identifier">point_t</span><span class="special">(</span><span class="number">0.0</span><span class="special">,</span> <span class="number">0.0</span><span class="special">),</span> <span class="identifier">point_t</span><span class="special">(</span><span class="number">5.0</span><span class="special">,</span> <span class="number">5.0</span><span class="special">));</span> <a class="co" name="geometry.reference.models.model_box.c2" href="model_box.html#geometry.reference.models.model_box.c3"><img src="../../../../../../../doc/src/images/callouts/2.png" alt="2" border="0"></a>
+
+<span class="preprocessor">#ifndef</span> <span class="identifier">BOOST_NO_CXX11_UNIFIED_INITIALIZATION_SYNTAX</span>
+
+    <span class="identifier">box_t</span> <span class="identifier">box3</span><span class="special">{{</span><span class="number">0.0</span><span class="special">,</span> <span class="number">0.0</span><span class="special">},</span> <span class="special">{</span><span class="number">5.0</span><span class="special">,</span> <span class="number">5.0</span><span class="special">}};</span> <a class="co" name="geometry.reference.models.model_box.c4" href="model_box.html#geometry.reference.models.model_box.c5"><img src="../../../../../../../doc/src/images/callouts/3.png" alt="3" border="0"></a>
+
+<span class="preprocessor">#endif</span>
+
+    <span class="identifier">bg</span><span class="special">::</span><span class="identifier">set</span><span class="special">&lt;</span><span class="identifier">bg</span><span class="special">::</span><span class="identifier">min_corner</span><span class="special">,</span> <span class="number">0</span><span class="special">&gt;(</span><span class="identifier">box1</span><span class="special">,</span> <span class="number">1.0</span><span class="special">);</span> <a class="co" name="geometry.reference.models.model_box.c6" href="model_box.html#geometry.reference.models.model_box.c7"><img src="../../../../../../../doc/src/images/callouts/4.png" alt="4" border="0"></a>
+    <span class="identifier">bg</span><span class="special">::</span><span class="identifier">set</span><span class="special">&lt;</span><span class="identifier">bg</span><span class="special">::</span><span class="identifier">min_corner</span><span class="special">,</span> <span class="number">1</span><span class="special">&gt;(</span><span class="identifier">box1</span><span class="special">,</span> <span class="number">2.0</span><span class="special">);</span>
+    <span class="identifier">box1</span><span class="special">.</span><span class="identifier">max_corner</span><span class="special">().</span><span class="identifier">set</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;(</span><span class="number">3.0</span><span class="special">);</span> <a class="co" name="geometry.reference.models.model_box.c8" href="model_box.html#geometry.reference.models.model_box.c9"><img src="../../../../../../../doc/src/images/callouts/5.png" alt="5" border="0"></a>
+    <span class="identifier">box1</span><span class="special">.</span><span class="identifier">max_corner</span><span class="special">().</span><span class="identifier">set</span><span class="special">&lt;</span><span class="number">1</span><span class="special">&gt;(</span><span class="number">4.0</span><span class="special">);</span>
+
+    <span class="keyword">double</span> <span class="identifier">min_x</span> <span class="special">=</span> <span class="identifier">bg</span><span class="special">::</span><span class="identifier">get</span><span class="special">&lt;</span><span class="identifier">bg</span><span class="special">::</span><span class="identifier">min_corner</span><span class="special">,</span> <span class="number">0</span><span class="special">&gt;(</span><span class="identifier">box1</span><span class="special">);</span> <a class="co" name="geometry.reference.models.model_box.c10" href="model_box.html#geometry.reference.models.model_box.c11"><img src="../../../../../../../doc/src/images/callouts/6.png" alt="6" border="0"></a>
+    <span class="keyword">double</span> <span class="identifier">min_y</span> <span class="special">=</span> <span class="identifier">bg</span><span class="special">::</span><span class="identifier">get</span><span class="special">&lt;</span><span class="identifier">bg</span><span class="special">::</span><span class="identifier">min_corner</span><span class="special">,</span> <span class="number">1</span><span class="special">&gt;(</span><span class="identifier">box1</span><span class="special">);</span>
+    <span class="keyword">double</span> <span class="identifier">max_x</span> <span class="special">=</span> <span class="identifier">box1</span><span class="special">.</span><span class="identifier">max_corner</span><span class="special">().</span><span class="identifier">get</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;();</span> <a class="co" name="geometry.reference.models.model_box.c12" href="model_box.html#geometry.reference.models.model_box.c13"><img src="../../../../../../../doc/src/images/callouts/7.png" alt="7" border="0"></a>
+    <span class="keyword">double</span> <span class="identifier">max_y</span> <span class="special">=</span> <span class="identifier">box1</span><span class="special">.</span><span class="identifier">max_corner</span><span class="special">().</span><span class="identifier">get</span><span class="special">&lt;</span><span class="number">1</span><span class="special">&gt;();</span>
+
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">min_x</span> <span class="special">&lt;&lt;</span> <span class="string">", "</span> <span class="special">&lt;&lt;</span> <span class="identifier">min_y</span> <span class="special">&lt;&lt;</span> <span class="string">", "</span> <span class="special">&lt;&lt;</span> <span class="identifier">max_x</span> <span class="special">&lt;&lt;</span> <span class="string">", "</span> <span class="special">&lt;&lt;</span> <span class="identifier">max_y</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        </p>
+<div class="calloutlist"><table border="0" summary="Callout list">
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="geometry.reference.models.model_box.c1"></a><a href="#geometry.reference.models.model_box.c0"><img src="../../../../../../../doc/src/images/callouts/1.png" alt="1" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+              Default-construct a box.
+            </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="geometry.reference.models.model_box.c3"></a><a href="#geometry.reference.models.model_box.c2"><img src="../../../../../../../doc/src/images/callouts/2.png" alt="2" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+              Construct, assigning min and max corner point.
+            </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="geometry.reference.models.model_box.c5"></a><a href="#geometry.reference.models.model_box.c4"><img src="../../../../../../../doc/src/images/callouts/3.png" alt="3" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+              Construct, using C++11 unified initialization syntax.
+            </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="geometry.reference.models.model_box.c7"></a><a href="#geometry.reference.models.model_box.c6"><img src="../../../../../../../doc/src/images/callouts/4.png" alt="4" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+              Set a coordinate, generic.
+            </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="geometry.reference.models.model_box.c9"></a><a href="#geometry.reference.models.model_box.c8"><img src="../../../../../../../doc/src/images/callouts/5.png" alt="5" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+              Set a coordinate, class-specific (<span class="bold"><strong>Note</strong></span>:
+              prefer <code class="computeroutput"><span class="identifier">bg</span><span class="special">::</span><span class="identifier">set</span><span class="special">()</span></code>).
+            </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="geometry.reference.models.model_box.c11"></a><a href="#geometry.reference.models.model_box.c10"><img src="../../../../../../../doc/src/images/callouts/6.png" alt="6" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+              Get a coordinate, generic.
+            </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="geometry.reference.models.model_box.c13"></a><a href="#geometry.reference.models.model_box.c12"><img src="../../../../../../../doc/src/images/callouts/7.png" alt="7" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+              Get a coordinate, class-specific (<span class="bold"><strong>Note</strong></span>:
+              prefer <code class="computeroutput"><span class="identifier">bg</span><span class="special">::</span><span class="identifier">get</span><span class="special">()</span></code>).
+            </p></td>
+</tr>
+</table></div>
+<p>
+          Output:
+        </p>
+<pre class="programlisting">1, 2, 3, 4
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2009-2021 Barend Gehrels,
+      Bruno Lalande, Mateusz Loskot, Adam Wulkiewicz, Oracle and/or its affiliates<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="model_multi_polygon.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../models.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="model_ring.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

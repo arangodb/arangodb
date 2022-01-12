@@ -1,0 +1,122 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="Docutils 0.7: http://docutils.sourceforge.net/" />
+<title>The MPL Reference Manual: BOOST_MPL_GET_TAG_DEF</title>
+<link rel="stylesheet" href="../style.css" type="text/css" />
+</head>
+<body class="docframe refmanual">
+<table class="header"><tr class="header"><td class="header-group navigation-bar"><span class="navigation-group"><a href="./introspection.html" class="navigation-link">Prev</a>&nbsp;<a href="./has-xxx-trait-named-def.html" class="navigation-link">Next</a></span><span class="navigation-group-separator">&nbsp;|&nbsp;</span><span class="navigation-group"><a href="./introspection.html" class="navigation-link">Back</a>&nbsp;<a href="./get-tag-def.html" class="navigation-link">Along</a></span><span class="navigation-group-separator">&nbsp;|&nbsp;</span><span class="navigation-group"><a href="./introspection.html" class="navigation-link">Up</a>&nbsp;<a href="../refmanual.html" class="navigation-link">Home</a></span><span class="navigation-group-separator">&nbsp;|&nbsp;</span><span class="navigation-group"><a href="./refmanual_toc.html" class="navigation-link">Full TOC</a></span></td>
+<td class="header-group page-location"><a href="../refmanual.html" class="navigation-link">Front Page</a> / <a href="./macros.html" class="navigation-link">Macros</a> / <a href="./introspection.html" class="navigation-link">Introspection</a> / <a href="./has-xxx-trait-def.html" class="navigation-link">BOOST_MPL_GET_TAG_DEF</a></td>
+</tr></table><div class="header-separator"></div>
+<div class="section" id="boost-mpl-has-xxx-trait-def">
+<h1><a class="toc-backref" href="./introspection.html#id1595">BOOST_MPL_GET_TAG_DEF</a></h1>
+<div class="section" id="id1329">
+<h3><a class="subsection-title" href="#synopsis" name="synopsis">Synopsis</a></h3>
+<pre class="literal-block">
+#define <a href="./has-xxx-trait-def.html" class="identifier">BOOST_MPL_GET_TAG_DEF</a>(name) \
+    <em>unspecified token sequence</em> \
+/**/
+</pre>
+</div>
+<div class="section" id="id1330">
+<h3><a class="subsection-title" href="#description" name="description">Description</a></h3>
+<p>Expands into a definition of a lazy getter <a class="reference internal" href="./metafunction.html">Metafunction</a> <tt class="literal"><span class="pre">get_tag_name</span></tt>
+such that for any type <tt class="literal"><span class="pre">x</span></tt> <tt class="literal"><span class="pre">get_tag_name&lt;x&gt;::type</span> <span class="pre">is</span> <span class="pre">type</span></tt> where
+ <tt class="literal"><span class="pre">name</span></tt> is a nested type member of <tt class="literal"><span class="pre">x</span></tt>.</p>
+</div>
+<div class="section" id="id1331">
+<h3><a class="subsection-title" href="#header" name="header">Header</a></h3>
+<pre class="literal-block">
+#include &lt;<a href="../../../../boost/mpl/get_tag.hpp" class="header">boost/mpl/get_tag.hpp</a>&gt;
+</pre>
+</div>
+<div class="section" id="id1332">
+<h3><a class="subsection-title" href="#parameters" name="parameters">Parameters</a></h3>
+<table border="1" class="docutils table">
+<colgroup>
+<col width="15%" />
+<col width="32%" />
+<col width="53%" />
+</colgroup>
+<thead valign="bottom">
+<tr><th class="head">Parameter</th>
+<th class="head">Requirement</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr><td><tt class="literal"><span class="pre">name</span></tt></td>
+<td>A legal identifier token</td>
+<td>A name of the member to get.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="id1333">
+<h3><a class="subsection-title" href="#expression-semantics" name="expression-semantics">Expression semantics</a></h3>
+<p>For any legal C++ identifier <tt class="literal"><span class="pre">name</span></tt>:</p>
+<pre class="literal-block">
+<a href="./has-xxx-trait-def.html" class="identifier">BOOST_MPL_GET_TAG_DEF</a>(name)
+</pre>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field"><th class="field-name">Precondition:</th><td class="field-body"><p class="first">Appears at namespace scope.</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">None.</p>
+</td>
+</tr>
+<tr class="field"><th class="field-name">Semantics:</th><td class="field-body"><p class="first">Equivalent to</p>
+<pre class="last literal-block">
+namespace boost { namespace mpl {</pre>
+    <pre class="last literal-block">
+template&lt;class T&gt;
+struct get_##name {
+	typedef typename T::name type;
+};</pre>
+    <pre class="last literal-block">
+}}
+</pre>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="id1334">
+<h3><a class="subsection-title" href="#example" name="example">Example</a></h3>
+<pre class="literal-block">
+struct test_type_get_tag_def;
+
+<a href="get-tag-def.html" class="identifier">BOOST_MPL_GET_TAG_DEF</a>(a_tag);
+
+namespace boost { namespace mpl {
+
+struct test_type_get_tag_def
+{
+	typedef int a_tag;
+};
+
+}}
+
+typedef boost::mpl::get_a_tag&lt;test_type_get_tag_def&gt;::type   got_the_tag;
+
+</pre>
+</div>
+<div class="section" id="id1335">
+<h3><a class="subsection-title" href="#see-also" name="see-also">See also</a></h3>
+<p><a class="reference internal" href="./macros.html">Macros</a>, <a class="reference internal" href="./has-xxx-trait-named-def.html">BOOST_MPL_HAS_XXX_TRAIT_NAMED_DEF</a></p>
+<!-- Macros/Introspection/BOOST_MPL_GET_TAG_DEF -->
+</div>
+</div>
+
+<div class="footer-separator"></div>
+<table class="footer"><tr class="footer"><td class="header-group navigation-bar"><span class="navigation-group"><a href="./introspection.html" class="navigation-link">Prev</a>&nbsp;<a href="./has-xxx-template-named-def.html" class="navigation-link">Next</a></span><span class="navigation-group-separator">&nbsp;|&nbsp;</span><span class="navigation-group"><a href="./introspection.html" class="navigation-link">Back</a>&nbsp;<a href="./get-tag-def.html" class="navigation-link">Along</a></span><span class="navigation-group-separator">&nbsp;|&nbsp;</span><span class="navigation-group"><a href="./introspection.html" class="navigation-link">Up</a>&nbsp;<a href="../refmanual.html" class="navigation-link">Home</a></span><span class="navigation-group-separator">&nbsp;|&nbsp;</span><span class="navigation-group"><a href="./refmanual_toc.html" class="navigation-link">Full TOC</a></span></td>
+<td><div class="copyright-footer"><div class="copyright">Copyright ©  2017 Sergey Krivonos and Edward Diener</div>
+Distributed under the Boost Software License, Version 1.0. (See accompanying
+file LICENSE_1_0.txt or copy at <a class="reference external" href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)</div></td></tr></table></body>
+</html>

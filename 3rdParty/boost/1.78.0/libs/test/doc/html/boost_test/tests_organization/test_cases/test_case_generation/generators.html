@@ -1,0 +1,752 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Datasets generators</title>
+<link rel="stylesheet" href="../../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../../index.html" title="Boost.Test">
+<link rel="up" href="../test_case_generation.html" title="Data-driven test cases">
+<link rel="prev" href="operations.html" title="Operations on dataset">
+<link rel="next" href="../test_organization_templates.html" title="Template test cases">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="operations.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_case_generation.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../test_organization_templates.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="boost_test.tests_organization.test_cases.test_case_generation.generators"></a><a class="link" href="generators.html" title="Datasets generators">Datasets
+          generators</a>
+</h5></div></div></div>
+<p>
+            Several <span class="emphasis"><em>generators</em></span> for datasets are implemented
+            in <span class="emphasis"><em>Unit Test Framework</em></span>:
+          </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                <a class="link" href="generators.html#boost_test.tests_organization.test_cases.test_case_generation.generators.singletons">Singletons</a>
+              </li>
+<li class="listitem">
+                <a class="link" href="generators.html#boost_test.tests_organization.test_cases.test_case_generation.generators.stl"><code class="computeroutput"><span class="identifier">forward</span> <span class="identifier">iterable</span></code></a>
+                containers and <a class="link" href="generators.html#boost_test.tests_organization.test_cases.test_case_generation.generators.c_arrays"><code class="computeroutput"><span class="identifier">C</span></code> array</a> like datasets
+              </li>
+<li class="listitem">
+                <a class="link" href="generators.html#boost_test.tests_organization.test_cases.test_case_generation.generators.ranges">ranges</a>
+                or sequences of values
+              </li>
+<li class="listitem">
+                datasets made of <a class="link" href="generators.html#boost_test.tests_organization.test_cases.test_case_generation.generators.random">random
+                numbers</a> and following a particular distribution
+              </li>
+</ul></div>
+<p>
+            <code class="computeroutput"><span class="identifier">stl</span></code> and <code class="computeroutput"><span class="identifier">C</span><span class="special">-</span><span class="identifier">array</span></code> generators are merely a dataset
+            view on existing collection, while ranges and random number sequences
+            are describing new datasets.
+          </p>
+<h5>
+<a name="boost_test.tests_organization.test_cases.test_case_generation.generators.h0"></a>
+            <span class="phrase"><a name="boost_test.tests_organization.test_cases.test_case_generation.generators.singletons"></a></span><a class="link" href="generators.html#boost_test.tests_organization.test_cases.test_case_generation.generators.singletons">Singletons</a>
+          </h5>
+<p>
+            A singleton is a dataset containing a unique value. The size and arity
+            of such a dataset is 1. This value can be
+          </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                either consumed once
+              </li>
+<li class="listitem">
+                or repeated as many times as needed in a zip operation
+              </li>
+</ul></div>
+<p>
+            As mentioned in <span class="emphasis"><em>zip</em></span>, when zipped with a distribution
+            of infinite size, the resulting dataset will have a size of 1.
+          </p>
+<p>
+            The singleton is constructible through the function <code class="computeroutput"><a class="link" href="../../../../boost/unit_test/data/make.html" title="Function make">boost::unit_test::data::make</a></code>.
+          </p>
+<h6>
+<a name="boost_test.tests_organization.test_cases.test_case_generation.generators.h1"></a>
+            <span class="phrase"><a name="boost_test.tests_organization.test_cases.test_case_generation.generators.example_descr"></a></span><a class="link" href="generators.html#boost_test.tests_organization.test_cases.test_case_generation.generators.example_descr">Example:
+            Singleton</a>
+          </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                    <p>
+                      Code
+                    </p>
+                  </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">dataset_example65</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">data</span><span class="special">/</span><span class="identifier">test_case</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">data</span><span class="special">/</span><span class="identifier">monomorphic</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">bdata</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">data</span><span class="special">;</span>
+
+
+<span class="identifier">BOOST_DATA_TEST_CASE</span><span class="special">(</span>
+  <span class="identifier">test1</span><span class="special">,</span>
+  <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">make</span><span class="special">(</span><span class="number">2</span><span class="special">),</span>
+  <span class="identifier">singleton</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span>
+    <span class="special">&lt;&lt;</span> <span class="string">"test 1: "</span>
+    <span class="special">&lt;&lt;</span> <span class="identifier">singleton</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">singleton</span> <span class="special">==</span> <span class="number">2</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_DATA_TEST_CASE</span><span class="special">(</span>
+  <span class="identifier">test2</span><span class="special">,</span>
+  <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">xrange</span><span class="special">(</span><span class="number">3</span><span class="special">)</span> <span class="special">^</span> <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">make</span><span class="special">(</span><span class="number">2</span><span class="special">),</span>
+  <span class="identifier">xr</span><span class="special">,</span> <span class="identifier">singleton</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span>
+    <span class="special">&lt;&lt;</span> <span class="string">"test 2: "</span>
+    <span class="special">&lt;&lt;</span> <span class="identifier">xr</span> <span class="special">&lt;&lt;</span> <span class="string">", "</span> <span class="special">&lt;&lt;</span> <span class="identifier">singleton</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">singleton</span> <span class="special">==</span> <span class="number">2</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+                  </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                    <p>
+                      Output
+                    </p>
+                  </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">dataset_example65</span>
+<span class="identifier">Running</span> <span class="number">4</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">2</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="number">0</span><span class="special">,</span> <span class="number">2</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="number">1</span><span class="special">,</span> <span class="number">2</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="number">2</span><span class="special">,</span> <span class="number">2</span>
+
+<span class="special">***</span> <span class="identifier">No</span> <span class="identifier">errors</span> <span class="identifier">detected</span>
+</pre>
+                  </td></tr></tbody>
+</table></div>
+<h5>
+<a name="boost_test.tests_organization.test_cases.test_case_generation.generators.h2"></a>
+            <span class="phrase"><a name="boost_test.tests_organization.test_cases.test_case_generation.generators.c_arrays"></a></span><a class="link" href="generators.html#boost_test.tests_organization.test_cases.test_case_generation.generators.c_arrays">Datasets
+            from C arrays</a>
+          </h5>
+<p>
+            This type of datasets does not contains the logic for generating the
+            sequence of values, and is used as a wrapper on an existing sequence
+            contained in a <code class="computeroutput"><span class="identifier">C</span></code> array.
+            The arity is 1 and the size is the size of the array.
+          </p>
+<p>
+            Such datasets are simply constructed from an overload of the <code class="computeroutput"><a class="link" href="../../../../boost/unit_test/data/make.html" title="Function make">make</a></code>
+            function.
+          </p>
+<h6>
+<a name="boost_test.tests_organization.test_cases.test_case_generation.generators.h3"></a>
+            <span class="phrase"><a name="boost_test.tests_organization.test_cases.test_case_generation.generators.example_descr0"></a></span><a class="link" href="generators.html#boost_test.tests_organization.test_cases.test_case_generation.generators.example_descr0">Example:
+            Array</a>
+          </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                    <p>
+                      Code
+                    </p>
+                  </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">dataset_example66</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">data</span><span class="special">/</span><span class="identifier">test_case</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">data</span><span class="special">/</span><span class="identifier">monomorphic</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">bdata</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">data</span><span class="special">;</span>
+
+<span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">arr</span><span class="special">[]</span> <span class="special">=</span> <span class="special">{</span><span class="string">"cat"</span><span class="special">,</span> <span class="string">"dog"</span><span class="special">};</span>
+
+<span class="identifier">BOOST_DATA_TEST_CASE</span><span class="special">(</span>
+  <span class="identifier">test1</span><span class="special">,</span>
+  <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">xrange</span><span class="special">(</span><span class="number">2</span><span class="special">)</span> <span class="special">^</span> <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">make</span><span class="special">(</span><span class="identifier">arr</span><span class="special">),</span>
+  <span class="identifier">xr</span><span class="special">,</span> <span class="identifier">array_element</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"test 1: "</span>
+    <span class="special">&lt;&lt;</span> <span class="identifier">xr</span> <span class="special">&lt;&lt;</span> <span class="string">", "</span>
+    <span class="special">&lt;&lt;</span> <span class="identifier">array_element</span>
+    <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">array_element</span> <span class="special">!=</span> <span class="string">"mammoth"</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+                  </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                    <p>
+                      Output
+                    </p>
+                  </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">dataset_example66</span>
+<span class="identifier">Running</span> <span class="number">2</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">0</span><span class="special">,</span> <span class="identifier">cat</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">1</span><span class="special">,</span> <span class="identifier">dog</span>
+
+<span class="special">***</span> <span class="identifier">No</span> <span class="identifier">errors</span> <span class="identifier">detected</span>
+</pre>
+                  </td></tr></tbody>
+</table></div>
+<h5>
+<a name="boost_test.tests_organization.test_cases.test_case_generation.generators.h4"></a>
+            <span class="phrase"><a name="boost_test.tests_organization.test_cases.test_case_generation.generators.stl"></a></span><a class="link" href="generators.html#boost_test.tests_organization.test_cases.test_case_generation.generators.stl">Datasets
+            from forward iterable containers</a>
+          </h5>
+<p>
+            As for <code class="computeroutput"><span class="identifier">C</span></code> arrays, this
+            type of datasets does not contain the logic for generating sequence of
+            values, and are used for parsing an existing sequence. The arity is 1
+            and the size is the same as the one of the container.
+          </p>
+<div class="tip"><table border="0" summary="Tip">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../../../../../../../../doc/src/images/tip.png"></td>
+<th align="left">Tip</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+              C++11 implementation enables the dataset generation from any container
+              which iterator implements the forward iterator concept. For C++03,
+              the feature is enabled on most STL containers.
+            </p></td></tr>
+</table></div>
+<h6>
+<a name="boost_test.tests_organization.test_cases.test_case_generation.generators.h5"></a>
+            <span class="phrase"><a name="boost_test.tests_organization.test_cases.test_case_generation.generators.example_descr1"></a></span><a class="link" href="generators.html#boost_test.tests_organization.test_cases.test_case_generation.generators.example_descr1">Example:
+            Dataset from <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span></code> and <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span></code></a>
+          </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                    <p>
+                      Code
+                    </p>
+                  </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">example67</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">data</span><span class="special">/</span><span class="identifier">test_case</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">data</span><span class="special">/</span><span class="identifier">monomorphic</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">sstream</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">bdata</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">data</span><span class="special">;</span>
+
+<span class="comment">// Generates a Fibonacci sequence</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">float</span><span class="special">&gt;</span> <span class="identifier">fibonacci</span><span class="special">()</span> <span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">float</span><span class="special">&gt;</span> <span class="identifier">ret</span><span class="special">(</span><span class="number">8</span><span class="special">);</span>
+  <span class="identifier">ret</span><span class="special">[</span><span class="number">0</span><span class="special">]</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+  <span class="identifier">ret</span><span class="special">[</span><span class="number">1</span><span class="special">]</span> <span class="special">=</span> <span class="number">1</span><span class="special">;</span>
+
+  <span class="keyword">for</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">s</span><span class="special">(</span><span class="number">2</span><span class="special">);</span> <span class="identifier">s</span> <span class="special">&lt;</span> <span class="identifier">ret</span><span class="special">.</span><span class="identifier">size</span><span class="special">();</span> <span class="identifier">s</span><span class="special">++)</span>
+  <span class="special">{</span>
+    <span class="identifier">ret</span><span class="special">[</span><span class="identifier">s</span><span class="special">]</span> <span class="special">=</span> <span class="identifier">ret</span><span class="special">[</span><span class="identifier">s</span><span class="special">-</span><span class="number">1</span><span class="special">]</span> <span class="special">+</span> <span class="identifier">ret</span><span class="special">[</span><span class="identifier">s</span><span class="special">-</span><span class="number">2</span><span class="special">];</span>
+  <span class="special">}</span>
+  <span class="keyword">return</span> <span class="identifier">ret</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_DATA_TEST_CASE</span><span class="special">(</span>
+  <span class="identifier">test1</span><span class="special">,</span>
+  <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">make</span><span class="special">(</span><span class="identifier">fibonacci</span><span class="special">()),</span>
+  <span class="identifier">array_element</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"test 1: "</span>
+    <span class="special">&lt;&lt;</span> <span class="identifier">array_element</span>
+    <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">array_element</span> <span class="special">&lt;=</span> <span class="number">13</span><span class="special">);</span>
+<span class="special">}</span>
+
+
+<span class="comment">// Generates a map from a vector</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">,</span> <span class="keyword">float</span><span class="special">&gt;</span> <span class="identifier">vect_2_str</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">float</span><span class="special">&gt;</span> <span class="identifier">v</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">,</span> <span class="keyword">float</span><span class="special">&gt;</span> <span class="identifier">out</span><span class="special">;</span>
+  <span class="keyword">for</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">s</span><span class="special">(</span><span class="number">0</span><span class="special">);</span> <span class="identifier">s</span> <span class="special">&lt;</span> <span class="identifier">v</span><span class="special">.</span><span class="identifier">size</span><span class="special">();</span> <span class="identifier">s</span><span class="special">++)</span>
+  <span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostringstream</span> <span class="identifier">o</span><span class="special">;</span>
+    <span class="identifier">o</span> <span class="special">&lt;&lt;</span> <span class="identifier">v</span><span class="special">[</span><span class="identifier">s</span><span class="special">];</span>
+    <span class="identifier">out</span><span class="special">[</span><span class="identifier">o</span><span class="special">.</span><span class="identifier">str</span><span class="special">()]</span> <span class="special">=</span> <span class="identifier">v</span><span class="special">[</span><span class="identifier">s</span><span class="special">];</span>
+  <span class="special">}</span>
+  <span class="keyword">return</span> <span class="identifier">out</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">,</span> <span class="keyword">float</span><span class="special">&gt;</span> <span class="identifier">pair_map_t</span><span class="special">;</span>
+<span class="identifier">BOOST_TEST_DONT_PRINT_LOG_VALUE</span><span class="special">(</span> <span class="identifier">pair_map_t</span> <span class="special">)</span>
+
+<span class="identifier">BOOST_DATA_TEST_CASE</span><span class="special">(</span>
+  <span class="identifier">test2</span><span class="special">,</span>
+  <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">make</span><span class="special">(</span><span class="identifier">vect_2_str</span><span class="special">(</span><span class="identifier">fibonacci</span><span class="special">())),</span>
+  <span class="identifier">array_element</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"test 2: \""</span>
+    <span class="special">&lt;&lt;</span> <span class="identifier">array_element</span><span class="special">.</span><span class="identifier">first</span> <span class="special">&lt;&lt;</span> <span class="string">"\", "</span>
+    <span class="special">&lt;&lt;</span> <span class="identifier">array_element</span><span class="special">.</span><span class="identifier">second</span>
+    <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">array_element</span><span class="special">.</span><span class="identifier">second</span> <span class="special">&lt;=</span> <span class="number">13</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+                  </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                    <p>
+                      Output
+                    </p>
+                  </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">dataset_example67</span>
+<span class="identifier">Running</span> <span class="number">15</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">0</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">1</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">1</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">2</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">3</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">5</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">8</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">13</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="string">"0"</span><span class="special">,</span> <span class="number">0</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="string">"1"</span><span class="special">,</span> <span class="number">1</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="string">"13"</span><span class="special">,</span> <span class="number">13</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="string">"2"</span><span class="special">,</span> <span class="number">2</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="string">"3"</span><span class="special">,</span> <span class="number">3</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="string">"5"</span><span class="special">,</span> <span class="number">5</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="string">"8"</span><span class="special">,</span> <span class="number">8</span>
+
+<span class="special">***</span> <span class="identifier">No</span> <span class="identifier">errors</span> <span class="identifier">detected</span>
+</pre>
+                  </td></tr></tbody>
+</table></div>
+<h5>
+<a name="boost_test.tests_organization.test_cases.test_case_generation.generators.h6"></a>
+            <span class="phrase"><a name="boost_test.tests_organization.test_cases.test_case_generation.generators.ranges"></a></span><a class="link" href="generators.html#boost_test.tests_organization.test_cases.test_case_generation.generators.ranges">Ranges</a>
+          </h5>
+<p>
+            A range is a dataset that implements a sequence of equally spaced values,
+            defined by a <span class="emphasis"><em>start</em></span>, and <span class="emphasis"><em>end</em></span>
+            and a <span class="emphasis"><em>step</em></span>.
+          </p>
+<p>
+            It is possible to construct a range using the factory <code class="computeroutput"><a class="link" href="../../../../boost/unit_test/data/xrange.html" title="Function xrange">boost::unit_test::data::xrange</a></code>,
+            available in the overloads below:
+          </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">data</span><span class="special">/</span><span class="identifier">test_case</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">data</span><span class="special">/</span><span class="identifier">monomorphic</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">auto</span> <span class="identifier">range1</span> <span class="special">=</span> <span class="identifier">data</span><span class="special">::</span><span class="identifier">xrange</span><span class="special">(</span> <span class="special">(</span><span class="identifier">data</span><span class="special">::</span><span class="identifier">step</span> <span class="special">=</span> <span class="number">0.5</span><span class="special">,</span> <span class="identifier">data</span><span class="special">::</span><span class="identifier">end</span> <span class="special">=</span> <span class="number">3</span> <span class="special">)</span> <span class="special">);</span> <span class="comment">// Constructs with named values, starting at 0</span>
+<span class="keyword">auto</span> <span class="identifier">range2</span> <span class="special">=</span> <span class="identifier">data</span><span class="special">::</span><span class="identifier">xrange</span><span class="special">(</span> <span class="identifier">begin</span><span class="special">,</span> <span class="identifier">end</span> <span class="special">);</span> <span class="comment">// begin &lt; end required</span>
+<span class="keyword">auto</span> <span class="identifier">range5</span> <span class="special">=</span> <span class="identifier">data</span><span class="special">::</span><span class="identifier">xrange</span><span class="special">(</span> <span class="identifier">begin</span><span class="special">,</span> <span class="identifier">end</span><span class="special">,</span> <span class="identifier">step</span> <span class="special">);</span>  <span class="comment">// begin &lt; end required</span>
+<span class="keyword">auto</span> <span class="identifier">range3</span> <span class="special">=</span> <span class="identifier">data</span><span class="special">::</span><span class="identifier">xrange</span><span class="special">(</span> <span class="identifier">end</span> <span class="special">);</span> <span class="comment">// begin=0, end cannot be &lt;= 0, see above</span>
+<span class="keyword">auto</span> <span class="identifier">range4</span> <span class="special">=</span> <span class="identifier">data</span><span class="special">::</span><span class="identifier">xrange</span><span class="special">(</span> <span class="identifier">end</span><span class="special">,</span> <span class="special">(</span><span class="identifier">data</span><span class="special">::</span><span class="identifier">begin</span><span class="special">=</span><span class="number">1</span><span class="special">)</span> <span class="special">);</span> <span class="comment">// named value after end</span>
+</pre>
+<div class="tip"><table border="0" summary="Tip">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../../../../../../../../doc/src/images/tip.png"></td>
+<th align="left">Tip</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+              The named value parameters should be declared inside parenthesis
+            </p></td></tr>
+</table></div>
+<h6>
+<a name="boost_test.tests_organization.test_cases.test_case_generation.generators.h7"></a>
+            <span class="phrase"><a name="boost_test.tests_organization.test_cases.test_case_generation.generators.parameters"></a></span><a class="link" href="generators.html#boost_test.tests_organization.test_cases.test_case_generation.generators.parameters">Parameters</a>
+          </h6>
+<p>
+            The details of the named value parameters is given in the table below.
+          </p>
+<div class="table">
+<a name="boost_test.tests_organization.test_cases.test_case_generation.generators.id_range_parameter_table"></a><p class="title"><b>Table 1. Range parameters</b></p>
+<div class="table-contents"><table class="table" summary="Range parameters">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                    <p>
+                      Name
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      Default
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      Description
+                    </p>
+                  </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">begin</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      0
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      Beginning of the generated sequence. The <code class="computeroutput"><span class="identifier">begin</span></code>
+                      value is included in set of values returned by the generator.
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">end</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      + infinity
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      End of the generated sequence. The <code class="computeroutput"><span class="identifier">end</span></code>
+                      value is not included in set of values returned by the generator.
+                      If omitted, the generator has infinite size.
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">step</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      1
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      Number indicating the step between two consecutive samples
+                      of the generated range. The default type is the same as the
+                      input type. This value should not be 0. It should be of the
+                      same sign as <code class="computeroutput"><span class="identifier">end</span><span class="special">-</span><span class="identifier">begin</span></code>.
+                    </p>
+                  </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><h6>
+<a name="boost_test.tests_organization.test_cases.test_case_generation.generators.h8"></a>
+            <span class="phrase"><a name="boost_test.tests_organization.test_cases.test_case_generation.generators.example_descr2"></a></span><a class="link" href="generators.html#boost_test.tests_organization.test_cases.test_case_generation.generators.example_descr2">Example:
+            Declaring a test with a range</a>
+          </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                    <p>
+                      Code
+                    </p>
+                  </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">dataset_example59</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">data</span><span class="special">/</span><span class="identifier">test_case</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">data</span><span class="special">/</span><span class="identifier">monomorphic</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">bdata</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">data</span><span class="special">;</span>
+
+<span class="identifier">BOOST_DATA_TEST_CASE</span><span class="special">(</span> <span class="identifier">test1</span><span class="special">,</span> <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">xrange</span><span class="special">(</span><span class="number">5</span><span class="special">)</span> <span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"test 1: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">sample</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">((</span><span class="identifier">sample</span> <span class="special">&lt;=</span> <span class="number">4</span> <span class="special">&amp;&amp;</span> <span class="identifier">sample</span> <span class="special">&gt;=</span> <span class="number">0</span><span class="special">));</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_DATA_TEST_CASE</span><span class="special">(</span>
+  <span class="identifier">test2</span><span class="special">,</span>
+  <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">xrange</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span> <span class="special">(</span><span class="identifier">bdata</span><span class="special">::</span><span class="identifier">begin</span><span class="special">=</span><span class="number">1</span><span class="special">,</span> <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">end</span><span class="special">=</span><span class="number">10</span><span class="special">,</span> <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">step</span><span class="special">=</span><span class="number">3</span><span class="special">))</span> <span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"test 2: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">sample</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">((</span><span class="identifier">sample</span> <span class="special">&lt;=</span> <span class="number">4</span> <span class="special">&amp;&amp;</span> <span class="identifier">sample</span> <span class="special">&gt;=</span> <span class="number">0</span><span class="special">));</span>
+<span class="special">}</span>
+</pre>
+                  </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                    <p>
+                      Output
+                    </p>
+                  </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">dataset_example59</span>
+<span class="identifier">Running</span> <span class="number">8</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">0</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">1</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">2</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">3</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">4</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="number">1</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="number">4</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="number">7</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">27</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test2/_2"</span><span class="special">:</span> <span class="identifier">check</span> <span class="special">(</span><span class="identifier">sample</span> <span class="special">&lt;=</span> <span class="number">4</span> <span class="special">&amp;&amp;</span> <span class="identifier">sample</span> <span class="special">&gt;=</span> <span class="number">0</span><span class="special">)</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+<span class="identifier">Failure</span> <span class="identifier">occurred</span> <span class="identifier">in</span> <span class="identifier">a</span> <span class="identifier">following</span> <span class="identifier">context</span><span class="special">:</span>
+    <span class="identifier">sample</span> <span class="special">=</span> <span class="number">7</span><span class="special">;</span>
+
+<span class="special">***</span> <span class="number">1</span> <span class="identifier">failure</span> <span class="identifier">is</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">the</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"dataset_example59"</span>
+</pre>
+                  </td></tr></tbody>
+</table></div>
+<h5>
+<a name="boost_test.tests_organization.test_cases.test_case_generation.generators.h9"></a>
+            <span class="phrase"><a name="boost_test.tests_organization.test_cases.test_case_generation.generators.random"></a></span><a class="link" href="generators.html#boost_test.tests_organization.test_cases.test_case_generation.generators.random">Random
+            value dataset</a>
+          </h5>
+<p>
+            This type of dataset generates a sequence of random numbers following
+            a given <span class="emphasis"><em>distribution</em></span>. The <span class="emphasis"><em>seed</em></span>
+            and the <span class="emphasis"><em>engine</em></span> may also be specified.
+          </p>
+<div class="caution"><table border="0" summary="Caution">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../../../../../../../../doc/src/images/caution.png"></td>
+<th align="left">Caution</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+              The random value generator is available only for C++11 capable compilers.
+              If this feature is not supported for your compiler, the macro <code class="computeroutput"><a class="link" href="../../../../BOOST_TEST_NO_RAN_idm42432.html" title="Macro BOOST_TEST_NO_RANDOM_DATASET_AVAILABLE">BOOST_TEST_NO_RANDOM_DATASET_AVAILABLE</a></code>
+              will be automatically set by the <span class="emphasis"><em>Unit Test Framework</em></span>
+            </p></td></tr>
+</table></div>
+<p>
+            It is possible to construct a random sequence using the factory <code class="computeroutput"><a class="link" href="../../../../boost/unit_test/data/random.html" title="Function random">boost::unit_test::data::random</a></code>,
+            available in the overloads below:
+          </p>
+<pre class="programlisting"><span class="keyword">auto</span> <span class="identifier">rdgen</span> <span class="special">=</span> <span class="identifier">random</span><span class="special">();</span> <span class="comment">// uniform distribution (real) on [0, 1)</span>
+<span class="keyword">auto</span> <span class="identifier">rdgen</span> <span class="special">=</span> <span class="identifier">random</span><span class="special">(</span><span class="number">1</span><span class="special">,</span> <span class="number">17</span><span class="special">);</span> <span class="comment">// uniform distribution (integer) on [1, 17]</span>
+<span class="comment">// Default random generator engine, Gaussian distribution (mean=5, sigma=2) and seed set to 100.</span>
+<span class="keyword">auto</span> <span class="identifier">rdgen</span> <span class="special">=</span> <span class="identifier">random</span><span class="special">(</span> <span class="special">(</span><span class="identifier">data</span><span class="special">::</span><span class="identifier">seed</span> <span class="special">=</span> <span class="number">100UL</span><span class="special">,</span>
+                      <span class="identifier">data</span><span class="special">::</span><span class="identifier">distribution</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">normal_distribution</span><span class="special">&lt;&gt;(</span><span class="number">5.</span><span class="special">,</span><span class="number">2</span><span class="special">))</span> <span class="special">);</span>
+</pre>
+<p>
+            Since the generated datasets will have infinite size, the sequence size
+            should be narrowed by combining the dataset with another one through
+            e.g. a <span class="emphasis"><em>zip</em></span> operation.
+          </p>
+<div class="tip"><table border="0" summary="Tip">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../../../../../../../../doc/src/images/tip.png"></td>
+<th align="left">Tip</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+              In order to be able to reproduce a failure within a randomized parameter
+              test case, the seed that generated the failure may be set in order
+              to generate the same sequence of random values.
+            </p></td></tr>
+</table></div>
+<h6>
+<a name="boost_test.tests_organization.test_cases.test_case_generation.generators.h10"></a>
+            <span class="phrase"><a name="boost_test.tests_organization.test_cases.test_case_generation.generators.parameters0"></a></span><a class="link" href="generators.html#boost_test.tests_organization.test_cases.test_case_generation.generators.parameters0">Parameters</a>
+          </h6>
+<p>
+            The details of the named value parameters is given in the table below.
+          </p>
+<div class="table">
+<a name="boost_test.tests_organization.test_cases.test_case_generation.generators.id_range_parameter_table0"></a><p class="title"><b>Table 2. Range parameters</b></p>
+<div class="table-contents"><table class="table" summary="Range parameters">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                    <p>
+                      Parameter name
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      Default
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      Description
+                    </p>
+                  </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">seed</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      (not set)
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      Seed for the generation of the random sequence.
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">distribution</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      Uniform
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      Distribution instance for generating the random number sequences.
+                      The <code class="computeroutput"><span class="identifier">end</span></code> value
+                      is not included in set of values returned by the generator
+                      for real values, and is included for integers.
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">engine</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">default_random_engine</span></code>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      Random number generator engine.
+                    </p>
+                  </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><h6>
+<a name="boost_test.tests_organization.test_cases.test_case_generation.generators.h11"></a>
+            <span class="phrase"><a name="boost_test.tests_organization.test_cases.test_case_generation.generators.example_descr3"></a></span><a class="link" href="generators.html#boost_test.tests_organization.test_cases.test_case_generation.generators.example_descr3">Example:
+            Declaring a test with a random sequence</a>
+          </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                    <p>
+                      Code
+                    </p>
+                  </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">dataset_example63</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">data</span><span class="special">/</span><span class="identifier">test_case</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">data</span><span class="special">/</span><span class="identifier">monomorphic</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">bdata</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">data</span><span class="special">;</span>
+
+
+<span class="identifier">BOOST_DATA_TEST_CASE</span><span class="special">(</span>
+  <span class="identifier">test1</span><span class="special">,</span>
+  <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">random</span><span class="special">(</span><span class="number">1</span><span class="special">,</span> <span class="number">17</span><span class="special">)</span> <span class="special">^</span> <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">xrange</span><span class="special">(</span><span class="number">7</span><span class="special">),</span>
+  <span class="identifier">random_sample</span><span class="special">,</span> <span class="identifier">index</span> <span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"test 1: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">random_sample</span>
+            <span class="special">&lt;&lt;</span> <span class="string">", "</span> <span class="special">&lt;&lt;</span> <span class="identifier">index</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">((</span><span class="identifier">random_sample</span> <span class="special">&lt;=</span> <span class="number">17</span> <span class="special">&amp;&amp;</span> <span class="identifier">random_sample</span> <span class="special">&gt;=</span> <span class="number">1</span><span class="special">));</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_DATA_TEST_CASE</span><span class="special">(</span>
+  <span class="identifier">test2</span><span class="special">,</span>
+  <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">random</span><span class="special">(</span> <span class="special">(</span><span class="identifier">bdata</span><span class="special">::</span><span class="identifier">distribution</span><span class="special">=</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">uniform_real_distribution</span><span class="special">&lt;</span><span class="keyword">float</span><span class="special">&gt;(</span><span class="number">1</span><span class="special">,</span> <span class="number">2</span><span class="special">))</span> <span class="special">)</span>
+      <span class="special">^</span> <span class="identifier">bdata</span><span class="special">::</span><span class="identifier">xrange</span><span class="special">(</span><span class="number">7</span><span class="special">),</span>
+  <span class="identifier">random_sample</span><span class="special">,</span> <span class="identifier">index</span> <span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"test 2: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">random_sample</span>
+            <span class="special">&lt;&lt;</span> <span class="string">", "</span> <span class="special">&lt;&lt;</span> <span class="identifier">index</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">random_sample</span> <span class="special">&lt;</span> <span class="number">1.7</span><span class="special">);</span> <span class="comment">// 30% chance of failure</span>
+<span class="special">}</span>
+</pre>
+                  </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                    <p>
+                      Output
+                    </p>
+                  </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">dataset_example63</span>
+<span class="identifier">Running</span> <span class="number">14</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">2</span><span class="special">,</span> <span class="number">0</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">3</span><span class="special">,</span> <span class="number">1</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">2</span><span class="special">,</span> <span class="number">2</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">8</span><span class="special">,</span> <span class="number">3</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">10</span><span class="special">,</span> <span class="number">4</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">15</span><span class="special">,</span> <span class="number">5</span>
+<span class="identifier">test</span> <span class="number">1</span><span class="special">:</span> <span class="number">8</span><span class="special">,</span> <span class="number">6</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="number">1.00001</span><span class="special">,</span> <span class="number">0</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="number">1.13154</span><span class="special">,</span> <span class="number">1</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="number">1.75561</span><span class="special">,</span> <span class="number">2</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">35</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test2/_2"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">random_sample</span> <span class="special">&lt;</span> <span class="number">1.7</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">1.75560534</span> <span class="special">&gt;=</span> <span class="number">1.7</span><span class="special">]</span>
+<span class="identifier">Failure</span> <span class="identifier">occurred</span> <span class="identifier">in</span> <span class="identifier">a</span> <span class="identifier">following</span> <span class="identifier">context</span><span class="special">:</span>
+    <span class="identifier">random_sample</span> <span class="special">=</span> <span class="number">1.75560534</span><span class="special">;</span> <span class="identifier">index</span> <span class="special">=</span> <span class="number">2</span><span class="special">;</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="number">1.45865</span><span class="special">,</span> <span class="number">3</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="number">1.53277</span><span class="special">,</span> <span class="number">4</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="number">1.21896</span><span class="special">,</span> <span class="number">5</span>
+<span class="identifier">test</span> <span class="number">2</span><span class="special">:</span> <span class="number">1.04704</span><span class="special">,</span> <span class="number">6</span>
+
+<span class="special">***</span> <span class="number">1</span> <span class="identifier">failure</span> <span class="identifier">is</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">the</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"dataset_example63"</span>
+</pre>
+                  </td></tr></tbody>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2020 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="operations.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_case_generation.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../test_organization_templates.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

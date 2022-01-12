@@ -1,0 +1,187 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>The Interface</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Optional">
+<link rel="up" href="../design_overview.html" title="Design Overview">
+<link rel="prev" href="the_semantics.html" title="The semantics">
+<link rel="next" href="../when_to_use_optional.html" title="When to use Optional">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="the_semantics.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../design_overview.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../when_to_use_optional.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_optional.tutorial.design_overview.the_interface"></a><a class="link" href="the_interface.html" title="The Interface">The
+        Interface</a>
+</h4></div></div></div>
+<p>
+          Since the purpose of optional is to allow us to use objects with a formal
+          uninitialized additional state, the interface could try to follow the interface
+          of the underlying <code class="computeroutput"><span class="identifier">T</span></code> type
+          as much as possible. In order to choose the proper degree of adoption of
+          the native <code class="computeroutput"><span class="identifier">T</span></code> interface,
+          the following must be noted: Even if all the operations supported by an
+          instance of type <code class="computeroutput"><span class="identifier">T</span></code> are
+          defined for the entire range of values for such a type, an <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>
+          extends such a set of values with a new value for which most (otherwise
+          valid) operations are not defined in terms of <code class="computeroutput"><span class="identifier">T</span></code>.
+        </p>
+<p>
+          Furthermore, since <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code> itself is merely a <code class="computeroutput"><span class="identifier">T</span></code>
+          wrapper (modeling a <code class="computeroutput"><span class="identifier">T</span></code> supertype),
+          any attempt to define such operations upon uninitialized optionals will
+          be totally artificial w.r.t. <code class="computeroutput"><span class="identifier">T</span></code>.
+        </p>
+<p>
+          This library chooses an interface which follows from <code class="computeroutput"><span class="identifier">T</span></code>'s
+          interface only for those operations which are well defined (w.r.t the type
+          <code class="computeroutput"><span class="identifier">T</span></code>) even if any of the operands
+          are uninitialized. These operations include: construction, copy-construction,
+          assignment, swap and relational operations.
+        </p>
+<p>
+          For the value access operations, which are undefined (w.r.t the type <code class="computeroutput"><span class="identifier">T</span></code>) when the operand is uninitialized,
+          a different interface is chosen (which will be explained next).
+        </p>
+<p>
+          Also, the presence of the possibly uninitialized state requires additional
+          operations not provided by <code class="computeroutput"><span class="identifier">T</span></code>
+          itself which are supported by a special interface.
+        </p>
+<h6>
+<a name="boost_optional.tutorial.design_overview.the_interface.h0"></a>
+          <span class="phrase"><a name="boost_optional.tutorial.design_overview.the_interface.lexically_hinted_value_access_in_the_presence_of_possibly_uninitialized_optional_objects__the_operators___and___gt_"></a></span><a class="link" href="the_interface.html#boost_optional.tutorial.design_overview.the_interface.lexically_hinted_value_access_in_the_presence_of_possibly_uninitialized_optional_objects__the_operators___and___gt_">Lexically-hinted
+          Value Access in the presence of possibly uninitialized optional objects:
+          The operators * and -&gt;</a>
+        </h6>
+<p>
+          A relevant feature of a pointer is that it can have a <span class="bold"><strong>null
+          pointer value</strong></span>. This is a <span class="emphasis"><em>special</em></span> value
+          which is used to indicate that the pointer is not referring to any object
+          at all. In other words, null pointer values convey the notion of nonexistent
+          objects.
+        </p>
+<p>
+          This meaning of the null pointer value allowed pointers to became a <span class="emphasis"><em>de
+          facto</em></span> standard for handling optional objects because all you
+          have to do to refer to a value which you don't really have is to use a
+          null pointer value of the appropriate type. Pointers have been used for
+          decades—from the days of C APIs to modern C++ libraries—to <span class="emphasis"><em>refer</em></span>
+          to optional (that is, possibly nonexistent) objects; particularly as optional
+          arguments to a function, but also quite often as optional data members.
+        </p>
+<p>
+          The possible presence of a null pointer value makes the operations that
+          access the pointee's value possibly undefined, therefore, expressions which
+          use dereference and access operators, such as: <code class="computeroutput"><span class="special">(</span>
+          <span class="special">*</span><span class="identifier">p</span>
+          <span class="special">=</span> <span class="number">2</span> <span class="special">)</span></code> and <code class="computeroutput"><span class="special">(</span>
+          <span class="identifier">p</span><span class="special">-&gt;</span><span class="identifier">foo</span><span class="special">()</span> <span class="special">)</span></code>, implicitly convey the notion of optionality,
+          and this information is tied to the <span class="emphasis"><em>syntax</em></span> of the
+          expressions. That is, the presence of operators <code class="computeroutput"><span class="special">*</span></code>
+          and <code class="computeroutput"><span class="special">-&gt;</span></code> tell by themselves
+          —without any additional context— that the expression will be undefined
+          unless the implied pointee actually exist.
+        </p>
+<p>
+          Such a <span class="emphasis"><em>de facto</em></span> idiom for referring to optional objects
+          can be formalized in the form of a concept: the <a href="../../../../../../utility/OptionalPointee.html" target="_top"><code class="computeroutput"><span class="identifier">OptionalPointee</span></code></a> concept. This
+          concept captures the syntactic usage of operators <code class="computeroutput"><span class="special">*</span></code>,
+          <code class="computeroutput"><span class="special">-&gt;</span></code> and contextual conversion
+          to <code class="computeroutput"><span class="keyword">bool</span></code> to convey the notion
+          of optionality.
+        </p>
+<p>
+          However, pointers are good to <span class="underline">refer</span>
+          to optional objects, but not particularly good to handle the optional objects
+          in all other respects, such as initializing or moving/copying them. The
+          problem resides in the shallow-copy of pointer semantics: if you need to
+          effectively move or copy the object, pointers alone are not enough. The
+          problem is that copies of pointers do not imply copies of pointees. For
+          example, as was discussed in the motivation, pointers alone cannot be used
+          to return optional objects from a function because the object must move
+          outside from the function and into the caller's context.
+        </p>
+<p>
+          A solution to the shallow-copy problem that is often used is to resort
+          to dynamic allocation and use a smart pointer to automatically handle the
+          details of this. For example, if a function is to optionally return an
+          object <code class="computeroutput"><span class="identifier">X</span></code>, it can use <code class="computeroutput"><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;</span></code>
+          as the return value. However, this requires dynamic allocation of <code class="computeroutput"><span class="identifier">X</span></code>. If <code class="computeroutput"><span class="identifier">X</span></code>
+          is a built-in or small POD, this technique is very poor in terms of required
+          resources. Optional objects are essentially values so it is very convenient
+          to be able to use automatic storage and deep-copy semantics to manipulate
+          optional values just as we do with ordinary values. Pointers do not have
+          this semantics, so are inappropriate for the initialization and transport
+          of optional values, yet are quite convenient for handling the access to
+          the possible undefined value because of the idiomatic aid present in the
+          <a href="../../../../../../utility/OptionalPointee.html" target="_top"><code class="computeroutput"><span class="identifier">OptionalPointee</span></code></a>
+          concept incarnated by pointers.
+        </p>
+<h6>
+<a name="boost_optional.tutorial.design_overview.the_interface.h1"></a>
+          <span class="phrase"><a name="boost_optional.tutorial.design_overview.the_interface.optional_lt_t_gt__as_a_model_of_optionalpointee"></a></span><a class="link" href="the_interface.html#boost_optional.tutorial.design_overview.the_interface.optional_lt_t_gt__as_a_model_of_optionalpointee">Optional&lt;T&gt;
+          as a model of OptionalPointee</a>
+        </h6>
+<p>
+          For value access operations <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;&gt;</span></code> uses operators <code class="computeroutput"><span class="special">*</span></code>
+          and <code class="computeroutput"><span class="special">-&gt;</span></code> to lexically warn
+          about the possibly uninitialized state appealing to the familiar pointer
+          semantics w.r.t. to null pointers.
+        </p>
+<div class="caution"><table border="0" summary="Caution">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../../../../../../../doc/src/images/caution.png"></td>
+<th align="left">Caution</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            However, it is particularly important to note that <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;&gt;</span></code> objects are not pointers. <span class="underline"><code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;&gt;</span></code> is not, and does not model, a
+            pointer</span>.
+          </p></td></tr>
+</table></div>
+<p>
+          For instance, <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;&gt;</span></code> does not have shallow-copy so does
+          not alias: two different optionals never refer to the <span class="emphasis"><em>same</em></span>
+          value unless <code class="computeroutput"><span class="identifier">T</span></code> itself is
+          a reference (but may have <span class="emphasis"><em>equivalent</em></span> values). The
+          difference between an <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code> and a pointer must be kept in mind,
+          particularly because the semantics of relational operators are different:
+          since <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>
+          is a value-wrapper, relational operators are deep: they compare optional
+          values; but relational operators for pointers are shallow: they do not
+          compare pointee values. As a result, you might be able to replace <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>
+          by <code class="computeroutput"><span class="identifier">T</span><span class="special">*</span></code>
+          on some situations but not always. Specifically, on generic code written
+          for both, you cannot use relational operators directly, and must use the
+          template functions <a href="../../../../../../utility/OptionalPointee.html#equal" target="_top"><code class="computeroutput"><span class="identifier">equal_pointees</span><span class="special">()</span></code></a>
+          and <a href="../../../../../../utility/OptionalPointee.html#less" target="_top"><code class="computeroutput"><span class="identifier">less_pointees</span><span class="special">()</span></code></a>
+          instead.
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2003-2007 Fernando Luis Cacciola Carballal<br>Copyright © 2014-2021 Andrzej Krzemieński<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="the_semantics.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../design_overview.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../when_to_use_optional.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

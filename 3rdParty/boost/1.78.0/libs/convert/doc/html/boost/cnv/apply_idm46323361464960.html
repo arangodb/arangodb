@@ -1,0 +1,67 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Function template apply</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Convert 2.0">
+<link rel="up" href="../../boost_convert_c___reference.html#header.boost.convert_hpp" title="Header &lt;boost/convert.hpp&gt;">
+<link rel="prev" href="referenc_idm46323361474640.html" title="Struct template reference&lt;Converter, TypeOut, void&gt;">
+<link rel="next" href="../throw_on_failure.html" title="Global throw_on_failure">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="referenc_idm46323361474640.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_convert_c___reference.html#header.boost.convert_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../throw_on_failure.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.cnv.apply_idm46323361464960"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Function template apply</span></h2>
+<p>boost::cnv::apply — Boost.Convert deployment interface with algorithms. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../boost_convert_c___reference.html#header.boost.convert_hpp" title="Header &lt;boost/convert.hpp&gt;">boost/convert.hpp</a>&gt;
+
+</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> TypeOut<span class="special">,</span> <span class="keyword">typename</span> TypeIn<span class="special">,</span> <span class="keyword">typename</span> Converter<span class="special">&gt;</span> 
+  <a class="link" href="reference.html" title="Struct template reference">reference</a><span class="special">&lt;</span> <span class="identifier">Converter</span><span class="special">,</span> <span class="identifier">TypeOut</span><span class="special">,</span> <span class="identifier">TypeIn</span> <span class="special">&gt;</span> <span class="identifier">apply</span><span class="special">(</span><span class="identifier">Converter</span> <span class="keyword">const</span> <span class="special">&amp;</span> cnv<span class="special">)</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idm45377117649424"></a><h2>Description</h2>
+<p>For example, </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">array</span><span class="special">&lt;</span><span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span><span class="special">,</span> <span class="number">3</span><span class="special">&gt;</span> <span class="identifier">strs</span> <span class="special">=</span> <span class="special">{</span><span class="special">{</span> <span class="string">" 5"</span><span class="special">,</span> <span class="string">"0XF"</span><span class="special">,</span> <span class="string">"not an int"</span> <span class="special">}</span><span class="special">}</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span>             <span class="identifier">ints</span><span class="special">;</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">cstream</span>           <span class="identifier">cnv</span><span class="special">;</span>
+
+<span class="identifier">cnv</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">hex</span><span class="special">)</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">skipws</span><span class="special">)</span><span class="special">;</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">transform</span><span class="special">(</span>
+    <span class="identifier">strs</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(</span><span class="special">)</span><span class="special">,</span>
+    <span class="identifier">strs</span><span class="special">.</span><span class="identifier">end</span><span class="special">(</span><span class="special">)</span><span class="special">,</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">back_inserter</span><span class="special">(</span><span class="identifier">ints</span><span class="special">)</span><span class="special">,</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">apply</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">cref</span><span class="special">(</span><span class="identifier">cnv</span><span class="special">)</span><span class="special">)</span><span class="special">.</span><span class="identifier">value_or</span><span class="special">(</span><span class="special">-</span><span class="number">1</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+</pre>
+<p> </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2009-2016 Vladimir Batov<p>
+        Distributed under the Boost Software License, Version 1.0. See copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="referenc_idm46323361474640.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_convert_c___reference.html#header.boost.convert_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../throw_on_failure.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

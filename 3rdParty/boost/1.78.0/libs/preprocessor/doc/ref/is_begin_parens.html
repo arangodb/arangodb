@@ -1,0 +1,47 @@
+<html>
+  <head>
+    <meta content="text/html; charset=windows-1252" http-equiv="content-type">
+    <title>BOOST_PP_IS_BEGIN_PARENS</title>
+    <link rel="stylesheet" type="text/css" href="../styles.css">
+  </head>
+  <body>
+    <div style="margin-left:  0px;"> The <b>BOOST_PP_IS_BEGIN_PAREN</b>S
+      determines whether the input starts with a set of parenthesis.</div>
+    <h4>Usage</h4>
+    <div class="code"> <b>BOOST_PP_IS_BEGIN_PARENS</b>(...) <a href="../topics/variadic_macros.html#VNotation"
+        target="_self"><sup>(v)</sup></a></div>
+    <h4>Arguments</h4>
+    <h4>&nbsp;&nbsp;&nbsp; ...&nbsp;&nbsp;&nbsp; <span style="font-weight: normal;">&nbsp;&nbsp;&nbsp;
+        &nbsp;&nbsp;&nbsp; The input as variadic data.</span></h4>
+    <h4>Remarks</h4>
+    <div> If the input input begins with a parenthesis, with any data within
+      that parenthesis, the macro returns 1, otherwise it returns 0. Data may
+      follow the beginning parenthesis and the macro still will return 1.<br>
+      <br>
+      For Visual Studio 2005 ( VC8 ) the input data must be a single parameter
+      else a compilation error will occur.</div>
+    <h4>See Also</h4>
+    <ul>
+      <li><a href="remove_parens.html">BOOST_PP_REMOVE_PARENS</a></li>
+    </ul>
+    <h4>Requirements</h4>
+    <div> <b>Header:</b> &nbsp;<a href="../headers/punctuation/is_begin_parens.html">&lt;boost/preprocessor/punctuation/is_begin_parens.hpp&gt;</a>
+    </div>
+    <h4>Sample Code</h4>
+    <div>
+      <pre>#include &lt;<a href="../headers/punctuation/is_begin_parens.html">boost/preprocessor/punctuation/is_begin_parens.hpp</a>&gt;
+
+#define VARDATA more_data , more_params<br>#define VARDATAP ( data ) more_data , more_params<br>#define DATA data<br>#define DATAP ( data ) more_data<br>
+BOOST_PP_IS_BEGIN_PARENS(VARDATA)  // expands to 0, compiler error with VC8
+BOOST_PP_IS_BEGIN_PARENS(VARDATAP) // expands to 1, compiler error with VC8<br><br>BOOST_PP_IS_BEGIN_PARENS(DATA)     // expands to 0
+BOOST_PP_IS_BEGIN_PARENS(DATAP)    // expands to 1<br><br>BOOST_PP_IS_BEGIN_PARENS()         // expands to 0<br>
+</pre></div>
+    <hr size="1">
+    <div style="margin-left: 0px;"> <i>© Copyright Edward Diener 2014</i> </div>
+    <div style="margin-left: 0px;">
+      <p><small>Distributed under the Boost Software License, Version 1.0. (See
+          accompanying file <a href="../../../../LICENSE_1_0.txt">LICENSE_1_0.txt</a>
+          or copy at <a href="http://www.boost.org/LICENSE_1_0.txt">www.boost.org/LICENSE_1_0.txt</a>)</small></p>
+    </div>
+  </body>
+</html>

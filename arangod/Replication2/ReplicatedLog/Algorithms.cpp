@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -447,14 +447,7 @@ algorithms::CalculateCommitIndexOptions::CalculateCommitIndexOptions(
     std::size_t replicationFactor)
     : _writeConcern(writeConcern),
       _softWriteConcern(softWriteConcern),
-      _replicationFactor(replicationFactor) {
-  TRI_ASSERT(_writeConcern <= _softWriteConcern)
-      << "writeConcern > softWriteConcern " << _writeConcern << " > "
-      << _softWriteConcern;
-  TRI_ASSERT(_softWriteConcern <= _replicationFactor)
-      << "softWriteConcern > opt.replicationFactor " << _softWriteConcern
-      << " > " << _replicationFactor;
-}
+      _replicationFactor(replicationFactor) {}
 
 auto algorithms::calculateCommitIndex(
     std::vector<ParticipantStateTuple> const& indexes,
@@ -535,12 +528,25 @@ auto algorithms::calculateCommitIndex(
     }
   }
 
-  // This happens when all servers are either excluded or failed;
+  // This happens when too many servers are either excluded or failed;
   // this certainly means we could not reach a quorum;
   // indexes cannot be empty because this particular case would've been handled
   // above by comparing actualWriteConcern to 0;
+  CommitFailReason::NonEligibleServerRequiredForQuorum::CandidateMap candidates;
+  for (auto const& p : indexes) {
+    if (p.isFailed()) {
+      candidates.emplace(
+          p.id, CommitFailReason::NonEligibleServerRequiredForQuorum::kFailed);
+    } else if (p.isExcluded()) {
+      candidates.emplace(
+          p.id,
+          CommitFailReason::NonEligibleServerRequiredForQuorum::kExcluded);
+    }
+  }
+
   TRI_ASSERT(!indexes.empty());
-  auto const& who = indexes.front().id;
-  return {
-      currentCommitIndex, CommitFailReason::withQuorumSizeNotReached(who), {}};
+  return {currentCommitIndex,
+          CommitFailReason::withNonEligibleServerRequiredForQuorum(
+              std::move(candidates)),
+          {}};
 }

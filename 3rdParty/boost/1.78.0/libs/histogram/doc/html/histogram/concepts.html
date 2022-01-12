@@ -1,0 +1,1948 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Concepts</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Histogram">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Histogram">
+<link rel="prev" href="benchmarks.html" title="Benchmarks">
+<link rel="next" href="reference.html" title="Reference">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="benchmarks.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="reference.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="histogram.concepts"></a><a class="link" href="concepts.html" title="Concepts">Concepts</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="concepts.html#histogram.concepts.Axis">Axis</a></span></dt>
+<dt><span class="section"><a href="concepts.html#histogram.concepts.DiscreteAxis">DiscreteAxis</a></span></dt>
+<dt><span class="section"><a href="concepts.html#histogram.concepts.IntervalAxis">IntervalAxis</a></span></dt>
+<dt><span class="section"><a href="concepts.html#histogram.concepts.Transform">Transform</a></span></dt>
+<dt><span class="section"><a href="concepts.html#histogram.concepts.Storage">Storage</a></span></dt>
+<dt><span class="section"><a href="concepts.html#histogram.concepts.Accumulator">Accumulator</a></span></dt>
+</dl></div>
+<p>
+      Users can extend the library with various new types whose concepts are defined
+      here.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="histogram.concepts.Axis"></a><a class="link" href="concepts.html#histogram.concepts.Axis" title="Axis">Axis</a>
+</h3></div></div></div>
+<p>
+        An <span class="bold"><strong>Axis</strong></span> maps input values to indices. It
+        holds state specific to that axis, like the number of bins and any metadata.
+        Must be <a href="https://en.cppreference.com/w/cpp/named_req/CopyConstructible" target="_top">CopyConstructible</a>,
+        <a href="https://en.cppreference.com/w/cpp/named_req/CopyAssignable" target="_top">CopyAssignable</a>,
+        and <span class="bold"><strong>nothrow</strong></span> <a href="https://en.cppreference.com/w/cpp/named_req/MoveAssignable" target="_top">MoveAssignable</a>.
+      </p>
+<h5>
+<a name="histogram.concepts.Axis.h0"></a>
+        <span class="phrase"><a name="histogram.concepts.Axis.associated_types"></a></span><a class="link" href="concepts.html#histogram.concepts.Axis.associated_types">Associated
+        Types</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <a class="link" href="concepts.html#histogram.concepts.DiscreteAxis" title="DiscreteAxis"><span class="bold"><strong>DiscreteAxis</strong></span></a>
+          </li>
+<li class="listitem">
+            <a class="link" href="concepts.html#histogram.concepts.IntervalAxis" title="IntervalAxis"><span class="bold"><strong>IntervalAxis</strong></span></a>
+          </li>
+</ul></div>
+<h5>
+<a name="histogram.concepts.Axis.h1"></a>
+        <span class="phrase"><a name="histogram.concepts.Axis.required_features"></a></span><a class="link" href="concepts.html#histogram.concepts.Axis.required_features">Required
+        features</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">A</span></code> is a type meeting the
+            requirements of <span class="bold"><strong>Axis</strong></span>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">a</span></code> is a value of type
+            <code class="computeroutput"><span class="identifier">A</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">I</span></code> is an alias for <code class="computeroutput"><a class="link" href="reference.html#header.boost.histogram.fwd_hpp" title="Header &lt;boost/histogram/fwd.hpp&gt;">boost::histogram::axis::index_type</a></code>
+          </li>
+</ul></div>
+<div class="table">
+<a name="histogram.concepts.Axis.valid_expressions"></a><p class="title"><b>Table 1.1. Valid expressions</b></p>
+<div class="table-contents"><table class="table" summary="Valid expressions">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Expression
+                </p>
+              </th>
+<th>
+                <p>
+                  Returns
+                </p>
+              </th>
+<th>
+                <p>
+                  Semantics, Pre/Post-conditions
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">I</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Const member function which returns the number of bins of the axis.
+                  All indices from <code class="computeroutput"><span class="number">0</span></code>
+                  to <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span>
+                  <span class="special">-</span> <span class="number">1</span></code>
+                  must be valid and address a bin of the axis.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">index</span><span class="special">(</span><span class="identifier">v</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">I</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Const member function which maps a value <code class="computeroutput"><span class="identifier">v</span></code>
+                  to an index. The mapping must be injective: each value must be
+                  uniquely mapped to one index. If the value is not covered by the
+                  axis, return either <code class="computeroutput"><span class="special">-</span><span class="number">1</span></code> or <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span></code>. The value <code class="computeroutput"><span class="special">-</span><span class="number">1</span></code> indicates that the value is lower
+                  than the lowest value covered by the axis. The value <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span></code>
+                  indicates that the value is above the uppermost value covered by
+                  the axis. By convention, <span class="emphasis"><em>NaN</em></span>-values are mapped
+                  to <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">get_allocator</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">Alloc</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Const member function which returns the allocator <code class="computeroutput"><span class="identifier">Alloc</span></code> used by this axis. May
+                  be omitted if <code class="computeroutput"><span class="identifier">A</span></code>
+                  does not use allocators. If this member function exists, also a
+                  special constructor must exists so that <code class="computeroutput"><span class="identifier">A</span><span class="special">(</span><span class="identifier">a</span><span class="special">.</span><span class="identifier">get_allocator</span><span class="special">())</span></code> is a valid expression.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><h5>
+<a name="histogram.concepts.Axis.h2"></a>
+        <span class="phrase"><a name="histogram.concepts.Axis.optional_features"></a></span><a class="link" href="concepts.html#histogram.concepts.Axis.optional_features">Optional
+        features</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">A</span></code> is a type meeting the
+            requirements of <span class="bold"><strong>Axis</strong></span>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">a</span></code> and <code class="computeroutput"><span class="identifier">b</span></code>
+            are values of type <code class="computeroutput"><span class="identifier">A</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">i</span></code> and <code class="computeroutput"><span class="identifier">j</span></code>
+            are indices of type <code class="computeroutput"><a class="link" href="reference.html#header.boost.histogram.fwd_hpp" title="Header &lt;boost/histogram/fwd.hpp&gt;">boost::histogram::axis::index_type</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">n</span></code> is a value of type
+            <code class="computeroutput"><span class="keyword">unsigned</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">M</span></code> is a metadata type
+            that is <a href="https://en.cppreference.com/w/cpp/named_req/CopyConstructible" target="_top">CopyConstructible</a>
+            and <a href="https://en.cppreference.com/w/cpp/named_req/CopyAssignable" target="_top">CopyAssignable</a>
+            and <span class="bold"><strong>nothrow</strong></span> <a href="https://en.cppreference.com/w/cpp/named_req/MoveAssignable" target="_top">MoveAssignable</a>.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">ar</span></code> is a value of an archive
+            with Boost.Serialization semantics
+          </li>
+</ul></div>
+<div class="table">
+<a name="histogram.concepts.Axis.valid_expressions0"></a><p class="title"><b>Table 1.2. Valid expressions</b></p>
+<div class="table-contents"><table class="table" summary="Valid expressions">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Expression
+                </p>
+              </th>
+<th>
+                <p>
+                  Returns
+                </p>
+              </th>
+<th>
+                <p>
+                  Semantics, Pre/Post-conditions
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">update</span><span class="special">(</span><span class="identifier">v</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span><span class="identifier">I</span><span class="special">,</span>
+                  <span class="identifier">I</span><span class="special">&gt;</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Non-const member function which maps a value to an index (first
+                  argument of the returned pair) and offset (second argument of the
+                  returned pair). If the value is not covered by the axis, this method
+                  may grow the current axis size (<code class="computeroutput"><span class="identifier">old_size</span></code>)
+                  by the number of bins needed to contain the value or more (<code class="computeroutput"><span class="identifier">new_size</span></code>). If the value is below
+                  the lowest value covered by the axis, return index <code class="computeroutput"><span class="number">0</span></code> and offset <code class="computeroutput"><span class="identifier">new_size</span>
+                  <span class="special">-</span> <span class="identifier">old_size</span></code>.
+                  If the value is above the uppermost value covered by the axis,
+                  return index <code class="computeroutput"><span class="identifier">new_size</span>
+                  <span class="special">-</span> <span class="number">1</span></code>
+                  and a negative offset <code class="computeroutput"><span class="identifier">old_size</span>
+                  <span class="special">-</span> <span class="identifier">new_size</span></code>.
+                  If the value is outside, but the axis is not enlarged, then return
+                  an index equivalent to <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">index</span><span class="special">(</span><span class="identifier">v</span><span class="special">)</span></code> and offset <code class="computeroutput"><span class="number">0</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">A</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span>
+                  <span class="identifier">i</span><span class="special">,</span>
+                  <span class="identifier">j</span><span class="special">,</span>
+                  <span class="identifier">n</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  Special constructor used by the reduce algorithm. <code class="computeroutput"><span class="identifier">a</span></code> is the original axis instance,
+                  <code class="computeroutput"><span class="identifier">i</span></code> and <code class="computeroutput"><span class="identifier">j</span></code> are the index range to keep
+                  in the reduced axis. If <code class="computeroutput"><span class="identifier">n</span></code>
+                  is larger than 1, <code class="computeroutput"><span class="identifier">n</span></code>
+                  adjacent bins are merged into one larger cell. If this constructor
+                  is not implemented, <code class="computeroutput"><a class="link" href="../boost/histogram/algorithm/reduce_idm13747.html" title="Function template reduce">boost::histogram::algorithm::reduce</a></code>
+                  throws an exception on an attempt to reduce this axis.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">options</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">unsigned</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Static constexpr member function which returns the <code class="computeroutput"><a class="link" href="reference.html#header.boost.histogram.axis.option_hpp" title="Header &lt;boost/histogram/axis/option.hpp&gt;">axis options</a></code>
+                  for this axis.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">inclusive</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">bool</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Static constexpr member function which returns true, if the axis
+                  has a bin for every possible input value, and false otherwise.
+                  Faster code can be generated if all axes types in a histogram are
+                  inclusive. An axis with underflow and overflow bins is always inclusive.
+                  An axis may be inclusive even if underflow or overflow bins are
+                  missing. For example, a category axis is inclusive if either it
+                  has an overflow bin or if it is growing.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">metadata</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">M</span><span class="special">&amp;</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Const and non-const member functions must exist, which both returns
+                  a mutable reference to the metadata associated with the axis (usually
+                  a string).
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span> <span class="special">==</span>
+                  <span class="identifier">b</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">bool</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if all
+                  state variables compare equal, including any metadata. Otherwise
+                  returns <code class="computeroutput"><span class="keyword">false</span></code>. If
+                  <code class="computeroutput"><span class="identifier">a</span> <span class="special">==</span>
+                  <span class="identifier">b</span></code> is implemented, also
+                  <code class="computeroutput"><span class="identifier">a</span> <span class="special">!=</span>
+                  <span class="identifier">b</span></code> must be implemented.
+                  If this binary operator is not implemented, the library considers
+                  the axes equal if their types are the same.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span> <span class="special">!=</span>
+                  <span class="identifier">b</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">bool</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Must be implemented if <code class="computeroutput"><span class="identifier">a</span>
+                  <span class="special">==</span> <span class="identifier">b</span></code>
+                  is implemented and must be equal to <code class="computeroutput"><span class="special">!(</span><span class="identifier">a</span> <span class="special">==</span>
+                  <span class="identifier">b</span><span class="special">)</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">os</span> <span class="special">&lt;&lt;</span>
+                  <span class="identifier">a</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span><span class="identifier">CharT</span><span class="special">,</span>
+                  <span class="identifier">Traits</span><span class="special">&gt;&amp;</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">os</span></code> is a value of
+                  type <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span><span class="identifier">CharT</span><span class="special">,</span>
+                  <span class="identifier">Traits</span><span class="special">&gt;</span></code>.
+                  Streams a text representation of the axis. May not mutate <code class="computeroutput"><span class="identifier">a</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">serialize</span><span class="special">(</span><span class="identifier">ar</span><span class="special">,</span>
+                  <span class="identifier">n</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  Saves to the archive or loads serialised state from the archive.
+                  The version number <code class="computeroutput"><span class="identifier">n</span></code>
+                  is the stored version when the object is loaded or the current
+                  version when the object is saved.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><h5>
+<a name="histogram.concepts.Axis.h3"></a>
+        <span class="phrase"><a name="histogram.concepts.Axis.models"></a></span><a class="link" href="concepts.html#histogram.concepts.Axis.models">Models</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/histogram/axis/boolean.html" title="Class template boolean">boost::histogram::axis::boolean</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/histogram/axis/category.html" title="Class template category">boost::histogram::axis::category</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/histogram/axis/integer.html" title="Class template integer">boost::histogram::axis::integer</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/histogram/axis/regular.html" title="Class template regular">boost::histogram::axis::regular</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/histogram/axis/variable.html" title="Class template variable">boost::histogram::axis::variable</a></code>
+          </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="histogram.concepts.DiscreteAxis"></a><a class="link" href="concepts.html#histogram.concepts.DiscreteAxis" title="DiscreteAxis">DiscreteAxis</a>
+</h3></div></div></div>
+<p>
+        A <span class="bold"><strong>DiscreteAxis</strong></span> is one of two optional refinements
+        of the <a class="link" href="concepts.html#histogram.concepts.Axis" title="Axis"><span class="bold"><strong>Axis</strong></span></a>
+        concept, the other one is the <a class="link" href="concepts.html#histogram.concepts.IntervalAxis" title="IntervalAxis">IntervalAxis</a>.
+        This concept is for axes in which each bin represents a single value instead
+        of an interval.
+      </p>
+<p>
+        Discrete axes can be further divided into ordered and unordered. An axis
+        is ordered, when bin indices i &lt; j &lt; k imply that value[i] &lt; value[j]
+        &lt; value[k] or value[i] &gt; value[j] &gt; value[k] for all i, j, k. The
+        <code class="computeroutput"><a class="link" href="../boost/histogram/axis/integer.html" title="Class template integer">integer axis</a></code>
+        is ordered and the <code class="computeroutput"><a class="link" href="../boost/histogram/axis/category.html" title="Class template category">category
+        axis</a></code> is unordered.
+      </p>
+<p>
+        An unordered discrete axis cannot have an underflow bin. Since there is no
+        order, one can have at most one extra bin that counts values not handled
+        by the axis. By convention the overflow bin is used for that.
+      </p>
+<h5>
+<a name="histogram.concepts.DiscreteAxis.h0"></a>
+        <span class="phrase"><a name="histogram.concepts.DiscreteAxis.associated_types"></a></span><a class="link" href="concepts.html#histogram.concepts.DiscreteAxis.associated_types">Associated
+        Types</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <a class="link" href="concepts.html#histogram.concepts.Axis" title="Axis"><span class="bold"><strong>Axis</strong></span></a>
+          </li>
+<li class="listitem">
+            <a class="link" href="concepts.html#histogram.concepts.IntervalAxis" title="IntervalAxis"><span class="bold"><strong>IntervalAxis</strong></span></a>
+          </li>
+</ul></div>
+<h5>
+<a name="histogram.concepts.DiscreteAxis.h1"></a>
+        <span class="phrase"><a name="histogram.concepts.DiscreteAxis.optional_features"></a></span><a class="link" href="concepts.html#histogram.concepts.DiscreteAxis.optional_features">Optional
+        features</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">A</span></code> is a type meeting the
+            requirements of <span class="bold"><strong>DiscreteAxis</strong></span>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">a</span></code> is a value of type
+            <code class="computeroutput"><span class="identifier">A</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">V</span></code> is the type accepted
+            for conversion into an index
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">v</span></code> is a value of type
+            <code class="computeroutput"><span class="identifier">V</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">i</span></code> is a value of type
+            <code class="computeroutput"><a class="link" href="reference.html#header.boost.histogram.fwd_hpp" title="Header &lt;boost/histogram/fwd.hpp&gt;">boost::histogram::axis::index_type</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">AxisIter</span></code> is an <span class="emphasis"><em>RandomAccessIterator</em></span>
+            over the bins of <code class="computeroutput"><span class="identifier">A</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">ReAxisIter</span></code> is a reverse
+            <span class="emphasis"><em>RandomAccessIterator</em></span> over the bins of <code class="computeroutput"><span class="identifier">A</span></code>
+          </li>
+</ul></div>
+<div class="table">
+<a name="histogram.concepts.DiscreteAxis.valid_expressions"></a><p class="title"><b>Table 1.3. Valid expressions</b></p>
+<div class="table-contents"><table class="table" summary="Valid expressions">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Expression
+                </p>
+              </th>
+<th>
+                <p>
+                  Returns
+                </p>
+              </th>
+<th>
+                <p>
+                  Semantics, Pre/Post-conditions
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">ordered</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">bool</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Static constexpr member function which returns true if the axis
+                  is ordered and false otherwise. If this is absent, the library
+                  checks whether the value type is arithmetic instead, see <code class="computeroutput"><a class="link" href="../boost/histogram/axis/traits/ordered.html" title="Function template ordered">boost::histogram::axis::traits::ordered</a></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">value</span><span class="special">(</span><span class="identifier">i</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">V</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Const member function which maps an index to a value. The mapping
+                  must be injective: each index must be uniquely mapped to one value.
+                  The effect must be exactly the inverse of <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">index</span><span class="special">(</span><span class="identifier">v</span><span class="special">)</span></code>. The return value may be a const
+                  reference, if the lifetime of the referred object is equal to the
+                  lifetime of the axis.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">bin</span><span class="special">(</span><span class="identifier">i</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">V</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Must have the same effect as <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">value</span><span class="special">(</span><span class="identifier">i</span><span class="special">)</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">s</span><span class="special">.</span><span class="identifier">begin</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">AxisIter</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Const member function which return an iterator to the bin with
+                  index <code class="computeroutput"><span class="number">0</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">s</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">AxisIter</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Const member function which returns an iterator to the bin with
+                  index <code class="computeroutput"><span class="identifier">s</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">s</span><span class="special">.</span><span class="identifier">rbegin</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">ReAxisIter</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Const member function which return a reverse iterator to the bin
+                  with index <code class="computeroutput"><span class="identifier">s</span><span class="special">.</span><span class="identifier">size</span><span class="special">()-</span><span class="number">1</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">s</span><span class="special">.</span><span class="identifier">rend</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">ReAxisIter</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Const member function which returns an iterator to the bin with
+                  index <code class="computeroutput"><span class="special">-</span><span class="number">1</span></code>.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><div class="tip"><table border="0" summary="Tip">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../../../../../doc/src/images/tip.png"></td>
+<th align="left">Tip</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          The complete iterator interface can be added to a user-defined axis which
+          implements <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">bin</span><span class="special">(</span><span class="identifier">i</span><span class="special">)</span></code> by
+          inheriting from the <code class="computeroutput"><a class="link" href="../boost/histogram/axis/iterator_mixin.html" title="Class template iterator_mixin">iterator_mixin</a></code>.
+        </p></td></tr>
+</table></div>
+<h5>
+<a name="histogram.concepts.DiscreteAxis.h2"></a>
+        <span class="phrase"><a name="histogram.concepts.DiscreteAxis.models"></a></span><a class="link" href="concepts.html#histogram.concepts.DiscreteAxis.models">Models</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/histogram/axis/category.html" title="Class template category">boost::histogram::axis::category</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/histogram/axis/integer.html" title="Class template integer">boost::histogram::axis::integer</a></code>,
+            if first template parameter is <code class="computeroutput"><span class="keyword">int</span></code>
+          </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="histogram.concepts.IntervalAxis"></a><a class="link" href="concepts.html#histogram.concepts.IntervalAxis" title="IntervalAxis">IntervalAxis</a>
+</h3></div></div></div>
+<p>
+        A <span class="bold"><strong>IntervalAxis</strong></span> is one of two optional refinements
+        of the <a class="link" href="concepts.html#histogram.concepts.Axis" title="Axis"><span class="bold"><strong>Axis</strong></span></a>
+        concept, the other one is the <a class="link" href="concepts.html#histogram.concepts.DiscreteAxis" title="DiscreteAxis">DiscreteAxis</a>.
+        It is for ordered values that form intervals with a well-defined lower and
+        upper edge, and a center. Each bin represents an interval of values.
+      </p>
+<h5>
+<a name="histogram.concepts.IntervalAxis.h0"></a>
+        <span class="phrase"><a name="histogram.concepts.IntervalAxis.associated_types"></a></span><a class="link" href="concepts.html#histogram.concepts.IntervalAxis.associated_types">Associated
+        Types</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <a class="link" href="concepts.html#histogram.concepts.Axis" title="Axis"><span class="bold"><strong>Axis</strong></span></a>
+          </li>
+<li class="listitem">
+            <a class="link" href="concepts.html#histogram.concepts.DiscreteAxis" title="DiscreteAxis"><span class="bold"><strong>DiscreteAxis</strong></span></a>
+          </li>
+</ul></div>
+<h5>
+<a name="histogram.concepts.IntervalAxis.h1"></a>
+        <span class="phrase"><a name="histogram.concepts.IntervalAxis.optional_features"></a></span><a class="link" href="concepts.html#histogram.concepts.IntervalAxis.optional_features">Optional
+        features</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">A</span></code> is a type meeting the
+            requirements of <span class="bold"><strong>IntervalAxis</strong></span>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">a</span></code> is a value of type
+            <code class="computeroutput"><span class="identifier">A</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">V</span></code> is the type accepted
+            for conversion into an index
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">B</span></code> is the type that represents
+            the bin interval
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">v</span></code> is a value of type
+            <code class="computeroutput"><span class="identifier">V</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">i</span></code> is a value of type
+            <code class="computeroutput"><a class="link" href="reference.html#header.boost.histogram.fwd_hpp" title="Header &lt;boost/histogram/fwd.hpp&gt;">boost::histogram::axis::index_type</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">j</span></code> is a value of type
+            <code class="computeroutput"><a class="link" href="reference.html#header.boost.histogram.fwd_hpp" title="Header &lt;boost/histogram/fwd.hpp&gt;">boost::histogram::axis::real_index_type</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">AxisIter</span></code> is an <span class="emphasis"><em>RandomAccessIterator</em></span>
+            over the bins of <code class="computeroutput"><span class="identifier">A</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">ReAxisIter</span></code> is a reverse
+            <span class="emphasis"><em>RandomAccessIterator</em></span> over the bins of <code class="computeroutput"><span class="identifier">A</span></code>
+          </li>
+</ul></div>
+<div class="table">
+<a name="histogram.concepts.IntervalAxis.valid_expressions"></a><p class="title"><b>Table 1.4. Valid expressions</b></p>
+<div class="table-contents"><table class="table" summary="Valid expressions">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Expression
+                </p>
+              </th>
+<th>
+                <p>
+                  Returns
+                </p>
+              </th>
+<th>
+                <p>
+                  Semantics, Pre/Post-conditions
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">value</span><span class="special">(</span><span class="identifier">i</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">V</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Const member function which maps an index to a value. The mapping
+                  must be injective: each index must be uniquely mapped to one value.
+                  The result of <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">value</span><span class="special">(</span><span class="identifier">a</span><span class="special">.</span><span class="identifier">index</span><span class="special">(</span><span class="identifier">v</span><span class="special">))</span></code> should agree to very high precision
+                  with <code class="computeroutput"><span class="identifier">v</span></code> (the mapping
+                  may not be exact due to the finite precision of floating point
+                  computations). The return value may be a const reference, if the
+                  lifetime of the referred object is equal to the lifetime of the
+                  axis. <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">value</span><span class="special">(</span><span class="identifier">j</span><span class="special">)</span></code>
+                  is expected to return the lower edge of the bin, <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">value</span><span class="special">(</span><span class="identifier">j</span><span class="special">+</span><span class="number">1</span><span class="special">)</span></code>
+                  the upper edge, and <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">value</span><span class="special">(</span><span class="identifier">j</span>
+                  <span class="special">+</span> <span class="number">0.5</span><span class="special">)</span></code> the center.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">bin</span><span class="special">(</span><span class="identifier">i</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">B</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Const member function which returns an instance that represents
+                  the current bin. Nothing about the type is required, but it is
+                  recommended that the type has the methods <code class="computeroutput"><span class="identifier">B</span><span class="special">::</span><span class="identifier">lower</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">B</span><span class="special">::</span><span class="identifier">upper</span><span class="special">()</span></code>, and <code class="computeroutput"><span class="identifier">B</span><span class="special">::</span><span class="identifier">center</span><span class="special">()</span></code> similar to the types used by
+                  the builtin axis models. The return value may be a const reference,
+                  if the lifetime of the referred object is equal to the lifetime
+                  of the axis.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">s</span><span class="special">.</span><span class="identifier">begin</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">AxisIter</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Const member function which return an iterator to the bin with
+                  index <code class="computeroutput"><span class="number">0</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">s</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">AxisIter</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Const member function which returns an iterator to the bin with
+                  index <code class="computeroutput"><span class="identifier">s</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">s</span><span class="special">.</span><span class="identifier">rbegin</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">ReAxisIter</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Const member function which return a reverse iterator to the bin
+                  with index <code class="computeroutput"><span class="identifier">s</span><span class="special">.</span><span class="identifier">size</span><span class="special">()-</span><span class="number">1</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">s</span><span class="special">.</span><span class="identifier">rend</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">ReAxisIter</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Const member function which returns an iterator to the bin with
+                  index <code class="computeroutput"><span class="special">-</span><span class="number">1</span></code>.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><div class="tip"><table border="0" summary="Tip">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../../../../../doc/src/images/tip.png"></td>
+<th align="left">Tip</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          The complete iterator interface can be added to a user-defined axis which
+          implements <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">bin</span><span class="special">(</span><span class="identifier">i</span><span class="special">)</span></code> by
+          inheriting from the <code class="computeroutput"><a class="link" href="../boost/histogram/axis/iterator_mixin.html" title="Class template iterator_mixin">iterator_mixin</a></code>.
+        </p></td></tr>
+</table></div>
+<h5>
+<a name="histogram.concepts.IntervalAxis.h2"></a>
+        <span class="phrase"><a name="histogram.concepts.IntervalAxis.models"></a></span><a class="link" href="concepts.html#histogram.concepts.IntervalAxis.models">Models</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/histogram/axis/regular.html" title="Class template regular">boost::histogram::axis::regular</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/histogram/axis/variable.html" title="Class template variable">boost::histogram::axis::variable</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/histogram/axis/integer.html" title="Class template integer">boost::histogram::axis::integer</a></code>,
+            if first template parameter is a floating point type
+          </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="histogram.concepts.Transform"></a><a class="link" href="concepts.html#histogram.concepts.Transform" title="Transform">Transform</a>
+</h3></div></div></div>
+<p>
+        A <span class="bold"><strong>Transform</strong></span> implements a monotonic mapping
+        between two real-valued domains, external and internal. It is used to extend
+        the <code class="computeroutput"><a class="link" href="../boost/histogram/axis/regular.html" title="Class template regular">regular axis</a></code>.
+        The bins in the internal domain are of equal width, while the bins in the
+        external domain are non-equal width. Must be <a href="https://en.cppreference.com/w/cpp/named_req/DefaultConstructible" target="_top">DefaultConstructible</a>,
+        <a href="https://en.cppreference.com/w/cpp/named_req/CopyConstructible" target="_top">CopyConstructible</a>,
+        and <a href="https://en.cppreference.com/w/cpp/named_req/CopyAssignable" target="_top">CopyAssignable</a>.
+      </p>
+<h5>
+<a name="histogram.concepts.Transform.h0"></a>
+        <span class="phrase"><a name="histogram.concepts.Transform.required_features"></a></span><a class="link" href="concepts.html#histogram.concepts.Transform.required_features">Required
+        features</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">T</span></code> is a type meeting the
+            requirements of <span class="bold"><strong>Transform</strong></span>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">t</span></code> is a value of type
+            <code class="computeroutput"><span class="identifier">T</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">X</span></code> is a type with the
+            semantics of a floating-point type
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">x</span></code> is a value of type
+            <code class="computeroutput"><span class="identifier">X</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">Y</span></code> is a floating-point
+            type
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">y</span></code> is a value of type
+            <code class="computeroutput"><span class="identifier">Y</span></code>
+          </li>
+</ul></div>
+<div class="table">
+<a name="histogram.concepts.Transform.valid_expressions"></a><p class="title"><b>Table 1.5. Valid expressions</b></p>
+<div class="table-contents"><table class="table" summary="Valid expressions">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Expression
+                </p>
+              </th>
+<th>
+                <p>
+                  Returns
+                </p>
+              </th>
+<th>
+                <p>
+                  Semantics, Pre/Post-conditions
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">t</span><span class="special">.</span><span class="identifier">forward</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">Y</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Const or static member function which maps the external value to
+                  the corresponding internal value. The return type <code class="computeroutput"><span class="identifier">Y</span></code> may differ from <code class="computeroutput"><span class="identifier">X</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">t</span><span class="special">.</span><span class="identifier">inverse</span><span class="special">(</span><span class="identifier">y</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">X</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Const or static member function which maps the internal value to
+                  the corresponding external value. The result of <code class="computeroutput"><span class="identifier">t</span><span class="special">.</span><span class="identifier">inverse</span><span class="special">(</span><span class="identifier">t</span><span class="special">.</span><span class="identifier">forward</span><span class="special">(</span><span class="identifier">x</span><span class="special">))</span></code> must be approximately equal to
+                  <code class="computeroutput"><span class="identifier">x</span></code> within floating-point
+                  precision.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">t</span> <span class="special">==</span>
+                  <span class="identifier">u</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">bool</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">u</span></code> is another value
+                  of type <code class="computeroutput"><span class="identifier">T</span></code>. Returns
+                  <code class="computeroutput"><span class="keyword">true</span></code> if both values
+                  have the same state. Otherwise returns <code class="computeroutput"><span class="keyword">false</span></code>.
+                  May be omitted if <code class="computeroutput"><span class="identifier">T</span></code>
+                  is stateless. If this binary operator is not implemented, the library
+                  considers the arguments equal, if and only if their types are the
+                  same.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><h5>
+<a name="histogram.concepts.Transform.h1"></a>
+        <span class="phrase"><a name="histogram.concepts.Transform.optional_features"></a></span><a class="link" href="concepts.html#histogram.concepts.Transform.optional_features">Optional
+        features</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">T</span></code> is a type meeting the
+            requirements of <span class="bold"><strong>Transform</strong></span>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">t</span></code> is a value of type
+            <code class="computeroutput"><span class="identifier">T</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">ar</span></code> is a value of an archive
+            with Boost.Serialization semantics
+          </li>
+</ul></div>
+<div class="table">
+<a name="histogram.concepts.Transform.valid_expressions0"></a><p class="title"><b>Table 1.6. Valid expressions</b></p>
+<div class="table-contents"><table class="table" summary="Valid expressions">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Expression
+                </p>
+              </th>
+<th>
+                <p>
+                  Returns
+                </p>
+              </th>
+<th>
+                <p>
+                  Semantics, Pre/Post-conditions
+                </p>
+              </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">t</span><span class="special">.</span><span class="identifier">serialize</span><span class="special">(</span><span class="identifier">ar</span><span class="special">,</span>
+                  <span class="identifier">n</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">ar</span></code> is a value of
+                  an archive with Boost.Serialization semantics and <code class="computeroutput"><span class="identifier">n</span></code> is an unsigned integral value.
+                  Saves to the archive or loads serialized state from the archive.
+                  The version number <code class="computeroutput"><span class="identifier">n</span></code>
+                  is the stored version when the object is loaded or the current
+                  version when the object is saved.
+                </p>
+              </td>
+</tr></tbody>
+</table></div>
+</div>
+<br class="table-break"><h5>
+<a name="histogram.concepts.Transform.h2"></a>
+        <span class="phrase"><a name="histogram.concepts.Transform.models"></a></span><a class="link" href="concepts.html#histogram.concepts.Transform.models">Models</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/histogram/axis/transform/id.html" title="Struct id">boost::histogram::axis::transform::id</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/histogram/axis/transform/log.html" title="Struct log">boost::histogram::axis::transform::log</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/histogram/axis/transform/sqrt.html" title="Struct sqrt">boost::histogram::axis::transform::sqrt</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/histogram/axis/transform/pow.html" title="Struct pow">boost::histogram::axis::transform::pow</a></code>
+          </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="histogram.concepts.Storage"></a><a class="link" href="concepts.html#histogram.concepts.Storage" title="Storage">Storage</a>
+</h3></div></div></div>
+<p>
+        A <span class="bold"><strong>Storage</strong></span> handles memory for the bin counters
+        and provides a uniform vector-like interface for accessing cell values for
+        reading and writing. Must be <a href="https://en.cppreference.com/w/cpp/named_req/DefaultConstructible" target="_top">DefaultConstructible</a>,
+        <a href="https://en.cppreference.com/w/cpp/named_req/CopyConstructible" target="_top">CopyConstructible</a>,
+        and <a href="https://en.cppreference.com/w/cpp/named_req/CopyAssignable" target="_top">CopyAssignable</a>.
+      </p>
+<h5>
+<a name="histogram.concepts.Storage.h0"></a>
+        <span class="phrase"><a name="histogram.concepts.Storage.required_features"></a></span><a class="link" href="concepts.html#histogram.concepts.Storage.required_features">Required
+        features</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">S</span></code> is a type meeting the
+            requirements of <span class="bold"><strong>Storage</strong></span>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">s</span></code> is a value of types
+            <code class="computeroutput"><span class="identifier">S</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">i</span></code> and <code class="computeroutput"><span class="identifier">n</span></code>
+            are values of type <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">Alloc</span></code> is an allocator
+            type for <code class="computeroutput"><span class="identifier">S</span></code>
+          </li>
+</ul></div>
+<div class="table">
+<a name="histogram.concepts.Storage.valid_expressions"></a><p class="title"><b>Table 1.7. Valid expressions</b></p>
+<div class="table-contents"><table class="table" summary="Valid expressions">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Expression
+                </p>
+              </th>
+<th>
+                <p>
+                  Returns
+                </p>
+              </th>
+<th>
+                <p>
+                  Semantics, Pre/Post-conditions
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">S</span><span class="special">::</span><span class="identifier">value_type</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  Cell element type, may be either an integral type, floating-point
+                  type, or a type meeting the requirements of <a class="link" href="concepts.html#histogram.concepts.Accumulator" title="Accumulator"><span class="bold"><strong>Accumulator</strong></span></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">S</span><span class="special">::</span><span class="identifier">reference</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">S</span><span class="special">::</span><span class="identifier">value_type</span><span class="special">&amp;</span></code>
+                  or a proxy class which acts like a reference.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">S</span><span class="special">::</span><span class="identifier">const_reference</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">const</span> <span class="identifier">S</span><span class="special">::</span><span class="identifier">value_type</span><span class="special">&amp;</span></code> or a proxy class which acts
+                  like a const reference. Implicitly convertible to <code class="computeroutput"><span class="identifier">S</span><span class="special">::</span><span class="identifier">value_type</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">S</span><span class="special">::</span><span class="identifier">iterator</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  Returns an STL-compliant iterator type which dereferences to <code class="computeroutput"><span class="identifier">S</span><span class="special">::</span><span class="identifier">reference</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">S</span><span class="special">::</span><span class="identifier">const_iterator</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  Returns an STL-compliant iterator type which dereferences to <code class="computeroutput"><span class="identifier">S</span><span class="special">::</span><span class="identifier">const_reference</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">S</span><span class="special">::</span><span class="identifier">has_threading_support</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  bool
+                </p>
+              </td>
+<td>
+                <p>
+                  Static constexpr member. True, if storage supports parallel read-write
+                  access to all cells. False, if such parallel access would either
+                  cause data corruption or require synchronization so that effectively
+                  only one cell can be accessed at a time, making cell-access single-threaded.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">s</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Const member function which returns the current number of cells
+                  in the storage.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">s</span><span class="special">.</span><span class="identifier">reset</span><span class="special">(</span><span class="identifier">n</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  Non-const member function which discards current cell values, changes
+                  storage size to <code class="computeroutput"><span class="identifier">n</span></code>
+                  and initializes all cells to the default-constructed state.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">s</span><span class="special">.</span><span class="identifier">begin</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">S</span><span class="special">::</span><span class="identifier">iterator</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Non-const member function which returns the iterator to the first
+                  storage cell.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">s</span><span class="special">.</span><span class="identifier">begin</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">S</span><span class="special">::</span><span class="identifier">const_iterator</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Likewise, but a const member function which returns the const_iterator.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">s</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">S</span><span class="special">::</span><span class="identifier">iterator</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Member function which returns the iterator to the cell after the
+                  last valid storage cell.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">s</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">S</span><span class="special">::</span><span class="identifier">const_iterator</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Likewise, but a const member function which returns the const_iterator.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">s</span><span class="special">[</span><span class="identifier">i</span><span class="special">]</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">S</span><span class="special">::</span><span class="identifier">reference</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Member function which returns a reference to the cell which is
+                  addressed by <code class="computeroutput"><span class="identifier">i</span></code>.
+                  The index <code class="computeroutput"><span class="identifier">i</span></code> must
+                  be valid: <code class="computeroutput"><span class="identifier">i</span> <span class="special">&lt;</span>
+                  <span class="identifier">s</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">s</span><span class="special">[</span><span class="identifier">i</span><span class="special">]</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">S</span><span class="special">::</span><span class="identifier">const_reference</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Likewise, but a const member function which returns a const reference.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">s</span> <span class="special">==</span>
+                  <span class="identifier">t</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">bool</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">t</span></code> is another value
+                  of a type which meets the requirements of <span class="bold"><strong>Storage</strong></span>.
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if arguments
+                  have the same number of cells and all cells compare equal. Otherwise
+                  returns <code class="computeroutput"><span class="keyword">false</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">s</span><span class="special">.</span><span class="identifier">get_allocator</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">Alloc</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Const member function which returns the allocator used by <code class="computeroutput"><span class="identifier">S</span></code>. Must be omitted if <code class="computeroutput"><span class="identifier">S</span></code> does not use allocators. If
+                  this member function exists, also a special constructor must exist
+                  so that <code class="computeroutput"><span class="identifier">S</span><span class="special">(</span><span class="identifier">s</span><span class="special">.</span><span class="identifier">get_allocator</span><span class="special">())</span></code>
+                  is a valid expression.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><h5>
+<a name="histogram.concepts.Storage.h1"></a>
+        <span class="phrase"><a name="histogram.concepts.Storage.optional_features"></a></span><a class="link" href="concepts.html#histogram.concepts.Storage.optional_features">Optional
+        features</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">S</span></code> is a type meeting the
+            requirements of <span class="bold"><strong>Storage</strong></span>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">s</span></code> is a value of types
+            <code class="computeroutput"><span class="identifier">S</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">x</span></code> is convertible to
+            <code class="computeroutput"><span class="keyword">double</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">ar</span></code> is a value of an archive
+            with Boost.Serialization semantics
+          </li>
+</ul></div>
+<div class="table">
+<a name="histogram.concepts.Storage.valid_expressions0"></a><p class="title"><b>Table 1.8. Valid expressions</b></p>
+<div class="table-contents"><table class="table" summary="Valid expressions">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Expression
+                </p>
+              </th>
+<th>
+                <p>
+                  Returns
+                </p>
+              </th>
+<th>
+                <p>
+                  Semantics, Pre/Post-conditions
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">s</span> <span class="special">*=</span>
+                  <span class="identifier">x</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">S</span><span class="special">&amp;</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Scales all cell values by the factor <code class="computeroutput"><span class="identifier">x</span></code>
+                  and returns a reference to self.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">s</span><span class="special">.</span><span class="identifier">serialize</span><span class="special">(</span><span class="identifier">ar</span><span class="special">,</span>
+                  <span class="identifier">n</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">ar</span></code> is a value of
+                  an archive with Boost.Serialization semantics and <code class="computeroutput"><span class="identifier">n</span></code> is an unsigned integral value.
+                  Saves to the archive or loads serialized state from the archive.
+                  The version number <code class="computeroutput"><span class="identifier">n</span></code>
+                  is the stored version when the object is loaded or the current
+                  version when the object is saved.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><h5>
+<a name="histogram.concepts.Storage.h2"></a>
+        <span class="phrase"><a name="histogram.concepts.Storage.models"></a></span><a class="link" href="concepts.html#histogram.concepts.Storage.models">Models</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/histogram/unlimited_storage.html" title="Class template unlimited_storage">boost::histogram::unlimited_storage</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/histogram/storage_adaptor.html" title="Class template storage_adaptor">boost::histogram::storage_adaptor</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="reference.html#boost.histogram.dense_storage">boost::histogram::dense_storage</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="reference.html#boost.histogram.weight_storage">boost::histogram::weight_storage</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="reference.html#boost.histogram.profile_storage">boost::histogram::profile_storage</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="reference.html#boost.histogram.weighted_profile_storage">boost::histogram::weighted_profile_storage</a></code>
+          </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="histogram.concepts.Accumulator"></a><a class="link" href="concepts.html#histogram.concepts.Accumulator" title="Accumulator">Accumulator</a>
+</h3></div></div></div>
+<p>
+        An <span class="bold"><strong>Accumulator</strong></span> is a functor which consumes
+        the argument to update some internal state. Must be <a href="https://en.cppreference.com/w/cpp/named_req/DefaultConstructible" target="_top">DefaultConstructible</a>,
+        <a href="https://en.cppreference.com/w/cpp/named_req/CopyConstructible" target="_top">CopyConstructible</a>,
+        and <a href="https://en.cppreference.com/w/cpp/named_req/CopyAssignable" target="_top">CopyAssignable</a>.
+      </p>
+<h5>
+<a name="histogram.concepts.Accumulator.h0"></a>
+        <span class="phrase"><a name="histogram.concepts.Accumulator.required_features"></a></span><a class="link" href="concepts.html#histogram.concepts.Accumulator.required_features">Required
+        features</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">A</span></code> is a type meeting the
+            requirements of <span class="bold"><strong>Accumulator</strong></span>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">a</span></code> and <code class="computeroutput"><span class="identifier">b</span></code>
+            are values of type <code class="computeroutput"><span class="identifier">A</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">ts</span><span class="special">...</span></code>
+            is a pack of values of arbitrary types
+          </li>
+</ul></div>
+<div class="table">
+<a name="histogram.concepts.Accumulator.valid_expressions"></a><p class="title"><b>Table 1.9. Valid expressions</b></p>
+<div class="table-contents"><table class="table" summary="Valid expressions">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Expression
+                </p>
+              </th>
+<th>
+                <p>
+                  Returns
+                </p>
+              </th>
+<th>
+                <p>
+                  Semantics, Pre/Post-conditions
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span><span class="special">(</span><span class="identifier">ts</span><span class="special">...)</span></code>
+                  or <code class="computeroutput"><span class="special">++</span><span class="identifier">a</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  Either a call operator accepting a fixed number of arguments must
+                  be implemented, or the pre-increment operator. The call operator
+                  form <code class="computeroutput"><span class="identifier">a</span><span class="special">(</span><span class="identifier">ts</span><span class="special">...)</span></code>
+                  may not be templated and not overloaded, except to support weights
+                  as described under optional features.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span> <span class="special">==</span>
+                  <span class="identifier">b</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">bool</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if all
+                  state variables compare equal. Otherwise returns <code class="computeroutput"><span class="keyword">false</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span> <span class="special">!=</span>
+                  <span class="identifier">b</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">bool</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Must be implemented if <code class="computeroutput"><span class="identifier">a</span>
+                  <span class="special">==</span> <span class="identifier">b</span></code>
+                  is implemented and must be equal to <code class="computeroutput"><span class="special">!(</span><span class="identifier">a</span> <span class="special">==</span>
+                  <span class="identifier">b</span><span class="special">)</span></code>.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><h5>
+<a name="histogram.concepts.Accumulator.h1"></a>
+        <span class="phrase"><a name="histogram.concepts.Accumulator.optional_features"></a></span><a class="link" href="concepts.html#histogram.concepts.Accumulator.optional_features">Optional
+        features</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">A</span></code> is a type meeting the
+            requirements of <span class="bold"><strong>Accumulator</strong></span>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">a</span></code> and <code class="computeroutput"><span class="identifier">b</span></code>
+            are values of type <code class="computeroutput"><span class="identifier">A</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">w</span></code> is a value of type
+            <code class="computeroutput"><a class="link" href="../boost/histogram/weight_type.html" title="Struct template weight_type">boost::histogram::weight_type</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">ts</span><span class="special">...</span></code>
+            is a pack of values of arbitrary types
+          </li>
+</ul></div>
+<div class="table">
+<a name="histogram.concepts.Accumulator.valid_expressions0"></a><p class="title"><b>Table 1.10. Valid expressions</b></p>
+<div class="table-contents"><table class="table" summary="Valid expressions">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Expression
+                </p>
+              </th>
+<th>
+                <p>
+                  Return
+                </p>
+              </th>
+<th>
+                <p>
+                  Semantics, Pre/Post-conditions
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span> <span class="special">+=</span>
+                  <span class="identifier">w</span></code> or <code class="computeroutput"><span class="identifier">a</span><span class="special">(</span><span class="identifier">w</span><span class="special">,</span> <span class="identifier">ts</span><span class="special">...)</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  Does a weighted fill of the accumulator. Use this to implement
+                  weight support for an accumulator that is normally filled with
+                  <code class="computeroutput"><span class="special">++</span><span class="identifier">a</span></code>
+                  or <code class="computeroutput"><span class="identifier">a</span><span class="special">(</span><span class="identifier">ts</span><span class="special">...)</span></code>,
+                  respectively. Only the corresponding matching form may be implemented:
+                  <code class="computeroutput"><span class="identifier">a</span> <span class="special">+=</span>
+                  <span class="identifier">w</span></code> for <code class="computeroutput"><span class="special">++</span><span class="identifier">a</span></code>, <code class="computeroutput"><span class="identifier">a</span><span class="special">(</span><span class="identifier">w</span><span class="special">,</span> <span class="identifier">ts</span><span class="special">...)</span></code> for <code class="computeroutput"><span class="identifier">a</span><span class="special">(</span><span class="identifier">ts</span><span class="special">...)</span></code>. The call operator form <code class="computeroutput"><span class="identifier">a</span><span class="special">(</span><span class="identifier">w</span><span class="special">,</span>
+                  <span class="identifier">ts</span><span class="special">...)</span></code>
+                  may not be templated and not overloaded.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span> <span class="special">+=</span>
+                  <span class="identifier">b</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">A</span><span class="special">&amp;</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Adds a second accumulator <code class="computeroutput"><span class="identifier">b</span></code>
+                  of type <code class="computeroutput"><span class="identifier">A</span></code>. The
+                  result must be the same as if <code class="computeroutput"><span class="identifier">a</span></code>
+                  had been filled with all arguments of <code class="computeroutput"><span class="identifier">b</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span> <span class="special">*=</span>
+                  <span class="identifier">x</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">A</span><span class="special">&amp;</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Scales the accumulator state by the real value <code class="computeroutput"><span class="identifier">x</span></code>.
+                  The result must be the same as if <code class="computeroutput"><span class="identifier">a</span></code>
+                  had been filled with all arguments scaled by <code class="computeroutput"><span class="identifier">x</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">os</span> <span class="special">&lt;&lt;</span>
+                  <span class="identifier">a</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span><span class="identifier">CharT</span><span class="special">,</span>
+                  <span class="identifier">Traits</span><span class="special">&gt;&amp;</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">os</span></code> is a value of
+                  type <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span><span class="identifier">CharT</span><span class="special">,</span>
+                  <span class="identifier">Traits</span><span class="special">&gt;</span></code>.
+                  Streams a text representation of the axis. May not mutate <code class="computeroutput"><span class="identifier">a</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">serialize</span><span class="special">(</span><span class="identifier">ar</span><span class="special">,</span>
+                  <span class="identifier">n</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">ar</span></code> is a value of
+                  an archive with Boost.Serialization semantics and <code class="computeroutput"><span class="identifier">n</span></code> is an unsigned integral value.
+                  Saves to the archive or loads serialized state from the archive.
+                  The version number <code class="computeroutput"><span class="identifier">n</span></code>
+                  is the stored version when the object is loaded or the current
+                  version when the object is saved.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><h5>
+<a name="histogram.concepts.Accumulator.h2"></a>
+        <span class="phrase"><a name="histogram.concepts.Accumulator.models"></a></span><a class="link" href="concepts.html#histogram.concepts.Accumulator.models">Models</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/histogram/accumulators/sum.html" title="Class template sum">boost::histogram::accumulators::sum</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/histogram/accumulators/weighted_sum.html" title="Class template weighted_sum">boost::histogram::accumulators::weighted_sum</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/histogram/accumulators/mean.html" title="Class template mean">boost::histogram::accumulators::mean</a></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><a class="link" href="../boost/histogram/accumulators/weighted_mean.html" title="Class template weighted_mean">boost::histogram::accumulators::weighted_mean</a></code>
+          </li>
+</ul></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Hans
+      Dembinski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="benchmarks.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="reference.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Tests naming</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Test">
+<link rel="up" href="../test_tree.html" title="Test tree">
+<link rel="prev" href="master_test_suite.html" title="Master test suite">
+<link rel="next" href="test_tree_content.html" title="Test tree content">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="master_test_suite.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_tree.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="test_tree_content.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_test.tests_organization.test_tree.test_naming"></a><a class="link" href="test_naming.html" title="Tests naming">Tests
+        naming</a>
+</h4></div></div></div>
+<h3>
+<a name="boost_test.tests_organization.test_tree.test_naming.h0"></a>
+          <span class="phrase"><a name="boost_test.tests_organization.test_tree.test_naming.acceptable_characters_for_names"></a></span><a class="link" href="test_naming.html#boost_test.tests_organization.test_tree.test_naming.acceptable_characters_for_names">Acceptable
+          characters for names</a>
+        </h3>
+<p>
+          The <span class="emphasis"><em>Unit Test Framework</em></span> is flexible on the naming
+          the test units (test cases/suites) and it is possible to use a wide variety
+          of characters. However there are scenarios where the name of a test unit
+          may collide with other features of the <span class="emphasis"><em>Unit Test Framework</em></span>.
+          For instance:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              a character may collide with specific command line filters for selecting
+              a subset of the test tree. Among those characters: <code class="computeroutput"><span class="char">'@'</span></code>,
+              <code class="computeroutput"><span class="char">'+'</span></code> or <code class="computeroutput"><span class="char">'/'</span></code>
+              (see <a class="link" href="../../runtime_config/test_unit_filtering.html" title="Test unit filtering">this
+              section</a> for more details)
+            </li>
+<li class="listitem">
+              a name containing a character that is reserved for the shell/terminal,
+              such as '!', '*' ..., may prevent the test name to be passed on the
+              command line <span class="bold"><strong>as is</strong></span>.
+            </li>
+</ul></div>
+<p>
+          To prevent any conflicting declaration, the <span class="emphasis"><em>Unit Test Framework</em></span>
+          <span class="bold"><strong>sanitizes</strong></span> the name given to a test unit
+          (case or suite), prior to adding the test to the test tree. Any conflicting
+          character is replaced by an underscore <code class="computeroutput"><span class="char">'_'</span></code>.
+        </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            <span class="bold"><strong>Spaces</strong></span> are not considered as <span class="emphasis"><em>special
+            chars</em></span> and are preserved, except for the leading and trailing
+            spaces which are removed.
+          </p></td></tr>
+</table></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            The sanitization of the test unit names has been introduced in <a class="link" href="../../change_log.html#ref_CHANGE_LOG_3_7">Boost 1.67</a>.
+          </p></td></tr>
+</table></div>
+<h3>
+<a name="boost_test.tests_organization.test_tree.test_naming.h1"></a>
+          <span class="phrase"><a name="boost_test.tests_organization.test_tree.test_naming.constraints_on_test_names"></a></span><a class="link" href="test_naming.html#boost_test.tests_organization.test_tree.test_naming.constraints_on_test_names">Constraints
+          on test names</a>
+        </h3>
+<p>
+          The <span class="emphasis"><em>Unit Test Framework</em></span> considers an error if two
+          sibling test cases have the same name. This consistency check is performed
+          at runtime and is not sensitive to test filtering.
+        </p>
+<p>
+          For test-cases registered automatically, and within the same compilation
+          unit, a compilation error should be raised by the compiler in case of name
+          conflict. For manual registration of test cases and in case of conflicts,
+          the too <a class="link" href="../../utf_reference/test_org_reference/test_org_boost_test_case.html" title="BOOST_TEST_CASE and BOOST_TEST_CASE_NAME"><code class="computeroutput"><span class="identifier">BOOST_TEST_CASE_NAME</span></code></a> may be used.
+        </p>
+<p>
+          The data driven tests are automatically created in an isolated test-suite
+          and with a name that is indexed on the sample.
+        </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            This constraints does not apply to test-suites: Opening/closing a test-suite
+            declaration adds the test-cases to an existing or newly created test-suite
+            of that name.
+          </p></td></tr>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2020 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="master_test_suite.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_tree.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="test_tree_content.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

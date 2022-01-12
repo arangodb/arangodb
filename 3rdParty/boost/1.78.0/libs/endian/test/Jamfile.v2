@@ -1,0 +1,116 @@
+# Boost Endian Library test Jamfile
+
+# Copyright Beman Dawes 2006, 2013
+# Copyright 2018, 2019 Peter Dimov
+
+# Distributed under the Boost Software License, Version 1.0.
+# See http://www.boost.org/LICENSE_1_0.txt
+
+# See library home page at http://www.boost.org/libs/endian
+
+import testing ;
+
+project
+  : default-build
+
+    <warnings>all
+
+  : requirements
+
+    <toolset>msvc:<warnings-as-errors>on
+
+    <toolset>gcc:<cxxflags>-Wno-long-long
+    <toolset>gcc-4.4.7:<cxxflags>-Wno-strict-aliasing
+    <toolset>gcc-4.4.7:<cxxflags>-Wno-sign-compare
+    <toolset>gcc:<warnings-as-errors>on
+
+    <toolset>clang:<cxxflags>-Wno-long-long
+    <toolset>clang:<warnings-as-errors>on
+  ;
+
+local rule run-ni ( sources + )
+{
+    return [ run $(sources) : : : <define>BOOST_ENDIAN_NO_INTRINSICS : $(sources[1]:B)_ni ] ;
+}
+
+run buffer_test.cpp ;
+run-ni buffer_test.cpp ;
+
+run endian_test.cpp ;
+run-ni endian_test.cpp ;
+
+run endian_operations_test.cpp ;
+run-ni endian_operations_test.cpp ;
+
+run endian_in_union_test.cpp ;
+
+run conversion_test.cpp ;
+run-ni conversion_test.cpp ;
+
+run intrinsic_test.cpp ;
+
+run quick.cpp ;
+
+local allow-warnings =
+    "-<toolset>msvc:<warnings-as-errors>on"
+    "-<toolset>gcc:<warnings-as-errors>on"
+    "-<toolset>clang:<warnings-as-errors>on" ;
+
+compile spirit_conflict_test.cpp : $(allow-warnings) ;
+
+run endian_reverse_test.cpp ;
+run-ni endian_reverse_test.cpp ;
+
+run endian_load_test.cpp ;
+run-ni endian_load_test.cpp ;
+
+run endian_store_test.cpp ;
+run-ni endian_store_test.cpp ;
+
+run endian_ld_st_roundtrip_test.cpp ;
+run-ni endian_ld_st_roundtrip_test.cpp ;
+
+run endian_arithmetic_test.cpp
+    : : : "<toolset>gcc,<address-model>32:<cxxflags>-ffloat-store" ;
+run endian_arithmetic_test.cpp : : :
+    "<toolset>gcc,<address-model>32:<cxxflags>-ffloat-store" <define>BOOST_ENDIAN_NO_INTRINSICS : endian_arithmetic_test_ni ;
+
+run deprecated_test.cpp ;
+
+compile endian_reverse_cx_test.cpp ;
+compile endian_reverse_cx_test.cpp : <define>BOOST_ENDIAN_NO_INTRINSICS : endian_reverse_cx_test_ni ;
+
+run load_convenience_test.cpp ;
+run-ni load_convenience_test.cpp ;
+
+run store_convenience_test.cpp ;
+run-ni store_convenience_test.cpp ;
+
+run float_typedef_test.cpp ;
+run-ni float_typedef_test.cpp ;
+
+run data_test.cpp ;
+run-ni data_test.cpp ;
+
+run endian_hpp_test.cpp ;
+run-ni endian_hpp_test.cpp ;
+
+run order_test.cpp ;
+
+run endian_reverse_test2.cpp ;
+run-ni endian_reverse_test2.cpp ;
+
+run is_scoped_enum_test.cpp ;
+
+run endian_reverse_test3.cpp ;
+run-ni endian_reverse_test3.cpp ;
+
+run endian_reverse_test4.cpp ;
+run-ni endian_reverse_test4.cpp ;
+
+run endian_reverse_test5.cpp ;
+run-ni endian_reverse_test5.cpp ;
+
+run packed_buffer_test.cpp ;
+run arithmetic_buffer_test.cpp ;
+run packed_arithmetic_test.cpp ;

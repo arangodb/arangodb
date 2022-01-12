@@ -1,0 +1,967 @@
+////
+Copyright 2018-2021 Peter Dimov
+Distributed under the Boost Software License, Version 1.0.
+https://www.boost.org/LICENSE_1_0.txt
+////
+
+[#reference]
+# Reference
+:idprefix: ref_
+
+## <boost/variant2/variant.hpp>
+
+### Synopsis
+
+```
+namespace boost {
+namespace variant2 {
+
+// in_place_type
+
+template<class T> struct in_place_type_t {};
+template<class T> constexpr in_place_type_t<T> in_place_type{};
+
+// in_place_index
+
+template<std::size_t I> struct in_place_index_t {};
+template<std::size_t I> constexpr in_place_index_t<I> in_place_index{};
+
+// variant
+
+template<class... T> class variant;
+
+// variant_size
+
+template<class T> struct variant_size {};
+
+template<class T> struct variant_size<T const>: variant_size<T> {};
+template<class T> struct variant_size<T volatile>: variant_size<T> {};
+template<class T> struct variant_size<T const volatile>: variant_size<T> {};
+
+template<class T> struct variant_size<T&>: variant_size<T> {}; // extension
+template<class T> struct variant_size<T&&>: variant_size<T> {}; // extension
+
+template<class T>
+  inline constexpr size_t variant_size_v = variant_size<T>::value;
+
+template<class... T>
+  struct variant_size<variant<T...>>:
+    std::integral_constant<std::size_t, sizeof...(T)> {};
+
+// variant_alternative
+
+template<size_t I, class T> struct variant_alternative {};
+
+template<size_t I, class T> struct variant_alternative<I, T const>;
+template<size_t I, class T> struct variant_alternative<I, T volatile>;
+template<size_t I, class T> struct variant_alternative<I, T const volatile>;
+
+template<size_t I, class T> struct variant_alternative<I, T&>; // extension
+template<size_t I, class T> struct variant_alternative<I, T&&>; // extension
+
+template<size_t I, class T>
+  using variant_alternative_t = typename variant_alternative<I, T>::type;
+
+template<size_t I, class... T>
+  struct variant_alternative<I, variant<T...>>;
+
+// variant_npos
+
+constexpr std::size_t variant_npos = -1;
+
+// holds_alternative
+
+template<class U, class... T>
+  constexpr bool holds_alternative(const variant<T...>& v) noexcept;
+
+// get
+
+template<size_t I, class... T>
+  constexpr variant_alternative_t<I, variant<T...>>&
+    get(variant<T...>& v);
+template<size_t I, class... T>
+  constexpr variant_alternative_t<I, variant<T...>>&&
+    get(variant<T...>&& v);
+template<size_t I, class... T>
+  constexpr const variant_alternative_t<I, variant<T...>>&
+    get(const variant<T...>& v);
+template<size_t I, class... T>
+  constexpr const variant_alternative_t<I, variant<T...>>&&
+    get(const variant<T...>&& v);
+
+template<class U, class... T>
+  constexpr U& get(variant<T...>& v);
+template<class U, class... T>
+  constexpr U&& get(variant<T...>&& v);
+template<class U, class... T>
+  constexpr const U& get(const variant<T...>& v);
+template<class U, class... T>
+  constexpr const U&& get(const variant<T...>&& v);
+
+// get_if
+
+template<size_t I, class... T>
+  constexpr add_pointer_t<variant_alternative_t<I, variant<T...>>>
+    get_if(variant<T...>* v) noexcept;
+template<size_t I, class... T>
+  constexpr add_pointer_t<const variant_alternative_t<I, variant<T...>>>
+    get_if(const variant<T...>* v) noexcept;
+
+template<class U, class... T>
+  constexpr add_pointer_t<U>
+    get_if(variant<T...>* v) noexcept;
+template<class U, class... T>
+  constexpr add_pointer_t<const U>
+    get_if(const variant<T...>* v) noexcept;
+
+// unsafe_get (extension)
+
+template<size_t I, class... T>
+  constexpr variant_alternative_t<I, variant<T...>>&
+    unsafe_get(variant<T...>& v);
+template<size_t I, class... T>
+  constexpr variant_alternative_t<I, variant<T...>>&&
+    unsafe_get(variant<T...>&& v);
+template<size_t I, class... T>
+  constexpr const variant_alternative_t<I, variant<T...>>&
+    unsafe_get(const variant<T...>& v);
+template<size_t I, class... T>
+  constexpr const variant_alternative_t<I, variant<T...>>&&
+    unsafe_get(const variant<T...>&& v);
+
+// relational operators
+
+template<class... T>
+  constexpr bool operator==(const variant<T...>& v, const variant<T...>& w);
+template<class... T>
+  constexpr bool operator!=(const variant<T...>& v, const variant<T...>& w);
+template<class... T>
+  constexpr bool operator<(const variant<T...>& v, const variant<T...>& w);
+template<class... T>
+  constexpr bool operator>(const variant<T...>& v, const variant<T...>& w);
+template<class... T>
+  constexpr bool operator<=(const variant<T...>& v, const variant<T...>& w);
+template<class... T>
+  constexpr bool operator>=(const variant<T...>& v, const variant<T...>& w);
+
+// stream insertion (extension)
+
+template<class Ch, class Tr, class... T>
+  std::basic_ostream<Ch, Tr>&
+    operator<<( std::basic_ostream<Ch, Tr>& os, variant<T...> const& v );
+
+// swap
+
+template<class... T>
+  void swap(variant<T...>& v, variant<T...>& w) noexcept( /*see below*/ );
+
+// visit
+
+template<class R = /*unspecified*/, class F, class... V>
+  constexpr /*see below*/ visit(F&& f, V&&... v);
+
+// visit_by_index (extension)
+
+template<class R = /*unspecified*/, class V, class... F>
+  constexpr /*see below*/ visit_by_index(V&& v, F&&.. f);
+
+// monostate
+
+struct monostate {};
+
+constexpr bool operator==(monostate, monostate) noexcept { return true; }
+constexpr bool operator!=(monostate, monostate) noexcept { return false; }
+constexpr bool operator<(monostate, monostate) noexcept { return false; }
+constexpr bool operator>(monostate, monostate) noexcept { return false; }
+constexpr bool operator<=(monostate, monostate) noexcept { return true; }
+constexpr bool operator>=(monostate, monostate) noexcept { return true; }
+
+// bad_variant_access
+
+class bad_variant_access;
+
+} // namespace variant2
+} // namespace boost
+```
+
+### variant
+
+```
+namespace boost {
+namespace variant2 {
+
+template<class... T> class variant
+{
+public:
+
+  // constructors
+
+  constexpr variant() noexcept( /*see below*/ );
+
+  constexpr variant( variant const & r ) noexcept( /*see below*/ );
+  constexpr variant( variant&& r ) noexcept( /*see below*/ );
+
+  template<class U>
+    constexpr variant( U&& u ) noexcept( /*see below*/ );
+
+  template<class U, class... A>
+    constexpr explicit variant( in_place_type_t<U>, A&&... a );
+  template<class U, class V, class... A>
+    constexpr explicit variant( in_place_type_t<U>,
+      std::initializer_list<V> il, A&&... a );
+
+  template<size_t I, class... A>
+    constexpr explicit variant( in_place_index_t<I>, A&&... a );
+  template<size_t I, class V, class... A>
+    constexpr explicit variant( in_place_index_t<I>,
+      std::initializer_list<V> il, A&&... a );
+
+  // destructor
+
+  ~variant();
+
+  // assignment
+
+  constexpr variant& operator=( variant const & r ) noexcept( /*see below*/ );
+  constexpr variant& operator=( variant&& r ) noexcept( /*see below*/ );
+
+  template<class U> constexpr variant& operator=( U&& u ) noexcept( /*see below*/ );
+
+  // modifiers
+
+  template<class U, class... A>
+    constexpr U& emplace( A&&... a );
+  template<class U, class V, class... A>
+    constexpr U& emplace( std::initializer_list<V> il, A&&... a );
+
+  template<size_t I, class... A>
+    constexpr variant_alternative_t<I, variant<T...>>&
+      emplace( A&&... a );
+  template<size_t I, class V, class... A>
+    constexpr variant_alternative_t<I, variant<T...>>&
+      emplace( std::initializer_list<V> il, A&&... a );
+
+  // value status
+
+  constexpr bool valueless_by_exception() const noexcept;
+  constexpr size_t index() const noexcept;
+
+  // swap
+
+  void swap( variant& r ) noexcept( /*see below*/ );
+
+  // converting constructors (extension)
+
+  template<class... U> variant( variant<U...> const& r )
+    noexcept( /*see below*/ );
+
+  template<class... U> variant( variant<U...>&& r )
+    noexcept( /*see below*/ );
+
+  // subset (extension)
+
+  template<class... U> constexpr variant<U...> subset() & ;
+  template<class... U> constexpr variant<U...> subset() && ;
+  template<class... U> constexpr variant<U...> subset() const& ;
+  template<class... U> constexpr variant<U...> subset() const&& ;
+};
+
+} // namespace variant2
+} // namespace boost
+```
+
+In the descriptions that follow, let `i` be in the range `[0, sizeof...(T))`,
+and `Ti` be the `i`-th type in `T...`.
+
+#### Constructors
+
+```
+constexpr variant() noexcept( std::is_nothrow_default_constructible_v<T0> );
+```
+[none]
+* {blank}
++
+Effects: :: Constructs a `variant` holding a value-initialized value of
+  type `T0`.
+Ensures: :: `index() == 0`.
+Throws: :: Any exception thrown by the value-initialization of `T0`.
+Remarks: :: This function does not participate in overload resolution unless
+  `std::is_default_constructible_v<T0>` is `true`.
+
+```
+constexpr variant( variant const & w )
+  noexcept( mp_all<std::is_nothrow_copy_constructible<T>...>::value );
+```
+[none]
+* {blank}
++
+Effects: :: Initializes the variant to hold the same alternative and value as
+  `w`.
+Throws: :: Any exception thrown by the initialization of the contained value.
+Remarks: :: This function does not participate in overload resolution unless
+  `std::is_copy_constructible_v<Ti>` is `true` for all `i`.
+
+```
+constexpr variant( variant&& w )
+  noexcept( mp_all<std::is_nothrow_move_constructible<T>...>::value );
+```
+[none]
+* {blank}
++
+Effects: :: Initializes the variant to hold the same alternative and value as
+  `w`.
+Throws: :: Any exception thrown by the move-initialization of the contained
+  value.
+Remarks: :: This function does not participate in overload resolution unless
+  `std::is_move_constructible_v<Ti>` is `true` for all `i`.
+
+```
+template<class U> constexpr variant( U&& u ) noexcept(/*see below*/);
+```
+[none]
+* {blank}
++
+Let `Tj` be a type that is determined as follows: build an imaginary function
+`FUN(Ti)` for each alternative type `Ti`. The overload `FUN(Tj)` selected by
+overload resolution for the expression `FUN(std::forward<U>(u))` defines the
+alternative `Tj` which is the type of the contained value after construction.
+
+Effects: :: Initializes `*this` to hold the alternative type `Tj` and
+  initializes the contained value from `std::forward<U>(u)`.
+Ensures: :: `holds_alternative<Tj>(*this)`.
+Throws: :: Any exception thrown by the initialization of the contained value.
+Remarks: :: The expression inside `noexcept` is equivalent to
+`std::is_nothrow_constructible_v<Tj, U>`. This function does not participate in
+overload resolution unless
+- `sizeof...(T)` is nonzero,
+- `std::is_same_v<std::remove_cvref_t<U>, variant>` is `false`,
+- `std::remove_cvref_t<U>` is neither a specialization of `in_place_type_t` nor a
+specialization of `in_place_index_t`,
+- `std::is_constructible_v<Tj, U>` is `true`, and
+- the expression `FUN(std::forward<U>(u))` is well-formed.
+
+```
+template<class U, class... A>
+  constexpr explicit variant( in_place_type_t<U>, A&&... a );
+```
+[none]
+* {blank}
++
+Effects: :: Initializes the contained value of type `U` with the arguments
+  `std::forward<A>(a)...`.
+Ensures: :: `holds_alternative<U>(*this)`.
+Throws: :: Any exception thrown by the initialization of the contained value.
+Remarks: :: This function does not participate in overload resolution unless
+  there is exactly one occurrence of `U` in `T...` and
+  `std::is_constructible_v<U, A...>` is true.
+
+```
+template<class U, class V, class... A>
+  constexpr explicit variant( in_place_type_t<U>, std::initializer_list<V> il,
+    A&&... a );
+```
+[none]
+* {blank}
++
+Effects: :: Initializes the contained value of type `U` with the arguments `il`,
+  `std::forward<A>(a)...`.
+Ensures: :: `holds_alternative<U>(*this)`.
+Throws: :: Any exception thrown by the initialization of the contained value.
+Remarks: :: This function does not participate in overload resolution unless
+  there is exactly one occurrence of `U` in `T...` and
+  `std::is_constructible_v<U, initializer_list<V>&, A...>` is `true`.
+
+```
+template<size_t I, class... A>
+  constexpr explicit variant( in_place_index_t<I>, A&&... a );
+```
+[none]
+* {blank}
++
+Effects: :: Initializes the contained value of type `TI` with the arguments
+  `std::forward<A>(a)...`.
+Ensures: :: `index() == I`.
+Throws: :: Any exception thrown by the initialization of the contained value.
+Remarks: :: This function does not participate in overload resolution unless
+ `I < sizeof...(T)` and `std::is_constructible_v<TI, A...>` is `true`.
+
+```
+template<size_t I, class V, class... A>
+  constexpr explicit variant( in_place_index_t<I>, std::initializer_list<V> il,
+    A&&... a );
+```
+[none]
+* {blank}
++
+Effects: :: Initializes the contained value of type `TI` with the arguments
+  `il`, `std::forward<A>(a)...`.
+Ensures: :: `index() == I`.
+Throws: :: Any exception thrown by the initialization of the contained value.
+Remarks: :: This function does not participate in overload resolution unless
+ `I < sizeof...(T)` and
+ `std::is_constructible_v<TI, initializer_list<V>&, A...>` is `true`.
+
+#### Destructor
+
+```
+~variant();
+```
+[none]
+* {blank}
++
+Effects: ::
+  Destroys the currently contained value.
+
+#### Assignment
+
+```
+constexpr variant& operator=( const variant& r )
+  noexcept( mp_all<std::is_nothrow_copy_constructible<T>...>::value );
+```
+[none]
+* {blank}
++
+Let `j` be `r.index()`.
+
+Effects: :: `emplace<j>(get<j>(r))`.
+Returns: :: `*this`.
+Ensures: :: `index() == r.index()`.
+Remarks: :: This operator does not participate in overload resolution unless
+  `std::is_copy_constructible_v<Ti> && std::is_copy_assignable_v<Ti>` is
+  `true` for all `i`.
+
+```
+constexpr variant& operator=( variant&& r )
+  noexcept( mp_all<std::is_nothrow_move_constructible<T>...>::value );
+```
+[none]
+* {blank}
++
+Let `j` be `r.index()`.
+
+Effects: :: `emplace<j>(get<j>(std::move(r)))`.
+Returns: :: `*this`.
+Ensures: :: `index() == r.index()`.
+Remarks: :: This operator does not participate in overload resolution unless
+  `std::is_move_constructible_v<Ti> && std::is_move_assignable_v<Ti>` is
+  `true` for all `i`.
+
+```
+template<class U> constexpr variant& operator=( U&& u )
+  noexcept( /*see below*/ );
+```
+[none]
+* {blank}
++
+Let `Tj` be a type that is determined as follows: build an imaginary function
+`FUN(Ti)` for each alternative type `Ti`. The overload `FUN(Tj)` selected by
+overload resolution for the expression `FUN(std::forward<U>(u))` defines the
+alternative `Tj` which is the type of the contained value after construction.
+
+Effects: :: `emplace<j>(std::forward<U>(u))`.
+Returns: :: `*this`.
+Ensures: :: `index() == j`.
+Remarks: ::
+  The expression inside `noexcept` is `std::is_nothrow_constructible_v<Tj, U&&>`.
+  This operator does not participate in overload resolution unless
+  - `std::is_same_v<std::remove_cvref_t<T>, variant>` is `false`,
+  - `std::is_constructible_v<Tj, U&&> && std::is_assignable_v<Tj&, U&&>` is
+    `true`,  and
+  - the expression `FUN(std::forward<U>(u))` (with `FUN` being the
+    above-mentioned set of imaginary functions) is well-formed.
+
+#### Modifiers
+
+```
+template<class U, class... A>
+  constexpr U& emplace( A&&... a );
+```
+[none]
+* {blank}
++
+Let `I` be the zero-based index of `U` in `T...`.
+
+Effects: :: Equivalent to: `return emplace<I>(std::forward<A>(a)...);`
+Remarks: ::
+  This function shall not participate in overload resolution unless
+  `std::is_constructible_v<U, A&&...>` is `true` and `U` occurs exactly once
+  in `T...`.
+
+```
+template<class U, class V, class... A>
+  constexpr U& emplace( std::initializer_list<V> il, A&&... a );
+```
+[none]
+* {blank}
++
+Let `I` be the zero-based index of `U` in `T...`.
+
+Effects: :: Equivalent to: `return emplace<I>(il, std::forward<A>(a)...);`
+Remarks: ::
+  This function shall not participate in overload resolution unless
+  `std::is_constructible_v<U, std::initializer_list<V>&, A&&...>` is `true`
+  and `U` occurs exactly once in `T...`.
+
+
+```
+template<size_t I, class... A>
+  constexpr variant_alternative_t<I, variant<T...>>&
+    emplace( A&&... a );
+```
+[none]
+* {blank}
++
+Requires: :: `I < sizeof...(T)`.
+Effects:  ::
+  Initializes a new contained value as if using the expression
+  `Ti(std::forward<A>(a)...)`, then destroys the currently contained value.
+Ensures:  :: `index() == I`.
+Returns:  :: A reference to the new contained value.
+Throws:   ::
+  Nothing unless the initialization of the new contained value throws.
+Exception Safety: :: Strong. On exception, the contained value is unchanged.
+Remarks:  ::
+  This function shall not participate in overload resolution unless
+  `std::is_constructible_v<Ti, A&&...>` is `true`.
+
+```
+template<size_t I, class V, class... A>
+  constexpr variant_alternative_t<I, variant<T...>>&
+    emplace( std::initializer_list<V> il, A&&... a );
+```
+[none]
+* {blank}
++
+Requires: :: `I < sizeof...(T)`.
+Effects:  ::
+  Initializes a new contained value as if using the expression
+  `Ti(il, std::forward<A>(a)...)`, then destroys the currently contained value.
+Ensures:  :: `index() == I`.
+Returns:  :: A reference to the new contained value.
+Throws:   ::
+  Nothing unless the initialization of the new contained value throws.
+Exception Safety: :: Strong. On exception, the contained value is unchanged.
+Remarks:  ::
+  This function shall not participate in overload resolution unless
+  `std::is_constructible_v<Ti, std::initializer_list<V>&, A&&...>` is `true`.
+
+#### Value Status
+
+```
+constexpr bool valueless_by_exception() const noexcept;
+```
+[none]
+* {blank}
++
+Returns:  :: `false`.
+
+NOTE: This function is provided purely for compatibility with `std::variant`.
+
+```
+constexpr size_t index() const noexcept;
+```
+[none]
+* {blank}
++
+Returns:  ::
+  The zero-based index of the active alternative.
+
+#### Swap
+
+```
+void swap( variant& r ) noexcept( mp_all<std::is_nothrow_move_constructible<T>...,
+  is_nothrow_swappable<T>...>::value );
+```
+[none]
+* {blank}
++
+Effects:  ::
+- If `index() == r.index()`, calls `swap(get<I>(*this), get<I>(r))`,
+  where `I` is `index()`.
+- Otherwise, as if
+  `variant tmp(std::move(*this)); *this = std::move(r); r = std::move(tmp);`
+
+#### Converting Constructors (extension)
+
+```
+template<class... U> variant( variant<U...> const& r )
+  noexcept( mp_all<std::is_nothrow_copy_constructible<U>...>::value );
+```
+[none]
+* {blank}
++
+Effects: :: Initializes the contained value from the contained value of `r`.
+Throws:  :: Any exception thrown by the initialization of the contained value.
+Remarks: :: This function does not participate in overload resolution unless
+  all types in `U...` are in `T...` and
+  `std::is_copy_constructible_v<Ui>::value` is `true` for all `Ui`.
+
+```
+template<class... U> variant( variant<U...>&& r )
+  noexcept( mp_all<std::is_nothrow_move_constructible<U>...>::value );
+```
+[none]
+* {blank}
++
+Effects: :: Initializes the contained value from the contained value of
+  `std::move(r)`.
+Throws:  :: Any exception thrown by the initialization of the contained value.
+Remarks: :: This function does not participate in overload resolution unless
+  all types in `U...` are in `T...` and
+  `std::is_move_constructible_v<Ui>::value` is `true` for all `Ui`.
+
+#### Subset (extension)
+
+```
+template<class... U> constexpr variant<U...> subset() & ;
+```
+```
+template<class... U> constexpr variant<U...> subset() const& ;
+```
+[none]
+* {blank}
++
+Returns: :: A `variant<U...>` whose contained value is copy-initialized from
+  the contained value of `*this` and has the same type.
+Throws:  ::
+- If the active alternative of `*this` is not among the types in `U...`,
+  `bad_variant_access`.
+- Otherwise, any exception thrown by the initialization of the contained value.
+Remarks: :: This function does not participate in overload resolution unless
+  all types in `U...` are in `T...` and
+  `std::is_copy_constructible_v<Ui>::value` is `true` for all `Ui`.
+
+```
+template<class... U> constexpr variant<U...> subset() && ;
+```
+```
+template<class... U> constexpr variant<U...> subset() const&& ;
+```
+[none]
+* {blank}
++
+Returns: :: A `variant<U...>` whose contained value is move-initialized from
+  the contained value of `*this` and has the same type.
+Throws:  ::
+- If the active alternative of `*this` is not among the types in `U...`,
+  `bad_variant_access`.
+- Otherwise, any exception thrown by the initialization of the contained value.
+Remarks: :: This function does not participate in overload resolution unless
+  all types in `U...` are in `T...` and
+  `std::is_move_constructible_v<Ui>::value` is `true` for all `Ui`.
+
+### variant_alternative
+
+```
+template<size_t I, class T> struct variant_alternative<I, T const>;
+```
+```
+template<size_t I, class T> struct variant_alternative<I, T volatile>;
+```
+```
+template<size_t I, class T> struct variant_alternative<I, T const volatile>;
+```
+```
+template<size_t I, class T> struct variant_alternative<I, T&>; // extension
+```
+```
+template<size_t I, class T> struct variant_alternative<I, T&&>; // extension
+```
+[none]
+* {blank}
++
+--
+If `typename variant_alternative<I, T>::type` exists and is `U`,
+
+* `variant_alternative<I, T const>::type` is `U const`;
+* `variant_alternative<I, T volatile>::type` is `U volatile`;
+* `variant_alternative<I, T const volatile>::type` is `U const volatile`.
+* `variant_alternative<I, T&>::type` is `U&`.
+* `variant_alternative<I, T&&>::type` is `U&&`.
+
+Otherwise, these structs have no member `type`.
+--
+
+```
+template<size_t I, class... T>
+  struct variant_alternative<I, variant<T...>>;
+```
+[none]
+* {blank}
++
+When `I < sizeof...(T)`, the nested type `type` is an alias for the `I`-th
+(zero-based) type in `T...`. Otherwise, there is no member `type`.
+
+### holds_alternative
+
+```
+template<class U, class... T>
+  constexpr bool holds_alternative(const variant<T...>& v) noexcept;
+```
+[none]
+* {blank}
++
+Requires: :: The type `U` occurs exactly once in `T...`. Otherwise, the
+  program is ill-formed.
+Returns:  :: `true` if `index()` is equal to the zero-based index of `U`
+  in `T...`.
+
+### get
+
+```
+template<size_t I, class... T>
+  constexpr variant_alternative_t<I, variant<T...>>&
+    get(variant<T...>& v);
+```
+```
+template<size_t I, class... T>
+  constexpr variant_alternative_t<I, variant<T...>>&&
+    get(variant<T...>&& v);
+```
+```
+template<size_t I, class... T>
+  constexpr const variant_alternative_t<I, variant<T...>>&
+    get(const variant<T...>& v);
+```
+```
+template<size_t I, class... T>
+  constexpr const variant_alternative_t<I, variant<T...>>&&
+    get(const variant<T...>&& v);
+```
+[none]
+* {blank}
++
+Effects: :: If `v.index()` is `I`, returns a reference to the object stored in
+  the variant. Otherwise, throws `bad_variant_access`.
+Remarks: :: These functions do not participate in overload resolution
+  unless `I` < `sizeof...(T)`.
+
+```
+template<class U, class... T>
+  constexpr U& get(variant<T...>& v);
+```
+```
+template<class U, class... T>
+  constexpr U&& get(variant<T...>&& v);
+```
+```
+template<class U, class... T>
+  constexpr const U& get(const variant<T...>& v);
+```
+```
+template<class U, class... T>
+  constexpr const U&& get(const variant<T...>&& v);
+```
+[none]
+* {blank}
++
+Requires: :: The type `U` occurs exactly once in `T...`. Otherwise, the
+  program is ill-formed.
+Effects:  :: If `v` holds a value of type `U`, returns a reference to that value.
+  Otherwise, throws `bad_variant_access`.
+
+### get_if
+
+```
+template<size_t I, class... T>
+  constexpr add_pointer_t<variant_alternative_t<I, variant<T...>>>
+    get_if(variant<T...>* v) noexcept;
+```
+```
+template<size_t I, class... T>
+  constexpr add_pointer_t<const variant_alternative_t<I, variant<T...>>>
+    get_if(const variant<T...>* v) noexcept;
+```
+[none]
+* {blank}
++
+Effects:  :: A pointer to the value stored in the variant, if
+  `v != nullptr && v\->index() == I`. Otherwise, `nullptr`.
+Remarks: :: These functions do not participate in overload resolution
+  unless `I` < `sizeof...(T)`.
+
+```
+template<class U, class... T>
+  constexpr add_pointer_t<U>
+    get_if(variant<T...>* v) noexcept;
+```
+```
+template<class U, class... T>
+  constexpr add_pointer_t<const U>
+    get_if(const variant<T...>* v) noexcept;
+```
+[none]
+* {blank}
++
+Requires: :: The type `U` occurs exactly once in `T...`. Otherwise, the
+  program is ill-formed.
+Effects:  :: Equivalent to: `return get_if<I>(v);` with `I` being
+  the zero-based index of `U` in `T...`.
+
+### unsafe_get (extension)
+
+```
+template<size_t I, class... T>
+  constexpr variant_alternative_t<I, variant<T...>>&
+    unsafe_get(variant<T...>& v);
+```
+```
+template<size_t I, class... T>
+  constexpr variant_alternative_t<I, variant<T...>>&&
+    unsafe_get(variant<T...>&& v);
+```
+```
+template<size_t I, class... T>
+  constexpr const variant_alternative_t<I, variant<T...>>&
+    unsafe_get(const variant<T...>& v);
+```
+```
+template<size_t I, class... T>
+  constexpr const variant_alternative_t<I, variant<T...>>&&
+    unsafe_get(const variant<T...>&& v);
+```
+[none]
+* {blank}
++
+Requires: :: `v.index() == I`.
+Returns: :: a reference to the object stored in the variant.
+
+### Relational Operators
+
+```
+template<class... T>
+  constexpr bool operator==(const variant<T...>& v, const variant<T...>& w);
+```
+[none]
+* {blank}
++
+Returns: :: `v.index() == w.index() && get<I>(v) == get<I>(w)`, where `I`
+  is `v.index()`.
+
+```
+template<class... T>
+  constexpr bool operator!=(const variant<T...>& v, const variant<T...>& w);
+```
+[none]
+* {blank}
++
+Returns: :: `!(v == w)`.
+
+```
+template<class... T>
+  constexpr bool operator<(const variant<T...>& v, const variant<T...>& w);
+```
+[none]
+* {blank}
++
+Returns: :: `v.index() < w.index() || (v.index() == w.index() && get<I>(v) < get<I>(w))`,
+  where `I` is `v.index()`.
+
+```
+template<class... T>
+  constexpr bool operator>(const variant<T...>& v, const variant<T...>& w);
+```
+[none]
+* {blank}
++
+Returns: :: `w < v`.
+
+```
+template<class... T>
+  constexpr bool operator<=(const variant<T...>& v, const variant<T...>& w);
+```
+[none]
+* {blank}
++
+Returns: :: `v.index() < w.index() || (v.index() == w.index() && get<I>(v) \<= get<I>(w))`,
+  where `I` is `v.index()`.
+
+```
+template<class... T>
+  constexpr bool operator>=(const variant<T...>& v, const variant<T...>& w);
+```
+[none]
+* {blank}
++
+Returns: ::
+  `w \<= v`.
+
+### Stream Insertion (extension)
+```
+template<class Ch, class Tr, class... T>
+  std::basic_ostream<Ch, Tr>&
+    operator<<( std::basic_ostream<Ch, Tr>& os, variant<T...> const& v );
+```
+[none]
+* {blank}
++
+Requires: ::
+  `sizeof...(T) != 0`.
+Returns: ::
+  `os << get<I>(v)`, where `I` is `v.index()`.
+
+### swap
+
+```
+template<class... T>
+  void swap(variant<T...>& v, variant<T...>& w) noexcept( /*see below*/ );
+```
+[none]
+* {blank}
++
+Effects: ::
+  Equivalent to `v.swap(w)`.
+
+### visit
+
+```
+template<class R = /*unspecified*/, class F, class... V>
+  constexpr /*see below*/ visit(F&& f, V&&... v);
+```
+[none]
+* {blank}
++
+Returns: :: `std::forward<F>(f)(get<I>(std::forward<V>(v))...)`, where
+  `I...` is `v.index()...`.
+Remarks: :: If `R` is given explicitly, as in `visit<int>`, the return
+  type is `R`. Otherwise, it's deduced from `F`. All possible applications
+  of `F` to the variant alternatives must have the same return type for
+  this deduction to succeed.
+
+### visit_by_index (extension)
+
+```
+template<class R = /*unspecified*/, class V, class... F>
+  constexpr /*see below*/ visit_by_index(V&& v, F&&.. f);
+```
+[none]
+* {blank}
++
+Requires: :: `variant_size<V>::value == sizeof...(F)`, or the program is ill-formed.
+Returns: :: `std::forward<Fi>(fi)(get<i>(std::forward<V>(v)))`, where
+  `i` is `v.index()` and `Fi` and `fi` are the `i`-th element of `F...` and `f...`
+  accordingly.
+Remarks: :: If `R` is given explicitly, as in `visit_by_index<int>`, the return
+  type is `R`. Otherwise, it's deduced from `F...` and `V`. All the applications
+  of `Fi` to the corresponding variant alternatives must have the same return type
+  for this deduction to succeed.
+
+### bad_variant_access
+
+```
+class bad_variant_access: public std::exception
+{
+public:
+
+    bad_variant_access() noexcept = default;
+
+    char const * what() const noexcept
+    {
+        return "bad_variant_access";
+    }
+};
+```
+
+## <boost/variant2.hpp>
+
+This convenience header includes `<boost/variant2/variant.hpp>`.

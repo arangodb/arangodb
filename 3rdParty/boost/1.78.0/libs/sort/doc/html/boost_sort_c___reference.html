@@ -1,0 +1,68 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Boost.Sort C++ Reference</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Boost.Sort">
+<link rel="up" href="sort/single_thread/spreadsort.html" title="2.1.-Spreadsort">
+<link rel="prev" href="sort/single_thread/spreadsort/history.html" title="History">
+<link rel="next" href="boost/sort/spreadsort/float_mem_cast.html" title="Function template float_mem_cast">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="sort/single_thread/spreadsort/history.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="sort/single_thread/spreadsort.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost/sort/spreadsort/float_mem_cast.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_sort_c___reference"></a>Boost.Sort C++ Reference</h4></div></div></div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="header.boost.sort.spreadsort.float_sort_hpp"></a>Header &lt;<a href="../../../../boost/sort/spreadsort/float_sort.hpp" target="_top">boost/sort/spreadsort/float_sort.hpp</a>&gt;</h5></div></div></div>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">sort</span> <span class="special">{</span>
+    <span class="keyword">namespace</span> <span class="identifier">spreadsort</span> <span class="special">{</span>
+      <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Data_type<span class="special">,</span> <span class="keyword">typename</span> Cast_type<span class="special">&gt;</span> 
+        <span class="identifier">Cast_type</span> <a class="link" href="boost/sort/spreadsort/float_mem_cast.html" title="Function template float_mem_cast"><span class="identifier">float_mem_cast</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Data_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+      <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> RandomAccessIter<span class="special">&gt;</span> 
+        <span class="keyword">void</span> <a class="link" href="boost/sort/spreadsort/float_sort_idm1775.html" title="Function template float_sort"><span class="identifier">float_sort</span></a><span class="special">(</span><span class="identifier">RandomAccessIter</span><span class="special">,</span> <span class="identifier">RandomAccessIter</span><span class="special">)</span><span class="special">;</span>
+      <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Range<span class="special">&gt;</span> <span class="keyword">void</span> <a class="link" href="boost/sort/spreadsort/float_sort_idm1798.html" title="Function template float_sort"><span class="identifier">float_sort</span></a><span class="special">(</span><span class="identifier">Range</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+      <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> RandomAccessIter<span class="special">,</span> <span class="keyword">typename</span> Right_shift<span class="special">&gt;</span> 
+        <span class="keyword">void</span> <a class="link" href="boost/sort/spreadsort/float_sort_idm1809.html" title="Function template float_sort"><span class="identifier">float_sort</span></a><span class="special">(</span><span class="identifier">RandomAccessIter</span><span class="special">,</span> <span class="identifier">RandomAccessIter</span><span class="special">,</span> <span class="identifier">Right_shift</span><span class="special">)</span><span class="special">;</span>
+      <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Range<span class="special">,</span> <span class="keyword">typename</span> Right_shift<span class="special">&gt;</span> 
+        <span class="keyword">void</span> <a class="link" href="boost/sort/spreadsort/float_sort_idm1829.html" title="Function template float_sort"><span class="identifier">float_sort</span></a><span class="special">(</span><span class="identifier">Range</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">Right_shift</span><span class="special">)</span><span class="special">;</span>
+      <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> RandomAccessIter<span class="special">,</span> <span class="keyword">typename</span> Right_shift<span class="special">,</span> 
+               <span class="keyword">typename</span> Compare<span class="special">&gt;</span> 
+        <span class="keyword">void</span> <a class="link" href="boost/sort/spreadsort/float_sort_idm1845.html" title="Function template float_sort"><span class="identifier">float_sort</span></a><span class="special">(</span><span class="identifier">RandomAccessIter</span><span class="special">,</span> <span class="identifier">RandomAccessIter</span><span class="special">,</span> <span class="identifier">Right_shift</span><span class="special">,</span> 
+                        <span class="identifier">Compare</span><span class="special">)</span><span class="special">;</span>
+      <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Range<span class="special">,</span> <span class="keyword">typename</span> Right_shift<span class="special">,</span> <span class="keyword">typename</span> Compare<span class="special">&gt;</span> 
+        <span class="keyword">void</span> <a class="link" href="boost/sort/spreadsort/float_sort_idm1870.html" title="Function template float_sort"><span class="identifier">float_sort</span></a><span class="special">(</span><span class="identifier">Range</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">Right_shift</span><span class="special">,</span> <span class="identifier">Compare</span><span class="special">)</span><span class="special">;</span>
+    <span class="special">}</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2014-2017 Steven
+      Ross, Francisco Tapia, Orson Peters<p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="sort/single_thread/spreadsort/history.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="sort/single_thread/spreadsort.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost/sort/spreadsort/float_mem_cast.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

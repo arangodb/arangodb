@@ -1,0 +1,112 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>BOOST_TEST</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Test">
+<link rel="up" href="../testing_tool_ref.html" title="Reference API for writing tests">
+<link rel="prev" href="../testing_tool_ref.html" title="Reference API for writing tests">
+<link rel="next" href="decorator_expected_failures.html" title="expected_failures (decorator)">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../testing_tool_ref.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../testing_tool_ref.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="decorator_expected_failures.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_test.utf_reference.testing_tool_ref.assertion_boost_test_universal_macro"></a><a class="link" href="assertion_boost_test_universal_macro.html" title="BOOST_TEST"><code class="computeroutput"><span class="identifier">BOOST_TEST</span></code></a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">statement</span><span class="special">);</span>
+<span class="identifier">BOOST_TEST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;(</span><span class="identifier">statement</span><span class="special">);</span>
+
+<span class="comment">// replacement failure message, requires variadic macros</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">statement</span><span class="special">,</span> <span class="string">"failure message"</span><span class="special">);</span>
+
+<span class="comment">// Floating point comparison, requires variadic macros, auto and decltype</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">statement</span><span class="special">,</span> <span class="identifier">floating_point_comparison_manipulation</span><span class="special">);</span>
+
+<span class="comment">// bitwise comparison, requires variadic macros, auto and decltype</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">statement</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">test_tools</span><span class="special">::</span><span class="identifier">bitwise</span><span class="special">()</span> <span class="special">);</span>
+
+<span class="comment">// element-wise comparison, for containers</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">statement</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">test_tools</span><span class="special">::</span><span class="identifier">per_element</span><span class="special">()</span> <span class="special">);</span>
+
+<span class="comment">// lexicographic comparison, for containers</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">statement</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">test_tools</span><span class="special">::</span><span class="identifier">lexicographic</span><span class="special">()</span> <span class="special">);</span>
+</pre>
+<p>
+          The full documentation of this macro is located <a class="link" href="../../testing_tools/boost_test_universal_macro.html" title="BOOST_TEST: universal and general purpose assertions">here</a>.
+        </p>
+<p>
+          The macro is available in three variants, corresponding to different <a class="link" href="../../testing_tools/tools_assertion_severity_level.html" title="Assertion severity level">assertion
+          severity levels</a>:
+        </p>
+<pre class="programlisting"><span class="identifier">BOOST_TEST</span> <span class="comment">// or BOOST_TEST_CHECK</span>
+<span class="identifier">BOOST_TEST_REQUIRE</span>
+<span class="identifier">BOOST_TEST_WARN</span>
+</pre>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <code class="computeroutput"><span class="string">"failure message"</span></code>
+              is a C-string printed in case of failure in place of the default message.
+              See <a class="link" href="../../testing_tools/reports.html" title="Reported information">this section</a>
+              for more details.
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">floating_point_comparison_manipulation</span></code>
+              is one of the floating point comparison manipulators. See <a class="link" href="../../testing_tools/boost_test_universal_macro.html" title="BOOST_TEST: universal and general purpose assertions">this
+              section</a> for more details.
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><a class="link" href="../../../boost/test_tools/bitwise.html" title="Struct bitwise">boost::test_tools::bitwise</a></code>
+              is a manipulator indicating that the comparison should be performed
+              bitwise. See <a class="link" href="../../testing_tools/extended_comparison/bitwise.html" title="Bitwise comparison">this
+              section</a> for more details
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><a class="link" href="../../../boost/test_tools/per_element.html" title="Struct per_element">boost::test_tools::per_element</a></code>
+              is a manipulator indicating that the comparison should be performed
+              on each element, in sequence, rather than on containers. See <a class="link" href="../../testing_tools/extended_comparison/collections.html#boost_test_coll_perelement">this section</a> for more details
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><a class="link" href="../../../boost/test_tools/lexicographic.html" title="Struct lexicographic">boost::test_tools::lexicographic</a></code>
+              is a manipulator indicating that the comparison should be performed
+              with the lexicographic order. See <a class="link" href="../../testing_tools/extended_comparison/collections.html#boost_test_coll_default_lex">this
+              section</a> for more details
+            </li>
+</ul></div>
+<h4>
+<a name="boost_test.utf_reference.testing_tool_ref.assertion_boost_test_universal_macro.h0"></a>
+          <span class="phrase"><a name="boost_test.utf_reference.testing_tool_ref.assertion_boost_test_universal_macro.limitations_and_workaround"></a></span><a class="link" href="assertion_boost_test_universal_macro.html#boost_test.utf_reference.testing_tool_ref.assertion_boost_test_universal_macro.limitations_and_workaround">Limitations
+          and workaround</a>
+        </h4>
+<p>
+          There are some restrictions on the statements that are supported by this
+          tool. Those are explained in details in <a class="link" href="../../testing_tools/boost_test_universal_macro.html#boost_test_statement_limitations">this</a>
+          section.
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2020 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../testing_tool_ref.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../testing_tool_ref.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="decorator_expected_failures.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

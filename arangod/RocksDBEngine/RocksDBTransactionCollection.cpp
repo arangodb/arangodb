@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -209,10 +209,14 @@ void RocksDBTransactionCollection::commitCounts(TransactionId trxId,
     TRI_ASSERT(_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
     TRI_ASSERT(_revision.isSet() && commitSeq != 0);
 
-    TRI_IF_FAILURE("RocksDBCommitCounts") { adj = 0; }
+    TRI_IF_FAILURE("RocksDBCommitCounts") {
+      adj = 0;
+      rcoll->meta().setTainted();
+    }
     TRI_IF_FAILURE("RocksDBCommitCountsRandom") {
       if (RandomGenerator::interval(uint16_t(100)) >= 50) {
         adj = 0;
+        rcoll->meta().setTainted();
       }
     }
     rcoll->meta().adjustNumberDocuments(commitSeq, _revision, adj);

@@ -1,0 +1,156 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Grouping tests into logical units by labels</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../tests_organization.html" title="Declaring and organizing tests">
+<link rel="prev" href="tests_dependencies.html" title="Managing test dependencies">
+<link rel="next" href="enabling.html" title="Enabling or disabling test unit execution">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tests_dependencies.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tests_organization.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="enabling.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_test.tests_organization.tests_grouping"></a><a class="link" href="tests_grouping.html" title="Grouping tests into logical units by labels">Grouping
+      tests into logical units by labels</a>
+</h3></div></div></div>
+<p>
+        Test-suites and test cases define a hierarchy called the <span class="emphasis"><em>test tree</em></span>,
+        which is useful for organizing tests. These organization defines an implicit
+        grouping of test unit following the <span class="emphasis"><em>subtrees</em></span> extracted
+        from the test tree, by just designing a node on the test tree. Being able
+        to design a group of tests enable, for instance, to execute this group of
+        test only (covered in <a class="link" href="../runtime_config/test_unit_filtering.html" title="Test unit filtering">this
+        section</a>).
+      </p>
+<p>
+        However, the subtrees might not reflect all the possible grouping of test
+        units the usage of the test module would require <a href="#ftn.boost_test.tests_organization.tests_grouping.f0" class="footnote" name="boost_test.tests_organization.tests_grouping.f0"><sup class="footnote">[5]</sup></a>.
+      </p>
+<p>
+        The <span class="emphasis"><em>Unit Test Framework</em></span> provides a flexible way of grouping
+        test units by the use of <span class="emphasis"><em>labels</em></span>, using the decorator
+        <a class="link" href="../utf_reference/test_org_reference/decorator_label.html" title="label (decorator)"><code class="computeroutput"><span class="identifier">label</span></code></a>. It is possible to associate
+        more than one label with a test unit.
+      </p>
+<p>
+        Labels can be associated to test cases and test suites. For the latter, the
+        label is inherited by all the nodes in the subtree defined by the labelled
+        test suite: decorating a test suite with label <code class="computeroutput"><span class="identifier">L</span></code>
+        is equivalent to decorating every test unit inside with <code class="computeroutput"><span class="identifier">L</span></code>.
+      </p>
+<div class="tip"><table border="0" summary="Tip">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../../../../../../doc/src/images/tip.png"></td>
+<th align="left">Tip</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          it is possible to list all labels of a test module from the CLI by using
+          the <a class="link" href="../utf_reference/rt_param_reference/list_labels.html" title="list_labels"><code class="computeroutput"><span class="special">--</span><span class="identifier">list_labels</span></code></a>
+          switch
+        </p></td></tr>
+</table></div>
+<h6>
+<a name="boost_test.tests_organization.tests_grouping.h0"></a>
+        <span class="phrase"><a name="boost_test.tests_organization.tests_grouping.example_descr"></a></span><a class="link" href="tests_grouping.html#boost_test.tests_organization.tests_grouping.example_descr">Example:
+        decorator label</a>
+      </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                <p>
+                  Code
+                </p>
+              </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">decorator_04</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">utf</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">;</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test1</span><span class="special">,</span>
+  <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">label</span><span class="special">(</span><span class="string">"l1"</span><span class="special">))</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="keyword">false</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test2</span><span class="special">,</span>
+  <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">label</span><span class="special">(</span><span class="string">"l1"</span><span class="special">)</span>
+  <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">label</span><span class="special">(</span><span class="string">"l2"</span><span class="special">))</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="keyword">false</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test3</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="keyword">false</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+              </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                <p>
+                  Output
+                </p>
+              </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">decorator_04</span>
+<span class="identifier">Running</span> <span class="number">3</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">8</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="keyword">false</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">15</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test2"</span><span class="special">:</span> <span class="identifier">check</span> <span class="keyword">false</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">20</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test3"</span><span class="special">:</span> <span class="identifier">check</span> <span class="keyword">false</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+
+<span class="special">***</span> <span class="number">3</span> <span class="identifier">failures</span> <span class="identifier">are</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">the</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"decorator_04"</span>
+
+
+<span class="special">&gt;</span> <span class="identifier">decorator_04</span> <span class="special">--</span><span class="identifier">run_test</span><span class="special">=</span><span class="error">@</span><span class="identifier">l1</span>
+<span class="identifier">Running</span> <span class="number">2</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">8</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="keyword">false</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">15</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test2"</span><span class="special">:</span> <span class="identifier">check</span> <span class="keyword">false</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+
+<span class="special">***</span> <span class="number">2</span> <span class="identifier">failures</span> <span class="identifier">are</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">the</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"decorator_04"</span>
+
+
+<span class="special">&gt;</span> <span class="identifier">decorator_04</span> <span class="special">--</span><span class="identifier">run_test</span><span class="special">=</span><span class="error">@</span><span class="identifier">l2</span>
+<span class="identifier">Running</span> <span class="number">1</span> <span class="identifier">test</span> <span class="keyword">case</span><span class="special">...</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">15</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test2"</span><span class="special">:</span> <span class="identifier">check</span> <span class="keyword">false</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+
+<span class="special">***</span> <span class="number">1</span> <span class="identifier">failure</span> <span class="identifier">is</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">the</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"decorator_04"</span>
+</pre>
+              </td></tr></tbody>
+</table></div>
+<div class="footnotes">
+<br><hr style="width:100; text-align:left;margin-left: 0">
+<div id="ftn.boost_test.tests_organization.tests_grouping.f0" class="footnote"><p><a href="#boost_test.tests_organization.tests_grouping.f0" class="para"><sup class="para">[5] </sup></a>
+          For instance, selecting two siblings without the parent node
+        </p></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2020 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tests_dependencies.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tests_organization.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="enabling.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

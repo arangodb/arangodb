@@ -1,0 +1,284 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>mpc_complex</title>
+<link rel="stylesheet" href="../../../multiprecision.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter 1. Boost.Multiprecision">
+<link rel="up" href="../complex.html" title="Complex Number Types">
+<link rel="prev" href="cpp_complex.html" title="cpp_complex">
+<link rel="next" href="complex128.html" title="complex128">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="cpp_complex.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../complex.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="complex128.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_multiprecision.tut.complex.mpc_complex"></a><a class="link" href="mpc_complex.html" title="mpc_complex">mpc_complex</a>
+</h4></div></div></div>
+<p>
+          <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">multiprecision</span><span class="special">/</span><span class="identifier">mpc</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+        </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">multiprecision</span><span class="special">{</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">unsigned</span> <span class="identifier">Digits10</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">mpc_complex_backend</span><span class="special">;</span>
+
+<span class="keyword">typedef</span> <span class="identifier">number</span><span class="special">&lt;</span><span class="identifier">mpc_complex_backend</span><span class="special">&lt;</span><span class="number">50</span><span class="special">&gt;</span> <span class="special">&gt;</span>    <span class="identifier">mpc_complex_50</span><span class="special">;</span>
+<span class="keyword">typedef</span> <span class="identifier">number</span><span class="special">&lt;</span><span class="identifier">mpc_complex_backend</span><span class="special">&lt;</span><span class="number">100</span><span class="special">&gt;</span> <span class="special">&gt;</span>   <span class="identifier">mpc_complex_100</span><span class="special">;</span>
+<span class="keyword">typedef</span> <span class="identifier">number</span><span class="special">&lt;</span><span class="identifier">mpc_complex_backend</span><span class="special">&lt;</span><span class="number">500</span><span class="special">&gt;</span> <span class="special">&gt;</span>   <span class="identifier">mpc_complex_500</span><span class="special">;</span>
+<span class="keyword">typedef</span> <span class="identifier">number</span><span class="special">&lt;</span><span class="identifier">mpc_complex_backend</span><span class="special">&lt;</span><span class="number">1000</span><span class="special">&gt;</span> <span class="special">&gt;</span>  <span class="identifier">mpc_complex_1000</span><span class="special">;</span>
+<span class="keyword">typedef</span> <span class="identifier">number</span><span class="special">&lt;</span><span class="identifier">mpc_complex_backend</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;</span> <span class="special">&gt;</span>     <span class="identifier">mpc_complex</span><span class="special">;</span>
+
+<span class="special">}}</span> <span class="comment">// namespaces</span>
+</pre>
+<p>
+          The <code class="computeroutput"><span class="identifier">mpc_complex_backend</span></code>
+          type is used in conjunction with <code class="computeroutput"><span class="identifier">number</span></code>:
+          It acts as a thin wrapper around the <a href="http://www.multiprecision.org" target="_top">MPC</a>
+          <code class="computeroutput"><span class="identifier">mpc_t</span></code> to provide an real-number
+          type that is a drop-in replacement for <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span></code>,
+          but with much greater precision.
+        </p>
+<p>
+          Type <code class="computeroutput"><span class="identifier">mpc_complex_backend</span></code>
+          can be used at fixed precision by specifying a non-zero <code class="computeroutput"><span class="identifier">Digits10</span></code>
+          template parameter, or at variable precision by setting the template argument
+          to zero. The typedefs mpc_complex_50, mpc_complex_100, mpc_complex_500,
+          mpc_complex_1000 provide complex types at 50, 100, 500 and 1000 decimal
+          digits precision respectively. The typedef mpc_complex provides a variable
+          precision type whose precision can be controlled via the <code class="computeroutput"><span class="identifier">number</span></code>s member functions.
+        </p>
+<p>
+          The <code class="computeroutput"><span class="identifier">mpc</span></code> backend should
+          allow use of the same syntax as the C++ standard library complex type.
+          When using this backend, remember to link with the flags <code class="computeroutput"><span class="special">-</span><span class="identifier">lmpc</span> <span class="special">-</span><span class="identifier">lmpfr</span> <span class="special">-</span><span class="identifier">lgmp</span></code>.
+        </p>
+<p>
+          As well as the usual conversions from arithmetic and string types, instances
+          of <code class="computeroutput"><span class="identifier">number</span><span class="special">&lt;</span><span class="identifier">mpc_complex_backend</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">&gt;</span> <span class="special">&gt;</span></code> are copy constructible and assignable
+          from:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              The <a href="http://gmplib.org" target="_top">GMP</a> native types <code class="computeroutput"><span class="identifier">mpf_t</span></code>, <code class="computeroutput"><span class="identifier">mpz_t</span></code>,
+              <code class="computeroutput"><span class="identifier">mpq_t</span></code>.
+            </li>
+<li class="listitem">
+              The <a href="http://www.mpfr.org" target="_top">MPFR</a> native type <code class="computeroutput"><span class="identifier">mpfr_t</span></code>.
+            </li>
+<li class="listitem">
+              The <a href="http://www.multiprecision.org" target="_top">MPC</a> native type
+              <code class="computeroutput"><span class="identifier">mpc_t</span></code>.
+            </li>
+<li class="listitem">
+              The <code class="computeroutput"><span class="identifier">number</span></code> wrappers
+              around those types: <code class="computeroutput"><span class="identifier">number</span><span class="special">&lt;</span><span class="identifier">mpfr_float_backend</span><span class="special">&lt;</span><span class="identifier">M</span><span class="special">&gt;</span> <span class="special">&gt;</span></code>,
+              <code class="computeroutput"><span class="identifier">number</span><span class="special">&lt;</span><span class="identifier">mpf_float</span><span class="special">&lt;</span><span class="identifier">M</span><span class="special">&gt;</span> <span class="special">&gt;</span></code>, <code class="computeroutput"><span class="identifier">number</span><span class="special">&lt;</span><span class="identifier">gmp_int</span><span class="special">&gt;</span></code>, <code class="computeroutput"><span class="identifier">number</span><span class="special">&lt;</span><span class="identifier">gmp_rational</span><span class="special">&gt;</span></code>.
+            </li>
+</ul></div>
+<p>
+          It's also possible to access the underlying <code class="computeroutput"><span class="identifier">mpc_t</span></code>
+          via the <code class="computeroutput"><span class="identifier">data</span><span class="special">()</span></code>
+          member function of <code class="computeroutput"><span class="identifier">mpfr_float_backend</span></code>.
+        </p>
+<p>
+          Things you should know when using this type:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              A default constructed <code class="computeroutput"><span class="identifier">mpc_complex_backend</span></code>
+              is set to zero (<span class="emphasis"><em>Note that this is <span class="bold"><strong>not</strong></span>
+              the default <a href="http://www.multiprecision.org" target="_top">MPC</a>
+              behavior</em></span>).
+            </li>
+<li class="listitem">
+              All operations use round to nearest.
+            </li>
+<li class="listitem">
+              No changes are made to <a href="http://www.multiprecision.org" target="_top">MPC</a>,
+              <a href="http://gmplib.org" target="_top">GMP</a> or <a href="http://www.mpfr.org" target="_top">MPFR</a>
+              global settings, so this type can coexist with existing <a href="http://www.multiprecision.org" target="_top">MPC</a>,
+              <a href="http://www.mpfr.org" target="_top">MPFR</a> or <a href="http://gmplib.org" target="_top">GMP</a>
+              code.
+            </li>
+<li class="listitem">
+              The code can equally use <a href="http://mpir.org/" target="_top">MPIR</a>
+              in place of <a href="http://gmplib.org" target="_top">GMP</a> - indeed that
+              is the preferred option on Win32.
+            </li>
+<li class="listitem">
+              This backend supports rvalue-references and is move-aware, making instantiations
+              of <code class="computeroutput"><span class="identifier">number</span></code> on this backend
+              move aware.
+            </li>
+<li class="listitem">
+              Conversion from a string results in a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">runtime_error</span></code>
+              being thrown if the string can not be interpreted as a valid complex
+              number.
+            </li>
+<li class="listitem">
+              Division by zero results in a complex-infinity.
+            </li>
+<li class="listitem">
+              Unlike <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span></code>, you can not use <code class="computeroutput"><span class="keyword">reinterpret_cast</span></code> to treat this type
+              as an array of the underlying floating point type.
+            </li>
+<li class="listitem">
+              Unlike <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span></code>, there are no literals for
+              imaginary values.
+            </li>
+<li class="listitem">
+              When using the variable precision type <code class="computeroutput"><span class="identifier">mpc_complex</span></code>,
+              then copy construction and assignment <span class="emphasis"><em>copies the precision
+              of the source variable</em></span>. Likewise move construction and assignment.
+            </li>
+<li class="listitem">
+              When constructing the variable precision type <code class="computeroutput"><span class="identifier">mpc_complex</span></code>
+              you can specify two arguments to the constructor - the first is the
+              value to assign to the variable, the second is an unsigned integer
+              specifying the precision in decimal places. The <code class="computeroutput"><span class="identifier">assign</span></code>
+              member function similarly has a 2-argument overload taking the value
+              to assign and the precision. You can use this to preserve the precision
+              of the target variable using the somewhat arcane: <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">assign</span><span class="special">(</span><span class="identifier">b</span><span class="special">,</span> <span class="identifier">a</span><span class="special">.</span><span class="identifier">precision</span><span class="special">())</span></code>, which assigns <code class="computeroutput"><span class="identifier">b</span></code>
+              to <code class="computeroutput"><span class="identifier">a</span></code> but preserves
+              the precision of <code class="computeroutput"><span class="identifier">a</span></code>.
+            </li>
+</ul></div>
+<h6>
+<a name="boost_multiprecision.tut.complex.mpc_complex.h0"></a>
+          <span class="phrase"><a name="boost_multiprecision.tut.complex.mpc_complex.mpc_example"></a></span><a class="link" href="mpc_complex.html#boost_multiprecision.tut.complex.mpc_complex.mpc_example"> MPC example:</a>
+        </h6>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">complex</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">multiprecision</span><span class="special">/</span><span class="identifier">mpc</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Complex</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">complex_number_examples</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="identifier">Complex</span> <span class="identifier">z1</span><span class="special">{</span><span class="number">0</span><span class="special">,</span> <span class="number">1</span><span class="special">};</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">setprecision</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Complex</span><span class="special">::</span><span class="identifier">value_type</span><span class="special">&gt;::</span><span class="identifier">digits10</span><span class="special">);</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">scientific</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">fixed</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Print a complex number: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">z1</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Square it             : "</span> <span class="special">&lt;&lt;</span> <span class="identifier">z1</span><span class="special">*</span><span class="identifier">z1</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Real part             : "</span> <span class="special">&lt;&lt;</span> <span class="identifier">z1</span><span class="special">.</span><span class="identifier">real</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="string">" = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">real</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Imaginary part        : "</span> <span class="special">&lt;&lt;</span> <span class="identifier">z1</span><span class="special">.</span><span class="identifier">imag</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="string">" = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">imag</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">abs</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Absolute value        : "</span> <span class="special">&lt;&lt;</span> <span class="identifier">abs</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Argument              : "</span> <span class="special">&lt;&lt;</span> <span class="identifier">arg</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Norm                  : "</span> <span class="special">&lt;&lt;</span> <span class="identifier">norm</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Complex conjugate     : "</span> <span class="special">&lt;&lt;</span> <span class="identifier">conj</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Projection onto Riemann sphere: "</span> <span class="special">&lt;&lt;</span>  <span class="identifier">proj</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">typename</span> <span class="identifier">Complex</span><span class="special">::</span><span class="identifier">value_type</span> <span class="identifier">r</span> <span class="special">=</span> <span class="number">1</span><span class="special">;</span>
+    <span class="keyword">typename</span> <span class="identifier">Complex</span><span class="special">::</span><span class="identifier">value_type</span> <span class="identifier">theta</span> <span class="special">=</span> <span class="number">0.8</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">polar</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Polar coordinates (phase = 0)    : "</span> <span class="special">&lt;&lt;</span> <span class="identifier">polar</span><span class="special">(</span><span class="identifier">r</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Polar coordinates (phase !=0)    : "</span> <span class="special">&lt;&lt;</span> <span class="identifier">polar</span><span class="special">(</span><span class="identifier">r</span><span class="special">,</span> <span class="identifier">theta</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"\nElementary special functions:\n"</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">exp</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"exp(z1) = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">exp</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">log</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"log(z1) = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">log</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">log10</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"log10(z1) = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">log10</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">pow</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"pow(z1, z1) = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">pow</span><span class="special">(</span><span class="identifier">z1</span><span class="special">,</span> <span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">sqrt</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Take its square root  : "</span> <span class="special">&lt;&lt;</span> <span class="identifier">sqrt</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">sin</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"sin(z1) = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">sin</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">cos</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"cos(z1) = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">cos</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">tan</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"tan(z1) = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">tan</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">asin</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"asin(z1) = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">asin</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">acos</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"acos(z1) = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">acos</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">atan</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"atan(z1) = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">atan</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">sinh</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"sinh(z1) = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">sinh</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">cosh</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"cosh(z1) = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">cosh</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">tanh</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"tanh(z1) = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">tanh</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">asinh</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"asinh(z1) = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">asinh</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">acosh</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"acosh(z1) = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">acosh</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">atanh</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"atanh(z1) = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">atanh</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"First, some operations we usually perform with std::complex:\n"</span><span class="special">;</span>
+    <span class="identifier">complex_number_examples</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;&gt;();</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"\nNow the same operations performed using the MPC backend:\n"</span><span class="special">;</span>
+    <span class="identifier">complex_number_examples</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">multiprecision</span><span class="special">::</span><span class="identifier">mpc_complex_50</span><span class="special">&gt;();</span>
+
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+          Which produces the output (for the multiprecision type):
+        </p>
+<pre class="programlisting"><span class="identifier">Print</span> <span class="identifier">a</span> <span class="identifier">complex</span> <span class="identifier">number</span><span class="special">:</span> <span class="special">(</span><span class="number">0.00000000000000000000000000000000000000000000000000</span><span class="special">,</span><span class="number">1.00000000000000000000000000000000000000000000000000</span><span class="special">)</span>
+<span class="identifier">Square</span> <span class="identifier">it</span>             <span class="special">:</span> <span class="special">-</span><span class="number">1.00000000000000000000000000000000000000000000000000</span>
+<span class="identifier">Real</span> <span class="identifier">part</span>             <span class="special">:</span> <span class="number">0.00000000000000000000000000000000000000000000000000</span> <span class="special">=</span> <span class="number">0.00000000000000000000000000000000000000000000000000</span>
+<span class="identifier">Imaginary</span> <span class="identifier">part</span>        <span class="special">:</span> <span class="number">1.00000000000000000000000000000000000000000000000000</span> <span class="special">=</span> <span class="number">1.00000000000000000000000000000000000000000000000000</span>
+<span class="identifier">Absolute</span> <span class="identifier">value</span>        <span class="special">:</span> <span class="number">1.00000000000000000000000000000000000000000000000000</span>
+<span class="identifier">Argument</span>              <span class="special">:</span> <span class="number">1.57079632679489661923132169163975144209858469968755</span>
+<span class="identifier">Norm</span>                  <span class="special">:</span> <span class="number">1.00000000000000000000000000000000000000000000000000</span>
+<span class="identifier">Complex</span> <span class="identifier">conjugate</span>     <span class="special">:</span> <span class="special">(</span><span class="number">0.00000000000000000000000000000000000000000000000000</span><span class="special">,-</span><span class="number">1.00000000000000000000000000000000000000000000000000</span><span class="special">)</span>
+<span class="identifier">Projection</span> <span class="identifier">onto</span> <span class="identifier">Riemann</span> <span class="identifier">sphere</span><span class="special">:</span> <span class="special">(</span><span class="number">0.00000000000000000000000000000000000000000000000000</span><span class="special">,</span><span class="number">1.00000000000000000000000000000000000000000000000000</span><span class="special">)</span>
+<span class="identifier">Polar</span> <span class="identifier">coordinates</span> <span class="special">(</span><span class="identifier">phase</span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span>    <span class="special">:</span> <span class="number">1.00000000000000000000000000000000000000000000000000</span>
+<span class="identifier">Polar</span> <span class="identifier">coordinates</span> <span class="special">(</span><span class="identifier">phase</span> <span class="special">!=</span><span class="number">0</span><span class="special">)</span>    <span class="special">:</span> <span class="special">(</span><span class="number">0.69670670934716538906374002277244853473117519431538</span><span class="special">,</span><span class="number">0.71735609089952279256716781570337728075604730751255</span><span class="special">)</span>
+
+<span class="identifier">Elementary</span> <span class="identifier">special</span> <span class="identifier">functions</span><span class="special">:</span>
+<span class="identifier">exp</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">=</span> <span class="special">(</span><span class="number">0.54030230586813971740093660744297660373231042061792</span><span class="special">,</span><span class="number">0.84147098480789650665250232163029899962256306079837</span><span class="special">)</span>
+<span class="identifier">log</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">=</span> <span class="special">(</span><span class="number">0.00000000000000000000000000000000000000000000000000</span><span class="special">,</span><span class="number">1.57079632679489661923132169163975144209858469968755</span><span class="special">)</span>
+<span class="identifier">log10</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">=</span> <span class="special">(</span><span class="number">0.00000000000000000000000000000000000000000000000000</span><span class="special">,</span><span class="number">0.68218817692092067374289181271567788510506374186196</span><span class="special">)</span>
+<span class="identifier">pow</span><span class="special">(</span><span class="identifier">z1</span><span class="special">,</span> <span class="identifier">z1</span><span class="special">)</span> <span class="special">=</span> <span class="number">0.20787957635076190854695561983497877003387784163177</span>
+<span class="identifier">Take</span> <span class="identifier">its</span> <span class="identifier">square</span> <span class="identifier">root</span>  <span class="special">:</span> <span class="special">(</span><span class="number">0.70710678118654752440084436210484903928483593768847</span><span class="special">,</span><span class="number">0.70710678118654752440084436210484903928483593768847</span><span class="special">)</span>
+<span class="identifier">sin</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">=</span> <span class="special">(</span><span class="number">0.00000000000000000000000000000000000000000000000000</span><span class="special">,</span><span class="number">1.17520119364380145688238185059560081515571798133410</span><span class="special">)</span>
+<span class="identifier">cos</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">=</span> <span class="number">1.54308063481524377847790562075706168260152911236587</span>
+<span class="identifier">tan</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">=</span> <span class="special">(</span><span class="number">0.00000000000000000000000000000000000000000000000000</span><span class="special">,</span><span class="number">0.76159415595576488811945828260479359041276859725794</span><span class="special">)</span>
+<span class="identifier">asin</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">=</span> <span class="special">(</span><span class="number">0.00000000000000000000000000000000000000000000000000</span><span class="special">,</span><span class="number">0.88137358701954302523260932497979230902816032826163</span><span class="special">)</span>
+<span class="identifier">acos</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">=</span> <span class="special">(</span><span class="number">1.57079632679489661923132169163975144209858469968755</span><span class="special">,-</span><span class="number">0.88137358701954302523260932497979230902816032826163</span><span class="special">)</span>
+<span class="identifier">atan</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">=</span> <span class="special">(</span><span class="number">0.00000000000000000000000000000000000000000000000000</span><span class="special">,</span><span class="identifier">inf</span><span class="special">)</span>
+<span class="identifier">sinh</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">=</span> <span class="special">(</span><span class="number">0.00000000000000000000000000000000000000000000000000</span><span class="special">,</span><span class="number">0.84147098480789650665250232163029899962256306079837</span><span class="special">)</span>
+<span class="identifier">cosh</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">=</span> <span class="number">0.54030230586813971740093660744297660373231042061792</span>
+<span class="identifier">tanh</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">=</span> <span class="special">(</span><span class="number">0.00000000000000000000000000000000000000000000000000</span><span class="special">,</span><span class="number">1.55740772465490223050697480745836017308725077238152</span><span class="special">)</span>
+<span class="identifier">asinh</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">=</span> <span class="special">(</span><span class="number">0.00000000000000000000000000000000000000000000000000</span><span class="special">,</span><span class="number">1.57079632679489661923132169163975144209858469968755</span><span class="special">)</span>
+<span class="identifier">acosh</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">=</span> <span class="special">(</span><span class="number">0.88137358701954302523260932497979230902816032826163</span><span class="special">,</span><span class="number">1.57079632679489661923132169163975144209858469968755</span><span class="special">)</span>
+<span class="identifier">atanh</span><span class="special">(</span><span class="identifier">z1</span><span class="special">)</span> <span class="special">=</span> <span class="special">(</span><span class="number">0.00000000000000000000000000000000000000000000000000</span><span class="special">,</span><span class="number">0.78539816339744830961566084581987572104929234984378</span><span class="special">)</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2002-2020 John
+      Maddock and Christopher Kormanyos<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="cpp_complex.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../complex.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="complex128.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

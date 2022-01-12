@@ -1,0 +1,57 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Unstable Sorting</title>
+<link rel="stylesheet" href="../../../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../../../index.html" title="Boost.Sort">
+<link rel="up" href="../rationale.html" title="Rationale">
+<link rel="prev" href="why_spreadsort.html" title="Why spreadsort?">
+<link rel="next" href="optimization.html" title="Unused X86 optimization">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="why_spreadsort.html"><img src="../../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../rationale.html"><img src="../../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../../index.html"><img src="../../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="optimization.html"><img src="../../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h6 class="title">
+<a name="sort.single_thread.spreadsort.sort_hpp.rationale.unstable_sort"></a><a class="link" href="unstable_sort.html" title="Unstable Sorting">Unstable
+            Sorting</a>
+</h6></div></div></div>
+<p>
+              Making a <a href="http://en.wikipedia.org/wiki/Radix_sort" target="_top">radix
+              sort</a> stable requires the usage of an external copy of the data.
+              A stable hybrid algorithm also requires a stable comparison-based algorithm,
+              and these are generally slow. LSD <a href="http://en.wikipedia.org/wiki/Radix_sort" target="_top">radix
+              sort</a> uses an external copy of the data, and provides stability,
+              along with likely being faster (than a stable hybrid sort), so that's
+              probably a better way to go for integer and floating-point types. It
+              might make sense to make a stable version of <code class="literal"><code class="computeroutput"><a class="link" href="../../../../../boost/sort/spreadsort/string_sort_idm2523.html" title="Function template string_sort">string_sort</a></code></code>
+              using external memory, but for simplicity this has been left out for
+              now.
+            </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2014-2017 Steven
+      Ross, Francisco Tapia, Orson Peters<p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="why_spreadsort.html"><img src="../../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../rationale.html"><img src="../../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../../index.html"><img src="../../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="optimization.html"><img src="../../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

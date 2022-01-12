@@ -1,0 +1,154 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Gauss-Laguerre quadrature</title>
+<link rel="stylesheet" href="../../../../multiprecision.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../../index.html" title="Chapter 1. Boost.Multiprecision">
+<link rel="up" href="../fp_eg.html" title="Examples">
+<link rel="prev" href="variable_precision.html" title="Variable-Precision Newton Evaluation">
+<link rel="next" href="../../interval.html" title="Interval Number Types">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="variable_precision.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../fp_eg.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../interval.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="boost_multiprecision.tut.floats.fp_eg.gauss_lagerre_quadrature"></a><a class="link" href="gauss_lagerre_quadrature.html" title="Gauss-Laguerre quadrature">Gauss-Laguerre
+          quadrature</a>
+</h5></div></div></div>
+<p>
+            This example uses <a href="https://www.boost.org/doc/libs/release/libs/multiprecision/doc/index.html" target="_top">Boost.Multiprecision</a>
+            to implement a high-precision Gauss-Laguerre quadrature integration.
+            The quadrature is used to calculate the <code class="computeroutput"><span class="identifier">airy_ai</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span></code> function for real-valued <code class="computeroutput"><span class="identifier">x</span></code> on the positive axis with <code class="computeroutput"><span class="identifier">x</span> <span class="special">&gt;=</span> <span class="number">1</span></code>.
+          </p>
+<p>
+            In this way, the integral representation could be seen as part of a scheme
+            to calculate real-valued Airy functions on the positive axis for medium
+            to large argument. A Taylor series or hypergeometric function (not part
+            of this example) could be used for smaller arguments.
+          </p>
+<p>
+            This example has been tested with decimal digits counts ranging from
+            21...301, by adjusting the parameter <code class="computeroutput"><span class="identifier">local</span><span class="special">::</span><span class="identifier">my_digits10</span></code>
+            at compile time.
+          </p>
+<p>
+            The quadrature integral representaion of <code class="computeroutput"><span class="identifier">airy_ai</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span></code> used in this example can be found in:
+          </p>
+<p>
+            A. Gil, J. Segura, N.M. Temme, "Numerical Methods for Special Functions"
+            (SIAM Press 2007), ISBN 9780898717822, Sect. 5.3.3, in particular Eq.
+            5.110, page 145.
+          </p>
+<p>
+            Subsequently, Gil et al's book cites the another work: W. Gautschi, "Computation
+            of Bessel and Airy functions and of related Gaussian quadrature formulae",
+            BIT, 42 (2002), pp. 110-118, <a href="https://doi.org/10.1023/A:1021974203359" target="_top">https://doi.org/10.1023/A:1021974203359</a>
+            that is also available as <a href="https://www.cs.purdue.edu/homes/wxg/selected_works/section_02/169.pdf" target="_top">Gautschi_169.pdf</a>.
+          </p>
+<p>
+            This Gauss-Laguerre quadrature is designed for <code class="computeroutput"><span class="identifier">airy_ai</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span></code> with real-valued <code class="computeroutput"><span class="identifier">x</span>
+            <span class="special">&gt;=</span> <span class="number">1</span></code>.
+          </p>
+<p>
+            The example uses Gauss-Laguerre quadrature integration to compute <code class="computeroutput"><span class="identifier">airy_ai</span><span class="special">(</span><span class="identifier">x</span> <span class="special">/</span> <span class="number">7</span><span class="special">)</span></code> with
+            <code class="computeroutput"><span class="number">7</span> <span class="special">&lt;=</span>
+            <span class="identifier">x</span> <span class="special">&lt;=</span>
+            <span class="number">120</span></code> and where <code class="computeroutput"><span class="identifier">x</span></code>
+            is incremented in steps of 1.
+          </p>
+<p>
+            During development of this example, we have empirically found the numbers
+            of Gauss-Laguerre coefficients needed for convergence when using various
+            counts of base-10 digits.
+          </p>
+<p>
+            Let's calibrate, for instance, the number of coefficients needed at the
+            point <code class="computeroutput"><span class="identifier">x</span> <span class="special">=</span>
+            <span class="number">1</span></code>.
+          </p>
+<p>
+            Empirical data were used with <a href="http://www.wolframalpha.com/" target="_top">Wolfram
+            Alpha</a> :
+          </p>
+<pre class="programlisting"><span class="identifier">Fit</span><span class="special">[{{</span><span class="number">21.0</span><span class="special">,</span> <span class="number">3.5</span><span class="special">},</span> <span class="special">{</span><span class="number">51.0</span><span class="special">,</span> <span class="number">11.1</span><span class="special">},</span> <span class="special">{</span><span class="number">101.0</span><span class="special">,</span> <span class="number">22.5</span><span class="special">},</span> <span class="special">{</span><span class="number">201.0</span><span class="special">,</span> <span class="number">46.8</span><span class="special">}},</span> <span class="special">{</span><span class="number">1</span><span class="special">,</span> <span class="identifier">d</span><span class="special">,</span> <span class="identifier">d</span><span class="special">^</span><span class="number">2</span><span class="special">},</span> <span class="identifier">d</span><span class="special">]</span><span class="identifier">FullSimplify</span><span class="special">[%]</span>
+  <span class="number">0.0000178915</span> <span class="identifier">d</span><span class="special">^</span><span class="number">2</span> <span class="special">+</span> <span class="number">0.235487</span> <span class="identifier">d</span> <span class="special">-</span> <span class="number">1.28301</span>
+  <span class="keyword">or</span>
+  <span class="special">-</span><span class="number">1.28301</span> <span class="special">+</span> <span class="special">(</span><span class="number">0.235487</span> <span class="special">+</span> <span class="number">0.0000178915</span> <span class="identifier">d</span><span class="special">)</span> <span class="identifier">d</span>
+</pre>
+<p>
+            We need significantly more coefficients at smaller real values than are
+            needed at larger real values because the slope derivative of <code class="computeroutput"><span class="identifier">airy_ai</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span></code>
+            gets more steep as x approaches zero. <code class="computeroutput"><span class="identifier">laguerre_order</span></code>
+            is calculated using this equation.
+          </p>
+<p>
+            Snippets from (copious) output from a progress bar during calculation
+            of approximate root estimates followed by calculation of accurate abscissa
+            and weights is:
+          </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">local</span><span class="special">::</span><span class="identifier">float_type</span><span class="special">&gt;::</span><span class="identifier">digits10</span><span class="special">:</span> <span class="number">101</span>
+<span class="identifier">laguerre_order</span><span class="special">:</span> <span class="number">2291</span>
+
+<span class="identifier">Finding</span> <span class="identifier">the</span> <span class="identifier">approximate</span> <span class="identifier">roots</span><span class="special">...</span>
+<span class="identifier">root_estimates</span><span class="special">.</span><span class="identifier">size</span><span class="special">():</span> <span class="number">1</span><span class="special">,</span> <span class="number">0.0</span><span class="special">%</span>
+<span class="identifier">root_estimates</span><span class="special">.</span><span class="identifier">size</span><span class="special">():</span> <span class="number">8</span><span class="special">,</span> <span class="number">0.3</span><span class="special">%</span>
+<span class="identifier">root_estimates</span><span class="special">.</span><span class="identifier">size</span><span class="special">():</span> <span class="number">16</span><span class="special">,</span> <span class="number">0.7</span><span class="special">%</span>
+<span class="special">...</span>
+<span class="identifier">root_estimates</span><span class="special">.</span><span class="identifier">size</span><span class="special">():</span> <span class="number">2288</span><span class="special">,</span> <span class="number">99.9</span><span class="special">%</span>
+<span class="identifier">root_estimates</span><span class="special">.</span><span class="identifier">size</span><span class="special">():</span> <span class="number">2291</span><span class="special">,</span> <span class="number">100.0</span><span class="special">%</span>
+
+
+<span class="identifier">Calculating</span> <span class="identifier">abscissas</span> <span class="keyword">and</span> <span class="identifier">weights</span><span class="special">.</span> <span class="identifier">Processed</span> <span class="number">1</span><span class="special">,</span> <span class="number">0.0</span><span class="special">%</span>
+<span class="identifier">Calculating</span> <span class="identifier">abscissas</span> <span class="keyword">and</span> <span class="identifier">weights</span><span class="special">.</span> <span class="identifier">Processed</span> <span class="number">9</span><span class="special">,</span> <span class="number">0.4</span><span class="special">%</span>
+<span class="special">...</span>
+<span class="identifier">Calculating</span> <span class="identifier">abscissas</span> <span class="keyword">and</span> <span class="identifier">weights</span><span class="special">.</span> <span class="identifier">Processed</span> <span class="number">2289</span><span class="special">,</span> <span class="number">99.9</span><span class="special">%</span>
+<span class="identifier">Calculating</span> <span class="identifier">abscissas</span> <span class="keyword">and</span> <span class="identifier">weights</span><span class="special">.</span> <span class="identifier">Processed</span> <span class="number">2291</span><span class="special">,</span> <span class="number">100.0</span><span class="special">%</span>
+</pre>
+<p>
+            Finally the result using Gauss-Laguerre quadrature is compared with a
+            calculation using <code class="computeroutput"><span class="identifier">cyl_bessel_k</span></code>,
+            and both are listed, finally confirming that none differ more than a
+            small tolerance.
+          </p>
+<pre class="programlisting"><span class="identifier">airy_ai_value</span>  <span class="special">:</span> <span class="number">0.13529241631288141552414742351546630617494414298833070600910205475763353480226572366348710990874867334</span>
+<span class="identifier">airy_ai_control</span><span class="special">:</span> <span class="number">0.13529241631288141552414742351546630617494414298833070600910205475763353480226572366348710990874868323</span>
+<span class="identifier">airy_ai_value</span>  <span class="special">:</span> <span class="number">0.11392302126009621102904231059693500086750049240884734708541630001378825889924647699516200868335286103</span>
+<span class="identifier">airy_ai_control</span><span class="special">:</span> <span class="number">0.1139230212600962110290423105969350008675004924088473470854163000137882588992464769951620086833528582</span>
+<span class="special">...</span>
+<span class="identifier">airy_ai_value</span>  <span class="special">:</span> <span class="number">3.8990420982303275013276114626640705170145070824317976771461533035231088620152288641360519429331427451e-22</span>
+<span class="identifier">airy_ai_control</span><span class="special">:</span> <span class="number">3.8990420982303275013276114626640705170145070824317976771461533035231088620152288641360519429331426481e-22</span>
+
+<span class="identifier">Total</span><span class="special">...</span> <span class="identifier">result_is_ok</span><span class="special">:</span> <span class="keyword">true</span>
+</pre>
+<p>
+            For more detail see comments in the source code for this example at
+            <a href="http://www.boost.org/doc/libs/release/libs/multiprecision/doc/html/../../example/gauss_laguerre_quadrature.cpp" target="_top">gauss_laguerre_quadrature.cpp</a>.
+          </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2002-2020 John
+      Maddock and Christopher Kormanyos<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="variable_precision.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../fp_eg.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../interval.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

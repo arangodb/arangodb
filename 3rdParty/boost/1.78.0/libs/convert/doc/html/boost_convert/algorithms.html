@@ -1,0 +1,258 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Boost.Convert with Standard Algorithms</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Convert 2.0">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Convert 2.0">
+<link rel="prev" href="integration_of_user_types.html" title="Integration of User-Defined Types">
+<link rel="next" href="performance.html" title="Performance">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="integration_of_user_types.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="performance.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_convert.algorithms"></a><a class="link" href="algorithms.html" title="Boost.Convert with Standard Algorithms">Boost.Convert with Standard Algorithms</a>
+</h2></div></div></div>
+<p>
+      The following code demonstrates a failed attempt (and one of the reasons <span class="emphasis"><em>Boost.Convert</em></span>
+      has been developed) to convert a few <code class="computeroutput"><span class="identifier">string</span></code>s
+      to <code class="computeroutput"><span class="keyword">int</span></code>s with <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">lexical_cast</span></code>:
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">array</span><span class="special">&lt;</span><span class="keyword">char</span> <span class="keyword">const</span><span class="special">*,</span> <span class="number">3</span><span class="special">&gt;</span> <span class="identifier">strs</span> <span class="special">=</span> <span class="special">{{</span> <span class="string">" 5"</span><span class="special">,</span> <span class="string">"0XF"</span><span class="special">,</span> <span class="string">"not an int"</span> <span class="special">}};</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span>           <span class="identifier">ints</span><span class="special">;</span>
+
+<span class="keyword">try</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">transform</span><span class="special">(</span><span class="identifier">strs</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">strs</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">back_inserter</span><span class="special">(</span><span class="identifier">ints</span><span class="special">),</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">lexical_cast</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="identifier">string</span><span class="special">&gt;,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">placeholders</span><span class="special">::</span><span class="identifier">_1</span><span class="special">));</span>
+
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="number">0</span> <span class="special">&amp;&amp;</span> <span class="string">"Never reached!"</span><span class="special">);</span>
+<span class="special">}</span>
+<span class="keyword">catch</span> <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span><span class="special">&amp;)</span>
+<span class="special">{</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">ints</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span> <span class="special">==</span> <span class="number">0</span><span class="special">);</span> <span class="comment">// No strings converted.</span>
+<span class="special">}</span>
+</pre>
+<p>
+    </p>
+<p>
+      If the exception-throwing behavior is the desired behavior, then <span class="emphasis"><em>Boost.Convert</em></span>
+      supports that. In addition, it also supports a non-throwing process-flow:
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">array</span><span class="special">&lt;</span><span class="keyword">char</span> <span class="keyword">const</span><span class="special">*,</span> <span class="number">3</span><span class="special">&gt;</span> <span class="identifier">strs</span> <span class="special">=</span> <span class="special">{{</span> <span class="string">" 5"</span><span class="special">,</span> <span class="string">"0XF"</span><span class="special">,</span> <span class="string">"not an int"</span> <span class="special">}};</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span>           <span class="identifier">ints</span><span class="special">;</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">transform</span><span class="special">(</span><span class="identifier">strs</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">strs</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">back_inserter</span><span class="special">(</span><span class="identifier">ints</span><span class="special">),</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">apply</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">lexical_cast</span><span class="special">()).</span><span class="identifier">value_or</span><span class="special">(-</span><span class="number">1</span><span class="special">));</span>
+
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">ints</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span> <span class="special">==</span> <span class="number">3</span><span class="special">);</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">ints</span><span class="special">[</span><span class="number">0</span><span class="special">]</span> <span class="special">==</span> <span class="special">-</span><span class="number">1</span><span class="special">);</span> <span class="comment">// Failed conversion does not throw.</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">ints</span><span class="special">[</span><span class="number">1</span><span class="special">]</span> <span class="special">==</span> <span class="special">-</span><span class="number">1</span><span class="special">);</span> <span class="comment">// Failed conversion does not throw.</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">ints</span><span class="special">[</span><span class="number">2</span><span class="special">]</span> <span class="special">==</span> <span class="special">-</span><span class="number">1</span><span class="special">);</span> <span class="comment">// Failed conversion does not throw.</span>
+</pre>
+<p>
+    </p>
+<p>
+      Deploying <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">cstream</span></code>
+      with better formatting capabilities yields better results with exception-throwing
+      and non-throwing process-flows still supported:
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">array</span><span class="special">&lt;</span><span class="keyword">char</span> <span class="keyword">const</span><span class="special">*,</span> <span class="number">3</span><span class="special">&gt;</span> <span class="identifier">strs</span> <span class="special">=</span> <span class="special">{{</span> <span class="string">" 5"</span><span class="special">,</span> <span class="string">"0XF"</span><span class="special">,</span> <span class="string">"not an int"</span> <span class="special">}};</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span>           <span class="identifier">ints</span><span class="special">;</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">cstream</span>         <span class="identifier">cnv</span><span class="special">;</span>
+
+<span class="keyword">try</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">transform</span><span class="special">(</span><span class="identifier">strs</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">strs</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">back_inserter</span><span class="special">(</span><span class="identifier">ints</span><span class="special">),</span>
+        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">apply</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">cref</span><span class="special">(</span><span class="identifier">cnv</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">hex</span><span class="special">)(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">skipws</span><span class="special">))));</span>
+
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="number">0</span> <span class="special">&amp;&amp;</span> <span class="string">"Never reached!"</span><span class="special">);</span>
+<span class="special">}</span>
+<span class="keyword">catch</span> <span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">bad_optional_access</span> <span class="keyword">const</span><span class="special">&amp;)</span>
+<span class="special">{</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">ints</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span> <span class="special">==</span> <span class="number">2</span><span class="special">);</span> <span class="comment">// Only the first two strings converted.</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">ints</span><span class="special">[</span><span class="number">0</span><span class="special">]</span> <span class="special">==</span>  <span class="number">5</span><span class="special">);</span>    <span class="comment">// " 5"</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">ints</span><span class="special">[</span><span class="number">1</span><span class="special">]</span> <span class="special">==</span> <span class="number">15</span><span class="special">);</span>    <span class="comment">// "0XF"</span>
+
+    <span class="comment">// "not an int" causes the exception thrown.</span>
+<span class="special">}</span>
+</pre>
+<p>
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">transform</span><span class="special">(</span><span class="identifier">strs</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">strs</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">back_inserter</span><span class="special">(</span><span class="identifier">ints</span><span class="special">),</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">apply</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">cref</span><span class="special">(</span><span class="identifier">cnv</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">hex</span><span class="special">)(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">skipws</span><span class="special">))).</span><span class="identifier">value_or</span><span class="special">(-</span><span class="number">1</span><span class="special">));</span>
+
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">ints</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span> <span class="special">==</span> <span class="number">3</span><span class="special">);</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">ints</span><span class="special">[</span><span class="number">0</span><span class="special">]</span> <span class="special">==</span>  <span class="number">5</span><span class="special">);</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">ints</span><span class="special">[</span><span class="number">1</span><span class="special">]</span> <span class="special">==</span> <span class="number">15</span><span class="special">);</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">ints</span><span class="special">[</span><span class="number">2</span><span class="special">]</span> <span class="special">==</span> <span class="special">-</span><span class="number">1</span><span class="special">);</span> <span class="comment">// Failed conversion</span>
+</pre>
+<p>
+    </p>
+<div class="important"><table border="0" summary="Important">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Important]" src="../../../../../doc/src/images/important.png"></td>
+<th align="left">Important</th>
+</tr>
+<tr><td align="left" valign="top">
+<p>
+        One notable difference in the deployment of <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">cstream</span></code> with algorithms is the use of
+        <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">cref</span></code>.
+      </p>
+<p>
+        It needs to be remembered that with standard algorithms the deployed converter
+        needs to be <a href="http://en.cppreference.com/w/cpp/named_req/TriviallyCopyable" target="_top">copyable</a>
+        or <a href="http://en.cppreference.com/w/cpp/named_req/MoveAssignable" target="_top">movable
+        (C++11)</a> and is, in fact, copied or moved by the respective algorithm
+        before being used. Given that <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">cstringstream</span></code>
+        is not copyable, <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">cstream</span></code>
+        is not copyable either. That limitation is routinely worked-around using
+        <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">ref</span></code> or <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">cref</span></code>.
+      </p>
+</td></tr>
+</table></div>
+<p>
+      And now an example of algorithm-based integer-to-string formatted conversion
+      with <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">hex</span></code>, <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uppercase</span></code>
+      and <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">showbase</span></code> formatting applied:
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">array</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="number">3</span><span class="special">&gt;</span>       <span class="identifier">ints</span> <span class="special">=</span> <span class="special">{{</span> <span class="number">15</span><span class="special">,</span> <span class="number">16</span><span class="special">,</span> <span class="number">17</span> <span class="special">}};</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;</span> <span class="identifier">strs</span><span class="special">;</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">cstream</span>       <span class="identifier">cnv</span><span class="special">;</span>
+
+<span class="identifier">cnv</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">hex</span><span class="special">)(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">uppercase</span><span class="special">)(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">showbase</span><span class="special">);</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">transform</span><span class="special">(</span><span class="identifier">ints</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">ints</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">back_inserter</span><span class="special">(</span><span class="identifier">strs</span><span class="special">),</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">apply</span><span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">cref</span><span class="special">(</span><span class="identifier">cnv</span><span class="special">)));</span>
+
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">strs</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span> <span class="special">==</span> <span class="number">3</span><span class="special">);</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">strs</span><span class="special">[</span><span class="number">0</span><span class="special">]</span> <span class="special">==</span>  <span class="string">"0XF"</span><span class="special">);</span> <span class="comment">// 15</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">strs</span><span class="special">[</span><span class="number">1</span><span class="special">]</span> <span class="special">==</span> <span class="string">"0X10"</span><span class="special">);</span> <span class="comment">// 16</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">strs</span><span class="special">[</span><span class="number">2</span><span class="special">]</span> <span class="special">==</span> <span class="string">"0X11"</span><span class="special">);</span> <span class="comment">// 17</span>
+</pre>
+<p>
+    </p>
+<h4>
+<a name="boost_convert.algorithms.h0"></a>
+      <span class="phrase"><a name="boost_convert.algorithms.forced__emphasis_typein__emphasis__vs__deduced"></a></span><a class="link" href="algorithms.html#boost_convert.algorithms.forced__emphasis_typein__emphasis__vs__deduced">Forced
+      <span class="emphasis"><em>TypeIn</em></span> vs. Deduced</a>
+    </h4>
+<p>
+      So far it was sufficient to explicitly specify only one type to <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">apply</span><span class="special">&lt;</span><span class="identifier">TypeOut</span><span class="special">&gt;</span></code>
+      -- the target <span class="emphasis"><em>TypeOut</em></span> type. The source <span class="emphasis"><em>TypeIn</em></span>
+      type was provided implicitly through the algorithm and often it all just works
+      (as the examples above demonstrate). However, at times more control is needed
+      regarding the <span class="emphasis"><em>TypeIn</em></span> type and <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">apply</span><span class="special">()</span></code> provides
+      such control via explicit specification of <span class="emphasis"><em>TypeIn</em></span> --
+      <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">apply</span><span class="special">&lt;</span><span class="identifier">TypeOut</span><span class="special">,</span> <span class="identifier">TypeIn</span><span class="special">&gt;</span></code>.
+    </p>
+<p>
+      The following example demonstrates an interesting issue related to the <span class="emphasis"><em><code class="computeroutput"><span class="identifier">change</span></code></em></span> class introduced in <a class="link" href="integration_of_user_types.html" title="Integration of User-Defined Types">Integration of User-Defined
+      Types</a>. The class is essentially a glorified <span class="emphasis"><em><code class="computeroutput"><span class="keyword">enum</span></code></em></span>, a user-friendly convenience
+      wrapper around the actual <span class="emphasis"><em><code class="computeroutput"><span class="keyword">enum</span>
+      <span class="identifier">value_type</span> <span class="special">{</span>
+      <span class="identifier">no</span><span class="special">,</span> <span class="identifier">up</span><span class="special">,</span> <span class="identifier">dn</span>
+      <span class="special">}</span></code></em></span>. In the example an array
+      of <span class="emphasis"><em><code class="computeroutput"><span class="identifier">change</span></code></em></span>
+      values (<code class="computeroutput"><span class="identifier">chgs1</span></code>) is sensibly
+      converted to readable "no", "up" and "dn" strings
+      (<code class="computeroutput"><span class="identifier">strs1</span></code>) when an array of <span class="emphasis"><em><code class="computeroutput"><span class="identifier">change</span><span class="special">::</span><span class="identifier">value_type</span></code></em></span> values (<code class="computeroutput"><span class="identifier">chgs2</span></code>) converts to obscure "0",
+      "1" and "2" (<code class="computeroutput"><span class="identifier">strs2</span></code>).
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">array</span><span class="special">&lt;</span><span class="identifier">change</span><span class="special">,</span> <span class="number">3</span><span class="special">&gt;</span>             <span class="identifier">chgs1</span> <span class="special">=</span> <span class="special">{{</span> <span class="identifier">change</span><span class="special">::</span><span class="identifier">no</span><span class="special">,</span> <span class="identifier">change</span><span class="special">::</span><span class="identifier">up</span><span class="special">,</span> <span class="identifier">change</span><span class="special">::</span><span class="identifier">dn</span> <span class="special">}};</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">array</span><span class="special">&lt;</span><span class="identifier">change</span><span class="special">::</span><span class="identifier">value_type</span><span class="special">,</span> <span class="number">3</span><span class="special">&gt;</span> <span class="identifier">chgs2</span> <span class="special">=</span> <span class="special">{{</span> <span class="identifier">change</span><span class="special">::</span><span class="identifier">no</span><span class="special">,</span> <span class="identifier">change</span><span class="special">::</span><span class="identifier">up</span><span class="special">,</span> <span class="identifier">change</span><span class="special">::</span><span class="identifier">dn</span> <span class="special">}};</span>
+
+<span class="keyword">auto</span> <span class="identifier">strs1</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;();</span>
+<span class="keyword">auto</span> <span class="identifier">strs2</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;();</span>
+<span class="keyword">auto</span> <span class="identifier">strs3</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;();</span>
+<span class="keyword">auto</span>   <span class="identifier">cnv</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">cstream</span><span class="special">();</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">transform</span><span class="special">(</span><span class="identifier">chgs1</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">chgs1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">back_inserter</span><span class="special">(</span><span class="identifier">strs1</span><span class="special">),</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">apply</span><span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">cref</span><span class="special">(</span><span class="identifier">cnv</span><span class="special">)));</span> <span class="comment">// Deduced TypeIn is 'change'</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">transform</span><span class="special">(</span><span class="identifier">chgs2</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">chgs2</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">back_inserter</span><span class="special">(</span><span class="identifier">strs2</span><span class="special">),</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">apply</span><span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">cref</span><span class="special">(</span><span class="identifier">cnv</span><span class="special">)));</span> <span class="comment">// Deduced TypeIn is 'change::value_type'</span>
+
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">strs1</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span> <span class="special">==</span> <span class="number">3</span><span class="special">);</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">strs1</span><span class="special">[</span><span class="number">0</span><span class="special">]</span> <span class="special">==</span> <span class="string">"no"</span><span class="special">);</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">strs1</span><span class="special">[</span><span class="number">1</span><span class="special">]</span> <span class="special">==</span> <span class="string">"up"</span><span class="special">);</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">strs1</span><span class="special">[</span><span class="number">2</span><span class="special">]</span> <span class="special">==</span> <span class="string">"dn"</span><span class="special">);</span>
+
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">strs2</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span> <span class="special">==</span> <span class="number">3</span><span class="special">);</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">strs2</span><span class="special">[</span><span class="number">0</span><span class="special">]</span> <span class="special">==</span> <span class="string">"0"</span><span class="special">);</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">strs2</span><span class="special">[</span><span class="number">1</span><span class="special">]</span> <span class="special">==</span> <span class="string">"1"</span><span class="special">);</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">strs2</span><span class="special">[</span><span class="number">2</span><span class="special">]</span> <span class="special">==</span> <span class="string">"2"</span><span class="special">);</span>
+</pre>
+<p>
+    </p>
+<p>
+      The <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">apply</span><span class="special">&lt;</span><span class="identifier">TypeOut</span><span class="special">,</span> <span class="identifier">TypeIn</span><span class="special">&gt;</span></code> with forced (rather than deduced) <span class="emphasis"><em>TypeIn</em></span>
+      comes to the rescue and converts the array of <span class="emphasis"><em><code class="computeroutput"><span class="identifier">change</span><span class="special">::</span><span class="identifier">value_type</span></code></em></span>
+      values (<code class="computeroutput"><span class="identifier">chgs2</span></code>) to sensible
+      "no", "up" and "dn" (<code class="computeroutput"><span class="identifier">strs3</span></code>):
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">transform</span><span class="special">(</span><span class="identifier">chgs2</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">chgs2</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">back_inserter</span><span class="special">(</span><span class="identifier">strs3</span><span class="special">),</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">apply</span><span class="special">&lt;</span><span class="identifier">string</span><span class="special">,</span> <span class="identifier">change</span><span class="special">&gt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">cref</span><span class="special">(</span><span class="identifier">cnv</span><span class="special">)));</span>
+
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">strs3</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span> <span class="special">==</span> <span class="number">3</span><span class="special">);</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">strs3</span><span class="special">[</span><span class="number">0</span><span class="special">]</span> <span class="special">==</span> <span class="string">"no"</span><span class="special">);</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">strs3</span><span class="special">[</span><span class="number">1</span><span class="special">]</span> <span class="special">==</span> <span class="string">"up"</span><span class="special">);</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">strs3</span><span class="special">[</span><span class="number">2</span><span class="special">]</span> <span class="special">==</span> <span class="string">"dn"</span><span class="special">);</span>
+</pre>
+<p>
+    </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        For demonstration purposes the example above is made as simple as possible
+        and, consequently, the described "issue" could probably be addressed
+        by other means. Still, do not let my inability to come up with a better (complex
+        but short and representative) example get in the way of appreciating the
+        described functionality. I do not expect it to be used often but it is here
+        when you need it.
+      </p></td></tr>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2009-2020 Vladimir Batov<p>
+        Distributed under the Boost Software License, Version 1.0. See copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="integration_of_user_types.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="performance.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

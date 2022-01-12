@@ -1,0 +1,191 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Networking</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Beast">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Beast">
+<link rel="prev" href="examples.html" title="Examples">
+<link rel="next" href="using_io/asio_refresher.html" title="Refresher">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="examples.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="using_io/asio_refresher.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="beast.using_io"></a><a class="link" href="using_io.html" title="Networking">Networking</a>
+</h2></div></div></div>
+<p>
+      This library uses the <a href="http://cplusplus.github.io/networking-ts/draft.pdf" target="_top">Networking
+      Technical Specification</a>, scheduled to become an official part of C++
+      no sooner than the year 2023. Three implementations exist, with cosmetic differences
+      but otherwise using the same function signatures and type declarations: Boost.Asio,
+      stand-alone Asio, and networking-ts-impl. This table shows how a variable of
+      type <code class="computeroutput"><span class="identifier">io_context</span></code> is declared
+      in each implementation by including the appropriate header and using a suitable
+      namespace alias:
+    </p>
+<div class="table">
+<a name="beast.using_io.networking_implementations"></a><p class="title"><b>Table 1.2. Networking Implementations</b></p>
+<div class="table-contents"><table class="table" summary="Networking Implementations">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+              <p>
+                Name
+              </p>
+            </th>
+<th>
+              <p>
+                Namespace and Header Example
+              </p>
+            </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+              <p>
+                <a href="../../../../../libs/asio/index.html" target="_top">Boost.Asio</a>
+              </p>
+            </td>
+<td>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">io_context</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">net</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">;</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">io_context</span> <span class="identifier">ioc</span><span class="special">;</span>
+</pre>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a href="https://think-async.com/Asio/" target="_top">Asio (Standalone)</a>
+              </p>
+            </td>
+<td>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">io_context</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">net</span> <span class="special">=</span> <span class="identifier">asio</span><span class="special">;</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">io_context</span> <span class="identifier">ioc</span><span class="special">;</span>
+</pre>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <a href="https://github.com/chriskohlhoff/networking-ts-impl" target="_top">networking-ts-impl</a>
+              </p>
+            </td>
+<td>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">experimental</span><span class="special">/</span><span class="identifier">io_context</span><span class="special">&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">net</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">experimental</span><span class="special">::</span><span class="identifier">net</span><span class="special">;</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">io_context</span> <span class="identifier">ioc</span><span class="special">;</span>
+</pre>
+            </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+      This document refers to the three implementations above interchangeably and
+      collectively as <span class="bold"><strong>Networking</strong></span> (or just <span class="emphasis"><em>networking</em></span>).
+      The Boost.Asio and Asio flavors of Networking provide additional features not
+      currently proposed for C++, but likely to appear in a future specification,
+      such as:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          <a href="../../../../../doc/html/boost_asio/reference/serial_port.html" target="_top">Serial
+          ports</a>
+        </li>
+<li class="listitem">
+          <a href="../../../../../doc/html/boost_asio/reference/local__stream_protocol.html" target="_top">UNIX
+          domain sockets</a>
+        </li>
+<li class="listitem">
+          <a href="../../../../../doc/html/boost_asio/reference/signal_set.html" target="_top">POSIX
+          signals</a> (e.g. SIGINT, SIGABORT)
+        </li>
+<li class="listitem">
+          <a href="../../../../../doc/html/boost_asio/reference/ssl__stream.html" target="_top">TLS
+          streams</a> (such as OpenSSL)
+        </li>
+</ul></div>
+<p>
+      Boost.Beast depends specifically on the Boost.Asio flavor of Networking, although
+      this may change in the future. While this library offers performant implementations
+      of the HTTP and WebSocket network protocols, it depends on the networking interfaces
+      to perform general tasks such as performing domain name resolution (DNS lookup),
+      establishing outgoing connections, and accepting incoming connections. Callers
+      are responsible for interacting with networking to initialize objects to the
+      correct state where they are usable by this library.
+    </p>
+<p>
+      In this documentation, the example code, and the implementation, the <code class="computeroutput"><span class="identifier">net</span></code> namespace is used to qualify Networking
+      identifiers. For Boost.Beast, <code class="computeroutput"><span class="identifier">net</span></code>
+      will be an alias for the <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span></code> namespace.
+    </p>
+<p>
+      To further ease of use, this library provides an extensive collection of types
+      and algorithms. This section of the documentation explains these types and
+      algorithms, provides examples of usage, and also provides refreshers and tutorials
+      for working with networking.
+    </p>
+<h4>
+<a name="beast.using_io.h0"></a>
+      <span class="phrase"><a name="beast.using_io.abbreviations"></a></span><a class="link" href="using_io.html#beast.using_io.abbreviations">Abbreviations</a>
+    </h4>
+<p>
+      This documentation assumes familiarity with <a href="../../../../../libs/asio/index.html" target="_top">Boost.Asio</a>,
+      which is required to work with Beast. Sample code and identifiers used throughout
+      are written as if the following declarations are in effect:
+    </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">beast</span><span class="special">/</span><span class="identifier">core</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">ssl</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">thread</span><span class="special">&gt;</span>
+</pre>
+<pre class="programlisting"><span class="comment">//</span>
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">;</span>
+<span class="keyword">namespace</span> <span class="identifier">net</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">;</span>
+<span class="keyword">namespace</span> <span class="identifier">ssl</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="identifier">tcp</span> <span class="special">=</span> <span class="identifier">net</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">;</span>
+
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">io_context</span> <span class="identifier">ioc</span><span class="special">;</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">any_io_executor</span> <span class="identifier">work</span> <span class="special">=</span>
+    <span class="identifier">net</span><span class="special">::</span><span class="identifier">require</span><span class="special">(</span><span class="identifier">ioc</span><span class="special">.</span><span class="identifier">get_executor</span><span class="special">(),</span>
+        <span class="identifier">net</span><span class="special">::</span><span class="identifier">execution</span><span class="special">::</span><span class="identifier">outstanding_work</span><span class="special">.</span><span class="identifier">tracked</span><span class="special">);</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">thread</span> <span class="identifier">t</span><span class="special">{[&amp;](){</span> <span class="identifier">ioc</span><span class="special">.</span><span class="identifier">run</span><span class="special">();</span> <span class="special">}};</span>
+
+<span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">;</span>
+<span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span> <span class="identifier">sock</span><span class="special">{</span><span class="identifier">ioc</span><span class="special">};</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="examples.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="using_io/asio_refresher.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

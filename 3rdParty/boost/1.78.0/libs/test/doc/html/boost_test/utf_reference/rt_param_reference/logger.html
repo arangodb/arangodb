@@ -1,0 +1,111 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>logger</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Test">
+<link rel="up" href="../rt_param_reference.html" title="Runtime parameters reference">
+<link rel="prev" href="log_sink.html" title="log_sink">
+<link rel="next" href="output_format.html" title="output_format">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="log_sink.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../rt_param_reference.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="output_format.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_test.utf_reference.rt_param_reference.logger"></a><a class="link" href="logger.html" title="logger"><code class="computeroutput"><span class="identifier">logger</span></code></a>
+</h4></div></div></div>
+<p>
+          The <span class="emphasis"><em>logger</em></span> parameter allows to fully specify (log
+          format, level and sink) one or several loggers in one command. If this
+          parameter is specified, it has precedence over <a class="link" href="log_format.html" title="log_format"><code class="computeroutput"><span class="identifier">log_format</span></code></a>, <a class="link" href="log_level.html" title="log_level"><code class="computeroutput"><span class="identifier">log_level</span></code></a> and <a class="link" href="log_sink.html" title="log_sink"><code class="computeroutput"><span class="identifier">log_sink</span></code></a>.
+        </p>
+<p>
+          The parameter is <span class="emphasis"><em>repeatable</em></span>: it may appear several
+          times on the command line. It is possible to indicate a set of loggers
+          using the separator ':', which is the only way for repeating a logger description
+          through the environment variable.
+        </p>
+<p>
+          The parameter is composed of three fields separated by a coma ',' and indicating
+          respectively the log format, level and sink. The log format is mandatory.
+          The log level and sink are both optional: if omitted, the default for the
+          specified format will be used. The log level and sink accept the same value
+          as their respective command line switch (see <a class="link" href="log_level.html" title="log_level"><code class="computeroutput"><span class="identifier">log_level</span></code></a> and <a class="link" href="log_sink.html" title="log_sink"><code class="computeroutput"><span class="identifier">log_sink</span></code></a> for more information).
+        </p>
+<h5>
+<a name="boost_test.utf_reference.rt_param_reference.logger.h0"></a>
+          <span class="phrase"><a name="boost_test.utf_reference.rt_param_reference.logger.acceptable_values"></a></span><a class="link" href="logger.html#boost_test.utf_reference.rt_param_reference.logger.acceptable_values">Acceptable
+          values</a>
+        </h5>
+<p>
+          Case sensitive <a class="link" href="../rt_param_reference.html#regular_param_value">string</a>:
+        </p>
+<pre class="programlisting"><span class="identifier">logger_set</span>    <span class="special">::=</span> <span class="special">(</span><span class="identifier">logger</span> <span class="char">':'</span><span class="special">)*</span> <span class="identifier">logger</span>
+<span class="identifier">logger</span>        <span class="special">::=</span> <span class="identifier">logger_format</span> <span class="special">(</span><span class="char">','</span> <span class="identifier">log_level</span><span class="special">?</span> <span class="special">(</span><span class="char">','</span> <span class="identifier">log_sink</span><span class="special">?</span> <span class="special">)?</span> <span class="special">)?</span>
+<span class="identifier">logger_format</span> <span class="special">::=</span> <span class="char">'HRF'</span> <span class="special">|</span> <span class="char">'XML'</span> <span class="special">|</span> <span class="char">'JUNIT'</span>
+<span class="identifier">log_level</span>     <span class="special">::=</span> <span class="char">'all'</span> <span class="special">|</span> <span class="char">'success'</span> <span class="special">|</span> <span class="char">'test_suite'</span> <span class="special">|</span> <span class="char">'message'</span> <span class="special">|</span> <span class="char">'warning'</span> <span class="special">|</span> <span class="char">'error'</span> <span class="special">|</span> <span class="char">'cpp_exception'</span> <span class="special">|</span> <span class="char">'system_error'</span> <span class="special">|</span> <span class="char">'fatal_error'</span> <span class="special">|</span> <span class="char">'nothing'</span>
+<span class="identifier">log_sink</span>      <span class="special">::=</span> <span class="char">'stdout'</span> <span class="special">|</span> <span class="char">'stderr'</span> <span class="special">|</span> <span class="identifier">filename</span>
+</pre>
+<p>
+          Examples:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <code class="computeroutput"><span class="special">--</span><span class="identifier">logger</span><span class="special">=</span><span class="identifier">HRF</span><span class="special">,</span><span class="identifier">all</span></code>
+              will set the <code class="computeroutput"><span class="identifier">all</span></code> log
+              level for the <code class="computeroutput"><span class="identifier">HRF</span></code> log
+              format, and will use the default sink associated to <code class="computeroutput"><span class="identifier">HRF</span></code>
+              (<code class="computeroutput"><span class="identifier">stdout</span></code>)
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="special">--</span><span class="identifier">logger</span><span class="special">=</span><span class="identifier">JUNIT</span><span class="special">,,</span><span class="identifier">somefile</span><span class="special">.</span><span class="identifier">xml</span><span class="special">:</span><span class="identifier">HRF</span><span class="special">,</span><span class="identifier">warning</span></code>
+              will use the default log level associated to the <code class="computeroutput"><span class="identifier">JUNIT</span></code>
+              log format, and will use the file <code class="computeroutput"><span class="identifier">somefile</span><span class="special">.</span><span class="identifier">xml</span></code>
+              as the log sink. It will also enable the <code class="computeroutput"><span class="identifier">HRF</span></code>
+              format with log level <code class="computeroutput"><span class="identifier">warning</span></code>.
+              The corresponding sink will be set to the <code class="computeroutput"><span class="identifier">HRF</span></code>
+              default (<code class="computeroutput"><span class="identifier">stdout</span></code>).
+            </li>
+</ul></div>
+<h5>
+<a name="boost_test.utf_reference.rt_param_reference.logger.h1"></a>
+          <span class="phrase"><a name="boost_test.utf_reference.rt_param_reference.logger.command_line_syntax"></a></span><a class="link" href="logger.html#boost_test.utf_reference.rt_param_reference.logger.command_line_syntax">Command
+          line syntax</a>
+        </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+              <code class="computeroutput"><span class="special">--</span><span class="identifier">logger</span><span class="special">=&lt;</span><span class="identifier">logger_set</span><span class="special">&gt;</span></code>
+            </li></ul></div>
+<h5>
+<a name="boost_test.utf_reference.rt_param_reference.logger.h2"></a>
+          <span class="phrase"><a name="boost_test.utf_reference.rt_param_reference.logger.environment_variable"></a></span><a class="link" href="logger.html#boost_test.utf_reference.rt_param_reference.logger.environment_variable">Environment
+          variable</a>
+        </h5>
+<pre class="programlisting"><span class="identifier">BOOST_TEST_LOGGER</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2020 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="log_sink.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../rt_param_reference.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="output_format.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

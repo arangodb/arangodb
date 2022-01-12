@@ -1,0 +1,54 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Worked example: Custom domain - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../experimental/status_result.html"><img src="../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../experimental.html"><img src="../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="../experimental/worked-example/preamble.html"><img src="../images/next.png" alt="Next"></a></div><div id="content">
+
+  <div class="titlepage"><div><div><h1 style="clear: both">Worked example: Custom domain</h1></div></div></div>
+
+
+<p>Here follows a worked example of use of Experimental Outcome. It presents
+the same sample program I sent to the San Diego 2018 WG21 standards meeting
+after I was asked by the committee to demonstrate how P1095 implements P0709
+in a working code example they could study and discuss.</p>
+
+<p>We will walk through this worked example, step by step, explaining how each
+part works in detail. This will help you implement your own code based on
+Experimental Outcome.</p>
+
+<p>You may find it useful to open now in a separate browser tab the reference API
+documentation for proposed <code>&lt;system_error2&gt;</code> at <a href="https://ned14.github.io/status-code/">https://ned14.github.io/status-code/</a>
+(scroll half way down). The references in the comments to P1028 are to
+<a href="http://wg21.link/P1028">P1028 <em>SG14 status_code and standard error object for P0709 Zero-overhead
+deterministic exceptions</em></a>, which is the WG21 proposal
+paper for potential <code>&lt;system_error2&gt;</code>.</p>
+
+<h3 id="goal-of-this-section">Goal of this section</h3>
+
+<p>We are going to define a simple custom code domain which defines that
+the status code&rsquo;s payload will consist of a POSIX error code, and the
+<code>__FILE__</code> and <code>__LINE__</code> where the failure occurred. This custom status
+code will have an implicit conversion to type erased <code>error</code> defined, which dynamically
+allocates memory for the original status code, and outputs an <code>error</code>
+which manages that dynamic allocation, indirecting all queries etc
+to the erased custom status code type such that the <code>error</code> instance
+quacks as if just like the original. This demonstrates that <code>error</code> could
+just as equally convey a <code>std::exception_ptr</code>, for example, or indeed
+manage the lifetime of any pointer.</p>
+
+
+
+        </div><p><small>Last revised: January 26, 2019 at 23:38:56 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../experimental/status_result.html"><img src="../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../experimental.html"><img src="../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="../experimental/worked-example/preamble.html"><img src="../images/next.png" alt="Next"></a></div></body>
+</html>

@@ -1,0 +1,68 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Header &lt;boost/test/data/monomorphic/zip.hpp&gt;</title>
+<link rel="stylesheet" href="../../../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../../../index.html" title="Boost.Test">
+<link rel="up" href="../../../../../boost_test/reference.html" title="Reference">
+<link rel="prev" href="../../../../../boost/unit_test/data/monomorphic/singleton/iterator.html" title="Struct iterator">
+<link rel="next" href="../../../../../boost/unit_test/data/monomorphic/result_of/zip.html" title="Struct template zip">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../../../boost/unit_test/data/monomorphic/singleton/iterator.html"><img src="../../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../../../boost_test/reference.html"><img src="../../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../../index.html"><img src="../../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../../../../boost/unit_test/data/monomorphic/result_of/zip.html"><img src="../../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="header.boost.test.data.monomorphic.zip_hpp"></a>Header &lt;<a href="../../../../../../../../../boost/test/data/monomorphic/zip.hpp" target="_top">boost/test/data/monomorphic/zip.hpp</a>&gt;</h4></div></div></div>
+<p>Defines monomorphic dataset based on zipping of 2 other monomorphic datasets. </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">unit_test</span> <span class="special">{</span>
+    <span class="keyword">namespace</span> <span class="identifier">data</span> <span class="special">{</span>
+      <span class="keyword">namespace</span> <span class="identifier">monomorphic</span> <span class="special">{</span>
+        <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> DataSet1<span class="special">,</span> <span class="keyword">typename</span> DataSet2<span class="special">&gt;</span> 
+          <span class="keyword">struct</span> <a class="link" href="../../../../../boost/unit_test/data/monomorphic/is_dataset_zip_Da_idm43435.html" title="Struct template is_dataset&lt;zip&lt; DataSet1, DataSet2 &gt;&gt;">is_dataset</a><span class="special">&lt;</span><span class="identifier">zip</span><span class="special">&lt;</span> <span class="identifier">DataSet1</span><span class="special">,</span> <span class="identifier">DataSet2</span> <span class="special">&gt;</span><span class="special">&gt;</span><span class="special">;</span>
+
+        <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> DataSet1<span class="special">,</span> <span class="keyword">typename</span> DataSet2<span class="special">&gt;</span> <span class="keyword">class</span> <a class="link" href="../../../../../boost/unit_test/data/monomorphic/zip.html" title="Class template zip">zip</a><span class="special">;</span>
+        <span class="comment">// <span style="color: red">&lt;purpose&gt;Overload operator for zip support. &lt;/purpose&gt;</span></span>
+        <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> DataSet1<span class="special">,</span> <span class="keyword">typename</span> DataSet2<span class="special">&gt;</span> 
+          <span class="identifier">boost</span><span class="special">::</span><span class="identifier">lazy_enable_if_c</span><span class="special">&lt;</span> <a class="link" href="../../../../../boost/unit_test/data/monomorphic/is_dataset.html" title="Struct template is_dataset">is_dataset</a><span class="special">&lt;</span> <span class="identifier">DataSet1</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span> <span class="special">&amp;&amp;</span><a class="link" href="../../../../../boost/unit_test/data/monomorphic/is_dataset.html" title="Struct template is_dataset">is_dataset</a><span class="special">&lt;</span> <span class="identifier">DataSet2</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span><span class="special">,</span> <a class="link" href="../../../../../boost/unit_test/data/monomorphic/result_of/zip.html" title="Struct template zip">result_of::zip</a><span class="special">&lt;</span> <span class="identifier">mpl</span><span class="special">::</span><span class="identifier">identity</span><span class="special">&lt;</span> <span class="identifier">DataSet1</span> <span class="special">&gt;</span><span class="special">,</span> <span class="identifier">mpl</span><span class="special">::</span><span class="identifier">identity</span><span class="special">&lt;</span> <span class="identifier">DataSet2</span> <span class="special">&gt;</span> <span class="special">&gt;&gt;</span><span class="special">::</span><span class="identifier">type</span> 
+          <a name="idm43503-bb"></a><span class="keyword">operator</span><span class="special">^</span><span class="special">(</span><span class="identifier">DataSet1</span> <span class="special">&amp;&amp;</span> ds1<span class="special">,</span> <span class="identifier">DataSet2</span> <span class="special">&amp;&amp;</span> ds2<span class="special">)</span><span class="special">;</span>
+        <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> DataSet1<span class="special">,</span> <span class="keyword">typename</span> DataSet2<span class="special">&gt;</span> 
+          <span class="identifier">boost</span><span class="special">::</span><span class="identifier">lazy_enable_if_c</span><span class="special">&lt;</span> <a class="link" href="../../../../../boost/unit_test/data/monomorphic/is_dataset.html" title="Struct template is_dataset">is_dataset</a><span class="special">&lt;</span> <span class="identifier">DataSet1</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span> <span class="special">&amp;&amp;</span><span class="special">!</span><a class="link" href="../../../../../boost/unit_test/data/monomorphic/is_dataset.html" title="Struct template is_dataset">is_dataset</a><span class="special">&lt;</span> <span class="identifier">DataSet2</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span><span class="special">,</span> <a class="link" href="../../../../../boost/unit_test/data/monomorphic/result_of/zip.html" title="Struct template zip">result_of::zip</a><span class="special">&lt;</span> <span class="identifier">mpl</span><span class="special">::</span><span class="identifier">identity</span><span class="special">&lt;</span> <span class="identifier">DataSet1</span> <span class="special">&gt;</span><span class="special">,</span> <a class="link" href="../../../../../boost/unit_test/data/result_of/make.html" title="Struct template make">data::result_of::make</a><span class="special">&lt;</span> <span class="identifier">DataSet2</span> <span class="special">&gt;</span> <span class="special">&gt;&gt;</span><span class="special">::</span><span class="identifier">type</span> 
+          <a name="idm43515-bb"></a><span class="keyword">operator</span><span class="special">^</span><span class="special">(</span><span class="identifier">DataSet1</span> <span class="special">&amp;&amp;</span> ds1<span class="special">,</span> <span class="identifier">DataSet2</span> <span class="special">&amp;&amp;</span> ds2<span class="special">)</span><span class="special">;</span>
+        <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> DataSet1<span class="special">,</span> <span class="keyword">typename</span> DataSet2<span class="special">&gt;</span> 
+          <span class="identifier">boost</span><span class="special">::</span><span class="identifier">lazy_enable_if_c</span><span class="special">&lt;</span><span class="special">!</span><a class="link" href="../../../../../boost/unit_test/data/monomorphic/is_dataset.html" title="Struct template is_dataset">is_dataset</a><span class="special">&lt;</span> <span class="identifier">DataSet1</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span> <span class="special">&amp;&amp;</span><a class="link" href="../../../../../boost/unit_test/data/monomorphic/is_dataset.html" title="Struct template is_dataset">is_dataset</a><span class="special">&lt;</span> <span class="identifier">DataSet2</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span><span class="special">,</span> <a class="link" href="../../../../../boost/unit_test/data/monomorphic/result_of/zip.html" title="Struct template zip">result_of::zip</a><span class="special">&lt;</span> <a class="link" href="../../../../../boost/unit_test/data/result_of/make.html" title="Struct template make">data::result_of::make</a><span class="special">&lt;</span> <span class="identifier">DataSet1</span> <span class="special">&gt;</span><span class="special">,</span> <span class="identifier">mpl</span><span class="special">::</span><span class="identifier">identity</span><span class="special">&lt;</span> <span class="identifier">DataSet2</span> <span class="special">&gt;</span> <span class="special">&gt;&gt;</span><span class="special">::</span><span class="identifier">type</span> 
+          <a name="idm43528-bb"></a><span class="keyword">operator</span><span class="special">^</span><span class="special">(</span><span class="identifier">DataSet1</span> <span class="special">&amp;&amp;</span> ds1<span class="special">,</span> <span class="identifier">DataSet2</span> <span class="special">&amp;&amp;</span> ds2<span class="special">)</span><span class="special">;</span>
+        <span class="keyword">namespace</span> <span class="identifier">result_of</span> <span class="special">{</span>
+          <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> DS1Gen<span class="special">,</span> <span class="keyword">typename</span> DS2Gen<span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../../../../../boost/unit_test/data/monomorphic/result_of/zip.html" title="Struct template zip">zip</a><span class="special">;</span>
+        <span class="special">}</span>
+      <span class="special">}</span>
+    <span class="special">}</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2020 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../../../boost/unit_test/data/monomorphic/singleton/iterator.html"><img src="../../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../../../boost_test/reference.html"><img src="../../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../../index.html"><img src="../../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../../../../boost/unit_test/data/monomorphic/result_of/zip.html"><img src="../../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

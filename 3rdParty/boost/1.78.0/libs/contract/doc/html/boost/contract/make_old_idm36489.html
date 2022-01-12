@@ -1,0 +1,90 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Function make_old</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Contract 1.0.0">
+<link rel="up" href="../../reference.html#header.boost.contract.old_hpp" title="Header &lt;boost/contract/old.hpp&gt;">
+<link rel="prev" href="null_old.html" title="Function null_old">
+<link rel="next" href="make_old_idm36517.html" title="Function make_old">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="null_old.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../reference.html#header.boost.contract.old_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="make_old_idm36517.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.contract.make_old_idm36489"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Function make_old</span></h2>
+<p>boost::contract::make_old — Make an old value pointer (but not for virtual public functions and public functions overrides). </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../reference.html#header.boost.contract.old_hpp" title="Header &lt;boost/contract/old.hpp&gt;">boost/contract/old.hpp</a>&gt;
+
+</span>
+<a class="link" href="old_pointer.html" title="Class old_pointer">old_pointer</a> <span class="identifier">make_old</span><span class="special">(</span><a class="link" href="old_value.html" title="Class old_value">old_value</a> <span class="keyword">const</span> <span class="special">&amp;</span> old<span class="special">)</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idm42411"></a><h2>Description</h2>
+<p>The related old value pointer will not be null if the specified old value was actually copied. This function is usually only called by code expanded by <code class="computeroutput">BOOST_CONTRACT_OLDOF(old_expr)</code> as in:</p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">contract</span><span class="special">::</span><span class="identifier">make_old</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">contract</span><span class="special">::</span><span class="identifier">copy_old</span><span class="special">(</span><span class="special">)</span> <span class="special">?</span> <span class="identifier">old_expr</span> <span class="special">:</span>
+        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">contract</span><span class="special">::</span><span class="identifier">null_old</span><span class="special">(</span><span class="special">)</span><span class="special">)</span>
+</pre>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p> <a class="link" href="../../boost_contract/extras.html#boost_contract.extras.no_macros__and_no_variadic_macros_" title="No Macros (and No Variadic Macros)"> No Macros</a></p>
+<p>
+</p>
+<p>
+
+
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">old</code></span></p></td>
+<td><p>Old value which is usually implicitly constructed from the user old value expression to be copied (use the ternary operator <code class="computeroutput">?:</code> to completely avoid to evaluate the old value expression when <code class="computeroutput">boost::contract::copy_old()</code> is <code class="computeroutput">false</code>).</p></td>
+</tr></tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>Old value pointer (usually implicitly converted to either  <code class="computeroutput"><a class="link" href="old_ptr.html" title="Class template old_ptr">boost::contract::old_ptr</a></code> or  <code class="computeroutput"><a class="link" href="old_ptr_if_copyable.html" title="Class template old_ptr_if_copyable">boost::contract::old_ptr_if_copyable</a></code> in user code). </p></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2008-2019 Lorenzo Caminiti<p>
+        Distributed under the Boost Software License, Version 1.0 (see accompanying
+        file LICENSE_1_0.txt or a copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="null_old.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../reference.html#header.boost.contract.old_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="make_old_idm36517.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

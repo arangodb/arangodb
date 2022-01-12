@@ -1,0 +1,78 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Background</title>
+<link rel="stylesheet" href="boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Safe Numerics">
+<link rel="up" href="index.html" title="Safe Numerics">
+<link rel="prev" href="safety_critical_embedded_controller.html" title="Safety Critical Embedded Controller">
+<link rel="next" href="concepts.html" title="Type Requirements">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img href="index.html" height="164px" src="pre-boost.jpg" alt="Library Documentation Index"></td>
+<td><h2>Safe Numerics</h2></td>
+</tr></table>
+<div class="spirit-nav">
+<a accesskey="p" href="safety_critical_embedded_controller.html"><img src="images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="images/home.png" alt="Home"></a><a accesskey="n" href="concepts.html"><img src="images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="safe_numerics.notes"></a>Background</h2></div></div></div>
+<p>This library started out as a re-implementation of the facilities
+  provided by <a href="http://safeint.codeplex.com" target="_top">David LeBlanc's SafeInt
+  Library</a>. I found this library to be well done in every way. My main
+  usage was to run unit tests for my embedded systems projects on my PC.
+  Still, from my perspective it had a few issues.</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>It was a lot of code in one header - 6400 lines. Very unwieldy to
+      understand, modify and maintain.</p></li>
+<li class="listitem"><p>I couldn't find separate documentation other than that in the
+      header file.</p></li>
+<li class="listitem"><p>It didn't use <a href="http://www.boost.org" target="_top">Boost</a>
+      conventions for naming.</p></li>
+<li class="listitem"><p>It required porting to different compilers.</p></li>
+<li class="listitem"><p>It had a very long license associated with it.</p></li>
+<li class="listitem"><p>I could find no test suite for the library.</p></li>
+</ul></div>
+<p>Using later versions of C++ and the its standard library, template
+  metaprogramming and <a href="http://www.boost.org" target="_top">Boost
+  libraries</a> I managed to (re)implement similar functionality in under
+  2000 ? lines of code. I promoted this version as a possible submission to
+  the Boost. The feedback I received convinced me that no such library would
+  be considered acceptable to the large majority of C++ programmers. It seems
+  that the desire for maximum performance overrides any requirement that a
+  program be known to be free of bugs. By this time I had a better idea of the
+  opportunities available with the latest version of C++ (C++14) and resolved
+  to address this issue by creating a library which would provide all the
+  facilities of safe numerics at minimal runtime cost. The result is what you
+  see here. The library now consists of 7000 lines of code, approximately 50
+  separate tests and more than 60 pages of documentation and examples.</p>
+<p>Since I wrote the above, I've been contacted by David LeBlanc. He's
+  been updating his package and informs me that the latest
+  version:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>SafeInt does not require porting for different compilers, is
+        fully supported on gcc, clang, and Visual Studio.</p></li>
+<li class="listitem"><p>The license has been changed from MS-PL to MIT license.</p></li>
+<li class="listitem"><p>The library has had a test suite since before it was public, and
+        is now located here:</p></li>
+<li class="listitem"><p>SafeInt also has no external dependencies other than standard
+        library files, and doesn't need anything else installed to
+        work.</p></li>
+</ul></div>
+<p>His current package can now be found at in <a href="https://github.com/dcleblanc/SafeInt" target="_top">github</a>.</p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2012-2018 Robert Ramey<p><a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">Subject to Boost
+      Software License</a></p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="safety_critical_embedded_controller.html"><img src="images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="images/home.png" alt="Home"></a><a accesskey="n" href="concepts.html"><img src="images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Type error_code</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../execution_exception.html#idm49841" title="Description">
+<link rel="prev" href="location.html" title="Struct location">
+<link rel="next" href="../execution_monitor.html" title="Class execution_monitor">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="location.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../execution_exception.html#idm49841"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../execution_monitor.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.execution_exception.error_code"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Type error_code</span></h2>
+<p>boost::execution_exception::error_code — These values are sometimes used as program return codes. The particular values have been chosen to avoid conflicts with commonly used program return codes: values &lt; 100 are often user assigned, values &gt; 255 are sometimes used to report system errors. Gaps in values allow for orderly expansion. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../header/boost/test/execution_monitor_hpp.html" title="Header &lt;boost/test/execution_monitor.hpp&gt;">boost/test/execution_monitor.hpp</a>&gt;
+
+</span>
+<span class="keyword">enum</span> <span class="identifier">error_code</span> <span class="special">{</span> <a class="link" href="error_code.html#boost.execution_exception.error_code.no_error">no_error</a> = = 0, <a class="link" href="error_code.html#boost.execution_exception.error_code.user_error">user_error</a> = = 200, 
+                  <a class="link" href="error_code.html#boost.execution_exception.error_code.cpp_exception_error">cpp_exception_error</a> = = 205, <a class="link" href="error_code.html#boost.execution_exception.error_code.system_error">system_error</a> = = 210, 
+                  <a class="link" href="error_code.html#boost.execution_exception.error_code.timeout_error">timeout_error</a> = = 215, <a class="link" href="error_code.html#boost.execution_exception.error_code.user_fatal_error">user_fatal_error</a> = = 220, 
+                  <a class="link" href="error_code.html#boost.execution_exception.error_code.system_fatal_error">system_fatal_error</a> = = 225 <span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idm50030"></a><h2>Description</h2>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>(1) Only uncaught C++ exceptions are treated as errors. If a function catches a C++ exception, it never reaches the <a class="link" href="../execution_monitor.html" title="Class execution_monitor">execution_monitor</a>.</p></td></tr>
+</table></div>
+<p>
+The implementation decides what is a system_fatal_error and what is just a system_exception. Fatal errors are so likely to have corrupted machine state (like a stack overflow or addressing exception) that it is unreasonable to continue execution.</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>(2) These errors include Unix signals and Windows structured exceptions. They are often initiated by hardware traps. </p></td></tr>
+</table></div>
+<p>
+</p>
+<div class="variablelist"><dl class="variablelist compact">
+<dt><span class="term"><code class="computeroutput">no_error</code><a name="boost.execution_exception.error_code.no_error"></a></span></dt>
+<dd>for completeness only; never returned </dd>
+<dt><span class="term"><code class="computeroutput">user_error</code><a name="boost.execution_exception.error_code.user_error"></a></span></dt>
+<dd>user reported non-fatal error </dd>
+<dt><span class="term"><code class="computeroutput">cpp_exception_error</code><a name="boost.execution_exception.error_code.cpp_exception_error"></a></span></dt>
+<dd>see note (1) above </dd>
+<dt><span class="term"><code class="computeroutput">system_error</code><a name="boost.execution_exception.error_code.system_error"></a></span></dt>
+<dd>see note (2) above </dd>
+<dt><span class="term"><code class="computeroutput">timeout_error</code><a name="boost.execution_exception.error_code.timeout_error"></a></span></dt>
+<dd>only detectable on certain platforms </dd>
+<dt><span class="term"><code class="computeroutput">user_fatal_error</code><a name="boost.execution_exception.error_code.user_fatal_error"></a></span></dt>
+<dd>user reported fatal error </dd>
+<dt><span class="term"><code class="computeroutput">system_fatal_error</code><a name="boost.execution_exception.error_code.system_fatal_error"></a></span></dt>
+<dd>see note (2) above </dd>
+</dl></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2020 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="location.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../execution_exception.html#idm49841"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../execution_monitor.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Class bad_virtual_result_cast</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Contract 1.0.0">
+<link rel="up" href="../../reference.html#header.boost.contract.core.exception_hpp" title="Header &lt;boost/contract/core/exception.hpp&gt;">
+<link rel="prev" href="assertion_failure.html" title="Class assertion_failure">
+<link rel="next" href="exception.html" title="Class exception">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="assertion_failure.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../reference.html#header.boost.contract.core.exception_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="exception.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.contract.bad_virtual_result_cast"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class bad_virtual_result_cast</span></h2>
+<p>boost::contract::bad_virtual_result_cast — Exception thrown when inconsistent return values are passed to overridden virtual public functions. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../reference.html#header.boost.contract.core.exception_hpp" title="Header &lt;boost/contract/core/exception.hpp&gt;">boost/contract/core/exception.hpp</a>&gt;
+
+</span>
+<span class="keyword">class</span> <a class="link" href="bad_virtual_result_cast.html" title="Class bad_virtual_result_cast">bad_virtual_result_cast</a> <span class="special">:</span>
+  <span class="keyword">public</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">bad_cast</span>, <span class="keyword">public</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">contract</span><span class="special">::</span><span class="identifier">exception</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// <a class="link" href="bad_virtual_result_cast.html#boost.contract.bad_virtual_result_castconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <span class="keyword">explicit</span> <a class="link" href="bad_virtual_result_cast.html#idm35240-bb"><span class="identifier">bad_virtual_result_cast</span></a><span class="special">(</span><span class="keyword">char</span> <span class="keyword">const</span> <span class="special">*</span><span class="special">,</span> <span class="keyword">char</span> <span class="keyword">const</span> <span class="special">*</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="bad_virtual_result_cast.html#idm35252-bb"><span class="special">~</span><span class="identifier">bad_virtual_result_cast</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="bad_virtual_result_cast.html#idm35231-bb">public member functions</a></span>
+  <span class="keyword">virtual</span> <span class="keyword">char</span> <span class="keyword">const</span>  <span class="special">*</span> <a class="link" href="bad_virtual_result_cast.html#idm35232-bb"><span class="identifier">what</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idm38648"></a><h2>Description</h2>
+<p>This exception is thrown when programmers pass to this library return value parameters for public function overrides in derived classes that are not consistent with the return type parameter passed for the virtual public function being overridden from the base classes. This allows this library to give more descriptive error messages in such cases of misuse.</p>
+<p>This exception is internally thrown by this library and programmers should not need to throw it from user code.</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p> <a class="link" href="../../boost_contract/tutorial.html#boost_contract.tutorial.public_function_overrides__subcontracting_" title="Public Function Overrides (Subcontracting)">
+        Public Function Overrides</a> </p>
+<p>
+</p>
+<p>
+</p>
+<div class="refsect2">
+<a name="idm38657"></a><h3>
+<a name="boost.contract.bad_virtual_result_castconstruct-copy-destruct"></a><code class="computeroutput">bad_virtual_result_cast</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idm35240-bb"></a><span class="identifier">bad_virtual_result_cast</span><span class="special">(</span><span class="keyword">char</span> <span class="keyword">const</span> <span class="special">*</span> from_type_name<span class="special">,</span> 
+                                 <span class="keyword">char</span> <span class="keyword">const</span> <span class="special">*</span> to_type_name<span class="special">)</span><span class="special">;</span></pre>Construct this object with the name of the from- and to- result types. <p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">from_type_name</code></span></p></td>
+<td><p>Name of the from-type (source of the cast). </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">to_type_name</code></span></p></td>
+<td><p>Name of the to-type (destination of the cast). </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idm35252-bb"></a><span class="special">~</span><span class="identifier">bad_virtual_result_cast</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Destruct this object. <p><span class="bold"><strong>Throws:</strong></span> This is declared <code class="computeroutput">noexcept</code> (or <code class="computeroutput">throw()</code> before C++11). </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="idm38707"></a><h3>
+<a name="idm35231-bb"></a><code class="computeroutput">bad_virtual_result_cast</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">char</span> <span class="keyword">const</span>  <span class="special">*</span> <a name="idm35232-bb"></a><span class="identifier">what</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Description for this error (containing both from- and to- type names). <p><span class="bold"><strong>Throws:</strong></span> This is declared <code class="computeroutput">noexcept</code> (or <code class="computeroutput">throw()</code> before C++11). </p>
+</li></ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2008-2019 Lorenzo Caminiti<p>
+        Distributed under the Boost Software License, Version 1.0 (see accompanying
+        file LICENSE_1_0.txt or a copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="assertion_failure.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../reference.html#header.boost.contract.core.exception_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="exception.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

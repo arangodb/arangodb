@@ -1,0 +1,77 @@
+[/
+  Copyright 2021 Peter Dimov
+  Distributed under the Boost Software License, Version 1.0.
+  https://boost.org/LICENSE_1_0.txt
+]
+
+[section:type_name type_name]
+
+[simplesect Authors]
+
+* Peter Dimov
+
+[endsimplesect]
+
+[section Header <boost/core/type_name.hpp>]
+
+The header `<boost/core/type_name.hpp>` defines the function
+template `boost::core::type_name<T>()` that returns a string
+representation of the name of `T`, suitable for logging or
+diagnostic display purposes.
+
+The result is similar to `boost::core::demangle( typeid(T).name() )`,
+but it's made more regular by eliminating some of the platform-specific
+differences and extra template parameters of the standard library
+container types.
+
+For example, `type_name< std::map<std::string, int> >()` returns
+`"std::map<std::string, int>"` and not
+
+```
+  std::map<std::__cxx11::basic_string<char, std::char_traits<char>,
+    std::allocator<char> >, int, std::less<std::__cxx11::basic_string<char,
+    std::char_traits<char>, std::allocator<char> > >, std::allocator<
+    std::pair<std::__cxx11::basic_string<char, std::char_traits<char>,
+    std::allocator<char> > const, int> > >
+```
+
+or
+
+```
+  class std::map<class std::basic_string<char,struct std::char_traits<char>,
+    class std::allocator<char> >,int,struct std::less<class std::basic_string<
+    char,struct std::char_traits<char>,class std::allocator<char> > >,class
+    std::allocator<struct std::pair<class std::basic_string<char,struct
+    std::char_traits<char>,class std::allocator<char> > const ,int> > >
+```
+
+The return values aren't guaranteed to be stable across Boost releases.
+
+Compilation with `-fno-rtti` is supported, but the returned type names aren't
+guaranteed to be particularly useful or unique.
+
+[section Synopsis]
+
+``
+namespace boost
+{
+namespace core
+{
+
+template<class T> std::string type_name();
+
+} // namespace core
+} // namespace boost
+``
+
+[endsect]
+
+[section template<class T> std::string type_name();]
+
+* *Returns:* A string representation of the name of `T`.
+
+[endsect]
+
+[endsect]
+
+[endsect]

@@ -1,0 +1,104 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Dereferenceable</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Python Reference Manual">
+<link rel="up" href="../concepts.html" title="Chapter 1. Concepts">
+<link rel="prev" href="../concepts.html" title="Chapter 1. Concepts">
+<link rel="next" href="extractor.html" title="Extractor">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../concepts.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../concepts.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="extractor.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="concepts.dereferenceable"></a><a class="link" href="dereferenceable.html" title="Dereferenceable">Dereferenceable</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="dereferenceable.html#concepts.dereferenceable.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="dereferenceable.html#concepts.dereferenceable.concept_requirements">Concept
+        Requirements</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="concepts.dereferenceable.introduction"></a><a class="link" href="dereferenceable.html#concepts.dereferenceable.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+          Instances of a <code class="computeroutput"><span class="identifier">Dereferenceable</span></code>
+          type can be used like a pointer to access an lvalue.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="concepts.dereferenceable.concept_requirements"></a><a class="link" href="dereferenceable.html#concepts.dereferenceable.concept_requirements" title="Concept Requirements">Concept
+        Requirements</a>
+</h3></div></div></div>
+<p>
+          In the table below, <code class="computeroutput"><span class="identifier">T</span></code> is
+          a model of Dereferenceable, and <code class="computeroutput"><span class="identifier">x</span></code>
+          denotes an object of type <code class="computeroutput"><span class="identifier">T</span></code>.
+          In addition, all pointers are <code class="computeroutput"><span class="identifier">Dereferenceable</span></code>.
+        </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Expression
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Result
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Operational Semantics
+                  </p>
+                </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">get_pointer</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    convertible to <code class="computeroutput"><span class="identifier">pointee</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">*</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="special">&amp;*</span><span class="identifier">x</span></code>,
+                    or a null pointer
+                  </p>
+                </td>
+</tr></tbody>
+</table></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2002-2005, 2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../concepts.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../concepts.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="extractor.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

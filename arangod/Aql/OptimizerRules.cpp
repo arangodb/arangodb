@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1568,15 +1568,30 @@ void arangodb::aql::removeCollectVariablesRule(
       }  // end - if doOptimize
     }    // end - if collectNode has outVariable
 
+    size_t numGroupVariables = collectNode->groupVariables().size();
+    size_t numAggregateVariables = collectNode->aggregateVariables().size();
+
     collectNode->clearAggregates(
-        [&varsUsedLater, &modified](AggregateVarInfo const& aggregate) -> bool {
+        [&varsUsedLater, &numGroupVariables, &numAggregateVariables,
+         &modified](AggregateVarInfo const& aggregate) -> bool {
+          // it is ok to remove unused aggregations if we have at least one
+          // aggregate variable remaining, or if we have a group variable left.
+          // it is not ok to have 0 aggregate variables and 0 group variables
+          // left, because the different COLLECT executors require some
+          // variables to be present.
           if (varsUsedLater.find(aggregate.outVar) == varsUsedLater.end()) {
             // result of aggregate function not used later
-            modified = true;
-            return true;
+            if (numGroupVariables > 0 || numAggregateVariables > 1) {
+              --numAggregateVariables;
+              modified = true;
+              return true;
+            }
           }
           return false;
         });
+
+    TRI_ASSERT(!collectNode->groupVariables().empty() ||
+               !collectNode->aggregateVariables().empty());
 
   }  // for node in nodes
   opt->addPlan(std::move(plan), rule, modified);

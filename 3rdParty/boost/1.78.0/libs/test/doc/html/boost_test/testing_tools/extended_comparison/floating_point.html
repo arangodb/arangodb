@@ -1,0 +1,590 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Floating point comparison</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Test">
+<link rel="up" href="../extended_comparison.html" title="Extended comparisons support">
+<link rel="prev" href="../extended_comparison.html" title="Extended comparisons support">
+<link rel="next" href="floating_point/customizing_for_tolerance.html" title="Enabling tolerance for user-defined types">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../extended_comparison.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../extended_comparison.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="floating_point/customizing_for_tolerance.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_test.testing_tools.extended_comparison.floating_point"></a><a class="link" href="floating_point.html" title="Floating point comparison">Floating
+        point comparison</a>
+</h4></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="floating_point/customizing_for_tolerance.html">Enabling
+          tolerance for user-defined types</a></span></dt>
+<dt><span class="section"><a href="floating_point/floating_points_comparison_impl.html">Tolerance-based
+          comparisons</a></span></dt>
+<dt><span class="section"><a href="floating_point/floating_points_comparison_theory.html">Theory
+          behind floating point comparisons</a></span></dt>
+</dl></div>
+<p>
+          Unless specified otherwise, when a value of floating-point type is compared
+          inside a <a class="link" href="../../utf_reference/testing_tool_ref/assertion_boost_test_universal_macro.html" title="BOOST_TEST"><code class="computeroutput"><span class="identifier">BOOST_TEST</span></code></a> assertion, operators
+          <code class="computeroutput"><span class="special">==</span></code>, <code class="computeroutput"><span class="special">!=</span></code>
+          , <code class="computeroutput"><span class="special">&lt;</span></code> etc. defined for this
+          type are used. However for floating point type, in most cases what is needed
+          is not an <span class="emphasis"><em>exact</em></span> equality (or inequality), but a verification
+          that two numbers are <span class="emphasis"><em>sufficiently close</em></span> or <span class="emphasis"><em>sufficiently
+          different</em></span>. For that purpose, a <span class="bold"><strong>tolerance</strong></span>
+          parameter that will instruct the framework what is considered <span class="emphasis"><em>sufficiently
+          close</em></span> needs to provided.
+        </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            How the tolerance parameter is processed in detail is described <a class="link" href="floating_point/floating_points_comparison_impl.html" title="Tolerance-based comparisons">here</a>.
+          </p></td></tr>
+</table></div>
+<h5>
+<a name="boost_test.testing_tools.extended_comparison.floating_point.h0"></a>
+          <span class="phrase"><a name="boost_test.testing_tools.extended_comparison.floating_point.test_unit_tolerance"></a></span><a class="link" href="floating_point.html#boost_test.testing_tools.extended_comparison.floating_point.test_unit_tolerance">Test-unit
+          tolerance</a>
+        </h5>
+<p>
+          It is possible to define a per-<a class="link" href="../../section_glossary.html#ref_test_unit">test unit</a>
+          tolerance for a given floating point type by using <a class="link" href="../../tests_organization/decorators.html" title="Decorators">decorator</a>
+          <a class="link" href="../../utf_reference/testing_tool_ref/decorator_tolerance.html" title="tolerance (decorator)"><code class="computeroutput"><span class="identifier">tolerance</span></code></a>:
+        </p>
+<h6>
+<a name="boost_test.testing_tools.extended_comparison.floating_point.h1"></a>
+          <span class="phrase"><a name="boost_test.testing_tools.extended_comparison.floating_point.example_descr"></a></span><a class="link" href="floating_point.html#boost_test.testing_tools.extended_comparison.floating_point.example_descr">Example:
+          specifying tolerance per test case</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Code
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">tolerance_01</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">utf</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">;</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test1</span><span class="special">,</span> <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">tolerance</span><span class="special">(</span><span class="number">0.00001</span><span class="special">))</span>
+<span class="special">{</span>
+  <span class="keyword">double</span> <span class="identifier">x</span> <span class="special">=</span> <span class="number">10.0000000</span><span class="special">;</span>
+  <span class="keyword">double</span> <span class="identifier">y</span> <span class="special">=</span> <span class="number">10.0000001</span><span class="special">;</span>
+  <span class="keyword">double</span> <span class="identifier">z</span> <span class="special">=</span> <span class="number">10.001</span><span class="special">;</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">x</span> <span class="special">==</span> <span class="identifier">y</span><span class="special">);</span> <span class="comment">// irrelevant difference</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">x</span> <span class="special">==</span> <span class="identifier">z</span><span class="special">);</span> <span class="comment">// relevant difference</span>
+<span class="special">}</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Output
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">tolerance_01</span>
+<span class="identifier">Running</span> <span class="number">1</span> <span class="identifier">test</span> <span class="keyword">case</span><span class="special">...</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">11</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">x</span> <span class="special">==</span> <span class="identifier">z</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">10</span> <span class="special">!=</span> <span class="number">10.000999999999999</span><span class="special">].</span> <span class="identifier">Relative</span> <span class="identifier">difference</span> <span class="identifier">exceeds</span> <span class="identifier">tolerance</span> <span class="special">[</span><span class="number">0.0001</span> <span class="special">&gt;</span> <span class="number">1e-005</span><span class="special">]</span>
+
+<span class="special">***</span> <span class="number">1</span> <span class="identifier">failure</span> <span class="identifier">is</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">the</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"tolerance_01"</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<h5>
+<a name="boost_test.testing_tools.extended_comparison.floating_point.h2"></a>
+          <span class="phrase"><a name="boost_test.testing_tools.extended_comparison.floating_point.assertion_tolerance"></a></span><a class="link" href="floating_point.html#boost_test.testing_tools.extended_comparison.floating_point.assertion_tolerance">Assertion
+          tolerance</a>
+        </h5>
+<p>
+          It is possible to specify floating point comparison tolerance per single
+          assertion, by providing the <span class="emphasis"><em>manipulator</em></span> <code class="computeroutput"><a class="link" href="../../../boost/test_tools/tolerance.html" title="Function tolerance">boost::test_tools::tolerance</a></code>
+          as the second argument to <a class="link" href="../../utf_reference/testing_tool_ref/assertion_boost_test_universal_macro.html" title="BOOST_TEST"><code class="computeroutput"><span class="identifier">BOOST_TEST</span></code></a>:
+        </p>
+<h6>
+<a name="boost_test.testing_tools.extended_comparison.floating_point.h3"></a>
+          <span class="phrase"><a name="boost_test.testing_tools.extended_comparison.floating_point.example_descr0"></a></span><a class="link" href="floating_point.html#boost_test.testing_tools.extended_comparison.floating_point.example_descr0">Example:
+          specifying tolerance per assertion</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Code
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">tolerance_02</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">utf</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">;</span>
+<span class="keyword">namespace</span> <span class="identifier">tt</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">test_tools</span><span class="special">;</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test1</span><span class="special">,</span> <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">tolerance</span><span class="special">(</span><span class="number">0.00001</span><span class="special">))</span>
+<span class="special">{</span>
+  <span class="keyword">double</span> <span class="identifier">x</span> <span class="special">=</span> <span class="number">10.0000000</span><span class="special">;</span>
+  <span class="keyword">double</span> <span class="identifier">y</span> <span class="special">=</span> <span class="number">10.0000001</span><span class="special">;</span>
+  <span class="keyword">double</span> <span class="identifier">z</span> <span class="special">=</span> <span class="number">10.001</span><span class="special">;</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">x</span> <span class="special">==</span> <span class="identifier">y</span><span class="special">);</span> <span class="comment">// irrelevant by default</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">x</span> <span class="special">==</span> <span class="identifier">y</span><span class="special">,</span> <span class="identifier">tt</span><span class="special">::</span><span class="identifier">tolerance</span><span class="special">(</span><span class="number">0.0</span><span class="special">));</span>
+
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">x</span> <span class="special">==</span> <span class="identifier">z</span><span class="special">);</span> <span class="comment">// relevant by default</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">x</span> <span class="special">==</span> <span class="identifier">z</span><span class="special">,</span> <span class="identifier">tt</span><span class="special">::</span><span class="identifier">tolerance</span><span class="special">(</span><span class="number">0.001</span><span class="special">));</span>
+<span class="special">}</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Output
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">tolerance_02</span>
+<span class="identifier">Running</span> <span class="number">1</span> <span class="identifier">test</span> <span class="keyword">case</span><span class="special">...</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">12</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">x</span> <span class="special">==</span> <span class="identifier">y</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">10</span> <span class="special">!=</span> <span class="number">10.000000099999999</span><span class="special">]</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">14</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">x</span> <span class="special">==</span> <span class="identifier">z</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">10</span> <span class="special">!=</span> <span class="number">10.000999999999999</span><span class="special">].</span> <span class="identifier">Relative</span> <span class="identifier">difference</span> <span class="identifier">exceeds</span> <span class="identifier">tolerance</span> <span class="special">[</span><span class="number">0.0001</span> <span class="special">&gt;</span> <span class="number">1e-005</span><span class="special">]</span>
+
+<span class="special">***</span> <span class="number">2</span> <span class="identifier">failures</span> <span class="identifier">are</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">the</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"tolerance_02"</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="caution"><table border="0" summary="Caution">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../../../../../../../doc/src/images/caution.png"></td>
+<th align="left">Caution</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            Manipulators requires a compiler that supports variadic macros, <code class="computeroutput"><span class="keyword">auto</span></code> for type deduction and <code class="computeroutput"><span class="keyword">decltype</span></code>. These are C++11 features, but
+            are also available on some pre-C++11 compilers. On compilers that are
+            lacking these features, resort to defining tolerance per test unit or
+            to compatibility test assertions: <a class="link" href="../../utf_reference/testing_tool_ref/assertion_boost_level_close.html" title="BOOST_&lt;level&gt;_CLOSE"><code class="computeroutput"><span class="identifier">BOOST_CHECK_CLOSE</span></code></a> and <a class="link" href="../../utf_reference/testing_tool_ref/assertion_boost_level_small.html" title="BOOST_&lt;level&gt;_SMALL"><code class="computeroutput"><span class="identifier">BOOST_CHECK_SMALL</span></code></a>.
+          </p></td></tr>
+</table></div>
+<h5>
+<a name="boost_test.testing_tools.extended_comparison.floating_point.h4"></a>
+          <span class="phrase"><a name="boost_test.testing_tools.extended_comparison.floating_point.tolerance_expressed_in_percentag"></a></span><a class="link" href="floating_point.html#boost_test.testing_tools.extended_comparison.floating_point.tolerance_expressed_in_percentag">Tolerance
+          expressed in percentage</a>
+        </h5>
+<p>
+          It is possible to specify the tolerance as percentage. At test unit level,
+          the decorator syntax is:
+        </p>
+<pre class="programlisting"><span class="special">*</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">tolerance</span><span class="special">(</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">test_tools</span><span class="special">::</span><span class="identifier">fpc</span><span class="special">::</span><span class="identifier">percent_tolerance</span><span class="special">(</span><span class="number">2.0</span><span class="special">)</span> <span class="special">)</span>
+<span class="comment">// equivalent to: boost::unit_test::tolerance( 2.0 / 100 )</span>
+</pre>
+<p>
+          At assertion level, the manipulator syntax is:
+        </p>
+<pre class="programlisting"><span class="number">2.0</span><span class="special">%</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">test_tools</span><span class="special">::</span><span class="identifier">tolerance</span><span class="special">()</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">test_tools</span><span class="special">::</span><span class="identifier">tolerance</span><span class="special">(</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">test_tools</span><span class="special">::</span><span class="identifier">fpc</span><span class="special">::</span><span class="identifier">percent_tolerance</span><span class="special">(</span><span class="number">2.0</span><span class="special">)</span> <span class="special">)</span>
+<span class="comment">// both equivalent to: boost::test_tools::tolerance( 2.0 / 100 )</span>
+</pre>
+<h5>
+<a name="boost_test.testing_tools.extended_comparison.floating_point.h5"></a>
+          <span class="phrase"><a name="boost_test.testing_tools.extended_comparison.floating_point.type_of_the_tolerance"></a></span><a class="link" href="floating_point.html#boost_test.testing_tools.extended_comparison.floating_point.type_of_the_tolerance">Type
+          of the tolerance</a>
+        </h5>
+<p>
+          Manipulator <code class="computeroutput"><span class="identifier">tolerance</span></code> specifies
+          the tolerance only for a single floating-point type. This type is deduced
+          from form the numeric value passed along the manipulator:
+        </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    expression
+                  </p>
+                </th>
+<th>
+                  <p>
+                    semantics
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">tolerance</span><span class="special">(</span><span class="number">0.5</span><span class="special">)</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    tolerance for type <code class="computeroutput"><span class="keyword">double</span></code>
+                    changed to 0.5
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">tolerance</span><span class="special">(</span><span class="keyword">float</span><span class="special">(</span><span class="number">0.5</span><span class="special">))</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    tolerance for type <code class="computeroutput"><span class="keyword">float</span></code>
+                    changed to 0.5
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">tolerance</span><span class="special">(</span><span class="number">0.5f</span><span class="special">)</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    tolerance for type <code class="computeroutput"><span class="keyword">float</span></code>
+                    changed to 0.5
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">tolerance</span><span class="special">(</span><span class="number">0.5L</span><span class="special">)</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    tolerance for type <code class="computeroutput"><span class="keyword">long</span>
+                    <span class="keyword">double</span></code> changed to 0.5
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">tolerance</span><span class="special">(</span><span class="identifier">Decimal</span><span class="special">(</span><span class="string">"0.5"</span><span class="special">))</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    tolerance for a user-defined type <code class="computeroutput"><span class="identifier">Decimal</span></code>
+                    changed to the supplied value
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="number">5.0</span><span class="special">%</span>
+                    <span class="identifier">tolerance</span><span class="special">()</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    tolerance for type <code class="computeroutput"><span class="keyword">double</span></code>
+                    changed to 0.05 (<code class="computeroutput"><span class="number">5.0</span> <span class="special">/</span> <span class="number">100</span></code>)
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="number">5.0f</span><span class="special">%</span>
+                    <span class="identifier">tolerance</span><span class="special">()</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    tolerance for type <code class="computeroutput"><span class="keyword">float</span></code>
+                    changed to 0.05
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">Decimal</span><span class="special">(</span><span class="string">"5.0"</span><span class="special">)%</span>
+                    <span class="identifier">tolerance</span><span class="special">()</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    tolerance for type <code class="computeroutput"><span class="identifier">Decimal</span></code>
+                    changed to value <code class="computeroutput"><span class="special">(</span><span class="identifier">Decimal</span><span class="special">(</span><span class="string">"5.0"</span><span class="special">)</span>
+                    <span class="special">/</span> <span class="number">100</span><span class="special">)</span></code>
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+          This is also the case for decorator <code class="computeroutput"><span class="identifier">tolerance</span></code>.
+          In the case of the decorator however, it is possible to apply multiple
+          decorators <code class="computeroutput"><span class="identifier">tolerance</span></code> defining
+          the tolerance for different types.
+        </p>
+<p>
+          When values of two different floating point types <code class="computeroutput"><span class="identifier">T</span></code>
+          and <code class="computeroutput"><span class="identifier">U</span></code> are compared, <a class="link" href="../../utf_reference/testing_tool_ref/assertion_boost_test_universal_macro.html" title="BOOST_TEST"><code class="computeroutput"><span class="identifier">BOOST_TEST</span></code></a> uses the tolerance
+          specified for type <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">common_type</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">U</span><span class="special">&gt;::</span><span class="identifier">type</span></code>. For instance, when setting a tolerance
+          for mixed <code class="computeroutput"><span class="keyword">float</span></code>-to-<code class="computeroutput"><span class="keyword">double</span></code> comparison, the tolerance for type
+          <code class="computeroutput"><span class="keyword">double</span></code> needs to be set.
+        </p>
+<p>
+          Given two floating point types <code class="computeroutput"><span class="identifier">T</span></code>
+          and <code class="computeroutput"><span class="identifier">U</span></code> and their common
+          type <code class="computeroutput"><span class="identifier">C</span></code>, the tolerance specified
+          for type <code class="computeroutput"><span class="identifier">C</span></code> is applied only
+          when types <code class="computeroutput"><span class="identifier">T</span></code> and <code class="computeroutput"><span class="identifier">U</span></code> appear as sub-expressions of the full
+          expression inside assertion <a class="link" href="../../utf_reference/testing_tool_ref/assertion_boost_test_universal_macro.html" title="BOOST_TEST"><code class="computeroutput"><span class="identifier">BOOST_TEST</span></code></a>. It is not applied
+          when <code class="computeroutput"><span class="identifier">T</span></code> and <code class="computeroutput"><span class="identifier">U</span></code> are compared inside a function invoked
+          during the evaluation of the expression:
+        </p>
+<h6>
+<a name="boost_test.testing_tools.extended_comparison.floating_point.h6"></a>
+          <span class="phrase"><a name="boost_test.testing_tools.extended_comparison.floating_point.example_descr1"></a></span><a class="link" href="floating_point.html#boost_test.testing_tools.extended_comparison.floating_point.example_descr1">Example:
+          tolerance applied to different types</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Code
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">tolerance_05</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">optional</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">optional</span><span class="special">/</span><span class="identifier">optional_io</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test</span><span class="special">,</span> <span class="special">*</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">tolerance</span><span class="special">(</span><span class="number">0.02</span><span class="special">))</span>
+<span class="special">{</span>
+  <span class="keyword">double</span>                  <span class="identifier">d1</span> <span class="special">=</span> <span class="number">1.00</span><span class="special">,</span> <span class="identifier">d2</span> <span class="special">=</span> <span class="number">0.99</span><span class="special">;</span>
+  <span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;</span> <span class="identifier">o1</span> <span class="special">=</span> <span class="number">1.00</span><span class="special">,</span> <span class="identifier">o2</span> <span class="special">=</span> <span class="number">0.99</span><span class="special">;</span>
+
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">d1</span> <span class="special">==</span> <span class="identifier">d2</span><span class="special">);</span>   <span class="comment">// with tolerance    (double vs. double)</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">o1</span> <span class="special">==</span> <span class="identifier">o2</span><span class="special">);</span>   <span class="comment">// without tolerance (optional vs. optional)</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">o1</span> <span class="special">==</span> <span class="identifier">d2</span><span class="special">);</span>   <span class="comment">// without tolerance (optional vs. double)</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(*</span><span class="identifier">o1</span> <span class="special">==</span> <span class="special">*</span><span class="identifier">o2</span><span class="special">);</span> <span class="comment">// with tolerance    (double vs. double)</span>
+<span class="special">}</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Output
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">tolerance_05</span>
+<span class="identifier">Running</span> <span class="number">1</span> <span class="identifier">test</span> <span class="keyword">case</span><span class="special">...</span>
+<span class="special">../</span><span class="identifier">doc</span><span class="special">/</span><span class="identifier">examples</span><span class="special">/</span><span class="identifier">tolerance_05</span><span class="special">.</span><span class="identifier">run</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">20</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">o1</span> <span class="special">==</span> <span class="identifier">o2</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span> <span class="number">1</span> <span class="special">!=</span>  <span class="number">0.99</span><span class="special">]</span>
+<span class="special">../</span><span class="identifier">doc</span><span class="special">/</span><span class="identifier">examples</span><span class="special">/</span><span class="identifier">tolerance_05</span><span class="special">.</span><span class="identifier">run</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">21</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">o1</span> <span class="special">==</span> <span class="identifier">d2</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span> <span class="number">1</span> <span class="special">!=</span> <span class="number">0.98999999999999999</span><span class="special">]</span>
+
+<span class="special">***</span> <span class="number">2</span> <span class="identifier">failures</span> <span class="identifier">are</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">the</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"tolerance_05"</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<h5>
+<a name="boost_test.testing_tools.extended_comparison.floating_point.h7"></a>
+          <span class="phrase"><a name="boost_test.testing_tools.extended_comparison.floating_point.type_promotion_of_the_operands"></a></span><a class="link" href="floating_point.html#boost_test.testing_tools.extended_comparison.floating_point.type_promotion_of_the_operands">Type
+          promotion of the operands</a>
+        </h5>
+<p>
+          Given two types <code class="computeroutput"><span class="identifier">T</span></code> and
+          <code class="computeroutput"><span class="identifier">U</span></code> being compared inside
+          an assertion <a class="link" href="../../utf_reference/testing_tool_ref/assertion_boost_test_universal_macro.html" title="BOOST_TEST"><code class="computeroutput"><span class="identifier">BOOST_TEST</span></code></a>, tolerance based comparison
+          is invoked
+        </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+              whenever the types <code class="computeroutput"><span class="identifier">T</span></code>
+              and <code class="computeroutput"><span class="identifier">U</span></code> are both <a class="link" href="floating_point/customizing_for_tolerance.html" title="Enabling tolerance for user-defined types">tolerance
+              based</a> types
+            </li>
+<li class="listitem">
+              whenever <code class="computeroutput"><span class="identifier">T</span></code> is <span class="emphasis"><em>tolerance</em></span>
+              based and <code class="computeroutput"><span class="identifier">U</span></code> is <span class="emphasis"><em>arithmetic</em></span>,
+              in the sense that <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">U</span><span class="special">&gt;::</span><span class="identifier">value</span></code>
+              evaluates to <code class="computeroutput"><span class="keyword">true</span></code> (or
+              the other way round)
+            </li>
+</ol></div>
+<p>
+          In all cases, the type of the tolerance is deduced as <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">common_type</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">U</span><span class="special">&gt;::</span><span class="identifier">type</span></code>, and both type may be cast to this
+          tolerance type.
+        </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top">
+<p>
+            This behavior has been introduced in Boost 1.70 / <span class="emphasis"><em>Unit Test
+            Framework</em></span> <a class="link" href="../../change_log.html#ref_CHANGE_LOG_3_10">3.10</a>.
+            Previously tolerance based comparison was used only when the type of
+            the two operands were tolerance based types, which was silently ignoring
+            the tolerance for expressions such as
+          </p>
+<pre class="programlisting"><span class="keyword">double</span> <span class="identifier">x</span> <span class="special">=</span> <span class="number">1E-9</span><span class="special">;</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">x</span> <span class="special">==</span> <span class="number">0</span><span class="special">);</span> <span class="comment">// U is int</span>
+</pre>
+</td></tr>
+</table></div>
+<h6>
+<a name="boost_test.testing_tools.extended_comparison.floating_point.h8"></a>
+          <span class="phrase"><a name="boost_test.testing_tools.extended_comparison.floating_point.example_descr2"></a></span><a class="link" href="floating_point.html#boost_test.testing_tools.extended_comparison.floating_point.example_descr2">Example:
+          operands type promotion</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Code
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">tolerance_06</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">utf</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">;</span>
+<span class="keyword">namespace</span> <span class="identifier">tt</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">test_tools</span><span class="special">;</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test1</span><span class="special">,</span> <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">tolerance</span><span class="special">(</span><span class="number">0.1415</span> <span class="special">/</span> <span class="number">3</span><span class="special">))</span> <span class="comment">// == 0.047166667</span>
+<span class="special">{</span>
+  <span class="keyword">double</span> <span class="identifier">x</span> <span class="special">=</span> <span class="number">3.141592404915836</span><span class="special">;</span>
+  <span class="comment">// x is 'double' which is tolerance based, 3 is 'int' which is arithmetic:</span>
+  <span class="comment">// tolerance based comparison will be used.</span>
+  <span class="comment">// Type of tolerance for this comparison will be boost::common_type&lt;double, int&gt;::type == double</span>
+  <span class="comment">// Value for this tolerance type is set by the decorator.</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">x</span> <span class="special">==</span> <span class="number">3</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Output
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">tolerance_06</span>
+<span class="identifier">Running</span> <span class="number">1</span> <span class="identifier">test</span> <span class="keyword">case</span><span class="special">...</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">21</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test1"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">x</span> <span class="special">==</span> <span class="number">3</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">3.1415924049158361</span> <span class="special">!=</span> <span class="number">3</span><span class="special">].</span> <span class="identifier">Relative</span> <span class="identifier">difference</span> <span class="identifier">exceeds</span> <span class="identifier">tolerance</span> <span class="special">[</span><span class="number">0.0471975</span> <span class="special">&gt;</span> <span class="number">0.0471667</span><span class="special">]</span>
+
+<span class="special">***</span> <span class="number">1</span> <span class="identifier">failure</span> <span class="identifier">is</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">the</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"tolerance_06"</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<h5>
+<a name="boost_test.testing_tools.extended_comparison.floating_point.h9"></a>
+          <span class="phrase"><a name="boost_test.testing_tools.extended_comparison.floating_point.other_relational_operators"></a></span><a class="link" href="floating_point.html#boost_test.testing_tools.extended_comparison.floating_point.other_relational_operators">Other
+          relational operators</a>
+        </h5>
+<p>
+          Finally, note that comparisons for tolerance are also applied to <code class="computeroutput"><span class="keyword">operator</span><span class="special">&lt;</span></code>
+          with semantics <span class="emphasis"><em>less by more than some tolerance</em></span>, and
+          other relational operators. Also, the tolerance-based comparisons are involved
+          when a more complicated expression tree is processed within the assertion
+          body. The section on <a class="link" href="floating_point/floating_points_comparison_impl.html#boost_test.testing_tools.extended_comparison.floating_point.floating_points_comparison_impl.tolerance_in_operator">relational
+          operators</a> defines how <code class="computeroutput"><span class="keyword">operator</span><span class="special">&lt;</span></code> relates to tolerance.
+        </p>
+<h6>
+<a name="boost_test.testing_tools.extended_comparison.floating_point.h10"></a>
+          <span class="phrase"><a name="boost_test.testing_tools.extended_comparison.floating_point.example_descr3"></a></span><a class="link" href="floating_point.html#boost_test.testing_tools.extended_comparison.floating_point.example_descr3">Example:
+          tolerance applied in more complex expressions</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Code
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">tolerance_03</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">utf</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">;</span>
+
+<span class="keyword">double</span> <span class="identifier">x</span> <span class="special">=</span> <span class="number">10.000000</span><span class="special">;</span>
+<span class="keyword">double</span> <span class="identifier">d</span> <span class="special">=</span>  <span class="number">0.000001</span><span class="special">;</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">passing</span><span class="special">,</span> <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">tolerance</span><span class="special">(</span><span class="number">0.0001</span><span class="special">))</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">x</span> <span class="special">==</span> <span class="identifier">x</span> <span class="special">+</span> <span class="identifier">d</span><span class="special">);</span> <span class="comment">// equal with tolerance</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">x</span> <span class="special">&gt;=</span> <span class="identifier">x</span> <span class="special">+</span> <span class="identifier">d</span><span class="special">);</span> <span class="comment">// ==&gt; greater-or-equal</span>
+
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">d</span> <span class="special">==</span> <span class="special">.</span><span class="number">0</span><span class="special">);</span>    <span class="comment">// small with tolerance</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">failing</span><span class="special">,</span> <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">tolerance</span><span class="special">(</span><span class="number">0.0001</span><span class="special">))</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">x</span> <span class="special">-</span> <span class="identifier">d</span> <span class="special">&lt;</span>  <span class="identifier">x</span><span class="special">);</span> <span class="comment">// less, but still too close</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">x</span> <span class="special">-</span> <span class="identifier">d</span> <span class="special">!=</span> <span class="identifier">x</span><span class="special">);</span> <span class="comment">// unequal but too close</span>
+
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">d</span> <span class="special">&gt;</span> <span class="special">.</span><span class="number">0</span><span class="special">);</span>     <span class="comment">// positive, but too small</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">d</span> <span class="special">&lt;</span> <span class="special">.</span><span class="number">0</span><span class="special">);</span>     <span class="comment">// not sufficiently negative</span>
+<span class="special">}</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Output
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">tolerance_03</span>
+<span class="identifier">Running</span> <span class="number">2</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">18</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"failing"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">x</span> <span class="special">-</span> <span class="identifier">d</span> <span class="special">&lt;</span> <span class="identifier">x</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">10</span> <span class="special">-</span> <span class="number">1.0000000000000001e-05</span> <span class="special">&gt;=</span> <span class="number">10</span><span class="special">].</span> <span class="identifier">Relative</span> <span class="identifier">difference</span> <span class="identifier">is</span> <span class="identifier">within</span> <span class="identifier">tolerance</span> <span class="special">[</span><span class="number">1e-06</span> <span class="special">&lt;</span> <span class="number">0.001</span><span class="special">]</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">19</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"failing"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">x</span> <span class="special">-</span> <span class="identifier">d</span> <span class="special">!=</span> <span class="identifier">x</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">10</span> <span class="special">-</span> <span class="number">1.0000000000000001e-05</span> <span class="special">==</span> <span class="number">10</span><span class="special">].</span> <span class="identifier">Relative</span> <span class="identifier">difference</span> <span class="identifier">is</span> <span class="identifier">within</span> <span class="identifier">tolerance</span> <span class="special">[</span><span class="number">1e-06</span> <span class="special">&lt;</span> <span class="number">0.001</span><span class="special">]</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">21</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"failing"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">d</span> <span class="special">&gt;</span> <span class="special">.</span><span class="number">0</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">1.0000000000000001e-05</span> <span class="special">&lt;=</span> <span class="number">0</span><span class="special">].</span> <span class="identifier">Absolute</span> <span class="identifier">value</span> <span class="identifier">is</span> <span class="identifier">within</span> <span class="identifier">tolerance</span> <span class="special">[|</span><span class="number">1e-05</span><span class="special">|</span> <span class="special">&lt;</span> <span class="number">0.001</span><span class="special">]</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">22</span><span class="special">):</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"failing"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">d</span> <span class="special">&lt;</span> <span class="special">.</span><span class="number">0</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">1.0000000000000001e-05</span> <span class="special">&gt;=</span> <span class="number">0</span><span class="special">]</span>
+
+<span class="special">***</span> <span class="number">4</span> <span class="identifier">failures</span> <span class="identifier">are</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">the</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"tolerance_03"</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2020 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../extended_comparison.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../extended_comparison.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="floating_point/customizing_for_tolerance.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

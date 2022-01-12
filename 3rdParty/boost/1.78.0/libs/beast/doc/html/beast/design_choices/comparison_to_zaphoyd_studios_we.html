@@ -1,0 +1,725 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Comparison to Zaphoyd Studios WebSocket++</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Beast">
+<link rel="up" href="../design_choices.html" title="Design Choices">
+<link rel="prev" href="http_comparison_to_other_librari.html" title="HTTP Comparison to Other Libraries">
+<link rel="next" href="faq.html" title="FAQ">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="http_comparison_to_other_librari.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../design_choices.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="faq.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.design_choices.comparison_to_zaphoyd_studios_we"></a><a class="link" href="comparison_to_zaphoyd_studios_we.html" title="Comparison to Zaphoyd Studios WebSocket++">Comparison
+      to Zaphoyd Studios WebSocket++</a>
+</h3></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term"> How does this compare to <a href="https://www.zaphoyd.com/websocketpp" target="_top">websocketpp</a>,
+          an alternate header-only WebSocket implementation? </span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">1. Synchronous Interface</span></dt>
+<dd>
+<p>
+                    Beast offers full support for WebSockets using a synchronous
+                    interface. It uses the same style of interfaces found in Boost.Asio:
+                    versions that throw exceptions, or versions that return the error
+                    code in a reference parameter:
+                  </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                            <p>
+                              <a href="https://github.com/vinniefalco/Beast/blob/6c8b4b2f8dde72b01507e4ac7fde4ffea57ebc99/include/beast/websocket/stream.hpp#L774" target="_top">Beast</a>
+                            </p>
+                          </th>
+<th>
+                            <p>
+                              websocketpp
+                            </p>
+                          </th>
+</tr></thead>
+<tbody><tr>
+<td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">DynamicBuffer</span><span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">read</span><span class="special">(</span><span class="identifier">DynamicBuffer</span><span class="special">&amp;</span> <span class="identifier">dynabuf</span><span class="special">)</span>
+</pre>
+                          </td>
+<td>
+                            <p>
+                              <span class="emphasis"><em>&lt;not available&gt;</em></span>
+                            </p>
+                          </td>
+</tr></tbody>
+</table></div>
+</dd>
+<dt><span class="term">2. Connection Model</span></dt>
+<dd>
+<p>
+                    websocketpp supports multiple transports by utilizing a trait,
+                    the <code class="computeroutput"><span class="identifier">config</span><span class="special">::</span><span class="identifier">transport_type</span></code> (<a href="https://github.com/zaphoyd/websocketpp/blob/378437aecdcb1dfe62096ffd5d944bf1f640ccc3/websocketpp/transport/asio/connection.hpp#L60" target="_top">asio
+                    transport example</a>) To get an idea of the complexity involved
+                    with implementing a transport, compare the asio transport to
+                    the <a href="https://github.com/zaphoyd/websocketpp/blob/378437aecdcb1dfe62096ffd5d944bf1f640ccc3/websocketpp/transport/iostream/connection.hpp#L59" target="_top"><code class="computeroutput"><span class="identifier">iostream</span></code> transport</a>
+                    (a layer that allows websocket communication over a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">iostream</span></code>).
+                  </p>
+<p>
+                    In contrast, Beast abstracts the transport by defining just one
+                    <span class="bold"><strong><code class="computeroutput"><span class="identifier">NextLayer</span></code></strong></span>
+                    template argument The type requirements for <span class="bold"><strong><code class="computeroutput"><span class="identifier">NextLayer</span></code></strong></span> are already
+                    familiar to users as they are documented in Asio: <a href="../../../../../../doc/html/boost_asio/reference/AsyncReadStream.html" target="_top"><span class="emphasis"><em>AsyncReadStream</em></span></a>,
+                    <a href="../../../../../../doc/html/boost_asio/reference/AsyncWriteStream.html" target="_top"><span class="emphasis"><em>AsyncWriteStream</em></span></a>,
+                    <a href="../../../../../../doc/html/boost_asio/reference/SyncReadStream.html" target="_top"><span class="emphasis"><em>SyncReadStream</em></span></a>,
+                    <a href="../../../../../../doc/html/boost_asio/reference/SyncWriteStream.html" target="_top"><span class="emphasis"><em>SyncWriteStream</em></span></a>.
+                  </p>
+<p>
+                    The type requirements for instantiating <code class="computeroutput"><span class="identifier">beast</span><span class="special">::</span><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span></code>
+                    versus <code class="computeroutput"><span class="identifier">websocketpp</span><span class="special">::</span><span class="identifier">connection</span></code>
+                    with user defined types are vastly reduced (18 functions versus
+                    2). Note that websocketpp connections are passed by <code class="computeroutput"><span class="identifier">shared_ptr</span></code>. Beast does not
+                    use <code class="computeroutput"><span class="identifier">shared_ptr</span></code>
+                    anywhere in its public interface. A <code class="computeroutput"><span class="identifier">beast</span><span class="special">::</span><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span></code>
+                    is constructible and movable in a manner identical to a <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span></code>. Callers can put such
+                    objects in a <code class="computeroutput"><span class="identifier">shared_ptr</span></code>
+                    if they want to, but there is no requirement to do so.
+                  </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                            <p>
+                              <a href="https://github.com/vinniefalco/Beast/blob/6c8b4b2f8dde72b01507e4ac7fde4ffea57ebc99/include/beast/websocket/stream.hpp" target="_top">Beast</a>
+                            </p>
+                          </th>
+<th>
+                            <p>
+                              <a href="https://github.com/zaphoyd/websocketpp/blob/378437aecdcb1dfe62096ffd5d944bf1f640ccc3/websocketpp/connection.hpp#L234" target="_top">websocketpp</a>
+                            </p>
+                          </th>
+</tr></thead>
+<tbody><tr>
+<td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">NextLayer</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">stream</span>
+<span class="special">{</span>
+    <span class="identifier">NextLayer</span> <span class="identifier">next_layer_</span><span class="special">;</span>
+    <span class="special">...</span>
+<span class="special">}</span>
+</pre>
+                          </td>
+<td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">config</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">connection</span>
+<span class="special">:</span> <span class="keyword">public</span> <span class="identifier">config</span><span class="special">::</span><span class="identifier">transport_type</span><span class="special">::</span><span class="identifier">transport_con_type</span>
+<span class="special">,</span> <span class="keyword">public</span> <span class="identifier">config</span><span class="special">::</span><span class="identifier">connection_base</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">typedef</span> <span class="identifier">lib</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">type</span><span class="special">&gt;</span> <span class="identifier">ptr</span><span class="special">;</span>
+    <span class="special">...</span>
+<span class="special">}</span>
+</pre>
+                          </td>
+</tr></tbody>
+</table></div>
+</dd>
+<dt><span class="term">3. Client and Server Role</span></dt>
+<dd>
+<p>
+                    websocketpp provides multi-role support through a hierarchy of
+                    different classes. A <code class="computeroutput"><span class="identifier">beast</span><span class="special">::</span><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span></code>
+                    is role-agnostic, it offers member functions to perform both
+                    client and server handshakes in the same class. The same types
+                    are used for client and server streams.
+                  </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                            <p>
+                              Beast
+                            </p>
+                          </th>
+<th>
+                            <p>
+                              <a href="https://github.com/zaphoyd/websocketpp/blob/378437aecdcb1dfe62096ffd5d944bf1f640ccc3/websocketpp/roles/server_endpoint.hpp#L39" target="_top">websocketpp</a>,
+                              <a href="https://github.com/zaphoyd/websocketpp/blob/378437aecdcb1dfe62096ffd5d944bf1f640ccc3/websocketpp/roles/client_endpoint.hpp#L42" target="_top">also</a>
+                            </p>
+                          </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                            <p>
+                              <span class="emphasis"><em>&lt;not needed&gt;</em></span>
+                            </p>
+                          </td>
+<td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">config</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">client</span> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">endpoint</span><span class="special">&lt;</span><span class="identifier">connection</span><span class="special">&lt;</span><span class="identifier">config</span><span class="special">&gt;,</span><span class="identifier">config</span><span class="special">&gt;;</span>
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">config</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">server</span> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">endpoint</span><span class="special">&lt;</span><span class="identifier">connection</span><span class="special">&lt;</span><span class="identifier">config</span><span class="special">&gt;,</span><span class="identifier">config</span><span class="special">&gt;;</span>
+</pre>
+                          </td>
+</tr></tbody>
+</table></div>
+</dd>
+<dt><span class="term">4. Thread Safety</span></dt>
+<dd>
+<p>
+                    websocketpp uses mutexes to protect shared data from concurrent
+                    access. In contrast, Beast does not use mutexes anywhere in its
+                    implementation. Instead, it follows the Asio pattern. Calls to
+                    asynchronous initiation functions use the same method to invoke
+                    intermediate handlers as the method used to invoke the final
+                    handler, through the <a href="../../../../../../doc/html/boost_asio/reference/asio_handler_invoke.html" target="_top"><code class="computeroutput"><span class="identifier">asio_handler_invoke</span></code></a>
+                    mechanism.
+                  </p>
+<p>
+                    The only requirement in Beast is that calls to asynchronous initiation
+                    functions are made from the same implicit or explicit strand.
+                    For example, if the <code class="computeroutput"><span class="identifier">io_context</span></code>
+                    associated with a <code class="computeroutput"><span class="identifier">beast</span><span class="special">::</span><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span></code>
+                    is single threaded, this counts as an implicit strand and no
+                    performance costs associated with mutexes are incurred.
+                  </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                            <p>
+                              <a href="https://github.com/vinniefalco/Beast/blob/6c8b4b2f8dde72b01507e4ac7fde4ffea57ebc99/include/beast/websocket/impl/read_frame_op.ipp#L118" target="_top">Beast</a>
+                            </p>
+                          </th>
+<th>
+                            <p>
+                              <a href="https://github.com/zaphoyd/websocketpp/blob/378437aecdcb1dfe62096ffd5d944bf1f640ccc3/websocketpp/transport/iostream/connection.hpp#L706" target="_top">websocketpp</a>
+                            </p>
+                          </th>
+</tr></thead>
+<tbody><tr>
+<td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Function</span><span class="special">&gt;</span>
+<span class="keyword">friend</span>
+<span class="keyword">void</span> <span class="identifier">asio_handler_invoke</span><span class="special">(</span><span class="identifier">Function</span><span class="special">&amp;&amp;</span> <span class="identifier">f</span><span class="special">,</span> <span class="identifier">read_frame_op</span><span class="special">*</span> <span class="identifier">op</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">return</span> <span class="identifier">boost_asio_handler_invoke_helpers</span><span class="special">::</span><span class="identifier">invoke</span><span class="special">(</span><span class="identifier">f</span><span class="special">,</span> <span class="identifier">op</span><span class="special">-&gt;</span><span class="identifier">d_</span><span class="special">-&gt;</span><span class="identifier">h</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+                          </td>
+<td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="identifier">mutex_type</span> <span class="identifier">m_read_mutex</span><span class="special">;</span>
+</pre>
+                          </td>
+</tr></tbody>
+</table></div>
+</dd>
+<dt><span class="term">5. Callback Model</span></dt>
+<dd>
+<p>
+                    websocketpp requires a one-time call to set the handler for each
+                    event in its interface (for example, upon message receipt). The
+                    handler is represented by a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">function</span></code>
+                    equivalent. Its important to recognize that the websocketpp interface
+                    performs type-erasure on this handler.
+                  </p>
+<p>
+                    In comparison, Beast handlers are specified in a manner identical
+                    to Boost.Asio. They are function objects which can be copied
+                    or moved but most importantly they are not type erased. The compiler
+                    can see through the type directly to the implementation, permitting
+                    optimization. Furthermore, Beast follows the Asio rules for treatment
+                    of handlers. It respects any allocation, continuation, or invocation
+                    customizations associated with the handler through the use of
+                    argument dependent lookup overloads of functions such as <code class="computeroutput"><span class="identifier">asio_handler_allocate</span></code>.
+                  </p>
+<p>
+                    The Beast completion handler is provided at the call site. For
+                    each call to an asynchronous initiation function, it is guaranteed
+                    that there will be exactly one final call to the handler. This
+                    functions exactly the same way as the asynchronous initiation
+                    functions found in Boost.Asio, allowing the composition of higher
+                    level abstractions.
+                  </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                            <p>
+                              <a href="https://github.com/vinniefalco/Beast/blob/6c8b4b2f8dde72b01507e4ac7fde4ffea57ebc99/include/beast/websocket/stream.hpp#L834" target="_top">Beast</a>
+                            </p>
+                          </th>
+<th>
+                            <p>
+                              <a href="https://github.com/zaphoyd/websocketpp/blob/378437aecdcb1dfe62096ffd5d944bf1f640ccc3/websocketpp/connection.hpp#L281" target="_top">websocketpp</a>,
+                              <a href="https://github.com/zaphoyd/websocketpp/blob/378437aecdcb1dfe62096ffd5d944bf1f640ccc3/websocketpp/connection.hpp#L473" target="_top">also</a>
+                            </p>
+                          </th>
+</tr></thead>
+<tbody><tr>
+<td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <span class="identifier">DynamicBuffer</span><span class="special">,</span>    <span class="comment">// Supports user defined types</span>
+    <span class="keyword">class</span> <span class="identifier">ReadHandler</span>       <span class="comment">// Handler is NOT type-erased</span>
+<span class="special">&gt;</span>
+<span class="keyword">typename</span> <span class="identifier">async_completion</span><span class="special">&lt;</span>  <span class="comment">// Return value customization</span>
+    <span class="identifier">ReadHandler</span><span class="special">,</span>            <span class="comment">// supports futures and coroutines</span>
+    <span class="keyword">void</span><span class="special">(</span><span class="identifier">error_code</span><span class="special">)</span>
+        <span class="special">&gt;::</span><span class="identifier">result_type</span>
+<span class="identifier">async_read</span><span class="special">(</span>
+    <span class="identifier">DynamicBuffer</span><span class="special">&amp;</span> <span class="identifier">dynabuf</span><span class="special">,</span>
+    <span class="identifier">ReadHandler</span><span class="special">&amp;&amp;</span> <span class="identifier">handler</span><span class="special">);</span>
+</pre>
+                          </td>
+<td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="keyword">typedef</span> <span class="identifier">lib</span><span class="special">::</span><span class="identifier">function</span><span class="special">&lt;</span>
+    <span class="keyword">void</span><span class="special">(</span><span class="identifier">connection_hdl</span><span class="special">,</span><span class="identifier">message_ptr</span><span class="special">)</span>
+        <span class="special">&gt;</span> <span class="identifier">message_handler</span><span class="special">;</span>
+<span class="keyword">void</span> <span class="identifier">set_message_handler</span><span class="special">(</span><span class="identifier">message_handler</span> <span class="identifier">h</span><span class="special">);</span>
+</pre>
+                          </td>
+</tr></tbody>
+</table></div>
+</dd>
+<dt><span class="term">6. Extensible Asynchronous Model</span></dt>
+<dd>
+<p>
+                    Beast fully supports the <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3896.pdf" target="_top">Extensible
+                    Asynchronous Model</a> developed by Christopher Kohlhoff,
+                    author of Boost.Asio (see Section 8).
+                  </p>
+<p>
+                    Beast websocket asynchronous interfaces may be used seamlessly
+                    with <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">future</span></code> stackful/stackless coroutines,
+                    or user defined customizations.
+                  </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                            <p>
+                              <a href="https://github.com/vinniefalco/Beast/blob/6c8b4b2f8dde72b01507e4ac7fde4ffea57ebc99/include/beast/websocket/impl/stream.ipp#L378" target="_top">Beast</a>
+                            </p>
+                          </th>
+<th>
+                            <p>
+                              websocketpp
+                            </p>
+                          </th>
+</tr></thead>
+<tbody><tr>
+<td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="identifier">beast</span><span class="special">::</span><span class="identifier">async_completion</span><span class="special">&lt;</span>
+    <span class="identifier">ReadHandler</span><span class="special">,</span>
+    <span class="keyword">void</span><span class="special">(</span><span class="identifier">error_code</span><span class="special">)&gt;</span> <span class="identifier">completion</span><span class="special">{</span><span class="identifier">handler</span><span class="special">};</span>
+<span class="identifier">read_op</span><span class="special">&lt;</span>
+    <span class="identifier">DynamicBuffer</span><span class="special">,</span> <span class="keyword">decltype</span><span class="special">(</span><span class="identifier">completion</span><span class="special">.</span><span class="identifier">handler</span><span class="special">)&gt;{</span>
+        <span class="identifier">completion</span><span class="special">.</span><span class="identifier">handler</span><span class="special">,</span> <span class="special">*</span><span class="keyword">this</span><span class="special">,</span> <span class="identifier">op</span><span class="special">,</span> <span class="identifier">buffer</span><span class="special">};</span>
+
+<span class="keyword">return</span> <span class="identifier">completion</span><span class="special">.</span><span class="identifier">result</span><span class="special">.</span><span class="identifier">get</span><span class="special">();</span>     <span class="comment">// Customization point</span>
+</pre>
+                          </td>
+<td>
+                            <p>
+                              <span class="emphasis"><em>&lt;not available&gt;</em></span>
+                            </p>
+                          </td>
+</tr></tbody>
+</table></div>
+</dd>
+<dt><span class="term">7. Message Buffering</span></dt>
+<dd>
+<p>
+                    websocketpp defines a message buffer, passed in arguments by
+                    <code class="computeroutput"><span class="identifier">shared_ptr</span></code>, and
+                    an associated message manager which permits aggregation and reuse
+                    of memory. The implementation of <code class="computeroutput"><span class="identifier">websocketpp</span><span class="special">::</span><span class="identifier">message</span></code>
+                    uses a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code> to hold the payload.
+                    If an incoming message is broken up into multiple frames, the
+                    string may be reallocated for each continuation frame. The <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code> always uses the standard
+                    allocator, it is not possible to customize the choice of allocator.
+                  </p>
+<p>
+                    Beast allows callers to specify the object for receiving the
+                    message or frame data, which is of any type meeting the requirements
+                    of <a class="link" href="../concepts/DynamicBuffer.html" title="DynamicBuffer"><span class="emphasis"><em>DynamicBuffer</em></span></a>
+                    (modeled after <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">streambuf</span></code>).
+                  </p>
+<p>
+                    Beast comes with the class <a class="link" href="../ref/boost__beast__basic_multi_buffer.html" title="basic_multi_buffer"><code class="computeroutput"><span class="identifier">basic_multi_buffer</span></code></a>,
+                    an efficient implementation of the <a class="link" href="../concepts/DynamicBuffer.html" title="DynamicBuffer"><span class="emphasis"><em>DynamicBuffer</em></span></a>
+                    concept which makes use of multiple allocated octet arrays. If
+                    an incoming message is broken up into multiple pieces, no reallocation
+                    occurs. Instead, new allocations are appended to the sequence
+                    when existing allocations are filled. Beast does not impose any
+                    particular memory management model on callers. The <a class="link" href="../ref/boost__beast__basic_multi_buffer.html" title="basic_multi_buffer"><code class="computeroutput"><span class="identifier">basic_multi_buffer</span></code></a> provided
+                    by beast supports standard allocators through a template argument.
+                    Use the <a class="link" href="../concepts/DynamicBuffer.html" title="DynamicBuffer"><span class="emphasis"><em>DynamicBuffer</em></span></a>
+                    that comes with beast, customize the allocator if you desire,
+                    or provide your own type that meets the requirements.
+                  </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                            <p>
+                              <a href="https://github.com/vinniefalco/Beast/blob/6c8b4b2f8dde72b01507e4ac7fde4ffea57ebc99/include/beast/websocket/stream.hpp#L774" target="_top">Beast</a>
+                            </p>
+                          </th>
+<th>
+                            <p>
+                              <a href="https://github.com/zaphoyd/websocketpp/blob/378437aecdcb1dfe62096ffd5d944bf1f640ccc3/websocketpp/message_buffer/message.hpp#L78" target="_top">websocketpp</a>
+                            </p>
+                          </th>
+</tr></thead>
+<tbody><tr>
+<td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">DynamicBuffer</span><span class="special">&gt;</span>
+<span class="identifier">read</span><span class="special">(</span><span class="identifier">DynamicBuffer</span><span class="special">&amp;</span> <span class="identifier">dynabuf</span><span class="special">);</span>
+</pre>
+                          </td>
+<td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span><span class="special">&gt;</span> <span class="keyword">class</span> <span class="identifier">con_msg_manager</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">message</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">typedef</span> <span class="identifier">lib</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">message</span><span class="special">&gt;</span> <span class="identifier">ptr</span><span class="special">;</span>
+    <span class="special">...</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">m_payload</span><span class="special">;</span>
+    <span class="special">...</span>
+<span class="special">};</span>
+</pre>
+                          </td>
+</tr></tbody>
+</table></div>
+</dd>
+<dt><span class="term">8. Sending Messages</span></dt>
+<dd>
+<p>
+                    When sending a message, websocketpp requires that the payload
+                    is packaged in a <code class="computeroutput"><span class="identifier">websocketpp</span><span class="special">::</span><span class="identifier">message</span></code>
+                    object using <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code>
+                    as the storage, or it requires a copy of the caller provided
+                    buffer by constructing a new message object. Messages are placed
+                    onto an outgoing queue. An asynchronous write operation runs
+                    in the background to clear the queue. No user facing handler
+                    can be registered to be notified when messages or frames have
+                    completed sending.
+                  </p>
+<p>
+                    Beast doesn't allocate or make copies of buffers when sending
+                    data. The caller's buffers are sent in-place. You can use any
+                    object meeting the requirements of __ConstBufferSequence, permitting
+                    efficient scatter-gather I/O.
+                  </p>
+<p>
+                    The <span class="bold"><strong>ConstBufferSequence</strong></span> interface
+                    allows callers to send data from memory-mapped regions (not possible
+                    in websocketpp). Callers can also use the same buffers to send
+                    data to multiple streams, for example broadcasting common subscription
+                    data to many clients at once. For each call to <code class="computeroutput"><span class="identifier">async_write</span></code> the completion
+                    handler is called once when the data finishes sending, in a manner
+                    identical to <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">async_write</span></code>.
+                  </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                            <p>
+                              <a href="https://github.com/vinniefalco/Beast/blob/6c8b4b2f8dde72b01507e4ac7fde4ffea57ebc99/include/beast/websocket/stream.hpp#L1048" target="_top">Beast</a>
+                            </p>
+                          </th>
+<th>
+                            <p>
+                              <a href="https://github.com/zaphoyd/websocketpp/blob/378437aecdcb1dfe62096ffd5d944bf1f640ccc3/websocketpp/connection.hpp#L672" target="_top">websocketpp</a>
+                            </p>
+                          </th>
+</tr></thead>
+<tbody><tr>
+<td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">ConstBufferSequence</span><span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">write</span><span class="special">(</span><span class="identifier">ConstBufferSequence</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">);</span>
+</pre>
+                          </td>
+<td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="identifier">lib</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">send</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">payload</span><span class="special">,</span>
+    <span class="identifier">frame</span><span class="special">::</span><span class="identifier">opcode</span><span class="special">::</span><span class="identifier">value</span> <span class="identifier">op</span> <span class="special">=</span> <span class="identifier">frame</span><span class="special">::</span><span class="identifier">opcode</span><span class="special">::</span><span class="identifier">text</span><span class="special">);</span>
+<span class="special">...</span>
+<span class="identifier">lib</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">send</span><span class="special">(</span><span class="identifier">message_ptr</span> <span class="identifier">msg</span><span class="special">);</span>
+</pre>
+                          </td>
+</tr></tbody>
+</table></div>
+</dd>
+<dt><span class="term">9. Streaming Messages</span></dt>
+<dd>
+<p>
+                    websocketpp requires that the entire message fit into memory,
+                    and that the size is known ahead of time.
+                  </p>
+<p>
+                    Beast allows callers to compose messages in individual frames.
+                    This is useful when the size of the data is not known ahead of
+                    time or if it is not desired to buffer the entire message in
+                    memory at once before sending it. For example, sending periodic
+                    output of a database query running on a coroutine. Or sending
+                    the contents of a file in pieces, without bringing it all into
+                    memory.
+                  </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                            <p>
+                              <a href="https://github.com/vinniefalco/Beast/blob/6c8b4b2f8dde72b01507e4ac7fde4ffea57ebc99/include/beast/websocket/stream.hpp#L1151" target="_top">Beast</a>
+                            </p>
+                          </th>
+<th>
+                            <p>
+                              websocketpp
+                            </p>
+                          </th>
+</tr></thead>
+<tbody><tr>
+<td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">ConstBufferSequence</span><span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">write_some</span><span class="special">(</span><span class="keyword">bool</span> <span class="identifier">fin</span><span class="special">,</span>
+    <span class="identifier">ConstBufferSequence</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">);</span>
+</pre>
+                          </td>
+<td>
+                            <p>
+                              <span class="emphasis"><em>&lt;not available&gt;</em></span>
+                            </p>
+                          </td>
+</tr></tbody>
+</table></div>
+</dd>
+<dt><span class="term">10. Flow Control</span></dt>
+<dd>
+<p>
+                    The websocketpp read implementation continuously reads asynchronously
+                    from the network and buffers message data. To prevent unbounded
+                    growth and leverage TCP/IP's flow control mechanism, callers
+                    can periodically turn this 'read pump' off and back on.
+                  </p>
+<p>
+                    In contrast a <code class="computeroutput"><span class="identifier">beast</span><span class="special">::</span><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span></code>
+                    does not independently begin background activity, nor does it
+                    buffer messages. It receives data only when there is a call to
+                    an asynchronous initiation function (for example <code class="computeroutput"><span class="identifier">beast</span><span class="special">::</span><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span><span class="special">::</span><span class="identifier">async_read</span></code>) with an associated
+                    handler. Applications do not need to implement explicit logic
+                    to regulate the flow of data. Instead, they follow the traditional
+                    model of issuing a read, receiving a read completion, processing
+                    the message, then issuing a new read and repeating the process.
+                  </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                            <p>
+                              Beast
+                            </p>
+                          </th>
+<th>
+                            <p>
+                              <a href="https://github.com/zaphoyd/websocketpp/blob/378437aecdcb1dfe62096ffd5d944bf1f640ccc3/websocketpp/connection.hpp#L728" target="_top">websocketpp</a>
+                            </p>
+                          </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                            <p>
+                              <span class="emphasis"><em>&lt;implicit&gt;</em></span>
+                            </p>
+                          </td>
+<td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="identifier">lib</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">pause_reading</span><span class="special">();</span>
+<span class="identifier">lib</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">resume_reading</span><span class="special">();</span>
+</pre>
+                          </td>
+</tr></tbody>
+</table></div>
+</dd>
+<dt><span class="term">11. Connection Establishment</span></dt>
+<dd>
+<p>
+                    websocketpp offers the <code class="computeroutput"><span class="identifier">endpoint</span></code>
+                    class which can handle binding and listening to a port, and spawning
+                    connection objects.
+                  </p>
+<p>
+                    Beast does not reinvent the wheel here, callers use the interfaces
+                    already in <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span></code>
+                    for receiving incoming connections resolving host names, or establishing
+                    outgoing connections. After the socket (or <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span></code>)
+                    is connected, the <code class="computeroutput"><span class="identifier">beast</span><span class="special">::</span><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span></code>
+                    is constructed around it and the WebSocket handshake can be performed.
+                  </p>
+<p>
+                    Beast users are free to implement their own "connection
+                    manager", but there is no requirement to do so.
+                  </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                            <p>
+                              <a href="http://www.boost.org/doc/html/boost_asio/reference/async_connect.html" target="_top">Beast</a>,
+                              <a href="http://www.boost.org/doc/html/boost_asio/reference/basic_socket_acceptor/async_accept.html" target="_top">also</a>
+                            </p>
+                          </th>
+<th>
+                            <p>
+                              <a href="https://github.com/zaphoyd/websocketpp/blob/378437aecdcb1dfe62096ffd5d944bf1f640ccc3/websocketpp/transport/asio/endpoint.hpp#L52" target="_top">websocketpp</a>
+                            </p>
+                          </th>
+</tr></thead>
+<tbody><tr>
+<td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+                          </td>
+<td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">config</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">endpoint</span> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">config</span><span class="special">::</span><span class="identifier">socket_type</span><span class="special">;</span>
+</pre>
+                          </td>
+</tr></tbody>
+</table></div>
+</dd>
+<dt><span class="term">12. WebSocket Handshaking</span></dt>
+<dd>
+<p>
+                    Callers invoke <code class="computeroutput"><span class="identifier">beast</span><span class="special">::</span><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">accept</span></code>
+                    to perform the WebSocket handshake, but there is no requirement
+                    to use this function. Advanced users can perform the WebSocket
+                    handshake themselves. Beast WebSocket provides the tools for
+                    composing the request or response, and the Beast HTTP interface
+                    provides the container and algorithms for sending and receiving
+                    HTTP/1 messages including the necessary HTTP Upgrade request
+                    for establishing the WebSocket session.
+                  </p>
+<p>
+                    Beast allows the caller to pass the incoming HTTP Upgrade request
+                    for the cases where the caller has already received an HTTP message.
+                    This flexibility permits novel and robust implementations. For
+                    example, a listening socket that can handshake in multiple protocols
+                    on the same port.
+                  </p>
+<p>
+                    Sometimes callers want to read some bytes on the socket before
+                    reading the WebSocket HTTP Upgrade request. Beast allows these
+                    already-received bytes to be supplied to an overload of the accepting
+                    function to permit sophisticated features. For example, a listening
+                    socket that can accept both regular WebSocket and Secure WebSocket
+                    (SSL) connections.
+                  </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                            <p>
+                              <a href="https://github.com/vinniefalco/Beast/blob/6c8b4b2f8dde72b01507e4ac7fde4ffea57ebc99/include/beast/websocket/stream.hpp#L501" target="_top">Beast</a>,
+                              <a href="https://github.com/vinniefalco/Beast/blob/6c8b4b2f8dde72b01507e4ac7fde4ffea57ebc99/include/beast/websocket/stream.hpp#L401" target="_top">also</a>
+                            </p>
+                          </th>
+<th>
+                            <p>
+                              websocketpp
+                            </p>
+                          </th>
+</tr></thead>
+<tbody><tr>
+<td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">ConstBufferSequence</span><span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">accept</span><span class="special">(</span><span class="identifier">ConstBufferSequence</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Allocator</span><span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">accept</span><span class="special">(</span><span class="identifier">http</span><span class="special">::</span><span class="identifier">header</span><span class="special">&lt;</span><span class="keyword">true</span><span class="special">,</span> <span class="identifier">http</span><span class="special">::</span><span class="identifier">basic_fields</span><span class="special">&lt;</span><span class="identifier">Allocator</span><span class="special">&gt;&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">req</span><span class="special">);</span>
+</pre>
+                          </td>
+<td>
+                            <p>
+                              <span class="emphasis"><em>&lt;not available&gt;</em></span>
+                            </p>
+                          </td>
+</tr></tbody>
+</table></div>
+</dd>
+</dl>
+</div></dd>
+</dl>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="http_comparison_to_other_librari.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../design_choices.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="faq.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

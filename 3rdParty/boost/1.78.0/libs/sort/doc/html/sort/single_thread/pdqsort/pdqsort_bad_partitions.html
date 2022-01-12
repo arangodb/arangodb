@@ -1,0 +1,68 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Bad Partitions</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Sort">
+<link rel="up" href="../pdqsort.html" title="2.2.- pdqsort">
+<link rel="prev" href="pdqsort_worst.html" title="The Worst Case">
+<link rel="next" href="../spinsort.html" title="2.3.- spinsort">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="pdqsort_worst.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../pdqsort.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../spinsort.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="sort.single_thread.pdqsort.pdqsort_bad_partitions"></a><a class="link" href="pdqsort_bad_partitions.html" title="Bad Partitions">Bad
+        Partitions</a>
+</h4></div></div></div>
+<p>
+          A bad partition occurs when the position of the pivot after partitioning
+          is under 12.5% (1/8th) percentile or over 87,5% percentile - the partition
+          is highly unbalanced. When this happens we will shuffle four elements at
+          fixed locations for both partitions. This effectively breaks up many patterns.
+          If we encounter more than log(n) bad partitions we will switch to heapsort.
+        </p>
+<p>
+          The 1/8th percentile is not chosen arbitrarily. An upper bound of quicksorts
+          worst case runtime can be approximated within a constant factor by the
+          following recurrence:
+        </p>
+<pre class="programlisting">T(n, p) = n + T(p(n-1), p) + T((1-p)(n-1), p)
+</pre>
+<p>
+          Where n is the number of elements, and p is the percentile of the pivot
+          after partitioning. <code class="computeroutput">T(n, 1/2)</code> is the best case for quicksort.
+          On modern systems heapsort is profiled to be approximately 1.8 to 2 times
+          as slow as quicksort. Choosing p such that <code class="computeroutput">T(n, 1/2) / T(n, p) ~=
+          1.9</code> as n gets big will ensure that we will only switch to heapsort
+          if it would speed up the sorting. p = 1/8 is a reasonably close value and
+          is cheap to compute on every platform using a bitshift.
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2014-2017 Steven
+      Ross, Francisco Tapia, Orson Peters<p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="pdqsort_worst.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../pdqsort.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../spinsort.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

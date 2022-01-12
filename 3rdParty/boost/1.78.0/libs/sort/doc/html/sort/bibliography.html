@@ -1,0 +1,144 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>4.- Bibliography</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Sort">
+<link rel="up" href="../index.html" title="Boost.Sort">
+<link rel="prev" href="parallel/windows_parallel.html" title="3.5- Windows Benchmark">
+<link rel="next" href="gratitude.html" title="5.- Gratitude">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="parallel/windows_parallel.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="gratitude.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="sort.bibliography"></a><a class="link" href="bibliography.html" title="4.- Bibliography">4.- Bibliography</a>
+</h2></div></div></div>
+<p>
+      <span class="bold"><strong>Steven Ross</strong></span>
+    </p>
+<h5>
+<a name="sort.bibliography.h0"></a>
+      <span class="phrase"><a name="sort.bibliography.standard_template_library_sort_a"></a></span><a class="link" href="bibliography.html#sort.bibliography.standard_template_library_sort_a">Standard
+      Template Library Sort Algorithms</a>
+    </h5>
+<p>
+      <a href="http://www.cplusplus.com/reference/algorithm/sort/" target="_top">C++ STL sort
+      algorithms</a>.
+    </p>
+<h5>
+<a name="sort.bibliography.h1"></a>
+      <span class="phrase"><a name="sort.bibliography.radix_sort"></a></span><a class="link" href="bibliography.html#sort.bibliography.radix_sort">Radix
+      Sort</a>
+    </h5>
+<p>
+      A type of algorithm that sorts based upon distribution instead of by comparison.
+      Wikipedia has an article about Radix Sorting. A more detailed description of
+      various Radix Sorting algorithms is provided here:
+    </p>
+<p>
+      Donald Knuth. The Art of Computer Programming, Volume 3: Sorting and Searching,
+      Second Edition. Addison-Wesley, 1998. ISBN 0-201-89685-0. Section 5.2.5: Sorting
+      by Distribution, pp.168-179.
+    </p>
+<h5>
+<a name="sort.bibliography.h2"></a>
+      <span class="phrase"><a name="sort.bibliography.introsort"></a></span><a class="link" href="bibliography.html#sort.bibliography.introsort">Introsort</a>
+    </h5>
+<p>
+      A high-speed comparison-based sorting algorithm that takes <span class="emphasis"><em>[bigo](N
+      * log(N))</em></span> time. See __introsort and Musser, David R. (1997). "Introspective
+      Sorting and Selection Algorithms", Software: Practice and Experience (Wiley)
+      27 (8), pp 983-993, available at <a href="http://www.cs.rpi.edu/~musser/gp/introsort.ps" target="_top">Musser
+      Introsort</a>.
+    </p>
+<h5>
+<a name="sort.bibliography.h3"></a>
+      <span class="phrase"><a name="sort.bibliography.american_flag_sort"></a></span><a class="link" href="bibliography.html#sort.bibliography.american_flag_sort">American
+      Flag Sort</a>
+    </h5>
+<p>
+      A high-speed hybrid string sorting algorithm that __string_sort is partially
+      based upon. See __american_flag and Peter M. McIlroy, Keith Bostic, M. Douglas
+      McIlroy. Engineering Radix Sort, Computing Systems 1993.
+    </p>
+<h5>
+<a name="sort.bibliography.h4"></a>
+      <span class="phrase"><a name="sort.bibliography.adaptive_left_radix_arl"></a></span><a class="link" href="bibliography.html#sort.bibliography.adaptive_left_radix_arl">Adaptive
+      Left Radix (ARL)</a>
+    </h5>
+<p>
+      ARL (Adaptive Left Radix) is a hybrid cache-friendly integer sorting algorithm
+      with comparable speed on random data to __integer_sort, but does not have the
+      optimizations for worst-case performance, causing it to perform poorly on certain
+      types of unevenly distributed data.
+    </p>
+<p>
+      Arne Maus, <a href="http://www.nik.no/2002/Maus.pdf" target="_top">ARL, a faster in-place,
+      cache friendly sorting algorithm</a>, presented at NIK2002, Norwegian Informatics
+      Conference, Kongsberg, 2002. Tapir, ISBN 82-91116-45-8.
+    </p>
+<h5>
+<a name="sort.bibliography.h5"></a>
+      <span class="phrase"><a name="sort.bibliography.original_spreadsort"></a></span><a class="link" href="bibliography.html#sort.bibliography.original_spreadsort">Original
+      Spreadsort</a>
+    </h5>
+<p>
+      The algorithm that __integer_sort was originally based on. __integer_sort uses
+      a smaller number of key bits at a time for better cache efficiency than the
+      method described in the paper. The importance of cache efficiency grew as CPU
+      clock speeds increased while main memory latency stagnated. See Steven J. Ross,
+      The Spreadsort High-performance General-case Sorting Algorithm, Parallel and
+      Distributed Processing Techniques and Applications, Volume 3, pp.1100-1106.
+      Las Vegas Nevada. 2002. See <a href="../../../doc/papers/original_spreadsort06_2002.pdf" target="_top">Steven
+      Ross spreadsort_2002</a>.
+    </p>
+<p>
+      <span class="bold"><strong>Francisco Tapia</strong></span>
+    </p>
+<p>
+      [01] Introduction to Algorithms, 3rd Edition (Thomas H. Cormen, Charles E.
+      Leiserson, Ronald L. Rivest, Clifford Stein)
+    </p>
+<p>
+      [02] C++ STL Sort Algorithms
+    </p>
+<p>
+      [03] Algorithm + Data Structures = Programs ( Nicklaus Wirth) Prentice Hall
+      Series in Automatic Computation
+    </p>
+<p>
+      [4] Structured Parallel Programming: Patterns for Efficient Computation (Michael
+      McCool, James Reinders, Arch Robison)
+    </p>
+<p>
+      <span class="bold"><strong>Orson Peters</strong></span>
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2014-2017 Steven
+      Ross, Francisco Tapia, Orson Peters<p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="parallel/windows_parallel.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="gratitude.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

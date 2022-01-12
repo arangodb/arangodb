@@ -16,8 +16,8 @@
 ### Boost
 
 * Name: Boost
-* Version: 1.77.0
-* Date: 2021-8-11 14:25:00
+* Version: 1.78.0
+* Date: 2021-12-08 03:45:00Z
 * Project Home: http://www.boost.org/
 * License: http://www.boost.org/LICENSE_1_0.txt
 * License Name: Boost Software License 1.0

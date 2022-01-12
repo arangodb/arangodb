@@ -1,0 +1,162 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Class results_collector_t</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../../header/boost/test/results_collector_hpp.html" title="Header &lt;boost/test/results_collector.hpp&gt;">
+<link rel="prev" href="../../header/boost/test/results_collector_hpp.html" title="Header &lt;boost/test/results_collector.hpp&gt;">
+<link rel="next" href="test_results.html" title="Class test_results">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../header/boost/test/results_collector_hpp.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../header/boost/test/results_collector_hpp.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="test_results.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.unit_test.results_collector_t"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class results_collector_t</span></h2>
+<p>boost::unit_test::results_collector_t — Collects and combines the test results. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../header/boost/test/results_collector_hpp.html" title="Header &lt;boost/test/results_collector.hpp&gt;">boost/test/results_collector.hpp</a>&gt;
+
+</span>
+<span class="keyword">class</span> <a class="link" href="results_collector_t.html" title="Class results_collector_t">results_collector_t</a> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">test_observer</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+
+  <span class="comment">// <a class="link" href="results_collector_t.html#idm45485-bb">public member functions</a></span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="results_collector_t.html#idm45486-bb"><span class="identifier">test_start</span></a><span class="special">(</span><span class="identifier">counter_t</span><span class="special">,</span> <span class="identifier">test_unit_id</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="results_collector_t.html#idm45495-bb"><span class="identifier">test_unit_start</span></a><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="results_collector_t.html#idm45503-bb"><span class="identifier">test_unit_finish</span></a><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">unsigned</span> <span class="keyword">long</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="results_collector_t.html#idm45513-bb"><span class="identifier">test_unit_skipped</span></a><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">const_string</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="results_collector_t.html#idm45520-bb"><span class="identifier">test_unit_aborted</span></a><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="results_collector_t.html#idm45534-bb"><span class="identifier">test_unit_timed_out</span></a><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="results_collector_t.html#idm45542-bb"><span class="identifier">assertion_result</span></a><span class="special">(</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">assertion_result</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="results_collector_t.html#idm45546-bb"><span class="identifier">exception_caught</span></a><span class="special">(</span><a class="link" href="../execution_exception.html" title="Class execution_exception">execution_exception</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">int</span> <a class="link" href="results_collector_t.html#idm45554-bb"><span class="identifier">priority</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="test_results.html" title="Class test_results">test_results</a> <span class="keyword">const</span>  <span class="special">&amp;</span> <a class="link" href="results_collector_t.html#idm45557-bb"><span class="identifier">results</span></a><span class="special">(</span><span class="identifier">test_unit_id</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="results_collector_t.html#idm45567-bb"><span class="identifier">test_finish</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="results_collector_t.html#idm45574-bb"><span class="identifier">test_aborted</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="results_collector_t.html#idm45582-bb"><span class="identifier">test_unit_skipped</span></a><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idm55023"></a><h2>Description</h2>
+<p>This class collects and combines the results of the test unit during the execution of the test tree. The results_collector_t::results() function combines the test results on a subtree of the test tree.</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p><a class="link" href="test_observer.html" title="Class test_observer">boost::unit_test::test_observer</a> </p>
+<p>
+</p>
+<p>
+</p>
+<div class="refsect2">
+<a name="idm55031"></a><h3>
+<a name="idm45485-bb"></a><code class="computeroutput">results_collector_t</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm45486-bb"></a><span class="identifier">test_start</span><span class="special">(</span><span class="identifier">counter_t</span><span class="special">,</span> <span class="identifier">test_unit_id</span><span class="special">)</span><span class="special">;</span></pre>Called before the framework starts executing the test cases. <p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm45495-bb"></a><span class="identifier">test_unit_start</span><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre>Called before the framework starts executing a test unit. <p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm45503-bb"></a><span class="identifier">test_unit_finish</span><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">unsigned</span> <span class="keyword">long</span><span class="special">)</span><span class="special">;</span></pre>Called at each end of a test unit. <p>
+</p>
+</li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm45513-bb"></a><span class="identifier">test_unit_skipped</span><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">const_string</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm45520-bb"></a><span class="identifier">test_unit_aborted</span><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre>Called when a test unit indicates a fatal error. <p>A fatal error happens when</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>a strong assertion (with <code class="computeroutput">REQUIRE</code>) fails, which indicates that the test case cannot continue</p></li>
+<li class="listitem"><p>an unexpected exception is caught by the Boost.Test framework </p></li>
+</ul></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm45534-bb"></a><span class="identifier">test_unit_timed_out</span><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre>Called when the test timed out. <p>This function is called to signal that a test unit (case or suite) timed out. A valid test unit is available through boost::unit_test::framework::current_test_unit </p>
+</li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm45542-bb"></a><span class="identifier">assertion_result</span><span class="special">(</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">assertion_result</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm45546-bb"></a><span class="identifier">exception_caught</span><span class="special">(</span><a class="link" href="../execution_exception.html" title="Class execution_exception">execution_exception</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre>Called when an exception is intercepted. <p>In case an exception is intercepted, this call happens before the call to test_unit_aborted in order to log additional data about the exception. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">int</span> <a name="idm45554-bb"></a><span class="identifier">priority</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>The priority indicates the order at which this observer is initialized and tore down in the UTF framework. The order is lowest to highest priority. </li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="test_results.html" title="Class test_results">test_results</a> <span class="keyword">const</span>  <span class="special">&amp;</span> <a name="idm45557-bb"></a><span class="identifier">results</span><span class="special">(</span><span class="identifier">test_unit_id</span> tu_id<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Results access per test unit. <p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">tu_id</code></span></p></td>
+<td><p>id of a test unit </p></td>
+</tr></tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm45567-bb"></a><span class="identifier">test_finish</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Called after the framework ends executing the test cases. <div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>The call is made with a reversed priority order. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm45574-bb"></a><span class="identifier">test_aborted</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Called when a critical error is detected. <p>The critical errors are mainly the signals sent by the system and caught by the Boost.Test framework. Since the running binary may be in incoherent/instable state, the test execution is aborted and all remaining tests are discarded.</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>may be called before test_observer::test_unit_finish() </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm45582-bb"></a><span class="identifier">test_unit_skipped</span><span class="special">(</span><a class="link" href="test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre>backward compatibility </li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2020 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../header/boost/test/results_collector_hpp.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../header/boost/test/results_collector_hpp.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="test_results.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

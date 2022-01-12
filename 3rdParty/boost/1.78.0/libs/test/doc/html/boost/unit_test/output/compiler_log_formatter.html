@@ -1,0 +1,669 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Class compiler_log_formatter</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Test">
+<link rel="up" href="../../../header/boost/test/output/compiler_log_formatter_hpp.html" title="Header &lt;boost/test/output/compiler_log_formatter.hpp&gt;">
+<link rel="prev" href="../../../header/boost/test/output/compiler_log_formatter_hpp.html" title="Header &lt;boost/test/output/compiler_log_formatter.hpp&gt;">
+<link rel="next" href="../../../header/boost/test/output/plain_report_formatter_hpp.html" title="Header &lt;boost/test/output/plain_report_formatter.hpp&gt;">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../header/boost/test/output/compiler_log_formatter_hpp.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../header/boost/test/output/compiler_log_formatter_hpp.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../../header/boost/test/output/plain_report_formatter_hpp.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.unit_test.output.compiler_log_formatter"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class compiler_log_formatter</span></h2>
+<p>boost::unit_test::output::compiler_log_formatter — Log formatter for the Human Readable Format (HRF) log format. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../../header/boost/test/output/compiler_log_formatter_hpp.html" title="Header &lt;boost/test/output/compiler_log_formatter.hpp&gt;">boost/test/output/compiler_log_formatter.hpp</a>&gt;
+
+</span>
+<span class="keyword">class</span> <a class="link" href="compiler_log_formatter.html" title="Class compiler_log_formatter">compiler_log_formatter</a> <span class="special">:</span>
+  <span class="keyword">public</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">unit_test_log_formatter</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// <a class="link" href="compiler_log_formatter.html#boost.unit_test.output.compiler_log_formatterconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="compiler_log_formatter.html#idm44911-bb"><span class="identifier">compiler_log_formatter</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="compiler_log_formatter.html#idm44590-bb">public member functions</a></span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="compiler_log_formatter.html#idm44591-bb"><span class="identifier">log_start</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">counter_t</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="compiler_log_formatter.html#idm44607-bb"><span class="identifier">log_finish</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="compiler_log_formatter.html#idm44619-bb"><span class="identifier">log_build_info</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">bool</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="compiler_log_formatter.html#idm44632-bb"><span class="identifier">test_unit_start</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">,</span> <a class="link" href="../test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> 
+  <a class="link" href="compiler_log_formatter.html#idm44649-bb"><span class="identifier">test_unit_finish</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">,</span> <a class="link" href="../test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">unsigned</span> <span class="keyword">long</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> 
+  <a class="link" href="compiler_log_formatter.html#idm44670-bb"><span class="identifier">test_unit_skipped</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">,</span> <a class="link" href="../test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">const_string</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> 
+  <a class="link" href="compiler_log_formatter.html#idm44686-bb"><span class="identifier">log_exception_start</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">,</span> <a class="link" href="../log_checkpoint_data.html" title="Struct log_checkpoint_data">log_checkpoint_data</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> 
+                      <a class="link" href="../../execution_exception.html" title="Class execution_exception">execution_exception</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="compiler_log_formatter.html#idm44721-bb"><span class="identifier">log_exception_finish</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> 
+  <a class="link" href="compiler_log_formatter.html#idm44733-bb"><span class="identifier">log_entry_start</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">,</span> <a class="link" href="../log_entry_data.html" title="Struct log_entry_data">log_entry_data</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">log_entry_types</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="compiler_log_formatter.html#idm44756-bb"><span class="identifier">log_entry_value</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">const_string</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="compiler_log_formatter.html#idm44772-bb"><span class="identifier">log_entry_value</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">lazy_ostream</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="compiler_log_formatter.html#idm44788-bb"><span class="identifier">log_entry_finish</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="compiler_log_formatter.html#idm44800-bb"><span class="identifier">entry_context_start</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">log_level</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="compiler_log_formatter.html#idm44816-bb"><span class="identifier">log_entry_context</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">log_level</span><span class="special">,</span> <span class="identifier">const_string</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="compiler_log_formatter.html#idm44836-bb"><span class="identifier">entry_context_finish</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">log_level</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="compiler_log_formatter.html#idm44852-bb"><span class="identifier">test_unit_skipped</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">,</span> <a class="link" href="../test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="compiler_log_formatter.html#idm44865-bb"><span class="identifier">test_unit_aborted</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">,</span> <a class="link" href="../test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="compiler_log_formatter.html#idm44873-bb"><span class="identifier">test_unit_timed_out</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">,</span> <a class="link" href="../test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="compiler_log_formatter.html#idm44881-bb"><span class="identifier">set_log_level</span></a><span class="special">(</span><span class="identifier">log_level</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="identifier">log_level</span> <a class="link" href="compiler_log_formatter.html#idm44891-bb"><span class="identifier">get_log_level</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="compiler_log_formatter.html#idm44899-bb"><span class="identifier">get_default_stream_description</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="compiler_log_formatter.html#idm44912-bb">protected member functions</a></span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="compiler_log_formatter.html#idm44913-bb"><span class="identifier">print_prefix</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">const_string</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idm52298"></a><h2>Description</h2>
+<div class="refsect2">
+<a name="idm52300"></a><h3>
+<a name="boost.unit_test.output.compiler_log_formatterconstruct-copy-destruct"></a><code class="computeroutput">compiler_log_formatter</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem"><pre class="literallayout"><a name="idm44911-bb"></a><span class="identifier">compiler_log_formatter</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre></li></ol></div>
+</div>
+<div class="refsect2">
+<a name="idm52313"></a><h3>
+<a name="idm44590-bb"></a><code class="computeroutput">compiler_log_formatter</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm44591-bb"></a><span class="identifier">log_start</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span> os<span class="special">,</span> <span class="identifier">counter_t</span> test_cases_amount<span class="special">)</span><span class="special">;</span></pre>Invoked at the beginning of test module execution. <p>
+</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p>log_finish </p>
+<p>
+</p>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">os</code></span></p></td>
+<td><p>output stream to write a messages to </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">test_cases_amount</code></span></p></td>
+<td><p>total test case amount to be run </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm44607-bb"></a><span class="identifier">log_finish</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span> os<span class="special">)</span><span class="special">;</span></pre>Invoked at the end of test module execution. <p>
+</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p>log_start </p>
+<p>
+</p>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">os</code></span></p></td>
+<td><p>output stream to write a messages into </p></td>
+</tr></tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm44619-bb"></a><span class="identifier">log_build_info</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span> os<span class="special">,</span> <span class="keyword">bool</span> log_build_info<span class="special">)</span><span class="special">;</span></pre>Invoked when Unit Test Framework build information is requested. <p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">log_build_info</code></span></p></td>
+<td><p>indicates if build info should be logged or not </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">os</code></span></p></td>
+<td><p>output stream to write a messages into </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm44632-bb"></a><span class="identifier">test_unit_start</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span> os<span class="special">,</span> <a class="link" href="../test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span> tu<span class="special">)</span><span class="special">;</span></pre>Invoked when test unit starts (either test suite or test case) <p>
+</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p>test_unit_finish </p>
+<p>
+</p>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">os</code></span></p></td>
+<td><p>output stream to write a messages into </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">tu</code></span></p></td>
+<td><p>test unit being started </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> 
+<a name="idm44649-bb"></a><span class="identifier">test_unit_finish</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span> os<span class="special">,</span> <a class="link" href="../test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span> tu<span class="special">,</span> 
+                 <span class="keyword">unsigned</span> <span class="keyword">long</span> elapsed<span class="special">)</span><span class="special">;</span></pre>Invoked when test unit finishes. <p>
+</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p>test_unit_start </p>
+<p>
+</p>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">elapsed</code></span></p></td>
+<td><p>time in microseconds spend executing this test unit </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">os</code></span></p></td>
+<td><p>output stream to write a messages into </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">tu</code></span></p></td>
+<td><p>test unit being finished </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> 
+<a name="idm44670-bb"></a><span class="identifier">test_unit_skipped</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span> os<span class="special">,</span> <a class="link" href="../test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span> tu<span class="special">,</span> <span class="identifier">const_string</span><span class="special">)</span><span class="special">;</span></pre>Invoked if test unit skipped for any reason. <p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">os</code></span></p></td>
+<td><p>output stream to write a messages into </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">tu</code></span></p></td>
+<td><p>skipped test unit </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> 
+<a name="idm44686-bb"></a><span class="identifier">log_exception_start</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span> os<span class="special">,</span> <a class="link" href="../log_checkpoint_data.html" title="Struct log_checkpoint_data">log_checkpoint_data</a> <span class="keyword">const</span> <span class="special">&amp;</span> lcd<span class="special">,</span> 
+                    <a class="link" href="../../execution_exception.html" title="Class execution_exception">execution_exception</a> <span class="keyword">const</span> <span class="special">&amp;</span> ex<span class="special">)</span><span class="special">;</span></pre>Invoked when Unit Test Framework detects uncaught exception. <p>The framwork calls this function when an uncaught exception it detected. This call is followed by context information:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>one call to <code class="computeroutput">entry_context_start</code>,</p></li>
+<li class="listitem"><p>as many calls to <code class="computeroutput">log_entry_context</code> as there are context entries</p></li>
+<li class="listitem"><p>one call to <code class="computeroutput">entry_context_finish</code> </p></li>
+</ul></div>
+<p>
+</p>
+<p>The logging of the exception information is finilized by a call to <code class="computeroutput">log_exception_finish</code>.</p>
+<p>
+</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p>log_exception_finish </p>
+<p>
+</p>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">ex</code></span></p></td>
+<td><p>information about the caught exception </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">lcd</code></span></p></td>
+<td><p>information about the last checkpoint before the exception was triggered </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">os</code></span></p></td>
+<td><p>output stream to write a messages into </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm44721-bb"></a><span class="identifier">log_exception_finish</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span> os<span class="special">)</span><span class="special">;</span></pre>Invoked when Unit Test Framework detects uncaught exception. <p>Call to this function finishes uncaught exception report. 
+</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p>log_exception_start </p>
+<p>
+</p>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">os</code></span></p></td>
+<td><p>output stream to write a messages into </p></td>
+</tr></tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> 
+<a name="idm44733-bb"></a><span class="identifier">log_entry_start</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span> os<span class="special">,</span> <a class="link" href="../log_entry_data.html" title="Struct log_entry_data">log_entry_data</a> <span class="keyword">const</span> <span class="special">&amp;</span> led<span class="special">,</span> 
+                <span class="identifier">log_entry_types</span> let<span class="special">)</span><span class="special">;</span></pre>Invoked by Unit Test Framework to start new log entry. <p>Call to this function starts new log entry. It is followed by series of log_entry_value calls and finally call to log_entry_finish. A log entry may consist of one or more values being reported. Some of these values will be plain strings, while others can be complicated expressions in a form of "lazy" expression template lazy_ostream. 
+</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p>log_entry_value, log_entry_finish</p>
+<p>
+</p>
+<p>
+</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>call to this function may happen before any call to test_unit_start or all calls to test_unit_finish as the framework might log errors raised during global initialization/shutdown. </p></td></tr>
+</table></div>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">led</code></span></p></td>
+<td><p>log entry attributes </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">let</code></span></p></td>
+<td><p>log entry type log_entry_finish </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">os</code></span></p></td>
+<td><p>output stream to write a messages into </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm44756-bb"></a><span class="identifier">log_entry_value</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span> os<span class="special">,</span> <span class="identifier">const_string</span> value<span class="special">)</span><span class="special">;</span></pre>Invoked by Unit Test Framework to report a log entry content. <p>This is one of two overloaded methods to report log entry content. This one is used to report plain string value. 
+</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p>log_entry_start, log_entry_finish </p>
+<p>
+</p>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">os</code></span></p></td>
+<td><p>output stream to write a messages into. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">value</code></span></p></td>
+<td><p>log entry string value </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm44772-bb"></a><span class="identifier">log_entry_value</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span> os<span class="special">,</span> <span class="identifier">lazy_ostream</span> <span class="keyword">const</span> <span class="special">&amp;</span> value<span class="special">)</span><span class="special">;</span></pre>Invoked by Unit Test Framework to report a log entry content. <p>This is one of two overloaded methods to report log entry content. This one is used to report some complicated expression passed as an expression template lazy_ostream. In most cases default implementation provided by the framework should work as is (it just converts the lazy expression into a string. 
+</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p>log_entry_start, log_entry_finish </p>
+<p>
+</p>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">os</code></span></p></td>
+<td><p>output stream to write a messages into </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">value</code></span></p></td>
+<td><p>log entry "lazy" value </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm44788-bb"></a><span class="identifier">log_entry_finish</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span> os<span class="special">)</span><span class="special">;</span></pre>Invoked by Unit Test Framework to finish a log entry report. <p>
+</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p>log_entry_start, log_entry_start </p>
+<p>
+</p>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">os</code></span></p></td>
+<td><p>output stream to write a messages into </p></td>
+</tr></tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm44800-bb"></a><span class="identifier">entry_context_start</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span> os<span class="special">,</span> <span class="identifier">log_level</span> l<span class="special">)</span><span class="special">;</span></pre>Invoked by Unit Test Framework to start log entry context report. <p>Unit Test Framework logs for failed assertions and uncaught exceptions context if one was defined by a test module. Context consists of multiple "scopes" identified by description messages assigned by the test module using BOOST_TEST_INFO/BOOST_TEST_CONTEXT statements. 
+</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p>log_entry_context, entry_context_finish </p>
+<p>
+</p>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">l</code></span></p></td>
+<td><p>entry log_level, to be used to fine tune the message </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">os</code></span></p></td>
+<td><p>output stream to write a messages into </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> 
+<a name="idm44816-bb"></a><span class="identifier">log_entry_context</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span> os<span class="special">,</span> <span class="identifier">log_level</span> l<span class="special">,</span> <span class="identifier">const_string</span> value<span class="special">)</span><span class="special">;</span></pre>Invoked by Unit Test Framework to report log entry context "scope" description. <p>Each "scope" description is reported by separate call to log_entry_context. 
+</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p>log_entry_start, entry_context_finish </p>
+<p>
+</p>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">l</code></span></p></td>
+<td><p>entry log_level, to be used to fine tune the message </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">os</code></span></p></td>
+<td><p>output stream to write a messages into </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">value</code></span></p></td>
+<td><p>context "scope" description </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm44836-bb"></a><span class="identifier">entry_context_finish</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span> os<span class="special">,</span> <span class="identifier">log_level</span> l<span class="special">)</span><span class="special">;</span></pre>Invoked by Unit Test Framework to finish log entry context report. <p>
+</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p>log_entry_start, entry_context_context </p>
+<p>
+</p>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">l</code></span></p></td>
+<td><p>entry log_level, to be used to fine tune the message </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">os</code></span></p></td>
+<td><p>output stream to write a messages into </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm44852-bb"></a><span class="identifier">test_unit_skipped</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">,</span> <a class="link" href="../test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre>Deprecated version of this interface. <p><span style="color: red">&lt;xrefsect&gt;<span style="color: red">&lt;xreftitle&gt;Deprecated&lt;/xreftitle&gt;</span><span style="color: red">&lt;xrefdescription&gt;&lt;/xrefdescription&gt;</span>&lt;/xrefsect&gt;</span></p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm44865-bb"></a><span class="identifier">test_unit_aborted</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">,</span> <a class="link" href="../test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre>Invoked when a test unit is aborted. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm44873-bb"></a><span class="identifier">test_unit_timed_out</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">,</span> <a class="link" href="../test_unit.html" title="Class test_unit">test_unit</a> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span></pre>Invoked when a test unit times-out. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm44881-bb"></a><span class="identifier">set_log_level</span><span class="special">(</span><span class="identifier">log_level</span> new_log_level<span class="special">)</span><span class="special">;</span></pre>Sets the log level of the logger/formatter. <p>Some loggers need to manage the log level by their own. This member function let the implementation decide of that. </p>
+<p><b>Since Boost 1.62 . </b></p>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="identifier">log_level</span> <a name="idm44891-bb"></a><span class="identifier">get_log_level</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Returns the log level of the logger/formatter. <p><b>Since Boost 1.62 . </b></p>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a name="idm44899-bb"></a><span class="identifier">get_default_stream_description</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Returns a default stream for this logger. <p>The returned string describes the stream as if it was passed from the command line <code class="computeroutput">"--log_sink"</code> parameter. With that regards, <span class="bold"><strong>stdout</strong></span> and <span class="bold"><strong>stderr</strong></span> have special meaning indicating the standard output or error stream respectively.</p>
+<p><b>Since Boost 1.62 . </b></p>
+<p>
+</p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="idm52985"></a><h3>
+<a name="idm44912-bb"></a><code class="computeroutput">compiler_log_formatter</code> protected member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem"><pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idm44913-bb"></a><span class="identifier">print_prefix</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">const_string</span> file<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> line<span class="special">)</span><span class="special">;</span></pre></li></ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2020 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../header/boost/test/output/compiler_log_formatter_hpp.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../header/boost/test/output/compiler_log_formatter_hpp.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../../header/boost/test/output/plain_report_formatter_hpp.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

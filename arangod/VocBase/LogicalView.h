@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -109,6 +109,8 @@ class LogicalView : public LogicalDataSource {
 #endif
   }
 
+  constexpr static Category category() noexcept { return Category::kView; }
+
   using LogicalDataSource::properties;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -130,11 +132,6 @@ class LogicalView : public LogicalDataSource {
   /// @return the current view is granted 'level' access
   //////////////////////////////////////////////////////////////////////////////
   bool canUse(arangodb::auth::Level const& level);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the category representing a logical view
-  //////////////////////////////////////////////////////////////////////////////
-  static Category const& category() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a new view according to a definition

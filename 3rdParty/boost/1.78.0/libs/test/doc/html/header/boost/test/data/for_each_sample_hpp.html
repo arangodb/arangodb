@@ -1,0 +1,64 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Header &lt;boost/test/data/for_each_sample.hpp&gt;</title>
+<link rel="stylesheet" href="../../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../../index.html" title="Boost.Test">
+<link rel="up" href="../../../../boost_test/reference.html" title="Reference">
+<link rel="prev" href="../../../../BOOST_TEST_DS_ASSERT.html" title="Macro BOOST_TEST_DS_ASSERT">
+<link rel="next" href="monomorphic/array_hpp.html" title="Header &lt;boost/test/data/monomorphic/array.hpp&gt;">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../../BOOST_TEST_DS_ASSERT.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../../boost_test/reference.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="monomorphic/array_hpp.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="header.boost.test.data.for_each_sample_hpp"></a>Header &lt;<a href="../../../../../../../../boost/test/data/for_each_sample.hpp" target="_top">boost/test/data/for_each_sample.hpp</a>&gt;</h4></div></div></div>
+<p>Defines for_each_sample algorithm. </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">unit_test</span> <span class="special">{</span>
+    <span class="keyword">namespace</span> <span class="identifier">data</span> <span class="special">{</span>
+      <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Action<span class="special">,</span> <span class="keyword">typename</span> T<span class="special">&gt;</span> 
+        <span class="keyword">void</span> <a name="boost.unit_test.data.invoke_action_idm42449"></a><span class="identifier">invoke_action</span><span class="special">(</span><span class="identifier">Action</span> <span class="keyword">const</span> <span class="special">&amp;</span> action<span class="special">,</span> <span class="identifier">T</span> <span class="special">&amp;&amp;</span> arg<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">false_type</span><span class="special">)</span><span class="special">;</span>
+      <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Action<span class="special">,</span> <span class="keyword">typename</span> T<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="special">...</span> I<span class="special">&gt;</span> 
+        <span class="keyword">void</span> <a name="boost.unit_test.data.invoke_action_impl"></a><span class="identifier">invoke_action_impl</span><span class="special">(</span><span class="identifier">Action</span> <span class="keyword">const</span> <span class="special">&amp;</span> action<span class="special">,</span> <span class="identifier">T</span> <span class="special">&amp;&amp;</span> args<span class="special">,</span> 
+                                <span class="identifier">index_sequence</span><span class="special">&lt;</span> <span class="identifier">I</span><span class="special">...</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+      <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Action<span class="special">,</span> <span class="keyword">typename</span> T<span class="special">&gt;</span> 
+        <span class="keyword">void</span> <a name="boost.unit_test.data.invoke_action_idm42473"></a><span class="identifier">invoke_action</span><span class="special">(</span><span class="identifier">Action</span> <span class="keyword">const</span> <span class="special">&amp;</span> action<span class="special">,</span> <span class="identifier">T</span> <span class="special">&amp;&amp;</span> args<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">true_type</span><span class="special">)</span><span class="special">;</span>
+      <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> DataSet<span class="special">,</span> <span class="keyword">typename</span> Action<span class="special">&gt;</span> 
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">enable_if</span><span class="special">&lt;</span> <a class="link" href="../../../../boost/unit_test/data/monomorphic/is_dataset.html" title="Struct template is_dataset">monomorphic::is_dataset</a><span class="special">&lt;</span> <span class="identifier">DataSet</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span><span class="special">,</span> <span class="keyword">void</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span> 
+        <a name="boost.unit_test.data.for_each_sample_idm42484"></a><span class="identifier">for_each_sample</span><span class="special">(</span><span class="identifier">DataSet</span> <span class="keyword">const</span> <span class="special">&amp;</span> samples<span class="special">,</span> <span class="identifier">Action</span> <span class="keyword">const</span> <span class="special">&amp;</span> act<span class="special">,</span> 
+                        <a class="link" href="../../../../boost/unit_test/data/size_t.html" title="Class size_t">data::size_t</a> number_of_samples <span class="special">=</span> <span class="identifier">BOOST_TEST_DS_INFINITE_SIZE</span><span class="special">)</span><span class="special">;</span>
+      <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> DataSet<span class="special">,</span> <span class="keyword">typename</span> Action<span class="special">&gt;</span> 
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">enable_if</span><span class="special">&lt;</span><span class="special">!</span><a class="link" href="../../../../boost/unit_test/data/monomorphic/is_dataset.html" title="Struct template is_dataset">monomorphic::is_dataset</a><span class="special">&lt;</span> <span class="identifier">DataSet</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span><span class="special">,</span> <span class="keyword">void</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span> 
+        <a name="boost.unit_test.data.for_each_sample_idm42498"></a><span class="identifier">for_each_sample</span><span class="special">(</span><span class="identifier">DataSet</span> <span class="special">&amp;&amp;</span> samples<span class="special">,</span> <span class="identifier">Action</span> <span class="keyword">const</span> <span class="special">&amp;</span> act<span class="special">,</span> 
+                        <a class="link" href="../../../../boost/unit_test/data/size_t.html" title="Class size_t">data::size_t</a> number_of_samples <span class="special">=</span> <span class="identifier">BOOST_TEST_DS_INFINITE_SIZE</span><span class="special">)</span><span class="special">;</span>
+    <span class="special">}</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2020 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../../BOOST_TEST_DS_ASSERT.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../../boost_test/reference.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="monomorphic/array_hpp.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>boost/python/ssize_t.hpp</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Python Reference Manual">
+<link rel="up" href="../utility_and_infrastructure.html" title="Chapter 7. Utility and Infrastructure">
+<link rel="prev" href="boost_python_type_id_hpp.html" title="boost/python/type_id.hpp">
+<link rel="next" href="../topics.html" title="Chapter 8. Topics">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_python_type_id_hpp.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../utility_and_infrastructure.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../topics.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="utility_and_infrastructure.boost_python_ssize_t_hpp"></a><a class="link" href="boost_python_ssize_t_hpp.html" title="boost/python/ssize_t.hpp">boost/python/ssize_t.hpp</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="boost_python_ssize_t_hpp.html#utility_and_infrastructure.boost_python_ssize_t_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="boost_python_ssize_t_hpp.html#utility_and_infrastructure.boost_python_ssize_t_hpp.typedefs">Typedefs</a></span></dt>
+<dt><span class="section"><a href="boost_python_ssize_t_hpp.html#utility_and_infrastructure.boost_python_ssize_t_hpp.constants">Constants</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="utility_and_infrastructure.boost_python_ssize_t_hpp.introduction"></a><a class="link" href="boost_python_ssize_t_hpp.html#utility_and_infrastructure.boost_python_ssize_t_hpp.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+          Python 2.5 introduces a new <code class="computeroutput"><span class="identifier">Py_ssize_t</span></code>
+          typedef and two related macros (<a href="http://www.python.org/dev/peps/pep-0353/" target="_top">PEP
+          353</a>). The &lt;boost/python/ssize_t.hpp&gt; header imports these
+          definitions into the <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span></code>
+          namespace as <code class="computeroutput"><span class="identifier">ssize_t</span></code>,
+          <code class="computeroutput"><span class="identifier">ssize_t_max</span></code>, and <code class="computeroutput"><span class="identifier">ssize_t_min</span></code>. Appropriate definitions
+          are provided for backward compatibility with previous Python versions.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="utility_and_infrastructure.boost_python_ssize_t_hpp.typedefs"></a><a class="link" href="boost_python_ssize_t_hpp.html#utility_and_infrastructure.boost_python_ssize_t_hpp.typedefs" title="Typedefs">Typedefs</a>
+</h3></div></div></div>
+<p>
+          Imports <code class="computeroutput"><span class="identifier">Py_ssize_t</span></code> into
+          the <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span></code> namespace if available, or provides
+          an appropriate typedef for backward compatibility:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#if</span> <span class="identifier">PY_VERSION_HEX</span> <span class="special">&gt;=</span> <span class="number">0x02050000</span>
+<span class="keyword">typedef</span> <span class="identifier">Py_ssize_t</span> <span class="identifier">ssize_t</span><span class="special">;</span>
+<span class="preprocessor">#else</span>
+<span class="keyword">typedef</span> <span class="keyword">int</span> <span class="identifier">ssize_t</span><span class="special">;</span>
+<span class="preprocessor">#endif</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="utility_and_infrastructure.boost_python_ssize_t_hpp.constants"></a><a class="link" href="boost_python_ssize_t_hpp.html#utility_and_infrastructure.boost_python_ssize_t_hpp.constants" title="Constants">Constants</a>
+</h3></div></div></div>
+<p>
+          Imports <code class="computeroutput"><span class="identifier">PY_SSIZE_T_MAX</span></code>
+          and <code class="computeroutput"><span class="identifier">PY_SSIZE_T_MIN</span></code> as constants
+          into the <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span></code> namespace if available, or provides
+          appropriate constants for backward compatibility:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#if</span> <span class="identifier">PY_VERSION_HEX</span> <span class="special">&gt;=</span> <span class="number">0x02050000</span>
+<span class="identifier">ssize_t</span> <span class="keyword">const</span> <span class="identifier">ssize_t_max</span> <span class="special">=</span> <span class="identifier">PY_SSIZE_T_MAX</span><span class="special">;</span>
+<span class="identifier">ssize_t</span> <span class="keyword">const</span> <span class="identifier">ssize_t_min</span> <span class="special">=</span> <span class="identifier">PY_SSIZE_T_MIN</span><span class="special">;</span>
+<span class="preprocessor">#else</span>
+<span class="identifier">ssize_t</span> <span class="keyword">const</span> <span class="identifier">ssize_t_max</span> <span class="special">=</span> <span class="identifier">INT_MAX</span><span class="special">;</span>
+<span class="identifier">ssize_t</span> <span class="keyword">const</span> <span class="identifier">ssize_t_min</span> <span class="special">=</span> <span class="identifier">INT_MIN</span><span class="special">;</span>
+<span class="preprocessor">#endif</span>
+</pre>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2002-2005, 2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_python_type_id_hpp.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../utility_and_infrastructure.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../topics.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Chapter 5. Frequently Asked Questions (FAQs)</title>
+<link rel="stylesheet" href="boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Boost.Python">
+<link rel="up" href="index.html" title="Boost.Python">
+<link rel="prev" href="support.html" title="Chapter 4. Support Resources">
+<link rel="next" href="faq/i_m_getting_the_attempt_to_retur.html" title="I'm getting the &quot;attempt to return dangling reference&quot; error. What am I doing wrong?">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="support.html"><img src="images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="images/home.png" alt="Home"></a><a accesskey="n" href="faq/i_m_getting_the_attempt_to_retur.html"><img src="images/next.png" alt="Next"></a>
+</div>
+<div class="chapter">
+<div class="titlepage"><div><div><h1 class="title">
+<a name="faq"></a>Chapter 5. Frequently Asked Questions (FAQs)</h1></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="faq.html#faq.how_can_i_wrap_a_function_which_">How can I wrap
+      a function which takes a function pointer as an argument?</a></span></dt>
+<dt><span class="section"><a href="faq/i_m_getting_the_attempt_to_retur.html">I'm getting the
+      "attempt to return dangling reference" error. What am I doing wrong?</a></span></dt>
+<dt><span class="section"><a href="faq/is_return_internal_reference_eff.html">Is <code class="computeroutput"><span class="identifier">return_internal_reference</span></code> efficient?</a></span></dt>
+<dt><span class="section"><a href="faq/how_can_i_wrap_functions_which_t.html">How can I wrap
+      functions which take C++ containers as arguments?</a></span></dt>
+<dt><span class="section"><a href="faq/fatal_error_c1204_compiler_limit.html">fatal error C1204:Compiler
+      limit:internal structure overflow</a></span></dt>
+<dt><span class="section"><a href="faq/how_do_i_debug_my_python_extensi.html">How do I debug
+      my Python extensions?</a></span></dt>
+<dt><span class="section"><a href="faq/why_doesn_t_my_operator_work.html">Why doesn't my <code class="computeroutput"><span class="special">*=</span></code> operator work?</a></span></dt>
+<dt><span class="section"><a href="faq/does_boost_python_work_with_mac_.html">Does Boost.Python
+      work with Mac OS X?</a></span></dt>
+<dt><span class="section"><a href="faq/how_can_i_find_the_existing_pyob.html">How can I find
+      the existing PyObject that holds a C++ object?</a></span></dt>
+<dt><span class="section"><a href="faq/how_can_i_wrap_a_function_which0.html">How can I wrap
+      a function which needs to take ownership of a raw pointer?</a></span></dt>
+<dt><span class="section"><a href="faq/compilation_takes_too_much_time_.html">Compilation takes
+      too much time and eats too much memory! What can I do to make it faster?</a></span></dt>
+<dt><span class="section"><a href="faq/how_do_i_create_sub_packages_usi.html">How do I create
+      sub-packages using Boost.Python?</a></span></dt>
+<dt><span class="section"><a href="faq/error_c2064_term_does_not_evalua.html">error C2064: term
+      does not evaluate to a function taking 2 arguments</a></span></dt>
+<dt><span class="section"><a href="faq/how_can_i_automatically_convert_.html">How can I automatically
+      convert my custom string type to and from a Python string?</a></span></dt>
+<dt><span class="section"><a href="faq/why_is_my_automatic_to_python_co.html">Why is my automatic
+      to-python conversion not being found?</a></span></dt>
+<dt><span class="section"><a href="faq/is_boost_python_thread_aware_com.html">Is Boost.Python
+      thread-aware/compatible with multiple interpreters?</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="faq.how_can_i_wrap_a_function_which_"></a><a class="link" href="faq.html#faq.how_can_i_wrap_a_function_which_" title="How can I wrap a function which takes a function pointer as an argument?">How can I wrap
+      a function which takes a function pointer as an argument?</a>
+</h3></div></div></div>
+<p>
+        If what you're trying to do is something like this:
+      </p>
+<pre class="programlisting"><span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">function</span><span class="special">&lt;</span><span class="keyword">void</span> <span class="special">(</span><span class="identifier">string</span> <span class="identifier">s</span><span class="special">)</span> <span class="special">&gt;</span> <span class="identifier">funcptr</span><span class="special">;</span>
+
+<span class="keyword">void</span> <span class="identifier">foo</span><span class="special">(</span><span class="identifier">funcptr</span> <span class="identifier">fp</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">fp</span><span class="special">(</span><span class="string">"hello,world!"</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_PYTHON_MODULE</span><span class="special">(</span><span class="identifier">test</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">def</span><span class="special">(</span><span class="string">"foo"</span><span class="special">,</span><span class="identifier">foo</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+        And then:
+      </p>
+<pre class="programlisting"><span class="special">&gt;&gt;&gt;</span> <span class="identifier">def</span> <span class="identifier">hello</span><span class="special">(</span><span class="identifier">s</span><span class="special">):</span>
+<span class="special">...</span>    <span class="identifier">print</span> <span class="identifier">s</span>
+<span class="special">...</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">foo</span><span class="special">(</span><span class="identifier">hello</span><span class="special">)</span>
+<span class="identifier">hello</span><span class="special">,</span> <span class="identifier">world</span><span class="special">!</span>
+</pre>
+<p>
+        The short answer is: "you can't". This is not a Boost.Python limitation
+        so much as a limitation of C++. The problem is that a Python function is
+        actually data, and the only way of associating data with a C++ function pointer
+        is to store it in a static variable of the function. The problem with that
+        is that you can only associate one piece of data with every C++ function,
+        and we have no way of compiling a new C++ function on-the-fly for every Python
+        function you decide to pass to <code class="computeroutput"><span class="identifier">foo</span></code>.
+        In other words, this could work if the C++ function is always going to invoke
+        the <span class="emphasis"><em>same</em></span> Python function, but you probably don't want
+        that.
+      </p>
+<p>
+        If you have the luxury of changing the C++ code you're wrapping, pass it
+        an <code class="computeroutput"><span class="identifier">object</span></code> instead and call
+        that; the overloaded function call operator will invoke the Python function
+        you pass it behind the <code class="computeroutput"><span class="identifier">object</span></code>.
+      </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2002-2015 David
+      Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="support.html"><img src="images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="images/home.png" alt="Home"></a><a accesskey="n" href="faq/i_m_getting_the_attempt_to_retur.html"><img src="images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

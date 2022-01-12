@@ -1,0 +1,194 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>strategy::buffer::end_round</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter 1. Geometry">
+<link rel="up" href="../strategies.html" title="Strategies">
+<link rel="prev" href="strategy_buffer_join_miter.html" title="strategy::buffer::join_miter">
+<link rel="next" href="strategy_buffer_end_flat.html" title="strategy::buffer::end_flat">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="strategy_buffer_join_miter.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../strategies.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="strategy_buffer_end_flat.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="geometry.reference.strategies.strategy_buffer_end_round"></a><a class="link" href="strategy_buffer_end_round.html" title="strategy::buffer::end_round">strategy::buffer::end_round</a>
+</h4></div></div></div>
+<p>
+          <a class="indexterm" name="idm92027"></a><a class="indexterm" name="idm92029"></a><a class="indexterm" name="idm92031"></a>
+Let the buffer create rounded ends.
+        </p>
+<h6>
+<a name="geometry.reference.strategies.strategy_buffer_end_round.h0"></a>
+          <span class="phrase"><a name="geometry.reference.strategies.strategy_buffer_end_round.description"></a></span><a class="link" href="strategy_buffer_end_round.html#geometry.reference.strategies.strategy_buffer_end_round.description">Description</a>
+        </h6>
+<p>
+          This strategy can be used as EndStrategy for the buffer algorithm. It creates
+          a rounded end for each linestring-end. It can be applied for (multi)linestrings.
+          Also it is applicable for spikes in (multi)polygons. This strategy is only
+          applicable for Cartesian coordinate systems.
+        </p>
+<h6>
+<a name="geometry.reference.strategies.strategy_buffer_end_round.h1"></a>
+          <span class="phrase"><a name="geometry.reference.strategies.strategy_buffer_end_round.synopsis"></a></span><a class="link" href="strategy_buffer_end_round.html#geometry.reference.strategies.strategy_buffer_end_round.synopsis">Synopsis</a>
+        </h6>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">strategy</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">::</span><span class="identifier">end_round</span>
+<span class="special">{</span>
+  <span class="comment">// ...</span>
+<span class="special">};</span>
+</pre>
+<p>
+        </p>
+<h6>
+<a name="geometry.reference.strategies.strategy_buffer_end_round.h2"></a>
+          <span class="phrase"><a name="geometry.reference.strategies.strategy_buffer_end_round.constructor_s_"></a></span><a class="link" href="strategy_buffer_end_round.html#geometry.reference.strategies.strategy_buffer_end_round.constructor_s_">Constructor(s)</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Function
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Parameters
+                  </p>
+                </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                  <p>
+</p>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="identifier">end_round</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">points_per_circle</span> <span class="special">=</span> <span class="number">90</span><span class="special">)</span></pre>
+<p>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Constructs the strategy.
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="bold"><strong>std::size_t</strong></span>: <span class="emphasis"><em>points_per_circle</em></span>:
+                    points which would be used for a full circle (if points_per_circle
+                    is smaller than 4, it is internally set to 4)
+                  </p>
+                </td>
+</tr></tbody>
+</table></div>
+<h6>
+<a name="geometry.reference.strategies.strategy_buffer_end_round.h3"></a>
+          <span class="phrase"><a name="geometry.reference.strategies.strategy_buffer_end_round.header"></a></span><a class="link" href="strategy_buffer_end_round.html#geometry.reference.strategies.strategy_buffer_end_round.header">Header</a>
+        </h6>
+<p>
+          <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">geometry</span><span class="special">/</span><span class="identifier">strategies</span><span class="special">/</span><span class="identifier">cartesian</span><span class="special">/</span><span class="identifier">buffer_end_round</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+        </p>
+<h6>
+<a name="geometry.reference.strategies.strategy_buffer_end_round.h4"></a>
+          <span class="phrase"><a name="geometry.reference.strategies.strategy_buffer_end_round.example"></a></span><a class="link" href="strategy_buffer_end_round.html#geometry.reference.strategies.strategy_buffer_end_round.example">Example</a>
+        </h6>
+<p>
+          Shows how the end_round strategy can be used as a EndStrategy to create
+          rounded ends
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">geometry</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">geometry</span><span class="special">/</span><span class="identifier">geometries</span><span class="special">/</span><span class="identifier">point_xy</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">geometry</span><span class="special">/</span><span class="identifier">geometries</span><span class="special">/</span><span class="identifier">geometries</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">d2</span><span class="special">::</span><span class="identifier">point_xy</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;</span> <span class="identifier">point</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">linestring</span><span class="special">&lt;</span><span class="identifier">point</span><span class="special">&gt;</span> <span class="identifier">linestring</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">polygon</span><span class="special">&lt;</span><span class="identifier">point</span><span class="special">&gt;</span> <span class="identifier">polygon</span><span class="special">;</span>
+
+    <span class="comment">// Declare the round-end strategy with 36 points for a full circle</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">strategy</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">::</span><span class="identifier">end_round</span> <span class="identifier">end_strategy</span><span class="special">(</span><span class="number">36</span><span class="special">);</span>
+
+    <span class="comment">// Declare other strategies</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">strategy</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">::</span><span class="identifier">distance_symmetric</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;</span> <span class="identifier">distance_strategy</span><span class="special">(</span><span class="number">1.0</span><span class="special">);</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">strategy</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">::</span><span class="identifier">side_straight</span> <span class="identifier">side_strategy</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">strategy</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">::</span><span class="identifier">join_round</span> <span class="identifier">join_strategy</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">strategy</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">::</span><span class="identifier">point_circle</span> <span class="identifier">point_strategy</span><span class="special">;</span>
+
+    <span class="comment">// Declare/fill a multi linestring</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">multi_linestring</span><span class="special">&lt;</span><span class="identifier">linestring</span><span class="special">&gt;</span> <span class="identifier">ml</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">read_wkt</span><span class="special">(</span><span class="string">"MULTILINESTRING((3 5,5 10,7 5),(7 7,11 10,15 7,19 10))"</span><span class="special">,</span> <span class="identifier">ml</span><span class="special">);</span>
+
+    <span class="comment">// Create the buffered geometry with rounded ends</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">multi_polygon</span><span class="special">&lt;</span><span class="identifier">polygon</span><span class="special">&gt;</span> <span class="identifier">result</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">(</span><span class="identifier">ml</span><span class="special">,</span> <span class="identifier">result</span><span class="special">,</span>
+                <span class="identifier">distance_strategy</span><span class="special">,</span> <span class="identifier">side_strategy</span><span class="special">,</span>
+                <span class="identifier">join_strategy</span><span class="special">,</span> <span class="identifier">end_strategy</span><span class="special">,</span> <span class="identifier">point_strategy</span><span class="special">);</span>
+
+
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        </p>
+<h6>
+<a name="geometry.reference.strategies.strategy_buffer_end_round.h5"></a>
+          <span class="phrase"><a name="geometry.reference.strategies.strategy_buffer_end_round.output"></a></span><a class="link" href="strategy_buffer_end_round.html#geometry.reference.strategies.strategy_buffer_end_round.output">Output</a>
+        </h6>
+<p>
+          <span class="inlinemediaobject"><img src="../../../img/strategies/buffer_end_round.png" alt="buffer_end_round"></span>
+        </p>
+<h6>
+<a name="geometry.reference.strategies.strategy_buffer_end_round.h6"></a>
+          <span class="phrase"><a name="geometry.reference.strategies.strategy_buffer_end_round.see_also"></a></span><a class="link" href="strategy_buffer_end_round.html#geometry.reference.strategies.strategy_buffer_end_round.see_also">See
+          also</a>
+        </h6>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <a class="link" href="../algorithms/buffer/buffer_7_with_strategies.html" title="buffer (with strategies)">buffer
+              (with strategies)</a>
+            </li>
+<li class="listitem">
+              <a class="link" href="strategy_buffer_end_flat.html" title="strategy::buffer::end_flat">end_flat</a>
+            </li>
+</ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2009-2021 Barend Gehrels,
+      Bruno Lalande, Mateusz Loskot, Adam Wulkiewicz, Oracle and/or its affiliates<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="strategy_buffer_join_miter.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../strategies.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="strategy_buffer_end_flat.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

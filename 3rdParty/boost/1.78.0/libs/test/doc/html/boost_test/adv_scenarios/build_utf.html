@@ -1,0 +1,130 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Building the Unit Test Framework</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../adv_scenarios.html" title="Advanced Usage Scenarios">
+<link rel="prev" href="../adv_scenarios.html" title="Advanced Usage Scenarios">
+<link rel="next" href="entry_point_overview.html" title="Test module's entry point">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../adv_scenarios.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../adv_scenarios.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="entry_point_overview.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_test.adv_scenarios.build_utf"></a><a class="link" href="build_utf.html" title="Building the Unit Test Framework">Building the <span class="emphasis"><em>Unit
+      Test Framework</em></span></a>
+</h3></div></div></div>
+<p>
+        In case you would like to use the <a class="link" href="../usage_variants.html#boost_test.usage_variants.shared_lib">shared
+        library variant</a> or the <a class="link" href="../usage_variants.html#boost_test.usage_variants.static_lib">static
+        library variant</a> of the <span class="emphasis"><em>Unit Test Framework</em></span>, the
+        library needs to be built. Building the <span class="emphasis"><em>Unit Test Framework</em></span>
+        is in fact quite easy.
+      </p>
+<p>
+        In the sequel, we define
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            $<code class="computeroutput"><span class="identifier">boost_path</span></code> refers to
+            the location where the boost archive was deflated
+          </li>
+<li class="listitem">
+            $<code class="computeroutput"><span class="identifier">boost_installation_prefix</span></code>
+            refers to the location where you want to install the <span class="emphasis"><em>Unit Test
+            Framework</em></span>
+          </li>
+</ul></div>
+<p>
+        More documentation about <span class="bold"><strong>Boost's build system</strong></span>
+        can be found <a href="http://www.boost.org/more/getting_started/index.html" target="_top">here</a>.
+      </p>
+<h4>
+<a name="boost_test.adv_scenarios.build_utf.h0"></a>
+        <span class="phrase"><a name="boost_test.adv_scenarios.build_utf.windows"></a></span><a class="link" href="build_utf.html#boost_test.adv_scenarios.build_utf.windows">Windows</a>
+      </h4>
+<p>
+        You need to have a compilation toolchain. <span class="emphasis"><em>Visual Studio Express</em></span>
+        is such one, freely available from the Microsoft website. Once installed,
+        open a <span class="emphasis"><em>Visual Studio Command Line tools</em></span> prompt and build
+        the Boost build program <code class="computeroutput"><span class="identifier">b2</span></code>
+        (see the link above). You will then be able to compile the <span class="emphasis"><em>Unit
+        Test Framework</em></span> with different variants.
+      </p>
+<h5>
+<a name="boost_test.adv_scenarios.build_utf.h1"></a>
+        <span class="phrase"><a name="boost_test.adv_scenarios.build_utf.static_variant"></a></span><a class="link" href="build_utf.html#boost_test.adv_scenarios.build_utf.static_variant">Static
+        variant</a>
+      </h5>
+<p>
+        For building 32bits libraries, open a console window and enter the following
+        commands:
+      </p>
+<pre class="programlisting"><span class="special">&gt;</span> <span class="identifier">cd</span> $<span class="identifier">boost_path</span>
+<span class="special">&gt;</span> <span class="identifier">bootstrap</span><span class="special">.</span><span class="identifier">bat</span>
+<span class="special">&gt;</span> <span class="identifier">b2</span> <span class="identifier">address</span><span class="special">-</span><span class="identifier">model</span><span class="special">=</span><span class="number">32</span> <span class="identifier">architecture</span><span class="special">=</span><span class="identifier">x86</span> <span class="special">--</span><span class="identifier">with</span><span class="special">-</span><span class="identifier">test</span> <span class="identifier">link</span><span class="special">=</span><span class="keyword">static</span> <span class="special">\</span>
+<span class="special">&gt;</span>                     <span class="special">--</span><span class="identifier">prefix</span><span class="special">=</span>$<span class="identifier">boost_installation_prefix</span> <span class="identifier">install</span>
+</pre>
+<p>
+        For building 64bits libraries, the commands become:
+      </p>
+<pre class="programlisting"><span class="special">&gt;</span> <span class="identifier">cd</span> $<span class="identifier">boost_path</span>
+<span class="special">&gt;</span> <span class="identifier">bootstrap</span><span class="special">.</span><span class="identifier">bat</span>
+<span class="special">&gt;</span> <span class="identifier">b2</span> <span class="identifier">address</span><span class="special">-</span><span class="identifier">model</span><span class="special">=</span><span class="number">64</span> <span class="identifier">architecture</span><span class="special">=</span><span class="identifier">x86</span> <span class="special">--</span><span class="identifier">with</span><span class="special">-</span><span class="identifier">test</span> <span class="identifier">link</span><span class="special">=</span><span class="keyword">static</span> <span class="special">\</span>
+<span class="special">&gt;</span>                    <span class="special">--</span><span class="identifier">prefix</span><span class="special">=</span>$<span class="identifier">boost_installation_prefix</span> <span class="identifier">install</span>
+</pre>
+<h5>
+<a name="boost_test.adv_scenarios.build_utf.h2"></a>
+        <span class="phrase"><a name="boost_test.adv_scenarios.build_utf.shared_library_variant"></a></span><a class="link" href="build_utf.html#boost_test.adv_scenarios.build_utf.shared_library_variant">Shared
+        library variant</a>
+      </h5>
+<p>
+        In order to build the shared library variant, the directive <code class="computeroutput"><span class="identifier">link</span><span class="special">=</span><span class="keyword">static</span></code>
+        should be replaced by <code class="computeroutput"><span class="identifier">link</span><span class="special">=</span><span class="identifier">shared</span></code>
+        on the above command lines. For instance, for 64bits builds, the commands
+        become:
+      </p>
+<pre class="programlisting"><span class="special">&gt;</span> <span class="identifier">cd</span> $<span class="identifier">boost_path</span>
+<span class="special">&gt;</span> <span class="identifier">bootstrap</span><span class="special">.</span><span class="identifier">bat</span>
+<span class="special">&gt;</span> <span class="identifier">b2</span> <span class="identifier">address</span><span class="special">-</span><span class="identifier">model</span><span class="special">=</span><span class="number">64</span> <span class="identifier">architecture</span><span class="special">=</span><span class="identifier">x86</span> <span class="special">--</span><span class="identifier">with</span><span class="special">-</span><span class="identifier">test</span> <span class="identifier">link</span><span class="special">=</span><span class="identifier">shared</span> <span class="special">--</span><span class="identifier">prefix</span><span class="special">=</span>$<span class="identifier">boost_installation_prefix</span> <span class="identifier">install</span>
+</pre>
+<h4>
+<a name="boost_test.adv_scenarios.build_utf.h3"></a>
+        <span class="phrase"><a name="boost_test.adv_scenarios.build_utf.linux_osx"></a></span><a class="link" href="build_utf.html#boost_test.adv_scenarios.build_utf.linux_osx">Linux/OSX</a>
+      </h4>
+<p>
+        For Unix/Linux/OSX operating system, the build of the <span class="emphasis"><em>Unit Test
+        Framework</em></span> is very similar to the one on Windows:
+      </p>
+<pre class="programlisting"><span class="special">&gt;</span> <span class="identifier">cd</span> $<span class="identifier">boost_path</span>
+<span class="special">&gt;</span> <span class="special">./</span><span class="identifier">bootstrap</span><span class="special">.</span><span class="identifier">sh</span>
+<span class="special">&gt;</span> <span class="special">./</span><span class="identifier">b2</span> <span class="special">--</span><span class="identifier">with</span><span class="special">-</span><span class="identifier">test</span> <span class="special">--</span><span class="identifier">prefix</span><span class="special">=</span>$<span class="identifier">boost_installation_prefix</span> <span class="identifier">install</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001-2020 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../adv_scenarios.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../adv_scenarios.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="entry_point_overview.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

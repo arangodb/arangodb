@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -508,11 +509,16 @@ auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
           throw ParticipantResignedException(
               TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
         }
+        auto commitFailReason = std::optional<CommitFailReason>{};
+        if (leaderData.calculateCommitLag() > std::chrono::seconds{20}) {
+          commitFailReason = leaderData._lastCommitFailReason;
+        }
         return QuickLogStatus{
             .role = ParticipantRole::kLeader,
             .term = term,
             .local = leaderData.getLocalStatistics(),
             .leadershipEstablished = leaderData._leadershipEstablished,
+            .commitFailReason = commitFailReason,
             .activeParticipantsConfig = leaderData.activeParticipantsConfig,
             .committedParticipantsConfig =
                 leaderData.committedParticipantsConfig};
