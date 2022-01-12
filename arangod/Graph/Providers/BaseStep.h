@@ -24,6 +24,7 @@
 #pragma once
 
 #include <velocypack/HashedStringRef.h>
+#include "Basics/ResultT.h"
 
 #include <numeric>
 
@@ -52,7 +53,7 @@ class BaseStep {
 
   double getWeight() const { return _weight; }
 
-  ResultT<std::pair<std::string, size_t>> extractCollectionName(
+  [[nodiscard]] ResultT<std::pair<std::string, size_t>> extractCollectionName(
       arangodb::velocypack::HashedStringRef const& idHashed) const {
     size_t pos = idHashed.find('/');
     if (pos == std::string::npos) {

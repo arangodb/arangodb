@@ -26,9 +26,7 @@
 
 #include <velocypack/HashedStringRef.h>
 
-namespace arangodb {
-namespace graph {
+namespace arangodb::graph {
 using VertexType = arangodb::velocypack::HashedStringRef;
 using EdgeType = arangodb::velocypack::HashedStringRef;
-}  // namespace graph
 }  // namespace arangodb

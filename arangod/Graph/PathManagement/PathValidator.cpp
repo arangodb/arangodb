@@ -486,35 +486,39 @@ template class PathValidator<
 #endif
 
 /* ClusterProvider Section */
-template class PathValidator<ClusterProvider, PathStore<ClusterProvider::Step>,
-                             VertexUniquenessLevel::NONE,
-                             EdgeUniquenessLevel::NONE>;
 template class PathValidator<
-    ProviderTracer<ClusterProvider>,
-    PathStoreTracer<PathStore<ProviderTracer<ClusterProvider>::Step>>,
+    ClusterProvider<ClusterProviderStep>, PathStore<ClusterProviderStep>,
     VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>;
-template class PathValidator<ClusterProvider, PathStore<ClusterProvider::Step>,
-                             VertexUniquenessLevel::NONE,
-                             EdgeUniquenessLevel::PATH>;
 template class PathValidator<
-    ProviderTracer<ClusterProvider>,
-    PathStoreTracer<PathStore<ProviderTracer<ClusterProvider>::Step>>,
+    ProviderTracer<ClusterProvider<ClusterProviderStep>>,
+    PathStoreTracer<
+        PathStore<ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>>,
+    VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>;
+template class PathValidator<
+    ClusterProvider<ClusterProviderStep>, PathStore<ClusterProviderStep>,
+    VertexUniquenessLevel::NONE, EdgeUniquenessLevel::PATH>;
+template class PathValidator<
+    ProviderTracer<ClusterProvider<ClusterProviderStep>>,
+    PathStoreTracer<
+        PathStore<ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>>,
     VertexUniquenessLevel::NONE, EdgeUniquenessLevel::PATH>;
 
-template class PathValidator<ClusterProvider, PathStore<ClusterProvider::Step>,
-                             VertexUniquenessLevel::PATH,
-                             EdgeUniquenessLevel::PATH>;
 template class PathValidator<
-    ProviderTracer<ClusterProvider>,
-    PathStoreTracer<PathStore<ProviderTracer<ClusterProvider>::Step>>,
+    ClusterProvider<ClusterProviderStep>, PathStore<ClusterProviderStep>,
+    VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>;
+template class PathValidator<
+    ProviderTracer<ClusterProvider<ClusterProviderStep>>,
+    PathStoreTracer<
+        PathStore<ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>>,
     VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>;
 
-template class PathValidator<ClusterProvider, PathStore<ClusterProvider::Step>,
-                             VertexUniquenessLevel::GLOBAL,
-                             EdgeUniquenessLevel::PATH>;
 template class PathValidator<
-    ProviderTracer<ClusterProvider>,
-    PathStoreTracer<PathStore<ProviderTracer<ClusterProvider>::Step>>,
+    ClusterProvider<ClusterProviderStep>, PathStore<ClusterProviderStep>,
+    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>;
+template class PathValidator<
+    ProviderTracer<ClusterProvider<ClusterProviderStep>>,
+    PathStoreTracer<
+        PathStore<ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>>,
     VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>;
 
 }  // namespace arangodb::graph

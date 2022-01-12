@@ -423,13 +423,16 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
 
       if (opts->query().queryOptions().getTraversalProfileLevel() ==
           TraversalProfileLevel::None) {
-        using KPathRefactoredCluster = KPathEnumerator<ClusterProvider>;
+        using KPathRefactoredCluster =
+            KPathEnumerator<ClusterProvider<ClusterProviderStep>>;
 
         auto kPathUnique = std::make_unique<KPathRefactoredCluster>(
-            ClusterProvider{opts->query(), forwardProviderOptions,
-                            opts->query().resourceMonitor()},
-            ClusterProvider{opts->query(), backwardProviderOptions,
-                            opts->query().resourceMonitor()},
+            ClusterProvider<ClusterProviderStep>{
+                opts->query(), forwardProviderOptions,
+                opts->query().resourceMonitor()},
+            ClusterProvider<ClusterProviderStep>{
+                opts->query(), backwardProviderOptions,
+                opts->query().resourceMonitor()},
             std::move(enumeratorOptions), std::move(validatorOptions),
             opts->query().resourceMonitor());
 
@@ -441,15 +444,15 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
             &engine, this, std::move(registerInfos), std::move(executorInfos));
       } else {
         using KPathRefactoredClusterTracer =
-            TracedKPathEnumerator<ClusterProvider>;
+            TracedKPathEnumerator<ClusterProvider<ClusterProviderStep>>;
 
         auto kPathUnique = std::make_unique<KPathRefactoredClusterTracer>(
-            ProviderTracer<ClusterProvider>{opts->query(),
-                                            forwardProviderOptions,
-                                            opts->query().resourceMonitor()},
-            ProviderTracer<ClusterProvider>{opts->query(),
-                                            backwardProviderOptions,
-                                            opts->query().resourceMonitor()},
+            ProviderTracer<ClusterProvider<ClusterProviderStep>>{
+                opts->query(), forwardProviderOptions,
+                opts->query().resourceMonitor()},
+            ProviderTracer<ClusterProvider<ClusterProviderStep>>{
+                opts->query(), backwardProviderOptions,
+                opts->query().resourceMonitor()},
             std::move(enumeratorOptions), std::move(validatorOptions),
             opts->query().resourceMonitor());
 

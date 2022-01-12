@@ -231,12 +231,13 @@ template class ::arangodb::graph::SingleProviderPathResult<
 // TODO: check if cluster is needed here
 /* ClusterProvider Section */
 template class ::arangodb::graph::SingleProviderPathResult<
-    ::arangodb::graph::ClusterProvider,
-    ::arangodb::graph::PathStore<::arangodb::graph::ClusterProvider::Step>,
-    ::arangodb::graph::ClusterProvider::Step>;
+    ::arangodb::graph::ClusterProvider<ClusterProviderStep>,
+    ::arangodb::graph::PathStore<::arangodb::graph::ClusterProviderStep>,
+    ::arangodb::graph::ClusterProviderStep>;
 
 template class ::arangodb::graph::SingleProviderPathResult<
-    ::arangodb::graph::ProviderTracer<::arangodb::graph::ClusterProvider>,
+    ::arangodb::graph::ProviderTracer<
+        ::arangodb::graph::ClusterProvider<ClusterProviderStep>>,
     ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<::arangodb::graph::ClusterProvider::Step>>,
-    ::arangodb::graph::ClusterProvider::Step>;
+        ::arangodb::graph::PathStore<::arangodb::graph::ClusterProviderStep>>,
+    ::arangodb::graph::ClusterProviderStep>;

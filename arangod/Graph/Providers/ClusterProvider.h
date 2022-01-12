@@ -35,6 +35,7 @@
 #include "Containers/FlatHashMap.h"
 
 #include "Transaction/Methods.h"
+#include "Graph/Steps/ClusterProviderStep.h"
 
 #include <vector>
 
@@ -60,96 +61,11 @@ namespace graph {
 // (will be implemented in the future via template parameters) data should be
 // returned THis is most-likely done via Template Parameter like this:
 // template<ProduceVertexData>
+template<class StepImpl>
 class ClusterProvider {
  public:
   using Options = ClusterBaseProviderOptions;
-  class Step : public arangodb::graph::BaseStep<Step> {
-    friend class ClusterProvider;
-
-   public:
-    using StepType = EdgeType;
-
-   public:
-    class Vertex {
-     public:
-      explicit Vertex(VertexType v) : _vertex(v) {}
-
-      VertexType const& getID() const;
-
-      bool operator<(Vertex const& other) const noexcept {
-        return _vertex < other._vertex;
-      }
-
-      bool operator>(Vertex const& other) const noexcept {
-        return _vertex > other._vertex;
-      }
-
-      void setVertex(VertexType thisIsATest) { _vertex = thisIsATest; }
-
-     private:
-      VertexType _vertex;
-    };
-
-    class Edge {
-     public:
-      explicit Edge(EdgeType tkn) : _edge(std::move(tkn)) {}
-      Edge() : _edge() {}
-
-      void addToBuilder(ClusterProvider& provider,
-                        arangodb::velocypack::Builder& builder) const;
-      StepType const& getID() const;  // TODO: Performance Test compare EdgeType
-                                      // <-> EdgeDocumentToken
-      bool isValid() const;
-
-     private:
-      EdgeType _edge;
-    };
-
-   private:
-    Step(VertexType v);
-    Step(VertexType v, EdgeType edge, size_t prev);
-    Step(VertexType v, EdgeType edge, size_t prev, bool fetched);
-
-   public:
-    ~Step();
-
-    bool operator<(Step const& other) const noexcept {
-      return _vertex < other._vertex;
-    }
-
-    Vertex const& getVertex() const { return _vertex; }
-    Edge const& getEdge() const { return _edge; }
-
-    std::string toString() const {
-      return "<Step><Vertex>: " + _vertex.getID().toString();
-    }
-    bool isProcessable() const { return !isLooseEnd(); }
-    bool isLooseEnd() const { return !_fetched; }
-
-    VertexType getVertexIdentifier() const { return _vertex.getID(); }
-    StepType getEdgeIdentifier() const { return _edge.getID(); }
-
-    std::string getCollectionName() const {
-      auto collectionNameResult = extractCollectionName(_vertex.getID());
-      if (collectionNameResult.fail()) {
-        THROW_ARANGO_EXCEPTION(collectionNameResult.result());
-      }
-      return collectionNameResult.get().first;
-    };
-
-    static bool isResponsible(transaction::Methods* trx) ;
-
-    friend auto operator<<(std::ostream& out, Step const& step)
-        -> std::ostream&;
-
-   private:
-    void setFetched() { _fetched = true; }
-
-   private:
-    Vertex _vertex;
-    Edge _edge;
-    bool _fetched;
-  };
+  using Step = StepImpl;
 
  public:
   ClusterProvider(arangodb::aql::QueryContext& queryContext,
@@ -170,9 +86,9 @@ class ClusterProvider {
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;
 
-  void addVertexToBuilder(Step::Vertex const& vertex,
+  void addVertexToBuilder(typename Step::Vertex const& vertex,
                           arangodb::velocypack::Builder& builder);
-  void addEdgeToBuilder(Step::Edge const& edge,
+  void addEdgeToBuilder(typename Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
 
   // fetch vertices and store in cache
