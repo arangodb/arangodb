@@ -38,7 +38,7 @@ const {
     replicatedLogDeletePlan,
     createTermSpecification,
     replicatedLogIsReady,
-    dbservers,
+    dbservers, allServersHealthy,
     nextUniqueLogId,
     registerAgencyTestBegin, registerAgencyTestEnd,
 } = helper;
@@ -153,7 +153,10 @@ const replicatedLogSuite = function () {
     return {
         setUpAll, tearDownAll,
         setUp: registerAgencyTestBegin,
-        tearDown: registerAgencyTestEnd,
+        tearDown: function (test) {
+            waitFor(allServersHealthy());
+            registerAgencyTestEnd(test);
+        },
 
         testCheckSimpleFailover: function () {
             const logId = nextUniqueLogId();
@@ -217,6 +220,8 @@ const replicatedLogSuite = function () {
             waitFor(replicatedLogIsReady(database, logId, term + 2, [servers[1], servers[2]], servers[2]));
 
             replicatedLogDeletePlan(database, logId);
+
+            continueServer(leader);
         },
     };
 };
