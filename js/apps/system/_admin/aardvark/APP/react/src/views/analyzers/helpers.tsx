@@ -1,6 +1,24 @@
 import Ajv from "ajv";
 import ajvErrors from 'ajv-errors';
-import { AnalyzerTypeState, DispatchArgs, FormProps, formSchema } from "./constants";
+import {
+  AnalyzerTypeState,
+  AqlState,
+  ClassificationState,
+  CollationState,
+  DelimiterState,
+  formSchema,
+  GeoJsonState,
+  GeoPointState,
+  NearestNeighborsState,
+  NGramState,
+  NormState,
+  PipelineStates,
+  SegmentationState,
+  StemState,
+  StopwordsState,
+  TextState
+} from "./constants";
+import { DispatchArgs, FormProps } from "../../utils/constants";
 import DelimiterForm from "./forms/DelimiterForm";
 import StemForm from "./forms/StemForm";
 import NormForm from "./forms/NormForm";
@@ -11,10 +29,11 @@ import GeoJsonForm from "./forms/GeoJsonForm";
 import GeoPointForm from "./forms/GeoPointForm";
 import React, { Dispatch } from "react";
 import PipelineForm from "./forms/PipelineForm";
-import { compact, parseInt } from "lodash";
 import StopwordsForm from "./forms/StopwordsForm";
 import CollationForm from "./forms/CollationForm";
 import SegmentationForm from "./forms/SegmentationForm";
+import NearestNeighborsForm from "./forms/NearestNeighborsForm";
+import ClassificationForm from "./forms/ClassificationForm";
 
 const ajv = new Ajv({
   allErrors: true,
@@ -24,74 +43,106 @@ const ajv = new Ajv({
   $data: true
 });
 ajvErrors(ajv);
+
 export const validateAndFix = ajv.compile(formSchema);
 
-export const getPath = (basePath: string | undefined, path: string | undefined) => compact([basePath, path]).join('.');
-
-export const getForm = ({ formState, dispatch, disabled = true }: FormProps) => {
-  const typeName = (formState as AnalyzerTypeState).type;
+export function getForm (formProps: FormProps<AnalyzerTypeState>) {
+  const typeName = formProps.formState.type;
 
   switch (typeName) {
     case 'identity':
       return null;
 
-    case 'delimiter':
+    case 'delimiter': {
+      const { disabled, dispatch, formState } = getConstrainedFormProps<DelimiterState>(formProps);
+
       return <DelimiterForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
+    }
 
-    case 'stem':
+    case 'stem': {
+      const { disabled, dispatch, formState } = getConstrainedFormProps<StemState>(formProps);
+
       return <StemForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
+    }
 
-    case 'norm':
+    case 'norm': {
+      const { disabled, dispatch, formState } = getConstrainedFormProps<NormState>(formProps);
+
       return <NormForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
+    }
 
-    case 'ngram':
+    case 'ngram': {
+      const { disabled, dispatch, formState } = getConstrainedFormProps<NGramState>(formProps);
+
       return <NGramForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
+    }
 
-    case 'text':
+    case 'text': {
+      const { disabled, dispatch, formState } = getConstrainedFormProps<TextState>(formProps);
+
       return <TextForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
+    }
 
-    case 'aql':
+    case 'aql': {
+      const { disabled, dispatch, formState } = getConstrainedFormProps<AqlState>(formProps);
+
       return <AqlForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
+    }
 
-    case 'stopwords':
+    case 'stopwords': {
+      const { disabled, dispatch, formState } = getConstrainedFormProps<StopwordsState>(formProps);
+
       return <StopwordsForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
+    }
 
-    case 'collation':
+    case 'collation': {
+      const { disabled, dispatch, formState } = getConstrainedFormProps<CollationState>(formProps);
+
       return <CollationForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
+    }
 
-    case 'segmentation':
+    case 'segmentation': {
+      const { disabled, dispatch, formState } = getConstrainedFormProps<SegmentationState>(formProps);
+
       return <SegmentationForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
+    }
 
-    case 'pipeline':
+    case 'nearest_neighbors': {
+      const { disabled, dispatch, formState } = getConstrainedFormProps<NearestNeighborsState>(formProps);
+
+      return <NearestNeighborsForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
+    }
+
+    case 'classification': {
+      const { disabled, dispatch, formState } = getConstrainedFormProps<ClassificationState>(formProps);
+
+      return <ClassificationForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
+    }
+
+    case 'pipeline': {
+      const { disabled, dispatch, formState } = getConstrainedFormProps<PipelineStates>(formProps);
+
       return <PipelineForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
+    }
 
-    case 'geojson':
+    case 'geojson': {
+      const { disabled, dispatch, formState } = getConstrainedFormProps<GeoJsonState>(formProps);
+
       return <GeoJsonForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
+    }
 
-    case 'geopoint':
+    case 'geopoint': {
+      const { disabled, dispatch, formState } = getConstrainedFormProps<GeoPointState>(formProps);
+
       return <GeoPointForm formState={formState} dispatch={dispatch} disabled={disabled}/>;
+    }
   }
-};
+}
 
-export const setIntegerField = (field: string, value: string, dispatch: Dispatch<DispatchArgs>, basePath?: string) => {
-  const numValue = parseInt(value);
-
-  if (numValue) {
-    dispatch({
-      type: 'setField',
-      field: {
-        path: field,
-        value: numValue
-      },
-      basePath
-    });
-  } else {
-    dispatch({
-      type: 'unsetField',
-      field: {
-        path: field
-      },
-      basePath
-    });
-  }
-};
+export function getConstrainedFormProps<T extends AnalyzerTypeState> (formProps: FormProps<AnalyzerTypeState>): FormProps<T> {
+  return {
+    formState: formProps.formState as T,
+    dispatch: formProps.dispatch as Dispatch<DispatchArgs<T>>,
+    disabled: formProps.disabled
+  };
+}

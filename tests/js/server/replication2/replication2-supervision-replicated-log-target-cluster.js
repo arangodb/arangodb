@@ -38,7 +38,7 @@ const {
     replicatedLogDeletePlan,
     createTermSpecification,
     replicatedLogIsReady,
-    dbservers,
+    dbservers, allServersHealthy,
     nextUniqueLogId,
     registerAgencyTestBegin, registerAgencyTestEnd,
 } = helper;
@@ -137,6 +137,8 @@ const replicatedLogSuite = function () {
                 Object.keys(stoppedServers).forEach(function (key) {
                     continueServer(key);
                 });
+
+                waitFor(allServersHealthy());
                 registerAgencyTestEnd(testName);
             },
 
@@ -222,6 +224,8 @@ const replicatedLogSuite = function () {
             waitFor(replicatedLogIsReady(database, logId, term + 2, [servers[1], servers[2]], servers[2]));
 
             replicatedLogDeletePlan(database, logId);
+
+            continueServer(leader);
         },
 
         testLogStatus: function () {
