@@ -94,9 +94,8 @@ return require('internal').options()["log.output"];
     },
 
     testLogNewEntries: function() {
-      let res = arango.PUT("/_admin/log/structured", {"dog": true, "queryId": true, "database": false});
+      const res = arango.PUT("/_admin/log/structured", {"dog": true, "database": false});
 
-      assertTrue(res.hasOwnProperty("queryId"));
       assertTrue(res.hasOwnProperty("url"));
       assertTrue(res.hasOwnProperty("username"));
       assertFalse(res.hasOwnProperty("dog"));
