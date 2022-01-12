@@ -1,6 +1,13 @@
 devel
 -----
 
+* APM-24: Log messages can be displayed together with some other useful 
+  parameters, e.g., the name of the database, username, query id, and so on. 
+  There are some predefined parameters that we consider displaying, but, 
+  for the moment, only database, username and url are being displayed.
+  The usage upon starting the server is, for example: 
+  `arangod --log.structured-param database --log.structured-param username`
+
 * Fixed issue #15476: FATAL {crash} occurs on a simple query.
 
 * Added `disableIndex` index hint for AQL FOR loops. This index hint disables
