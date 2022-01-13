@@ -414,15 +414,16 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase,
       result.add(it.key.copyString(), it.value);
     }
   }
-
+  double ttl{};
   {
     MUTEX_LOCKER(locker, _contextLock);
     lazyCreateSnapshot();
+    ttl = _ttl;
   }
 
   TRI_ASSERT(_snapshot != nullptr);
   vocbase.replicationClients().track(syncerId(), replicationClientServerId(),
-                                     clientInfo(), _snapshotTick, _ttl);
+                                     clientInfo(), _snapshotTick, ttl);
 
   return Result();
 }
@@ -484,7 +485,6 @@ std::string const& RocksDBReplicationContext::patchCount() const {
 RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
     TRI_vocbase_t& vocbase, std::string const& cname,
     basics::StringBuffer& buff, uint64_t chunkSize, bool useEnvelope) {
-  TRI_ASSERT(_users > 0);
   CollectionIterator* cIter{nullptr};
   auto guard = scopeGuard([&]() noexcept {
     try {
@@ -502,6 +502,7 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
     }
 
     MUTEX_LOCKER(writeLocker, _contextLock);
+    TRI_ASSERT(_users > 0);
     cIter =
         getCollectionIterator(vocbase, cid, /*sorted*/ false, /*create*/ true);
     if (!cIter || cIter->sorted() || !cIter->iter) {
@@ -570,7 +571,6 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
     TRI_vocbase_t& vocbase, std::string const& cname,
     VPackBuffer<uint8_t>& buffer, uint64_t chunkSize, bool useEnvelope,
     bool singleArray) {
-  TRI_ASSERT(_users > 0 && chunkSize > 0);
   TRI_ASSERT(!useEnvelope || !singleArray);
 
   CollectionIterator* cIter{nullptr};
@@ -590,6 +590,7 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
     }
 
     MUTEX_LOCKER(writeLocker, _contextLock);
+    TRI_ASSERT(_users > 0 && chunkSize > 0);
     cIter =
         getCollectionIterator(vocbase, cid, /*sorted*/ false, /*create*/ true);
     if (!cIter || cIter->sorted() || !cIter->iter) {
@@ -660,7 +661,6 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
 arangodb::Result RocksDBReplicationContext::dumpKeyChunks(
     TRI_vocbase_t& vocbase, DataSourceId cid, VPackBuilder& b,
     uint64_t chunkSize) {
-  TRI_ASSERT(_users > 0 && chunkSize > 0);
   CollectionIterator* cIter{nullptr};
   auto guard = scopeGuard([&cIter]() noexcept {
     if (cIter) {
@@ -675,6 +675,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(
     }
 
     MUTEX_LOCKER(writeLocker, _contextLock);
+    TRI_ASSERT(_users > 0 && chunkSize > 0);
     cIter =
         getCollectionIterator(vocbase, cid, /*sorted*/ true, /*create*/ true);
     if (!cIter || !cIter->sorted() || !cIter->iter) {
@@ -799,7 +800,6 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(
 arangodb::Result RocksDBReplicationContext::dumpKeys(
     TRI_vocbase_t& vocbase, DataSourceId cid, VPackBuilder& b, size_t chunk,
     size_t chunkSize, std::string const& lowKey) {
-  TRI_ASSERT(_users > 0 && chunkSize > 0);
   CollectionIterator* cIter{nullptr};
   auto guard = scopeGuard([&cIter]() noexcept {
     if (cIter) {
@@ -814,6 +814,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
     }
 
     MUTEX_LOCKER(writeLocker, _contextLock);
+    TRI_ASSERT(_users > 0 && chunkSize > 0);
     cIter =
         getCollectionIterator(vocbase, cid, /*sorted*/ true, /*create*/ false);
     if (!cIter || !cIter->sorted() || !cIter->iter) {
@@ -926,7 +927,6 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     TRI_vocbase_t& vocbase, DataSourceId cid, VPackBuilder& b, size_t chunk,
     size_t chunkSize, size_t offsetInChunk, size_t maxChunkSize,
     std::string const& lowKey, VPackSlice const& ids) {
-  TRI_ASSERT(_users > 0 && chunkSize > 0);
   CollectionIterator* cIter{nullptr};
   auto guard = scopeGuard([&cIter]() noexcept {
     if (cIter) {
@@ -941,6 +941,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     }
 
     MUTEX_LOCKER(writeLocker, _contextLock);
+    TRI_ASSERT(_users > 0 && chunkSize > 0);
     cIter =
         getCollectionIterator(vocbase, cid, /*sorted*/ true, /*create*/ true);
     if (!cIter || !cIter->sorted() || !cIter->iter) {
