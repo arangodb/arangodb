@@ -893,7 +893,7 @@ void SimpleHttpClient::processChunkedHeader() {
   }
 
   // empty lines are an error
-  if (line[0] == '\r' || line.empty()) {
+  if (line.empty() || line[0] == '\r') {
     setErrorMessage("found invalid Content-Length", true);
     // reset connection
     this->close();
