@@ -570,8 +570,9 @@ void arangodb::maintenance::diffReplicatedLogs(
 
   // check all plan log entries
   for (auto const& [logId, spec] : planLogs) {
-    if (spec.currentTerm && spec.currentTerm->participants.find(serverId) !=
-                                spec.currentTerm->participants.end()) {
+    if (spec.currentTerm &&
+        spec.participantsConfig.participants.find(serverId) !=
+            spec.participantsConfig.participants.end()) {
       // check if there are logs that do not exist locally
       if (auto localIt = localLogs.find(spec.id);
           localIt == std::end(localLogs)) {
@@ -617,8 +618,8 @@ void arangodb::maintenance::diffReplicatedLogs(
       // ... we are no longer a participant
       auto const& spec = it->second;
       return !spec.currentTerm.has_value() ||
-             (spec.currentTerm->participants.find(serverId) ==
-              spec.currentTerm->participants.end());
+             (spec.participantsConfig.participants.find(serverId) ==
+              spec.participantsConfig.participants.end());
     });
 
     if (dropLog) {
