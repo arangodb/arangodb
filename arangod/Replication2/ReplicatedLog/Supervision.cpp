@@ -157,8 +157,7 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
     action->_newTerm = LogPlanTermSpecification(
         LogTerm{plan.currentTerm->term.value + 1}, plan.currentTerm->config,
         LogPlanTermSpecification::Leader{.serverId = newLeader,
-                                         .rebootId = newLeaderRebootId},
-        plan.currentTerm->participants);
+                                         .rebootId = newLeaderRebootId});
     action->_newLeader = newLeader;
 
     return action;

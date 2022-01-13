@@ -103,7 +103,9 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_oneElectible) {
   EXPECT_EQ(electible, expectedElectible);
 }
 
+
 // TODO: election campaigns that fail
+
 
 struct LeaderStateMachineTest : ::testing::Test {};
 
@@ -123,9 +125,7 @@ TEST_F(LeaderStateMachineTest, test_election_success) {
   current.supervision = LogCurrentSupervision{};
 
   auto plan = LogPlanSpecification(
-      LogId{1},
-      LogPlanTermSpecification(LogTerm{1}, config, std::nullopt,
-                               {{"A", {}}, {"B", {}}, {"C", {}}}),
+      LogId{1}, LogPlanTermSpecification(LogTerm{1}, config, std::nullopt),
       config,
       ParticipantsConfig{
           .generation = 1,
@@ -175,8 +175,7 @@ TEST_F(LeaderStateMachineTest, test_election_fails) {
       LogId{1},
       LogPlanTermSpecification(
           LogTerm{1}, config,
-          LogPlanTermSpecification::Leader{"A", RebootId{42}},
-          {{"A", {}}, {"B", {}}, {"C", {}}}),
+          LogPlanTermSpecification::Leader{"A", RebootId{42}}),
       config,
       ParticipantsConfig{
           .generation = 1,
@@ -222,16 +221,13 @@ TEST_F(LeaderStateMachineTest, test_election_leader_with_higher_term) {
   current.supervision = LogCurrentSupervision{};
 
   auto const& plan = LogPlanSpecification(
-      LogId{1},
-      LogPlanTermSpecification(LogTerm{1}, config, std::nullopt,
-                               {{"A", {}}, {"B", {}}, {"C", {}}}),
+      LogId{1}, LogPlanTermSpecification(LogTerm{1}, config, std::nullopt),
       config,
       ParticipantsConfig{
           .generation = 1,
           .participants = {
               {"A", ParticipantFlags{.forced = false, .excluded = false}},
               {"B", ParticipantFlags{.forced = false, .excluded = false}},
-
               {"C", ParticipantFlags{.forced = false, .excluded = false}}}});
 
   auto const& health = ParticipantsHealth{
@@ -259,7 +255,7 @@ TEST_F(LeaderStateMachineTest, test_leader_intact) {
       LogId{1},
       LogPlanTermSpecification(
           LogTerm{1}, config,
-          LogPlanTermSpecification::Leader{"A", RebootId{1}}, {}),
+          LogPlanTermSpecification::Leader{"A", RebootId{1}}),
       config, {});
 
   auto const& health = ParticipantsHealth{
@@ -339,8 +335,7 @@ TEST_F(SupervisionLogTest, test_checkleader_present) {
       LogId{1},
       LogPlanTermSpecification(
           LogTerm{1}, config,
-          LogPlanTermSpecification::Leader{"A", RebootId{1}},
-          {{"A", {}}, {"B", {}}, {"C", {}}}),
+          LogPlanTermSpecification::Leader{"A", RebootId{1}}),
       config,
       ParticipantsConfig{
           .generation = 1,
