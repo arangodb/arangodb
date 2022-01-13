@@ -47,19 +47,21 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_participant) {
 
   auto const planLogs = ReplicatedLogSpecMap{{
       logId,
-      {
-          logId,
-          agency::LogPlanTermSpecification{
-              LogTerm{3},
-              defaultConfig,
-              std::nullopt,
-              {
-                  {ParticipantId{"A"}, {}},
-                  {ParticipantId{"leader"}, {}},
-              },
-          },
-          defaultConfig,
-      },
+      {logId,
+       agency::LogPlanTermSpecification{
+           LogTerm{3},
+           defaultConfig,
+           std::nullopt,
+       },
+       defaultConfig,
+       ParticipantsConfig{
+           .generation = 0,
+           .participants =
+               {
+                   {ParticipantId{"A"}, {}},
+                   {ParticipantId{"leader"}, {}},
+               },
+       }},
   }};
 
   diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
@@ -89,12 +91,16 @@ TEST_F(ReplicationMaintenanceTest,
               LogTerm{3},
               defaultConfig,
               std::nullopt,
-              {
-                  {ParticipantId{"B"}, {}},
-                  {ParticipantId{"leader"}, {}},
-              },
           },
           defaultConfig,
+          ParticipantsConfig{
+              .generation = 0,
+              .participants =
+                  {
+                      {ParticipantId{"B"}, {}},
+                      {ParticipantId{"leader"}, {}},
+                  },
+          },
       },
   }};
 
@@ -125,12 +131,16 @@ TEST_F(ReplicationMaintenanceTest,
               LogTerm{3},
               defaultConfig,
               std::nullopt,
-              {
-                  {ParticipantId{"B"}, {}},
-                  {ParticipantId{"leader"}, {}},
-              },
           },
           defaultConfig,
+          ParticipantsConfig{
+              .generation = 0,
+              .participants =
+                  {
+                      {ParticipantId{"B"}, {}},
+                      {ParticipantId{"leader"}, {}},
+                  },
+          },
       },
   }};
 
@@ -164,12 +174,16 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_unconfigured) {
               LogTerm{3},
               defaultConfig,
               std::nullopt,
-              {
-                  {ParticipantId{"A"}, {}},
-                  {ParticipantId{"leader"}, {}},
-              },
           },
           defaultConfig,
+          ParticipantsConfig{
+              .generation = 0,
+              .participants =
+                  {
+                      {ParticipantId{"A"}, {}},
+                      {ParticipantId{"leader"}, {}},
+                  },
+          },
       },
   }};
 
@@ -205,12 +219,16 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_term) {
               LogTerm{3},
               defaultConfig,
               std::nullopt,
-              {
-                  {ParticipantId{"A"}, {}},
-                  {ParticipantId{"leader"}, {}},
-              },
           },
           defaultConfig,
+          ParticipantsConfig{
+              .generation = 0,
+              .participants =
+                  {
+                      {ParticipantId{"A"}, {}},
+                      {ParticipantId{"leader"}, {}},
+                  },
+          },
       },
   }};
 
@@ -262,10 +280,6 @@ TEST_F(ReplicationMaintenanceTest,
            LogTerm{3},
            defaultConfig,
            std::nullopt,
-           {
-               {ParticipantId{"A"}, {}},
-               {ParticipantId{"leader"}, {}},
-           },
        },
        defaultConfig, participantsConfig},
   }};

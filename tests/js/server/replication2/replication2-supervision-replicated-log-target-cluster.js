@@ -33,6 +33,7 @@ const helper = require("@arangodb/testutils/replicated-logs-helper");
 
 const {
     waitFor,
+    createParticipantsConfig,
     readReplicatedLogAgency,
     replicatedLogSetPlan,
     replicatedLogDeletePlan,
@@ -113,7 +114,7 @@ const replicatedLogSuite = function () {
         waitForSync: false,
     };
 
-    const {setUpAll, tearDownAll, tearDownEach, stopServer, continueServer} = (function () {
+    const {setUpAll, tearDownAll, stopServer, continueServer} = (function () {
         let previousDatabase, databaseExisted = true;
         let stoppedServers = {};
         return {
@@ -127,21 +128,15 @@ const replicatedLogSuite = function () {
             },
 
             tearDownAll: function () {
+                Object.keys(stoppedServers).forEach(function (key) {
+                    continueServer(key);
+                });
+
                 db._useDatabase(previousDatabase);
                 if (!databaseExisted) {
                     db._dropDatabase(database);
                 }
             },
-
-            tearDownEach: function (testName) {
-                Object.keys(stoppedServers).forEach(function (key) {
-                    continueServer(key);
-                });
-
-                waitFor(allServersHealthy());
-                registerAgencyTestEnd(testName);
-            },
-
             stopServer: function (serverId) {
                 if (stoppedServers[serverId] !== undefined) {
                     throw Error(`{serverId} already stopped`);
@@ -162,17 +157,22 @@ const replicatedLogSuite = function () {
     return {
         setUpAll, tearDownAll,
         setUp: registerAgencyTestBegin,
-        tearDown: tearDownEach,
+        tearDown: function (test) {
+            waitFor(allServersHealthy());
+            registerAgencyTestEnd(test);
+        },
 
         testCheckSimpleFailover: function () {
             const logId = nextUniqueLogId();
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
             const leader = servers[0];
             const term = 1;
+            const generation = 1;
             replicatedLogSetPlan(database, logId, {
                 id: logId,
                 targetConfig,
                 currentTerm: createTermSpecification(term, servers, targetConfig, leader),
+                participantsConfig: createParticipantsConfig(generation, servers),
             });
 
             // wait for all servers to have reported in current
@@ -233,10 +233,12 @@ const replicatedLogSuite = function () {
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
             const leader = servers[0];
             const term = 1;
+            const generation = 1;
             replicatedLogSetPlan(database, logId, {
                 id: logId,
                 targetConfig,
                 currentTerm: createTermSpecification(term, servers, targetConfig, leader),
+                participantsConfig: createParticipantsConfig(generation, servers),
             });
 
             waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
@@ -267,6 +269,8 @@ const replicatedLogSuite = function () {
             assertEqual(election, globalStatus.supervision.election);
 
             replicatedLogDeletePlan(database, logId);
+            continueServer(leader);
+            continueServer(servers[1]);
         },
     };
 };

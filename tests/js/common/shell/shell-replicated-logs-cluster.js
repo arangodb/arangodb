@@ -160,28 +160,40 @@ function ReplicatedLogsWriteSuite () {
     },
 
     testHeadTail : function() {
-      let log = db._replicatedLog(logId);
-      let index = 0;
-      for (let i = 0; i < 100; i++) {
-        let next = log.insert({foo: i}).index;
-        assertTrue(next > index);
-        index = next;
-      }
-      let head = log.head();
-      assertEqual(head.length, 10);
-      assertEqual(head[9].logIndex, 10);
-      head = log.head(11);  // skip first entry
-      assertEqual(head.length, 11);
-      for (let i = 0; i < 10; i++) {
-        assertEqual(head[i+1].payload.foo, i);
-      }
-      let tail = log.tail();
-      assertEqual(tail.length, 10);
-      assertEqual(tail[9].logIndex, 101);
-      tail = log.tail(10);
-      assertEqual(tail.length, 10);
-      for (let i = 0; i < 10; i++) {
-        assertEqual(tail[i].payload.foo, 100 + i - 10);
+      const log = db._replicatedLog(logId);
+      try {
+        let index = 0;
+        for (let i = 0; i < 100; i++) {
+          let next = log.insert({foo: i}).index;
+          assertTrue(next > index);
+          index = next;
+        }
+        let head = log.head();
+        assertEqual(head.length, 10);
+        assertEqual(head[9].logIndex, 10);
+        head = log.head(11);  // skip first entry
+        assertEqual(head.length, 11);
+        for (let i = 0; i < 10; i++) {
+          assertEqual(head[i + 1].payload.foo, i);
+        }
+        let tail = log.tail();
+        assertEqual(tail.length, 10);
+        assertEqual(tail[9].logIndex, 101); // !here (see below)
+        tail = log.tail(10);
+        assertEqual(tail.length, 10);
+        for (let i = 0; i < 10; i++) {
+          assertEqual(tail[i].payload.foo, 100 + i - 10);
+        }
+      } catch (e) {
+        // This catch is temporary, to debug the following failure we've seen in Jenkins:
+        //   "testHeadTail" failed: Error: at assertion #115: assertEqual: (101) is not equal to (102)
+        // which happens at the line marked !here above.
+        var console = require('console');
+        console.warn({
+          status: log.status(),
+          head: log.head(200),
+        });
+        throw e;
       }
     },
 
