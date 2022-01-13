@@ -4,7 +4,6 @@
 
 from __future__ import print_function
 
-import collections
 import errno
 import filecmp
 import os
@@ -13,6 +12,10 @@ import re
 import tempfile
 import sys
 
+try:
+  from collections.abc import MutableSet
+except ImportError:
+  from collections import MutableSet
 
 # A minimal memoizing decorator. It'll blow up if the args aren't immutable, among other "problems".
 class memoize(object):
@@ -479,7 +482,7 @@ def uniquer(seq, idfun=None):
 
 
 # Based on http://code.activestate.com/recipes/576694/.
-class OrderedSet(collections.MutableSet):
+class OrderedSet(MutableSet):
   def __init__(self, iterable=None):
     self.end = end = []
     end += [None, end, end]         # sentinel node for doubly linked list
