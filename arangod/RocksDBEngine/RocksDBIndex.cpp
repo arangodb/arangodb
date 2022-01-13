@@ -62,14 +62,30 @@ RocksDBIndex::RocksDBIndex(
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
     bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
     uint64_t objectId, bool useCache)
+    : RocksDBIndex(id, collection, name, attributes, unique, sparse, cf,
+                   objectId, useCache,
+                   collection.vocbase()
+                       .server()
+                       .getFeature<CacheManagerFeature>()
+                       .manager(),
+                   collection.vocbase()
+                       .server()
+                       .getFeature<EngineSelectorFeature>()
+                       .engine<RocksDBEngine>()) {}
+
+RocksDBIndex::RocksDBIndex(
+    IndexId id, LogicalCollection& collection, std::string const& name,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
+    bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
+    uint64_t objectId, bool useCache, cache::Manager* cacheManager,
+    RocksDBEngine& engine)
     : Index(id, collection, name, attributes, unique, sparse),
       _cf(cf),
       _cache(nullptr),
       _cacheEnabled(useCache && !collection.system() &&
-                    collection.vocbase()
-                            .server()
-                            .getFeature<CacheManagerFeature>()
-                            .manager() != nullptr),
+                    cacheManager != nullptr),
+      _cacheManager(cacheManager),
+      _engine(engine),
       _objectId(::ensureObjectId(objectId)) {
   TRI_ASSERT(cf != nullptr &&
              cf != RocksDBColumnFamilyManager::get(
@@ -79,25 +95,34 @@ RocksDBIndex::RocksDBIndex(
     createCache();
   }
 
-  auto& selector =
-      _collection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-
-  engine.addIndexMapping(_objectId.load(), collection.vocbase().id(),
-                         collection.id(), _iid);
+  _engine.addIndexMapping(_objectId.load(), collection.vocbase().id(),
+                          collection.id(), _iid);
 }
 
 RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
                            arangodb::velocypack::Slice const& info,
                            rocksdb::ColumnFamilyHandle* cf, bool useCache)
+    : RocksDBIndex(id, collection, info, cf, useCache,
+                   collection.vocbase()
+                       .server()
+                       .getFeature<CacheManagerFeature>()
+                       .manager(),
+                   collection.vocbase()
+                       .server()
+                       .getFeature<EngineSelectorFeature>()
+                       .engine<RocksDBEngine>()) {}
+
+RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
+                           arangodb::velocypack::Slice const& info,
+                           rocksdb::ColumnFamilyHandle* cf, bool useCache,
+                           cache::Manager* cacheManager, RocksDBEngine& engine)
     : Index(id, collection, info),
       _cf(cf),
       _cache(nullptr),
       _cacheEnabled(useCache && !collection.system() &&
-                    collection.vocbase()
-                            .server()
-                            .getFeature<CacheManagerFeature>()
-                            .manager() != nullptr),
+                    cacheManager != nullptr),
+      _cacheManager(cacheManager),
+      _engine(engine),
       _objectId(::ensureObjectId(basics::VelocyPackHelper::stringUInt64(
           info, StaticStrings::ObjectId))) {
   TRI_ASSERT(cf != nullptr &&
@@ -108,28 +133,17 @@ RocksDBIndex::RocksDBIndex(IndexId id, LogicalCollection& collection,
     createCache();
   }
 
-  auto& selector =
-      _collection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-  engine.addIndexMapping(_objectId.load(), collection.vocbase().id(),
-                         collection.id(), _iid);
+  _engine.addIndexMapping(_objectId.load(), collection.vocbase().id(),
+                          collection.id(), _iid);
 }
 
 RocksDBIndex::~RocksDBIndex() {
-  auto& selector =
-      _collection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-  engine.removeIndexMapping(_objectId.load());
-
+  _engine.removeIndexMapping(_objectId.load());
   if (useCache()) {
     try {
       TRI_ASSERT(_cache != nullptr);
-      auto* manager = _collection.vocbase()
-                          .server()
-                          .getFeature<CacheManagerFeature>()
-                          .manager();
-      TRI_ASSERT(manager != nullptr);
-      manager->destroyCache(_cache);
+      TRI_ASSERT(_cacheManager != nullptr);
+      _cacheManager->destroyCache(_cache);
     } catch (...) {
     }
   }

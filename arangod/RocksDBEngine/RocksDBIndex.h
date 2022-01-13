@@ -44,6 +44,7 @@ class Cache;
 }
 
 class LogicalCollection;
+class RocksDBEngine;
 class RocksDBMethods;
 struct OperationOptions;
 
@@ -158,8 +159,21 @@ class RocksDBIndex : public Index {
                uint64_t objectId, bool useCache);
 
   RocksDBIndex(IndexId id, LogicalCollection& collection,
+               std::string const& name,
+               std::vector<std::vector<arangodb::basics::AttributeName>> const&
+                   attributes,
+               bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
+               uint64_t objectId, bool useCache, cache::Manager* cacheManager,
+               RocksDBEngine& engine);
+
+  RocksDBIndex(IndexId id, LogicalCollection& collection,
                arangodb::velocypack::Slice const& info,
                rocksdb::ColumnFamilyHandle* cf, bool useCache);
+
+  RocksDBIndex(IndexId id, LogicalCollection& collection,
+               arangodb::velocypack::Slice const& info,
+               rocksdb::ColumnFamilyHandle* cf, bool useCache,
+               cache::Manager* cacheManager, RocksDBEngine& engine);
 
   inline bool useCache() const { return (_cacheEnabled && _cache); }
 
@@ -176,6 +190,10 @@ class RocksDBIndex : public Index {
   bool _cacheEnabled;
 
  private:
+  // we have to store references to the cacheManager and engine because the
+  // vocbase might already be destroyed at the time the desctructor is executed
+  cache::Manager* _cacheManager;
+  RocksDBEngine& _engine;
   std::atomic<uint64_t> _objectId;
 };
 }  // namespace arangodb
