@@ -1,7 +1,11 @@
-v3.9.0-beta.1 (2022-01-06)
---------------------------
+v3.9.0 (XXXX-XX-XX)
+-------------------
 
 * Fixed issue #15476: FATAL {crash} occurs on a simple query.
+
+
+v3.9.0-beta.1 (2022-01-06)
+--------------------------
 
 * Fixed ES-1025: fixed a performance regression caused by different hash
   calculation for primitive types like `uint64_t` and new the `Identifier`
