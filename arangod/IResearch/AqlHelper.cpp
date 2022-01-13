@@ -662,7 +662,6 @@ bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
 bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
                              QueryContext const& ctx, bool allowExpansion) {
   struct AttributeChecker {
-
     AttributeChecker(bool expansion) : _expansion(expansion) {}
 
     bool attributeAccess(aql::AstNode const& node) {

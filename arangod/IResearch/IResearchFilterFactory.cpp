@@ -2818,8 +2818,9 @@ class ArgsTraits<VPackSlice> {
 };
 
 typedef std::function<Result(char const*, size_t const, char const*,
-                             irs::by_phrase*, QueryContext const&,  FilterContext const&, VPackSlice,
-                             size_t, irs::analysis::analyzer*)>
+                             irs::by_phrase*, QueryContext const&,
+                             FilterContext const&, VPackSlice, size_t,
+                             irs::analysis::analyzer*)>
     ConversionPhraseHandler;
 
 std::string getSubFuncErrorSuffix(char const* funcName,
@@ -2855,8 +2856,8 @@ Result oneArgumentfromFuncPhrase(char const* funcName,
 // {<TERM>: [ '[' ] <term> [ ']' ] }
 Result fromFuncPhraseTerm(char const* funcName, size_t funcArgumentPosition,
                           char const* subFuncName, irs::by_phrase* filter,
-                          QueryContext const& ctx, FilterContext const&, VPackSlice elem,
-                          size_t firstOffset,
+                          QueryContext const& ctx, FilterContext const&,
+                          VPackSlice elem, size_t firstOffset,
                           irs::analysis::analyzer* /*analyzer*/ = nullptr) {
   irs::string_ref term;
   auto res = oneArgumentfromFuncPhrase(funcName, funcArgumentPosition,
@@ -2877,8 +2878,9 @@ Result fromFuncPhraseTerm(char const* funcName, size_t funcArgumentPosition,
 // {<STARTS_WITH>: [ '[' ] <term> [ ']' ] }
 Result fromFuncPhraseStartsWith(
     char const* funcName, size_t funcArgumentPosition, char const* subFuncName,
-    irs::by_phrase* filter, QueryContext const& ctx, FilterContext const&, VPackSlice elem,
-    size_t firstOffset, irs::analysis::analyzer* /*analyzer*/ = nullptr) {
+    irs::by_phrase* filter, QueryContext const& ctx, FilterContext const&,
+    VPackSlice elem, size_t firstOffset,
+    irs::analysis::analyzer* /*analyzer*/ = nullptr) {
   irs::string_ref term;
   auto res = oneArgumentfromFuncPhrase(funcName, funcArgumentPosition,
                                        subFuncName, elem, term);
@@ -2898,8 +2900,8 @@ Result fromFuncPhraseStartsWith(
 Result fromFuncPhraseLike(char const* funcName,
                           size_t const funcArgumentPosition,
                           char const* subFuncName, irs::by_phrase* filter,
-                          QueryContext const& ctx, FilterContext const&, VPackSlice elem,
-                          size_t firstOffset,
+                          QueryContext const& ctx, FilterContext const&,
+                          VPackSlice elem, size_t firstOffset,
                           irs::analysis::analyzer* /*analyzer*/ = nullptr) {
   irs::string_ref term;
   auto res = oneArgumentfromFuncPhrase(funcName, funcArgumentPosition,
@@ -3070,8 +3072,8 @@ Result fromFuncPhraseLevenshteinMatch(
   VPackSlice targetValue;
   irs::by_edit_distance_options opts;
   auto res = getLevenshteinArguments<1>(
-      subFuncName, filter != nullptr, ctx, filterCtx, array, nullptr, targetValue, opts,
-      getSubFuncErrorSuffix(funcName, funcArgumentPosition));
+      subFuncName, filter != nullptr, ctx, filterCtx, array, nullptr,
+      targetValue, opts, getSubFuncErrorSuffix(funcName, funcArgumentPosition));
   if (res.fail()) {
     return res;
   }
@@ -3119,8 +3121,8 @@ template<typename ElementType, typename ElementTraits = ArgsTraits<ElementType>>
 Result fromFuncPhraseTerms(char const* funcName,
                            size_t const funcArgumentPosition,
                            char const* subFuncName, irs::by_phrase* filter,
-                           QueryContext const& ctx, FilterContext const&, ElementType const& array,
-                           size_t firstOffset,
+                           QueryContext const& ctx, FilterContext const&,
+                           ElementType const& array, size_t firstOffset,
                            irs::analysis::analyzer* analyzer = nullptr) {
   if (!array.isArray()) {
     return {TRI_ERROR_BAD_PARAMETER,
@@ -3270,7 +3272,8 @@ Result getInRangeArguments(
 Result fromFuncPhraseInRange(char const* funcName,
                              size_t const funcArgumentPosition,
                              char const* subFuncName, irs::by_phrase* filter,
-                             QueryContext const& ctx, FilterContext const& filterCtx, VPackSlice array,
+                             QueryContext const& ctx,
+                             FilterContext const& filterCtx, VPackSlice array,
                              size_t firstOffset,
                              irs::analysis::analyzer* /*analyzer*/ = nullptr) {
   if (!array.isArray()) {
@@ -3290,9 +3293,9 @@ Result fromFuncPhraseInRange(char const* funcName,
   auto minInclude = false;
   auto maxInclude = false;
   auto ret = false;
-  auto res = getInRangeArguments<1>(subFuncName, filter != nullptr, ctx, filterCtx, array,
-                                    nullptr, min, minInclude, max, maxInclude,
-                                    ret, errorSuffix);
+  auto res = getInRangeArguments<1>(subFuncName, filter != nullptr, ctx,
+                                    filterCtx, array, nullptr, min, minInclude,
+                                    max, maxInclude, ret, errorSuffix);
   if (res.fail() || ret) {
     return res;
   }
@@ -3340,8 +3343,9 @@ std::map<irs::string_ref, ConversionPhraseHandler> const
 Result processPhraseArgObjectType(char const* funcName,
                                   size_t const funcArgumentPosition,
                                   irs::by_phrase* filter,
-                                  QueryContext const& ctx, FilterContext const& filterCtx, VPackSlice object,
-                                  size_t firstOffset,
+                                  QueryContext const& ctx,
+                                  FilterContext const& filterCtx,
+                                  VPackSlice object, size_t firstOffset,
                                   irs::analysis::analyzer* analyzer = nullptr) {
   TRI_ASSERT(object.isObject());
   VPackObjectIterator itr(object);
@@ -3428,9 +3432,9 @@ Result processPhraseArgs(char const* funcName, irs::by_phrase* phrase,
           offset = 0;
           continue;
         } else {
-          auto res = fromFuncPhraseTerms(funcName, idx, TERMS_FUNC, phrase, ctx, filterCtx,
-                                         ElementTraits::valueSlice(valueArg),
-                                         offset, analyzer);
+          auto res = fromFuncPhraseTerms(
+              funcName, idx, TERMS_FUNC, phrase, ctx, filterCtx,
+              ElementTraits::valueSlice(valueArg), offset, analyzer);
           if (res.fail()) {
             return res;
           }
@@ -3440,9 +3444,9 @@ Result processPhraseArgs(char const* funcName, irs::by_phrase* phrase,
         }
       }
     } else if (valueArg.isObject()) {
-      auto res = processPhraseArgObjectType(funcName, idx, phrase, ctx, filterCtx,
-                                            ElementTraits::valueSlice(valueArg),
-                                            offset);
+      auto res = processPhraseArgObjectType(
+          funcName, idx, phrase, ctx, filterCtx,
+          ElementTraits::valueSlice(valueArg), offset);
       if (res.fail()) {
         return res;
       }
@@ -3955,8 +3959,8 @@ Result fromFuncInRange(char const* funcName, irs::boolean_filter* filter,
   auto maxInclude = false;
   auto ret = false;
   auto res =
-      getInRangeArguments<0>(funcName, filter != nullptr, ctx, filterCtx, args, &field,
-                             min, minInclude, max, maxInclude, ret);
+      getInRangeArguments<0>(funcName, filter != nullptr, ctx, filterCtx, args,
+                             &field, min, minInclude, max, maxInclude, ret);
   if (res.fail() || ret) {
     return res;
   }

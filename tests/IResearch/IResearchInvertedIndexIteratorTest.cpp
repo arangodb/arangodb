@@ -421,8 +421,7 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering) {
 }
 
 TEST_F(IResearchInvertedIndexIteratorTest, test_next_array) {
-  std::string queryString{
-      R"(FOR d IN col FILTER d.arr[*] == 1 RETURN d)"};
+  std::string queryString{R"(FOR d IN col FILTER d.arr[*] == 1 RETURN d)"};
   auto expectedDocs = data();
   auto test = [&expectedDocs](arangodb::IndexIterator* iterator) {
     ASSERT_NE(iterator, nullptr);
@@ -472,7 +471,7 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_next_array) {
     };
     ASSERT_FALSE(iterator->nextCovering(docCallback, 1000));
     ASSERT_EQ(docs.size(), 2);
-    // we can't assume order of the documents. 
+    // we can't assume order of the documents.
     ASSERT_NE(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(1)),
               docs.end());
     ASSERT_NE(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(5)),
@@ -535,7 +534,7 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_next_subarray) {
     };
     ASSERT_FALSE(iterator->nextCovering(docCallback, 1000));
     ASSERT_EQ(docs.size(), 2);
-    // we can't assume order of the documents. 
+    // we can't assume order of the documents.
     ASSERT_NE(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(2)),
               docs.end());
     ASSERT_NE(std::find(docs.begin(), docs.end(), arangodb::LocalDocumentId(3)),
