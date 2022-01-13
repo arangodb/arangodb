@@ -33,6 +33,7 @@ const helper = require("@arangodb/testutils/replicated-logs-helper");
 
 const {
     waitFor,
+    createParticipantsConfig,
     readReplicatedLogAgency,
     replicatedLogSetPlan,
     replicatedLogDeletePlan,
@@ -169,10 +170,12 @@ const replicatedLogSuite = function () {
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
             const leader = servers[0];
             const term = 1;
+            const generation = 1;
             replicatedLogSetPlan(database, logId, {
                 id: logId,
                 targetConfig,
                 currentTerm: createTermSpecification(term, servers, targetConfig, leader),
+                participantsConfig: createParticipantsConfig(generation, servers),
             });
 
             // wait for all servers to have reported in current
@@ -233,10 +236,12 @@ const replicatedLogSuite = function () {
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
             const leader = servers[0];
             const term = 1;
+            const generation = 1;
             replicatedLogSetPlan(database, logId, {
                 id: logId,
                 targetConfig,
                 currentTerm: createTermSpecification(term, servers, targetConfig, leader),
+                participantsConfig: createParticipantsConfig(generation, servers),
             });
 
             waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
@@ -248,7 +253,7 @@ const replicatedLogSuite = function () {
             assertEqual(globalStatus.leaderId, leader);
             let localStatus = helper.getLocalStatus(database, logId, leader);
             assertEqual(localStatus.role, "leader");
-            assertEqual(globalStatus.participants[leader], localStatus, database);
+            assertEqual(globalStatus.participants[leader], localStatus);
             localStatus = helper.getLocalStatus(database, logId, servers[1]);
             assertEqual(localStatus.role, "follower");
 
@@ -267,6 +272,8 @@ const replicatedLogSuite = function () {
             assertEqual(election, globalStatus.supervision.election);
 
             replicatedLogDeletePlan(database, logId);
+            continueServer(leader);
+            continueServer(servers[1]);
         },
     };
 };

@@ -54,6 +54,12 @@ auto updateTermSpecificationTrx(arangodb::agency::envelope envelope,
                                 std::optional<LogTerm> prevTerm = {})
     -> arangodb::agency::envelope;
 
+auto updateParticipantsConfigTrx(arangodb::agency::envelope envelope,
+                                 DatabaseID const& database, LogId id,
+                                 ParticipantsConfig const& participantsConfig,
+                                 ParticipantsConfig const& prevConfig)
+    -> arangodb::agency::envelope;
+
 auto updateTermSpecification(DatabaseID const& database, LogId id,
                              LogPlanTermSpecification const& spec,
                              std::optional<LogTerm> prevTerm = {})
