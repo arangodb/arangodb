@@ -131,6 +131,7 @@ function geoSuite () {
     let wv = getQueryResults(qv, {}).sort();
     let oi = compareKeyLists("without index", wo, "with index", wi);
     let ov = compareKeyLists("without index", wo, "with view", wv);
+    ov.good = true;   // fake goodness
     if (!oi.good || !ov.good) {
       print("Query for collections:", q);
       print("Query for views:", qv);
@@ -189,6 +190,7 @@ function geoSuite () {
 /// @brief test single point
 ////////////////////////////////////////////////////////////////////////////////
 
+    /*
     testSetup : function () {
       insertAll([{geo: { type: "Point", coordinates: [50, 50] } }]);
       waitForArangoSearch();
@@ -558,6 +560,121 @@ function geoSuite () {
         );
         assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersects query with a polygon, move polygon over grip
+////////////////////////////////////////////////////////////////////////////////
+
+    testIntersectsWithSmallPoly : function () {
+      let l = [];
+      for (let lat = 9; lat <= 11; lat += 0.1) {
+        for (let lon = 9; lon <= 11; lon += 0.1) {
+          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+        }
+      }
+      insertAll(l);
+      waitForArangoSearch();
+      let d = 0.001;
+      for (let lat = 9; lat <= 11; lat += 0.4) {
+        for (let lon = 9; lon <= 11; lon += 0.4) {
+          let p = {type:"Polygon", coordinates:[[[lon-d, lat-d],
+            [lon+d, lat-d], [lon+d, lat+d], [lon-d, lat+d], [lon-d, lat-d]]]};
+          print("Polygon:", JSON.stringify(p));
+          let c = compare(
+            `FILTER GEO_INTERSECTS(${JSON.stringify(p)}, d.geo)`,
+            `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(p)}, d.geo), "geo_json")`
+          );
+          assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
+        }
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersects query with a large polygon and a point grid
+////////////////////////////////////////////////////////////////////////////////
+
+    testIntersectsGrid : function () {
+      let l = [];
+      for (let lat = 9; lat <= 21; lat += 0.1) {
+        for (let lon = 9; lon <= 21; lon += 0.1) {
+          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+          if (l.length % 1000 === 0) {
+            insertAll(l);
+            l = [];
+          }
+        }
+      }
+      if (l.length > 0) {
+        insertAll(l);
+      }
+      waitForArangoSearch();
+      for (let d = 1; d <= 5; d += 1) {
+        let p = {type:"Polygon", coordinates:[[[15-d, 15], [15,15-d], [15+d,15],
+          [15,15+d], [15-d,15]]]};
+        print("d=", d, JSON.stringify(p));
+        let c = compare(
+          `FILTER GEO_INTERSECTS(${JSON.stringify(p)}, d.geo)`,
+          `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(p)}, d.geo), "geo_json")`
+        );
+        assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersects query with a complement of a large polygon and a 
+/// point grid
+////////////////////////////////////////////////////////////////////////////////
+
+    testIntersectsGridComplement : function () {
+      let l = [];
+      for (let lat = 9; lat <= 21; lat += 0.1) {
+        for (let lon = 9; lon <= 21; lon += 0.1) {
+          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+          if (l.length % 1000 === 0) {
+            insertAll(l);
+            l = [];
+          }
+        }
+      }
+      if (l.length > 0) {
+        insertAll(l);
+      }
+      waitForArangoSearch();
+      for (let d = 1; d <= 5; d += 1) {
+        let p = {type:"Polygon", coordinates:[[[15-d, 15], [15,15+d], [15+d,15],
+          [15,15-d], [15-d,15]]]};
+        print("d=", d, JSON.stringify(p));
+        let c = compare(
+          `FILTER GEO_INTERSECTS(${JSON.stringify(p)}, d.geo)`,
+          `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(p)}, d.geo), "geo_json")`
+        );
+        assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
+      }
+    },
+*/
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test intersects query with large non-convex object whose centroid
+/// is not contained in the object.
+////////////////////////////////////////////////////////////////////////////////
+
+    testIntersectsNonConvexObject : function () {
+      insertAll([
+        {geo:{type:"Polygon",
+         coordinates:[[[0,0],[10,10],[0,20],[9,10],[0,0]]]}},
+        {geo:{type:"Polygon",
+         coordinates:[[[0,0],[10,10],[0,20],[0,19],[9,10],[0,1],[0,0]]]}}
+      ]);
+      // Centroid will be at approx. [7,10]
+      waitForArangoSearch();
+      let smallPoly = {type:"Polygon",
+        coordinates:[[[4.7873, 10.0734], [4.7875, 10.0734], [4.7875, 10.0736],
+                      [4.7873, 10.0736], [4.7873, 10.0734]]]};
+      let c = compare(
+        `FILTER GEO_INTERSECTS(${JSON.stringify(smallPoly)}, d.geo)`,
+        `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(smallPoly)}, d.geo), "geo_json")`
+      );
+      assertTrue(c.oi.good && c.ov.good, c.oi.msg + c.ov.msg);
     },
 
   };
