@@ -143,7 +143,7 @@ function ComplexQueriesSmartGraphTestSuite() {
   };
 }
 
-//jsunity.run(ComplexQueriesTestSuite);
+jsunity.run(ComplexQueriesTestSuite);
 if (isCluster && isEnterprise) {
   jsunity.run(ComplexQueriesSmartGraphTestSuite);
 }
