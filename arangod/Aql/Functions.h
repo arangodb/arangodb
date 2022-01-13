@@ -23,18 +23,16 @@
 
 #pragma once
 
-#include <Basics/ErrorCode.h>
 #include "Aql/AqlValue.h"
+#include "Basics/ErrorCode.h"
 #include "Containers/SmallVector.h"
+
+#include <velocypack/Sink.h>
 
 namespace arangodb {
 class Result;
 namespace transaction {
 class Methods;
-}
-
-namespace basics {
-class VPackStringBufferAdapter;
 }
 
 namespace aql {
@@ -61,7 +59,7 @@ struct Functions {
  public:
   /// @brief helper function. not callable as a "normal" AQL function
   static void Stringify(velocypack::Options const* vopts,
-                        arangodb::basics::VPackStringBufferAdapter& buffer,
+                        arangodb::velocypack::StringSink& buffer,
                         arangodb::velocypack::Slice const& slice);
 
   static AqlValue IsNull(arangodb::aql::ExpressionContext*, AstNode const&,

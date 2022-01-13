@@ -108,7 +108,9 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Sink.h>
 #include <velocypack/velocypack-aliases.h>
+
 #include <algorithm>
 
 #ifdef __APPLE__
@@ -729,7 +731,7 @@ void extractKeys(containers::FlatHashSet<std::string>& names,
 /// @brief append the VelocyPack value to a string buffer
 ///        Note: Backwards compatibility. Is different than Slice.toJson()
 void appendAsString(VPackOptions const* vopts,
-                    arangodb::basics::VPackStringBufferAdapter& buffer,
+                    arangodb::velocypack::StringSink& buffer,
                     AqlValue const& value) {
   AqlValueMaterializer materializer(vopts);
   VPackSlice slice = materializer.slice(value, false);
@@ -1108,12 +1110,12 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext,
   auto& trx = expressionContext->trx();
 
   std::string ucInvokeFN;
-  transaction::StringBufferLeaser buffer(&trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(&trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(&trx.vpackOptions(), adapter, invokeFN);
 
-  icu::UnicodeString unicodeStr(buffer->c_str(),
+  icu::UnicodeString unicodeStr(buffer->data(),
                                 static_cast<int32_t>(buffer->length()));
   unicodeStr.toUpper(nullptr);
   unicodeStr.toUTF8String(ucInvokeFN);
@@ -1184,7 +1186,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext,
     }
 
     bool dummy;
-    return Expression::invokeV8Function(expressionContext, jsName, ucInvokeFN,
+    return Expression::invokeV8Function(*expressionContext, jsName, ucInvokeFN,
                                         AFN, false, callArgs, args.get(),
                                         dummy);
   }
@@ -1419,9 +1421,8 @@ void registerInvalidArgumentWarning(ExpressionContext* expressionContext,
 }  // namespace arangodb
 
 /// @brief append the VelocyPack value to a string buffer
-///        Note: Backwards compatibility. Is different than Slice.toJson()
 void Functions::Stringify(VPackOptions const* vopts,
-                          arangodb::basics::VPackStringBufferAdapter& buffer,
+                          arangodb::velocypack::StringSink& buffer,
                           VPackSlice const& slice) {
   if (slice.isNull()) {
     // null is the empty string
@@ -1429,7 +1430,7 @@ void Functions::Stringify(VPackOptions const* vopts,
   }
 
   if (slice.isString()) {
-    // dumping adds additional ''
+    // dumping adds additional ''. we want to avoid that.
     VPackValueLength length;
     char const* p = slice.getStringUnchecked(length);
     buffer.append(p, length);
@@ -1514,11 +1515,11 @@ AqlValue Functions::ToString(ExpressionContext* expr, AstNode const&,
   auto& trx = expr->trx();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
-  transaction::StringBufferLeaser buffer(&trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(&trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(&trx.vpackOptions(), adapter, value);
-  return AqlValue(buffer->begin(), buffer->length());
+  return AqlValue(buffer->data(), buffer->length());
 }
 
 /// @brief function TO_BASE64
@@ -1527,13 +1528,13 @@ AqlValue Functions::ToBase64(ExpressionContext* expr, AstNode const&,
   auto& trx = expr->trx();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
-  transaction::StringBufferLeaser buffer(&trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(&trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(&trx.vpackOptions(), adapter, value);
 
   std::string encoded =
-      basics::StringUtils::encodeBase64(buffer->begin(), buffer->length());
+      basics::StringUtils::encodeBase64(buffer->data(), buffer->length());
 
   return AqlValue(encoded);
 }
@@ -1544,13 +1545,13 @@ AqlValue Functions::ToHex(ExpressionContext* expr, AstNode const&,
   auto& trx = expr->trx();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
-  transaction::StringBufferLeaser buffer(&trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(&trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(&trx.vpackOptions(), adapter, value);
 
   std::string encoded =
-      basics::StringUtils::encodeHex(buffer->begin(), buffer->length());
+      basics::StringUtils::encodeHex(buffer->data(), buffer->length());
 
   return AqlValue(encoded);
 }
@@ -1562,13 +1563,13 @@ AqlValue Functions::EncodeURIComponent(
   auto& trx = expr->trx();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
-  transaction::StringBufferLeaser buffer(&trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(&trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(&trx.vpackOptions(), adapter, value);
 
-  std::string encoded = basics::StringUtils::encodeURIComponent(
-      buffer->begin(), buffer->length());
+  std::string encoded =
+      basics::StringUtils::encodeURIComponent(buffer->data(), buffer->length());
 
   return AqlValue(encoded);
 }
@@ -1592,14 +1593,14 @@ AqlValue Functions::Soundex(ExpressionContext* expr, AstNode const&,
   auto& trx = expr->trx();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
-  transaction::StringBufferLeaser buffer(&trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(&trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(&trx.vpackOptions(), adapter, value);
 
   std::string encoded = basics::StringUtils::soundex(
       basics::StringUtils::trim(basics::StringUtils::tolower(
-          std::string(buffer->begin(), buffer->length()))));
+          std::string(buffer->data(), buffer->length()))));
 
   return AqlValue(encoded);
 }
@@ -1613,8 +1614,8 @@ AqlValue Functions::LevenshteinDistance(
   AqlValue const& value2 = extractFunctionParameterValue(parameters, 1);
 
   // we use one buffer to stringify both arguments
-  transaction::StringBufferLeaser buffer(&trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(&trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   // stringify argument 1
   ::appendAsString(&trx.vpackOptions(), adapter, value1);
@@ -1626,8 +1627,7 @@ AqlValue Functions::LevenshteinDistance(
   ::appendAsString(&trx.vpackOptions(), adapter, value2);
 
   int encoded = basics::StringUtils::levenshteinDistance(
-      buffer->begin(), split, buffer->begin() + split,
-      buffer->length() - split);
+      buffer->data(), split, buffer->data() + split, buffer->length() - split);
 
   return AqlValue(AqlValueHintInt(encoded));
 }
@@ -2035,15 +2035,15 @@ AqlValue Functions::FindFirst(ExpressionContext* expressionContext,
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   AqlValue const& searchValue = extractFunctionParameterValue(parameters, 1);
 
-  transaction::StringBufferLeaser buf1(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buf1->stringBuffer());
+  transaction::StringLeaser buf1(trx);
+  arangodb::velocypack::StringSink adapter(buf1.get());
   ::appendAsString(vopts, adapter, value);
-  icu::UnicodeString uBuf(buf1->c_str(), static_cast<int32_t>(buf1->length()));
+  icu::UnicodeString uBuf(buf1->data(), static_cast<int32_t>(buf1->length()));
 
-  transaction::StringBufferLeaser buf2(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter2(buf2->stringBuffer());
+  transaction::StringLeaser buf2(trx);
+  arangodb::velocypack::StringSink adapter2(buf2.get());
   ::appendAsString(vopts, adapter2, searchValue);
-  icu::UnicodeString uSearchBuf(buf2->c_str(),
+  icu::UnicodeString uSearchBuf(buf2->data(),
                                 static_cast<int32_t>(buf2->length()));
   auto searchLen = uSearchBuf.length();
 
@@ -2108,15 +2108,15 @@ AqlValue Functions::FindLast(ExpressionContext* expressionContext,
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   AqlValue const& searchValue = extractFunctionParameterValue(parameters, 1);
 
-  transaction::StringBufferLeaser buf1(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buf1->stringBuffer());
+  transaction::StringLeaser buf1(trx);
+  arangodb::velocypack::StringSink adapter(buf1.get());
   ::appendAsString(vopts, adapter, value);
-  icu::UnicodeString uBuf(buf1->c_str(), static_cast<int32_t>(buf1->length()));
+  icu::UnicodeString uBuf(buf1->data(), static_cast<int32_t>(buf1->length()));
 
-  transaction::StringBufferLeaser buf2(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter2(buf2->stringBuffer());
+  transaction::StringLeaser buf2(trx);
+  arangodb::velocypack::StringSink adapter2(buf2.get());
   ::appendAsString(vopts, adapter2, searchValue);
-  icu::UnicodeString uSearchBuf(buf2->c_str(),
+  icu::UnicodeString uSearchBuf(buf2->data(),
                                 static_cast<int32_t>(buf2->length()));
   auto searchLen = uSearchBuf.length();
 
@@ -2201,11 +2201,10 @@ AqlValue Functions::Reverse(ExpressionContext* expressionContext,
     return AqlValue(builder->slice(), builder->size());
   } else if (value.isString()) {
     std::string utf8;
-    transaction::StringBufferLeaser buf1(trx);
-    arangodb::basics::VPackStringBufferAdapter adapter(buf1->stringBuffer());
+    transaction::StringLeaser buf1(trx);
+    arangodb::velocypack::StringSink adapter(buf1.get());
     ::appendAsString(vopts, adapter, value);
-    icu::UnicodeString uBuf(buf1->c_str(),
-                            static_cast<int32_t>(buf1->length()));
+    icu::UnicodeString uBuf(buf1->data(), static_cast<int32_t>(buf1->length()));
     // reserve the result buffer, but need to set empty afterwards:
     icu::UnicodeString result;
     result.getBuffer(uBuf.length());
@@ -2316,8 +2315,8 @@ AqlValue Functions::Contains(ExpressionContext* ctx, AstNode const&,
 
   int result = -1;  // default is "not found"
   {
-    transaction::StringBufferLeaser buffer(trx);
-    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+    transaction::StringLeaser buffer(trx);
+    arangodb::velocypack::StringSink adapter(buffer.get());
 
     ::appendAsString(vopts, adapter, value);
     size_t const valueLength = buffer->length();
@@ -2328,14 +2327,14 @@ AqlValue Functions::Contains(ExpressionContext* ctx, AstNode const&,
 
     if (searchLength > 0) {
       char const* found = static_cast<char const*>(
-          memmem(buffer->c_str(), valueLength, buffer->c_str() + searchOffset,
+          memmem(buffer->data(), valueLength, buffer->data() + searchOffset,
                  searchLength));
 
       if (found != nullptr) {
         if (willReturnIndex) {
           // find offset into string
-          int bytePosition = static_cast<int>(found - buffer->c_str());
-          char const* p = buffer->c_str();
+          int bytePosition = static_cast<int>(found - buffer->data());
+          char const* p = buffer->data();
           int pos = 0;
           while (pos < bytePosition) {
             unsigned char c = static_cast<unsigned char>(*p);
@@ -2373,8 +2372,8 @@ AqlValue Functions::Concat(ExpressionContext* ctx, AstNode const&,
                            VPackFunctionParameters const& parameters) {
   transaction::Methods* trx = &ctx->trx();
   auto* vopts = &trx->vpackOptions();
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   size_t const n = parameters.size();
 
@@ -2391,7 +2390,7 @@ AqlValue Functions::Concat(ExpressionContext* ctx, AstNode const&,
         // convert member to a string and append
         ::appendAsString(vopts, adapter, AqlValue(it.begin()));
       }
-      return AqlValue(buffer->c_str(), buffer->length());
+      return AqlValue(buffer->data(), buffer->length());
     }
   }
 
@@ -2406,7 +2405,7 @@ AqlValue Functions::Concat(ExpressionContext* ctx, AstNode const&,
     ::appendAsString(vopts, adapter, member);
   }
 
-  return AqlValue(buffer->c_str(), buffer->length());
+  return AqlValue(buffer->data(), buffer->length());
 }
 
 /// @brief function CONCAT_SEPARATOR
@@ -2414,15 +2413,15 @@ AqlValue Functions::ConcatSeparator(ExpressionContext* ctx, AstNode const&,
                                     VPackFunctionParameters const& parameters) {
   transaction::Methods* trx = &ctx->trx();
   auto* vopts = &trx->vpackOptions();
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   bool found = false;
   size_t const n = parameters.size();
 
   AqlValue const& separator = extractFunctionParameterValue(parameters, 0);
   ::appendAsString(vopts, adapter, separator);
-  std::string const plainStr(buffer->c_str(), buffer->length());
+  std::string const plainStr(buffer->data(), buffer->length());
 
   buffer->clear();
 
@@ -2441,13 +2440,13 @@ AqlValue Functions::ConcatSeparator(ExpressionContext* ctx, AstNode const&,
           continue;
         }
         if (found) {
-          buffer->appendText(plainStr);
+          buffer->append(plainStr);
         }
         // convert member to a string and append
         ::appendAsString(vopts, adapter, AqlValue(it.begin()));
         found = true;
       }
-      return AqlValue(buffer->c_str(), buffer->length());
+      return AqlValue(buffer->data(), buffer->length());
     }
   }
 
@@ -2460,7 +2459,7 @@ AqlValue Functions::ConcatSeparator(ExpressionContext* ctx, AstNode const&,
       continue;
     }
     if (found) {
-      buffer->appendText(plainStr);
+      buffer->append(plainStr);
     }
 
     // convert member to a string and append
@@ -2468,7 +2467,7 @@ AqlValue Functions::ConcatSeparator(ExpressionContext* ctx, AstNode const&,
     found = true;
   }
 
-  return AqlValue(buffer->c_str(), buffer->length());
+  return AqlValue(buffer->data(), buffer->length());
 }
 
 /// @brief function CHAR_LENGTH
@@ -2483,8 +2482,8 @@ AqlValue Functions::CharLength(ExpressionContext* ctx, AstNode const&,
     AqlValueMaterializer materializer(vopts);
     VPackSlice slice = materializer.slice(value, false);
 
-    transaction::StringBufferLeaser buffer(trx);
-    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+    transaction::StringLeaser buffer(trx);
+    arangodb::velocypack::StringSink adapter(buffer.get());
 
     VPackDumper dumper(&adapter, vopts);
     dumper.dump(slice);
@@ -2527,12 +2526,12 @@ AqlValue Functions::Lower(ExpressionContext* ctx, AstNode const&,
   auto* vopts = &trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
 
-  icu::UnicodeString unicodeStr(buffer->c_str(),
+  icu::UnicodeString unicodeStr(buffer->data(),
                                 static_cast<int32_t>(buffer->length()));
   unicodeStr.toLower(nullptr);
   unicodeStr.toUTF8String(utf8);
@@ -2548,12 +2547,12 @@ AqlValue Functions::Upper(ExpressionContext* ctx, AstNode const&,
   auto* vopts = &trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
 
-  icu::UnicodeString unicodeStr(buffer->c_str(),
+  icu::UnicodeString unicodeStr(buffer->data(),
                                 static_cast<int32_t>(buffer->length()));
   unicodeStr.toUpper(nullptr);
   unicodeStr.toUTF8String(utf8);
@@ -2570,11 +2569,11 @@ AqlValue Functions::Substring(ExpressionContext* ctx, AstNode const&,
 
   int32_t length = INT32_MAX;
 
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
-  icu::UnicodeString unicodeStr(buffer->c_str(),
+  icu::UnicodeString unicodeStr(buffer->data(),
                                 static_cast<int32_t>(buffer->length()));
 
   int32_t offset = static_cast<int32_t>(
@@ -2722,11 +2721,11 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
     return AqlValue(value);
   }
 
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
-  icu::UnicodeString unicodeStr(buffer->c_str(),
+  icu::UnicodeString unicodeStr(buffer->data(),
                                 static_cast<int32_t>(buffer->length()));
 
   auto& server = trx->vocbase().server();
@@ -2875,12 +2874,12 @@ AqlValue Functions::Left(ExpressionContext* ctx, AstNode const&,
       extractFunctionParameterValue(parameters, 1).toInt64());
 
   std::string utf8;
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
 
-  icu::UnicodeString unicodeStr(buffer->c_str(),
+  icu::UnicodeString unicodeStr(buffer->data(),
                                 static_cast<int32_t>(buffer->length()));
   icu::UnicodeString left =
       unicodeStr.tempSubString(0, unicodeStr.moveIndex32(0, length));
@@ -2899,12 +2898,12 @@ AqlValue Functions::Right(ExpressionContext* ctx, AstNode const&,
       extractFunctionParameterValue(parameters, 1).toInt64());
 
   std::string utf8;
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
 
-  icu::UnicodeString unicodeStr(buffer->c_str(),
+  icu::UnicodeString unicodeStr(buffer->data(),
                                 static_cast<int32_t>(buffer->length()));
   icu::UnicodeString right = unicodeStr.tempSubString(unicodeStr.moveIndex32(
       unicodeStr.length(), -static_cast<int32_t>(length)));
@@ -2968,10 +2967,10 @@ AqlValue Functions::Trim(ExpressionContext* expressionContext, AstNode const&,
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
   ::appendAsString(vopts, adapter, value);
-  icu::UnicodeString unicodeStr(buffer->c_str(),
+  icu::UnicodeString unicodeStr(buffer->data(),
                                 static_cast<int32_t>(buffer->length()));
 
   int64_t howToTrim = 0;
@@ -2989,7 +2988,7 @@ AqlValue Functions::Trim(ExpressionContext* expressionContext, AstNode const&,
     } else if (optional.isString()) {
       buffer->clear();
       ::appendAsString(vopts, adapter, optional);
-      whitespace = icu::UnicodeString(buffer->c_str(),
+      whitespace = icu::UnicodeString(buffer->data(),
                                       static_cast<int32_t>(buffer->length()));
     }
   }
@@ -3032,10 +3031,10 @@ AqlValue Functions::LTrim(ExpressionContext* expressionContext, AstNode const&,
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
   ::appendAsString(vopts, adapter, value);
-  icu::UnicodeString unicodeStr(buffer->c_str(),
+  icu::UnicodeString unicodeStr(buffer->data(),
                                 static_cast<int32_t>(buffer->length()));
   icu::UnicodeString whitespace("\r\n\t ");
 
@@ -3043,7 +3042,7 @@ AqlValue Functions::LTrim(ExpressionContext* expressionContext, AstNode const&,
     AqlValue const& pWhitespace = extractFunctionParameterValue(parameters, 1);
     buffer->clear();
     ::appendAsString(vopts, adapter, pWhitespace);
-    whitespace = icu::UnicodeString(buffer->c_str(),
+    whitespace = icu::UnicodeString(buffer->data(),
                                     static_cast<int32_t>(buffer->length()));
   }
 
@@ -3078,10 +3077,10 @@ AqlValue Functions::RTrim(ExpressionContext* expressionContext, AstNode const&,
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
   ::appendAsString(vopts, adapter, value);
-  icu::UnicodeString unicodeStr(buffer->c_str(),
+  icu::UnicodeString unicodeStr(buffer->data(),
                                 static_cast<int32_t>(buffer->length()));
   icu::UnicodeString whitespace("\r\n\t ");
 
@@ -3089,7 +3088,7 @@ AqlValue Functions::RTrim(ExpressionContext* expressionContext, AstNode const&,
     AqlValue const& pWhitespace = extractFunctionParameterValue(parameters, 1);
     buffer->clear();
     ::appendAsString(vopts, adapter, pWhitespace);
-    whitespace = icu::UnicodeString(buffer->c_str(),
+    whitespace = icu::UnicodeString(buffer->data(),
                                     static_cast<int32_t>(buffer->length()));
   }
 
@@ -3123,8 +3122,8 @@ AqlValue Functions::Like(ExpressionContext* expressionContext, AstNode const&,
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
   bool const caseInsensitive = ::getBooleanParameter(parameters, 2, false);
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   // build pattern from parameter #1
   AqlValue const& regex = extractFunctionParameterValue(parameters, 1);
@@ -3132,7 +3131,7 @@ AqlValue Functions::Like(ExpressionContext* expressionContext, AstNode const&,
 
   // the matcher is owned by the context!
   icu::RegexMatcher* matcher = expressionContext->buildLikeMatcher(
-      buffer->c_str(), buffer->length(), caseInsensitive);
+      buffer->data(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
@@ -3147,7 +3146,7 @@ AqlValue Functions::Like(ExpressionContext* expressionContext, AstNode const&,
 
   bool error = false;
   bool const result = arangodb::basics::Utf8Helper::DefaultUtf8Helper.matches(
-      matcher, buffer->c_str(), buffer->length(), false, error);
+      matcher, buffer->data(), buffer->length(), false, error);
 
   if (error) {
     // compiling regular expression failed
@@ -3185,7 +3184,7 @@ AqlValue Functions::Split(ExpressionContext* expressionContext, AstNode const&,
     }
   }
 
-  transaction::StringBufferLeaser regexBuffer(trx);
+  transaction::StringLeaser regexBuffer(trx);
   AqlValue aqlSeparatorExpression;
   if (parameters.size() >= 2) {
     aqlSeparatorExpression = extractFunctionParameterValue(parameters, 1);
@@ -3208,10 +3207,10 @@ AqlValue Functions::Split(ExpressionContext* expressionContext, AstNode const&,
   }
 
   // Get ready for ICU
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
   Stringify(vopts, adapter, aqlValueToSplit.slice());
-  icu::UnicodeString valueToSplit(buffer->c_str(),
+  icu::UnicodeString valueToSplit(buffer->data(),
                                   static_cast<int32_t>(buffer->length()));
   bool isEmptyExpression = false;
 
@@ -3318,8 +3317,8 @@ AqlValue Functions::RegexMatches(ExpressionContext* expressionContext,
   bool const caseInsensitive = ::getBooleanParameter(parameters, 2, false);
 
   // build pattern from parameter #1
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   AqlValue const& regex = extractFunctionParameterValue(parameters, 1);
   ::appendAsString(vopts, adapter, regex);
@@ -3327,7 +3326,7 @@ AqlValue Functions::RegexMatches(ExpressionContext* expressionContext,
 
   // the matcher is owned by the context!
   icu::RegexMatcher* matcher = expressionContext->buildRegexMatcher(
-      buffer->c_str(), buffer->length(), caseInsensitive);
+      buffer->data(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
@@ -3337,7 +3336,7 @@ AqlValue Functions::RegexMatches(ExpressionContext* expressionContext,
   buffer->clear();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   ::appendAsString(vopts, adapter, value);
-  icu::UnicodeString valueToMatch(buffer->c_str(),
+  icu::UnicodeString valueToMatch(buffer->data(),
                                   static_cast<uint32_t>(buffer->length()));
 
   transaction::BuilderLeaser result(trx);
@@ -3416,8 +3415,8 @@ AqlValue Functions::RegexSplit(ExpressionContext* expressionContext,
   bool const caseInsensitive = ::getBooleanParameter(parameters, 2, false);
 
   // build pattern from parameter #1
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   AqlValue const& regex = extractFunctionParameterValue(parameters, 1);
   ::appendAsString(vopts, adapter, regex);
@@ -3425,7 +3424,7 @@ AqlValue Functions::RegexSplit(ExpressionContext* expressionContext,
 
   // the matcher is owned by the context!
   icu::RegexMatcher* matcher = expressionContext->buildRegexMatcher(
-      buffer->c_str(), buffer->length(), caseInsensitive);
+      buffer->data(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
@@ -3435,7 +3434,7 @@ AqlValue Functions::RegexSplit(ExpressionContext* expressionContext,
   buffer->clear();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   ::appendAsString(vopts, adapter, value);
-  icu::UnicodeString valueToSplit(buffer->c_str(),
+  icu::UnicodeString valueToSplit(buffer->data(),
                                   static_cast<int32_t>(buffer->length()));
 
   transaction::BuilderLeaser result(trx);
@@ -3517,8 +3516,8 @@ AqlValue Functions::RegexTest(ExpressionContext* expressionContext,
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
   bool const caseInsensitive = ::getBooleanParameter(parameters, 2, false);
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   // build pattern from parameter #1
   AqlValue const& regex = extractFunctionParameterValue(parameters, 1);
@@ -3526,7 +3525,7 @@ AqlValue Functions::RegexTest(ExpressionContext* expressionContext,
 
   // the matcher is owned by the context!
   icu::RegexMatcher* matcher = expressionContext->buildRegexMatcher(
-      buffer->c_str(), buffer->length(), caseInsensitive);
+      buffer->data(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
@@ -3541,7 +3540,7 @@ AqlValue Functions::RegexTest(ExpressionContext* expressionContext,
 
   bool error = false;
   bool const result = arangodb::basics::Utf8Helper::DefaultUtf8Helper.matches(
-      matcher, buffer->c_str(), buffer->length(), true, error);
+      matcher, buffer->data(), buffer->length(), true, error);
 
   if (error) {
     // compiling regular expression failed
@@ -3561,8 +3560,8 @@ AqlValue Functions::RegexReplace(ExpressionContext* expressionContext,
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
   bool const caseInsensitive = ::getBooleanParameter(parameters, 3, false);
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   // build pattern from parameter #1
   AqlValue const& regex = extractFunctionParameterValue(parameters, 1);
@@ -3570,7 +3569,7 @@ AqlValue Functions::RegexReplace(ExpressionContext* expressionContext,
 
   // the matcher is owned by the context!
   icu::RegexMatcher* matcher = expressionContext->buildRegexMatcher(
-      buffer->c_str(), buffer->length(), caseInsensitive);
+      buffer->data(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
@@ -3589,7 +3588,7 @@ AqlValue Functions::RegexReplace(ExpressionContext* expressionContext,
 
   bool error = false;
   std::string result = arangodb::basics::Utf8Helper::DefaultUtf8Helper.replace(
-      matcher, buffer->c_str(), split, buffer->c_str() + split,
+      matcher, buffer->data(), split, buffer->data() + split,
       buffer->length() - split, false, error);
 
   if (error) {
@@ -4562,10 +4561,10 @@ AqlValue Functions::Translate(ExpressionContext* expressionContext,
   if (key.isString()) {
     result = slice.get(key.slice().copyString());
   } else {
-    transaction::StringBufferLeaser buffer(trx);
-    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+    transaction::StringLeaser buffer(trx);
+    arangodb::velocypack::StringSink adapter(buffer.get());
     Functions::Stringify(vopts, adapter, key.slice());
-    result = slice.get(buffer->toString());
+    result = slice.get(*buffer);
   }
 
   if (!result.isNone()) {
@@ -4612,19 +4611,15 @@ AqlValue Functions::Has(ExpressionContext* expressionContext, AstNode const&,
   }
 
   transaction::Methods* trx = &expressionContext->trx();
-  auto* vopts = &trx->vpackOptions();
   AqlValue const& name = extractFunctionParameterValue(parameters, 1);
-  std::string p;
   if (!name.isString()) {
-    transaction::StringBufferLeaser buffer(trx);
-    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+    auto* vopts = &trx->vpackOptions();
+    transaction::StringLeaser buffer(trx);
+    arangodb::velocypack::StringSink adapter(buffer.get());
     ::appendAsString(vopts, adapter, name);
-    p = std::string(buffer->c_str(), buffer->length());
-  } else {
-    p = name.slice().copyString();
+    return AqlValue(AqlValueHintBool(value.hasKey(*buffer)));
   }
-
-  return AqlValue(AqlValueHintBool(value.hasKey(p)));
+  return AqlValue(AqlValueHintBool(value.hasKey(name.slice().stringView())));
 }
 
 /// @brief function ATTRIBUTES
@@ -5180,8 +5175,8 @@ AqlValue Functions::Md5(ExpressionContext* exprCtx, AstNode const&,
   transaction::Methods* trx = &exprCtx->trx();
   auto* vopts = &trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
 
@@ -5190,7 +5185,7 @@ AqlValue Functions::Md5(ExpressionContext* exprCtx, AstNode const&,
   char* p = &hash[0];
   size_t length;
 
-  arangodb::rest::SslInterface::sslMD5(buffer->c_str(), buffer->length(), p,
+  arangodb::rest::SslInterface::sslMD5(buffer->data(), buffer->length(), p,
                                        length);
 
   // as hex
@@ -5208,8 +5203,8 @@ AqlValue Functions::Sha1(ExpressionContext* exprCtx, AstNode const&,
   transaction::Methods* trx = &exprCtx->trx();
   auto* vopts = &trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
 
@@ -5218,7 +5213,7 @@ AqlValue Functions::Sha1(ExpressionContext* exprCtx, AstNode const&,
   char* p = &hash[0];
   size_t length;
 
-  arangodb::rest::SslInterface::sslSHA1(buffer->c_str(), buffer->length(), p,
+  arangodb::rest::SslInterface::sslSHA1(buffer->data(), buffer->length(), p,
                                         length);
 
   // as hex
@@ -5236,8 +5231,8 @@ AqlValue Functions::Sha512(ExpressionContext* exprCtx, AstNode const&,
   transaction::Methods* trx = &exprCtx->trx();
   auto* vopts = &trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
 
@@ -5246,7 +5241,7 @@ AqlValue Functions::Sha512(ExpressionContext* exprCtx, AstNode const&,
   char* p = &hash[0];
   size_t length;
 
-  arangodb::rest::SslInterface::sslSHA512(buffer->c_str(), buffer->length(), p,
+  arangodb::rest::SslInterface::sslSHA512(buffer->data(), buffer->length(), p,
                                           length);
 
   // as hex
@@ -5264,12 +5259,12 @@ AqlValue Functions::Crc32(ExpressionContext* exprCtx, AstNode const&,
   transaction::Methods* trx = &exprCtx->trx();
   auto* vopts = &trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
 
-  uint32_t crc = TRI_Crc32HashPointer(buffer->c_str(), buffer->length());
+  uint32_t crc = TRI_Crc32HashPointer(buffer->data(), buffer->length());
   char out[9];
   size_t length = TRI_StringUInt32HexInPlace(crc, &out[0]);
   return AqlValue(&out[0], length);
@@ -5281,12 +5276,12 @@ AqlValue Functions::Fnv64(ExpressionContext* exprCtx, AstNode const&,
   transaction::Methods* trx = &exprCtx->trx();
   auto* vopts = &trx->vpackOptions();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
 
-  uint64_t hashval = TRI_FnvHashPointer(buffer->c_str(), buffer->length());
+  uint64_t hashval = TRI_FnvHashPointer(buffer->data(), buffer->length());
   char out[17];
   size_t length = TRI_StringUInt64HexInPlace(hashval, &out[0]);
   return AqlValue(&out[0], length);
@@ -6545,8 +6540,8 @@ AqlValue Functions::Zip(ExpressionContext* expressionContext, AstNode const&,
 
   // Buffer will temporarily hold the keys
   containers::FlatHashSet<std::string> keysSeen;
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   VPackArrayIterator keysIt(keysSlice);
   VPackArrayIterator valuesIt(valuesSlice);
@@ -6557,12 +6552,12 @@ AqlValue Functions::Zip(ExpressionContext* expressionContext, AstNode const&,
     TRI_ASSERT(valuesIt.valid());
 
     // stringify key
-    buffer->reset();
+    buffer->clear();
     Stringify(vopts, adapter, keysIt.value());
 
-    if (keysSeen.emplace(buffer->c_str(), buffer->length()).second) {
+    if (keysSeen.emplace(buffer->data(), buffer->length()).second) {
       // non-duplicate key
-      builder->add(buffer->c_str(), buffer->length(), valuesIt.value());
+      builder->add(buffer->data(), buffer->length(), valuesIt.value());
     }
 
     keysIt.next();
@@ -6583,13 +6578,13 @@ AqlValue Functions::JsonStringify(ExpressionContext* exprCtx, AstNode const&,
   AqlValueMaterializer materializer(vopts);
   VPackSlice slice = materializer.slice(value, false);
 
-  transaction::StringBufferLeaser buffer(trx);
-  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  transaction::StringLeaser buffer(trx);
+  arangodb::velocypack::StringSink adapter(buffer.get());
 
   VPackDumper dumper(&adapter, trx->transactionContextPtr()->getVPackOptions());
   dumper.dump(slice);
 
-  return AqlValue(buffer->begin(), buffer->length());
+  return AqlValue(buffer->data(), buffer->length());
 }
 
 /// @brief function JSON_PARSE

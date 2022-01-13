@@ -29,7 +29,7 @@
 using namespace arangodb::aql;
 
 /// @brief converts a quantifier string into an int equivalent
-int64_t Quantifier::FromString(std::string const& value) {
+int64_t Quantifier::fromString(std::string const& value) {
   if (value == "all") {
     return ALL;
   } else if (value == "any") {
@@ -42,7 +42,7 @@ int64_t Quantifier::FromString(std::string const& value) {
 }
 
 /// @brief converts a quantifier int value into its string equivalent
-std::string Quantifier::Stringify(int64_t value) {
+std::string Quantifier::stringify(int64_t value) {
   if (value == ALL) {
     return "all";
   }
@@ -55,7 +55,7 @@ std::string Quantifier::Stringify(int64_t value) {
   return "none";
 }
 
-bool Quantifier::IsAllOrNone(AstNode const* quantifier) {
+bool Quantifier::isAllOrNone(AstNode const* quantifier) {
   TRI_ASSERT(quantifier != nullptr);
 
   if (quantifier->type == NODE_TYPE_QUANTIFIER) {
@@ -66,7 +66,7 @@ bool Quantifier::IsAllOrNone(AstNode const* quantifier) {
 }
 
 /// @brief determine the min/max number of matches for an array comparison
-std::pair<size_t, size_t> Quantifier::RequiredMatches(
+std::pair<size_t, size_t> Quantifier::requiredMatches(
     size_t inputSize, AstNode const* quantifier) {
   TRI_ASSERT(quantifier != nullptr);
 

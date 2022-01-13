@@ -549,16 +549,11 @@ struct AstNode {
   /// NODE_TYPE_OBJECT (only for objects that do not contain dynamic attributes)
   /// note that this may throw and that the caller is responsible for
   /// catching the error
-  void stringify(arangodb::basics::StringBuffer*, bool, bool) const;
+  void stringify(std::string& buffer, bool failIfLong) const;
 
   /// note that this may throw and that the caller is responsible for
   /// catching the error
   std::string toString() const;
-
-  /// @brief stringify the value of a node into a string buffer
-  /// this method is used when generated JavaScript code for the node!
-  /// this creates an equivalent to what JSON.stringify() would do
-  void appendValue(arangodb::basics::StringBuffer*) const;
 
   /// @brief If the node has not been marked finalized, mark its subtree so.
   /// If it runs into a finalized node, it assumes the whole subtree beneath
@@ -569,7 +564,6 @@ struct AstNode {
   /// @brief sets the computed value pointer.
   void setComputedValue(uint8_t* data);
 
- public:
   /// @brief the node type
   AstNodeType type;
 
@@ -590,7 +584,11 @@ struct AstNode {
   void computeValue(arangodb::velocypack::Builder& builder) const;
   void freeComputedValue() noexcept;
 
- private:
+  /// @brief stringify the value of a node into a string buffer
+  /// this method is used when generated JavaScript code for the node!
+  /// this creates an equivalent to what JSON.stringify() would do
+  void appendValue(std::string& buffer) const;
+
   /// @brief precomputed VPack value (used when executing expressions)
   uint8_t mutable* _computedValue;
 

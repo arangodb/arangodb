@@ -36,10 +36,6 @@
 namespace arangodb {
 class CollectionNameResolver;
 
-namespace basics {
-class StringBuffer;
-}
-
 namespace velocypack {
 class Builder;
 }
@@ -108,21 +104,6 @@ std::string makeIdFromParts(CollectionNameResolver const* resolver,
                             DataSourceId const& cid, VPackSlice const& keyPart);
 };  // namespace helpers
 
-/// @brief basics::StringBuffer leaser
-/// @deprecated rather use StringLeaser for a shared std::string
-class StringBufferLeaser {
- public:
-  explicit StringBufferLeaser(Methods*);
-  ~StringBufferLeaser();
-  arangodb::basics::StringBuffer* stringBuffer() const { return _stringBuffer; }
-  arangodb::basics::StringBuffer* operator->() const { return _stringBuffer; }
-  arangodb::basics::StringBuffer* get() const { return _stringBuffer; }
-
- private:
-  transaction::Context* _transactionContext;
-  arangodb::basics::StringBuffer* _stringBuffer;
-};
-
 /// @brief std::string leaser
 class StringLeaser {
  public:
@@ -131,6 +112,8 @@ class StringLeaser {
   ~StringLeaser();
   std::string* string() const { return _string; }
   std::string* operator->() const { return _string; }
+  std::string& operator*() { return *_string; }
+  std::string const& operator*() const { return *_string; }
   std::string* get() const { return _string; }
 
  private:
@@ -145,6 +128,10 @@ class BuilderLeaser {
   ~BuilderLeaser();
   inline arangodb::velocypack::Builder* builder() const { return _builder; }
   inline arangodb::velocypack::Builder* operator->() const { return _builder; }
+  inline arangodb::velocypack::Builder& operator*() { return *_builder; }
+  inline arangodb::velocypack::Builder const& operator*() const {
+    return *_builder;
+  }
   inline arangodb::velocypack::Builder* get() const { return _builder; }
   inline arangodb::velocypack::Builder* steal() {
     arangodb::velocypack::Builder* res = _builder;

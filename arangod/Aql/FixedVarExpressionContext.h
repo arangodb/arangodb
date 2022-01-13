@@ -42,7 +42,7 @@ class FixedVarExpressionContext final : public QueryExpressionContext {
                                      QueryContext& query,
                                      AqlFunctionsInternalCache& cache);
 
-  ~FixedVarExpressionContext() override = default;
+  ~FixedVarExpressionContext() = default;
 
   bool isDataFromCollection(Variable const* variable) const override;
 
@@ -73,23 +73,12 @@ class SingleVarExpressionContext final : public QueryExpressionContext {
                                       QueryContext& query,
                                       AqlFunctionsInternalCache& cache);
 
-  explicit SingleVarExpressionContext(transaction::Methods& trx,
-                                      QueryContext& query,
-                                      AqlFunctionsInternalCache& cache,
-                                      Variable* var, AqlValue val);
-
-  ~SingleVarExpressionContext() override;
+  ~SingleVarExpressionContext() = default;
 
   bool isDataFromCollection(Variable const* variable) const override;
 
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;
-
-  void setVariableValue(Variable* var, AqlValue& val);
-
- private:
-  const Variable* _variable;
-  AqlValue _value;
 };
 
 }  // namespace aql

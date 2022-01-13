@@ -36,10 +36,9 @@ DocumentExpressionContext::DocumentExpressionContext(
 AqlValue DocumentExpressionContext::getVariableValue(Variable const*,
                                                      bool doCopy,
                                                      bool& mustDestroy) const {
+  mustDestroy = doCopy;
   if (doCopy) {
-    mustDestroy = true;  // as we are copying
     return AqlValue(AqlValueHintCopy(_document.start()));
   }
-  mustDestroy = false;
   return AqlValue(AqlValueHintDocumentNoCopy(_document.start()));
 }

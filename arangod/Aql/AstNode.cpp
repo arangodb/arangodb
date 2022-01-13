@@ -43,7 +43,9 @@
 #endif
 
 #include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Sink.h>
 #include <velocypack/Slice.h>
 #include <velocypack/ValueType.h>
 #include <velocypack/velocypack-aliases.h>
@@ -526,7 +528,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
       break;
     }
     case NODE_TYPE_QUANTIFIER: {
-      setIntValue(Quantifier::FromString(slice.get("quantifier").copyString()));
+      setIntValue(Quantifier::fromString(slice.get("quantifier").copyString()));
       break;
     }
     case NODE_TYPE_OPERATOR_BINARY_EQ:
@@ -968,17 +970,14 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
     for (size_t i = 0; i < n; ++i) {
       auto member = getMemberUnchecked(i);
       if (member != nullptr) {
-        std::string_view key(member->getStringValue(),
-                             member->getStringLength());
+        std::string_view key(member->getStringView());
 
         if (n > 1 && !keys.emplace(key).second) {
           // duplicate key, skip it
           continue;
         }
 
-        builder.add(VPackValuePair(member->getStringValue(),
-                                   member->getStringLength(),
-                                   VPackValueType::String));
+        builder.add(VPackValue(key));
         member->getMember(0)->toVelocyPackValue(builder);
       }
     }
@@ -1058,7 +1057,7 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
     builder.add("sorted", VPackValue(getBoolValue()));
   }
   if (type == NODE_TYPE_QUANTIFIER) {
-    std::string const quantifier(Quantifier::Stringify(getIntValue(true)));
+    std::string const quantifier(Quantifier::stringify(getIntValue(true)));
     builder.add("quantifier", VPackValue(quantifier));
   }
 
@@ -1346,16 +1345,16 @@ bool AstNode::isAttributeAccessForVariable(
   }
   auto node = this;
 
-  basics::StringBuffer indexBuff;
+  std::string indexBuffer;
 
   while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
          node->type == NODE_TYPE_INDEXED_ACCESS ||
          node->type == NODE_TYPE_EXPANSION) {
     if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       arangodb::basics::AttributeName attr(node->getString(), expandNext);
-      if (indexBuff.length() > 0) {
-        attr.name.append(indexBuff.c_str(), indexBuff.length());
-        indexBuff.clear();
+      if (!indexBuffer.empty()) {
+        attr.name.append(indexBuffer);
+        indexBuffer.clear();
       }
       result.second.insert(result.second.begin(), std::move(attr));
       node = node->getMember(0);
@@ -1366,9 +1365,9 @@ bool AstNode::isAttributeAccessForVariable(
       if (!allowIndexedAccess || val->type != NODE_TYPE_VALUE) {
         break;  // also exclude all non trivial index accesses
       }
-      indexBuff.appendChar('[');
-      node->getMember(1)->stringify(&indexBuff, false, false);
-      indexBuff.appendChar(']');
+      indexBuffer.push_back('[');
+      val->stringify(indexBuffer, false);
+      indexBuffer.push_back(']');
       node = node->getMember(0);
       expandNext = false;
     } else {
@@ -1415,8 +1414,7 @@ void AstNode::clearFlagsRecursive() noexcept {
   size_t const n = numMembers();
 
   for (size_t i = 0; i < n; ++i) {
-    auto member = getMemberUnchecked(i);
-    member->clearFlagsRecursive();
+    getMemberUnchecked(i)->clearFlagsRecursive();
   }
 }
 
@@ -1863,13 +1861,9 @@ bool AstNode::isCacheable() const {
     return func->hasFlag(Function::Flags::Cacheable);
   }
 
-  if (type == NODE_TYPE_FCALL_USER) {
-    // user functions are always non-cacheable
-    return false;
-  }
-
+  // user functions are always non-cacheable.
   // everything else is cacheable
-  return true;
+  return (type != NODE_TYPE_FCALL_USER);
 }
 
 /// @brief whether or not a node (and its subnodes) may contain a call to a
@@ -1924,11 +1918,10 @@ AstNode* AstNode::clone(Ast* ast) const { return ast->clone(this); }
 /// (only for objects that do not contain dynamic attributes)
 /// note that this may throw and that the caller is responsible for
 /// catching the error
-void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
-                        bool failIfLong) const {
+void AstNode::stringify(std::string& buffer, bool failIfLong) const {
   // any arrays/objects with more values than this will not be stringified if
   // failIfLong is set to true!
-  static size_t const TooLongThreshold = 80;
+  constexpr size_t tooLongThreshold = 80;
 
   if (type == NODE_TYPE_VALUE) {
     // must be JavaScript-compatible!
@@ -1936,37 +1929,40 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     return;
   }
 
+  arangodb::velocypack::StringSink sink(&buffer);
+  arangodb::velocypack::Dumper dumper(&sink);
+
   if (type == NODE_TYPE_ARRAY) {
     // must be JavaScript-compatible!
     size_t const n = numMembers();
 
-    if (failIfLong && n > TooLongThreshold) {
+    if (failIfLong && n > tooLongThreshold) {
       // intentionally do not stringify this node because the output would be
       // too long
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }
 
-    buffer->appendChar('[');
+    buffer.push_back('[');
     for (size_t i = 0; i < n; ++i) {
       if (i > 0) {
-        buffer->appendChar(',');
+        buffer.push_back(',');
       }
 
       AstNode* member = getMember(i);
       if (member != nullptr) {
-        member->stringify(buffer, verbose, failIfLong);
+        member->stringify(buffer, failIfLong);
       }
     }
-    buffer->appendChar(']');
+    buffer.push_back(']');
     return;
   }
 
   if (type == NODE_TYPE_OBJECT) {
     // must be JavaScript-compatible!
-    buffer->appendChar('{');
+    buffer.push_back('{');
     size_t const n = numMembers();
 
-    if (failIfLong && n > TooLongThreshold) {
+    if (failIfLong && n > tooLongThreshold) {
       // intentionally do not stringify this node because the output would be
       // too long
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -1974,7 +1970,7 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
 
     for (size_t i = 0; i < n; ++i) {
       if (i > 0) {
-        buffer->appendChar(',');
+        buffer.push_back(',');
       }
 
       AstNode* member = getMember(i);
@@ -1982,23 +1978,23 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
       if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
         TRI_ASSERT(member->numMembers() == 1);
 
-        buffer->appendJsonEncoded(member->getStringValue(),
-                                  member->getStringLength());
-        buffer->appendChar(':');
+        dumper.appendString(member->getStringValue(),
+                            member->getStringLength());
+        buffer.push_back(':');
 
-        member->getMember(0)->stringify(buffer, verbose, failIfLong);
+        member->getMember(0)->stringify(buffer, failIfLong);
       } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
         TRI_ASSERT(member->numMembers() == 2);
 
-        buffer->appendText(std::string_view("$["));
-        member->getMember(0)->stringify(buffer, verbose, failIfLong);
-        buffer->appendText(std::string_view("]:"));
-        member->getMember(1)->stringify(buffer, verbose, failIfLong);
+        buffer.append("$[");
+        member->getMember(0)->stringify(buffer, failIfLong);
+        buffer.append("]:");
+        member->getMember(1)->stringify(buffer, failIfLong);
       } else {
         TRI_ASSERT(false);
       }
     }
-    buffer->appendChar('}');
+    buffer.push_back('}');
     return;
   }
 
@@ -2008,8 +2004,8 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     TRI_ASSERT(variable != nullptr);
     // we're intentionally not using the variable name as it is not necessarily
     // unique within a query (hey COLLECT, I am looking at you!)
-    buffer->appendChar('$');
-    buffer->appendInteger(variable->id);
+    buffer.push_back('$');
+    dumper.appendUInt(variable->id);
     return;
   }
 
@@ -2017,95 +2013,95 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     // not used by V8
     auto member = getMember(0);
     auto index = getMember(1);
-    member->stringify(buffer, verbose, failIfLong);
-    buffer->appendChar('[');
-    index->stringify(buffer, verbose, failIfLong);
-    buffer->appendChar(']');
+    member->stringify(buffer, failIfLong);
+    buffer.push_back('[');
+    index->stringify(buffer, failIfLong);
+    buffer.push_back(']');
     return;
   }
 
   if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     // not used by V8
     auto member = getMember(0);
-    member->stringify(buffer, verbose, failIfLong);
-    buffer->appendChar('.');
-    buffer->appendText(getStringValue(), getStringLength());
+    member->stringify(buffer, failIfLong);
+    buffer.push_back('.');
+    buffer.append(getStringValue(), getStringLength());
     return;
   }
 
   if (type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
     // not used by V8
-    getMember(0)->stringify(buffer, verbose, failIfLong);
-    buffer->appendChar('.');
-    getMember(1)->stringify(buffer, verbose, failIfLong);
+    getMember(0)->stringify(buffer, failIfLong);
+    buffer.push_back('.');
+    getMember(1)->stringify(buffer, failIfLong);
     return;
   }
 
   if (type == NODE_TYPE_PARAMETER || type == NODE_TYPE_PARAMETER_DATASOURCE) {
     // not used by V8
-    buffer->appendChar('@');
-    buffer->appendText(getStringValue(), getStringLength());
+    buffer.push_back('@');
+    buffer.append(getStringValue(), getStringLength());
     return;
   }
 
   if (type == NODE_TYPE_FCALL) {
     // not used by V8
     auto func = static_cast<Function*>(getData());
-    buffer->appendText(func->name);
-    buffer->appendChar('(');
-    getMember(0)->stringify(buffer, verbose, failIfLong);
-    buffer->appendChar(')');
+    buffer.append(func->name);
+    buffer.push_back('(');
+    getMember(0)->stringify(buffer, failIfLong);
+    buffer.push_back(')');
     return;
   }
 
   if (type == NODE_TYPE_ARRAY_LIMIT) {
     // not used by V8
-    buffer->appendText(std::string_view("_LIMIT("));
-    getMember(0)->stringify(buffer, verbose, failIfLong);
-    buffer->appendChar(',');
-    getMember(1)->stringify(buffer, verbose, failIfLong);
-    buffer->appendChar(')');
+    buffer.append("_LIMIT(");
+    getMember(0)->stringify(buffer, failIfLong);
+    buffer.push_back(',');
+    getMember(1)->stringify(buffer, failIfLong);
+    buffer.push_back(')');
     return;
   }
 
   if (type == NODE_TYPE_EXPANSION) {
     // not used by V8
-    buffer->appendText(std::string_view("_EXPANSION("));
-    getMember(0)->stringify(buffer, verbose, failIfLong);
-    buffer->appendChar(',');
-    getMember(1)->stringify(buffer, verbose, failIfLong);
+    buffer.append("_EXPANSION(");
+    getMember(0)->stringify(buffer, failIfLong);
+    buffer.push_back(',');
+    getMember(1)->stringify(buffer, failIfLong);
     // filter
-    buffer->appendChar(',');
+    buffer.push_back(',');
 
     auto filterNode = getMember(2);
     if (filterNode != nullptr && filterNode->type != NODE_TYPE_NOP) {
-      buffer->appendText(std::string_view(" FILTER "));
-      filterNode->getMember(0)->stringify(buffer, verbose, failIfLong);
+      buffer.append(" FILTER ");
+      filterNode->getMember(0)->stringify(buffer, failIfLong);
     }
     auto limitNode = getMember(3);
     if (limitNode != nullptr && limitNode->type != NODE_TYPE_NOP) {
-      buffer->appendText(std::string_view(" LIMIT "));
-      limitNode->getMember(0)->stringify(buffer, verbose, failIfLong);
-      buffer->appendChar(',');
-      limitNode->getMember(1)->stringify(buffer, verbose, failIfLong);
+      buffer.append(" LIMIT ");
+      limitNode->getMember(0)->stringify(buffer, failIfLong);
+      buffer.push_back(',');
+      limitNode->getMember(1)->stringify(buffer, failIfLong);
     }
     auto returnNode = getMember(4);
     if (returnNode != nullptr && returnNode->type != NODE_TYPE_NOP) {
-      buffer->appendText(std::string_view(" RETURN "));
-      returnNode->stringify(buffer, verbose, failIfLong);
+      buffer.append(std::string_view(" RETURN "));
+      returnNode->stringify(buffer, failIfLong);
     }
 
-    buffer->appendChar(')');
+    buffer.push_back(')');
     return;
   }
 
   if (type == NODE_TYPE_ITERATOR) {
     // not used by V8
-    buffer->appendText(std::string_view("_ITERATOR("));
-    getMember(1)->stringify(buffer, verbose, failIfLong);
-    buffer->appendChar(',');
-    getMember(0)->stringify(buffer, verbose, failIfLong);
-    buffer->appendChar(')');
+    buffer.append("_ITERATOR(");
+    getMember(1)->stringify(buffer, failIfLong);
+    buffer.push_back(',');
+    getMember(0)->stringify(buffer, failIfLong);
+    buffer.push_back(')');
     return;
   }
 
@@ -2116,10 +2112,10 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     TRI_ASSERT(numMembers() == 1);
     auto it = Operators.find(static_cast<int>(type));
     TRI_ASSERT(it != Operators.end());
-    buffer->appendChar(' ');
-    buffer->appendText((*it).second);
+    buffer.push_back(' ');
+    buffer.append((*it).second);
 
-    getMember(0)->stringify(buffer, verbose, failIfLong);
+    getMember(0)->stringify(buffer, failIfLong);
     return;
   }
 
@@ -2143,11 +2139,11 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     auto it = Operators.find(type);
     TRI_ASSERT(it != Operators.end());
 
-    getMember(0)->stringify(buffer, verbose, failIfLong);
-    buffer->appendChar(' ');
-    buffer->appendText((*it).second);
-    buffer->appendChar(' ');
-    getMember(1)->stringify(buffer, verbose, failIfLong);
+    getMember(0)->stringify(buffer, failIfLong);
+    buffer.push_back(' ');
+    buffer.append((*it).second);
+    buffer.push_back(' ');
+    getMember(1)->stringify(buffer, failIfLong);
     return;
   }
 
@@ -2164,26 +2160,26 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     auto it = Operators.find(type);
     TRI_ASSERT(it != Operators.end());
 
-    getMember(0)->stringify(buffer, verbose, failIfLong);
-    buffer->appendChar(' ');
-    buffer->appendText(Quantifier::Stringify(getMember(2)->getIntValue(true)));
-    buffer->appendChar(' ');
-    buffer->appendText((*it).second);
-    buffer->appendChar(' ');
-    getMember(1)->stringify(buffer, verbose, failIfLong);
+    getMember(0)->stringify(buffer, failIfLong);
+    buffer.push_back(' ');
+    buffer.append(Quantifier::stringify(getMember(2)->getIntValue(true)));
+    buffer.push_back(' ');
+    buffer.append((*it).second);
+    buffer.push_back(' ');
+    getMember(1)->stringify(buffer, failIfLong);
     return;
   }
 
   if (type == NODE_TYPE_OPERATOR_TERNARY) {
-    getMember(0)->stringify(buffer, verbose, failIfLong);
-    buffer->appendChar('?');
+    getMember(0)->stringify(buffer, failIfLong);
+    buffer.push_back('?');
     if (numMembers() == 3) {
-      getMember(1)->stringify(buffer, verbose, failIfLong);
-      buffer->appendChar(':');
-      getMember(2)->stringify(buffer, verbose, failIfLong);
+      getMember(1)->stringify(buffer, failIfLong);
+      buffer.push_back(':');
+      getMember(2)->stringify(buffer, failIfLong);
     } else {
-      buffer->appendChar(':');
-      getMember(1)->stringify(buffer, verbose, failIfLong);
+      buffer.push_back(':');
+      getMember(1)->stringify(buffer, failIfLong);
     }
     return;
   }
@@ -2195,12 +2191,12 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     for (size_t i = 0; i < n; ++i) {
       if (i > 0) {
         if (type == NODE_TYPE_OPERATOR_NARY_AND) {
-          buffer->appendText(" AND ");
+          buffer.append(" AND ");
         } else {
-          buffer->appendText(" OR ");
+          buffer.append(" OR ");
         }
       }
-      getMember(i)->stringify(buffer, verbose, failIfLong);
+      getMember(i)->stringify(buffer, failIfLong);
     }
     return;
   }
@@ -2208,9 +2204,9 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
   if (type == NODE_TYPE_RANGE) {
     // not used by V8
     TRI_ASSERT(numMembers() == 2);
-    getMember(0)->stringify(buffer, verbose, failIfLong);
-    buffer->appendText(std::string_view(".."));
-    getMember(1)->stringify(buffer, verbose, failIfLong);
+    getMember(0)->stringify(buffer, failIfLong);
+    buffer.append("..");
+    getMember(1)->stringify(buffer, failIfLong);
     return;
   }
 
@@ -2223,29 +2219,31 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
 /// note that this may throw and that the caller is responsible for
 /// catching the error
 std::string AstNode::toString() const {
-  arangodb::basics::StringBuffer buffer(false);
-  stringify(&buffer, false, false);
-  return std::string(buffer.data(), buffer.length());
+  std::string buffer;
+  stringify(buffer, false);
+  return buffer;
 }
 
-/// @brief stringify the value of a node into a string buffer
+/// @brief stringify the value of a node into a string buffer.
 /// this creates an equivalent to what JSON.stringify() would do
-/// this method is used when generated JavaScript code for the node!
-void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
+void AstNode::appendValue(std::string& buffer) const {
   TRI_ASSERT(type == NODE_TYPE_VALUE);
+
+  arangodb::velocypack::StringSink sink(&buffer);
+  arangodb::velocypack::Dumper dumper(&sink);
 
   switch (value.type) {
     case VALUE_TYPE_BOOL: {
       if (value.value._bool) {
-        buffer->appendText(std::string_view("true"));
+        buffer.append("true");
       } else {
-        buffer->appendText(std::string_view("false"));
+        buffer.append("false");
       }
       break;
     }
 
     case VALUE_TYPE_INT: {
-      buffer->appendInteger(value.value._int);
+      dumper.appendInt(value.value._int);
       break;
     }
 
@@ -2253,21 +2251,21 @@ void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
       double const v = value.value._double;
       if (std::isnan(v) || !std::isfinite(v) || v == HUGE_VAL ||
           v == -HUGE_VAL) {
-        buffer->appendText(std::string_view("null"));
+        buffer.append("null");
       } else {
-        buffer->appendDecimal(value.value._double);
+        dumper.appendDouble(v);
       }
       break;
     }
 
     case VALUE_TYPE_STRING: {
-      buffer->appendJsonEncoded(value.value._string, value.length);
+      dumper.appendString(value.value._string, value.length);
       break;
     }
 
     case VALUE_TYPE_NULL:
     default: {
-      buffer->appendText(std::string_view("null"));
+      buffer.append("null");
       break;
     }
   }

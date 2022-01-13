@@ -39,14 +39,13 @@ bool FixedVarExpressionContext::isDataFromCollection(
 AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable,
                                                      bool doCopy,
                                                      bool& mustDestroy) const {
-  mustDestroy = false;
+  mustDestroy = doCopy;
   auto it = _vars.find(variable);
   if (it == _vars.end()) {
     TRI_ASSERT(false);
     return AqlValue(AqlValueHintNull());
   }
   if (doCopy) {
-    mustDestroy = true;
     return it->second.clone();
   }
   return it->second;
@@ -84,34 +83,15 @@ FixedVarExpressionContext::FixedVarExpressionContext(
 
 SingleVarExpressionContext::SingleVarExpressionContext(
     transaction::Methods& trx, QueryContext& context,
-    AqlFunctionsInternalCache& cache, Variable* var, AqlValue val)
-    : QueryExpressionContext(trx, context, cache),
-      _variable(var),
-      _value(val) {}
-
-SingleVarExpressionContext::SingleVarExpressionContext(
-    transaction::Methods& trx, QueryContext& context,
     AqlFunctionsInternalCache& cache)
-    : SingleVarExpressionContext(trx, context, cache, nullptr,
-                                 AqlValue(AqlValueHintNull())) {}
-
-SingleVarExpressionContext::~SingleVarExpressionContext() { _value.destroy(); }
+    : QueryExpressionContext(trx, context, cache) {}
 
 bool SingleVarExpressionContext::isDataFromCollection(Variable const*) const {
   return false;
 }
 
-AqlValue SingleVarExpressionContext::getVariableValue(Variable const* var, bool,
-                                                      bool&) const {
-  if (var == _variable) {
-    return _value;
-  } else {
-    return AqlValue(AqlValueHintNull());
-  }
-}
-
-void SingleVarExpressionContext::setVariableValue(Variable* variable,
-                                                  AqlValue& value) {
-  _variable = variable;
-  _value = value;
+AqlValue SingleVarExpressionContext::getVariableValue(
+    Variable const* /*variable*/, bool /*doCopy*/,
+    bool& /*mustDestroy*/) const {
+  return AqlValue(AqlValueHintNull());
 }
