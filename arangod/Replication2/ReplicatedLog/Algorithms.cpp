@@ -263,8 +263,8 @@ auto algorithms::checkReplicatedLogParticipants(
   // Neither must be empty later.
   // It'd be conceivable to set the participants in a separate step before the
   // first term is set, but currently there's no reason for that.
-  TRI_ASSERT(!spec.participantsConfig.participants.empty() ||
-             spec.currentTerm.has_value());
+  TRI_ASSERT(!spec.currentTerm.has_value() ||
+             !spec.participantsConfig.participants.empty());
   if (spec.participantsConfig.participants.empty()) {
     TRI_ASSERT(spec.participantsConfig.generation == 0);
     if (auto participants = sampleParticipants(spec, info);
