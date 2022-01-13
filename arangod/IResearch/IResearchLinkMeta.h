@@ -66,10 +66,14 @@ struct FieldMeta {
   typedef UnorderedRefKeyMap<char, UniqueHeapInstance<FieldMeta>> Fields;
 
   struct Analyzer {
-    Analyzer();  // identity analyzer
+    Analyzer(AnalyzerPool::ptr const& pool)
+        : Analyzer(pool, pool ? std::string{pool->name()} : std::string{}) {}
     Analyzer(AnalyzerPool::ptr const& pool, std::string&& shortName) noexcept
         : _pool(pool), _shortName(std::move(shortName)) {}
     operator bool() const noexcept { return false == !_pool; }
+
+    AnalyzerPool const* operator->() const { return _pool.get(); }
+    AnalyzerPool* operator->() { return _pool.get(); }
 
     AnalyzerPool::ptr _pool;
     std::string _shortName;  // vocbase-independent short analyzer name
@@ -109,7 +113,7 @@ struct FieldMeta {
     bool _storeValues;
   };
 
-  FieldMeta();
+  FieldMeta() = default;
   FieldMeta(FieldMeta const&) = default;
   FieldMeta(FieldMeta&&) = default;
 
@@ -166,17 +170,19 @@ struct FieldMeta {
   ////////////////////////////////////////////////////////////////////////////////
   size_t memory() const noexcept;
 
-  std::vector<Analyzer> _analyzers;  // analyzers to apply to every field
-  size_t _primitiveOffset;
-  Fields
-      _fields;  // explicit list of fields to be indexed with optional overrides
-  ValueStorage _storeValues{
-      ValueStorage::NONE};  // how values should be stored inside the view
-  bool _includeAllFields{
-      false};  // include all fields or only fields listed in '_fields'
-  bool _trackListPositions{
-      false};  // append relative offset in list to attribute name (as opposed
-               // to without offset)
+  // Analyzers to apply to every field.
+  std::vector<Analyzer> _analyzers;
+  // Offset of the first non-primitive analyzer.
+  size_t _primitiveOffset{0};
+  // Explicit list of fields to be indexed with optional overrides.
+  Fields _fields;
+  // How values should be stored inside the view.
+  ValueStorage _storeValues{ValueStorage::NONE};
+  // Include all fields or only fields listed in '_fields'.
+  bool _includeAllFields{false};
+  // Append relative offset in list to attribute name (as opposed to without
+  // offset).
+  bool _trackListPositions{false};
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,18 +208,18 @@ struct IResearchLinkMeta : public FieldMeta {
   };
 
   std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
-  IResearchViewSort _sort;  // sort condition associated with the link
-  IResearchViewStoredValues
-      _storedValues;  // stored values associated with the link
+  IResearchViewSort _sort;
+  IResearchViewStoredValues _storedValues;
   irs::type_info::type_id _sortCompression{getDefaultCompression()};
-  uint32_t _version;  // the version of the iresearch interface e.g. which how
-                      // data is stored in iresearch (default == 0)
+  // The version of the iresearch interface e.g. which how
+  // data is stored in iresearch (default == 0).
+  uint32_t _version;
 
-  /// @brief Linked collection name. Stored here for cluster deployment only.
-  /// For sigle server collection could be renamed so can`t store it here or
-  /// syncronisation will be needed. For cluster rename is not possible so
-  /// there is no problem but solved recovery issue - we will be able to index
-  /// _id attribute without doing agency request for collection name
+  // Linked collection name. Stored here for cluster deployment only.
+  // For sigle server collection could be renamed so can`t store it here or
+  // syncronisation will be needed. For cluster rename is not possible so
+  // there is no problem but solved recovery issue - we will be able to index
+  // _id attribute without doing agency request for collection name
   std::string _collectionName;
 
   // NOTE: if adding fields don't forget to modify the comparison operator !!!
@@ -278,7 +284,7 @@ struct IResearchLinkMeta : public FieldMeta {
   /// @brief amount of memory in bytes occupied by this IResearchLinkMeta
   ////////////////////////////////////////////////////////////////////////////////
   size_t memory() const noexcept;
-};  // IResearchLinkMeta
+};
 
 }  // namespace iresearch
 }  // namespace arangodb

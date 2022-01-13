@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <unordered_map>
-#include <unordered_set>
+#include <span>
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
@@ -49,9 +48,10 @@
 
 namespace {
 
+using namespace arangodb;
 using namespace arangodb::iresearch;
 
-[[maybe_unused]] void assertAnaylzerFeatures(auto const& analyzers,
+[[maybe_unused]] void assertAnalyzerFeatures(auto const& analyzers,
                                              LinkVersion version) noexcept {
   for (auto& analyzer : analyzers) {
     irs::type_info::type_id invalidNorm;
@@ -60,15 +60,17 @@ using namespace arangodb::iresearch;
     } else {
       invalidNorm = irs::type<irs::Norm>::id();
     }
+
     const auto features = analyzer->fieldFeatures();
+
     TRI_ASSERT(std::end(features) == std::find(std::begin(features),
                                                std::end(features),
                                                invalidNorm));
   }
 }
 
-bool equalAnalyzers(std::vector<FieldMeta::Analyzer> const& lhs,
-                    std::vector<FieldMeta::Analyzer> const& rhs) noexcept {
+bool equalAnalyzers(std::span<const FieldMeta::Analyzer> lhs,
+                    std::span<const FieldMeta::Analyzer> rhs) noexcept {
   if (lhs.size() != rhs.size()) {
     return false;
   }
@@ -118,14 +120,6 @@ bool operator<(irs::string_ref lhs,
 
 namespace arangodb {
 namespace iresearch {
-
-FieldMeta::Analyzer::Analyzer()
-    : _pool(IResearchAnalyzerFeature::identity()),
-      _shortName(_pool ? _pool->name() : arangodb::StaticStrings::Empty) {}
-
-FieldMeta::FieldMeta()
-    : _analyzers{Analyzer()},  // identity analyzer
-      _primitiveOffset{1} {}
 
 bool FieldMeta::operator==(FieldMeta const& rhs) const noexcept {
   if (!equalAnalyzers(_analyzers, rhs._analyzers)) {
@@ -577,9 +571,6 @@ bool IResearchLinkMeta::init(
     bool readAnalyzerDefinition, std::string& errorField,
     irs::string_ref defaultVocbase /*= irs::string_ref::NIL*/,
     Mask* mask /*= nullptr*/) {
-  // FIXME(gnusi) defaults based on version
-  static const IResearchLinkMeta defaults;
-
   if (!slice.isObject()) {
     return false;
   }
@@ -648,7 +639,6 @@ bool IResearchLinkMeta::init(
   }
 
   {
-    // clear existing definitions
     _analyzerDefinitions.clear();
 
     // optional object list
@@ -814,19 +804,6 @@ bool IResearchLinkMeta::init(
         _analyzerDefinitions.emplace(analyzer);
       }
     }
-
-    if (_analyzerDefinitions.empty()) {
-      auto id = IResearchAnalyzerFeature::identity();
-
-      bool extendedNames =
-          server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
-      AnalyzerPool::ptr analyzer;
-      auto const res = IResearchAnalyzerFeature::createAnalyzerPool(
-          analyzer, id->name(), id->type(), id->properties(),
-          AnalyzersRevision::Revision{AnalyzersRevision::LATEST},
-          id->features(), LinkVersion{_version}, extendedNames);
-      _analyzerDefinitions.emplace(analyzer);
-    }
   }
 
   if (slice.hasKey(StaticStrings::CollectionNameField) &&
@@ -840,13 +817,42 @@ bool IResearchLinkMeta::init(
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto checkFeatures = scopeGuard([this]() noexcept {
-    ::assertAnaylzerFeatures(_analyzerDefinitions, LinkVersion{_version});
+    LinkVersion const version{_version};
+
+    auto checkFieldFeatures = [version](FieldMeta const& fieldMeta,
+                                        auto&& self) -> void {
+      ::assertAnalyzerFeatures(fieldMeta._analyzers, version);
+
+      for (auto const& entry : fieldMeta._fields) {
+        self(*entry.value(), self);
+      }
+    };
+
+    ::assertAnalyzerFeatures(_analyzerDefinitions, version);
+    checkFieldFeatures(*this, checkFieldFeatures);
   });
 #endif
 
-  _analyzers.clear();
-  auto& a = *_analyzerDefinitions.begin();
-  _analyzers.emplace_back(a, std::string{a->name()});
+  FieldMeta defaults;
+
+  // Initialize version specific defaults.
+  {
+    bool const extendedNames =
+        server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
+    AnalyzerPool::ptr analyzer;
+    auto const identity = IResearchAnalyzerFeature::identity();
+    auto const res = IResearchAnalyzerFeature::createAnalyzerPool(
+        analyzer, identity->name(), identity->type(), identity->properties(),
+        AnalyzersRevision::Revision{AnalyzersRevision::MIN},
+        identity->features(), LinkVersion{_version}, extendedNames);
+    if (res.fail()) {
+      TRI_ASSERT(false);
+      return false;
+    }
+
+    defaults._analyzers.emplace_back(analyzer);
+    defaults._primitiveOffset = _analyzers.size();
+  }
 
   return FieldMeta::init(server, slice, errorField, defaultVocbase, defaults,
                          mask, &_analyzerDefinitions);

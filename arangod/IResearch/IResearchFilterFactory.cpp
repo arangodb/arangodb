@@ -28,6 +28,8 @@
 #include "date/date.h"
 #endif
 
+#include <span>
+
 #include "IResearch/IResearchFilterFactory.h"
 
 #include "s2/s2latlng.h"
@@ -2108,7 +2110,8 @@ Result fromFuncAnalyzer(char const* funcName, irs::boolean_filter* filter,
     return rv;
   }
 
-  arangodb::iresearch::FieldMeta::Analyzer analyzerValue;  // default analyzer
+  // default analyzer
+  FieldMeta::Analyzer analyzerValue{IResearchAnalyzerFeature::identity()};
   auto& analyzer = analyzerValue._pool;
   auto& shortName = analyzerValue._shortName;
 
@@ -2134,13 +2137,11 @@ Result fromFuncAnalyzer(char const* funcName, irs::boolean_filter* filter,
                   .append("'")};
     }
 
-    shortName =
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
-            analyzerId, ctx.trx->vocbase().name(), false);         // args
+    shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(
+        analyzerId, ctx.trx->vocbase().name(), false);
   }
 
-  FilterContext const subFilterContext(analyzerValue,
-                                       filterCtx.boost);  // override analyzer
+  FilterContext const subFilterContext(analyzerValue, filterCtx.boost);
 
   rv = ::filter(filter, ctx, subFilterContext, *expressionArg);
 
@@ -4134,7 +4135,7 @@ namespace iresearch {
 
   // The analyzer is referenced in the FilterContext and used during the
   // following ::filter() call, so may not be a temporary.
-  FieldMeta::Analyzer analyzer = FieldMeta::Analyzer();
+  FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
   FilterContext const filterCtx(analyzer, irs::no_boost());
 
   const auto res = ::filter(filter, ctx, filterCtx, node);

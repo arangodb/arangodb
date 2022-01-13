@@ -204,86 +204,6 @@ TEST_F(IResearchLinkMetaTest, test_defaults) {
   EXPECT_FALSE(!meta._analyzers.begin()->_pool->get());
 }
 
-TEST_F(IResearchLinkMetaTest, test_inheritDefaults) {
-  arangodb::iresearch::IResearchAnalyzerFeature analyzers(server.server());
-  arangodb::iresearch::IResearchLinkMeta defaults;
-  arangodb::iresearch::IResearchLinkMeta meta;
-  std::unordered_set<std::string> expectedFields = {"abc"};
-  std::unordered_set<std::string> expectedOverrides = {"xyz"};
-  std::string tmpString;
-
-  analyzers.start();
-
-  defaults._fields["abc"] = arangodb::iresearch::FieldMeta();
-  defaults._includeAllFields = true;
-  defaults._trackListPositions = true;
-  defaults._storeValues = arangodb::iresearch::ValueStorage::VALUE;
-  defaults._analyzers.clear();
-  defaults._analyzers.emplace_back(
-      arangodb::iresearch::IResearchLinkMeta::Analyzer(
-          analyzers.get("testVocbase::empty",
-                        arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
-          "empty"));
-  defaults._fields["abc"]->_fields["xyz"] =
-      arangodb::iresearch::IResearchLinkMeta();
-  defaults._sort.emplace_back(
-      std::vector<arangodb::basics::AttributeName>{
-          {std::string_view("foo"), false}},
-      true);
-
-  auto json = VPackParser::fromJson("{}");
-  EXPECT_TRUE(meta.init(server.server(), json->slice(), false, tmpString,
-                        nullptr, defaults));
-  EXPECT_EQ(1U, meta._fields.size());
-
-  for (auto& field : meta._fields) {
-    EXPECT_EQ(1U, expectedFields.erase(static_cast<std::string>(
-                      field.key())));  // FIXME: after C++20 remove cast and use
-                                       // heterogeneous lookup
-    EXPECT_EQ(1U, field.value()->_fields.size());
-
-    for (auto& fieldOverride : field.value()->_fields) {
-      auto& actual = *(fieldOverride.value());
-      EXPECT_EQ(1U,
-                expectedOverrides.erase(static_cast<std::string>(
-                    fieldOverride.key())));  // FIXME: after C++20 remove cast
-                                             // and use heterogeneous lookup
-
-      if ("xyz" == fieldOverride.key()) {
-        EXPECT_TRUE(actual._fields.empty());
-        EXPECT_FALSE(actual._includeAllFields);
-        EXPECT_FALSE(actual._trackListPositions);
-        EXPECT_EQ(arangodb::iresearch::ValueStorage::NONE, actual._storeValues);
-        EXPECT_EQ(1U, actual._analyzers.size());
-        EXPECT_TRUE(*(actual._analyzers.begin()));
-        EXPECT_EQ("identity", actual._analyzers.begin()->_pool->name());
-        EXPECT_EQ("identity", actual._analyzers.begin()->_shortName);
-        EXPECT_TRUE((arangodb::iresearch::Features(
-                         arangodb::iresearch::FieldFeatures::NORM,
-                         irs::IndexFeatures::FREQ) ==
-                     actual._analyzers.begin()->_pool->features()));
-        EXPECT_FALSE(!actual._analyzers.begin()->_pool->get());
-      }
-    }
-  }
-
-  EXPECT_TRUE(expectedOverrides.empty());
-  EXPECT_TRUE(expectedFields.empty());
-  EXPECT_TRUE(meta._includeAllFields);
-  EXPECT_TRUE(meta._trackListPositions);
-  EXPECT_TRUE((arangodb::iresearch::ValueStorage::VALUE == meta._storeValues));
-
-  EXPECT_EQ(1U, meta._analyzers.size());
-  EXPECT_TRUE(*(meta._analyzers.begin()));
-  EXPECT_EQ("testVocbase::empty", meta._analyzers.begin()->_pool->name());
-  EXPECT_EQ("empty", meta._analyzers.begin()->_shortName);
-  EXPECT_TRUE((arangodb::iresearch::Features(irs::IndexFeatures::FREQ) ==
-               meta._analyzers.begin()->_pool->features()));
-  EXPECT_FALSE(!meta._analyzers.begin()->_pool->get());
-
-  EXPECT_EQ(0, meta._sort.size());
-}
-
 TEST_F(IResearchLinkMetaTest, test_readDefaults) {
   auto json = VPackParser::fromJson("{}");
 
@@ -1458,10 +1378,8 @@ TEST_F(IResearchLinkMetaTest, test_readMaskAll) {
     \"storeValues\": \"value\", \
     \"analyzers\": [] \
   }");
-  EXPECT_TRUE(
-      true ==
-      meta.init(server.server(), json->slice(), false, tmpString, nullptr,
-                arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &mask));
+  EXPECT_TRUE(meta.init(server.server(), json->slice(), false, tmpString,
+                        nullptr, &mask));
   EXPECT_TRUE(mask._fields);
   EXPECT_TRUE(mask._includeAllFields);
   EXPECT_TRUE(mask._trackListPositions);
@@ -1475,10 +1393,8 @@ TEST_F(IResearchLinkMetaTest, test_readMaskNone) {
   std::string tmpString;
 
   auto json = VPackParser::fromJson("{}");
-  EXPECT_TRUE(
-      true ==
-      meta.init(server.server(), json->slice(), false, tmpString, nullptr,
-                arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &mask));
+  EXPECT_TRUE(meta.init(server.server(), json->slice(), false, tmpString,
+                        nullptr, &mask));
   EXPECT_FALSE(mask._fields);
   EXPECT_FALSE(mask._includeAllFields);
   EXPECT_FALSE(mask._trackListPositions);
@@ -2768,11 +2684,8 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
     arangodb::iresearch::IResearchLinkMeta::Mask mask(false);
     auto json = VPackParser::fromJson(testJson);
     std::string errorField;
-    EXPECT_TRUE(true ==
-                meta.init(server.server(), json->slice(), false, errorField,
-                          vocbase.name(),
-                          arangodb::iresearch::IResearchLinkMeta::DEFAULT(),
-                          &mask));
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), false, errorField,
+                          vocbase.name(), &mask));
     EXPECT_TRUE(mask._analyzers);
     EXPECT_TRUE(errorField.empty());
     EXPECT_EQ(expectedAnalyzers.size(), meta._analyzers.size());
