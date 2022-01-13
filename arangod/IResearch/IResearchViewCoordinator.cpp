@@ -178,18 +178,16 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
     return {};
   }
 
-  static const std::function<bool(irs::string_ref)> propertiesAcceptor =
+  std::function<bool(irs::string_ref)> const propertiesAcceptor =
       [](irs::string_ref key) -> bool {
-    return key != StaticStrings::VersionField;  // ignored fields
+    return std::string_view{key} != StaticStrings::VersionField;
   };
-  static const std::function<bool(irs::string_ref)> persistenceAcceptor =
+  std::function<bool(irs::string_ref)> const persistenceAcceptor =
       [](irs::string_ref) -> bool { return true; };
 
-  static const std::function<bool(irs::string_ref)> linkPropertiesAcceptor =
-      [](irs::string_ref key) -> bool {
-    return key !=
-               irs::string_ref{
-                   iresearch::StaticStrings::AnalyzerDefinitionsField} &&
+  const std::function<bool(irs::string_ref)> linkPropertiesAcceptor =
+      [](std::string_view key) -> bool {
+    return key != iresearch::StaticStrings::AnalyzerDefinitionsField &&
            key != iresearch::StaticStrings::PrimarySortField &&
            key != iresearch::StaticStrings::PrimarySortCompressionField &&
            key != iresearch::StaticStrings::StoredValuesField &&
@@ -284,10 +282,10 @@ Result IResearchViewCoordinator::link(IResearchLink const& link) {
     return TRI_ERROR_NO_ERROR;
   }
   static const std::function<bool(irs::string_ref key)> acceptor =
-      [](irs::string_ref key) -> bool {
-    return key != arangodb::StaticStrings::IndexId       // ignore index id
-           && key != arangodb::StaticStrings::IndexType  // ignore index type
-           && key != StaticStrings::ViewIdField;         // ignore view id
+      [](std::string_view key) -> bool {
+    return key != arangodb::StaticStrings::IndexId &&
+           key != arangodb::StaticStrings::IndexType &&
+           key != StaticStrings::ViewIdField;
   };
   velocypack::Builder builder;
 

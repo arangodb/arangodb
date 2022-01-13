@@ -87,6 +87,37 @@ DECLARE_GAUGE(arangosearch_cleanup_time, uint64_t,
 DECLARE_GAUGE(arangosearch_consolidation_time, uint64_t,
               "Average time of few last consolidations");
 
+// Ensures that all referenced analyzer features are consistent.
+[[maybe_unused]] void checkAnalyzerFeatures(IResearchLinkMeta const& meta) {
+  auto assertAnalyzerFeatures =
+      [version = LinkVersion{meta._version}](auto const& analyzers) {
+        for (auto& analyzer : analyzers) {
+          irs::type_info::type_id invalidNorm;
+          if (version < LinkVersion::MAX) {
+            invalidNorm = irs::type<irs::Norm2>::id();
+          } else {
+            invalidNorm = irs::type<irs::Norm>::id();
+          }
+
+          const auto features = analyzer->fieldFeatures();
+
+          TRI_ASSERT(std::end(features) == std::find(std::begin(features),
+                                                     std::end(features),
+                                                     invalidNorm));
+        }
+      };
+
+  auto checkFieldFeatures = [&assertAnalyzerFeatures](auto const& fieldMeta,
+                                                      auto&& self) -> void {
+    assertAnalyzerFeatures(fieldMeta._analyzers);
+    for (auto const& entry : fieldMeta._fields) {
+      self(*entry.value(), self);
+    }
+  };
+  assertAnalyzerFeatures(meta._analyzerDefinitions);
+  checkFieldFeatures(meta, checkFieldFeatures);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container storing the link state for a given TransactionState
 ////////////////////////////////////////////////////////////////////////////////
@@ -1198,6 +1229,10 @@ Result IResearchLink::init(velocypack::Slice const& definition,
     return {TRI_ERROR_BAD_PARAMETER,
             "error parsing view link parameters from json: " + error};
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  checkAnalyzerFeatures(meta);
+#endif
 
   if (!definition.isObject()  // not object
       || !definition.get(StaticStrings::ViewIdField).isString()) {

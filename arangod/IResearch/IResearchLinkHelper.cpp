@@ -179,14 +179,11 @@ Result createLink(LogicalCollection& collection,
     // SmartEdgeCollection and do not allow to have their own modifications.
     return TRI_ERROR_NO_ERROR;
   }
-  static const std::function<bool(irs::string_ref const& key)> acceptor =
-      [](irs::string_ref const& key  // json key
-         ) -> bool {
-    // ignored fields
-    return key != arangodb::StaticStrings::IndexType  // type field
-           &&
-           key != arangodb::iresearch::StaticStrings::ViewIdField;  // view id
-                                                                    // field
+  std::function<bool(irs::string_ref key)> const acceptor =
+      [](irs::string_ref key) -> bool {
+    return std::string_view{key} != arangodb::StaticStrings::IndexType &&
+           std::string_view{key} !=
+               arangodb::iresearch::StaticStrings::ViewIdField;
   };
   velocypack::Builder builder;
 
@@ -330,14 +327,11 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
         << "link modification request for view '" << view.name()
         << "', normalized definition:" << link.toString();
 
-    static const std::function<bool(irs::string_ref const& key)> acceptor =
-        [](irs::string_ref const& key  // json key
-           ) -> bool {
-      // ignored fields
-      return key != arangodb::StaticStrings::IndexType  // type field
-             &&
-             key != arangodb::iresearch::StaticStrings::ViewIdField;  // view id
-                                                                      // field
+    std::function<bool(irs::string_ref key)> const acceptor =
+        [](irs::string_ref key) -> bool {
+      return std::string_view{key} != arangodb::StaticStrings::IndexType &&
+             std::string_view{key} !=
+                 arangodb::iresearch::StaticStrings::ViewIdField;
     };
     velocypack::Builder namedJson;
 
@@ -627,7 +621,7 @@ namespace iresearch {
 
 /*static*/ bool IResearchLinkHelper::equal(
     application_features::ApplicationServer& server, velocypack::Slice lhs,
-    velocypack::Slice rhs, irs::string_ref const& dbname) {
+    velocypack::Slice rhs, irs::string_ref dbname) {
   if (!lhs.isObject() || !rhs.isObject()) {
     return false;
   }
@@ -720,21 +714,15 @@ namespace iresearch {
 
   std::string error;
   IResearchLinkMeta meta;
-  IResearchLinkMeta::Mask mask;
 
   // implicit analyzer validation via IResearchLinkMeta done in 2 places:
   // IResearchLinkHelper::normalize(...) if creating via collection API
   // ::modifyLinks(...) (via call to normalize(...) prior to getting
   // superuser) if creating via IResearchLinkHelper API
   if (!meta.init(vocbase.server(), definition, true, error, vocbase.name(),
-                 &mask)) {
+                 defaultVersion)) {
     return {TRI_ERROR_BAD_PARAMETER,
             "error parsing arangosearch link parameters from json: " + error};
-  }
-
-  if (!mask._version) {
-    // use default version if not explicitly set
-    meta._version = static_cast<uint32_t>(defaultVersion);
   }
 
   // same validation as in modifyLinks(...) for Views API

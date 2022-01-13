@@ -258,6 +258,7 @@ struct IResearchLinkMeta : public FieldMeta {
   bool init(application_features::ApplicationServer& server, VPackSlice slice,
             bool readAnalyzerDefinition, std::string& errorField,
             irs::string_ref defaultVocbase = irs::string_ref::NIL,
+            LinkVersion defaultVersion = LinkVersion::MIN,
             Mask* mask = nullptr);
 
   ////////////////////////////////////////////////////////////////////////////////

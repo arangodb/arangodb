@@ -29,10 +29,8 @@
 
 namespace {
 template<typename T>
-arangodb::velocypack::Builder& addRef(       // add a value
-    arangodb::velocypack::Builder& builder,  // builder
-    irs::basic_string_ref<T> const& value    // value
-) {
+arangodb::velocypack::Builder& addRef(arangodb::velocypack::Builder& builder,
+                                      irs::basic_string_ref<T> value) {
   // store nulls verbatim
   if (value.null()) {
     builder.add(  // add value
@@ -47,22 +45,17 @@ arangodb::velocypack::Builder& addRef(       // add a value
 }
 
 template<typename T>
-arangodb::velocypack::Builder& addRef(       // add a value
-    arangodb::velocypack::Builder& builder,  // builder
-    irs::string_ref const& key,              // key
-    irs::basic_string_ref<T> const& value    // value
-) {
-  TRI_ASSERT(
-      !key.null());  // Builder uses memcpy(...) which cannot handle nullptr
+arangodb::velocypack::Builder& addRef(arangodb::velocypack::Builder& builder,
+                                      irs::string_ref key,
+                                      irs::basic_string_ref<T> value) {
+  // Builder uses memcpy(...) which cannot handle nullptr
+  TRI_ASSERT(!key.null());
 
   // store nulls verbatim
   if (value.null()) {
-    builder.add(      // add value
-        key.c_str(),  // key data
-        key.size(),   // key size
-        arangodb::velocypack::Value(
-            arangodb::velocypack::ValueType::Null)  // value
-    );
+    builder.add(
+        key.c_str(), key.size(),
+        arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null));
   } else {
     builder.add(key.c_str(), key.size(),
                 arangodb::iresearch::toValuePair(value));
@@ -75,40 +68,30 @@ arangodb::velocypack::Builder& addRef(       // add a value
 namespace arangodb {
 namespace iresearch {
 
-arangodb::velocypack::Builder& addBytesRef(  // add a value
-    arangodb::velocypack::Builder& builder,  // builder
-    irs::bytes_ref const& value              // value
-) {
+velocypack::Builder& addBytesRef(velocypack::Builder& builder,
+                                 irs::bytes_ref value) {
   return addRef(builder, value);
 }
 
-arangodb::velocypack::Builder& addBytesRef(  // add a value
-    arangodb::velocypack::Builder& builder,  // builder
-    irs::string_ref const& key,              // key
-    irs::bytes_ref const& value              // value
-) {
+velocypack::Builder& addBytesRef(velocypack::Builder& builder,
+                                 irs::string_ref key, irs::bytes_ref value) {
   return addRef(builder, key, value);
 }
 
-arangodb::velocypack::Builder& addStringRef(  // add a value
-    arangodb::velocypack::Builder& builder,   // builder
-    irs::string_ref const& value              // value
-) {
+velocypack::Builder& addStringRef(velocypack::Builder& builder,
+                                  irs::string_ref value) {
   return addRef(builder, value);
 }
 
-arangodb::velocypack::Builder& addStringRef(  // add a value
-    arangodb::velocypack::Builder& builder,   // builder
-    irs::string_ref const& key,               // key
-    irs::string_ref const& value              // value
-) {
+velocypack::Builder& addStringRef(velocypack::Builder& builder,
+                                  irs::string_ref key, irs::string_ref value) {
   return addRef(builder, key, value);
 }
 
 bool mergeSlice(velocypack::Builder& builder, velocypack::Slice slice) {
   if (builder.isOpenArray()) {
     if (slice.isArray()) {
-      builder.add(arangodb::velocypack::ArrayIterator(slice));
+      builder.add(velocypack::ArrayIterator(slice));
     } else {
       builder.add(slice);
     }
@@ -117,7 +100,7 @@ bool mergeSlice(velocypack::Builder& builder, velocypack::Slice slice) {
   }
 
   if (builder.isOpenObject() && slice.isObject()) {
-    builder.add(arangodb::velocypack::ObjectIterator(slice));
+    builder.add(velocypack::ObjectIterator(slice));
 
     return true;
   }
@@ -132,7 +115,7 @@ bool mergeSliceSkipKeys(
     return mergeSlice(builder, slice);  // no keys to skip for non-objects
   }
 
-  for (arangodb::velocypack::ObjectIterator itr(slice); itr.valid(); ++itr) {
+  for (velocypack::ObjectIterator itr(slice); itr.valid(); ++itr) {
     auto key = itr.key();
     auto value = itr.value();
 
@@ -157,7 +140,7 @@ bool mergeSliceSkipOffsets(velocypack::Builder& builder,
     return mergeSlice(builder, slice);  // no offsets to skip for non-arrays
   }
 
-  for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+  for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
     if (acceptor(itr.index())) {
       builder.add(*itr);
     }

@@ -51,24 +51,6 @@ namespace {
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
-[[maybe_unused]] void assertAnalyzerFeatures(auto const& analyzers,
-                                             LinkVersion version) noexcept {
-  for (auto& analyzer : analyzers) {
-    irs::type_info::type_id invalidNorm;
-    if (version < LinkVersion::MAX) {
-      invalidNorm = irs::type<irs::Norm2>::id();
-    } else {
-      invalidNorm = irs::type<irs::Norm>::id();
-    }
-
-    const auto features = analyzer->fieldFeatures();
-
-    TRI_ASSERT(std::end(features) == std::find(std::begin(features),
-                                               std::end(features),
-                                               invalidNorm));
-  }
-}
-
 bool equalAnalyzers(std::span<const FieldMeta::Analyzer> lhs,
                     std::span<const FieldMeta::Analyzer> rhs) noexcept {
   if (lhs.size() != rhs.size()) {
@@ -244,8 +226,6 @@ bool FieldMeta::init(application_features::ApplicationServer& server,
 
         if (!found && referencedAnalyzers) {
           // save in referencedAnalyzers
-
-          // FIXME translate features according to the current link version
           referencedAnalyzers->emplace(analyzer);
         }
 
@@ -570,6 +550,7 @@ bool IResearchLinkMeta::init(
     application_features::ApplicationServer& server, VPackSlice slice,
     bool readAnalyzerDefinition, std::string& errorField,
     irs::string_ref defaultVocbase /*= irs::string_ref::NIL*/,
+    LinkVersion defaultVersion /* = LinkVersion::MIN*/,
     Mask* mask /*= nullptr*/) {
   if (!slice.isObject()) {
     return false;
@@ -615,24 +596,24 @@ bool IResearchLinkMeta::init(
   }
 
   {
-    // optional version
-    auto& fieldName = StaticStrings::VersionField;
+    // Optional version
+    constexpr std::string_view kFieldName{StaticStrings::VersionField};
 
-    auto const field = slice.get(fieldName);
+    auto const field = slice.get(kFieldName);
     mask->_version = field.isNumber<uint32_t>();
 
     if (readAnalyzerDefinition) {
       if (mask->_version) {
         _version = field.getNumber<uint32_t>();
         if (_version > static_cast<uint32_t>(LinkVersion::MAX)) {
-          errorField = fieldName;
+          errorField = kFieldName;
           return false;
         }
       } else if (field.isNone()) {
-        // not present -> old version
-        _version = static_cast<uint32_t>(LinkVersion::MIN);
+        // Not present -> default version.
+        _version = static_cast<uint32_t>(defaultVersion);
       } else {
-        errorField = fieldName;
+        errorField = kFieldName;
         return false;
       }
     }
@@ -815,24 +796,6 @@ bool IResearchLinkMeta::init(
     _collectionName = field.copyString();
   }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto checkFeatures = scopeGuard([this]() noexcept {
-    LinkVersion const version{_version};
-
-    auto checkFieldFeatures = [version](FieldMeta const& fieldMeta,
-                                        auto&& self) -> void {
-      ::assertAnalyzerFeatures(fieldMeta._analyzers, version);
-
-      for (auto const& entry : fieldMeta._fields) {
-        self(*entry.value(), self);
-      }
-    };
-
-    ::assertAnalyzerFeatures(_analyzerDefinitions, version);
-    checkFieldFeatures(*this, checkFieldFeatures);
-  });
-#endif
-
   FieldMeta defaults;
 
   // Initialize version specific defaults.
@@ -899,9 +862,8 @@ bool IResearchLinkMeta::json(application_features::ApplicationServer& server,
   // output definitions if 'writeAnalyzerDefinition' requested and not maked
   // this should be the case for the default top-most call
   if (writeAnalyzerDefinition && (!mask || mask->_analyzerDefinitions)) {
-    // FIXME(gnusi) Why VPackArrayBuilder doesn't accept string_view?
-    VPackArrayBuilder arrayScope(
-        &builder, std::string{StaticStrings::AnalyzerDefinitionsField});
+    VPackArrayBuilder arrayScope(&builder,
+                                 StaticStrings::AnalyzerDefinitionsField);
 
     for (auto& entry : _analyzerDefinitions) {
       TRI_ASSERT(entry);  // ensured by emplace into 'analyzers' above
