@@ -701,13 +701,13 @@ Result IResearchView::link(AsyncLinkPtr const& link) {
     _links.try_emplace(cid, link);
   } else if (ServerState::instance()->isSingleServer() && !itr->second) {
     itr->second = link;
-    linkPtr->properties(_meta);
+    linkPtr->propertiesUnsafe(_meta);
 
     return {};  // single-server persisted cid placeholder substituted with
                 // actual link
   } else if (itr->second && itr->second->empty()) {
     itr->second = link;
-    linkPtr->properties(_meta);
+    linkPtr->propertiesUnsafe(_meta);
 
     return {};  // a previous link instance was unload()ed and a new instance is
                 // linking
@@ -729,7 +729,7 @@ Result IResearchView::link(AsyncLinkPtr const& link) {
     return res;
   }
 
-  return linkPtr->properties(_meta);
+  return linkPtr->propertiesUnsafe(_meta);
 }
 
 Result IResearchView::commit() {
