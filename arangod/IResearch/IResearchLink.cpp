@@ -1805,19 +1805,20 @@ Result IResearchLink::properties(velocypack::Builder& builder,
 }
 
 Result IResearchLink::properties(IResearchViewMeta const& meta) {
-  // '_dataStore' can be asynchronously modified
-  auto lock = _asyncSelf->lock();
-
-  if (!_asyncSelf.get()) {
+  if (!_asyncSelf) {
     // the current link is no longer valid (checked after ReadLock acquisition)
     return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
             "failed to lock arangosearch link while modifying properties "
             "of arangosearch link '" +
                 std::to_string(id().id()) + "'"};
   }
+  // '_dataStore' can be asynchronously modified
+  auto lock = _asyncSelf->lock();
+  return propertiesUnsafe(meta);
+}
 
+Result IResearchLink::propertiesUnsafe(IResearchViewMeta const& meta) {
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
-
   {
     WRITE_LOCKER(lock,
                  _dataStore._mutex);  // '_meta' can be asynchronously modified
