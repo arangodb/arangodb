@@ -59,10 +59,15 @@ const G6JsGraph = () => {
     console.log("getEdges(): ", edges);
   }
 
+  const changeGraphData = () => {
+    graph.changeData(data2);
+  }
+
   return (
     <div>
         <button onClick={() => getNodes()}>Get nodes</button>
         <button onClick={() => getEdges()}>Get edges</button>
+        <button onClick={() => changeGraphData()}>Change graph data</button>
         <Card
           title="Pure JS G6 Graph"
         >
