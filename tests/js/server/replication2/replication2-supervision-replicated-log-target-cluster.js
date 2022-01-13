@@ -32,6 +32,7 @@ const ERRORS = arangodb.errors;
 const helper = require("@arangodb/testutils/replicated-logs-helper");
 const {
     waitFor,
+    createParticipantsConfig,
     readReplicatedLogAgency,
     replicatedLogSetPlan,
     replicatedLogDeletePlan,
@@ -162,10 +163,12 @@ const replicatedLogSuite = function () {
             const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
             const leader = servers[0];
             const term = 1;
+            const generation = 1;
             replicatedLogSetPlan(database, logId, {
                 id: logId,
                 targetConfig,
                 currentTerm: createTermSpecification(term, servers, targetConfig, leader),
+                participantsConfig: createParticipantsConfig(generation, servers),
             });
 
             // wait for all servers to have reported in current

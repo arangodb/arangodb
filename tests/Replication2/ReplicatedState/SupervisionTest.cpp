@@ -105,14 +105,13 @@ struct LeaderStateMachineTest : ::testing::Test {};
 
 TEST_F(LeaderStateMachineTest, test_leader_intact) {
   auto const& config = LogConfig(3, 3, 3, true);
-  auto log =
-      Log{.current = LogCurrent{},
-          .plan = LogPlanSpecification(
-              LogId{1},
-              LogPlanTermSpecification(
-                  LogTerm{1}, config,
-                  LogPlanTermSpecification::Leader{"A", RebootId{1}}, {}),
-              config, {})};
+  auto log = Log{.current = LogCurrent{},
+                 .plan = LogPlanSpecification(
+                     LogId{1},
+                     LogPlanTermSpecification(
+                         LogTerm{1}, config,
+                         LogPlanTermSpecification::Leader{"A", RebootId{1}}),
+                     config, {})};
 
   auto health = ParticipantsHealth{
       ._health = {
@@ -142,9 +141,7 @@ TEST_F(LeaderStateMachineTest, test_log_no_leader) {
   logCurrent.supervision = LogCurrentSupervision{};
 
   LogPlanSpecification plan(
-      LogId{1},
-      LogPlanTermSpecification(LogTerm{1}, config, std::nullopt,
-                               {{"A", {}}, {"B", {}}, {"C", {}}}),
+      LogId{1}, LogPlanTermSpecification(LogTerm{1}, config, std::nullopt),
       config,
       ParticipantsConfig{
           .generation = 1,
@@ -196,8 +193,7 @@ TEST_F(LeaderStateMachineTest, test_log_with_dead_leader) {
       LogId{1},
       LogPlanTermSpecification(
           LogTerm{1}, config,
-          LogPlanTermSpecification::Leader{"A", RebootId{42}},
-          {{"A", {}}, {"B", {}}, {"C", {}}}),
+          LogPlanTermSpecification::Leader{"A", RebootId{42}}),
       config,
       ParticipantsConfig{
           .generation = 1,
@@ -246,9 +242,7 @@ TEST_F(LeaderStateMachineTest, test_log_establish_leader) {
   logCurrent.supervision = LogCurrentSupervision{};
 
   LogPlanSpecification plan(
-      LogId{1},
-      LogPlanTermSpecification(LogTerm{1}, config, std::nullopt,
-                               {{"A", {}}, {"B", {}}, {"C", {}}}),
+      LogId{1}, LogPlanTermSpecification(LogTerm{1}, config, std::nullopt),
       config,
       ParticipantsConfig{
           .generation = 1,
@@ -296,9 +290,7 @@ TEST_F(LeaderStateMachineTest, test_log_establish_leader_with_higher_term) {
   logCurrent.supervision = LogCurrentSupervision{};
 
   LogPlanSpecification plan(
-      LogId{1},
-      LogPlanTermSpecification(LogTerm{1}, config, std::nullopt,
-                               {{"A", {}}, {"B", {}}, {"C", {}}}),
+      LogId{1}, LogPlanTermSpecification(LogTerm{1}, config, std::nullopt),
       config,
       ParticipantsConfig{
           .generation = 1,

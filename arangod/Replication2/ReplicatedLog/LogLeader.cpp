@@ -1256,6 +1256,10 @@ void replicated_log::LogLeader::establishLeadership(
             });
             LOG_CTX("536f4", TRACE, self->_logContext)
                 << "leadership established";
+          } catch (ParticipantResignedException const& err) {
+            LOG_CTX("22264", TRACE, self->_logContext)
+                << "failed to establish leadership due to resign: "
+                << err.what();
           } catch (std::exception const& err) {
             LOG_CTX("5ceda", FATAL, self->_logContext)
                 << "failed to establish leadership: " << err.what();
