@@ -63,11 +63,27 @@ const G6JsGraph = () => {
     graph.changeData(data2);
   }
 
+  const addNode = () => {
+    const nodeModel = {
+      id: 'newnode',
+      label: 'newnode',
+      address: 'cq',
+      x: 200,
+      y: 150,
+      style: {
+        fill: 'white',
+      },
+    };
+    
+    graph.addItem('node', nodeModel);
+  }
+
   return (
     <div>
         <button onClick={() => getNodes()}>Get nodes</button>
         <button onClick={() => getEdges()}>Get edges</button>
         <button onClick={() => changeGraphData()}>Change graph data</button>
+        <button onClick={() => addNode()}>Add node</button>
         <Card
           title="Pure JS G6 Graph"
         >
