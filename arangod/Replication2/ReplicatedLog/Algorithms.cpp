@@ -245,7 +245,10 @@ auto algorithms::checkReplicatedLog(
     std::unordered_map<ParticipantId, ParticipantRecord> const& info)
     -> std::variant<std::monostate, agency::LogPlanTermSpecification,
                     agency::LogCurrentSupervisionElection> {
-  if (spec.currentTerm.has_value()) {
+  if (spec.participantsConfig.participants.empty()) {
+    // No participants yet
+    return std::monostate{};
+  } else if (spec.currentTerm.has_value()) {
     return checkCurrentTerm(database, spec, current, info);
   } else {
     return createFirstTerm(database, spec, info);
@@ -256,12 +259,12 @@ auto algorithms::checkReplicatedLogParticipants(
     DatabaseID const& database, LogPlanSpecification const& spec,
     std::unordered_map<ParticipantId, ParticipantRecord> const& info)
     -> std::variant<std::monostate, ParticipantsConfig> {
-  // The first term must be set in the same Supervision iteration than the
-  // participants. Neither must be empty later.
+  // The first term must not be set before there is a list of participants.
+  // Neither must be empty later.
   // It'd be conceivable to set the participants in a separate step before the
   // first term is set, but currently there's no reason for that.
-  TRI_ASSERT(!spec.currentTerm.has_value() ==
-             spec.participantsConfig.participants.empty());
+  TRI_ASSERT(!spec.participantsConfig.participants.empty() ||
+             spec.currentTerm.has_value());
   if (spec.participantsConfig.participants.empty()) {
     TRI_ASSERT(spec.participantsConfig.generation == 0);
     if (auto participants = sampleParticipants(spec, info);

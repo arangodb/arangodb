@@ -2561,8 +2561,8 @@ void Supervision::checkReplicatedLogs() {
   auto envelope = arangodb::agency::envelope::into_builder(*builder);
   for (auto const& [dbName, db] : planNode->get().children()) {
     for (auto const& [idString, node] : db->children()) {
-      auto spec = readPlanSpecification(*node);
-      auto
+      auto const spec = readPlanSpecification(*node);
+      auto const
           current =
               std::invoke(
                   [&, &dbName = dbName, &idString = idString]() -> LogCurrent {
@@ -2583,12 +2583,12 @@ void Supervision::checkReplicatedLogs() {
 
       auto checkParticipantsResult =
           checkReplicatedLogParticipants(dbName, spec, info);
-      auto checkResult = checkReplicatedLog(dbName, spec, current, info);
-      TRI_ASSERT(  // holds(ParticipantsConfig) =>
-                   // holds(LogPlanTermSpecification)
-          !std::holds_alternative<replication2::ParticipantsConfig>(
-              checkParticipantsResult) ||
-          std::holds_alternative<LogPlanTermSpecification>(checkResult));
+
+      auto const checkResult = checkReplicatedLog(dbName, spec, current, info);
+      TRI_ASSERT(  // holds(LogPlanTermSpecification) =>
+                   // !participantsConfig.participants.empty()
+          !std::holds_alternative<LogPlanTermSpecification>(checkResult) ||
+          !spec.participantsConfig.participants.empty());
       envelope = std::visit(
           overload{
               [&, &dbName = dbName](
