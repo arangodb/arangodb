@@ -54,11 +54,11 @@ std::tuple<Collection const*, Variable const*, bool> extractDistributeInfo(
     case ExecutionNode::INSERT: {
       auto const* insertNode = ExecutionNode::castTo<InsertNode const*>(node);
       return {insertNode->collection(), insertNode->inVariable(), false};
-    } break;
+    }
     case ExecutionNode::REMOVE: {
       auto const* removeNode = ExecutionNode::castTo<RemoveNode const*>(node);
       return {removeNode->collection(), removeNode->inVariable(), false};
-    } break;
+    }
     case ExecutionNode::UPDATE:
     case ExecutionNode::REPLACE: {
       auto const* updateReplaceNode =
@@ -540,6 +540,8 @@ void PlanSnippet::GatherOutput::memorizeCollect(CollectNode* collect) {
   // We cannot pass a second collect that we still need to react on.
   TRI_ASSERT(_collect == nullptr);
   _collect = collect;
+  // If we apply a collect, we can remove any sorting we are handling before.
+  _elements.clear();
 }
 
 GatherNode::SortMode PlanSnippet::GatherOutput::getGatherSortMode() const {
