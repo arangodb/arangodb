@@ -1,3 +1,12 @@
+v3.9.0 (XXXX-XX-XX)
+-------------------
+
+* Validate that selected `writeConcern` value is less or equal to the selected
+  `replicationFactor` value when creating new databases.
+
+* Fixed issue #15476: FATAL {crash} occurs on a simple query.
+
+
 v3.9.0-beta.1 (2022-01-06)
 --------------------------
 
