@@ -21,7 +21,3 @@ race:3rdParty/velocypack/src/asm-functions.cpp
 # a false positive race warning. I have created an according GitHub issue:
 # https://github.com/google/sanitizers/issues/1398
 race:VersionSet::SetLastSequence
-
-# The assertion `seq > _count._committedSeq` causes a data race on
-# _committedSeq, but since this is just an assert we don't care!
-race:RocksDBMetadata::adjustNumberDocuments

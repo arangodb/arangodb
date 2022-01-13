@@ -26,6 +26,7 @@
 #include <map>
 #include <mutex>
 #include <set>
+#include <atomic>
 
 #include <rocksdb/types.h>
 
@@ -60,6 +61,12 @@ struct RocksDBMetadata final {
     uint64_t _removed;       /// number of removed documents
     RevisionId _revisionId;  /// @brief last used revision id
 
+    DocCount()
+        : _committedSeq{0},
+          _added{0},
+          _removed{0},
+          _revisionId{RevisionId::none()} {}
+
     DocCount(rocksdb::SequenceNumber sq, uint64_t added, uint64_t removed,
              RevisionId rid)
         : _committedSeq(sq),
@@ -67,8 +74,8 @@ struct RocksDBMetadata final {
           _removed(removed),
           _revisionId(rid) {}
 
-    explicit DocCount(arangodb::velocypack::Slice const&);
-    void toVelocyPack(arangodb::velocypack::Builder&) const;
+    explicit DocCount(velocypack::Slice slice);
+    void toVelocyPack(velocypack::Builder& b) const;
   };
 
  public:
@@ -144,7 +151,8 @@ struct RocksDBMetadata final {
     return _numberDocuments.load(std::memory_order_acquire);
   }
 
-  rocksdb::SequenceNumber countCommitted() const noexcept {
+  rocksdb::SequenceNumber countCommitted() const {
+    std::lock_guard lock{_bufferLock};
     return _count._committedSeq;
   }
 
