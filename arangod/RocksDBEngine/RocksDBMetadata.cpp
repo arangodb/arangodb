@@ -51,29 +51,27 @@
 
 using namespace arangodb;
 
-RocksDBMetadata::DocCount::DocCount(VPackSlice const& slice)
-    : _committedSeq(0), _added(0), _removed(0), _revisionId(0) {
-  if (!slice.isArray()) {
-    // got a somewhat invalid slice. probably old data from before the key
-    // structure changes
+RocksDBMetadata::DocCount::DocCount(velocypack::Slice slice) : DocCount{} {
+  if (!slice.isArray()) {  // got a somewhat invalid slice
+    // probably old data from before the key structure changes
     return;
   }
 
-  VPackArrayIterator array(slice);
+  VPackArrayIterator array{slice};
   if (array.valid()) {
-    this->_committedSeq = (*array).getUInt();
+    _committedSeq = (*array).getUInt();
     // versions pre 3.4 stored only a single "count" value
     // 3.4 and higher store "added" and "removed" seperately
-    this->_added = (*(++array)).getUInt();
+    _added = (*(++array)).getUInt();
     if (array.size() > 3) {
       TRI_ASSERT(array.size() == 4);
-      this->_removed = (*(++array)).getUInt();
+      _removed = (*(++array)).getUInt();
     }
-    this->_revisionId = RevisionId{(*(++array)).getUInt()};
+    _revisionId = RevisionId{(*(++array)).getUInt()};
   }
 }
 
-void RocksDBMetadata::DocCount::toVelocyPack(VPackBuilder& b) const {
+void RocksDBMetadata::DocCount::toVelocyPack(velocypack::Builder& b) const {
   b.openArray();
   b.add(VPackValue(_committedSeq));
   b.add(VPackValue(_added));
@@ -84,7 +82,6 @@ void RocksDBMetadata::DocCount::toVelocyPack(VPackBuilder& b) const {
 
 RocksDBMetadata::RocksDBMetadata()
     : _maxBlockersSequenceNumber(0),
-      _count(0, 0, 0, RevisionId::none()),
       _numberDocuments(0),
       _revisionId(RevisionId::none()) {}
 
@@ -246,7 +243,7 @@ bool RocksDBMetadata::applyAdjustments(rocksdb::SequenceNumber commitSeq) {
   bool didWork = false;
   decltype(_bufferedAdjs) swapper;
   {
-    std::lock_guard<std::mutex> guard(_bufferLock);
+    std::lock_guard guard{_bufferLock};
     if (_stagedAdjs.empty()) {
       _stagedAdjs.swap(_bufferedAdjs);
     } else {
@@ -275,7 +272,7 @@ bool RocksDBMetadata::applyAdjustments(rocksdb::SequenceNumber commitSeq) {
     didWork = true;
   }
 
-  std::lock_guard<std::mutex> guard(_bufferLock);
+  std::lock_guard guard{_bufferLock};
   _count._committedSeq = commitSeq;
   return didWork;
 }
@@ -285,7 +282,7 @@ void RocksDBMetadata::adjustNumberDocuments(rocksdb::SequenceNumber seq,
                                             RevisionId revId, int64_t adj) {
   TRI_ASSERT(seq != 0 && (adj || revId.isSet()));
 
-  std::lock_guard<std::mutex> guard(_bufferLock);
+  std::lock_guard guard{_bufferLock};
   TRI_ASSERT(seq > _count._committedSeq);
   _bufferedAdjs.try_emplace(seq, Adjustment{revId, adj});
   LOG_TOPIC("1587e", TRACE, Logger::ENGINES)
@@ -308,6 +305,8 @@ void RocksDBMetadata::adjustNumberDocuments(rocksdb::SequenceNumber seq,
 void RocksDBMetadata::adjustNumberDocumentsInRecovery(
     rocksdb::SequenceNumber seq, RevisionId revId, int64_t adj) {
   TRI_ASSERT(seq != 0 && (adj || revId.isSet()));
+  // Recovery single threaded so we don't need lock.
+  // Btw is this "optimization" really necessary?
   if (seq <= _count._committedSeq) {
     // already incorporated into counter
     return;
@@ -404,7 +403,12 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   // Step 1. store the document count
   tmp.clear();
   if (didWork || force) {
-    _count.toVelocyPack(tmp);
+    DocCount count;
+    {
+      std::lock_guard lock{_bufferLock};
+      count = _count;
+    }
+    count.toVelocyPack(tmp);
     key.constructCounterValue(rcoll->objectId());
     rocksdb::Slice value((char*)tmp.start(), tmp.size());
     rocksdb::Status s = batch.Put(cf, key.string(), value);
@@ -535,7 +539,11 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db,
   rocksdb::Status s = db->Get(ro, cf, key.string(), &value);
   if (s.ok()) {
     VPackSlice countSlice = RocksDBValue::data(value);
-    _count = RocksDBMetadata::DocCount(countSlice);
+    DocCount count{countSlice};
+    {
+      std::lock_guard lock{_bufferLock};
+      _count = count;
+    }
     LOG_TOPIC("1387b", TRACE, Logger::ENGINES)
         << context << ": recovered counter '" << countSlice.toJson()
         << "' for collection with objectId '" << rcoll->objectId() << "'";
@@ -720,7 +728,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db,
   auto [countInTree, treeSeq] = rcoll->revisionTreeInfo();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
-    std::lock_guard<std::mutex> guard(_bufferLock);
+    std::lock_guard guard(_bufferLock);
     TRI_ASSERT(_bufferedAdjs.empty());
   }
 #endif
@@ -733,8 +741,10 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db,
     // also patch the counter's sequence number, so that
     // any changes encountered by the recovery do not modify
     // the counter once more
-    _count._committedSeq = treeSeq;
-
+    {
+      std::lock_guard guard(_bufferLock);
+      _count._committedSeq = treeSeq;
+    }
     TRI_ASSERT(_numberDocuments.load() == countInTree);
 
     LOG_TOPIC("f3f38", INFO, Logger::ENGINES)
@@ -772,12 +782,12 @@ void RocksDBMetadata::loadInitialNumberDocuments() {
     LOG_TOPIC("1387e", TRACE, Logger::ENGINES)
         << "loaded counter '" << countSlice.toJson()
         << "' for collection with objectId '" << objectId << "'";
-    return RocksDBMetadata::DocCount(countSlice);
+    return DocCount{countSlice};
   }
   LOG_TOPIC("1387f", TRACE, Logger::ENGINES)
       << "loaded default zero counter for collection with objectId '"
       << objectId << "'";
-  return DocCount(0, 0, 0, RevisionId::none());
+  return {};
 }
 
 /// @brief remove collection metadata
