@@ -45,8 +45,12 @@ auto createFirstTerm(
     std::unordered_map<ParticipantId, ParticipantRecord> const& info)
     -> LogPlanTermSpecification {
   // Should neither have participants, a generation, nor a term yet.
-  TRI_ASSERT(spec.participantsConfig.participants.empty());
-  TRI_ASSERT(spec.participantsConfig.generation == 0);
+  // Currently, we assume the participants are already there before the first
+  // term is created. If that's changed later so they're set at the same time,
+  // that's fine; however, imho there should not be a term *before* participants
+  // are set.
+  TRI_ASSERT(!spec.participantsConfig.participants.empty());
+  TRI_ASSERT(spec.participantsConfig.generation > 0);
   TRI_ASSERT(!spec.currentTerm.has_value());
 
   LogPlanTermSpecification newTermSpec;
