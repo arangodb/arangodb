@@ -1,5 +1,4 @@
 /*jshint strict: true */
-/*global assertTrue */
 'use strict';
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -24,6 +23,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 const {wait} = require("internal");
 const _ = require("lodash");
+const jsunity = require("../../../../common/modules/jsunity");
+const {assertTrue} = jsunity.jsUnity.assertions;
 const request = require('@arangodb/request');
 const arangodb = require('@arangodb');
 const ArangoError = arangodb.ArangoError;
@@ -154,7 +155,7 @@ const replicatedLogIsReady = function (database, logId, term, participants, lead
       }
       if (current.localStatus[srv].term < term) {
         return Error(`Participant ${srv} has not yet acknowledged the current term; ` +
-            `found = ${current.localStatus[srv].term}, expected = ${term}.`);
+          `found = ${current.localStatus[srv].term}, expected = ${term}.`);
       }
     }
 
@@ -173,60 +174,11 @@ const replicatedLogIsReady = function (database, logId, term, participants, lead
   };
 };
 
-const getServerUrl = function (serverId) {
-  let endpoint = global.ArangoClusterInfo.getServerEndpoint(serverId);
-  return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-};
-
-const checkRequestResult = function (requestResult) {
-  if (requestResult === undefined) {
-    throw new ArangoError({
-      'error': true,
-      'code': 500,
-      'errorNum': arangodb.ERROR_INTERNAL,
-      'errorMessage': 'Unknown error. Request result is empty'
-    });
-  }
-
-  if (requestResult.hasOwnProperty('error')) {
-    if (requestResult.error) {
-      if (requestResult.errorNum === arangodb.ERROR_TYPE_ERROR) {
-        throw new TypeError(requestResult.errorMessage);
-      }
-
-      const error = new ArangoError(requestResult);
-      error.message = requestResult.message;
-      throw error;
-    }
-
-    // remove the property from the original object
-    delete requestResult.error;
-  }
-
-  if (requestResult.json.error) {
-    throw new ArangoError({
-      'error': true,
-      'code': requestResult.json.code,
-      'errorNum': arangodb.ERROR_INTERNAL,
-      'errorMessage': 'Error during request'
-    });
-  }
-
-  return requestResult;
-};
-
-const getLocalStatus = function (database, logId, serverId) {
-  let url = getServerUrl(serverId);
-  const res = request.get(`${url}/_db/${database}/_api/log/${logId}/local-status`);
-  checkRequestResult(res);
-  return res.json.result;
-};
-
 const getServerProcessID = function (serverId) {
   let endpoint = global.ArangoClusterInfo.getServerEndpoint(serverId);
   // Now look for instanceInfo:
   let pos = _.findIndex(global.instanceInfo.arangods,
-      x => x.endpoint === endpoint);
+    x => x.endpoint === endpoint);
   return global.instanceInfo.arangods[pos].pid;
 };
 
@@ -290,6 +242,55 @@ const registerAgencyTestEnd = function (testName) {
   global.ArangoAgency.set(`Testing/${testName}/End`, (new Date()).toISOString());
 };
 
+const getServerUrl = function(serverId) {
+    let endpoint = global.ArangoClusterInfo.getServerEndpoint(serverId);
+    return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
+};
+
+const checkRequestResult = function (requestResult) {
+    if (requestResult === undefined) {
+        throw new ArangoError({
+            'error': true,
+            'code': 500,
+            'errorNum': arangodb.ERROR_INTERNAL,
+            'errorMessage': 'Unknown error. Request result is empty'
+        });
+    }
+
+    if (requestResult.hasOwnProperty('error')) {
+        if (requestResult.error) {
+            if (requestResult.errorNum === arangodb.ERROR_TYPE_ERROR) {
+                throw new TypeError(requestResult.errorMessage);
+            }
+
+            const error = new ArangoError(requestResult);
+            error.message = requestResult.message;
+            throw error;
+        }
+
+        // remove the property from the original object
+        delete requestResult.error;
+    }
+
+    if (requestResult.json.error) {
+        throw new ArangoError({
+            'error': true,
+            'code': requestResult.json.code,
+            'errorNum': arangodb.ERROR_INTERNAL,
+            'errorMessage': 'Error during request'
+        });
+    }
+
+    return requestResult;
+};
+
+const getLocalStatus = function(logId, serverId) {
+    let url = getServerUrl(serverId);
+    const res = request.get(`${url}/_api/log/${logId}/local-status`);
+    checkRequestResult(res);
+    return res.json.result;
+};
+
 exports.waitFor = waitFor;
 exports.readAgencyValueAt = readAgencyValueAt;
 exports.createParticipantsConfig = createParticipantsConfig;
@@ -307,7 +308,6 @@ exports.continueServer = continueServer;
 exports.nextUniqueLogId = nextUniqueLogId;
 exports.registerAgencyTestBegin = registerAgencyTestBegin;
 exports.registerAgencyTestEnd = registerAgencyTestEnd;
-exports.getLocalStatus = getLocalStatus;
 exports.allServersHealthy = allServersHealthy;
 exports.continueServerWaitOk = continueServerWaitOk;
 exports.stopServerWaitFailed = stopServerWaitFailed;

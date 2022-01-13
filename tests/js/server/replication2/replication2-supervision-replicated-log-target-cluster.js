@@ -32,250 +32,247 @@ const ERRORS = arangodb.errors;
 const helper = require("@arangodb/testutils/replicated-logs-helper");
 
 const {
-  waitFor,
-  createParticipantsConfig,
-  readReplicatedLogAgency,
-  replicatedLogSetPlan,
-  replicatedLogDeletePlan,
-  createTermSpecification,
-  replicatedLogIsReady,
-  dbservers, allServersHealthy,
-  nextUniqueLogId,
-  registerAgencyTestBegin, registerAgencyTestEnd,
+    waitFor,
+    createParticipantsConfig,
+    readReplicatedLogAgency,
+    replicatedLogSetPlan,
+    replicatedLogDeletePlan,
+    createTermSpecification,
+    replicatedLogIsReady,
+    dbservers, allServersHealthy,
+    nextUniqueLogId,
+    registerAgencyTestBegin, registerAgencyTestEnd,
 } = helper;
 
 const database = "replication2_supervision_test_db";
 
 const waitForReplicatedLogAvailable = function (id) {
-  while (true) {
-    try {
-      let status = db._replicatedLog(id).status();
-      const leaderId = status.leaderId;
-      if (leaderId !== undefined && status.participants !== undefined &&
-          status.participants[leaderId].role === "leader") {
-        break;
-      }
-      console.info("replicated log not yet available");
-    } catch (err) {
-      const errors = [
-        ERRORS.ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED.code,
-        ERRORS.ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND.code
-      ];
-      if (errors.indexOf(err.errorNum) === -1) {
-        throw err;
-      }
-    }
+    while (true) {
+        try {
+            let status = db._replicatedLog(id).status();
+            const leaderId = status.leaderId;
+            if (leaderId !== undefined && status.participants !== undefined &&
+                status.participants[leaderId].role === "leader") {
+                break;
+            }
+            console.info("replicated log not yet available");
+        } catch (err) {
+            const errors = [
+                ERRORS.ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED.code,
+                ERRORS.ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND.code
+            ];
+            if (errors.indexOf(err.errorNum) === -1) {
+                throw err;
+            }
+        }
 
-    sleep(1);
-  }
+        sleep(1);
+    }
 };
 
 const replicatedLogLeaderElectionFailed = function (database, logId, term, servers) {
-  return function () {
-    let {current} = readReplicatedLogAgency(database, logId);
-    if (current === undefined) {
-      return Error("current not yet defined");
-    }
-
-    if (current.supervision === undefined || current.supervision.election === undefined) {
-      return Error("supervision not yet updated");
-    }
-
-    let election = current.supervision.election;
-    if (election.term !== term) {
-      return Error("supervision report not yet available for current term; "
-          + `found = ${election.term}; expected = ${term}`);
-    }
-
-    if (servers !== undefined) {
-      // wait for all specified servers to have the proper error code
-      for (let x of Object.keys(servers)) {
-        if (election.details[x] === undefined) {
-          return Error(`server ${x} not in election result`);
+    return function () {
+        let {current} = readReplicatedLogAgency(database, logId);
+        if (current === undefined) {
+            return Error("current not yet defined");
         }
-        let code = election.details[x].code;
-        if (code !== servers[x]) {
-          return Error(`server ${x} reported with code ${code}, expected ${servers[x]}`);
-        }
-      }
-    }
 
-    return true;
-  };
+        if (current.supervision === undefined || current.supervision.election === undefined) {
+            return Error("supervision not yet updated");
+        }
+
+        let election = current.supervision.election;
+        if (election.term !== term) {
+            return Error("supervision report not yet available for current term; "
+                + `found = ${election.term}; expected = ${term}`);
+        }
+
+        if (servers !== undefined) {
+            // wait for all specified servers to have the proper error code
+            for (let x of Object.keys(servers)) {
+                if (election.details[x] === undefined) {
+                    return Error(`server ${x} not in election result`);
+                }
+                let code = election.details[x].code;
+                if (code !== servers[x]) {
+                    return Error(`server ${x} reported with code ${code}, expected ${servers[x]}`);
+                }
+            }
+        }
+
+        return true;
+    };
 
 };
 
 const replicatedLogSuite = function () {
 
-  const targetConfig = {
-    writeConcern: 2,
-    softWriteConcern: 2,
-    replicationFactor: 3,
-    waitForSync: false,
-  };
-
-  const {setUpAll, tearDownAll, tearDownEach, stopServer, continueServer} = (function () {
-    let previousDatabase, databaseExisted = true;
-    let stoppedServers = {};
-    return {
-      setUpAll: function () {
-        previousDatabase = db._name();
-        if (!_.includes(db._databases(), database)) {
-          db._createDatabase(database);
-          databaseExisted = false;
-        }
-        db._useDatabase(database);
-      },
-
-      tearDownAll: function () {
-        db._useDatabase(previousDatabase);
-        if (!databaseExisted) {
-          db._dropDatabase(database);
-        }
-      },
-
-      tearDownEach: function (testName) {
-        Object.keys(stoppedServers).forEach(function (key) {
-          continueServer(key);
-        });
-
-        waitFor(allServersHealthy());
-        registerAgencyTestEnd(testName);
-      },
-
-      stopServer: function (serverId) {
-        if (stoppedServers[serverId] !== undefined) {
-          throw Error(`{serverId} already stopped`);
-        }
-        helper.stopServer(serverId);
-        stoppedServers[serverId] = true;
-      },
-      continueServer: function (serverId) {
-        if (stoppedServers[serverId] === undefined) {
-          throw Error(`{serverId} not stopped`);
-        }
-        helper.continueServer(serverId);
-        delete stoppedServers[serverId];
-      },
+    const targetConfig = {
+        writeConcern: 2,
+        softWriteConcern: 2,
+        replicationFactor: 3,
+        waitForSync: false,
     };
-  }());
 
-  return {
-    setUpAll, tearDownAll,
-    setUp: registerAgencyTestBegin,
-    tearDown: tearDownEach,
+    const {setUpAll, tearDownAll, stopServer, continueServer} = (function () {
+        let previousDatabase, databaseExisted = true;
+        let stoppedServers = {};
+        return {
+            setUpAll: function () {
+                previousDatabase = db._name();
+                if (!_.includes(db._databases(), database)) {
+                    db._createDatabase(database);
+                    databaseExisted = false;
+                }
+                db._useDatabase(database);
+            },
 
-    testCheckSimpleFailover: function () {
-      const logId = nextUniqueLogId();
-      const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
-      const leader = servers[0];
-      const term = 1;
-      const generation = 1;
-      replicatedLogSetPlan(database, logId, {
-        id: logId,
-        targetConfig,
-        currentTerm: createTermSpecification(term, servers, targetConfig, leader),
-        participantsConfig: createParticipantsConfig(generation, servers),
-      });
+            tearDownAll: function () {
+                Object.keys(stoppedServers).forEach(function (key) {
+                    continueServer(key);
+                });
 
-      // wait for all servers to have reported in current
-      waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
-      waitForReplicatedLogAvailable(logId);
+                db._useDatabase(previousDatabase);
+                if (!databaseExisted) {
+                    db._dropDatabase(database);
+                }
+            },
+            stopServer: function (serverId) {
+                if (stoppedServers[serverId] !== undefined) {
+                    throw Error(`{serverId} already stopped`);
+                }
+                helper.stopServer(serverId);
+                stoppedServers[serverId] = true;
+            },
+            continueServer: function (serverId) {
+                if (stoppedServers[serverId] === undefined) {
+                    throw Error(`{serverId} not stopped`);
+                }
+                helper.continueServer(serverId);
+                delete stoppedServers[serverId];
+            },
+        };
+    }());
 
-      // now stop one server
-      stopServer(servers[1]);
+    return {
+        setUpAll, tearDownAll,
+        setUp: registerAgencyTestBegin,
+        tearDown: function (test) {
+            waitFor(allServersHealthy());
+            registerAgencyTestEnd(test);
+        },
 
-      // we should still be able to write
-      {
-        let log = db._replicatedLog(logId);
-        // we have to insert two log entries here, reason:
-        // Even though servers[1] is stopped, it will receive the AppendEntries message for log index 1.
-        // It will stay in its tcp input queue. So when the server is continued below it will process
-        // this message. However, the leader sees this message as still in flight and thus will never
-        // send any updates again. By inserting yet another log entry, we can make sure that servers[2]
-        // is the only server that has received log index 2.
-        log.insert({foo: "bar"});
-        let quorum = log.insert({foo: "bar"});
-        assertTrue(quorum.result.quorum.quorum.indexOf(servers[1]) === -1);
-      }
+        testCheckSimpleFailover: function () {
+            const logId = nextUniqueLogId();
+            const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
+            const leader = servers[0];
+            const term = 1;
+            const generation = 1;
+            replicatedLogSetPlan(database, logId, {
+                id: logId,
+                targetConfig,
+                currentTerm: createTermSpecification(term, servers, targetConfig, leader),
+                participantsConfig: createParticipantsConfig(generation, servers),
+            });
 
-      // now stop the leader
-      stopServer(leader);
+            // wait for all servers to have reported in current
+            waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
+            waitForReplicatedLogAvailable(logId);
 
-      // since writeConcern is 2, there is no way a new leader can be elected
-      waitFor(replicatedLogLeaderElectionFailed(database, logId, term + 1, {
-        [leader]: 1,
-        [servers[1]]: 1,
-        [servers[2]]: 0,
-      }));
+            // now stop one server
+            stopServer(servers[1]);
 
-      {
-        // check election result
-        const {current} = readReplicatedLogAgency(database, logId);
-        const election = current.supervision.election;
-        assertEqual(election.term, term + 1);
-        assertEqual(election.participantsRequired, 2);
-        assertEqual(election.participantsAvailable, 1);
-        const detail = election.details;
-        assertEqual(detail[leader].code, 1);
-        assertEqual(detail[servers[1]].code, 1);
-        assertEqual(detail[servers[2]].code, 0);
-      }
+            // we should still be able to write
+            {
+                let log = db._replicatedLog(logId);
+                // we have to insert two log entries here, reason:
+                // Even though servers[1] is stopped, it will receive the AppendEntries message for log index 1.
+                // It will stay in its tcp input queue. So when the server is continued below it will process
+                // this message. However, the leader sees this message as still in flight and thus will never
+                // send any updates again. By inserting yet another log entry, we can make sure that servers[2]
+                // is the only server that has received log index 2.
+                log.insert({foo: "bar"});
+                let quorum = log.insert({foo: "bar"});
+                assertTrue(quorum.result.quorum.quorum.indexOf(servers[1]) === -1);
+            }
 
-      // now resume, servers[2] has to become leader, because it's the only server with log entry 1 available
-      continueServer(servers[1]);
-      waitFor(replicatedLogIsReady(database, logId, term + 2, [servers[1], servers[2]], servers[2]));
+            // now stop the leader
+            stopServer(leader);
 
-      replicatedLogDeletePlan(database, logId);
+            // since writeConcern is 2, there is no way a new leader can be elected
+            waitFor(replicatedLogLeaderElectionFailed(database, logId, term + 1, {
+                [leader]: 1,
+                [servers[1]]: 1,
+                [servers[2]]: 0,
+            }));
 
-      continueServer(leader);
-    },
+            {
+                // check election result
+                const {current} = readReplicatedLogAgency(database, logId);
+                const election = current.supervision.election;
+                assertEqual(election.term, term + 1);
+                assertEqual(election.participantsRequired, 2);
+                assertEqual(election.participantsAvailable, 1);
+                const detail = election.details;
+                assertEqual(detail[leader].code, 1);
+                assertEqual(detail[servers[1]].code, 1);
+                assertEqual(detail[servers[2]].code, 0);
+            }
 
-    testLogStatus: function () {
-      const logId = nextUniqueLogId();
-      const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
-      const leader = servers[0];
-      const term = 1;
-      const generation = 1;
-      replicatedLogSetPlan(database, logId, {
-        id: logId,
-        targetConfig,
-        currentTerm: createTermSpecification(term, servers, targetConfig, leader),
-        participantsConfig: createParticipantsConfig(generation, servers),
-      });
+            // now resume, servers[2] has to become leader, because it's the only server with log entry 1 available
+            continueServer(servers[1]);
+            waitFor(replicatedLogIsReady(database, logId, term + 2, [servers[1], servers[2]], servers[2]));
 
-      waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
-      waitForReplicatedLogAvailable(logId);
+            replicatedLogDeletePlan(database, logId);
 
-      let log = db._replicatedLog(logId);
-      let globalStatus = log.status();
-      assertEqual(globalStatus.supervision, {});
-      assertEqual(globalStatus.leaderId, leader);
-      let localStatus = helper.getLocalStatus(database, logId, leader);
-      assertEqual(localStatus.role, "leader");
-      assertEqual(globalStatus.participants[leader], localStatus);
-      localStatus = helper.getLocalStatus(database, logId, servers[1]);
-      assertEqual(localStatus.role, "follower");
+            continueServer(leader);
+        },
 
-      stopServer(leader);
-      stopServer(servers[1]);
+        testLogStatus: function () {
+            const logId = nextUniqueLogId();
+            const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
+            const leader = servers[0];
+            const term = 1;
+            const generation = 1;
+            replicatedLogSetPlan(database, logId, {
+                id: logId,
+                targetConfig,
+                currentTerm: createTermSpecification(term, servers, targetConfig, leader),
+                participantsConfig: createParticipantsConfig(generation, servers),
+            });
 
-      waitFor(replicatedLogLeaderElectionFailed(database, logId, term + 1, {
-        [leader]: 1,
-        [servers[1]]: 1,
-        [servers[2]]: 0,
-      }));
+            waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
+            waitForReplicatedLogAvailable(logId);
 
-      globalStatus = log.status();
-      const {current} = readReplicatedLogAgency(database, logId);
-      const election = current.supervision.election;
-      assertEqual(election, globalStatus.supervision.election);
+            let log = db._replicatedLog(logId);
+            let globalStatus = log.status();
+            assertEqual(globalStatus.supervision, {});
+            assertEqual(globalStatus.leaderId, leader);
+            let localStatus = helper.getLocalStatus(logId, leader);
+            assertEqual(localStatus.role, "leader");
+            assertEqual(globalStatus.participants[leader], localStatus);
+            localStatus = helper.getLocalStatus(logId, servers[1]);
+            assertEqual(localStatus.role, "follower");
 
-      replicatedLogDeletePlan(database, logId);
-      continueServer(leader);
-      continueServer(servers[1]);
-    },
-  };
+            stopServer(leader);
+            stopServer(servers[1]);
+
+            waitFor(replicatedLogLeaderElectionFailed(database, logId, term + 1, {
+                [leader]: 1,
+                [servers[1]]: 1,
+                [servers[2]]: 0,
+            }));
+
+            globalStatus = log.status();
+            const {current} = readReplicatedLogAgency(database, logId);
+            const election = current.supervision.election;
+            assertEqual(election, globalStatus.supervision.election);
+
+            replicatedLogDeletePlan(database, logId);
+            continueServer(leader);
+            continueServer(servers[1]);
+        },
+    };
 };
 
 jsunity.run(replicatedLogSuite);
