@@ -952,14 +952,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
      * Default SingleServer Traverser
      */
 
-    // TODO [GraphRefactor]: Remove me!
-    if (ServerState::instance()->isSingleServer()) {
-      // By the current state, refactored graph traversal code is only enabled
-      // in the single server environment.
-      opts->setRefactor(true);
-    } else {
-      opts->setRefactor(false);
-    }
     LOG_DEVEL << "[GraphRefactor] Refactor enabled: " << std::boolalpha
               << opts->refactor();
 

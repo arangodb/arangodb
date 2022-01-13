@@ -220,6 +220,9 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   // evaluate if vertex collection is allowed
   bool isAllowed = evaluateVertexRestriction(step);
   if (!isAllowed) {
+    if (_options.bfsResultHasToIncludeFirstVertex() && step.isFirst()) {
+      return ValidationResult{ValidationResult::Type::PRUNE};
+    }
     return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
   }
 
@@ -281,13 +284,13 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     bool satifiesCondition =
         evaluateVertexExpression(vertexExpr, _tmpObjectBuilder.slice());
     if (!satifiesCondition) {
+      if (_options.bfsResultHasToIncludeFirstVertex() && step.isFirst()) {
+        return ValidationResult{ValidationResult::Type::PRUNE};
+      }
       return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
     }
   }
 
-  // TODO [GraphRefactor]: Check how this is actually supposed to work.
-  // Somehow existent old code in DepthFirstEnumerator::next() is a little bit
-  // confusing.
   if (_options.usesPostFilter()) {
     VPackBuilder vertexBuilder, edgeBuilder;
 
@@ -304,7 +307,9 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
 
     TRI_ASSERT(!evaluator->needsPath());
     if (!evaluator->evaluate()) {
-      res.combine(ValidationResult::Type::FILTER);
+      if (!_options.bfsResultHasToIncludeFirstVertex() || !step.isFirst()) {
+        res.combine(ValidationResult::Type::FILTER);
+      }
     }
   }
 

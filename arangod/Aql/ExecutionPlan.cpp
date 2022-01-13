@@ -277,7 +277,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
             options->setParallelism(Ast::validatedParallelism(value));
           }
         } else if (name == StaticStrings::GraphRefactorFlag &&
-                   value->isTrue()) {
+                   value->isBoolValue()) {
           options->setRefactor(value);
         } else {
           ExecutionPlan::invalidOptionAttribute(

@@ -123,12 +123,23 @@ class PathValidatorOptions {
 
   aql::FixedVarExpressionContext& getExpressionContext();
 
+  // @brief If a graph is asked for the first vertex and that is filtered
+  // it can be removed for 3.9 => nextVersion.
+  void setBfsResultHasToIncludeFirstVertex() {
+    _bfsResultHasToIncludeFirstVertex = true;
+  }
+
+  bool bfsResultHasToIncludeFirstVertex() const {
+    return _bfsResultHasToIncludeFirstVertex;
+  }
+
  private:
   // Vertex expression section
   std::shared_ptr<aql::Expression> _allVerticesExpression;
   containers::FlatHashMap<uint64_t, std::shared_ptr<aql::Expression>>
       _vertexExpressionOnDepth;
   std::vector<std::string> _allowedVertexCollections;
+  bool _bfsResultHasToIncludeFirstVertex = false;
 
   // Prune section
   std::shared_ptr<aql::PruneExpressionEvaluator> _pruneEvaluator;
