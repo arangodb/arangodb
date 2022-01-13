@@ -25,3 +25,11 @@ race:VersionSet::SetLastSequence
 # The assertion `seq > _count._committedSeq` causes a data race on
 # _committedSeq, but since this is just an assert we don't care!
 race:RocksDBMetadata::adjustNumberDocuments
+
+# TODO - this should be removed once BTS-685 is fixed
+race:AllowImplicitCollectionsSwitcher
+
+# TODO - these should be removed once IResearch is fixed
+deadlock:IResearchKludge
+deadlock:IResearchView
+deadlock:IResearchLink
