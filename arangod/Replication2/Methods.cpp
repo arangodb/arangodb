@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,6 +30,7 @@
 #include "Cluster/ServerState.h"
 #include "Network/Methods.h"
 #include "Replication2/AgencyMethods.h"
+#include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
@@ -417,7 +419,11 @@ struct ReplicatedLogMethodsCoordinator final
   auto getLogLeader(LogId id) const -> ServerID {
     auto leader = clusterInfo.getReplicatedLogLeader(vocbase.name(), id);
     if (leader.fail()) {
-      THROW_ARANGO_EXCEPTION(leader.result());
+      if (leader.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED)) {
+        throw ParticipantResignedException(leader.result(), ADB_HERE);
+      } else {
+        THROW_ARANGO_EXCEPTION(leader.result());
+      }
     }
 
     return *leader;

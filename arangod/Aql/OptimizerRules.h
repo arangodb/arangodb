@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -333,7 +333,7 @@ void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                           OptimizerRule const&);
 
 //// @brief reduces a sorted gather to an unsorted gather if only one shard is
-///involved
+/// involved
 void decayUnnecessarySortedGather(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                   OptimizerRule const&);
 
@@ -352,7 +352,7 @@ void insertScatterGatherSnippet(
         subqueries);
 
 //// @brief find all subqueries in a plan and store a map from subqueries to
-///nodes
+/// nodes
 void findSubqueriesInPlan(
     ExecutionPlan& plan,
     containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*>& subqueries);

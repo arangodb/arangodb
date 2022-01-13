@@ -44,7 +44,6 @@ namespace iresearch {
 
 struct segment_meta;
 struct field_meta;
-struct column_meta;
 struct flush_state;
 struct reader_state;
 struct index_output;
@@ -318,56 +317,50 @@ struct IRESEARCH_API columnstore_writer {
   using ptr = std::unique_ptr<columnstore_writer>;
 
   // NOTE: doc > type_limits<type_t::doc_id_t>::invalid() && doc < type_limits<type_t::doc_id_t>::eof()
-  typedef std::function<column_output&(doc_id_t doc)> values_writer_f;
+  using values_writer_f = std::function<column_output&(doc_id_t doc)>;
+
+  // Finalizer can be used to assign name and payload to a column.
+  // Returned `string_ref` must be valid during `commit(...)`.
+  using column_finalizer_f = std::function<string_ref(bstring& out)>;
+
   typedef std::pair<field_id, values_writer_f> column_t;
 
   virtual ~columnstore_writer() = default;
 
   virtual void prepare(directory& dir, const segment_meta& meta) = 0;
-  virtual column_t push_column(const column_info& info) = 0;
+  virtual column_t push_column(const column_info& info,
+                               column_finalizer_f header_writer) = 0;
   virtual void rollback() noexcept = 0;
   virtual bool commit(const flush_state& state) = 0; // @return was anything actually flushed
 }; // columnstore_writer
 
 }
 
-// columnstore_reader::values_reader_f
-MSVC_ONLY(template class IRESEARCH_API std::function<bool(irs::doc_id_t, irs::bytes_ref&)>;) // cppcheck-suppress unknownMacro
 // columnstore_writer::values_writer_f
 MSVC_ONLY(template class IRESEARCH_API std::function<irs::column_output&(irs::doc_id_t)>;) 
 
 namespace iresearch {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct column_meta_writer
-////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API column_meta_writer {
-  using ptr = std::unique_ptr<column_meta_writer>;
+struct column_reader {
+  virtual ~column_reader() = default;
 
-  virtual ~column_meta_writer() = default;
-  virtual void prepare(directory& dir, const segment_meta& meta) = 0;
-  virtual void write(const std::string& name, field_id id) = 0;
-  virtual void flush() = 0;
-}; // column_meta_writer 
+  // Returns column id.
+  virtual field_id id() const = 0;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct column_meta_reader
-////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API column_meta_reader {
-  using ptr = std::unique_ptr<column_meta_reader>;
+  // Returns optional column name.
+  virtual string_ref name() const = 0;
 
-  virtual ~column_meta_reader() = default;
-  /// @returns true if column_meta is present in a segment.
-  ///          false - otherwise
-  virtual bool prepare(
-    const directory& dir, 
-    const segment_meta& meta,
-    /*out*/ size_t& count,
-    /*out*/ field_id& max_id) = 0;
+  // Returns column header.
+  virtual bytes_ref payload() const = 0;
 
-  // returns false if there is no more data to read
-  virtual bool read(column_meta& column) = 0;
-}; // column_meta_reader 
+  // Returns the corresponding column iterator.
+  // If the column implementation supports document payloads then it
+  // can be accessed via the 'payload' attribute.
+  virtual doc_iterator::ptr iterator(bool consolidation) const = 0;
+
+  // Returns total number of columns.
+  virtual doc_id_t size() const = 0;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct columnstore_reader
@@ -375,40 +368,21 @@ struct IRESEARCH_API column_meta_reader {
 struct IRESEARCH_API columnstore_reader {
   using ptr = std::unique_ptr<columnstore_reader>;
 
-  typedef std::function<bool(doc_id_t, bytes_ref&)> values_reader_f;
-  typedef std::function<bool(doc_id_t, const bytes_ref&)> values_visitor_f;  
-
-  struct column_reader {
-    virtual ~column_reader() = default;
-
-    // returns corresponding column reader
-    virtual columnstore_reader::values_reader_f values() const = 0;
-
-    // returns the corresponding column iterator
-    // if the column implementation supports document payloads then the latter
-    // may be accessed via the 'payload' attribute
-    virtual doc_iterator::ptr iterator() const = 0;
-
-    virtual bool visit(const columnstore_reader::values_visitor_f& reader) const = 0;
-
-    virtual doc_id_t size() const = 0;
-  };
-
-  static const values_reader_f& empty_reader();
+  using column_visitor_f = std::function<bool(const column_reader&)>;
 
   virtual ~columnstore_reader() = default;
 
-  /// @returns true if conlumnstore is present in a segment,
-  ///          false - otherwise
-  /// @throws io_error
-  /// @throws index_error
+  // Returns true if conlumnstore is present in a segment, false - otherwise.
+  // May throw `io_error` or `index_error`.
   virtual bool prepare(
     const directory& dir,
     const segment_meta& meta) = 0;
 
+  virtual bool visit(const column_visitor_f& visitor) const = 0;
+
   virtual const column_reader* column(field_id field) const = 0;
 
-  // @returns total number of columns
+  // Returns total number of columns.
   virtual size_t size() const = 0;
 }; // columnstore_reader
 
@@ -524,7 +498,7 @@ struct IRESEARCH_API index_meta_reader {
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API format {
  public:
-  typedef std::shared_ptr<const format> ptr;
+  using ptr = std::shared_ptr<const format>;
 
   explicit format(const type_info& type) noexcept : type_(type) {}
   virtual ~format() = default;
@@ -540,9 +514,6 @@ class IRESEARCH_API format {
 
   virtual field_writer::ptr get_field_writer(bool consolidation) const = 0;
   virtual field_reader::ptr get_field_reader() const = 0;
-
-  virtual column_meta_writer::ptr get_column_meta_writer() const = 0;
-  virtual column_meta_reader::ptr get_column_meta_reader() const = 0;
 
   virtual columnstore_writer::ptr get_columnstore_writer(bool consolidation) const = 0;
   virtual columnstore_reader::ptr get_columnstore_reader() const = 0;

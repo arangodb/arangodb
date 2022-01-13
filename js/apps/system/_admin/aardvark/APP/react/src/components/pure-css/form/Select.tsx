@@ -11,7 +11,7 @@ const StyledSelect = styled.select`
 
 type SelectProps = {
   id?: string;
-  label: ReactNode;
+  label?: ReactNode;
   children: ReactNode;
   disabled?: boolean;
   inline?: boolean;
@@ -27,7 +27,7 @@ const Select = ({ id, label, children, disabled, inline, ...rest }: SelectProps)
     }
   }, [id]);
 
-  if (inline) {
+  if (inline && label) {
     return <PlainLabel htmlFor={thisId} style={{
       display: 'inline-block'
     }}>
@@ -37,7 +37,7 @@ const Select = ({ id, label, children, disabled, inline, ...rest }: SelectProps)
   }
 
   return <>
-    <PlainLabel htmlFor={thisId}>{label}</PlainLabel>
+    {label ? <PlainLabel htmlFor={thisId}>{label}</PlainLabel> : null}
     <StyledSelect id={thisId} disabled={disabled} {...rest}>{children}</StyledSelect>
   </>;
 };

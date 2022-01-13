@@ -1,9 +1,10 @@
 import React, { ChangeEvent } from "react";
-import { DelimiterState, FormProps } from "../constants";
+import { DelimiterState } from "../constants";
+import { FormProps } from "../../../utils/constants";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import Textbox from "../../../components/pure-css/form/Textbox";
 
-const DelimiterForm = ({ formState, dispatch, disabled }: FormProps) => {
+const DelimiterForm = ({ formState, dispatch, disabled }: FormProps<DelimiterState>) => {
   const updateDelimiter = (event: ChangeEvent<HTMLInputElement>) => {
     dispatch({
       type: 'setField',
@@ -14,7 +15,7 @@ const DelimiterForm = ({ formState, dispatch, disabled }: FormProps) => {
     });
   };
 
-  const delimiterProperty = (formState as DelimiterState).properties.delimiter;
+  const delimiterProperty = formState.properties.delimiter;
 
   return <Grid>
     <Cell size={'1-3'}>

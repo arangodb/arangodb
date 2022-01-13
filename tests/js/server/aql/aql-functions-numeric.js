@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var arangodb = require('@arangodb');
 var errors = internal.errors;
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
@@ -5767,27 +5768,19 @@ function ahuacatlNumericFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDecayGauss : function () {
-        var data = [
+        [
           [1, 0, 10, 0, 0.2, 0.9840344433634576],
           [-10, 40, 5, 0, 0.1, 1.0000000000000458e-100],
           [41, 40, 5, 5, 0.7, 1]
-        ];
+        ].forEach(function (value) {
+          const [arg, origin, scale, offset, decay, expected] = value;
 
-        var valgrind = require("internal").valgrind;
+          const query = `RETURN DECAY_GAUSS(${arg}, ${origin}, ${scale}, ${offset}, ${decay})`;
+          let actual = getQueryResults(query);
+          assertAlmostEqual(expected, actual[0], query + " " + JSON.stringify(value));
 
-        data.forEach(function (value) {
-          var arg = JSON.stringify(value[0]);
-          var origin = JSON.stringify(value[1]);
-          var scale = JSON.stringify(value[2]);
-          var offset = JSON.stringify(value[3]);
-          var decay = JSON.stringify(value[4]);
-
-          var query = "RETURN DECAY_GAUSS(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay + ")";
-          var actual = getQueryResults(query);
-          assertAlmostEqual(value[5], actual[0], query + " " + JSON.stringify(value));
-
-          actual = getQueryResults("RETURN NOOPT(DECAY_GAUSS(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay +"))");
-          assertAlmostEqual(value[5], actual[0], value, query + " " + JSON.stringify(value));
+          actual = getQueryResults(`RETURN NOOPT(DECAY_GAUSS(${arg}, ${origin}, ${scale}, ${offset}, ${decay}))`);
+          assertAlmostEqual(expected, actual[0], query + " " + JSON.stringify(value));
         });
     },
 
@@ -5796,58 +5789,83 @@ function ahuacatlNumericFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDecayExp : function () {
-        var data = [
+        [
           [1, 0, 10, 0, 0.2, 0.8513399225207846],
           [0, 0, 0.001, 10, 0.2, 1],
           [41, 40, 5, 5, 0.7, 1]
-        ];
+        ].forEach(function (value) {
+          const [arg, origin, scale, offset, decay, expected] = value;
 
-        var valgrind = require("internal").valgrind;
+          const query = `RETURN DECAY_EXP(${arg}, ${origin}, ${scale}, ${offset}, ${decay})`;
+          let actual = getQueryResults(query);
+          assertAlmostEqual(expected, actual[0], query + " " + JSON.stringify(value));
 
-        data.forEach(function (value) {
-          var arg = JSON.stringify(value[0]);
-          var origin = JSON.stringify(value[1]);
-          var scale = JSON.stringify(value[2]);
-          var offset = JSON.stringify(value[3]);
-          var decay = JSON.stringify(value[4]);
-
-          var query = "RETURN DECAY_EXP(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay + ")";
-          var actual = getQueryResults(query);
-          assertAlmostEqual(value[5], actual[0], query + " " + JSON.stringify(value));
-
-          actual = getQueryResults("RETURN NOOPT(DECAY_EXP(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay +"))");
-          assertAlmostEqual(value[5], actual[0], value, query + " " + JSON.stringify(value));
+          actual = getQueryResults(`RETURN NOOPT(DECAY_EXP(${arg}, ${origin}, ${scale}, ${offset}, ${decay}))`);
+          assertAlmostEqual(expected, actual[0], query + " " + JSON.stringify(value));
         });
     },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test DECAY_LINEAR function
 ////////////////////////////////////////////////////////////////////////////////
 
     testDecayLin : function () {
-        var data = [
+        [
           [41, 40, 5, 5, 0.5, 1],
           [1, 0, 10, 0, 0.2, 0.92],
           [-10, 40, 5, 0, 0.1, 0]
-        ];
+        ].forEach(function (value) {
+          const [arg, origin, scale, offset, decay, expected] = value;
 
-        var valgrind = require("internal").valgrind;
+          const query = `RETURN DECAY_LINEAR(${arg}, ${origin}, ${scale}, ${offset}, ${decay})`;
+          let actual = getQueryResults(query);
+          assertAlmostEqual(expected, actual[0], query + " " + JSON.stringify(value));
 
-        data.forEach(function (value) {
-          var arg = JSON.stringify(value[0]);
-          var origin = JSON.stringify(value[1]);
-          var scale = JSON.stringify(value[2]);
-          var offset = JSON.stringify(value[3]);
-          var decay = JSON.stringify(value[4]);
-
-          var query = "RETURN DECAY_LINEAR(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay + ")";
-          var actual = getQueryResults(query);
-          assertAlmostEqual(value[5], actual[0], query + " " + JSON.stringify(value));
-
-          actual = getQueryResults("RETURN NOOPT(DECAY_LINEAR(" + arg + ", " + origin + ", " + scale + ", " + offset + ", " + decay +"))");
-          assertAlmostEqual(value[5], actual[0], value, query + " " + JSON.stringify(value));
+          actual = getQueryResults(`RETURN NOOPT(DECAY_LINEAR(${arg}, ${origin}, ${scale}, ${offset}, ${decay}))`);
+          assertAlmostEqual(expected, actual[0], query + " " + JSON.stringify(value));
         });
     },
+    
+    testAllDecayOutOfRange : function () {
+      ["DECAY_GAUSS", "DECAY_EXP", "DECAY_LINEAR"].forEach(func => {
+        [
+          [1, 1, 1, 1, -1], [1, 1, 1, 1, 0], [1, 1, 1, 1, 1], [1, 1, 1, 1, 2], // decay
+          [1, 1, 1, -1, 0.5], // offset
+          [1, 1, -1, 1, 0.5], [1, 1, 0, 1, 0.5], // scale
+        ].forEach(function (value) {
+          const [arg, origin, scale, offset, decay] = value;
+          const query = `RETURN ${func}(${arg}, ${origin}, ${scale}, ${offset}, ${decay})`;
+          const result = internal.db._query(query);
+          assertEqual(1, result._extra.warnings.length);
+          assertEqual(arangodb.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, result._extra.warnings[0].code);
+        });
+      });
+    },
 
+    testAllDecayInvalidType : function () {
+      ["DECAY_GAUSS", "DECAY_EXP", "DECAY_LINEAR"].forEach(func => {
+        [1, 1, 1, 1, 0.5]
+        .flatMap((_, idx, array) => {
+          const invalidValues = ["foo", null, false, {}];
+          if (idx !== 0) {
+            invalidValues.push({});
+          }
+          return invalidValues.map(v => {
+            const result = [...array];
+            result[idx] = v;
+            return result;
+          });
+        })
+        .forEach(function (value) {
+          const [arg, origin, scale, offset, decay] = value;
+          const query =
+            `RETURN ${func}(${JSON.stringify(arg)}, ${JSON.stringify(origin)}, ${JSON.stringify(scale)}, ${JSON.stringify(offset)}, ${JSON.stringify(decay)})`;
+          const result = internal.db._query(query);
+          assertEqual(1, result._extra.warnings.length, value);
+          assertEqual(arangodb.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, result._extra.warnings[0].code, value);
+        });
+      });
+    },
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test COSINE_SIMILARITY function
 ////////////////////////////////////////////////////////////////////////////////

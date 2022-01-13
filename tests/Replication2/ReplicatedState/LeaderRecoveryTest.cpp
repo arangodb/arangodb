@@ -28,6 +28,7 @@
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/Streams/LogMultiplexer.h"
 #include "Replication2/Streams/Streams.h"
+#include "Replication2/Mocks/FakeReplicatedState.h"
 
 #include "StateMachines/MyStateMachine.h"
 
@@ -42,23 +43,6 @@ namespace arangodb::replication2::test {
 struct MyHelperLeaderState;
 struct MyHelperFactory;
 
-template<typename S>
-struct EmptyFollowerType : ReplicatedFollowerState<S> {
-  using EntryType = typename ReplicatedStateTraits<S>::EntryType;
-  using Stream = streams::Stream<EntryType>;
-  using EntryIterator = typename Stream::Iterator;
-
- protected:
-  auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
-      -> futures::Future<Result> override {
-    return futures::Future<Result>{std::in_place};
-  }
-  auto acquireSnapshot(ParticipantId const& leader) noexcept
-      -> futures::Future<Result> override {
-    return futures::Future<Result>{std::in_place};
-  }
-};
-
 struct MyHelperState {
   using FactoryType = MyHelperFactory;
   using LeaderType = MyHelperLeaderState;
@@ -66,7 +50,7 @@ struct MyHelperState {
   using FollowerType = EmptyFollowerType<MyHelperState>;
 };
 
-struct MyHelperLeaderState : ReplicatedLeaderState<MyHelperState> {
+struct MyHelperLeaderState : IReplicatedLeaderState<MyHelperState> {
  protected:
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
       -> futures::Future<Result> override {
@@ -247,4 +231,7 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery_error_DeathTest) {
             Result{TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT});
       },
       ".*");
+  // this is here to resolve the promise in MyHelperLeaderState, which otherwise
+  // will hold a reference to the MyHelperLeaderState and asan will be very sad
+  leaderState->runRecovery(Result{TRI_ERROR_NO_ERROR});
 }
