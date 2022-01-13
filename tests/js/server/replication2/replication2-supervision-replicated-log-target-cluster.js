@@ -37,7 +37,7 @@ const {
     replicatedLogDeletePlan,
     createTermSpecification,
     replicatedLogIsReady,
-    dbservers,
+    dbservers, allServersHealthy,
     nextUniqueLogId, interestingSetOfConfigurations, instantiateTestSuite,
     registerAgencyTestBegin, registerAgencyTestEnd,
 } = helper;
@@ -166,7 +166,11 @@ const simpleFailoverTestSuite = function () {
     return {
         setUpAll, tearDownAll,
         setUp: registerAgencyTestBegin,
-        tearDown: () => (registerAgencyTestEnd() || resumeAll()),
+        tearDown: function (test) {
+            resumeAll();
+            waitFor(allServersHealthy());
+            registerAgencyTestEnd(test);
+        },
 
         testCheckSimpleFailover: function () {
             if (targetConfig.replicationFactor < 3) {
@@ -232,6 +236,8 @@ const simpleFailoverTestSuite = function () {
             waitFor(replicatedLogIsReady(database, logId, term + 2, [servers[1], servers[2]], servers[2]));
 
             replicatedLogDeletePlan(database, logId);
+
+            continueServer(leader);
         },
     };
 };

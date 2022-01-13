@@ -38,8 +38,12 @@ void FollowerStateManager<S>::applyEntries(
       << "apply entries in range " << range;
   updateInternalState(FollowerInternalState::kApplyRecentEntries, range);
   state->applyEntries(std::move(iter))
-      .thenFinal([self = this->shared_from_this(),
+      .thenFinal([weak = this->weak_from_this(),
                   range](futures::Try<Result> tryResult) {
+        auto self = weak.lock();
+        if (self == nullptr) {
+          return ;
+        }
         try {
           auto& result = tryResult.get();
           if (result.ok()) {
@@ -76,8 +80,12 @@ void FollowerStateManager<S>::pollNewEntries() {
       << "polling for new entries nextEntry = " << nextEntry;
   updateInternalState(FollowerInternalState::kNothingToApply);
   stream->waitForIterator(nextEntry).thenFinal(
-      [self = this->shared_from_this()](
+      [weak = this->weak_from_this()](
           futures::Try<std::unique_ptr<Iterator>> result) {
+        auto self = weak.lock();
+        if (self == nullptr) {
+          return ;
+        }
         try {
           self->applyEntries(std::move(result).get());
         } catch (replicated_log::ParticipantResignedException const&) {
@@ -102,8 +110,12 @@ void FollowerStateManager<S>::tryTransferSnapshot(
   TRI_ASSERT(leader.has_value()) << "leader established it's leadership. There "
                                     "has to be a leader in the current term";
   auto f = hiddenState->acquireSnapshot(*leader, logFollower->getCommitIndex());
-  std::move(f).thenFinal([self = this->shared_from_this(),
+  std::move(f).thenFinal([weak = this->weak_from_this(),
                           hiddenState](futures::Try<Result>&& tryResult) {
+    auto self = weak.lock();
+    if (self == nullptr) {
+      return ;
+    }
     try {
       auto& result = tryResult.get();
       if (result.ok()) {
@@ -168,8 +180,12 @@ template<typename S>
 void FollowerStateManager<S>::awaitLeaderShip() {
   updateInternalState(FollowerInternalState::kWaitForLeaderConfirmation);
   logFollower->waitForLeaderAcked().thenFinal(
-      [self = this->shared_from_this()](
+      [weak = this->weak_from_this()](
           futures::Try<replicated_log::WaitForResult>&& result) noexcept {
+        auto self  = weak.lock();
+        if (self == nullptr) {
+          return ;
+        }
         try {
           try {
             result.throwIfFailed();
