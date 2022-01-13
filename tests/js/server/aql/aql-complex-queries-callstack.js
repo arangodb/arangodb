@@ -6,6 +6,17 @@ let jsunity = require("jsunity");
 const isCluster = require("@arangodb/cluster").isCluster();
 const isEnterprise = require("internal").isEnterprise();
 
+// The numbers hardcoded in the "cnt" values come from AQL not running properly
+// because of too many nodes or too much nesting in the queries, so the values
+// are around the limit for which the query would execute without internal AQL
+// error. The tests seem strange because they were made with the goal of
+// producing many nodes in the execution plan, without optimizations.
+// For some of the queries, they would crash the server without the default
+// value for the "maxNodesPerCallstack" query option. If a number bigger than the
+// default value for this option is provided, some of the queries below would
+// crash the server when running.
+
+
 function testLargeQuery4() {
   let q = "NOOPT(1)";
   const cnt = 3800;
