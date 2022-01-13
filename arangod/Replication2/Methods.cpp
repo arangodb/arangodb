@@ -239,13 +239,15 @@ struct ReplicatedLogMethodsCoordinator final
 
     return network::sendRequest(pool, "server:" + leaderId,
                                 fuerte::RestVerb::Get, path)
-        .thenValue([&, leaderId](network::Response&& resp) mutable {
+        .thenValue([self = shared_from_this(), id,
+                    leaderId](network::Response&& resp) mutable {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());
           }
 
           auto supervision =
-              replication2::agency::methods::getCurrentSupervision(vocbase, id);
+              replication2::agency::methods::getCurrentSupervision(
+                  self->vocbase, id);
           auto leaderStatus =
               replication2::replicated_log::LogStatus::fromVelocyPack(
                   resp.slice().get("result"));
