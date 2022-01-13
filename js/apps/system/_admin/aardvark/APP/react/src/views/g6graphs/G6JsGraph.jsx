@@ -49,8 +49,20 @@ const G6JsGraph = () => {
     graph.render();
   }, [graphData]);
 
+  const getNodes = () => {
+    const nodes = graph.getNodes();
+    console.log("getNodes(): ", nodes);
+  }
+
+  const getEdges = () => {
+    const edges = graph.getEdges();
+    console.log("getEdges(): ", edges);
+  }
+
   return (
     <div>
+        <button onClick={() => getNodes()}>Get nodes</button>
+        <button onClick={() => getEdges()}>Get edges</button>
         <Card
           title="Pure JS G6 Graph"
         >
