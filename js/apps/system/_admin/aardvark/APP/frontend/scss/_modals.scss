@@ -93,6 +93,12 @@
     }
   }
 
+  .select2-container-multi {
+    .select2-choices {
+      overflow: unset;
+    }
+  }
+
   .select2-choices {
     background-image: none !important;
     border: 2px solid $c-content-border;
@@ -116,7 +122,7 @@
     }
 
     li {
-      background-color: $c-white !important;
+      //background-color: $c-white !important;
       background-image: none !important;
       color: $c-black;
 
@@ -133,6 +139,11 @@
     -webkit-box-shadow: none !important;
     box-shadow: none !important;
     outline: transparent !important;
+  }
+
+  .react-autocomplete-input {
+    left: unset !important;
+    top: unset !important;
   }
 
   .nav-tabs {

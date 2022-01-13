@@ -34,10 +34,10 @@ const {
   waitFor,
   readReplicatedLogAgency,
   replicatedLogSetTarget,
-  replicatedLogDeletePlan,
+  replicatedLogDeleteTarget,
   replicatedLogIsReady,
   dbservers, getParticipantsObjectForServers,
-  nextUniqueLogId,
+  nextUniqueLogId, allServersHealthy,
   registerAgencyTestBegin, registerAgencyTestEnd,
 } = helper;
 
@@ -171,75 +171,82 @@ const replicatedLogSuite = function () {
     }
     replicatedLogSetTarget(database, logId, target);
   };
+    return {
+        setUpAll, tearDownAll,
+        setUp: registerAgencyTestBegin,
+        tearDown: function (test) {
+            waitFor(allServersHealthy());
+            registerAgencyTestEnd(test);
+        },
 
-  return {
-    setUpAll, tearDownAll,
-    setUp: registerAgencyTestBegin,
-    tearDown: registerAgencyTestEnd,
 
-    testCheckSimpleFailover: function () {
-      const {logId, servers, leader, term} = createReplicatedLog(database);
-      // wait for all servers to have reported in current
-      waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
-      waitForReplicatedLogAvailable(logId);
+      testCheckSimpleFailover: function () {
+          const {logId, servers, leader, term} = createReplicatedLog(database);
+          // wait for all servers to have reported in current
+          waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
+          waitForReplicatedLogAvailable(logId);
 
-      // now stop one server
-      stopServer(servers[1]);
+          // now stop one server
+          stopServer(servers[1]);
 
-      // we should still be able to write
-      {
-        let log = db._replicatedLog(logId);
-        // we have to insert two log entries here, reason:
-        // Even though servers[1] is stopped, it will receive the AppendEntries message for log index 1.
-        // It will stay in its tcp input queue. So when the server is continued below it will process
-        // this message. However, the leader sees this message as still in flight and thus will never
-        // send any updates again. By inserting yet another log entry, we can make sure that servers[2]
-        // is the only server that has received log index 2.
-        log.insert({foo: "bar"});
-        let quorum = log.insert({foo: "bar"});
-        assertTrue(quorum.result.quorum.quorum.indexOf(servers[1]) === -1);
-      }
+          // we should still be able to write
+          {
+              let log = db._replicatedLog(logId);
+              // we have to insert two log entries here, reason:
+              // Even though servers[1] is stopped, it will receive the AppendEntries message for log index 1.
+              // It will stay in its tcp input queue. So when the server is continued below it will process
+              // this message. However, the leader sees this message as still in flight and thus will never
+              // send any updates again. By inserting yet another log entry, we can make sure that servers[2]
+              // is the only server that has received log index 2.
+              log.insert({foo: "bar"});
+              let quorum = log.insert({foo: "bar"});
+              assertTrue(quorum.result.quorum.quorum.indexOf(servers[1]) === -1);
+          }
 
-      // now stop the leader
-      stopServer(leader);
+          // now stop the leader
+          stopServer(leader);
 
-      // since writeConcern is 2, there is no way a new leader can be elected
-      waitFor(replicatedLogLeaderElectionFailed(database, logId, term + 1, {
-        [leader]: 1,
-        [servers[1]]: 1,
-        [servers[2]]: 0,
-      }));
+          // since writeConcern is 2, there is no way a new leader can be elected
+          waitFor(replicatedLogLeaderElectionFailed(database, logId, term + 1, {
+              [leader]: 1,
+              [servers[1]]: 1,
+              [servers[2]]: 0,
+          }));
 
-      {
-        // check election result
-        const {current} = readReplicatedLogAgency(database, logId);
-        const election = current.supervision.election;
-        assertEqual(election.term, term + 1);
-        assertEqual(election.participantsRequired, 2);
-        assertEqual(election.participantsAvailable, 1);
-        const detail = election.details;
-        assertEqual(detail[leader].code, 1);
-        assertEqual(detail[servers[1]].code, 1);
-        assertEqual(detail[servers[2]].code, 0);
-      }
+          {
+              // check election result
+              const {current} = readReplicatedLogAgency(database, logId);
+              const election = current.supervision.election;
+              assertEqual(election.term, term + 1);
+              assertEqual(election.participantsRequired, 2);
+              assertEqual(election.participantsAvailable, 1);
+              const detail = election.details;
+              assertEqual(detail[leader].code, 1);
+              assertEqual(detail[servers[1]].code, 1);
+              assertEqual(detail[servers[2]].code, 0);
+          }
 
-      // now resume, servers[2] has to become leader, because it's the only server with log entry 1 available
-      continueServer(servers[1]);
-      waitFor(replicatedLogIsReady(database, logId, term + 2, [servers[1], servers[2]], servers[2]));
+          // now resume, servers[2] has to become leader, because it's the only server with log entry 1 available
+          continueServer(servers[1]);
+          waitFor(replicatedLogIsReady(database, logId, term + 2, [servers[1], servers[2]], servers[2]));
 
-      replicatedLogDeletePlan(database, logId);
-    },
+          replicatedLogDeleteTarget(database, logId);
 
-    testChangeLeader: function () {
-      const {logId, servers, leader, term, followers} = createReplicatedLog(database);
-      // wait for all servers to have reported in current
-      waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
+          continueServer(leader);
+      },
 
-      // now change the leader
-      const newLeader = _.sample(followers);
-      setReplicatedLogLeaderTarget(database, logId, newLeader);
-      waitFor(replicatedLogIsReady(database, logId, term, servers, newLeader));
-    },
+      testChangeLeader: function () {
+          const {logId, servers, leader, term, followers} = createReplicatedLog(database);
+          // wait for all servers to have reported in current
+          waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
+
+          // now change the leader
+          const newLeader = _.sample(followers);
+          setReplicatedLogLeaderTarget(database, logId, newLeader);
+          waitFor(replicatedLogIsReady(database, logId, term, servers, newLeader));
+
+          replicatedLogDeleteTarget(database, logId);
+      },
   };
 };
 
