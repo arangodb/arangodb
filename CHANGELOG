@@ -1,5 +1,5 @@
-v3.9.0 (XXXX-XX-XX)
--------------------
+v3.9.0-beta.1 (2022-01-06)
+--------------------------
 
 * Fixed issue #15476: FATAL {crash} occurs on a simple query.
 
