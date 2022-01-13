@@ -2864,10 +2864,10 @@ ClusterMethods::persistCollectionsInAgency(
           ignoreKeys, LogicalDataSource::Serialization::List);
 
       auto const serverState = ServerState::instance();
-      infos.emplace_back(ClusterCollectionCreationInfo{
-          std::to_string(col->id().id()), col->numberOfShards(),
-          col->replicationFactor(), col->writeConcern(), waitForSyncReplication,
-          velocy.slice(), serverState->getId(), serverState->getRebootId()});
+      infos.emplace_back(std::to_string(col->id().id()), col->numberOfShards(),
+                         col->replicationFactor(), col->writeConcern(),
+                         waitForSyncReplication, velocy.slice(),
+                         serverState->getId(), serverState->getRebootId());
       vpackData.emplace_back(velocy.steal());
     }  // for col : collections
 
