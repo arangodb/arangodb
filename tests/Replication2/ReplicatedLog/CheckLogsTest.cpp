@@ -31,42 +31,42 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::algorithms;
 
 struct CheckLogsAlgorithmTest : ::testing::Test {
-  auto makePlanSpecification(LogId id) -> agency::LogPlanSpecification {
+  static auto makePlanSpecification(LogId id, ParticipantInfo const& info)
+      -> agency::LogPlanSpecification {
     auto spec = agency::LogPlanSpecification{};
     spec.id = id;
     spec.targetConfig.writeConcern = 1;
     spec.targetConfig.waitForSync = false;
+    std::transform(info.begin(), info.end(),
+                   std::inserter(spec.participantsConfig.participants,
+                                 spec.participantsConfig.participants.end()),
+                   [](auto const& info) {
+                     return std::make_pair(info.first, ParticipantFlags{});
+                   });
     return spec;
   }
 
-  auto makeLeader(ParticipantId leader, RebootId rebootId)
+  static auto makeLeader(ParticipantId leader, RebootId rebootId)
       -> agency::LogPlanTermSpecification::Leader {
     return {std::move(leader), rebootId};
   }
 
-  auto makeTermSpecification(LogTerm term, LogConfig const& config,
-                             ParticipantInfo const& info)
+  static auto makeTermSpecification(LogTerm term, LogConfig const& config)
       -> agency::LogPlanTermSpecification {
     auto termSpec = agency::LogPlanTermSpecification{};
     termSpec.term = term;
     termSpec.config = config;
-    std::transform(
-        info.begin(), info.end(),
-        std::inserter(termSpec.participants, termSpec.participants.end()),
-        [](auto const& info) {
-          return std::make_pair(
-              info.first, agency::LogPlanTermSpecification::Participant{});
-        });
     return termSpec;
   }
 
-  auto makeLogCurrent() -> agency::LogCurrent {
+  static auto makeLogCurrent() -> agency::LogCurrent {
     auto current = agency::LogCurrent{};
     return current;
   }
 
-  auto makeLogCurrentReportAll(ParticipantInfo const& info, LogTerm term,
-                               LogIndex spearhead, LogTerm spearheadTerm) {
+  static auto makeLogCurrentReportAll(ParticipantInfo const& info, LogTerm term,
+                                      LogIndex spearhead,
+                                      LogTerm spearheadTerm) {
     auto current = agency::LogCurrent{};
     std::transform(info.begin(), info.end(),
                    std::inserter(current.localState, current.localState.end()),
@@ -86,8 +86,8 @@ TEST_F(CheckLogsAlgorithmTest, check_do_nothing_if_all_good) {
       {"C", ParticipantRecord{RebootId{1}, true}},
   };
 
-  auto spec = makePlanSpecification(LogId{1});
-  spec.currentTerm = makeTermSpecification(LogTerm{1}, {}, participants);
+  auto spec = makePlanSpecification(LogId{1}, participants);
+  spec.currentTerm = makeTermSpecification(LogTerm{1}, {});
   spec.currentTerm->leader = makeLeader("A", RebootId{1});
   auto current = makeLogCurrent();
 
@@ -102,8 +102,8 @@ TEST_F(CheckLogsAlgorithmTest, check_do_nothing_if_follower_fails) {
       {"C", ParticipantRecord{RebootId{1}, true}},
   };
 
-  auto spec = makePlanSpecification(LogId{1});
-  spec.currentTerm = makeTermSpecification(LogTerm{1}, {}, participants);
+  auto spec = makePlanSpecification(LogId{1}, participants);
+  spec.currentTerm = makeTermSpecification(LogTerm{1}, {});
   spec.currentTerm->leader = makeLeader("A", RebootId{1});
   auto current = makeLogCurrent();
 
@@ -118,8 +118,8 @@ TEST_F(CheckLogsAlgorithmTest, check_do_increase_term_if_leader_reboots) {
       {"C", ParticipantRecord{RebootId{1}, true}},
   };
 
-  auto spec = makePlanSpecification(LogId{1});
-  spec.currentTerm = makeTermSpecification(LogTerm{1}, {}, participants);
+  auto spec = makePlanSpecification(LogId{1}, participants);
+  spec.currentTerm = makeTermSpecification(LogTerm{1}, {});
   spec.currentTerm->leader = makeLeader("A", RebootId{1});
   auto current = makeLogCurrent();
 
@@ -138,8 +138,8 @@ TEST_F(CheckLogsAlgorithmTest, check_elect_leader_if_all_available) {
       {"C", ParticipantRecord{RebootId{1}, true}},
   };
 
-  auto spec = makePlanSpecification(LogId{1});
-  spec.currentTerm = makeTermSpecification(LogTerm{1}, {}, participants);
+  auto spec = makePlanSpecification(LogId{1}, participants);
+  spec.currentTerm = makeTermSpecification(LogTerm{1}, {});
   auto current = makeLogCurrentReportAll(participants, LogTerm{1}, LogIndex{4},
                                          LogTerm{1});
 
@@ -162,8 +162,8 @@ TEST_F(CheckLogsAlgorithmTest, do_nothing_if_non_healthy) {
       {"C", ParticipantRecord{RebootId{1}, false}},
   };
 
-  auto spec = makePlanSpecification(LogId{1});
-  spec.currentTerm = makeTermSpecification(LogTerm{1}, {}, participants);
+  auto spec = makePlanSpecification(LogId{1}, participants);
+  spec.currentTerm = makeTermSpecification(LogTerm{1}, {});
   auto current = makeLogCurrentReportAll(participants, LogTerm{1}, LogIndex{4},
                                          LogTerm{1});
 
@@ -178,8 +178,8 @@ TEST_F(CheckLogsAlgorithmTest, check_elect_leader_non_reported) {
       {"C", ParticipantRecord{RebootId{1}, true}},
   };
 
-  auto spec = makePlanSpecification(LogId{1});
-  spec.currentTerm = makeTermSpecification(LogTerm{2}, {}, participants);
+  auto spec = makePlanSpecification(LogId{1}, participants);
+  spec.currentTerm = makeTermSpecification(LogTerm{2}, {});
   auto current = makeLogCurrentReportAll(participants, LogTerm{1}, LogIndex{4},
                                          LogTerm{1});
 
@@ -207,9 +207,9 @@ TEST_F(CheckLogsAlgorithmTest, check_elect_leader_two_reported_wc_2) {
       {"C", ParticipantRecord{RebootId{1}, true}},
   };
 
-  auto spec = makePlanSpecification(LogId{1});
+  auto spec = makePlanSpecification(LogId{1}, participants);
   spec.targetConfig.writeConcern = 2;
-  spec.currentTerm = makeTermSpecification(LogTerm{2}, {}, participants);
+  spec.currentTerm = makeTermSpecification(LogTerm{2}, {});
   spec.currentTerm->config.writeConcern = 2;
   auto current = makeLogCurrentReportAll(participants, LogTerm{2}, LogIndex{4},
                                          LogTerm{1});
@@ -232,9 +232,9 @@ TEST_F(CheckLogsAlgorithmTest, check_dont_elect_leader_two_reported_wc_2) {
       {"C", ParticipantRecord{RebootId{1}, true}},
   };
 
-  auto spec = makePlanSpecification(LogId{1});
+  auto spec = makePlanSpecification(LogId{1}, participants);
   spec.targetConfig.writeConcern = 2;
-  spec.currentTerm = makeTermSpecification(LogTerm{2}, {}, participants);
+  spec.currentTerm = makeTermSpecification(LogTerm{2}, {});
   spec.currentTerm->config.writeConcern = 2;
   auto current = makeLogCurrent();
   current.localState["A"] = agency::LogCurrentLocalState{
@@ -259,47 +259,55 @@ TEST_F(CheckLogsAlgorithmTest, check_dont_elect_leader_two_reported_wc_2) {
             agency::LogCurrentSupervisionElection::ErrorCode::OK);
 }
 
-TEST_F(CheckLogsAlgorithmTest, check_constitute_first_term) {
+// TODO Add tests for checkReplicatedLogParticipants
+
+TEST_F(CheckLogsAlgorithmTest, DISABLED_check_constitute_first_term) {
   auto participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, false}},
       {"B", ParticipantRecord{RebootId{1}, true}},
       {"C", ParticipantRecord{RebootId{1}, true}},
   };
 
-  auto spec = makePlanSpecification(LogId{1});
+  auto spec = makePlanSpecification(LogId{1}, {});
   spec.targetConfig.writeConcern = 2;
   spec.targetConfig.replicationFactor = 2;
   auto current = makeLogCurrent();
+
+  auto vp = checkReplicatedLogParticipants("db", spec, participants);
+  auto& p = std::get<ParticipantsConfig>(vp);
+  EXPECT_EQ(p.participants.size(), 2);
+  EXPECT_TRUE(p.participants.find("B") != p.participants.end());
+  EXPECT_TRUE(p.participants.find("C") != p.participants.end());
 
   auto v = checkReplicatedLog("db", spec, current, participants);
   auto& e = std::get<agency::LogPlanTermSpecification>(v);
   EXPECT_EQ(e.term, LogTerm{1});
   EXPECT_EQ(e.config, spec.targetConfig);
-  EXPECT_EQ(e.participants.size(), 2);
-  EXPECT_TRUE(e.participants.find("B") != e.participants.end());
-  EXPECT_TRUE(e.participants.find("C") != e.participants.end());
 }
 
-TEST_F(CheckLogsAlgorithmTest, check_constitute_first_term_r3_wc2) {
+TEST_F(CheckLogsAlgorithmTest, DISABLED_check_constitute_first_term_r3_wc2) {
   auto participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, true}},
       {"B", ParticipantRecord{RebootId{1}, true}},
       {"C", ParticipantRecord{RebootId{1}, true}},
   };
 
-  auto spec = makePlanSpecification(LogId{1});
+  auto spec = makePlanSpecification(LogId{1}, {});
   spec.targetConfig.writeConcern = 2;
   spec.targetConfig.replicationFactor = 3;
   auto current = makeLogCurrent();
+
+  auto vp = checkReplicatedLogParticipants("db", spec, participants);
+  auto& p = std::get<ParticipantsConfig>(vp);
+  EXPECT_EQ(p.participants.size(), 3);
+  EXPECT_TRUE(p.participants.find("B") != p.participants.end());
+  EXPECT_TRUE(p.participants.find("C") != p.participants.end());
+  EXPECT_TRUE(p.participants.find("A") != p.participants.end());
 
   auto v = checkReplicatedLog("db", spec, current, participants);
   auto& e = std::get<agency::LogPlanTermSpecification>(v);
   EXPECT_EQ(e.term, LogTerm{1});
   EXPECT_EQ(e.config, spec.targetConfig);
-  EXPECT_EQ(e.participants.size(), 3);
-  EXPECT_TRUE(e.participants.find("B") != e.participants.end());
-  EXPECT_TRUE(e.participants.find("C") != e.participants.end());
-  EXPECT_TRUE(e.participants.find("A") != e.participants.end());
 }
 
 TEST_F(CheckLogsAlgorithmTest,
@@ -310,11 +318,11 @@ TEST_F(CheckLogsAlgorithmTest,
       {"C", ParticipantRecord{RebootId{1}, true}},
   };
 
-  auto spec = makePlanSpecification(LogId{1});
+  auto spec = makePlanSpecification(LogId{1}, {});
   spec.targetConfig.writeConcern = 2;
   spec.targetConfig.replicationFactor = 2;
   auto current = makeLogCurrent();
 
-  auto v = checkReplicatedLog("db", spec, current, participants);
-  EXPECT_TRUE(std::holds_alternative<std::monostate>(v));
+  auto vp = checkReplicatedLogParticipants("db", spec, participants);
+  EXPECT_TRUE(std::holds_alternative<std::monostate>(vp));
 }

@@ -43,40 +43,20 @@ namespace {
 auto createFirstTerm(
     DatabaseID const& database, LogPlanSpecification const& spec,
     std::unordered_map<ParticipantId, ParticipantRecord> const& info)
-    -> std::variant<std::monostate, LogPlanTermSpecification,
-                    LogCurrentSupervisionElection> {
-  // There is no term. Randomly select a set of participants and copy the
-  // targetConfig to create the first term.
-  std::vector<std::string_view> participants;
-  participants.reserve(info.size());
-  // where is std::transform_if ?
-  for (auto const& [name, record] : info) {
-    if (record.isHealthy) {
-      participants.emplace_back(name);
-    }
-  }
-
-  if (participants.size() < spec.targetConfig.replicationFactor) {
-    // not enough participants to form a term
-    return {};
-  }
-
-  {
-    std::random_device rd;
-    std::mt19937 g(rd());
-    std::shuffle(participants.begin(), participants.end(), g);
-  }
+    -> LogPlanTermSpecification {
+  // Should neither have participants, a generation, nor a term yet.
+  // Currently, we assume the participants are already there before the first
+  // term is created. If that's changed later so they're set at the same time,
+  // that's fine; however, imho there should not be a term *before* participants
+  // are set.
+  TRI_ASSERT(!spec.participantsConfig.participants.empty());
+  TRI_ASSERT(spec.participantsConfig.generation > 0);
+  TRI_ASSERT(!spec.currentTerm.has_value());
 
   LogPlanTermSpecification newTermSpec;
   newTermSpec.term = LogTerm{1};
   newTermSpec.config = spec.targetConfig;
-  for (std::size_t i = 0; i < spec.targetConfig.replicationFactor; i++) {
-    newTermSpec.participants.emplace(ParticipantId{participants[i]},
-                                     LogPlanTermSpecification::Participant{});
-  }
-  LOG_TOPIC("bb6e4", INFO, Logger::REPLICATION2)
-      << "creating first term for replicated log " << database << "/" << spec.id
-      << " with participants " << participants;
+
   return newTermSpec;
 }
 
@@ -162,14 +142,14 @@ auto checkCurrentTerm(
       }
     }
 
+    auto const numParticipants = spec.participantsConfig.participants.size();
+    auto const writeConcern = spec.currentTerm->config.writeConcern;
     auto const requiredNumberOfAvailableParticipants =
-        std::invoke([&spec = spec.currentTerm] {
-          return spec->participants.size() - spec->config.writeConcern + 1;
-        });
+        numParticipants - writeConcern + 1;
 
     LOG_TOPIC("8a53d", TRACE, Logger::REPLICATION2)
-        << "participant size = " << spec.currentTerm->participants.size()
-        << " writeConcern = " << spec.currentTerm->config.writeConcern
+        << "participant size = " << numParticipants
+        << " writeConcern = " << writeConcern
         << " requiredNumberOfAvailableParticipants = "
         << requiredNumberOfAvailableParticipants;
 
@@ -225,6 +205,42 @@ auto checkCurrentTerm(
   return std::monostate{};
 }
 
+auto sampleParticipants(
+    agency::LogPlanSpecification const& spec,
+    std::unordered_map<ParticipantId, ParticipantRecord> const& info)
+    -> std::optional<std::unordered_map<ParticipantId, ParticipantFlags>> {
+  std::vector<std::string_view> participantCandidates;
+  participantCandidates.reserve(info.size());
+  // where is std::transform_if ?
+  for (auto const& [name, record] : info) {
+    if (record.isHealthy) {
+      participantCandidates.emplace_back(name);
+    }
+  }
+
+  auto const replicationFactor = spec.targetConfig.replicationFactor;
+
+  if (participantCandidates.size() < replicationFactor) {
+    // not enough participantCandidates to form a term
+    return {};
+  }
+
+  std::vector<std::string_view> chosenParticipants;
+  chosenParticipants.reserve(replicationFactor);
+
+  auto urbg = RandomGenerator::UniformRandomGenerator<std::uint64_t>();
+  std::sample(participantCandidates.begin(), participantCandidates.end(),
+              std::back_inserter(chosenParticipants), replicationFactor, urbg);
+
+  auto participants = std::unordered_map<ParticipantId, ParticipantFlags>{};
+
+  for (auto const& participant : chosenParticipants) {
+    participants.emplace(ParticipantId{participant}, ParticipantFlags{});
+  }
+
+  return participants;
+}
+
 }  // namespace
 
 auto algorithms::checkReplicatedLog(
@@ -233,10 +249,46 @@ auto algorithms::checkReplicatedLog(
     std::unordered_map<ParticipantId, ParticipantRecord> const& info)
     -> std::variant<std::monostate, agency::LogPlanTermSpecification,
                     agency::LogCurrentSupervisionElection> {
-  if (spec.currentTerm.has_value()) {
+  if (spec.participantsConfig.participants.empty()) {
+    // No participants yet
+    return std::monostate{};
+  } else if (spec.currentTerm.has_value()) {
     return checkCurrentTerm(database, spec, current, info);
   } else {
     return createFirstTerm(database, spec, info);
+  }
+}
+
+auto algorithms::checkReplicatedLogParticipants(
+    DatabaseID const& database, LogPlanSpecification const& spec,
+    std::unordered_map<ParticipantId, ParticipantRecord> const& info)
+    -> std::variant<std::monostate, ParticipantsConfig> {
+  // The first term must not be set before there is a list of participants.
+  // Neither must be empty later.
+  // It'd be conceivable to set the participants in a separate step before the
+  // first term is set, but currently there's no reason for that.
+  TRI_ASSERT(!spec.currentTerm.has_value() ||
+             !spec.participantsConfig.participants.empty());
+  if (spec.participantsConfig.participants.empty()) {
+    TRI_ASSERT(spec.participantsConfig.generation == 0);
+    if (auto participants = sampleParticipants(spec, info);
+        participants.has_value()) {
+      auto const participantsConfig = ParticipantsConfig{
+          .generation = 1,
+          .participants = std::move(*participants),
+      };
+
+      LOG_TOPIC("36310", INFO, Logger::REPLICATION2)
+          << "Setting initial participants for replicated log " << database
+          << "/" << spec.id << " to " << participantsConfig.participants;
+
+      return participantsConfig;
+    } else {
+      // not enough participants to form a term
+      return std::monostate{};
+    }
+  } else {
+    return std::monostate{};
   }
 }
 
@@ -348,7 +400,8 @@ auto algorithms::updateReplicatedLog(
       // Note that newParticipants contains the leader, while oldFollowers does
       // not.
       auto const& oldFollowers = leaderStatus->follower;
-      auto const& newParticipants = spec->currentTerm->participants;
+      auto const& newParticipants = spec->participantsConfig.participants;
+      // TODO move this calculation into updateParticipantsConfig()
       auto const additionalParticipantIds =
           keySetDifference(newParticipants, oldFollowers);
       auto const obsoleteParticipantIds =
@@ -377,7 +430,8 @@ auto algorithms::updateReplicatedLog(
                plannedLeader->rebootId == myRebootId) {
       auto followers = std::vector<
           std::shared_ptr<replication2::replicated_log::AbstractFollower>>{};
-      for (auto const& [participant, data] : spec->currentTerm->participants) {
+      for (auto const& [participant, data] :
+           spec->participantsConfig.participants) {
         if (participant != myServerId) {
           followers.emplace_back(
               ctx.buildAbstractFollowerImpl(logId, participant));

@@ -819,35 +819,6 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
                 return Config::make_shared(shared_from_this());
               }
 
-              class Participants
-                  : public StaticComponent<Participants, CurrentTerm> {
-               public:
-                constexpr char const* component() const noexcept {
-                  return "participants";
-                }
-
-                using BaseType::StaticComponent;
-
-                class Server
-                    : public DynamicComponent<Server, Participants, ServerID> {
-                 public:
-                  char const* component() const noexcept {
-                    return value().c_str();
-                  }
-
-                  using BaseType::DynamicComponent;
-                };
-
-                std::shared_ptr<Server const> server(ServerID value) const {
-                  return Server::make_shared(shared_from_this(),
-                                             std::move(value));
-                }
-              };
-
-              std::shared_ptr<Participants const> participants() const {
-                return Participants::make_shared(shared_from_this());
-              }
-
               class Leader : public StaticComponent<Leader, CurrentTerm> {
                public:
                 constexpr char const* component() const noexcept {
@@ -903,6 +874,64 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
             std::shared_ptr<CurrentTerm const> currentTerm() const {
               return CurrentTerm::make_shared(shared_from_this());
+            }
+
+            class ParticipantsConfig
+                : public StaticComponent<ParticipantsConfig, Log> {
+             public:
+              constexpr char const* component() const noexcept {
+                return "participantsConfig";
+              }
+
+              using BaseType::StaticComponent;
+
+              class Participants
+                  : public StaticComponent<Participants, ParticipantsConfig> {
+               public:
+                constexpr char const* component() const noexcept {
+                  return "participants";
+                }
+
+                using BaseType::StaticComponent;
+
+                class Server
+                    : public DynamicComponent<Server, Participants, ServerID> {
+                 public:
+                  char const* component() const noexcept {
+                    return value().c_str();
+                  }
+
+                  using BaseType::DynamicComponent;
+                };
+
+                std::shared_ptr<Server const> server(ServerID value) const {
+                  return Server::make_shared(shared_from_this(),
+                                             std::move(value));
+                }
+              };
+
+              std::shared_ptr<Participants const> participants() const {
+                return Participants::make_shared(shared_from_this());
+              }
+
+              class Generation
+                  : public StaticComponent<Generation, ParticipantsConfig> {
+               public:
+                constexpr char const* component() const noexcept {
+                  return "generation";
+                }
+
+                using BaseType::StaticComponent;
+              };
+
+              std::shared_ptr<Generation const> generation() const {
+                return Generation::make_shared(shared_from_this());
+              }
+            };
+
+            std::shared_ptr<ParticipantsConfig const> participantsConfig()
+                const {
+              return ParticipantsConfig::make_shared(shared_from_this());
             }
           };
 
