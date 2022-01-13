@@ -952,9 +952,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
      * Default SingleServer Traverser
      */
 
-    LOG_DEVEL << "[GraphRefactor] Refactor enabled: " << std::boolalpha
-              << opts->refactor();
-
     // We need to prepare the variable accesses before we ask the index nodes.
     initializeIndexConditions();
 
