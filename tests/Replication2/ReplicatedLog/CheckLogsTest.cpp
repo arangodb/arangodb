@@ -261,7 +261,7 @@ TEST_F(CheckLogsAlgorithmTest, check_dont_elect_leader_two_reported_wc_2) {
 
 // TODO Add tests for checkReplicatedLogParticipants
 
-TEST_F(CheckLogsAlgorithmTest, check_constitute_first_term) {
+TEST_F(CheckLogsAlgorithmTest, DISABLED_check_constitute_first_term) {
   auto participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, false}},
       {"B", ParticipantRecord{RebootId{1}, true}},
@@ -285,7 +285,7 @@ TEST_F(CheckLogsAlgorithmTest, check_constitute_first_term) {
   EXPECT_EQ(e.config, spec.targetConfig);
 }
 
-TEST_F(CheckLogsAlgorithmTest, check_constitute_first_term_r3_wc2) {
+TEST_F(CheckLogsAlgorithmTest, DISABLED_check_constitute_first_term_r3_wc2) {
   auto participants = ParticipantInfo{
       {"A", ParticipantRecord{RebootId{1}, true}},
       {"B", ParticipantRecord{RebootId{1}, true}},
