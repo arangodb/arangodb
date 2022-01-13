@@ -271,7 +271,8 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                                                  logMetrics);
                   } else {
                     if (follower == nullptr) {
-                      LOG_TOPIC("6f490", DEBUG, Logger::REPLICATION2) << "follower already gone.";
+                      LOG_TOPIC("6f490", DEBUG, Logger::REPLICATION2)
+                          << "follower already gone.";
                     } else {
                       LOG_CTX("de300", DEBUG, follower->logContext)
                           << "parent log already gone, messageId = "
