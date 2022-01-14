@@ -188,6 +188,21 @@ const G6JsGraph = () => {
     graph.render();
   }
 
+  const changeEdgeStyle = () => {
+    graph.edge((edge) => {
+      return {
+        id: edge.id,
+        type: 'cubic-horizontal',
+        style: {
+          stroke: 'green',
+        },
+      };
+    });
+    
+    graph.data(data);
+    graph.render();
+  }
+
   return (
     <div>
         <button onClick={() => getNodes()}>Get nodes</button>
@@ -197,6 +212,7 @@ const G6JsGraph = () => {
         <button onClick={() => addEdge()}>Add edge</button>
         <button onClick={() => updateNodeModel()}>Update node2</button>
         <button onClick={() => changeNodeStyle()}>Change node style</button>
+        <button onClick={() => changeEdgeStyle()}>Change edge style</button>
         <Card
           title="Pure JS G6 Graph"
         >
