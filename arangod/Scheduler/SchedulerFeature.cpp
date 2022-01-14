@@ -287,7 +287,7 @@ void SchedulerFeature::unprepare() {
 // ---------------------------------------------------------------------------
 
 void SchedulerFeature::signalStuffInit() {
-  arangodb::signals::maskAllSignals();
+  arangodb::signals::maskAllSignalsServer();
 
 #ifdef _WIN32
 // Windows does not support POSIX signal handling
