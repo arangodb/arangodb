@@ -6,6 +6,7 @@ import { data } from './data';
 import { data2 } from './data2';
 import G6 from '@antv/g6';
 import { Card } from 'antd';
+import './tooltip.css';
 
 const G6JsGraph = () => {
   let [graphData, setGraphData] = useState(null);
@@ -25,10 +26,10 @@ const G6JsGraph = () => {
   useEffect(() => {
     if (!graph) {
         graph = new G6.Graph({
-          plugins: [minimap, grid], // Configure minimap to the graph
+          plugins: [minimap], // Configure minimap to the graph
           container: ReactDOM.findDOMNode(ref.current),
           width: 1200,
-          height: 800,
+          height: 400,
           layout: {
             type: 'gForce',
             //minMovement: 0.01,
@@ -39,7 +40,19 @@ const G6JsGraph = () => {
             linkDistance: 100
           },
           modes: {
-            default: ['drag-canvas', 'zoom-canvas', 'drag-node'], // Allow users to drag canvas, zoom canvas, and drag nodes
+            default: [
+              'drag-canvas',
+              'zoom-canvas',
+              'drag-node',
+              {
+                type: 'tooltip', // Tooltip
+                formatText(model) {
+                  // The content of tooltip
+                  const text = 'label: ' + model.label + '<br/> population: ' + model.population;
+                  return text;
+                },
+              }
+            ], // Allow users to drag canvas, zoom canvas, and drag nodes
           },
           defaultNode: {
             type: 'circle', // 'bubble'
