@@ -1,0 +1,69 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Macro BOOST_CONTRACT_OLD</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Chapter 1. Boost.Contract 1.0.0">
+<link rel="up" href="reference.html#header.boost.contract_macro_hpp" title="Header &lt;boost/contract_macro.hpp&gt;">
+<link rel="prev" href="BOOST_CONTRACT_EXCEPT.html" title="Macro BOOST_CONTRACT_EXCEPT">
+<link rel="next" href="BOOST_CONTRACT_OLD_PTR.html" title="Macro BOOST_CONTRACT_OLD_PTR">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="BOOST_CONTRACT_EXCEPT.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="reference.html#header.boost.contract_macro_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="BOOST_CONTRACT_OLD_PTR.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="BOOST_CONTRACT_OLD"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Macro BOOST_CONTRACT_OLD</span></h2>
+<p>BOOST_CONTRACT_OLD — Program old value copies at body that can be completely disabled at compile-time. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="reference.html#header.boost.contract_macro_hpp" title="Header &lt;boost/contract_macro.hpp&gt;">boost/contract_macro.hpp</a>&gt;
+
+</span>BOOST_CONTRACT_OLD(...)</pre></div>
+<div class="refsect1">
+<a name="idm44715"></a><h2>Description</h2>
+<p><code class="computeroutput">BOOST_CONTRACT_OLD(f)</code> expands to code equivalent to the following (note that no code is generated when <code class="computeroutput"><a class="link" href="BOOST_CONTRACT_NO_OLDS.html" title="Macro BOOST_CONTRACT_NO_OLDS">BOOST_CONTRACT_NO_OLDS</a></code> is defined):</p>
+<pre class="programlisting"><span class="preprocessor">#ifndef</span> <span class="identifier">BOOST_CONTRACT_NO_OLDS</span>
+    <span class="special">.</span><span class="identifier">old</span><span class="special">(</span><span class="identifier">f</span><span class="special">)</span>
+<span class="preprocessor">#endif</span>
+</pre>
+<p>Where:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p><code class="computeroutput"><span class="bold"><strong>f</strong></span></code> is the nullary functor called by this library <code class="computeroutput">f()</code> to assign old value copies just before the body is execute but after entry invariants (when they apply) and preconditions are checked. Old value pointers within this functor call are usually assigned using <code class="computeroutput"><a class="link" href="BOOST_CONTRACT_OLDOF.html" title="Macro BOOST_CONTRACT_OLDOF">BOOST_CONTRACT_OLDOF</a></code>. Any exception thrown by a call to this functor will result in this library calling <code class="computeroutput"><a class="link" href="boost/contract/old_failure.html" title="Function old_failure">boost::contract::old_failure</a></code> (because old values could not be copied to check postconditions and exception guarantees). This functor should capture old value pointers by references so they can be assigned (all other variables needed to evaluate old value expressions can be captured by (constant) value, or better by (constant) reference to avoid extra copies). (This is a variadic macro parameter so it can contain commas not protected by round parenthesis.)</p></li></ul></div>
+<p>
+</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p> <a class="link" href="boost_contract/extras.html#boost_contract.extras.disable_contract_compilation__macro_interface_" title="Disable Contract Compilation (Macro Interface)">
+        Disable Contract Compilation</a>,  <a class="link" href="boost_contract/advanced.html#boost_contract.advanced.old_values_copied_at_body" title="Old Values Copied at Body">
+        Old Values Copied at Body</a> </p>
+<p>
+</p>
+<p>
+</p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2008-2019 Lorenzo Caminiti<p>
+        Distributed under the Boost Software License, Version 1.0 (see accompanying
+        file LICENSE_1_0.txt or a copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="BOOST_CONTRACT_EXCEPT.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="reference.html#header.boost.contract_macro_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="BOOST_CONTRACT_OLD_PTR.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

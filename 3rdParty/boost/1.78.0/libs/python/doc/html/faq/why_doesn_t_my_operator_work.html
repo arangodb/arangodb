@@ -1,0 +1,63 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Why doesn't my *= operator work?</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Python">
+<link rel="up" href="../faq.html" title="Chapter 5. Frequently Asked Questions (FAQs)">
+<link rel="prev" href="how_do_i_debug_my_python_extensi.html" title="How do I debug my Python extensions?">
+<link rel="next" href="does_boost_python_work_with_mac_.html" title="Does Boost.Python work with Mac OS X?">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="how_do_i_debug_my_python_extensi.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../faq.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="does_boost_python_work_with_mac_.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="faq.why_doesn_t_my_operator_work"></a><a class="link" href="why_doesn_t_my_operator_work.html" title="Why doesn't my *= operator work?">Why doesn't my <code class="computeroutput"><span class="special">*=</span></code> operator work?</a>
+</h3></div></div></div>
+<p>
+        <span class="bold"><strong>Q:</strong></span> <span class="emphasis"><em>I have exported my class to
+        python, with many overloaded operators. it works fine for me except the
+        <code class="computeroutput"><span class="special">*=</span></code> operator. It always tells
+        me "can't multiply sequence with non int type". If I use <code class="computeroutput"><span class="identifier">p1</span><span class="special">.</span><span class="identifier">__imul__</span><span class="special">(</span><span class="identifier">p2</span><span class="special">)</span></code>
+        instead of <code class="computeroutput"><span class="identifier">p1</span> <span class="special">*=</span>
+        <span class="identifier">p2</span></code>, it successfully executes my
+        code. What's wrong with me?</em></span>
+      </p>
+<p>
+        <span class="bold"><strong>A:</strong></span> There's nothing wrong with you. This
+        is a bug in Python 2.2. You can see the same effect in Pure Python (you can
+        learn a lot about what's happening in Boost.Python by playing with new-style
+        classes in Pure Python).
+      </p>
+<pre class="programlisting"><span class="special">&gt;&gt;&gt;</span> <span class="keyword">class</span> <span class="identifier">X</span><span class="special">(</span><span class="identifier">object</span><span class="special">):</span>
+<span class="special">...</span>     <span class="identifier">def</span> <span class="identifier">__imul__</span><span class="special">(</span><span class="identifier">self</span><span class="special">,</span> <span class="identifier">x</span><span class="special">):</span>
+<span class="special">...</span>         <span class="identifier">print</span> <span class="char">'imul'</span>
+<span class="special">...</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">x</span> <span class="special">=</span> <span class="identifier">X</span><span class="special">()</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">x</span> <span class="special">*=</span> <span class="number">1</span>
+</pre>
+<p>
+        To cure this problem, all you need to do is upgrade your Python to version
+        2.2.1 or later.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2002-2015 David
+      Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="how_do_i_debug_my_python_extensi.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../faq.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="does_boost_python_work_with_mac_.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

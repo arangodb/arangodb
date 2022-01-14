@@ -1,0 +1,169 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Quick Start</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Optional">
+<link rel="up" href="../index.html" title="Boost.Optional">
+<link rel="prev" href="../index.html" title="Boost.Optional">
+<link rel="next" href="quick_start/optional_automatic_variables.html" title="Optional automatic variables">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../index.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="quick_start/optional_automatic_variables.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_optional.quick_start"></a><a class="link" href="quick_start.html" title="Quick Start">Quick Start</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="quick_start.html#boost_optional.quick_start.optional_return_values">Optional
+      return values</a></span></dt>
+<dt><span class="section"><a href="quick_start/optional_automatic_variables.html">Optional
+      automatic variables</a></span></dt>
+<dt><span class="section"><a href="quick_start/optional_data_members.html">Optional
+      data members</a></span></dt>
+<dt><span class="section"><a href="quick_start/bypassing_unnecessary_default_construction.html">Bypassing
+      unnecessary default construction</a></span></dt>
+<dt><span class="section"><a href="quick_start/storage_in_containers.html">Storage
+      in containers</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_optional.quick_start.optional_return_values"></a><a class="link" href="quick_start.html#boost_optional.quick_start.optional_return_values" title="Optional return values">Optional
+      return values</a>
+</h3></div></div></div>
+<p>
+        Let's write and use a converter function that converts a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code>
+        to an <code class="computeroutput"><span class="keyword">int</span></code>. It is possible that
+        for a given string (e.g. <code class="computeroutput"><span class="string">"cat"</span></code>)
+        there exists no value of type <code class="computeroutput"><span class="keyword">int</span></code>
+        capable of representing the conversion result. We do not consider such situation
+        an error. We expect that the converter can be used only to check if the conversion
+        is possible. A natural signature for this function can be:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">optional</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">convert</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&amp;</span> <span class="identifier">text</span><span class="special">);</span>
+</pre>
+<p>
+        All necessary functionality can be included with one header <code class="computeroutput"><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">optional</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>.
+        The above function signature means that the function can either return a
+        value of type <code class="computeroutput"><span class="keyword">int</span></code> or a flag
+        indicating that no value of <code class="computeroutput"><span class="keyword">int</span></code>
+        is available. This does not indicate an error. It is like one additional
+        value of <code class="computeroutput"><span class="keyword">int</span></code>. This is how we
+        can use our function:
+      </p>
+<pre class="programlisting"><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&amp;</span> <span class="identifier">text</span> <span class="special">=</span> <span class="comment">/*... */</span><span class="special">;</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">oi</span> <span class="special">=</span> <span class="identifier">convert</span><span class="special">(</span><span class="identifier">text</span><span class="special">);</span> <span class="comment">// move-construct</span>
+<span class="keyword">if</span> <span class="special">(</span><span class="identifier">oi</span><span class="special">)</span>                                  <span class="comment">// contextual conversion to bool</span>
+  <span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="special">*</span><span class="identifier">oi</span><span class="special">;</span>                           <span class="comment">// operator*</span>
+</pre>
+<p>
+        In order to test if <code class="computeroutput"><span class="identifier">optional</span></code>
+        contains a value, we use the contextual conversion to type <code class="computeroutput"><span class="keyword">bool</span></code>. Because of this we can combine the initialization
+        of the optional object and the test into one instruction:
+      </p>
+<pre class="programlisting"><span class="keyword">if</span> <span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">oi</span> <span class="special">=</span> <span class="identifier">convert</span><span class="special">(</span><span class="identifier">text</span><span class="special">))</span>
+  <span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="special">*</span><span class="identifier">oi</span><span class="special">;</span>
+</pre>
+<p>
+        We extract the contained value with <code class="computeroutput"><span class="keyword">operator</span><span class="special">*</span></code> (and with <code class="computeroutput"><span class="keyword">operator</span><span class="special">-&gt;</span></code> where it makes sense). An attempt to
+        extract the contained value of an uninitialized optional object is an <span class="emphasis"><em>undefined
+        behaviour</em></span> (UB). This implementation guards the call with <code class="computeroutput"><span class="identifier">BOOST_ASSERT</span></code>. Therefore you should be sure
+        that the contained value is there before extracting. For instance, the following
+        code is reasonably UB-safe:
+      </p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="special">*</span><span class="identifier">convert</span><span class="special">(</span><span class="string">"100"</span><span class="special">);</span>
+</pre>
+<p>
+        This is because we know that string value <code class="computeroutput"><span class="string">"100"</span></code>
+        converts to a valid value of <code class="computeroutput"><span class="keyword">int</span></code>.
+        If you do not like this potential UB, you can use an alternative way of extracting
+        the contained value:
+      </p>
+<pre class="programlisting"><span class="keyword">try</span> <span class="special">{</span>
+  <span class="keyword">int</span> <span class="identifier">j</span> <span class="special">=</span> <span class="identifier">convert</span><span class="special">(</span><span class="identifier">text</span><span class="special">).</span><span class="identifier">value</span><span class="special">();</span>
+<span class="special">}</span>
+<span class="keyword">catch</span> <span class="special">(</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">bad_optional_access</span><span class="special">&amp;)</span> <span class="special">{</span>
+  <span class="comment">// deal with it</span>
+<span class="special">}</span>
+</pre>
+<p>
+        This version throws an exception upon an attempt to access a non-existent
+        contained value. If your way of dealing with the missing value is to use
+        some default, like <code class="computeroutput"><span class="number">0</span></code>, there exists
+        a yet another alternative:
+      </p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">k</span> <span class="special">=</span> <span class="identifier">convert</span><span class="special">(</span><span class="identifier">text</span><span class="special">).</span><span class="identifier">value_or</span><span class="special">(</span><span class="number">0</span><span class="special">);</span>
+</pre>
+<p>
+        This uses the <code class="computeroutput"><span class="identifier">atoi</span></code>-like approach
+        to conversions: if <code class="computeroutput"><span class="identifier">text</span></code> does
+        not represent an integral number just return <code class="computeroutput"><span class="number">0</span></code>.
+        Finally, you can provide a callback to be called when trying to access the
+        contained value fails:
+      </p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">fallback_to_default</span><span class="special">()</span>
+<span class="special">{</span>
+  <span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="string">"could not convert; using -1 instead"</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span>
+  <span class="keyword">return</span> <span class="special">-</span><span class="number">1</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">int</span> <span class="identifier">l</span> <span class="special">=</span> <span class="identifier">convert</span><span class="special">(</span><span class="identifier">text</span><span class="special">).</span><span class="identifier">value_or_eval</span><span class="special">(</span><span class="identifier">fallback_to_default</span><span class="special">);</span>
+</pre>
+<p>
+        This will call the provided callback and return whatever the callback returns.
+        The callback can have side effects: they will only be observed when the optional
+        object does not contain a value.
+      </p>
+<p>
+        Now, let's consider how function <code class="computeroutput"><span class="identifier">convert</span></code>
+        can be implemented.
+      </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">convert</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&amp;</span> <span class="identifier">text</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">stringstream</span> <span class="identifier">s</span><span class="special">(</span><span class="identifier">text</span><span class="special">);</span>
+  <span class="keyword">int</span> <span class="identifier">i</span><span class="special">;</span>
+  <span class="keyword">if</span> <span class="special">((</span><span class="identifier">s</span> <span class="special">&gt;&gt;</span> <span class="identifier">i</span><span class="special">)</span> <span class="special">&amp;&amp;</span> <span class="identifier">s</span><span class="special">.</span><span class="identifier">get</span><span class="special">()</span> <span class="special">==</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;::</span><span class="identifier">eof</span><span class="special">())</span>
+    <span class="keyword">return</span> <span class="identifier">i</span><span class="special">;</span>
+  <span class="keyword">else</span>
+    <span class="keyword">return</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">none</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Observe the two return statements. <code class="computeroutput"><span class="keyword">return</span>
+        <span class="identifier">i</span></code> uses the converting constructor
+        that can create <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>
+        from <code class="computeroutput"><span class="identifier">T</span></code>. Thus constructed
+        optional object is initialized and its value is a copy of <code class="computeroutput"><span class="identifier">i</span></code>.
+        The other return statement uses another converting constructor from a special
+        tag <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">none</span></code>. It is used to indicate that we want
+        to create an uninitialized optional object.
+      </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2003-2007 Fernando Luis Cacciola Carballal<br>Copyright © 2014-2021 Andrzej Krzemieński<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../index.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="quick_start/optional_automatic_variables.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

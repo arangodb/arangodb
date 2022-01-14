@@ -1,0 +1,34 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>basic_result&lt;T&gt; - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../reference/concepts/basic_outcome.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../reference/concepts.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../reference/concepts/value_or_error.html"><img src="../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both"><code>basic_result&lt;T&gt;</code></h1></div></div></div>
+  <p>If on C++ 20 or the Concepts TS is enabled, a boolean concept matching types which have <code>value_type</code>, <code>error_type</code> and <code>no_value_policy_type</code> member typedefs; that the type is convertible to <code>basic_result&lt;value_type, error_type, no_value_policy_type&gt;</code>; that <code>basic_result&lt;value_type, error_type, no_value_policy_type&gt;</code> is a base of the type.</p>
+
+<p>If without Concepts, a static constexpr bool which is true for types matching the same requirements, using a SFINAE based emulation.</p>
+
+<p>This concept matches any type which provides the same typedefs as a <a href="../../reference/types/basic_result.html" class="api-reference"><code>basic_result&lt;T, E, NoValuePolicy&gt;</code></a>
+, has that <code>basic_result</code> as a base class, and is implicitly convertible to <code>basic_result</code>. Whilst not guaranteed, it is very likely that the type is a <code>basic_result</code>, or inherits publicly from a <code>basic_result</code>. If you want something which matches any value-or-error type, consider <a href="../../reference/concepts/value_or_error.html" class="api-reference"><code>value_or_error&lt;T&gt;</code></a>
+. If you want something which exactly matches <code>basic_result</code>, use <a href="../../reference/traits/is_basic_result.html" class="api-reference"><code>is_basic_result&lt;T&gt;</code></a>
+.</p>
+
+<p><em>Namespace</em>: <code>BOOST_OUTCOME_V2_NAMESPACE::concepts</code></p>
+
+<p><em>Header</em>: <code>&lt;boost/outcome/basic_result.hpp&gt;</code></p>
+
+
+        </div><p><small>Last revised: May 24, 2020 at 12:48:39 &#43;0100</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../reference/concepts/basic_outcome.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../reference/concepts.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../reference/concepts/value_or_error.html"><img src="../../images/next.png" alt="Next"></a></div></body>
+</html>
