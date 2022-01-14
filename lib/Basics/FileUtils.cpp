@@ -792,6 +792,8 @@ std::string slurpProgram(std::string const& program) {
   if (error) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
   }
+  // Note that we intentionally ignore the exit code of the sub process here
+  // since we have always done so and do not want to break things.
   return output;
 }
 
