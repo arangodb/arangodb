@@ -29,6 +29,7 @@
 #include "Basics/Exceptions.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Random/RandomGenerator.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
 
 #include "Logger/LogMacros.h"
@@ -80,6 +81,32 @@ auto checkLeaderHealth(LogPlanSpecification const& plan,
 
     return std::make_unique<UpdateTermAction>(newTerm);
   }
+}
+
+auto checkLeaderInTarget(LogTarget const& target,
+                         LogPlanSpecification const& plan)
+    -> std::unique_ptr<Action> {
+  // Someone wishes there to be a particular leader
+
+  if (target.leader) {
+    if (plan.currentTerm) {
+      if (plan.currentTerm->leader) {
+        if (target.leader != plan.currentTerm->leader->serverId) {
+          // move to new leader
+          return std::make_unique<DictateLeaderAction>(target.id,
+                                                       target.leader.value());
+        } else {
+          // keep the leader
+        }
+      }
+    } else {
+      // term should have been established before
+    }
+  } else {
+    // nothing to do
+  }
+
+  return std::make_unique<EmptyAction>();
 }
 
 auto runElectionCampaign(LogCurrentLocalStates const& states,
@@ -144,7 +171,7 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
         campaign.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
     auto const& newLeaderRebootId = health._health.at(newLeader).rebootId;
 
-    auto action = std::make_unique<SuccessfulLeaderElectionAction>();
+    auto action = std::make_unique<SuccessfulLeaderElectionAction>(plan.id);
 
     action->_campaign = campaign;
     action->_newTerm = LogPlanTermSpecification(
@@ -175,6 +202,19 @@ auto checkLeaderPresent(LogPlanSpecification const& plan,
   }
 }
 
+auto desiredParticipantFlags(LogTarget const& target,
+                             LogPlanSpecification const& plan,
+                             ParticipantId const& participant)
+    -> ParticipantFlags {
+  if (participant == target.leader and
+      participant != plan.currentTerm->leader->serverId) {
+    auto flags = target.participants.at(participant);
+    flags.forced = true;
+    return flags;
+  }
+  return target.participants.at(participant);
+}
+
 auto checkLogTargetParticipantFlags(LogTarget const& target,
                                     LogPlanSpecification const& plan)
     -> std::unique_ptr<Action> {
@@ -185,13 +225,16 @@ auto checkLogTargetParticipantFlags(LogTarget const& target,
     if (auto const& planParticipant = pps.find(targetParticipant);
         planParticipant != pps.end()) {
       // participant is in plan, check whether flags are the same
-      if (targetFlags != planParticipant->second) {
+      auto const df = desiredParticipantFlags(target, plan, targetParticipant);
+      if (df != planParticipant->second) {
         // Flags changed, so we need to commit new flags for this participant
-        return std::make_unique<UpdateParticipantFlagsAction>(targetParticipant,
-                                                              targetFlags);
-      };
+        return std::make_unique<UpdateParticipantFlagsAction>(
+            target.id, targetParticipant, df,
+            plan.participantsConfig.generation);
+      }
     }
   }
+
   // nothing changed, nothing to do
   return std::make_unique<EmptyAction>();
 }
@@ -281,6 +324,13 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
       !isEmptyAction(action)) {
     return action;
   }
+
+  // If someone wishes a specific participant to become leader
+  // by putting a ParticipantId into the target
+  /*  if (auto action = checkLeaderInTarget(log.target, *log.plan);
+        !isEmptyAction(action)) {
+      return action;
+    } */
 
   if (auto action = checkLogTargetParticipantFlags(log.target, *log.plan);
       !isEmptyAction(action)) {

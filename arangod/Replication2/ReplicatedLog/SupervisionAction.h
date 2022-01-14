@@ -41,6 +41,7 @@ struct Action {
     AddLogToPlanAction,
     CreateInitialTermAction,
     UpdateTermAction,
+    DictateLeaderAction,
     SuccessfulLeaderElectionAction,
     FailedLeaderElectionAction,
     ImpossibleCampaignAction,
@@ -107,6 +108,20 @@ struct CreateInitialTermAction : Action {
   LogPlanTermSpecification const _term;
 };
 
+struct DictateLeaderAction : Action {
+  DictateLeaderAction(LogId const& id, ParticipantId newLeader)
+      : _id(id), _newLeader(newLeader){};
+  auto execute(std::string dbName, arangodb::agency::envelope envelope)
+      -> arangodb::agency::envelope override;
+  ActionType type() const override {
+    return Action::ActionType::DictateLeaderAction;
+  };
+  void toVelocyPack(VPackBuilder& builder) const override;
+
+  LogId const _id;
+  ParticipantId _newLeader;
+};
+
 struct UpdateTermAction : Action {
   UpdateTermAction(LogPlanTermSpecification const& newTerm)
       : _newTerm(newTerm){};
@@ -128,7 +143,7 @@ auto operator<<(std::ostream& os, UpdateTermAction const& action)
 struct LeaderElectionCampaign;
 
 struct SuccessfulLeaderElectionAction : Action {
-  SuccessfulLeaderElectionAction(){};
+  SuccessfulLeaderElectionAction(LogId id) : _id(id){};
   auto execute(std::string dbName, arangodb::agency::envelope envelope)
       -> arangodb::agency::envelope override;
   ActionType type() const override {
@@ -178,9 +193,12 @@ auto operator<<(std::ostream& os, ImpossibleCampaignAction const& action)
     -> std::ostream&;
 
 struct UpdateParticipantFlagsAction : Action {
-  UpdateParticipantFlagsAction(ParticipantId const& participant,
-                               ParticipantFlags const& flags)
-      : _participant(participant), _flags(flags){};
+  UpdateParticipantFlagsAction(LogId id, ParticipantId const& participant,
+                               ParticipantFlags const& flags, size_t generation)
+      : _id(id),
+        _participant(participant),
+        _flags(flags),
+        _generation{generation} {};
   ActionType type() const override {
     return Action::ActionType::UpdateParticipantFlagsAction;
   };
@@ -192,6 +210,7 @@ struct UpdateParticipantFlagsAction : Action {
   LogId const _id;
   ParticipantId _participant;
   ParticipantFlags _flags;
+  size_t _generation;
 };
 
 struct AddParticipantToPlanAction : Action {

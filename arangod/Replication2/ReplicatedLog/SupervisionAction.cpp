@@ -51,6 +51,9 @@ auto to_string(Action::ActionType action) -> std::string_view {
     case Action::ActionType::CreateInitialTermAction: {
       return "CreateInitialTermAction";
     } break;
+    case Action::ActionType::DictateLeaderAction: {
+      return "DictateLeaderAction";
+    } break;
     case Action::ActionType::UpdateTermAction: {
       return "UpdateTermAction";
     } break;
@@ -140,9 +143,6 @@ auto CreateInitialTermAction::execute(std::string dbName,
                   ->currentTerm()
                   ->str();
 
-  VPackBuilder b;
-  _term.toVelocyPack(b);
-
   return envelope.write()
       .emplace_object(
           path, [&](VPackBuilder& builder) { _term.toVelocyPack(builder); })
@@ -150,6 +150,23 @@ auto CreateInitialTermAction::execute(std::string dbName,
       .precs()
       .isEmpty(path)
       .end();
+}
+
+void DictateLeaderAction::toVelocyPack(VPackBuilder& builder) const {
+  auto ob = VPackObjectBuilder(&builder);
+  builder.add(VPackValue("type"));
+  builder.add(VPackValue(to_string(type())));
+}
+
+auto DictateLeaderAction::execute(std::string dbName,
+                                  arangodb::agency::envelope envelope)
+    -> arangodb::agency::envelope {
+  auto path = paths::plan()
+                  ->replicatedLogs()
+                  ->database(dbName)
+                  ->log(_id)
+                  ->currentTerm()
+                  ->str();
 
   return envelope;
 }
@@ -251,6 +268,7 @@ void SuccessfulLeaderElectionAction::toVelocyPack(VPackBuilder& builder) const {
   builder.add(VPackValue("newTerm"));
   _newTerm.toVelocyPack(builder);
 }
+
 auto SuccessfulLeaderElectionAction::execute(
     std::string dbName, arangodb::agency::envelope envelope)
     -> arangodb::agency::envelope {
@@ -260,7 +278,13 @@ auto SuccessfulLeaderElectionAction::execute(
                   ->log(_id)
                   ->currentTerm()
                   ->str();
-  return envelope;
+
+  return envelope.write()
+      .emplace_object(
+          path, [&](VPackBuilder& builder) { _newTerm.toVelocyPack(builder); })
+      .inc(paths::plan()->version()->str())
+      .precs()
+      .end();
 }
 
 /*
@@ -278,9 +302,16 @@ auto UpdateParticipantFlagsAction::execute(std::string dbName,
                   ->replicatedLogs()
                   ->database(dbName)
                   ->log(_id)
-                  ->currentTerm()
-                  ->str();
-  return envelope;
+                  ->participantsConfig();
+
+  return envelope.write()
+      .emplace_object(
+          path->participants()->server(_participant)->str(),
+          [&](VPackBuilder& builder) { _flags.toVelocyPack(builder); })
+      .inc(path->generation()->str())
+      .precs()
+      .isEqual(path->generation()->str(), _generation)
+      .end();
 }
 
 /*

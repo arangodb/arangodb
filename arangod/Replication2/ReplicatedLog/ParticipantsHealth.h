@@ -25,8 +25,6 @@
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
-#include "Logger/LogMacros.h"
-
 namespace arangodb::replication2::replicated_log {
 
 struct ParticipantHealth {
@@ -36,17 +34,9 @@ struct ParticipantHealth {
 
 struct ParticipantsHealth {
   auto isHealthy(ParticipantId const& participant) const -> bool {
-    LOG_DEVEL << " health record ";
-    for (auto const& [h, health] : _health) {
-      LOG_DEVEL << " BAM " << h;
-    }
-    LOG_DEVEL << " health record end ";
-    LOG_DEVEL << " health of; " << participant;
     if (auto it = _health.find(participant); it != std::end(_health)) {
-      LOG_DEVEL << " f " << it->second.isHealthy;
       return it->second.isHealthy;
     }
-    LOG_DEVEL << " not even found";
     return false;
   };
   auto validRebootId(ParticipantId const& participant, RebootId rebootId) const
