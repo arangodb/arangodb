@@ -1,5 +1,6 @@
 devel
 -----
+* Upgraded boost to 1.78.0
 
 * Added agency push-queue operation
 
