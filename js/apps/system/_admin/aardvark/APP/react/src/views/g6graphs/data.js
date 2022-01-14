@@ -77,8 +77,8 @@ export const data = {
       target: '2',
       data: {
         type: 'name1',
-        amount: '100,000,000,00 元',
-        date: '2019-08-03'
+        distance: '100,000',
+        date: '2021-08-03'
       }
     },
     {
@@ -86,8 +86,8 @@ export const data = {
       target: '3',
       data: {
         type: 'name2',
-        amount: '100,000,000,00 元',
-        date: '2019-08-03'
+        distance: '200',
+        date: '2021-10-07'
       }
     },
     {
@@ -95,8 +95,8 @@ export const data = {
       target: '5',
       data: {
         type: 'name1',
-        amount: '100,000,000,00 元',
-        date: '2019-08-03'
+        distance: '8,000',
+        date: '2021-11-15'
       }
     },
     {
@@ -104,8 +104,8 @@ export const data = {
       target: '6',
       data: {
         type: 'name2',
-        amount: '100,000,000,00 元',
-        date: '2019-08-03'
+        distance: '950,900',
+        date: '2022-01-03'
       }
     },
     {
@@ -113,8 +113,8 @@ export const data = {
       target: '4',
       data: {
         type: 'name3',
-        amount: '100,000,000,00 元',
-        date: '2019-08-03'
+        distance: '333,670',
+        date: '2022-01-12'
       }
     },
     {
@@ -122,8 +122,8 @@ export const data = {
       target: '7',
       data: {
         type: 'name2',
-        amount: '100,000,000,00 元',
-        date: '2019-08-03'
+        distance: '346,890',
+        date: '2021-10-06'
       }
     },
     {
@@ -131,8 +131,8 @@ export const data = {
       target: '8',
       data: {
         type: 'name2',
-        amount: '100,000,000,00 元',
-        date: '2019-08-03'
+        distance: '800,600',
+        date: '2020-06-20'
       }
     },
     {
@@ -140,8 +140,8 @@ export const data = {
       target: '9',
       data: {
         type: 'name3',
-        amount: '100,000,000,00 元',
-        date: '2019-08-03'
+        distance: '250,000,80',
+        date: '2020-04-24'
       }
     }
   ]
@@ -193,7 +193,7 @@ export const data = {
       target: '2',
       data: {
         type: 'name1',
-        amount: '100,000,000,00 元',
+        distance: '100,000,000,00 ',
         date: '2019-08-03'
       }
     },
@@ -202,7 +202,7 @@ export const data = {
       target: '3',
       data: {
         type: 'name2',
-        amount: '100,000,000,00 元',
+        distance: '100,000,000,00 ',
         date: '2019-08-03'
       }
     },
@@ -211,7 +211,7 @@ export const data = {
       target: '5',
       data: {
         type: 'name1',
-        amount: '100,000,000,00 元',
+        distance: '100,000,000,00 ',
         date: '2019-08-03'
       }
     },
@@ -220,7 +220,7 @@ export const data = {
       target: '6',
       data: {
         type: 'name2',
-        amount: '100,000,000,00 元',
+        distance: '100,000,000,00 ',
         date: '2019-08-03'
       }
     },
@@ -229,7 +229,7 @@ export const data = {
       target: '4',
       data: {
         type: 'name3',
-        amount: '100,000,000,00 元',
+        distance: '100,000,000,00 ',
         date: '2019-08-03'
       }
     },
@@ -238,7 +238,7 @@ export const data = {
       target: '7',
       data: {
         type: 'name2',
-        amount: '100,000,000,00 元',
+        distance: '100,000,000,00 ',
         date: '2019-08-03'
       }
     },
@@ -247,7 +247,7 @@ export const data = {
       target: '8',
       data: {
         type: 'name2',
-        amount: '100,000,000,00 元',
+        distance: '100,000,000,00 ',
         date: '2019-08-03'
       }
     },
@@ -256,7 +256,7 @@ export const data = {
       target: '9',
       data: {
         type: 'name3',
-        amount: '100,000,000,00 元',
+        distance: '100,000,000,00 ',
         date: '2019-08-03'
       }
     }

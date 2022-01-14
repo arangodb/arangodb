@@ -51,7 +51,25 @@ const G6JsGraph = () => {
                   const text = 'label: ' + model.label + '<br/> population: ' + model.population;
                   return text;
                 },
-              }
+              },
+              {
+                type: 'edge-tooltip', // Edge tooltip
+                formatText(model) {
+                  // The content of the edge tooltip
+                  const text =
+                    'source: ' +
+                    model.source +
+                    '<br/> target: ' +
+                    model.target +
+                    '<br/> type: ' +
+                    model.data.type +
+                    '<br/> distance: ' +
+                    model.data.distance +
+                    '<br/> date: ' +
+                    model.data.date;
+                  return text;
+                },
+              },
             ], // Allow users to drag canvas, zoom canvas, and drag nodes
           },
           defaultNode: {
