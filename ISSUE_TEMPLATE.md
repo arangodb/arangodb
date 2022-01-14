@@ -1,7 +1,6 @@
 ## My Environment
 
 * __ArangoDB Version__:        <!-- e.g. 3.7.2 or self-compiled devel branch -->
-* __Storage Engine__:             <!-- MMFiles / RocksDB -->
 * __Deployment Mode__:       <!-- Single Server | Leader/Follower ("Master/Slave") | Active Failover | Cluster | DC2DC -->
 * __Deployment Strategy__:   <!-- Manual Start | Manual Start in Docker | ArangoDB Starter | ArangoDB Starter in Docker | Kubernetes -->
 * __Configuration__:               <!-- cluster setup details, notable server settings, etc. -->
