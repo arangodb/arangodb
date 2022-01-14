@@ -2585,9 +2585,31 @@ void Supervision::checkReplicatedLogs() {
 
       auto action = checkReplicatedLog(Log{target, plan, current}, info);
       if (action != nullptr) {
+        if (target.supervision.has_value() &&
+            target.supervision->maxActionsTraceLength > 0) {
+          envelope =
+              envelope.write()
+                  .push_queue_emplace(
+                      aliases::current()
+                          ->replicatedLogs()
+                          ->database(dbName)
+                          ->log(idString)
+                          ->supervision()
+                          ->actions()
+                          ->str(),
+                      [&](velocypack::Builder& b) {
+                        VPackObjectBuilder ob(&b);
+                        b.add("time", VPackValue(timepointToString(
+                                          std::chrono::system_clock::now())));
+                        b.add(VPackValue("desc"));
+                        action->toVelocyPack(b);
+                      },
+                      target.supervision->maxActionsTraceLength)
+                  .end();
+        }
         envelope = action->execute(
             dbName,
-            std::move(envelope));  // TODO write something into the envelope
+            std::move(envelope));
       }
     }
   }

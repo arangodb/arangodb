@@ -166,6 +166,14 @@ struct LogTarget {
   };
   Properties properties;
 
+  struct Supervision {
+    std::size_t maxActionsTraceLength{0};
+    auto toVelocyPack(velocypack::Builder&) const -> void;
+    static auto fromVelocyPack(velocypack::Slice) -> Supervision;
+  };
+
+  std::optional<Supervision> supervision;
+
   static auto fromVelocyPack(velocypack::Slice) -> LogTarget;
   void toVelocyPack(velocypack::Builder&) const;
 };

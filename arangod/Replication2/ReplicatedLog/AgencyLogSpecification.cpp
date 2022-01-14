@@ -295,6 +295,9 @@ auto LogTarget::fromVelocyPack(velocypack::Slice s) -> LogTarget {
   if (auto propSlice = s.get("properties"); !propSlice.isNone()) {
     target.properties = Properties::fromVelocyPack(propSlice);
   }
+  if (auto supSlice = s.get("supervision"); !supSlice.isNone()) {
+    target.supervision = Supervision::fromVelocyPack(supSlice);
+  }
   return target;
 }
 
@@ -315,6 +318,10 @@ void LogTarget::toVelocyPack(velocypack::Builder& builder) const {
   }
   builder.add(VPackValue("properties"));
   properties.toVelocyPack(builder);
+  if (supervision.has_value()) {
+    builder.add(VPackValue("supervision"));
+    supervision->toVelocyPack(builder);
+  }
 }
 
 void LogTarget::Properties::toVelocyPack(velocypack::Builder& builder) const {
@@ -323,4 +330,19 @@ void LogTarget::Properties::toVelocyPack(velocypack::Builder& builder) const {
 
 auto LogTarget::Properties::fromVelocyPack(velocypack::Slice s) -> LogTarget::Properties {
   return {};
+}
+
+auto LogTarget::Supervision::fromVelocyPack(velocypack::Slice s)
+    -> Supervision {
+  Supervision result;
+  if (auto slice = s.get("maxActionsTraceLength"); !slice.isNone()) {
+    result.maxActionsTraceLength = slice.extract<std::size_t>();
+  }
+  return result;
+}
+
+auto LogTarget::Supervision::toVelocyPack(
+    velocypack::Builder& b) const -> void {
+  velocypack::ObjectBuilder ob(&b);
+  b.add("maxActionsTraceLength", velocypack::Value(maxActionsTraceLength));
 }
