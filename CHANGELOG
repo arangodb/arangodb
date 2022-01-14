@@ -1,6 +1,14 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* BTS-590: When creating a new database in Web UI the value of the write concern
+  has to be smaller or equal to the replication factor. Otherwise an error
+  message will be displayed and no database will be created.
+
+* Fixed potentially undefined behavior for exit code of arangodump.
+
+* Ignore signals such as SIGPIPE in client tools.
+
 * Validate that selected `writeConcern` value is less or equal to the selected
   `replicationFactor` value when creating new databases.
 
