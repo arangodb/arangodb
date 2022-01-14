@@ -1,0 +1,206 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>API reference - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="./css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="./images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="./experimental/c-api/reference.html"><img src="./images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="./index.html"><img src="./images/up.png" alt="Up"></a>
+    <a accesskey="h" href="./index.html"><img src="./images/home.png" alt="Home"></a><a accesskey="n" href="./reference/macros.html"><img src="./images/next.png" alt="Next"></a></div><div id="content">
+
+  <div class="titlepage"><div><div><h1 style="clear: both">API reference</h1></div></div></div>
+<ol class="children children-li"><li>
+	<a href="./reference/macros.html" >Macros</a><ol><li>
+	<a href="./reference/macros/template.html" >Constrained template macros</a><li>
+	<a href="./reference/macros/version.html" >Version macros</a><li>
+	<a href="./reference/macros/co_try.html" ><code>BOOST_OUTCOME_CO_TRY(var, expr)</code></a>
+<p>Evaluate within a coroutine an expression which results in an understood type, assigning <code>T</code> to a decl called <code>var</code> if successful, immediately returning <code>try_operation_return_as(X)</code> from the calling function if unsuccessful.</p><li>
+	<a href="./reference/macros/co_tryv.html" ><code>BOOST_OUTCOME_CO_TRYV(expr)/BOOST_OUTCOME_CO_TRY(expr)</code></a>
+<p>Evaluate from within a coroutine an expression which results in an understood type, continuing execution if successful, immediately returning <code>try_operation_return_as(X)</code> from the calling function if unsuccessful.</p><li>
+	<a href="./reference/macros/co_tryv2.html" ><code>BOOST_OUTCOME_CO_TRYV2(spec, expr)</code></a>
+<p>Evaluate an expression which results in an understood type, continuing execution if successful, immediately returning <code>try_operation_return_as(X)</code> from the calling function if unsuccessful.</p><li>
+	<a href="./reference/macros/co_tryv2_failure_likely.html" ><code>BOOST_OUTCOME_CO_TRYV2_FAILURE_LIKELY(spec, expr)</code></a>
+<p>Evaluate an expression which results in an understood type, continuing execution if successful, immediately returning <code>try_operation_return_as(X)</code> from the calling function if unsuccessful.</p><li>
+	<a href="./reference/macros/co_tryv_failure_likely.html" ><code>BOOST_OUTCOME_CO_TRYV_FAILURE_LIKELY(expr)/BOOST_OUTCOME_CO_TRY_FAILURE_LIKELY(expr)</code></a>
+<p>Evaluate from within a coroutine an expression which results in an understood type, continuing execution if successful, immediately returning <code>try_operation_return_as(X)</code> from the calling function if unsuccessful.</p><li>
+	<a href="./reference/macros/co_tryx.html" ><code>BOOST_OUTCOME_CO_TRYX(expr)</code></a>
+<p>Evaluate from within a coroutine an expression which results in an understood type, emitting the <code>T</code> if successful, immediately returning <code>try_operation_return_as(X)</code> from the calling function if unsuccessful.</p><li>
+	<a href="./reference/macros/co_tryx_failure_likely.html" ><code>BOOST_OUTCOME_CO_TRYX_FAILURE_LIKELY(expr)</code></a>
+<p>Evaluate from within a coroutine an expression which results in an understood type, emitting the <code>T</code> if successful, immediately returning <code>try_operation_return_as(X)</code> from the calling function if unsuccessful.</p><li>
+	<a href="./reference/macros/co_try_failure_likely.html" ><code>BOOST_OUTCOME_CO_TRY_FAILURE_LIKELY(var, expr)</code></a>
+<p>Evaluate within a coroutine an expression which results in an understood type, assigning <code>T</code> to a decl called <code>var</code> if successful, immediately returning <code>try_operation_return_as(X)</code> from the calling function if unsuccessful.</p><li>
+	<a href="./reference/macros/disable_execinfo.html" ><code>BOOST_OUTCOME_DISABLE_EXECINFO</code></a>
+<p>If defined, disables the use of the <code>&lt;execinfo.h&gt;</code> header (or the win32 emulation).</p><li>
+	<a href="./reference/macros/enable_legacy_support_for.html" ><code>BOOST_OUTCOME_ENABLE_LEGACY_SUPPORT_FOR</code></a>
+<p>Enables backwards features and naming compatibility for earlier versions of Outcome.</p><li>
+	<a href="./reference/macros/nodiscard.html" ><code>BOOST_OUTCOME_NODISCARD</code></a>
+<p>How to tell the compiler than the return value of a function should not be discarded without examining it.</p><li>
+	<a href="./reference/macros/requires.html" ><code>BOOST_OUTCOME_REQUIRES(...)</code></a>
+<p>A C++ 20 <code>requires(...)</code>, if available.</p><li>
+	<a href="./reference/macros/symbol_visible.html" ><code>BOOST_OUTCOME_SYMBOL_VISIBLE</code></a>
+<p>How to mark throwable types as always having default ELF symbol visibility.</p><li>
+	<a href="./reference/macros/thread_local.html" ><code>BOOST_OUTCOME_THREAD_LOCAL</code></a>
+<p>How to mark variables as having thread local storage duration.</p><li>
+	<a href="./reference/macros/throw_exception.html" ><code>BOOST_OUTCOME_THROW_EXCEPTION(expr)</code></a>
+<p>How to throw a C++ exception, or equivalent thereof.</p><li>
+	<a href="./reference/macros/try.html" ><code>BOOST_OUTCOME_TRY(var, expr)</code></a>
+<p>Evaluate an expression which results in an understood type, assigning <code>T</code> to a decl called <code>var</code> if successful, immediately returning <code>try_operation_return_as(X)</code> from the calling function if unsuccessful.</p><li>
+	<a href="./reference/macros/tryv.html" ><code>BOOST_OUTCOME_TRYV(expr)/BOOST_OUTCOME_TRY(expr)</code></a>
+<p>Evaluate an expression which results in an understood type, continuing execution if successful, immediately returning <code>try_operation_return_as(X)</code> from the calling function if unsuccessful.</p><li>
+	<a href="./reference/macros/tryv2.html" ><code>BOOST_OUTCOME_TRYV2(spec, expr)</code></a>
+<p>Evaluate an expression which results in an understood type, continuing execution if successful, immediately returning <code>try_operation_return_as(X)</code> from the calling function if unsuccessful.</p><li>
+	<a href="./reference/macros/tryv2_failure_likely.html" ><code>BOOST_OUTCOME_TRYV2_FAILURE_LIKELY(spec, expr)</code></a>
+<p>Evaluate an expression which results in an understood type, continuing execution if successful, immediately returning <code>try_operation_return_as(X)</code> from the calling function if unsuccessful.</p><li>
+	<a href="./reference/macros/tryv_failure_likely.html" ><code>BOOST_OUTCOME_TRYV_FAILURE_LIKELY(expr)/BOOST_OUTCOME_TRY_FAILURE_LIKELY(expr)</code></a>
+<p>Evaluate an expression which results in an understood type, continuing execution if successful, immediately returning <code>try_operation_return_as(X)</code> from the calling function if unsuccessful.</p><li>
+	<a href="./reference/macros/tryx.html" ><code>BOOST_OUTCOME_TRYX(expr)</code></a>
+<p>Evaluate an expression which results in an understood type, emitting the <code>T</code> if successful, immediately returning <code>try_operation_return_as(X)</code> from the calling function if unsuccessful.</p><li>
+	<a href="./reference/macros/tryx_failure_likely.html" ><code>BOOST_OUTCOME_TRYX_FAILURE_LIKELY(expr)</code></a>
+<p>Evaluate an expression which results in an understood type, emitting the <code>T</code> if successful, immediately returning <code>try_operation_return_as(X)</code> from the calling function if unsuccessful.</p><li>
+	<a href="./reference/macros/try_failure_likely.html" ><code>BOOST_OUTCOME_TRY_FAILURE_LIKELY(var, expr)</code></a>
+<p>Evaluate an expression which results in an understood type, assigning <code>T</code> to a decl called <code>var</code> if successful, immediately returning <code>try_operation_return_as(X)</code> from the calling function if unsuccessful.</p><li>
+	<a href="./reference/macros/in_place_type.html" ><code>BOOST_OUTCOME_USE_STD_IN_PLACE_TYPE</code></a>
+<p>How to implement <code>in_place_type_t&lt;T&gt;</code> and <code>in_place_type&lt;T&gt;</code>.</p><li>
+	<a href="./reference/macros/is_nothrow_swappable.html" ><code>BOOST_OUTCOME_USE_STD_IS_NOTHROW_SWAPPABLE</code></a>
+<p>How to implement <code>is_nothrow_swappable&lt;T&gt;</code>.</p></li></ol><li>
+	<a href="./reference/concepts.html" >Concepts</a><ol><li>
+	<a href="./reference/concepts/basic_outcome.html" ><code>basic_outcome&lt;T&gt;</code></a>
+<p>A boolean concept matching types which are convertible to a <code>basic_outcome&lt;T, EC, EP, NoValuePolicy&gt;</code>.</p><li>
+	<a href="./reference/concepts/basic_result.html" ><code>basic_result&lt;T&gt;</code></a>
+<p>A boolean concept matching types which are convertible to a <code>basic_result&lt;T, E, NoValuePolicy&gt;</code>.</p><li>
+	<a href="./reference/concepts/value_or_error.html" ><code>value_or_error&lt;T&gt;</code></a>
+<p>A boolean concept matching types with either a value or an error.</p><li>
+	<a href="./reference/concepts/value_or_none.html" ><code>value_or_none&lt;T&gt;</code></a>
+<p>A boolean concept matching types with an optional value.</p></li></ol><li>
+	<a href="./reference/converters.html" >Converters</a><ol><li>
+	<a href="./reference/converters/value_or_error.html" ><code>value_or_error&lt;T, U&gt;</code></a>
+<p>A customisable converter of <code>value_or_error&lt;T, E&gt;</code> concept matching types.</p></li></ol><li>
+	<a href="./reference/traits.html" >Traits</a><ol><li>
+	<a href="./reference/traits/is_basic_outcome.html" ><code>is_basic_outcome&lt;T&gt;</code></a>
+<p>An integral constant type true for <code>basic_outcome&lt;T, EC, EP, NoValuePolicy&gt;</code> types.</p><li>
+	<a href="./reference/traits/is_basic_result.html" ><code>is_basic_result&lt;T&gt;</code></a>
+<p>An integral constant type true for <code>basic_result&lt;T, E, NoValuePolicy&gt;</code> types.</p><li>
+	<a href="./reference/traits/is_error_code_available.html" ><code>is_error_code_available&lt;T&gt;</code></a>
+<p>True if an error code can be constructed from a <code>T</code>.</p><li>
+	<a href="./reference/traits/is_error_type.html" ><code>is_error_type&lt;E&gt;</code></a>
+<p>A customisable integral constant type true for <code>E</code> types which are to receive error throwing no-value policies.</p><li>
+	<a href="./reference/traits/is_error_type_enum.html" ><code>is_error_type_enum&lt;E, Enum&gt;</code></a>
+<p>A customisable integral constant type true for <code>E</code> types constructible from <code>Enum</code> types which are to receive error throwing no-value policies.</p><li>
+	<a href="./reference/traits/is_exception_ptr_available.html" ><code>is_exception_ptr_available&lt;T&gt;</code></a>
+<p>True if an exception ptr can be constructed from a <code>T</code>.</p><li>
+	<a href="./reference/traits/is_failure_type.html" ><code>is_failure_type&lt;T&gt;</code></a>
+<p>An integral constant boolean variable true for <code>failure_type&lt;EC, E = void&gt;</code> types.</p><li>
+	<a href="./reference/traits/is_move_bitcopying.html" ><code>is_move_bitcopying&lt;T&gt;</code></a>
+<p>(&gt;= Outcome v2.2.0) A customisable integral constant type true for <code>T</code> types which are move bitcopying safe.</p><li>
+	<a href="./reference/traits/is_success_type.html" ><code>is_success_type&lt;T&gt;</code></a>
+<p>An integral constant boolean variable true for <code>success_type&lt;T&gt;</code> types.</p><li>
+	<a href="./reference/traits/type_can_be_used_in_basic_result.html" ><code>type_can_be_used_in_basic_result&lt;R&gt;</code></a>
+<p>A constexpr boolean true for types permissible in <code>basic_result&lt;T, E, NoValuePolicy&gt;</code>.</p></li></ol><li>
+	<a href="./reference/policies.html" >Policies</a><ol><li>
+	<a href="./reference/policies/base.html" ><code>base</code></a>
+<p>Base class of most policy classes defining the narrow observer policies.</p><li>
+	<a href="./reference/policies/all_narrow.html" ><code>all_narrow</code></a>
+<p>Policy class defining that hard undefined behaviour should occur on incorrect narrow and wide value, error or exception observation. Inherits publicly from <code>base</code>.</p><li>
+	<a href="./reference/policies/error_code_throw_as_system_error_outcome.html" ><code>error_code_throw_as_system_error&lt;T, EC, EP&gt;</code></a>
+<p>Policy class defining that <code>EP</code> ought to be rethrown if possible, then the ADL discovered free function <code>outcome_throw_as_system_error_with_payload()</code> should be called on incorrect wide value observation. Inherits publicly from <code>base</code>. Can only be used with <code>basic_outcome</code>.</p><li>
+	<a href="./reference/policies/error_code_throw_as_system_error_result.html" ><code>error_code_throw_as_system_error&lt;T, EC, void&gt;</code></a>
+<p>Policy class defining that the ADL discovered free function <code>outcome_throw_as_system_error_with_payload()</code> should be called on incorrect wide value observation. Inherits publicly from <code>base</code>. Can only be used with <code>basic_result</code>.</p><li>
+	<a href="./reference/policies/exception_ptr_rethrow_outcome.html" ><code>exception_ptr_rethrow&lt;T, EC, EP&gt;</code></a>
+<p>Policy class defining that the ADL discovered free function <code>rethrow_exception()</code> should be called on incorrect wide value observation. Inherits publicly from <code>base</code>. Can only be used with <code>basic_outcome</code>.</p><li>
+	<a href="./reference/policies/exception_ptr_rethrow_result.html" ><code>exception_ptr_rethrow&lt;T, EC, void&gt;</code></a>
+<p>Policy class defining that the ADL discovered free function <code>rethrow_exception()</code> should be called on incorrect wide value observation. Inherits publicly from <code>base</code>. Can only be used with <code>basic_result</code>.</p><li>
+	<a href="./reference/policies/fail_to_compile_observers.html" ><code>fail_to_compile_observers</code></a>
+<p>Policy class defining that a static assertion should occur upon compilation of the wide value, error or exception observation. Inherits publicly from <code>base</code>.</p><li>
+	<a href="./reference/policies/terminate.html" ><code>terminate</code></a>
+<p>Policy class defining that <code>std::terminate()</code> should be called on incorrect wide value, error or exception observation. Inherits publicly from <code>base</code>.</p><li>
+	<a href="./reference/policies/throw_bad_result_access.html" ><code>throw_bad_result_access&lt;EC&gt;</code></a>
+<p>Policy class defining that <code>bad_result_access_with&lt;EC&gt;</code> should be thrown on incorrect wide value observation. Inherits publicly from <code>base</code>.</p></li></ol><li>
+	<a href="./reference/types.html" >Types</a><ol><li>
+	<a href="./reference/types/basic_outcome.html" ><code>basic_outcome&lt;T, EC, EP, NoValuePolicy&gt;</code></a>
+<p>A type carrying one of (i) a successful <code>T</code> (ii) a disappointment <code>EC</code> (iii) a failure <code>EP</code> (iv) both a disappointment <code>EC</code> and a failure <code>EP</code>, with <code>NoValuePolicy</code> specifying what to do if one tries to read state which isn&rsquo;t there.</p><li>
+	<a href="./reference/types/basic_result.html" ><code>basic_result&lt;T, E, NoValuePolicy&gt;</code></a>
+<p>A sum type carrying either a successful <code>T</code>, or a disappointment <code>E</code>, with <code>NoValuePolicy</code> specifying what to do if one tries to read state which isn&rsquo;t there.</p><li>
+	<a href="./reference/types/bad_outcome_access.html" ><code>bad_outcome_access</code></a>
+<p>Exception type publicly inheriting from <code>std::logic_error</code> indicating an incorrect observation of value or error or exception occurred.</p><li>
+	<a href="./reference/types/bad_result_access_with.html" ><code>bad_result_access_with&lt;EC&gt;</code></a>
+<p>Exception type publicly inheriting from <code>bad_result_access</code> indicating an incorrect observation of value occurred, supplying the error value.</p><li>
+	<a href="./reference/types/bad_result_access.html" ><code>bad_result_access</code></a>
+<p>Exception type publicly inheriting from <code>std::logic_error</code> indicating an incorrect observation of value or error occurred.</p><li>
+	<a href="./reference/types/awaitables/eager.html" ><code>eager&lt;T&gt;/atomic_eager&lt;T&gt;</code></a>
+<p>An eagerly evaluated coroutine awaitable with Outcome customisation.</p><li>
+	<a href="./reference/types/failure_type.html" ><code>failure_type&lt;EC, EP = void&gt;</code></a>
+<p>Type sugar for constructing an unsuccessful result or outcome.</p><li>
+	<a href="./reference/types/in_place_type_t.html" ><code>in_place_type_t&lt;T&gt;</code></a>
+<p>Either <code>std::in_place_type_t&lt;T&gt;</code> or a local emulation, depending on the <code>BOOST_OUTCOME_USE_STD_IN_PLACE_TYPE</code> macro.</p><li>
+	<a href="./reference/types/awaitables/lazy.html" ><code>lazy&lt;T&gt;/atomic_lazy&lt;T&gt;</code></a>
+<p>A lazily evaluated coroutine awaitable with Outcome customisation.</p><li>
+	<a href="./reference/types/success_type.html" ><code>success_type&lt;T&gt;</code></a>
+<p>Type sugar for constructing a successful result or outcome.</p></li></ol><li>
+	<a href="./reference/aliases.html" >Aliases</a><ol><li>
+	<a href="./reference/aliases/boost_checked.html" ><code>boost_checked&lt;T, E = boost::system::error_code&gt;</code></a>
+<p>A type alias to a <code>basic_result</code> configured with <code>boost::system::error_code</code> and <code>policy::throw_bad_result_access&lt;EC&gt;</code>.</p><li>
+	<a href="./reference/aliases/boost_outcome.html" ><code>boost_outcome&lt;T, EC = boost::system::error_code, EP = boost::exception_ptr, NoValuePolicy = policy::default_policy&lt;T, EC, EP&gt;&gt;</code></a>
+<p>A type alias to a <code>basic_outcome</code> configured with <code>boost::system::error_code</code>, <code>boost::exception_ptr</code> and <code>policy::default_policy</code>.</p><li>
+	<a href="./reference/aliases/boost_result.html" ><code>boost_result&lt;T, E = boost::system::error_code, NoValuePolicy = policy::default_policy&lt;T, E, void&gt;&gt;</code></a>
+<p>A type alias to a <code>basic_result</code> configured with <code>boost::system::error_code</code> and <code>policy::default_policy</code>.</p><li>
+	<a href="./reference/aliases/boost_unchecked.html" ><code>boost_unchecked&lt;T, E = boost::system::error_code&gt;</code></a>
+<p>A type alias to a <code>basic_result</code> configured with <code>boost::system::error_code</code> and <code>policy::all_narrow</code>.</p><li>
+	<a href="./reference/aliases/checked.html" ><code>checked&lt;T, E = varies&gt;</code></a>
+<p>A type alias to a <code>std_checked&lt;T, E&gt;</code> (standalone edition) or <code>boost_checked&lt;T, E&gt;</code> (Boost edition).</p><li>
+	<a href="./reference/aliases/default_policy.html" ><code>default_policy&lt;T, EC, EP&gt;</code></a>
+<p>A type alias to a no-value policy selected based on traits matching of <code>T</code>, <code>EC</code> and <code>EP</code>.</p><li>
+	<a href="./reference/aliases/outcome.html" ><code>outcome&lt;T, EC = varies, EP = varies, NoValuePolicy = policy::default_policy&lt;T, EC, EP&gt;&gt;</code></a>
+<p>A type alias to a <code>std_outcome&lt;T, EC, EP, NoValuePolicy&gt;</code> (standalone edition) or <code>boost_outcome&lt;T, EC, EP, NoValuePolicy&gt;</code> (Boost edition).</p><li>
+	<a href="./reference/aliases/result.html" ><code>result&lt;T, E = varies, NoValuePolicy = policy::default_policy&lt;T, E, void&gt;&gt;</code></a>
+<p>A type alias to a <code>std_result&lt;T, E, NoValuePolicy&gt;</code> (standalone edition) or <code>boost_result&lt;T, E, NoValuePolicy&gt;</code> (Boost edition).</p><li>
+	<a href="./reference/aliases/std_checked.html" ><code>std_checked&lt;T, E = std::error_code&gt;</code></a>
+<p>A type alias to a <code>basic_result</code> configured with <code>std::error_code</code> and <code>policy::throw_bad_result_access&lt;EC&gt;</code>.</p><li>
+	<a href="./reference/aliases/std_outcome.html" ><code>std_outcome&lt;T, EC = std::error_code, EP = std::exception_ptr, NoValuePolicy = policy::default_policy&lt;T, EC, EP&gt;&gt;</code></a>
+<p>A type alias to a <code>basic_outcome</code> configured with <code>std::error_code</code>, <code>std::exception_ptr</code> and <code>policy::default_policy</code>.</p><li>
+	<a href="./reference/aliases/std_result.html" ><code>std_result&lt;T, E = std::error_code, NoValuePolicy = policy::default_policy&lt;T, E, void&gt;&gt;</code></a>
+<p>A type alias to a <code>basic_result</code> configured with <code>std::error_code</code> and <code>policy::default_policy</code>.</p><li>
+	<a href="./reference/aliases/std_unchecked.html" ><code>std_unchecked&lt;T, E = std::error_code&gt;</code></a>
+<p>A type alias to a <code>basic_result</code> configured with <code>std::error_code</code> and <code>policy::all_narrow</code>.</p><li>
+	<a href="./reference/aliases/unchecked.html" ><code>unchecked&lt;T, E = varies&gt;</code></a>
+<p>A type alias to a <code>std_unchecked&lt;T, E&gt;</code> (standalone edition) or <code>boost_unchecked&lt;T, E&gt;</code> (Boost edition).</p></li></ol><li>
+	<a href="./reference/functions.html" >Functions</a><ol><li>
+	<a href="./reference/functions/hooks.html" >Hooks</a>
+<p>Functions used to hook into the functionality of <code>basic_result</code> and <code>basic_outcome</code>.</p><li>
+	<a href="./reference/functions/iostream.html" >Iostream</a>
+<p>Functions used to print, serialise and deserialise <code>basic_result</code> and <code>basic_outcome</code>.</p><li>
+	<a href="./reference/functions/policy.html" >Policy</a>
+<p>Functions used to customise how the policy classes operate.</p><li>
+	<a href="./reference/functions/failure.html" ><code>auto failure(T &amp;&amp;, ...)</code></a>
+<p>Returns appropriate type sugar for constructing an unsuccessful result or outcome.</p><li>
+	<a href="./reference/functions/success.html" ><code>auto success(T &amp;&amp;, ...)</code></a>
+<p>Returns appropriate type sugar for constructing a successful result or outcome.</p><li>
+	<a href="./reference/functions/try_operation_has_value.html" ><code>bool try_operation_has_value(X)</code></a>
+<p>Default implementation of <code>try_operation_has_value(X)</code> ADL customisation point for <code>BOOST_OUTCOME_TRY</code>.</p><li>
+	<a href="./reference/functions/try_operation_extract_value.html" ><code>decltype(auto) try_operation_extract_value(X)</code></a>
+<p>Default implementation of <code>try_operation_extract_value(X)</code> ADL customisation point for <code>BOOST_OUTCOME_TRY</code>.</p><li>
+	<a href="./reference/functions/try_operation_return_as.html" ><code>decltype(auto) try_operation_return_as(X)</code></a>
+<p>Default implementation of <code>try_operation_return_as(X)</code> ADL customisation point for <code>BOOST_OUTCOME_TRY</code>.</p><li>
+	<a href="./reference/functions/error_from_exception.html" ><code>std::error_code error_from_exception(std::exception_ptr &amp;&amp;ep = std::current_exception(), std::error_code not_matched = std::make_error_code(std::errc::resource_unavailable_try_again)) noexcept</code></a>
+<p>Returns an error code matching a thrown standard library exception.</p><li>
+	<a href="./reference/functions/strong_swap.html" ><code>void strong_swap(bool &amp;all_good, T &amp;a, T &amp;b)</code></a>
+<p>Tries to perform a strong guarantee swap.</p><li>
+	<a href="./reference/functions/try_throw_std_exception_from_error.html" ><code>void try_throw_std_exception_from_error(std::error_code ec, const std::string &amp;msg = std::string{})</code></a>
+<p>Try to throw a standard library exception type matching an error code.</p></li></ol></li></ol>
+
+
+
+
+
+
+
+
+        </div><p><small>Last revised: December 10, 2018 at 20:32:00 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="./experimental/c-api/reference.html"><img src="./images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="./index.html"><img src="./images/up.png" alt="Up"></a>
+    <a accesskey="h" href="./index.html"><img src="./images/home.png" alt="Home"></a><a accesskey="n" href="./reference/macros.html"><img src="./images/next.png" alt="Next"></a></div></body>
+</html>

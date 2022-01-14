@@ -1,0 +1,456 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Base from Member</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Utility">
+<link rel="up" href="../utilities.html" title="Utilities">
+<link rel="prev" href="../utilities.html" title="Utilities">
+<link rel="next" href="binary_integer_literals.html" title="Binary Integer Literals">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../utilities.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../utilities.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="binary_integer_literals.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="utility.utilities.base_from_member"></a><a class="link" href="base_from_member.html" title="Base from Member">Base from Member</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="base_from_member.html#utility.utilities.base_from_member.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="base_from_member.html#utility.utilities.base_from_member.synopsis">Synopsis</a></span></dt>
+<dt><span class="section"><a href="base_from_member.html#utility.utilities.base_from_member.basic_usage">Basic
+        Usage</a></span></dt>
+<dt><span class="section"><a href="base_from_member.html#utility.utilities.base_from_member.multiple_sub_objects">Multiple
+        Sub-Objects</a></span></dt>
+<dt><span class="section"><a href="base_from_member.html#base_from_member.reference">Reference</a></span></dt>
+<dt><span class="section"><a href="base_from_member.html#utility.utilities.base_from_member.acknowledgments">Acknowledgments</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="utility.utilities.base_from_member.introduction"></a><a class="link" href="base_from_member.html#utility.utilities.base_from_member.introduction" title="Introduction">Introduction</a>
+</h4></div></div></div>
+<p>
+          The class templates <a class="link" href="../../"><code class="computeroutput"><span class="identifier">base_from_member</span></code></a> support the base-from-member
+          idiom. When developing a class, sometimes a base class needs to be initialized
+          with a member of the current class. As a naïve example:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">streambuf</span><span class="special">&gt;</span>  <span class="comment">/* for std::streambuf */</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">ostream</span><span class="special">&gt;</span>    <span class="comment">/* for std::ostream */</span>
+
+<span class="keyword">class</span> <span class="identifier">fdoutbuf</span>
+  <span class="special">:</span> <span class="keyword">public</span> <a href="https://en.cppreference.com/w/cpp/header/streambuf" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">streambuf</span></code></a>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">explicit</span> <span class="identifier">fdoutbuf</span><span class="special">(</span> <span class="keyword">int</span> <span class="identifier">fd</span> <span class="special">);</span>
+    <span class="comment">//...</span>
+<span class="special">};</span>
+
+<span class="keyword">class</span> <span class="identifier">fdostream</span>
+  <span class="special">:</span> <span class="keyword">public</span> <a href="https://en.cppreference.com/w/cpp/io/basic_ostream" target="_top"><code class="computeroutput"><a href="https://en.cppreference.com/w/cpp/io/basic_ostream" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span></code></a></code></a>
+<span class="special">{</span>
+<span class="keyword">protected</span><span class="special">:</span>
+    <span class="identifier">fdoutbuf</span> <span class="identifier">buf</span><span class="special">;</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">explicit</span> <span class="identifier">fdostream</span><span class="special">(</span> <span class="keyword">int</span> <span class="identifier">fd</span> <span class="special">)</span>
+      <span class="special">:</span> <span class="identifier">buf</span><span class="special">(</span> <span class="identifier">fd</span> <span class="special">),</span> <a href="https://en.cppreference.com/w/cpp/io/basic_ostream" target="_top"><code class="computeroutput"><a href="https://en.cppreference.com/w/cpp/io/basic_ostream" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span></code></a></code></a><span class="special">(</span> <span class="special">&amp;</span><span class="identifier">buf</span> <span class="special">)</span> <span class="special">{}</span>
+    <span class="comment">//...</span>
+<span class="special">};</span>
+</pre>
+<p>
+          This is undefined because C++'s initialization order mandates that the
+          base class is initialized before the member it uses. <a href="http://www.moocat.org" target="_top">R.
+          Samuel Klatchko</a> developed a way around this by using the initialization
+          order in his favor. Base classes are initialized in order of declaration,
+          so moving the desired member to another base class, that is initialized
+          before the desired base class, can ensure proper initialization.
+        </p>
+<p>
+          A custom base class can be made for this idiom:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">streambuf</span><span class="special">&gt;</span>  <span class="comment">/* for std::streambuf */</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">ostream</span><span class="special">&gt;</span>    <span class="comment">/* for std::ostream */</span>
+
+<span class="keyword">class</span> <span class="identifier">fdoutbuf</span>
+  <span class="special">:</span> <span class="keyword">public</span> <a href="https://en.cppreference.com/w/cpp/header/streambuf" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">streambuf</span></code></a>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">explicit</span> <span class="identifier">fdoutbuf</span><span class="special">(</span> <span class="keyword">int</span> <span class="identifier">fd</span> <span class="special">);</span>
+    <span class="comment">//...</span>
+<span class="special">};</span>
+
+<span class="keyword">struct</span> <span class="identifier">fdostream_pbase</span>
+<span class="special">{</span>
+    <span class="identifier">fdoutbuf</span> <span class="identifier">sbuffer</span><span class="special">;</span>
+
+    <span class="keyword">explicit</span> <span class="identifier">fdostream_pbase</span><span class="special">(</span> <span class="keyword">int</span> <span class="identifier">fd</span> <span class="special">)</span>
+      <span class="special">:</span> <span class="identifier">sbuffer</span><span class="special">(</span> <span class="identifier">fd</span> <span class="special">)</span> <span class="special">{}</span>
+<span class="special">};</span>
+
+<span class="keyword">class</span> <span class="identifier">fdostream</span>
+  <span class="special">:</span> <span class="keyword">private</span> <span class="identifier">fdostream_pbase</span>
+  <span class="special">,</span> <span class="keyword">public</span> <a href="https://en.cppreference.com/w/cpp/io/basic_ostream" target="_top"><code class="computeroutput"><a href="https://en.cppreference.com/w/cpp/io/basic_ostream" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span></code></a></code></a>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="identifier">fdostream_pbase</span>  <span class="identifier">pbase_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <a href="https://en.cppreference.com/w/cpp/io/basic_ostream" target="_top"><code class="computeroutput"><a href="https://en.cppreference.com/w/cpp/io/basic_ostream" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span></code></a></code></a>     <span class="identifier">base_type</span><span class="special">;</span>
+
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">explicit</span> <span class="identifier">fdostream</span><span class="special">(</span> <span class="keyword">int</span> <span class="identifier">fd</span> <span class="special">)</span>
+      <span class="special">:</span> <span class="identifier">pbase_type</span><span class="special">(</span> <span class="identifier">fd</span> <span class="special">),</span> <span class="identifier">base_type</span><span class="special">(</span> <span class="special">&amp;</span><span class="identifier">sbuffer</span> <span class="special">)</span> <span class="special">{}</span>
+    <span class="comment">//...</span>
+<span class="special">};</span>
+</pre>
+<p>
+          Other projects can use similar custom base classes. The technique is basic
+          enough to make a template, with a sample template class in this library.
+          The main template parameter is the type of the enclosed member. The template
+          class has several (explicit) constructor member templates, which implicitly
+          type the constructor arguments and pass them to the member. The template
+          class uses implicit copy construction and assignment, cancelling them if
+          the enclosed member is non-copyable.
+        </p>
+<p>
+          Manually coding a base class may be better if the construction and/or copying
+          needs are too complex for the supplied template class, or if the compiler
+          is not advanced enough to use it.
+        </p>
+<p>
+          Since base classes are unnamed, a class cannot have multiple (direct) base
+          classes of the same type. The supplied template class has an extra template
+          parameter, an integer, that exists solely to provide type differentiation.
+          This parameter has a default value so a single use of a particular member
+          type does not need to concern itself with the integer.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="utility.utilities.base_from_member.synopsis"></a><a class="link" href="base_from_member.html#utility.utilities.base_from_member.synopsis" title="Synopsis">Synopsis</a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">type_traits</span><span class="special">&gt;</span>  <span class="comment">/* exposition only */</span>
+
+<span class="preprocessor">#ifndef</span> <span class="identifier">BOOST_BASE_FROM_MEMBER_MAX_ARITY</span>
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_BASE_FROM_MEMBER_MAX_ARITY</span>  <span class="number">10</span>
+<span class="preprocessor">#endif</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">MemberType</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">UniqueID</span> <span class="special">=</span> <span class="number">0</span> <span class="special">&gt;</span>
+<span class="keyword">class</span> <a class="link" href="../../"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_from_member</span></code></a>
+<span class="special">{</span>
+<span class="keyword">protected</span><span class="special">:</span>
+    <span class="identifier">MemberType</span>  <span class="identifier">member</span><span class="special">;</span>
+
+<span class="preprocessor">#if</span> <span class="emphasis"><em>C++11 is in use</em></span>
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="special">...</span><span class="identifier">T</span> <span class="special">&gt;</span>
+    <span class="keyword">explicit</span> <span class="keyword">constexpr</span> <a class="link" href="../../"><code class="computeroutput"><span class="identifier">base_from_member</span></code></a><span class="special">(</span> <span class="identifier">T</span><span class="special">&amp;&amp;</span> <span class="special">...</span><span class="identifier">x</span> <span class="special">)</span>
+     <span class="keyword">noexcept</span><span class="special">(</span> <a href="https://en.cppreference.com/w/cpp/types/is_constructible" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">is_nothrow_constructible</span></code></a><span class="special">&lt;</span><span class="identifier">MemberType</span><span class="special">,</span> <span class="identifier">T</span><span class="special">...&gt;::</span><span class="identifier">value</span> <span class="special">);</span>
+<span class="preprocessor">#else</span>
+    <a class="link" href="../../"><code class="computeroutput"><span class="identifier">base_from_member</span></code></a><span class="special">();</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">T1</span> <span class="special">&gt;</span>
+    <span class="keyword">explicit</span>  <a class="link" href="../../"><code class="computeroutput"><span class="identifier">base_from_member</span></code></a><span class="special">(</span> <span class="identifier">T1</span> <span class="identifier">x1</span> <span class="special">);</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">T1</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">T2</span> <span class="special">&gt;</span>
+    <a class="link" href="../../"><code class="computeroutput"><span class="identifier">base_from_member</span></code></a><span class="special">(</span> <span class="identifier">T1</span> <span class="identifier">x1</span><span class="special">,</span> <span class="identifier">T2</span> <span class="identifier">x2</span> <span class="special">);</span>
+
+    <span class="comment">//...</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">T1</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">T2</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">T3</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">T4</span><span class="special">,</span>
+     <span class="keyword">typename</span> <span class="identifier">T5</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">T6</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">T7</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">T8</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">T9</span><span class="special">,</span>
+     <span class="keyword">typename</span> <span class="identifier">T10</span> <span class="special">&gt;</span>
+    <a class="link" href="../../"><code class="computeroutput"><span class="identifier">base_from_member</span></code></a><span class="special">(</span> <span class="identifier">T1</span> <span class="identifier">x1</span><span class="special">,</span> <span class="identifier">T2</span> <span class="identifier">x2</span><span class="special">,</span> <span class="identifier">T3</span> <span class="identifier">x3</span><span class="special">,</span> <span class="identifier">T4</span> <span class="identifier">x4</span><span class="special">,</span> <span class="identifier">T5</span> <span class="identifier">x5</span><span class="special">,</span> <span class="identifier">T6</span> <span class="identifier">x6</span><span class="special">,</span> <span class="identifier">T7</span> <span class="identifier">x7</span><span class="special">,</span>
+     <span class="identifier">T8</span> <span class="identifier">x8</span><span class="special">,</span> <span class="identifier">T9</span> <span class="identifier">x9</span><span class="special">,</span> <span class="identifier">T10</span> <span class="identifier">x10</span> <span class="special">);</span>
+<span class="preprocessor">#endif</span>
+<span class="special">};</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">MemberType</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">UniqueID</span> <span class="special">&gt;</span>
+<span class="keyword">class</span> <a class="link" href="../../"><code class="computeroutput"><span class="identifier">base_from_member</span></code></a><span class="special">&lt;</span><span class="identifier">MemberType</span><span class="special">&amp;,</span> <span class="identifier">UniqueID</span><span class="special">&gt;</span>
+<span class="special">{</span>
+<span class="keyword">protected</span><span class="special">:</span>
+    <span class="identifier">MemberType</span><span class="special">&amp;</span> <span class="identifier">member</span><span class="special">;</span>
+
+    <span class="keyword">explicit</span> <span class="keyword">constexpr</span> <a class="link" href="../../"><code class="computeroutput"><span class="identifier">base_from_member</span></code></a><span class="special">(</span> <span class="identifier">MemberType</span><span class="special">&amp;</span> <span class="identifier">x</span> <span class="special">)</span>
+        <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<p>
+          The class template has a first template parameter <code class="computeroutput"><span class="identifier">MemberType</span></code>
+          representing the type of the based-member. It has a last template parameter
+          <code class="computeroutput"><span class="identifier">UniqueID</span></code>, that is an <code class="computeroutput"><span class="keyword">int</span></code>, to differentiate between multiple base
+          classes that use the same based-member type. The last template parameter
+          has a default value of zero if it is omitted. The class template has a
+          protected data member called <code class="computeroutput"><span class="identifier">member</span></code>
+          that the derived class can use for later base classes or itself.
+        </p>
+<p>
+          If the appropriate features of C++11 are present, there will be a single
+          constructor template. It implements <span class="emphasis"><em>perfect forwarding</em></span>
+          to the best constructor call of <code class="computeroutput"><span class="identifier">member</span></code>
+          if any. The constructor template is marked both <code class="computeroutput"><span class="keyword">constexpr</span></code>
+          and <code class="computeroutput"><span class="keyword">explicit</span></code>. The former will
+          be ignored if the corresponding inner constructor call of <code class="computeroutput"><span class="identifier">member</span></code> does not have the marker. The
+          latter binds the other way; always taking effect, even when the inner constructor
+          call does not have the marker. The constructor template propagates the
+          <code class="computeroutput"><span class="keyword">noexcept</span></code> status of the inner
+          constructor call. The constructor template has a trailing parameter with
+          a default value that disables the template when its signature is too close
+          to the signatures of the automatically-defined non-template copy- and/or
+          move-constructors of <a class="link" href="../../"><code class="computeroutput"><span class="identifier">base_from_member</span></code></a>.
+        </p>
+<p>
+          On earlier-standard compilers, there is a default constructor and several
+          constructor member templates. These constructor templates can take as many
+          arguments (currently up to ten) as possible and pass them to a constructor
+          of the data member.
+        </p>
+<p>
+          A specialization for member references offers a single constructor taking
+          a <code class="computeroutput"><span class="identifier">MemberType</span><span class="special">&amp;</span></code>,
+          which is the only way to initialize a reference.
+        </p>
+<p>
+          Since C++ does not allow any way to explicitly state the template parameters
+          of a templated constructor, make sure that the arguments are already close
+          as possible to the actual type used in the data member's desired constructor.
+          Explicit conversions may be necessary.
+        </p>
+<p>
+          The <code class="computeroutput"><span class="identifier">BOOST_BASE_FROM_MEMBER_MAX_ARITY</span></code>
+          macro constant specifies the maximum argument length for the constructor
+          templates. The constant may be overridden if more (or less) argument configurations
+          are needed. The constant may be read for code that is expandable like the
+          class template and needs to maintain the same maximum size. (Example code
+          would be a class that uses this class template as a base class for a member
+          with a flexible set of constructors.) This constant is ignored when C++11
+          features are present.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="utility.utilities.base_from_member.basic_usage"></a><a class="link" href="base_from_member.html#utility.utilities.base_from_member.basic_usage" title="Basic Usage">Basic
+        Usage</a>
+</h4></div></div></div>
+<p>
+          With the starting example, the <code class="computeroutput"><span class="identifier">fdoutbuf</span></code>
+          sub-object needs to be encapsulated in a base class that is inherited before
+          <code class="computeroutput"><a href="https://en.cppreference.com/w/cpp/io/basic_ostream" target="_top"><code class="computeroutput"><a href="https://en.cppreference.com/w/cpp/io/basic_ostream" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span></code></a></code></a></code>.
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">utility</span><span class="special">/</span><span class="identifier">base_from_member</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">streambuf</span><span class="special">&gt;</span>  <span class="comment">// for std::streambuf</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">ostream</span><span class="special">&gt;</span>    <span class="comment">// for __std_ostream__</span>
+
+<span class="keyword">class</span> <span class="identifier">fdoutbuf</span>
+  <span class="special">:</span> <span class="keyword">public</span> <a href="https://en.cppreference.com/w/cpp/header/streambuf" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">streambuf</span></code></a>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">explicit</span> <span class="identifier">fdoutbuf</span><span class="special">(</span> <span class="keyword">int</span> <span class="identifier">fd</span> <span class="special">);</span>
+    <span class="comment">//...</span>
+<span class="special">};</span>
+
+<span class="keyword">class</span> <span class="identifier">fdostream</span>
+  <span class="special">:</span> <span class="keyword">private</span> <a class="link" href="../../"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_from_member</span></code></a><span class="special">&lt;</span><span class="identifier">fdoutbuf</span><span class="special">&gt;</span>
+  <span class="special">,</span> <span class="keyword">public</span> <a href="https://en.cppreference.com/w/cpp/io/basic_ostream" target="_top"><code class="computeroutput"><a href="https://en.cppreference.com/w/cpp/io/basic_ostream" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span></code></a></code></a>
+<span class="special">{</span>
+    <span class="comment">// Helper typedef's</span>
+    <span class="keyword">typedef</span> <a class="link" href="../../"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_from_member</span></code></a><span class="special">&lt;</span><span class="identifier">fdoutbuf</span><span class="special">&gt;</span>  <span class="identifier">pbase_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <a href="https://en.cppreference.com/w/cpp/io/basic_ostream" target="_top"><code class="computeroutput"><a href="https://en.cppreference.com/w/cpp/io/basic_ostream" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span></code></a></code></a>                        <span class="identifier">base_type</span><span class="special">;</span>
+
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">explicit</span> <span class="identifier">fdostream</span><span class="special">(</span> <span class="keyword">int</span> <span class="identifier">fd</span> <span class="special">)</span>
+      <span class="special">:</span> <span class="identifier">pbase_type</span><span class="special">(</span> <span class="identifier">fd</span> <span class="special">),</span> <span class="identifier">base_type</span><span class="special">(</span> <span class="special">&amp;</span><span class="identifier">member</span> <span class="special">){}</span>
+    <span class="comment">//...</span>
+<span class="special">};</span>
+</pre>
+<p>
+          The base-from-member idiom is an implementation detail, so it should not
+          be visible to the clients (or any derived classes) of <code class="computeroutput"><span class="identifier">fdostream</span></code>.
+          Due to the initialization order, the <code class="computeroutput"><span class="identifier">fdoutbuf</span></code>
+          sub-object will get initialized before the <code class="computeroutput"><a href="https://en.cppreference.com/w/cpp/io/basic_ostream" target="_top"><code class="computeroutput"><a href="https://en.cppreference.com/w/cpp/io/basic_ostream" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span></code></a></code></a></code>
+          sub-object does, making the former sub-object safe to use in the latter
+          sub-object's construction. Since the <code class="computeroutput"><span class="identifier">fdoutbuf</span></code>
+          sub-object of the final type is the only sub-object with the name <code class="computeroutput"><span class="identifier">member</span></code> that name can be used unqualified
+          within the final class.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="utility.utilities.base_from_member.multiple_sub_objects"></a><a class="link" href="base_from_member.html#utility.utilities.base_from_member.multiple_sub_objects" title="Multiple Sub-Objects">Multiple
+        Sub-Objects</a>
+</h4></div></div></div>
+<p>
+          The base-from-member class templates should commonly involve only one base-from-member
+          sub-object, usually for attaching a stream-buffer to an I/O stream. The
+          next example demonstrates how to use multiple base-from-member sub-objects
+          and the resulting qualification issues.
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">utility</span><span class="special">/</span><span class="identifier">base_from_member</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">cstddef</span><span class="special">&gt;</span>  <span class="comment">/* for NULL */</span>
+
+<span class="keyword">struct</span> <span class="identifier">an_int</span>
+<span class="special">{</span>
+    <span class="keyword">int</span>  <span class="identifier">y</span><span class="special">;</span>
+
+    <span class="identifier">an_int</span><span class="special">(</span> <span class="keyword">float</span> <span class="identifier">yf</span> <span class="special">);</span>
+<span class="special">};</span>
+
+<span class="keyword">class</span> <span class="identifier">switcher</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">switcher</span><span class="special">();</span>
+    <span class="identifier">switcher</span><span class="special">(</span> <span class="keyword">double</span><span class="special">,</span> <span class="keyword">int</span> <span class="special">*</span> <span class="special">);</span>
+    <span class="comment">//...</span>
+<span class="special">};</span>
+
+<span class="keyword">class</span> <span class="identifier">flow_regulator</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">flow_regulator</span><span class="special">(</span> <span class="identifier">switcher</span> <span class="special">&amp;,</span> <span class="identifier">switcher</span> <span class="special">&amp;</span> <span class="special">);</span>
+    <span class="comment">//...</span>
+<span class="special">};</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span> <span class="keyword">unsigned</span> <span class="identifier">Size</span> <span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">fan</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">explicit</span> <span class="identifier">fan</span><span class="special">(</span> <span class="identifier">switcher</span> <span class="special">);</span>
+    <span class="comment">//...</span>
+<span class="special">};</span>
+
+<span class="keyword">class</span> <span class="identifier">system</span>
+  <span class="special">:</span> <span class="keyword">private</span> <a class="link" href="../../"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_from_member</span></code></a><span class="special">&lt;</span><span class="identifier">an_int</span><span class="special">&gt;</span>
+  <span class="special">,</span> <span class="keyword">private</span> <a class="link" href="../../"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_from_member</span></code></a><span class="special">&lt;</span><span class="identifier">switcher</span><span class="special">&gt;</span>
+  <span class="special">,</span> <span class="keyword">private</span> <a class="link" href="../../"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_from_member</span></code></a><span class="special">&lt;</span><span class="identifier">switcher</span><span class="special">,</span> <span class="number">1</span><span class="special">&gt;</span>
+  <span class="special">,</span> <span class="keyword">private</span> <a class="link" href="../../"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_from_member</span></code></a><span class="special">&lt;</span><span class="identifier">switcher</span><span class="special">,</span> <span class="number">2</span><span class="special">&gt;</span>
+  <span class="special">,</span> <span class="keyword">protected</span> <span class="identifier">flow_regulator</span>
+  <span class="special">,</span> <span class="keyword">public</span> <span class="identifier">fan</span><span class="special">&lt;</span><span class="number">6</span><span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="comment">// Helper typedef's</span>
+    <span class="keyword">typedef</span> <a class="link" href="../../"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_from_member</span></code></a><span class="special">&lt;</span><span class="identifier">an_int</span><span class="special">&gt;</span>       <span class="identifier">pbase0_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <a class="link" href="../../"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_from_member</span></code></a><span class="special">&lt;</span><span class="identifier">switcher</span><span class="special">&gt;</span>     <span class="identifier">pbase1_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <a class="link" href="../../"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_from_member</span></code></a><span class="special">&lt;</span><span class="identifier">switcher</span><span class="special">,</span> <span class="number">1</span><span class="special">&gt;</span>  <span class="identifier">pbase2_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <a class="link" href="../../"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_from_member</span></code></a><span class="special">&lt;</span><span class="identifier">switcher</span><span class="special">,</span> <span class="number">2</span><span class="special">&gt;</span>  <span class="identifier">pbase3_type</span><span class="special">;</span>
+
+    <span class="keyword">typedef</span> <span class="identifier">flow_regulator</span>  <span class="identifier">base1_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">fan</span><span class="special">&lt;</span><span class="number">6</span><span class="special">&gt;</span>          <span class="identifier">base2_type</span><span class="special">;</span>
+
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">system</span><span class="special">(</span> <span class="keyword">double</span> <span class="identifier">x</span> <span class="special">);</span>
+    <span class="comment">//...</span>
+<span class="special">};</span>
+
+<span class="identifier">system</span><span class="special">::</span><span class="identifier">system</span><span class="special">(</span> <span class="keyword">double</span> <span class="identifier">x</span> <span class="special">)</span>
+  <span class="special">:</span> <span class="identifier">pbase0_type</span><span class="special">(</span> <span class="number">0.2</span> <span class="special">)</span>
+  <span class="special">,</span> <span class="identifier">pbase1_type</span><span class="special">()</span>
+  <span class="special">,</span> <span class="identifier">pbase2_type</span><span class="special">(</span> <span class="special">-</span><span class="number">16</span><span class="special">,</span> <span class="special">&amp;</span><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">pbase0_type</span><span class="special">::</span><span class="identifier">member</span><span class="special">.</span><span class="identifier">y</span> <span class="special">)</span>
+  <span class="special">,</span> <span class="identifier">pbase3_type</span><span class="special">(</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">static_cast</span><span class="special">&lt;</span><span class="keyword">int</span> <span class="special">*&gt;(</span><span class="identifier">NULL</span><span class="special">)</span> <span class="special">)</span>
+  <span class="special">,</span> <span class="identifier">base1_type</span><span class="special">(</span> <span class="identifier">pbase3_type</span><span class="special">::</span><span class="identifier">member</span><span class="special">,</span> <span class="identifier">pbase1_type</span><span class="special">::</span><span class="identifier">member</span> <span class="special">)</span>
+  <span class="special">,</span> <span class="identifier">base2_type</span><span class="special">(</span> <span class="identifier">pbase2_type</span><span class="special">::</span><span class="identifier">member</span> <span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">//...</span>
+<span class="special">}</span>
+</pre>
+<p>
+          The final class has multiple sub-objects with the name <code class="computeroutput"><span class="identifier">member</span></code>,
+          so any use of that name needs qualification by a name of the appropriate
+          base type. Using <code class="computeroutput"><span class="keyword">typedef</span></code>s
+          ease mentioning the base types.
+        </p>
+<p>
+          However, the fix introduces a new problem when a pointer is needed. Using
+          the address operator with a sub-object qualified with its class's name
+          results in a pointer-to-member (here, having a type of <code class="computeroutput"><span class="identifier">an_int</span>
+          <a class="link" href="../../"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_from_member</span></code></a><span class="special">&lt;</span><span class="identifier">an_int</span><span class="special">,</span> <span class="number">0</span><span class="special">&gt;::</span>
+          <span class="special">*</span></code>) instead of a pointer to the member
+          (having a type of <code class="computeroutput"><span class="identifier">an_int</span> <span class="special">*</span></code>). The new problem is fixed by qualifying
+          the sub-object with <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span></code>
+          and is needed just for pointers, and not for references or values.
+        </p>
+<p>
+          There are some argument conversions in the initialization. The constructor
+          argument for <code class="computeroutput"><span class="identifier">pbase0_type</span></code>
+          is converted from <code class="computeroutput"><span class="keyword">double</span></code> to
+          <code class="computeroutput"><span class="keyword">float</span></code>. The first constructor
+          argument for <code class="computeroutput"><span class="identifier">pbase2_type</span></code>
+          is converted from <code class="computeroutput"><span class="keyword">int</span></code> to
+          <code class="computeroutput"><span class="keyword">double</span></code>.
+        </p>
+<p>
+          The second constructor argument for <code class="computeroutput"><span class="identifier">pbase3_type</span></code>
+          is a special case of necessary conversion; all forms of the null-pointer
+          literal in C++ (except <code class="computeroutput"><span class="keyword">nullptr</span></code>
+          from C++11) also look like compile-time integral expressions, so C++ always
+          interprets such code as an integer when it has overloads that can take
+          either an integer or a pointer.
+        </p>
+<p>
+          The last conversion is necessary for the compiler to call a constructor
+          form with the exact pointer type used in <code class="computeroutput"><span class="identifier">switcher</span></code>'s
+          constructor. (If C++11's <a href="https://en.cppreference.com/w/cpp/language/nullptr" target="_top"><code class="computeroutput"><span class="keyword">nullptr</span></code></a> is used, it still needs
+          a conversion if multiple pointer types can be accepted in a constructor
+          call but <code class="computeroutput"><a href="https://en.cppreference.com/w/cpp/types/nullptr_t" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">nullptr_t</span></code></a></code> cannot.)
+        </p>
+</div>
+<div class="section"><div class="titlepage"><div><div><h4 class="title">
+<a name="base_from_member.reference"></a>Reference</h4></div></div></div></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="utility.utilities.base_from_member.acknowledgments"></a><a class="link" href="base_from_member.html#utility.utilities.base_from_member.acknowledgments" title="Acknowledgments">Acknowledgments</a>
+</h4></div></div></div>
+<p>
+          Author: Walker, Daryle
+        </p>
+<p>
+          Copyright 2001, 2003, 2004, 2012 Daryle Walker
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <a href="http://www.boost.org/people/ed_brey.htm" target="_top">Ed Brey</a>
+              suggested some interface changes.
+            </li>
+<li class="listitem">
+              <a href="http://www.moocat.org" target="_top">R. Samuel Klatchko</a> (<a href="mailto:rsk%40moocat.org" target="_top">rsk@moocat.org</a>, <a href="mailto:rsk%40brightmail.com" target="_top">rsk@brightmail.com</a>)
+              invented the idiom of how to use a class member for initializing a
+              base class.
+            </li>
+<li class="listitem">
+              <a href="http://www.boost.org/people/dietmar_kuehl.htm" target="_top">Dietmar
+              Kuehl</a> popularized the base-from-member idiom in his <a href="http://www.informatik.uni-konstanz.de/~kuehl/c++/iostream/" target="_top">IOStream
+              example classes</a>.
+            </li>
+<li class="listitem">
+              Jonathan Turkanis supplied an implementation of generating the constructor
+              templates that can be controlled and automated with macros. The implementation
+              uses the <a href="../../../../../../doc/html/preprocessor/index.html" target="_top">Preprocessor
+              library</a>.
+            </li>
+<li class="listitem">
+              <a href="http://www.boost.org/people/daryle_walker.html%22%3eDaryle" target="_top">Walker</a>
+              started the library. Contributed the test file <a href="../../../../../test/base_from_member_test.cpp" target="_top">base_from_member_test.cpp</a>.
+            </li>
+</ul></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001 Beman Dawes<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../utilities.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../utilities.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="binary_integer_literals.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

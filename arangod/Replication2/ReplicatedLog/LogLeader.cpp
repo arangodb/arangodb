@@ -177,9 +177,9 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
     if (it.has_value()) {
       delayedFuture(it->_executionDelay)
           .thenFinal([it = std::move(it), logMetrics](auto&&) mutable {
-            auto& follower = it->_follower;
+            auto follower = it->_follower.lock();
             auto logLeader = it->_parentLog.lock();
-            if (logLeader == nullptr) {
+            if (logLeader == nullptr || follower == nullptr) {
               LOG_TOPIC("de312", TRACE, Logger::REPLICATION2)
                   << "parent log already gone, not sending any more "
                      "AppendEntryRequests";
@@ -224,7 +224,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
             // we are still in the same term.
             follower->_impl->appendEntries(std::move(request))
                 .thenFinal([weakParentLog = it->_parentLog,
-                            follower = it->_follower, lastIndex = lastIndex,
+                            followerWeak = it->_follower, lastIndex = lastIndex,
                             currentCommitIndex = request.leaderCommit,
                             currentLCI = request.largestCommonIndex,
                             currentTerm = logLeader->_currentTerm,
@@ -236,7 +236,9 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                   // exception safe
                   auto const endTime = std::chrono::steady_clock::now();
 
-                  if (auto self = weakParentLog.lock()) {
+                  auto self = weakParentLog.lock();
+                  auto follower = followerWeak.lock();
+                  if (self != nullptr && follower != nullptr) {
                     using namespace std::chrono_literals;
                     auto const duration = endTime - startTime;
                     self->_logMetrics->replicatedLogAppendEntriesRttUs->count(
@@ -250,8 +252,6 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                                            ResolvedPromiseSet> {
                           auto guarded = self->acquireMutex();
                           if (!guarded->_didResign) {
-                            // Is throwing the right thing to do here? - No, we
-                            // are in a finally
                             return guarded->handleAppendEntriesResponse(
                                 *follower, lastIndex, currentCommitIndex,
                                 currentLCI, currentTerm, std::move(res),
@@ -270,8 +270,14 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                     executeAppendEntriesRequests(std::move(preparedRequests),
                                                  logMetrics);
                   } else {
-                    LOG_CTX("de300", DEBUG, follower->logContext)
-                        << "parent log already gone, messageId = " << messageId;
+                    if (follower == nullptr) {
+                      LOG_TOPIC("6f490", DEBUG, Logger::REPLICATION2)
+                          << "follower already gone.";
+                    } else {
+                      LOG_CTX("de300", DEBUG, follower->logContext)
+                          << "parent log already gone, messageId = "
+                          << messageId;
+                    }
                   }
                 });
           });
@@ -787,7 +793,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
   }
   if (res.hasValue()) {
     auto& response = res.get();
-    TRI_ASSERT(messageId == response.messageId);
+    TRI_ASSERT(messageId == response.messageId)
+        << messageId << " vs. " << response.messageId;
     if (follower.lastSentMessageId == response.messageId) {
       LOG_CTX("35134", TRACE, follower.logContext)
           << "received append entries response, messageId = "
@@ -1249,6 +1256,10 @@ void replicated_log::LogLeader::establishLeadership(
             });
             LOG_CTX("536f4", TRACE, self->_logContext)
                 << "leadership established";
+          } catch (ParticipantResignedException const& err) {
+            LOG_CTX("22264", TRACE, self->_logContext)
+                << "failed to establish leadership due to resign: "
+                << err.what();
           } catch (std::exception const& err) {
             LOG_CTX("5ceda", FATAL, self->_logContext)
                 << "failed to establish leadership: " << err.what();

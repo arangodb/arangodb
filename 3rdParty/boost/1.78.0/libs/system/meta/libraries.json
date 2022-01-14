@@ -1,0 +1,17 @@
+{
+    "key": "system",
+    "name": "System",
+    "authors": [
+        "Beman Dawes"
+    ],
+    "maintainers": [
+        "Peter Dimov <pdimov -at- gmail.com>"
+    ],
+    "description": "Extensible error reporting.",
+    "category": [
+        "System",
+        "Error-handling",
+        "Programming"
+    ],
+    "cxxstd": "03"
+}

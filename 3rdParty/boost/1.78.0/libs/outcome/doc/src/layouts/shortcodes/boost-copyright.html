@@ -1,0 +1,15 @@
+{{- if in .Site.Title "Boost." }}<div>
+  <div class="author">
+    <h3 class="author"><span class="firstname">Niall</span> <span class="surname">Douglas</span></h3>
+  </div>
+</div>
+<div><p class="copyright">Copyright &#169; 2014-{{ now.Format "2006" }} Niall Douglas <a href="{{"/credits.html" | relURL}}">and others</a></p></div>
+<div><div class="legalnotice">
+<a name="outcome.legal"></a><p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></div>
+{{ partial "boost-index" (dict "context" . "toc_depth" 2) }}
+<h2 class="title">Introduction</h2>
+{{- end}}

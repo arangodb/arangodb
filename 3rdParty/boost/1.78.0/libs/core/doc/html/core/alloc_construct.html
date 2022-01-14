@@ -1,0 +1,276 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>alloc_construct, alloc_destroy</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Core">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Core">
+<link rel="prev" href="allocator_access.html" title="Allocator Access">
+<link rel="next" href="bit.html" title="bit">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="allocator_access.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="bit.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="core.alloc_construct"></a><a class="link" href="alloc_construct.html" title="alloc_construct, alloc_destroy">alloc_construct, alloc_destroy</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="alloc_construct.html#core.alloc_construct.overview">Overview</a></span></dt>
+<dt><span class="section"><a href="alloc_construct.html#core.alloc_construct.example">Example</a></span></dt>
+<dt><span class="section"><a href="alloc_construct.html#core.alloc_construct.reference">Reference</a></span></dt>
+<dt><span class="section"><a href="alloc_construct.html#core.alloc_construct.compatibility">Compatibility</a></span></dt>
+<dt><span class="section"><a href="alloc_construct.html#core.alloc_construct.acknowledgments">Acknowledgments</a></span></dt>
+</dl></div>
+<div class="simplesect">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="idm1711"></a>Authors</h3></div></div></div>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+          Glen Fernandes
+        </li></ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="core.alloc_construct.overview"></a><a class="link" href="alloc_construct.html#core.alloc_construct.overview" title="Overview">Overview</a>
+</h3></div></div></div>
+<p>
+        The header &lt;boost/core/alloc_construct.hpp&gt; provides function templates
+        <code class="computeroutput"><span class="identifier">alloc_construct</span></code>, <code class="computeroutput"><span class="identifier">alloc_construct_n</span></code>, <code class="computeroutput"><span class="identifier">alloc_destroy</span></code>,
+        and <code class="computeroutput"><span class="identifier">alloc_destroy_n</span></code> for allocator
+        aware and exception safe construction and destruction of objects and arrays.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="core.alloc_construct.example"></a><a class="link" href="alloc_construct.html#core.alloc_construct.example" title="Example">Example</a>
+</h3></div></div></div>
+<p>
+        The following example allocates storage for an array of <code class="computeroutput"><span class="identifier">n</span></code>
+        elements of <code class="computeroutput"><span class="identifier">T</span></code> using an allocator
+        <code class="computeroutput"><span class="identifier">a</span></code> and constructs <code class="computeroutput"><span class="identifier">T</span></code> elements in that storage. If any exception
+        was thrown during construction of an element, the constructed elements are
+        destroyed in reverse order.
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A</span><span class="special">&gt;</span>
+<span class="keyword">auto</span> <span class="identifier">create</span><span class="special">(</span><span class="identifier">A</span><span class="special">&amp;</span> <span class="identifier">a</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">n</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">auto</span> <span class="identifier">p</span> <span class="special">=</span> <span class="identifier">a</span><span class="special">.</span><span class="identifier">allocate</span><span class="special">(</span><span class="identifier">n</span><span class="special">);</span>
+    <span class="keyword">try</span> <span class="special">{</span>
+        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">alloc_construct_n</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">to_address</span><span class="special">(</span><span class="identifier">p</span><span class="special">),</span> <span class="identifier">n</span><span class="special">);</span>
+    <span class="special">}</span> <span class="keyword">catch</span> <span class="special">(...)</span> <span class="special">{</span>
+        <span class="identifier">a</span><span class="special">.</span><span class="identifier">deallocate</span><span class="special">(</span><span class="identifier">p</span><span class="special">,</span> <span class="identifier">n</span><span class="special">);</span>
+        <span class="keyword">throw</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">return</span> <span class="identifier">p</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="core.alloc_construct.reference"></a><a class="link" href="alloc_construct.html#core.alloc_construct.reference" title="Reference">Reference</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">alloc_destroy</span><span class="special">(</span><span class="identifier">A</span><span class="special">&amp;</span> <span class="identifier">a</span><span class="special">,</span> <span class="identifier">T</span><span class="special">*</span> <span class="identifier">p</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">alloc_destroy_n</span><span class="special">(</span><span class="identifier">A</span><span class="special">&amp;</span> <span class="identifier">a</span><span class="special">,</span> <span class="identifier">T</span><span class="special">*</span> <span class="identifier">p</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">n</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Args</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">alloc_construct</span><span class="special">(</span><span class="identifier">A</span><span class="special">&amp;</span> <span class="identifier">a</span><span class="special">,</span> <span class="identifier">T</span><span class="special">*</span> <span class="identifier">p</span><span class="special">,</span> <span class="identifier">Args</span><span class="special">&amp;&amp;...</span> <span class="identifier">args</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">alloc_construct_n</span><span class="special">(</span><span class="identifier">A</span><span class="special">&amp;</span> <span class="identifier">a</span><span class="special">,</span> <span class="identifier">T</span><span class="special">*</span> <span class="identifier">p</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">n</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">alloc_construct_n</span><span class="special">(</span><span class="identifier">A</span><span class="special">&amp;</span> <span class="identifier">a</span><span class="special">,</span> <span class="identifier">T</span><span class="special">*</span> <span class="identifier">p</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">n</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">T</span><span class="special">*</span> <span class="identifier">l</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">m</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">I</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">alloc_construct_n</span><span class="special">(</span><span class="identifier">A</span><span class="special">&amp;</span> <span class="identifier">a</span><span class="special">,</span> <span class="identifier">T</span><span class="special">*</span> <span class="identifier">p</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">n</span><span class="special">,</span> <span class="identifier">I</span> <span class="identifier">begin</span><span class="special">);</span>
+
+<span class="special">}</span> <span class="comment">/* boost */</span>
+</pre>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="core.alloc_construct.reference.functions"></a><a class="link" href="alloc_construct.html#core.alloc_construct.reference.functions" title="Functions">Functions</a>
+</h4></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term"><code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">void</span> <span class="identifier">alloc_destroy</span><span class="special">(</span><span class="identifier">A</span><span class="special">&amp;</span> <span class="identifier">a</span><span class="special">,</span> <span class="identifier">T</span><span class="special">*</span> <span class="identifier">p</span><span class="special">);</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">A</span></code> is an <span class="emphasis"><em>Allocator</em></span>
+                    </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator_traits</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;::</span><span class="identifier">destroy</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span>
+                      <span class="identifier">p</span><span class="special">)</span></code>.
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">void</span> <span class="identifier">alloc_destroy_n</span><span class="special">(</span><span class="identifier">A</span><span class="special">&amp;</span> <span class="identifier">a</span><span class="special">,</span> <span class="identifier">T</span><span class="special">*</span> <span class="identifier">p</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+            <span class="identifier">n</span><span class="special">);</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">A</span></code> is an <span class="emphasis"><em>Allocator</em></span>
+                    </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      Destroys each <code class="computeroutput"><span class="identifier">i</span></code>-th
+                      element in reverse order by calling <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator_traits</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;::</span><span class="identifier">destroy</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">p</span><span class="special">[</span><span class="identifier">i</span><span class="special">])</span></code>.
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">void</span> <span class="identifier">alloc_construct</span><span class="special">(</span><span class="identifier">A</span><span class="special">&amp;</span> <span class="identifier">a</span><span class="special">,</span> <span class="identifier">T</span><span class="special">*</span> <span class="identifier">p</span><span class="special">,</span> <span class="identifier">Args</span><span class="special">&amp;&amp;...</span>
+            <span class="identifier">args</span><span class="special">);</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">A</span></code> is an <span class="emphasis"><em>Allocator</em></span>
+                    </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator_traits</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;::</span><span class="identifier">construct</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span>
+                      <span class="identifier">p</span><span class="special">,</span>
+                      <span class="identifier">std</span><span class="special">::</span><span class="identifier">forward</span><span class="special">&lt;</span><span class="identifier">Args</span><span class="special">&gt;(</span><span class="identifier">args</span><span class="special">)...)</span></code>.
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">void</span> <span class="identifier">alloc_construct_n</span><span class="special">(</span><span class="identifier">A</span><span class="special">&amp;</span> <span class="identifier">a</span><span class="special">,</span> <span class="identifier">T</span><span class="special">*</span> <span class="identifier">p</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+            <span class="identifier">n</span><span class="special">);</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">A</span></code> is an <span class="emphasis"><em>Allocator</em></span>
+                    </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      Constructs each <code class="computeroutput"><span class="identifier">i</span></code>-th
+                      element in order by calling <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator_traits</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;::</span><span class="identifier">construct</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">p</span><span class="special">[</span><span class="identifier">i</span><span class="special">])</span></code>.
+                    </p></dd>
+<dt><span class="term">Remarks</span></dt>
+<dd><p>
+                      If an exception is thrown destroys each already constructed
+                      <code class="computeroutput"><span class="identifier">j</span></code>-th element
+                      in reverse order by calling <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator_traits</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;::</span><span class="identifier">destroy</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">p</span><span class="special">[</span><span class="identifier">j</span><span class="special">])</span></code>.
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">void</span> <span class="identifier">alloc_construct_n</span><span class="special">(</span><span class="identifier">A</span><span class="special">&amp;</span> <span class="identifier">a</span><span class="special">,</span> <span class="identifier">T</span><span class="special">*</span> <span class="identifier">p</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+            <span class="identifier">n</span><span class="special">,</span>
+            <span class="keyword">const</span> <span class="identifier">T</span><span class="special">*</span> <span class="identifier">l</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+            <span class="identifier">m</span><span class="special">);</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">A</span></code> is an <span class="emphasis"><em>Allocator</em></span>
+                    </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      Constructs each <code class="computeroutput"><span class="identifier">i</span></code>-th
+                      element in order by calling <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator_traits</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;::</span><span class="identifier">construct</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">p</span><span class="special">[</span><span class="identifier">i</span><span class="special">],</span>
+                      <span class="identifier">l</span><span class="special">[</span><span class="identifier">i</span> <span class="special">%</span>
+                      <span class="identifier">m</span><span class="special">])</span></code>.
+                    </p></dd>
+<dt><span class="term">Remarks</span></dt>
+<dd><p>
+                      If an exception is thrown destroys each already constructed
+                      <code class="computeroutput"><span class="identifier">j</span></code>-th element
+                      in reverse order by calling <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator_traits</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;::</span><span class="identifier">destroy</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">p</span><span class="special">[</span><span class="identifier">j</span><span class="special">])</span></code>.
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">I</span><span class="special">&gt;</span> <span class="keyword">void</span> <span class="identifier">alloc_construct_n</span><span class="special">(</span><span class="identifier">A</span><span class="special">&amp;</span> <span class="identifier">a</span><span class="special">,</span> <span class="identifier">T</span><span class="special">*</span> <span class="identifier">p</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">n</span><span class="special">,</span> <span class="identifier">I</span> <span class="identifier">begin</span><span class="special">);</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Requires</span></dt>
+<dd><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                          <code class="computeroutput"><span class="identifier">A</span></code> is an
+                          <span class="emphasis"><em>Allocator</em></span>
+                        </li>
+<li class="listitem">
+                          <code class="computeroutput"><span class="identifier">I</span></code> is an
+                          <span class="emphasis"><em>InputIterator</em></span>
+                        </li>
+</ul></div></dd>
+<dt><span class="term">Effects</span></dt>
+<dd>
+                      Constructs each <code class="computeroutput"><span class="identifier">i</span></code>-th
+                      element in order by calling <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator_traits</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;::</span><span class="identifier">construct</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">p</span><span class="special">[</span><span class="identifier">i</span><span class="special">],</span>
+                      <span class="special">*</span><span class="identifier">begin</span><span class="special">++])</span></code>.
+                    </dd>
+<dt><span class="term">Remarks</span></dt>
+<dd><p>
+                      If an exception is thrown destroys each already constructed
+                      <code class="computeroutput"><span class="identifier">j</span></code>-th element
+                      in reverse order by calling <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator_traits</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;::</span><span class="identifier">destroy</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">p</span><span class="special">[</span><span class="identifier">j</span><span class="special">])</span></code>.
+                    </p></dd>
+</dl>
+</div></dd>
+</dl>
+</div>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="core.alloc_construct.compatibility"></a><a class="link" href="alloc_construct.html#core.alloc_construct.compatibility" title="Compatibility">Compatibility</a>
+</h3></div></div></div>
+<p>
+        When <code class="computeroutput"><span class="identifier">BOOST_NO_CXX11_ALLOCATOR</span></code>
+        is defined, and the C++11 allocator model is not supported, these functions
+        invoke constructors and destructors directly without going through the supplied
+        allocator.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="core.alloc_construct.acknowledgments"></a><a class="link" href="alloc_construct.html#core.alloc_construct.acknowledgments" title="Acknowledgments">Acknowledgments</a>
+</h3></div></div></div>
+<p>
+        Glen Fernandes originally implemented this functionality in Boost.Smart_Ptr
+        and later moved these functions to Boost.Core for use in other Boost libraries,
+        such as Boost.Multi_Array and Boost.Histogram.
+      </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2014 Peter Dimov<br>Copyright © 2014 Glen Fernandes<br>Copyright © 2014 Andrey Semashev<p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="allocator_access.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="bit.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>
