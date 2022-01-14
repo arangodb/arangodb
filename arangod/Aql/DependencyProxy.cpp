@@ -32,7 +32,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-template <BlockPassthrough blockPassthrough>
+template<BlockPassthrough blockPassthrough>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 DependencyProxy<blockPassthrough>::execute(AqlCallStack& stack) {
   ExecutionState state = ExecutionState::HASMORE;
@@ -41,18 +41,20 @@ DependencyProxy<blockPassthrough>::execute(AqlCallStack& stack) {
   // Note: upstreamBlock will return next dependency
   // if we need to loop here
   do {
-    std::tie(state, skipped, block) = executeForDependency(_currentDependency, stack);
+    std::tie(state, skipped, block) =
+        executeForDependency(_currentDependency, stack);
 
     if (state == ExecutionState::DONE) {
       if (!advanceDependency()) {
         break;
       }
     }
-  } while (state != ExecutionState::WAITING && skipped.nothingSkipped() && block == nullptr);
+  } while (state != ExecutionState::WAITING && skipped.nothingSkipped() &&
+           block == nullptr);
   return {state, skipped, std::move(block)};
 }
 
-template <BlockPassthrough blockPassthrough>
+template<BlockPassthrough blockPassthrough>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 DependencyProxy<blockPassthrough>::executeForDependency(size_t dependency,
                                                         AqlCallStack& stack) {
@@ -63,8 +65,8 @@ DependencyProxy<blockPassthrough>::executeForDependency(size_t dependency,
   if (!_distributeId.empty()) {
     // We are in the cluster case.
     // we have to ask executeForShard
-    auto upstreamWithClient =
-        dynamic_cast<BlocksWithClients*>(&upstreamBlockForDependency(dependency));
+    auto upstreamWithClient = dynamic_cast<BlocksWithClients*>(
+        &upstreamBlockForDependency(dependency));
     TRI_ASSERT(upstreamWithClient != nullptr);
     if (upstreamWithClient == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
@@ -84,48 +86,49 @@ DependencyProxy<blockPassthrough>::executeForDependency(size_t dependency,
 
   if (skipped.nothingSkipped() && block == nullptr) {
     // We're either waiting or Done
-    TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::WAITING);
+    TRI_ASSERT(state == ExecutionState::DONE ||
+               state == ExecutionState::WAITING);
   }
   return {state, skipped, std::move(block)};
 }
 
-template <BlockPassthrough blockPassthrough>
+template<BlockPassthrough blockPassthrough>
 DependencyProxy<blockPassthrough>::DependencyProxy(
     std::vector<ExecutionBlock*> const& dependencies,
     RegisterCount nrInputRegisters)
     : _dependencies(dependencies),
       _nrInputRegisters(nrInputRegisters),
       _distributeId(),
-      _currentDependency(0) {
-}
+      _currentDependency(0) {}
 
-template <BlockPassthrough blockPassthrough>
+template<BlockPassthrough blockPassthrough>
 RegisterCount DependencyProxy<blockPassthrough>::getNrInputRegisters() const {
   return _nrInputRegisters;
 }
 
-template <BlockPassthrough blockPassthrough>
+template<BlockPassthrough blockPassthrough>
 size_t DependencyProxy<blockPassthrough>::numberDependencies() const {
   return _dependencies.size();
 }
 
-template <BlockPassthrough blockPassthrough>
+template<BlockPassthrough blockPassthrough>
 void DependencyProxy<blockPassthrough>::reset() {
   _currentDependency = 0;
 }
 
-template <BlockPassthrough blockPassthrough>
+template<BlockPassthrough blockPassthrough>
 ExecutionBlock& DependencyProxy<blockPassthrough>::upstreamBlock() {
   return upstreamBlockForDependency(_currentDependency);
 }
 
-template <BlockPassthrough blockPassthrough>
-ExecutionBlock& DependencyProxy<blockPassthrough>::upstreamBlockForDependency(size_t index) {
+template<BlockPassthrough blockPassthrough>
+ExecutionBlock& DependencyProxy<blockPassthrough>::upstreamBlockForDependency(
+    size_t index) {
   TRI_ASSERT(_dependencies.size() > index);
   return *_dependencies[index];
 }
 
-template <BlockPassthrough blockPassthrough>
+template<BlockPassthrough blockPassthrough>
 bool DependencyProxy<blockPassthrough>::advanceDependency() {
   if (_currentDependency + 1 >= _dependencies.size()) {
     return false;

@@ -51,8 +51,10 @@ struct WalAccessResult {
   void lastScannedTick(TRI_voc_tick_t tick) { _lastScannedTick = tick; }
   TRI_voc_tick_t latestTick() const { return _latestTick; }
 
-  WalAccessResult& reset(ErrorCode errorNumber, bool ft, TRI_voc_tick_t included,
-                         TRI_voc_tick_t lastScannedTick, TRI_voc_tick_t latest) {
+  WalAccessResult& reset(ErrorCode errorNumber, bool ft,
+                         TRI_voc_tick_t included,
+                         TRI_voc_tick_t lastScannedTick,
+                         TRI_voc_tick_t latest) {
     _result.reset(errorNumber);
     _fromTickIncluded = ft;
     _lastIncludedTick = included;
@@ -123,12 +125,14 @@ class WalAccess {
     TRI_voc_tick_t firstRegularTick = 0;
   };
 
-  typedef std::function<void(TRI_vocbase_t*, velocypack::Slice const&)> MarkerCallback;
+  typedef std::function<void(TRI_vocbase_t*, velocypack::Slice const&)>
+      MarkerCallback;
   typedef std::function<void(TransactionId, TransactionId)> TransactionCallback;
 
   /// {"tickMin":"123", "tickMax":"456",
   ///  "server":{"version":"3.2", "serverId":"abc"}}
-  virtual Result tickRange(std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const = 0;
+  virtual Result tickRange(
+      std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const = 0;
 
   /// {"lastTick":"123",
   ///  "server":{"version":"3.2",
@@ -147,7 +151,8 @@ class WalAccess {
 ///        and collections from wal markers in an efficient way
 struct WalAccessContext {
   WalAccessContext(application_features::ApplicationServer& server,
-                   WalAccess::Filter const& filter, WalAccess::MarkerCallback const& c)
+                   WalAccess::Filter const& filter,
+                   WalAccess::MarkerCallback const& c)
       : _server(server), _filter(filter), _callback(c), _responseSize(0) {}
 
   ~WalAccessContext() = default;
@@ -190,4 +195,3 @@ struct WalAccessContext {
 };
 
 }  // namespace arangodb
-

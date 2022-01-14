@@ -42,11 +42,14 @@ class RemoteNode;
 class ScatterNode;
 class ShardLocking;
 
-using MapNodeToColNameToShards = std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::set<ShardID>>>;
+using MapNodeToColNameToShards =
+    std::unordered_map<ExecutionNode*,
+                       std::unordered_map<std::string, std::set<ShardID>>>;
 
 class QuerySnippet {
  public:
   using Id = size_t;
+
  private:
   struct ExpansionInformation {
     ExecutionNode* node;
@@ -59,7 +62,8 @@ class QuerySnippet {
   };
 
  public:
-  QuerySnippet(GatherNode const* sinkNode, ExecutionNodeId idOfSinkRemoteNode, Id id)
+  QuerySnippet(GatherNode const* sinkNode, ExecutionNodeId idOfSinkRemoteNode,
+               Id id)
       : _sinkNode(sinkNode),
         _idOfSinkRemoteNode(idOfSinkRemoteNode),
         _madeResponsibleForShutdown(false),
@@ -72,11 +76,12 @@ class QuerySnippet {
 
   void addNode(ExecutionNode* node);
 
-  void serializeIntoBuilder(ServerID const& server,
-                            std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
-                            ShardLocking& shardMapping,
-                            std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
-                            velocypack::Builder& infoBuilder);
+  void serializeIntoBuilder(
+      ServerID const& server,
+      std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+      ShardLocking& shardMapping,
+      std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
+      velocypack::Builder& infoBuilder);
 
   void useQueryIdAsInput(QueryId inputSnippet) { _inputSnippet = inputSnippet; }
 
@@ -89,11 +94,11 @@ class QuerySnippet {
       ShardLocking& shardLocking);
 
  private:
-  GatherNode const* _sinkNode; // node that merges the results for all shards
+  GatherNode const* _sinkNode;  // node that merges the results for all shards
 
   ExecutionNodeId const _idOfSinkRemoteNode;
 
-  RemoteNode * _remoteNode{nullptr};
+  RemoteNode* _remoteNode{nullptr};
 
   bool _madeResponsibleForShutdown;
 
@@ -109,4 +114,3 @@ class QuerySnippet {
 };
 }  // namespace aql
 }  // namespace arangodb
-

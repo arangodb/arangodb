@@ -63,19 +63,17 @@ void mangleNumeric(std::string& name) {
   name.append(NUMERIC_SUFFIX.c_str(), NUMERIC_SUFFIX.size());
 }
 
-void mangleField(
-    std::string& name,
-    iresearch::FieldMeta::Analyzer const& analyzer) {
+void mangleField(std::string& name,
+                 iresearch::FieldMeta::Analyzer const& analyzer) {
   name += ANALYZER_DELIMITER;
   name += analyzer._shortName;
 }
 
 read_write_mutex::read_write_mutex() noexcept
-  : concurrent_count_(0),
-    exclusive_count_(0),
-    exclusive_owner_(std::thread::id()),
-    exclusive_owner_recursion_count_(0) {
-}
+    : concurrent_count_(0),
+      exclusive_count_(0),
+      exclusive_owner_(std::thread::id()),
+      exclusive_owner_recursion_count_(0) {}
 
 read_write_mutex::~read_write_mutex() noexcept {
 #ifdef IRESEARCH_DEBUG
@@ -88,7 +86,7 @@ read_write_mutex::~read_write_mutex() noexcept {
 void read_write_mutex::lock_read() {
   // if have write lock
   if (owns_write()) {
-    ++exclusive_owner_recursion_count_; // write recursive lock
+    ++exclusive_owner_recursion_count_;  // write recursive lock
 
     return;
   }
@@ -96,8 +94,12 @@ void read_write_mutex::lock_read() {
   auto lock = irs::make_unique_lock(mutex_);
 
   // yield if there is already a writer waiting
-  // wait for notification (possibly with writers waiting) or no more writers waiting
-  while (exclusive_count_ && std::cv_status::timeout == reader_cond_.wait_for(lock, RW_MUTEX_WAIT_TIMEOUT)) {}
+  // wait for notification (possibly with writers waiting) or no more writers
+  // waiting
+  while (exclusive_count_ &&
+         std::cv_status::timeout ==
+             reader_cond_.wait_for(lock, RW_MUTEX_WAIT_TIMEOUT)) {
+  }
 
   ++concurrent_count_;
 }
@@ -105,14 +107,14 @@ void read_write_mutex::lock_read() {
 void read_write_mutex::lock_write() {
   // if have write lock
   if (owns_write()) {
-    ++exclusive_owner_recursion_count_; // write recursive lock
+    ++exclusive_owner_recursion_count_;  // write recursive lock
 
     return;
   }
 
   auto lock = irs::make_unique_lock(mutex_);
 
-  ++exclusive_count_; // mark mutex with writer-waiting state
+  ++exclusive_count_;  // mark mutex with writer-waiting state
 
   // wait until lock is held exclusively by the current thread
   while (concurrent_count_) {
@@ -125,7 +127,7 @@ void read_write_mutex::lock_write() {
 
   --exclusive_count_;
   exclusive_owner_.store(std::this_thread::get_id());
-  lock.release(); // disassociate the associated mutex without unlocking it
+  lock.release();  // disassociate the associated mutex without unlocking it
 }
 
 bool read_write_mutex::owns_write() noexcept {
@@ -135,7 +137,7 @@ bool read_write_mutex::owns_write() noexcept {
 bool read_write_mutex::try_lock_read() {
   // if have write lock
   if (owns_write()) {
-    ++exclusive_owner_recursion_count_; // write recursive lock
+    ++exclusive_owner_recursion_count_;  // write recursive lock
 
     return true;
   }
@@ -154,7 +156,7 @@ bool read_write_mutex::try_lock_read() {
 bool read_write_mutex::try_lock_write() {
   // if have write lock
   if (owns_write()) {
-    ++exclusive_owner_recursion_count_; // write recursive lock
+    ++exclusive_owner_recursion_count_;  // write recursive lock
 
     return true;
   }
@@ -166,7 +168,7 @@ bool read_write_mutex::try_lock_write() {
   }
 
   exclusive_owner_.store(std::this_thread::get_id());
-  lock.release(); // disassociate the associated mutex without unlocking it
+  lock.release();  // disassociate the associated mutex without unlocking it
 
   return true;
 }
@@ -175,8 +177,9 @@ void read_write_mutex::unlock(bool exclusive_only /*= false*/) {
   // if have write lock
   if (owns_write()) {
     if (exclusive_owner_recursion_count_) {
-      if (!exclusive_only) { // a recursively locked mutex is always top-level write locked
-        --exclusive_owner_recursion_count_; // write recursion unlock one level
+      if (!exclusive_only) {  // a recursively locked mutex is always top-level
+                              // write locked
+        --exclusive_owner_recursion_count_;  // write recursion unlock one level
       }
 
       return;
@@ -185,31 +188,33 @@ void read_write_mutex::unlock(bool exclusive_only /*= false*/) {
     auto lock = irs::make_unique_lock(mutex_, std::adopt_lock);
 
     if (exclusive_only) {
-      ++concurrent_count_; // acquire the read-lock
+      ++concurrent_count_;  // acquire the read-lock
     }
 
     exclusive_owner_.store(std::thread::id());
-    reader_cond_.notify_all(); // wake all reader and writers
-    writer_cond_.notify_all(); // wake all reader and writers
+    reader_cond_.notify_all();  // wake all reader and writers
+    writer_cond_.notify_all();  // wake all reader and writers
 
     return;
   }
 
   if (exclusive_only) {
-    return; // NOOP for readers
+    return;  // NOOP for readers
   }
 
   // ...........................................................................
   // after here assume have read lock
   // ...........................................................................
 
-  #ifdef IRESEARCH_DEBUG
-    auto count = --concurrent_count_;
-    assert(count != size_t(-1)); // ensure decrement was for a positive number (i.e. not --0)
-    UNUSED(count);
-  #else
-    --concurrent_count_;
-  #endif // IRESEARCH_DEBUG
+#ifdef IRESEARCH_DEBUG
+  auto count = --concurrent_count_;
+  assert(
+      count !=
+      size_t(-1));  // ensure decrement was for a positive number (i.e. not --0)
+  UNUSED(count);
+#else
+  --concurrent_count_;
+#endif  // IRESEARCH_DEBUG
 
   // FIXME: this should be changed to SCOPED_LOCK_NAMED, as right now it is not
   // guaranteed that we can succesfully acquire the mutex here. and if we don't,

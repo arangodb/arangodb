@@ -45,4 +45,3 @@ class RocksDBHashIndex final : public RocksDBVPackIndex {
 };
 
 }  // namespace arangodb
-

@@ -32,13 +32,14 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
-}
+}  // namespace velocypack
+}  // namespace arangodb
 
 /// @brief converts a VPack value into a V8 object
 v8::Handle<v8::Value> TRI_VPackToV8(
     v8::Isolate* isolate, arangodb::velocypack::Slice,
-    arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults,
+    arangodb::velocypack::Options const* options =
+        &arangodb::velocypack::Options::Defaults,
     arangodb::velocypack::Slice const* base = nullptr);
 
 /// @brief convert a V8 value to VPack value. can throw an exception in case the
@@ -46,4 +47,3 @@ v8::Handle<v8::Value> TRI_VPackToV8(
 void TRI_V8ToVPack(v8::Isolate* isolate, arangodb::velocypack::Builder& builder,
                    v8::Local<v8::Value> value, bool keepTopLevelOpen,
                    bool convertFunctionsToNull = false);
-

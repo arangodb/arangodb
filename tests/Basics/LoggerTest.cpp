@@ -86,8 +86,11 @@ TEST_F(LoggerTest, test_fds) {
   EXPECT_EQ(std::get<1>(fds[0]), logfile1);
   EXPECT_EQ(std::get<2>(fds[0])->fd(), std::get<0>(fds[0]));
 
-  logger1.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR, 0, "some error message", 0, true));
-  logger2.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::WARN, 0, "some warning message", 0, true));
+  logger1.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR,
+                                0, "some error message", 0, true));
+  logger2.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__,
+                                LogLevel::WARN, 0, "some warning message", 0,
+                                true));
 
   std::string content = FileUtils::slurp(logfile1);
   EXPECT_NE(content.find("some error message"), std::string::npos);
@@ -110,8 +113,11 @@ TEST_F(LoggerTest, test_fds_after_reopen) {
   EXPECT_EQ(std::get<1>(fds[0]), logfile1);
   EXPECT_EQ(std::get<2>(fds[0])->fd(), std::get<0>(fds[0]));
 
-  logger1.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR, 0, "some error message", 0, true));
-  logger2.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::WARN, 0, "some warning message", 0, true));
+  logger1.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR,
+                                0, "some error message", 0, true));
+  logger2.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__,
+                                LogLevel::WARN, 0, "some warning message", 0,
+                                true));
 
   std::string content = FileUtils::slurp(logfile1);
 
@@ -131,8 +137,11 @@ TEST_F(LoggerTest, test_fds_after_reopen) {
   EXPECT_EQ(std::get<1>(fds[0]), logfile1);
   EXPECT_EQ(std::get<2>(fds[0])->fd(), std::get<0>(fds[0]));
 
-  logger1.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR, 0, "some other error message", 0, true));
-  logger2.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::WARN, 0, "some other warning message", 0, true));
+  logger1.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR,
+                                0, "some other error message", 0, true));
+  logger2.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__,
+                                LogLevel::WARN, 0, "some other warning message",
+                                0, true));
 
   content = FileUtils::slurp(logfile1);
   EXPECT_EQ(content.find("some error message"), std::string::npos);
@@ -167,48 +176,59 @@ TEST_F(LoggerTest, testTimeFormats) {
     }
 
     std::string out;
-    
+
     out.clear();
-    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::Uptime, tp, startTp);
+    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::Uptime, tp,
+                              startTp);
     EXPECT_EQ("168", out);
 
     ASSERT_TRUE(std::regex_match(out, std::regex("^[0-9]+$")));
 
     out.clear();
-    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::UptimeMillis, tp, startTp);
+    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::UptimeMillis, tp,
+                              startTp);
     EXPECT_EQ("168.000", out);
     ASSERT_TRUE(std::regex_match(out, std::regex("^[0-9]+\\.[0-9]{3}$")));
-    
+
     out.clear();
-    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::UptimeMicros, tp, startTp);
+    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::UptimeMicros, tp,
+                              startTp);
     EXPECT_EQ("168.000000", out);
     ASSERT_TRUE(std::regex_match(out, std::regex("^[0-9]+\\.[0-9]{6}$")));
-    
+
     out.clear();
-    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::UnixTimestamp, tp, startTp);
+    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::UnixTimestamp,
+                              tp, startTp);
     EXPECT_EQ("1481464963", out);
-    
+
     out.clear();
-    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::UnixTimestampMillis, tp, startTp);
+    LogTimeFormats::writeTime(
+        out, LogTimeFormats::TimeFormat::UnixTimestampMillis, tp, startTp);
     EXPECT_EQ("1481464963.000", out);
-    
+
     out.clear();
-    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::UnixTimestampMicros, tp, startTp);
+    LogTimeFormats::writeTime(
+        out, LogTimeFormats::TimeFormat::UnixTimestampMicros, tp, startTp);
     EXPECT_EQ("1481464963.000000", out);
-    
+
     out.clear();
-    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::UTCDateString, tp, startTp);
+    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::UTCDateString,
+                              tp, startTp);
     EXPECT_EQ("2016-12-11T14:02:43Z", out);
 
     out.clear();
-    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::UTCDateStringMillis, tp, startTp);
+    LogTimeFormats::writeTime(
+        out, LogTimeFormats::TimeFormat::UTCDateStringMillis, tp, startTp);
     EXPECT_EQ("2016-12-11T14:02:43.000Z", out);
-    
+
     out.clear();
-    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::LocalDateString, tp, startTp);
-    ASSERT_TRUE(std::regex_match(out, std::regex("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$")));
+    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::LocalDateString,
+                              tp, startTp);
+    ASSERT_TRUE(std::regex_match(
+        out,
+        std::regex("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$")));
   }
-  
+
   {
     // server start time point
     sys_time<milliseconds> startTp;
@@ -225,44 +245,55 @@ TEST_F(LoggerTest, testTimeFormats) {
     }
 
     std::string out;
-    
+
     out.clear();
-    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::Uptime, tp, startTp);
+    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::Uptime, tp,
+                              startTp);
     EXPECT_EQ("23", out);
     ASSERT_TRUE(std::regex_match(out, std::regex("^[0-9]+$")));
 
     out.clear();
-    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::UptimeMillis, tp, startTp);
+    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::UptimeMillis, tp,
+                              startTp);
     EXPECT_EQ("23.303", out);
     ASSERT_TRUE(std::regex_match(out, std::regex("^[0-9]+\\.[0-9]{3}$")));
-    
+
     out.clear();
-    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::UptimeMicros, tp, startTp);
+    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::UptimeMicros, tp,
+                              startTp);
     EXPECT_EQ("23.303000", out);
     ASSERT_TRUE(std::regex_match(out, std::regex("^[0-9]+\\.[0-9]{6}$")));
-    
+
     out.clear();
-    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::UnixTimestamp, tp, startTp);
+    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::UnixTimestamp,
+                              tp, startTp);
     EXPECT_EQ("1606910246", out);
-    
+
     out.clear();
-    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::UnixTimestampMillis, tp, startTp);
+    LogTimeFormats::writeTime(
+        out, LogTimeFormats::TimeFormat::UnixTimestampMillis, tp, startTp);
     EXPECT_EQ("1606910246.004", out);
-    
+
     out.clear();
-    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::UnixTimestampMicros, tp, startTp);
+    LogTimeFormats::writeTime(
+        out, LogTimeFormats::TimeFormat::UnixTimestampMicros, tp, startTp);
     EXPECT_EQ("1606910246.004000", out);
-    
+
     out.clear();
-    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::UTCDateString, tp, startTp);
+    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::UTCDateString,
+                              tp, startTp);
     EXPECT_EQ("2020-12-02T11:57:26Z", out);
 
     out.clear();
-    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::UTCDateStringMillis, tp, startTp);
+    LogTimeFormats::writeTime(
+        out, LogTimeFormats::TimeFormat::UTCDateStringMillis, tp, startTp);
     EXPECT_EQ("2020-12-02T11:57:26.004Z", out);
-    
+
     out.clear();
-    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::LocalDateString, tp, startTp);
-    ASSERT_TRUE(std::regex_match(out, std::regex("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$")));
+    LogTimeFormats::writeTime(out, LogTimeFormats::TimeFormat::LocalDateString,
+                              tp, startTp);
+    ASSERT_TRUE(std::regex_match(
+        out,
+        std::regex("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$")));
   }
 }

@@ -34,7 +34,8 @@
 // padding
 
 #if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || \
-    defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64) || defined(__aarch64__)
+    defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64) ||     \
+    defined(__aarch64__)
 #undef TRI_PADDING_32
 #else
 #define TRI_PADDING_32 1
@@ -48,7 +49,8 @@
 #elif defined(__ppc__) || defined(__POWERPC__) || defined(_M_PPC)
 /* unaligned accesses are slow */
 #undef TRI_UNALIGNED_ACCESS
-#elif defined(__i386__) || defined(__x86_64__) || defined(_M_IX86) || defined(_M_X64)
+#elif defined(__i386__) || defined(__x86_64__) || defined(_M_IX86) || \
+    defined(_M_X64)
 /* unaligned accesses should work */
 #define TRI_UNALIGNED_ACCESS 1
 #else
@@ -610,7 +612,8 @@
 #define TRI_random ::rand
 #define TRI_srandom ::srand
 
-#if ( defined(_MSC_VER) && _MSC_VER < 1900 ) || ( defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR) )
+#if (defined(_MSC_VER) && _MSC_VER < 1900) || \
+    (defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR))
 #define snprintf _snprintf
 #endif
 
@@ -784,4 +787,3 @@ void TRI_GET_ARGV_WIN(int& argc, char** argv);
 #define ARANGODB_NOEXCEPT_ASSIGN_OP noexcept
 
 #endif
-

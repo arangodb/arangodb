@@ -58,4 +58,3 @@ class MaskingFunction {
 };
 }  // namespace maskings
 }  // namespace arangodb
-

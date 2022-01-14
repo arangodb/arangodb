@@ -57,7 +57,8 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-ServerFeature::ServerFeature(application_features::ApplicationServer& server, int* res)
+ServerFeature::ServerFeature(application_features::ApplicationServer& server,
+                             int* res)
     : ApplicationFeature(server, "Server"),
       _result(res),
       _operationMode(OperationMode::MODE_SERVER)
@@ -80,49 +81,82 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addSection("server", "server features");
 
-  options->addOption("--server.rest-server", "start a rest-server",
-                     new BooleanParameter(&_restServer),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
-  
-  options->addOption("--server.validate-utf8-strings", "perform UTF-8 string validation for incoming JSON and VelocyPack data",
-                     new BooleanParameter(&_validateUtf8Strings),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden)).setIntroducedIn(30700);
+  options->addOption(
+      "--server.rest-server", "start a rest-server",
+      new BooleanParameter(&_restServer),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+
+  options
+      ->addOption(
+          "--server.validate-utf8-strings",
+          "perform UTF-8 string validation for incoming JSON and VelocyPack "
+          "data",
+          new BooleanParameter(&_validateUtf8Strings),
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setIntroducedIn(30700);
 
   options->addOption("--javascript.script", "run scripts and exit",
                      new VectorParameter<StringParameter>(&_scripts));
 
 #if _WIN32
-  options->addOption("--console.code-page",
-                     "Windows code page to use; defaults to UTF8",
-                     new UInt16Parameter(&_codePage),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption(
+      "--console.code-page", "Windows code page to use; defaults to UTF8",
+      new UInt16Parameter(&_codePage),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 #endif
 
   // add several obsoleted options here
   options->addSection("vst", "VelocyStream protocol", "", true, true);
-  options->addObsoleteOption("--vst.maxsize", "maximal size (in bytes) "
-                             "for a VelocyPack chunk", true);
-  
+  options->addObsoleteOption("--vst.maxsize",
+                             "maximal size (in bytes) "
+                             "for a VelocyPack chunk",
+                             true);
+
   // add obsolete MMFiles WAL options (obsoleted in 3.7)
   options->addSection("wal", "WAL of the MMFiles engine", "", true, true);
-  options->addObsoleteOption("--wal.allow-oversize-entries",
-                             "allow entries that are bigger than '--wal.logfile-size'", false);
+  options->addObsoleteOption(
+      "--wal.allow-oversize-entries",
+      "allow entries that are bigger than '--wal.logfile-size'", false);
   options->addObsoleteOption("--wal.use-mlock",
-                             "mlock WAL logfiles in memory (may require elevated privileges or limits)", false);
+                             "mlock WAL logfiles in memory (may require "
+                             "elevated privileges or limits)",
+                             false);
   options->addObsoleteOption("--wal.directory", "logfile directory", true);
-  options->addObsoleteOption("--wal.historic-logfiles", "maximum number of historic logfiles to keep after collection", true);
-  options->addObsoleteOption("--wal.ignore-logfile-errors", 
-                             "ignore logfile errors. this will read recoverable data from corrupted logfiles but ignore any unrecoverable data", false);
-  options->addObsoleteOption("--wal.ignore-recovery-errors", "continue recovery even if re-applying operations fails", false);
-  options->addObsoleteOption("--wal.flush-timeout", "flush timeout (in milliseconds)", true);
-  options->addObsoleteOption("--wal.logfile-size", "size of each logfile (in bytes)", true);
-  options->addObsoleteOption("--wal.open-logfiles", "maximum number of parallel open logfiles", true);
-  options->addObsoleteOption("--wal.reserve-logfiles", "maximum number of reserve logfiles to maintain", true);
-  options->addObsoleteOption("--wal.slots", "number of logfile slots to use", true);
-  options->addObsoleteOption("--wal.sync-interval", "interval for automatic, non-requested disk syncs (in milliseconds)", true);
-  options->addObsoleteOption("--wal.throttle-when-pending", 
-                             "throttle writes when at least this many operations are waiting for collection (set to 0 to deactivate write-throttling)", true);
-  options->addObsoleteOption("--wal.throttle-wait", "maximum wait time per operation when write-throttled (in milliseconds)", true);
+  options->addObsoleteOption(
+      "--wal.historic-logfiles",
+      "maximum number of historic logfiles to keep after collection", true);
+  options->addObsoleteOption(
+      "--wal.ignore-logfile-errors",
+      "ignore logfile errors. this will read recoverable data from corrupted "
+      "logfiles but ignore any unrecoverable data",
+      false);
+  options->addObsoleteOption(
+      "--wal.ignore-recovery-errors",
+      "continue recovery even if re-applying operations fails", false);
+  options->addObsoleteOption("--wal.flush-timeout",
+                             "flush timeout (in milliseconds)", true);
+  options->addObsoleteOption("--wal.logfile-size",
+                             "size of each logfile (in bytes)", true);
+  options->addObsoleteOption("--wal.open-logfiles",
+                             "maximum number of parallel open logfiles", true);
+  options->addObsoleteOption("--wal.reserve-logfiles",
+                             "maximum number of reserve logfiles to maintain",
+                             true);
+  options->addObsoleteOption("--wal.slots", "number of logfile slots to use",
+                             true);
+  options->addObsoleteOption(
+      "--wal.sync-interval",
+      "interval for automatic, non-requested disk syncs (in milliseconds)",
+      true);
+  options->addObsoleteOption(
+      "--wal.throttle-when-pending",
+      "throttle writes when at least this many operations are waiting for "
+      "collection (set to 0 to deactivate write-throttling)",
+      true);
+  options->addObsoleteOption(
+      "--wal.throttle-wait",
+      "maximum wait time per operation when write-throttled (in milliseconds)",
+      true);
 }
 
 void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -144,10 +178,11 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         << "'--javascript.script'";
     FATAL_ERROR_EXIT();
   }
-  
+
   DatabaseFeature& db = server().getFeature<DatabaseFeature>();
 
-  if (_operationMode == OperationMode::MODE_SERVER && !_restServer && !db.upgrade()) {
+  if (_operationMode == OperationMode::MODE_SERVER && !_restServer &&
+      !db.upgrade()) {
     LOG_TOPIC("8daab", FATAL, arangodb::Logger::FIXME)
         << "need at least '--console', '--javascript.unit-tests' or"
         << "'--javascript.script if rest-server is disabled";
@@ -170,27 +205,28 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   if (!_restServer) {
-    server().disableFeatures(
-        std::vector<std::type_index>{std::type_index(typeid(DaemonFeature)),
-                                     std::type_index(typeid(HttpEndpointProvider)),
-                                     std::type_index(typeid(GeneralServerFeature)),
-                                     std::type_index(typeid(SslServerFeature)),
-                                     std::type_index(typeid(StatisticsFeature)),
-                                     std::type_index(typeid(SupervisorFeature))});
+    server().disableFeatures(std::vector<std::type_index>{
+        std::type_index(typeid(DaemonFeature)),
+        std::type_index(typeid(HttpEndpointProvider)),
+        std::type_index(typeid(GeneralServerFeature)),
+        std::type_index(typeid(SslServerFeature)),
+        std::type_index(typeid(StatisticsFeature)),
+        std::type_index(typeid(SupervisorFeature))});
 
     if (!options->processingResult().touched("replication.auto-start")) {
       // turn off replication applier when we do not have a rest server
       // but only if the config option is not explicitly set (the recovery
       // test want the applier to be enabled for testing it)
-      ReplicationFeature& replicationFeature = server().getFeature<ReplicationFeature>();
+      ReplicationFeature& replicationFeature =
+          server().getFeature<ReplicationFeature>();
       replicationFeature.disableReplicationApplier();
     }
   }
 
   if (_operationMode == OperationMode::MODE_CONSOLE) {
-    server().disableFeatures(
-        std::vector<std::type_index>{std::type_index(typeid(DaemonFeature)),
-                                     std::type_index(typeid(SupervisorFeature))});
+    server().disableFeatures(std::vector<std::type_index>{
+        std::type_index(typeid(DaemonFeature)),
+        std::type_index(typeid(SupervisorFeature))});
     v8dealer.setMinimumContexts(2);
   }
 
@@ -202,7 +238,8 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
 void ServerFeature::prepare() {
   // adjust global settings for UTF-8 string validation
-  basics::VelocyPackHelper::strictRequestValidationOptions.validateUtf8Strings = _validateUtf8Strings;
+  basics::VelocyPackHelper::strictRequestValidationOptions.validateUtf8Strings =
+      _validateUtf8Strings;
 }
 
 void ServerFeature::start() {
@@ -223,7 +260,8 @@ void ServerFeature::start() {
       break;
 
     case OperationMode::MODE_SERVER:
-      LOG_TOPIC("7031b", TRACE, Logger::STARTUP) << "server operation mode: SERVER";
+      LOG_TOPIC("7031b", TRACE, Logger::STARTUP)
+          << "server operation mode: SERVER";
       break;
   }
 
@@ -248,9 +286,7 @@ void ServerFeature::stop() {
 #endif
 }
 
-void ServerFeature::beginShutdown() {
-  _isStopping = true;
-}
+void ServerFeature::beginShutdown() { _isStopping = true; }
 
 void ServerFeature::waitForHeartbeat() {
   if (!ServerState::instance()->isCoordinator()) {

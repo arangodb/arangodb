@@ -29,7 +29,8 @@
 
 using namespace arangodb;
 
-LogThread::LogThread(application_features::ApplicationServer& server, std::string const& name)
+LogThread::LogThread(application_features::ApplicationServer& server,
+                     std::string const& name)
     : Thread(server, name), _messages(64) {}
 
 LogThread::~LogThread() {
@@ -47,7 +48,8 @@ bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
   }
 
   bool const isDirectLogLevel =
-             (message->_level == LogLevel::FATAL || message->_level == LogLevel::ERR || message->_level == LogLevel::WARN);
+      (message->_level == LogLevel::FATAL || message->_level == LogLevel::ERR ||
+       message->_level == LogLevel::WARN);
 
   if (!_messages.push({&group, message.get()})) {
     return false;

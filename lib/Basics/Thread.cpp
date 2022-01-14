@@ -88,7 +88,8 @@ void Thread::startThread(void* arg) {
   });
 
   ThreadState expected = ThreadState::STARTING;
-  bool res = ptr->_state.compare_exchange_strong(expected, ThreadState::STARTED);
+  bool res =
+      ptr->_state.compare_exchange_strong(expected, ThreadState::STARTED);
   if (!res) {
     TRI_ASSERT(expected == ThreadState::STOPPING);
     // we are already shutting down -> don't bother calling run!
@@ -150,8 +151,9 @@ std::string Thread::stringify(ThreadState state) {
 }
 
 /// @brief constructs a thread
-Thread::Thread(application_features::ApplicationServer& server, std::string const& name,
-               bool deleteOnExit, std::uint32_t terminationTimeout)
+Thread::Thread(application_features::ApplicationServer& server,
+               std::string const& name, bool deleteOnExit,
+               std::uint32_t terminationTimeout)
     : _server(server),
       _threadStructInitialized(false),
       _refs(0),
@@ -196,8 +198,9 @@ void Thread::beginShutdown() {
     _state.compare_exchange_weak(state, ThreadState::STOPPING);
   }
 
-  LOG_TOPIC("1fa5b", TRACE, Logger::THREADS) << "beginShutdown(" << _name << ") reached state "
-                                    << stringify(_state.load());
+  LOG_TOPIC("1fa5b", TRACE, Logger::THREADS)
+      << "beginShutdown(" << _name << ") reached state "
+      << stringify(_state.load());
 }
 
 /// @brief MUST be called from the destructor of the MOST DERIVED class
@@ -211,8 +214,9 @@ void Thread::shutdown() {
       TRI_DetachThread(&_thread);
     } else {
 #ifdef __APPLE__
-      // MacOS does not provide an implemenation of pthread_timedjoin_np which is used in
-      // TRI_JoinThreadWithTimeout, so instead we simply wait for _state to be set to STOPPED.
+      // MacOS does not provide an implemenation of pthread_timedjoin_np which
+      // is used in TRI_JoinThreadWithTimeout, so instead we simply wait for
+      // _state to be set to STOPPED.
 
       std::uint32_t n = _terminationTimeout / 100;
       for (std::uint32_t i = 0; i < n || _terminationTimeout == INFINITE; ++i) {
@@ -222,16 +226,18 @@ void Thread::shutdown() {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
       }
 
-      // we still have to wait here until the thread has terminated, but this should
-      // happen immediately after _state has been set to STOPPED!
-      auto ret = _state.load() == ThreadState::STOPPED ? TRI_JoinThread(&_thread) : TRI_ERROR_FAILED;
+      // we still have to wait here until the thread has terminated, but this
+      // should happen immediately after _state has been set to STOPPED!
+      auto ret = _state.load() == ThreadState::STOPPED
+                     ? TRI_JoinThread(&_thread)
+                     : TRI_ERROR_FAILED;
 #else
       auto ret = TRI_JoinThreadWithTimeout(&_thread, _terminationTimeout);
 #endif
 
       if (ret != TRI_ERROR_NO_ERROR) {
         LOG_TOPIC("825a5", FATAL, arangodb::Logger::FIXME)
-          << "cannot shutdown thread '" << _name << "', giving up";
+            << "cannot shutdown thread '" << _name << "', giving up";
         FATAL_ERROR_ABORT();
       }
     }
@@ -252,7 +258,8 @@ bool Thread::start(ConditionVariable* finishedCondition) {
   if (!isSystem() && !_server.isPrepared()) {
     LOG_TOPIC("6ba8a", FATAL, arangodb::Logger::FIXME)
         << "trying to start a thread '" << _name
-        << "' before prepare has finished, current state: " << (int)_server.state();
+        << "' before prepare has finished, current state: "
+        << (int)_server.state();
     FATAL_ERROR_ABORT();
   }
 
@@ -261,22 +268,24 @@ bool Thread::start(ConditionVariable* finishedCondition) {
 
   if (state != ThreadState::CREATED) {
     LOG_TOPIC("11a39", FATAL, Logger::THREADS)
-        << "called started on an already started thread '" << _name << "', thread is in state "
-        << stringify(state);
+        << "called started on an already started thread '" << _name
+        << "', thread is in state " << stringify(state);
     FATAL_ERROR_ABORT();
   }
 
   ThreadState expected = ThreadState::CREATED;
   if (!_state.compare_exchange_strong(expected, ThreadState::STARTING)) {
-    // This should never happen! If it does, it means we have multiple calls to start().
+    // This should never happen! If it does, it means we have multiple calls to
+    // start().
     LOG_TOPIC("7e453", WARN, Logger::THREADS)
-        << "failed to set thread '" << _name << "' to state 'starting'; thread is in unexpected state "
+        << "failed to set thread '" << _name
+        << "' to state 'starting'; thread is in unexpected state "
         << stringify(expected);
     FATAL_ERROR_ABORT();
   }
-  
-  // we count two references - one for the current thread and one for the thread that
-  // we are trying to start.
+
+  // we count two references - one for the current thread and one for the thread
+  // that we are trying to start.
   _refs.fetch_add(2);
   TRI_ASSERT(_refs.load() == 2);
 
@@ -285,7 +294,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
 
   bool ok = TRI_StartThread(&_thread, _name.c_str(), &startThread, this);
   if (!ok) {
-    // could not start the thread -> decrement ref for the foreign thread 
+    // could not start the thread -> decrement ref for the foreign thread
     _refs.fetch_sub(1);
     _state.store(ThreadState::STOPPED);
     LOG_TOPIC("f5915", ERR, Logger::THREADS)

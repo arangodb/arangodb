@@ -58,7 +58,8 @@ class QueryResultCursor final : public arangodb::Cursor {
 
   size_t count() const override final;
 
-  std::pair<aql::ExecutionState, Result> dump(velocypack::Builder& result) override final;
+  std::pair<aql::ExecutionState, Result> dump(
+      velocypack::Builder& result) override final;
 
   Result dumpSync(velocypack::Builder& result) override final;
 
@@ -83,7 +84,8 @@ class QueryResultCursor final : public arangodb::Cursor {
 /// cursor is deleted (or query exhausted)
 class QueryStreamCursor final : public arangodb::Cursor {
  public:
-  QueryStreamCursor(std::shared_ptr<aql::Query> q, size_t batchSize, double ttl);
+  QueryStreamCursor(std::shared_ptr<aql::Query> q, size_t batchSize,
+                    double ttl);
 
   ~QueryStreamCursor();
 
@@ -97,10 +99,11 @@ class QueryStreamCursor final : public arangodb::Cursor {
 
   size_t count() const override final { return 0; }
 
-  std::pair<ExecutionState, Result> dump(velocypack::Builder& result) override final;
+  std::pair<ExecutionState, Result> dump(
+      velocypack::Builder& result) override final;
 
   Result dumpSync(velocypack::Builder& result) override final;
-  
+
   /// Set wakeup callback on streaming cursor
   void setWakeupHandler(std::function<bool()> const& cb) override final;
   void resetWakeupHandler() override final;
@@ -121,18 +124,17 @@ class QueryStreamCursor final : public arangodb::Cursor {
 
  private:
   velocypack::UInt8Buffer _extrasBuffer;
-  std::deque<SharedAqlItemBlockPtr> _queryResults; /// buffered results
-  std::shared_ptr<transaction::Context> _ctx; /// cache context
+  std::deque<SharedAqlItemBlockPtr> _queryResults;  /// buffered results
+  std::shared_ptr<transaction::Context> _ctx;       /// cache context
   std::shared_ptr<aql::Query> _query;
   /// index of the next to-be-returned row in _queryResults.front()
   size_t _queryResultPos;
-  
+
   /// used when cursor is owned by V8 transaction
   transaction::Methods::StatusChangeCallback _stateChangeCb;
-  
+
   bool _finalization;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-

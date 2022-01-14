@@ -28,9 +28,10 @@
 
 namespace arangodb::arangobench {
 
-template <class Derived>
+template<class Derived>
 struct Benchmark : public BenchmarkOperation {
-  explicit Benchmark(BenchFeature& arangobench) : BenchmarkOperation(arangobench) {}
+  explicit Benchmark(BenchFeature& arangobench)
+      : BenchmarkOperation(arangobench) {}
 
   static void registerTestcase() {
     registerBenchmark(Derived::name(), [](BenchFeature& arangobench) {

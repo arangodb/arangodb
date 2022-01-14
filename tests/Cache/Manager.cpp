@@ -75,7 +75,7 @@ TEST(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
     scheduler.post(fn);
     return true;
   };
-  
+
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 1024ULL * 1024ULL * 1024ULL);
@@ -83,7 +83,8 @@ TEST(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
   std::size_t threadCount = 4;
   std::vector<std::shared_ptr<Cache>> caches;
   for (std::size_t i = 0; i < cacheCount; i++) {
-    auto res = manager.createCache(((i % 2 == 0) ? CacheType::Plain : CacheType::Transactional));
+    auto res = manager.createCache(
+        ((i % 2 == 0) ? CacheType::Plain : CacheType::Transactional));
     TRI_ASSERT(res);
     caches.emplace_back(res);
   }
@@ -114,7 +115,8 @@ TEST(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
 
     // commence mixed workload
     for (std::uint64_t i = 0; i < operationCount; i++) {
-      std::uint32_t r = RandomGenerator::interval(static_cast<std::uint32_t>(99));
+      std::uint32_t r =
+          RandomGenerator::interval(static_cast<std::uint32_t>(99));
 
       if (r >= 99) {  // remove something
         if (validLower == validUpper) {
@@ -132,17 +134,16 @@ TEST(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
 
         std::uint64_t item = ++validUpper;
         std::size_t cacheIndex = item % cacheCount;
-        CachedValue* value = CachedValue::construct(&item, sizeof(std::uint64_t),
-                                                    &item, sizeof(std::uint64_t));
+        CachedValue* value = CachedValue::construct(
+            &item, sizeof(std::uint64_t), &item, sizeof(std::uint64_t));
         TRI_ASSERT(value != nullptr);
         auto status = caches[cacheIndex]->insert(value);
         if (status.fail()) {
           delete value;
         }
       } else {  // lookup something
-        std::uint64_t item =
-            RandomGenerator::interval(static_cast<int64_t>(validLower),
-                                      static_cast<int64_t>(validUpper));
+        std::uint64_t item = RandomGenerator::interval(
+            static_cast<int64_t>(validLower), static_cast<int64_t>(validUpper));
         std::size_t cacheIndex = item % cacheCount;
 
         auto f = caches[cacheIndex]->find(&item, sizeof(std::uint64_t));
@@ -186,7 +187,7 @@ TEST(CacheManagerTest, test_manager_under_cache_lifecycle_chaos_LongRunning) {
     scheduler.post(fn);
     return true;
   };
-  
+
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   Manager manager(sharedPRNG, postFn, 1024ULL * 1024ULL * 1024ULL);
@@ -197,11 +198,12 @@ TEST(CacheManagerTest, test_manager_under_cache_lifecycle_chaos_LongRunning) {
     std::queue<std::shared_ptr<Cache>> caches;
 
     for (std::uint64_t i = 0; i < operationCount; i++) {
-      std::uint32_t r = RandomGenerator::interval(static_cast<std::uint32_t>(1));
+      std::uint32_t r =
+          RandomGenerator::interval(static_cast<std::uint32_t>(1));
       switch (r) {
         case 0: {
-          auto res = manager.createCache((i % 2 == 0) ? CacheType::Plain
-                                                      : CacheType::Transactional);
+          auto res = manager.createCache(
+              (i % 2 == 0) ? CacheType::Plain : CacheType::Transactional);
           if (res) {
             caches.emplace(res);
           }

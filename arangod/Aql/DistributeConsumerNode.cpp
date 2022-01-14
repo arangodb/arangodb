@@ -34,29 +34,32 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 
-DistributeConsumerNode::DistributeConsumerNode(ExecutionPlan* plan,
-                                               arangodb::velocypack::Slice const& base)
+DistributeConsumerNode::DistributeConsumerNode(
+    ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _distributeId(VelocyPackHelper::getStringValue(base, "distributeId", "")),
       _isResponsibleForInitializeCursor(
           base.get("isResponsibleForInitializeCursor").getBoolean()) {}
 
-void DistributeConsumerNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void DistributeConsumerNode::doToVelocyPack(VPackBuilder& nodes,
+                                            unsigned flags) const {
   nodes.add("distributeId", VPackValue(_distributeId));
-  nodes.add("isResponsibleForInitializeCursor", VPackValue(_isResponsibleForInitializeCursor));
+  nodes.add("isResponsibleForInitializeCursor",
+            VPackValue(_isResponsibleForInitializeCursor));
 }
 
 std::unique_ptr<ExecutionBlock> DistributeConsumerNode::createBlock(
-    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   TRI_ASSERT(hasDependency());
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   TRI_ASSERT(getRegisterPlan()->nrRegs[previousNode->getDepth()] ==
              getRegisterPlan()->nrRegs[getDepth()]);
-  auto registerInfos =
-      createRegisterInfos({}, {});
-  auto executorInfos =
-      IdExecutorInfos(false, RegisterId(0), _distributeId, _isResponsibleForInitializeCursor);
-  return std::make_unique<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
+  auto registerInfos = createRegisterInfos({}, {});
+  auto executorInfos = IdExecutorInfos(false, RegisterId(0), _distributeId,
+                                       _isResponsibleForInitializeCursor);
+  return std::make_unique<ExecutionBlockImpl<
+      IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }

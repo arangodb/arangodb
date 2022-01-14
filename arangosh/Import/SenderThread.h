@@ -51,7 +51,8 @@ class SenderThread final : public arangodb::Thread {
  public:
   explicit SenderThread(application_features::ApplicationServer& server,
                         std::unique_ptr<httpclient::SimpleHttpClient>,
-                        ImportStatistics* stats, std::function<void()> const& wakeup);
+                        ImportStatistics* stats,
+                        std::function<void()> const& wakeup);
 
   ~SenderThread();
 

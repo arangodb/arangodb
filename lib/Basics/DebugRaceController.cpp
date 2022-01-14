@@ -42,18 +42,19 @@ void DebugRaceController::reset() {
   _didTrigger = false;
 }
 
-bool DebugRaceController::didTrigger() const { 
+bool DebugRaceController::didTrigger() const {
   std::unique_lock<std::mutex> guard(_mutex);
-  return _didTrigger; 
+  return _didTrigger;
 }
 
-std::vector<std::any> DebugRaceController::data() const { 
+std::vector<std::any> DebugRaceController::data() const {
   std::unique_lock<std::mutex> guard(_mutex);
-  return _data; 
+  return _data;
 }
 
-void DebugRaceController::waitForOthers(size_t numberOfThreadsToWaitFor, std::any myData,
-                                        arangodb::application_features::ApplicationServer const& server) {
+void DebugRaceController::waitForOthers(
+    size_t numberOfThreadsToWaitFor, std::any myData,
+    arangodb::application_features::ApplicationServer const& server) {
   std::unique_lock<std::mutex> guard(_mutex);
   _data.emplace_back(std::move(myData));
   _condVariable.wait(guard, [&] {

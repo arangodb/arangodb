@@ -43,4 +43,3 @@ struct EndpointSpec {
 
 }  // namespace network
 }  // namespace arangodb
-

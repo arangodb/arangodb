@@ -30,10 +30,12 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 
-class CheckVersionFeature final : public application_features::ApplicationFeature {
+class CheckVersionFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit CheckVersionFeature(application_features::ApplicationServer& server, int* result,
-                               std::vector<std::type_index> const& nonServerFeatures);
+  explicit CheckVersionFeature(
+      application_features::ApplicationServer& server, int* result,
+      std::vector<std::type_index> const& nonServerFeatures);
 
  private:
   bool _checkVersion;
@@ -51,4 +53,3 @@ class CheckVersionFeature final : public application_features::ApplicationFeatur
 };
 
 }  // namespace arangodb
-

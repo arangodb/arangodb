@@ -29,8 +29,7 @@
 namespace arangodb {
 
 FileResult::FileResult(int sysErrorNumber)
-      : _result(TRI_ERROR_SYS_ERROR, strerror(sysErrorNumber)),
-        _sysErrorNumber(sysErrorNumber) {}
+    : _result(TRI_ERROR_SYS_ERROR, strerror(sysErrorNumber)),
+      _sysErrorNumber(sysErrorNumber) {}
 
-
-}
+}  // namespace arangodb

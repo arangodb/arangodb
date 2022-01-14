@@ -79,4 +79,3 @@ class Handler {
 
 }  // namespace auth
 }  // namespace arangodb
-

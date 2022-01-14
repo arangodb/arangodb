@@ -166,9 +166,21 @@ TEST(ngram_similarity_base_test, equal) {
 // ----------------------------------------------------------------------------
 // --SECTION--                         by_ngram_similarity filter matcher tests
 // ----------------------------------------------------------------------------
-class ngram_similarity_filter_test_case : public tests::filter_test_case_base {
-};
 
+class ngram_similarity_filter_test_case : public tests::filter_test_case_base {
+ protected:
+  static irs::feature_info_provider_t features_with_norms() {
+    return [](irs::type_info::type_id id) {
+      const irs::column_info info{irs::type<irs::compression::lz4>::get(), {}, false};
+
+      if (irs::type<irs::Norm>::id() == id) {
+        return std::make_pair(info, &irs::Norm::MakeWriter);
+      }
+
+      return std::make_pair(info, irs::feature_writer_factory_t{});
+    };
+  }
+};
 
 TEST_P(ngram_similarity_filter_test_case, check_matcher_1) {
   // sequence 1 3 4 ______ 2 -> longest is 134 not 12
@@ -908,9 +920,9 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
     return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
   };
   scorer.prepare_scorer = [&frequency, &filter_boost](
-    const irs::sub_reader& segment,
-    const irs::term_reader& term,
-    const irs::byte_type* stats_buf,
+    const irs::sub_reader& /*segment*/,
+    const irs::term_reader& /*term*/,
+    const irs::byte_type* /*stats_buf*/,
     irs::byte_type* score_buf,
     const irs::attribute_provider& attr)->irs::score_function {
       auto* freq = irs::get<irs::frequency>(attr);
@@ -1021,7 +1033,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
 TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
   {
     irs::index_writer::init_options opts;
-    opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
+    opts.features = features_with_norms();
 
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
@@ -1043,7 +1055,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
 TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
   {
     irs::index_writer::init_options opts;
-    opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
+    opts.features = features_with_norms();
 
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
@@ -1066,7 +1078,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
 TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
   {
     irs::index_writer::init_options opts;
-    opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
+    opts.features = features_with_norms();
 
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),
@@ -1089,7 +1101,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
 TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
   {
     irs::index_writer::init_options opts;
-    opts.features.emplace(irs::type<irs::norm>::id(), &irs::norm::compute);
+    opts.features = features_with_norms();
 
     tests::json_doc_generator gen(
       resource("ngram_similarity.json"),

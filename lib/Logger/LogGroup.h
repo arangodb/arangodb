@@ -36,8 +36,7 @@ class LogGroup {
   // - 1: audit log group: audit logging
   static constexpr std::size_t Count = 2;
 
-  LogGroup() 
-      : _maxLogEntryLength(256U * 1048576U) {}
+  LogGroup() : _maxLogEntryLength(256U * 1048576U) {}
 
   virtual ~LogGroup() = default;
 
@@ -49,12 +48,10 @@ class LogGroup {
   std::size_t maxLogEntryLength() const noexcept {
     return _maxLogEntryLength.load(std::memory_order_relaxed);
   }
-  
+
   /// @brief set the max length of log entries in this group.
   /// should not be called during the setup of the Logger, and not at runtime
-  void maxLogEntryLength(std::size_t value) {
-    _maxLogEntryLength.store(value);
-  }
+  void maxLogEntryLength(std::size_t value) { _maxLogEntryLength.store(value); }
 
  protected:
   /// @brief maximum length of log entries in this LogGroup
@@ -62,4 +59,3 @@ class LogGroup {
 };
 
 }  // namespace arangodb
-

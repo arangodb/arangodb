@@ -59,4 +59,3 @@ class ClusterTransactionCollection final : public TransactionCollection {
   Result doUnlock(AccessMode::Type) override;
 };
 }  // namespace arangodb
-

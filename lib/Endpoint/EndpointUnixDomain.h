@@ -57,7 +57,7 @@ class EndpointUnixDomain final : public Endpoint {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief disconnect the endpoint
   //////////////////////////////////////////////////////////////////////////////
-  
+
   // cppcheck-suppress virtualCallInConstructor; bogus
   void disconnect() override;
 
@@ -73,4 +73,3 @@ class EndpointUnixDomain final : public Endpoint {
 }  // namespace arangodb
 
 #endif
-

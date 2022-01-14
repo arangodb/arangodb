@@ -204,4 +204,3 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   std::shared_ptr<arangodb::velocypack::Builder> _options;
 };
 }  // namespace arangodb
-

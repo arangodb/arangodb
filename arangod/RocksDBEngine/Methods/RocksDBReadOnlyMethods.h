@@ -37,7 +37,7 @@ class RocksDBReadOnlyMethods final : public RocksDBReadOnlyBaseMethods {
   using RocksDBReadOnlyBaseMethods::RocksDBReadOnlyBaseMethods;
 
   Result beginTransaction() override;
-  
+
   Result commitTransaction() override;
 
   Result abortTransaction() override;
@@ -52,4 +52,3 @@ class RocksDBReadOnlyMethods final : public RocksDBReadOnlyBaseMethods {
 };
 
 }  // namespace arangodb
-

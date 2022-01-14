@@ -46,7 +46,8 @@ namespace consensus {
 class Agent final : public arangodb::Thread, public AgentInterface {
  public:
   /// @brief Construct with program options
-  explicit Agent(application_features::ApplicationServer& server, config_t const&);
+  explicit Agent(application_features::ApplicationServer& server,
+                 config_t const&);
 
   /// @brief Clean up
   ~Agent();
@@ -116,14 +117,16 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Attempt write
   ///        Startup flag should NEVER be discarded solely for purpose of
   ///        persisting the agency configuration
-  write_ret_t write(query_t const&, WriteMode const& wmode = WriteMode()) override;
+  write_ret_t write(query_t const&,
+                    WriteMode const& wmode = WriteMode()) override;
 
   /// @brief Read from agency
   read_ret_t read(query_t const&);
 
-  /// @brief Long pool for higher index than given if leader or else empty builder and false
+  /// @brief Long pool for higher index than given if leader or else empty
+  /// builder and false
   std::tuple<futures::Future<query_t>, bool, std::string> poll(
-    index_t const& index, double const& timeout);
+      index_t const& index, double const& timeout);
 
   /// @brief Inquire success of logs given clientIds
   write_ret_t inquire(query_t const&);
@@ -144,7 +147,8 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   ///        also used as heartbeat ($5.2).
   priv_rpc_ret_t recvAppendEntriesRPC(term_t term, std::string const& leaderId,
                                       index_t prevIndex, term_t prevTerm,
-                                      index_t leaderCommitIndex, query_t const& queries);
+                                      index_t leaderCommitIndex,
+                                      query_t const& queries);
 
   /// @brief Resign leadership
   void resign(term_t otherTerm = 0);
@@ -153,15 +157,15 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   void trashStoreCallback(std::string const& url, velocypack::Slice body);
 
  private:
-
   void logsForTrigger();
 
   /// @brief clear expired polls registered by Agent::poll
   ///        if qu is nullptr, we're resigning.
   ///        Caller must have _promLock!
   void triggerPollsNoLock(
-    query_t qu = nullptr,
-    SteadyTimePoint const& tp = std::chrono::steady_clock::now() + std::chrono::seconds(60));
+      query_t qu = nullptr,
+      SteadyTimePoint const& tp = std::chrono::steady_clock::now() +
+                                  std::chrono::seconds(60));
 
   /// @brief trigger all expire polls
   void clearExpiredPolls();
@@ -178,7 +182,6 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   void advanceCommitIndex();
 
  public:
-
   /// @brief Get last confirmed index of an agent. Default my own.
   ///   Safe ONLY IF via executeLock() (see example Supervision.cpp)
   index_t confirmed(std::string const& serverId = std::string()) const;
@@ -216,10 +219,12 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   void reportIn(std::string const&, index_t, size_t = 0);
 
   /// @brief Report a failed append entry call from AgentCallback
-  void reportFailed(std::string const& slaveId, size_t toLog, bool sent = false);
+  void reportFailed(std::string const& slaveId, size_t toLog,
+                    bool sent = false);
 
   /// @brief Wait for slaves to confirm appended entries
-  AgentInterface::raft_commit_t waitFor(index_t last_entry, double timeout = 10.0) override;
+  AgentInterface::raft_commit_t waitFor(index_t last_entry,
+                                        double timeout = 10.0) override;
 
   /// @brief Check if everything up to a given index has been committed:
   bool isCommitted(index_t last_entry) override;
@@ -253,7 +258,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief execute a callback while holding _transientLock
   void executeTransientLocked(std::function<void()> const& cb);
 
-    /// @brief Get read store and compaction index
+  /// @brief Get read store and compaction index
   index_t readDB(Node&) const;
 
   /// @brief Get read store and compaction index
@@ -285,7 +290,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   query_t allLogs() const;
 
   /// @brief Get copy of log entries starting with begin ending on end
-  std::vector<log_t> logs(index_t begin = 0, index_t end = (std::numeric_limits<uint64_t>::max)()) const;
+  std::vector<log_t> logs(
+      index_t begin = 0,
+      index_t end = (std::numeric_limits<uint64_t>::max)()) const;
 
   /// @brief Last contact with followers
   void lastAckedAgo(Builder&) const;
@@ -351,17 +358,17 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Activate this agent in single agent mode.
   void activateAgency();
 
-  /// @brief add agent to configuration (from State after successful local persistence)
+  /// @brief add agent to configuration (from State after successful local
+  /// persistence)
   void updateConfiguration(VPackSlice const&);
 
-  /// @brief patch some configuration values, this is for manual interaction with
-  /// the agency leader.
+  /// @brief patch some configuration values, this is for manual interaction
+  /// with the agency leader.
   void updateSomeConfigValues(VPackSlice);
 
   Histogram<log_scale_t<float>>& commitHist() const;
 
  private:
-
   /// @brief load() has run
   bool loaded() const;
 
@@ -433,8 +440,10 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// The following three members are protected by _tiLock:
 
   /// @brief stores for each follower the highest index log it has reported as
-  /// locally logged, and the timestamp we last recevied an answer to sendAppendEntries
-  std::unordered_map<std::string, std::pair<SteadyTimePoint, index_t>> _lastAckedIndex;
+  /// locally logged, and the timestamp we last recevied an answer to
+  /// sendAppendEntries
+  std::unordered_map<std::string, std::pair<SteadyTimePoint, index_t>>
+      _lastAckedIndex;
 
   /// @brief The earliest timepoint at which we will send new sendAppendEntries
   /// to a particular follower. This is a measure to avoid bombarding a
@@ -499,7 +508,8 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// For _ioLock: We put in assertions to ensure that when this lock is
   /// acquired we do not have the _tiLock.
 
-  /// @brief Inception thread getting an agent up to join RAFT from cmd or persistence
+  /// @brief Inception thread getting an agent up to join RAFT from cmd or
+  /// persistence
   std::unique_ptr<Inception> _inception;
 
   /// @brief Compactor
@@ -520,7 +530,8 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   std::atomic<bool> _loaded;
 
   /// @brief Container for callbacks for removal
-  std::unordered_map<std::string, std::unordered_set<std::string>> _callbackTrashBin;
+  std::unordered_map<std::string, std::unordered_set<std::string>>
+      _callbackTrashBin;
   std::chrono::time_point<std::chrono::steady_clock> _callbackLastPurged;
 
   /// @brief Ids of ongoing transactions, used for inquire:
@@ -532,9 +543,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   // @brief promises for poll interface and the guard
   //        The map holds all current poll promises.
   //        key,value: expiry time of this poll, the promise
-  //        When expired or when any change to commitIndex, promise is fullfilled
-  //        All rest handlers will receive the same vpack,
-  //        They need to sort out, what is sent to client
+  //        When expired or when any change to commitIndex, promise is
+  //        fullfilled All rest handlers will receive the same vpack, They need
+  //        to sort out, what is sent to client
   std::mutex _promLock;
   index_t _lowestPromise;
   std::multimap<SteadyTimePoint, futures::Promise<query_t>> _promises;
@@ -548,8 +559,6 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   Histogram<log_scale_t<float>>& _append_hist_msec;
   Histogram<log_scale_t<float>>& _compaction_hist_msec;
   Gauge<uint64_t>& _local_index;
-
 };
 }  // namespace consensus
 }  // namespace arangodb
-

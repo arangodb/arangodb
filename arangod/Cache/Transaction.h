@@ -41,4 +41,3 @@ struct Transaction {
 
 };  // end namespace cache
 };  // end namespace arangodb
-

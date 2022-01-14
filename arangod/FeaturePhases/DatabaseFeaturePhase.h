@@ -35,4 +35,3 @@ class DatabaseFeaturePhase : public ApplicationFeaturePhase {
 
 }  // namespace application_features
 }  // namespace arangodb
-

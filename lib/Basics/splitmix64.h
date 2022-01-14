@@ -68,4 +68,3 @@ struct splitmix64 {
 
 }  // namespace basics
 }  // namespace arangodb
-

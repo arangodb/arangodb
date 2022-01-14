@@ -44,12 +44,14 @@ using namespace arangodb;
 namespace {
 // custom type value handler, used for deciphering the _id attribute
 struct CustomTypeHandler final : public VPackCustomTypeHandler {
-  CustomTypeHandler(TRI_vocbase_t& vocbase, CollectionNameResolver const& resolver)
+  CustomTypeHandler(TRI_vocbase_t& vocbase,
+                    CollectionNameResolver const& resolver)
       : vocbase(vocbase), resolver(resolver) {}
 
   ~CustomTypeHandler() = default;
 
-  void dump(VPackSlice const& value, VPackDumper* dumper, VPackSlice const& base) override final {
+  void dump(VPackSlice const& value, VPackDumper* dumper,
+            VPackSlice const& base) override final {
     dumper->appendString(toString(value, nullptr, base));
   }
 
@@ -61,7 +63,7 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
   TRI_vocbase_t& vocbase;
   CollectionNameResolver const& resolver;
 };
-}
+}  // namespace
 
 /// @brief create the context
 transaction::Context::Context(TRI_vocbase_t& vocbase)
@@ -78,19 +80,19 @@ transaction::Context::Context(TRI_vocbase_t& vocbase)
 transaction::Context::~Context() {
   // unregister the transaction from the logfile manager
   if (_transaction.id.isSet()) {
-    transaction::ManagerFeature::manager()->unregisterTransaction(_transaction.id,
-                                                                  _transaction.isReadOnlyTransaction,
-                                                                  _transaction.isFollowerTransaction);
+    transaction::ManagerFeature::manager()->unregisterTransaction(
+        _transaction.id, _transaction.isReadOnlyTransaction,
+        _transaction.isFollowerTransaction);
   }
 
   // call the actual cleanup routine which frees all
   // hogged resources
   cleanup();
 }
-  
+
 /// @brief destroys objects owned by the context,
 /// this can be called multiple times.
-/// currently called by dtor and by unit test mocks. 
+/// currently called by dtor and by unit test mocks.
 /// we cannot move this into the dtor (where it was before) because
 /// the mocked objects in unittests do not seem to call it and effectively leak.
 void transaction::Context::cleanup() noexcept {
@@ -112,13 +114,15 @@ void transaction::Context::cleanup() noexcept {
 }
 
 /// @brief factory to create a custom type handler, not managed
-std::unique_ptr<VPackCustomTypeHandler> transaction::Context::createCustomTypeHandler(
+std::unique_ptr<VPackCustomTypeHandler>
+transaction::Context::createCustomTypeHandler(
     TRI_vocbase_t& vocbase, CollectionNameResolver const& resolver) {
   return std::make_unique<::CustomTypeHandler>(vocbase, resolver);
 }
 
 /// @brief temporarily lease a StringBuffer object
-basics::StringBuffer* transaction::Context::leaseStringBuffer(size_t initialSize) {
+basics::StringBuffer* transaction::Context::leaseStringBuffer(
+    size_t initialSize) {
   if (_stringBuffer == nullptr) {
     _stringBuffer.reset(new basics::StringBuffer(initialSize, false));
   } else {
@@ -129,7 +133,8 @@ basics::StringBuffer* transaction::Context::leaseStringBuffer(size_t initialSize
 }
 
 /// @brief return a temporary StringBuffer object
-void transaction::Context::returnStringBuffer(basics::StringBuffer* stringBuffer) noexcept {
+void transaction::Context::returnStringBuffer(
+    basics::StringBuffer* stringBuffer) noexcept {
   _stringBuffer.reset(stringBuffer);
 }
 
@@ -139,7 +144,7 @@ std::string* transaction::Context::leaseString() {
     // create a new string and return it
     return new std::string();
   }
-  
+
   // re-use an existing string
   std::string* s = _strings.back();
   s->clear();
@@ -201,18 +206,20 @@ CollectionNameResolver const& transaction::Context::resolver() {
   return *_resolver;
 }
 
-std::shared_ptr<TransactionState> transaction::Context::createState(transaction::Options const& options) {
+std::shared_ptr<TransactionState> transaction::Context::createState(
+    transaction::Options const& options) {
   // now start our own transaction
   TRI_ASSERT(vocbase().server().hasFeature<EngineSelectorFeature>());
-  StorageEngine& engine = vocbase().server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine =
+      vocbase().server().getFeature<EngineSelectorFeature>().engine();
   return engine.createTransactionState(_vocbase, generateId(), options);
 }
 
 /// @brief unregister the transaction
 /// this will save the transaction's id and status locally
-void transaction::Context::storeTransactionResult(TransactionId id, bool wasRegistered,
-                                                  bool isReadOnlyTransaction,
-                                                  bool isFollowerTransaction) noexcept {
+void transaction::Context::storeTransactionResult(
+    TransactionId id, bool wasRegistered, bool isReadOnlyTransaction,
+    bool isFollowerTransaction) noexcept {
   TRI_ASSERT(_transaction.id.empty());
 
   if (wasRegistered) {
@@ -228,8 +235,9 @@ TransactionId transaction::Context::generateId() const {
 
 std::shared_ptr<transaction::Context> transaction::Context::clone() const {
   TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                 "transaction::Context::clone() is not implemented");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "transaction::Context::clone() is not implemented");
 }
 
 /*static*/ TransactionId transaction::Context::makeTransactionId() {

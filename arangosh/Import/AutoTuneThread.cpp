@@ -77,7 +77,7 @@ void AutoTuneThread::beginShutdown() {
 }
 
 void AutoTuneThread::run() {
-  constexpr uint64_t period = 2; // seconds
+  constexpr uint64_t period = 2;  // seconds
 
   while (!isStopping()) {
     {
@@ -112,7 +112,8 @@ void AutoTuneThread::run() {
       }
 
       LOG_TOPIC("e815e", DEBUG, arangodb::Logger::FIXME)
-          << "current: " << currentMax << ", period: " << periodActual << ", new: " << newMax;
+          << "current: " << currentMax << ", period: " << periodActual
+          << ", new: " << newMax;
 
       _importHelper.setMaxUploadSize(newMax);
     }

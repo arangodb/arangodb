@@ -34,8 +34,9 @@
 
 using namespace arangodb;
 
-CacheRebalancerThread::CacheRebalancerThread(application_features::ApplicationServer& server,
-                                             cache::Manager* manager, std::uint64_t interval)
+CacheRebalancerThread::CacheRebalancerThread(
+    application_features::ApplicationServer& server, cache::Manager* manager,
+    std::uint64_t interval)
     : Thread(server, "CacheRebalancerThread"),
       _manager(manager),
       _rebalancer(_manager),
@@ -55,14 +56,17 @@ void CacheRebalancerThread::run() {
   while (!isStopping()) {
     try {
       auto result = _rebalancer.rebalance();
-      std::uint64_t interval = (result != TRI_ERROR_ARANGO_BUSY) ? _fullInterval : _shortInterval;
+      std::uint64_t interval =
+          (result != TRI_ERROR_ARANGO_BUSY) ? _fullInterval : _shortInterval;
 
       CONDITION_LOCKER(guard, _condition);
       guard.wait(interval);
     } catch (std::exception const& ex) {
-      LOG_TOPIC("e78b8", ERR, Logger::CACHE) << "cache rebalancer thread caught exception: " << ex.what();
+      LOG_TOPIC("e78b8", ERR, Logger::CACHE)
+          << "cache rebalancer thread caught exception: " << ex.what();
     } catch (...) {
-      LOG_TOPIC("7269a", ERR, Logger::CACHE) << "cache rebalancer thread caught unknown exception";
+      LOG_TOPIC("7269a", ERR, Logger::CACHE)
+          << "cache rebalancer thread caught unknown exception";
     }
   }
 }

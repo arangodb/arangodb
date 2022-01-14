@@ -35,15 +35,17 @@
 
 using namespace arangodb;
 
-RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state, rocksdb::TransactionDB* db)
+RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state,
+                                     rocksdb::TransactionDB* db)
     : RocksDBTrxBaseMethods(state, db) {
   TRI_ASSERT(!_state->isSingleOperation());
 }
 
 RocksDBTrxMethods::~RocksDBTrxMethods() {
-  // cleanupTransaction is a virtual function, so we need to override the dtor and
-  // call it ourselves here, because the call in the base class would only execute
-  // the base class implementation, therefore leaking the iteratorReadSnapshot.
+  // cleanupTransaction is a virtual function, so we need to override the dtor
+  // and call it ourselves here, because the call in the base class would only
+  // execute the base class implementation, therefore leaking the
+  // iteratorReadSnapshot.
   cleanupTransaction();
 }
 
@@ -54,7 +56,8 @@ Result RocksDBTrxMethods::beginTransaction() {
   if (result.ok() && hasIntermediateCommitsEnabled()) {
     TRI_ASSERT(_state->options().intermediateCommitCount != UINT64_MAX ||
                _state->options().intermediateCommitSize != UINT64_MAX);
-    _iteratorReadSnapshot = _db->GetSnapshot();  // must call ReleaseSnapshot later
+    _iteratorReadSnapshot =
+        _db->GetSnapshot();  // must call ReleaseSnapshot later
     TRI_ASSERT(_iteratorReadSnapshot != nullptr);
   }
 
@@ -75,8 +78,9 @@ rocksdb::ReadOptions RocksDBTrxMethods::iteratorReadOptions() const {
   return _readOptions;
 }
 
-void RocksDBTrxMethods::prepareOperation(DataSourceId cid, RevisionId rid,
-                                         TRI_voc_document_operation_e operationType) {
+void RocksDBTrxMethods::prepareOperation(
+    DataSourceId cid, RevisionId rid,
+    TRI_voc_document_operation_e operationType) {
   TRI_ASSERT(_rocksTransaction != nullptr);
   if (operationType == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
     RocksDBLogValue logValue = RocksDBLogValue::DocumentRemoveV2(rid);
@@ -86,7 +90,8 @@ void RocksDBTrxMethods::prepareOperation(DataSourceId cid, RevisionId rid,
 }
 
 /// @brief undo the effects of the previous prepareOperation call
-void RocksDBTrxMethods::rollbackOperation(TRI_voc_document_operation_e operationType) {
+void RocksDBTrxMethods::rollbackOperation(
+    TRI_voc_document_operation_e operationType) {
   ++_numRollbacks;
   if (operationType == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
     TRI_ASSERT(_numLogdata > 0);
@@ -94,9 +99,11 @@ void RocksDBTrxMethods::rollbackOperation(TRI_voc_document_operation_e operation
   }
 }
 
-Result RocksDBTrxMethods::checkIntermediateCommit(bool& hasPerformedIntermediateCommit) {
+Result RocksDBTrxMethods::checkIntermediateCommit(
+    bool& hasPerformedIntermediateCommit) {
   // perform an intermediate commit if necessary
-  size_t currentSize = _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
+  size_t currentSize =
+      _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
   return checkIntermediateCommit(currentSize, hasPerformedIntermediateCommit);
 }
 
@@ -134,15 +141,17 @@ std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
   std::unique_ptr<rocksdb::Iterator> iterator;
   if (opts.readOwnWrites) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    // Even though the assertion is only evaluated in maintainer mode, it must at
-    // least compile. But since checkIntermediateCommits is only defined in maintainer
-    // mode, we have to wrap this assert in another ifdef.
-    TRI_ASSERT(!opts.checkIntermediateCommits || !hasIntermediateCommitsEnabled());
+    // Even though the assertion is only evaluated in maintainer mode, it must
+    // at least compile. But since checkIntermediateCommits is only defined in
+    // maintainer mode, we have to wrap this assert in another ifdef.
+    TRI_ASSERT(!opts.checkIntermediateCommits ||
+               !hasIntermediateCommitsEnabled());
 #endif
     iterator.reset(_rocksTransaction->GetIterator(opts, cf));
   } else {
     if (iteratorMustCheckBounds(ReadOwnWrites::no)) {
-      iterator.reset(_readWriteBatch->NewIteratorWithBase(cf, _db->NewIterator(opts, cf)));
+      iterator.reset(
+          _readWriteBatch->NewIteratorWithBase(cf, _db->NewIterator(opts, cf)));
     } else {
       // we either have an empty _readWriteBatch or no _readWriteBatch at all
       // in this case, we can get away with the DB snapshot iterator
@@ -151,7 +160,8 @@ std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
   }
 
   if (iterator == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBTrxMethods");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "invalid iterator in RocksDBTrxMethods");
   }
   return iterator;
 }
@@ -177,7 +187,8 @@ void RocksDBTrxMethods::createTransaction() {
   ++_numLogdata;
 }
 
-Result RocksDBTrxMethods::triggerIntermediateCommit(bool& hasPerformedIntermediateCommit) {
+Result RocksDBTrxMethods::triggerIntermediateCommit(
+    bool& hasPerformedIntermediateCommit) {
   TRI_ASSERT(!hasPerformedIntermediateCommit);
 
   TRI_IF_FAILURE("FailBeforeIntermediateCommit") {
@@ -222,12 +233,11 @@ Result RocksDBTrxMethods::triggerIntermediateCommit(bool& hasPerformedIntermedia
   return TRI_ERROR_NO_ERROR;
 }
 
-Result RocksDBTrxMethods::checkIntermediateCommit(uint64_t newSize, bool& hasPerformedIntermediateCommit) {
+Result RocksDBTrxMethods::checkIntermediateCommit(
+    uint64_t newSize, bool& hasPerformedIntermediateCommit) {
   hasPerformedIntermediateCommit = false;
 
-  TRI_IF_FAILURE("noIntermediateCommits") {
-    return TRI_ERROR_NO_ERROR;
-  }
+  TRI_IF_FAILURE("noIntermediateCommits") { return TRI_ERROR_NO_ERROR; }
 
   if (hasIntermediateCommitsEnabled()) {
     auto numOperations = this->numOperations();
@@ -249,13 +259,17 @@ bool RocksDBTrxMethods::hasIntermediateCommitsEnabled() const noexcept {
 /// @brief whether or not a RocksDB iterator in this transaction must check its
 /// bounds during iteration in addition to setting iterator_lower_bound or
 /// iterate_upper_bound. this is currently true for all iterators that are based
-/// on in-flight writes of the current transaction. for read-only transactions it
-/// is only necessary to check bounds if we have local changes in the WriteBatch.
-bool RocksDBTrxMethods::iteratorMustCheckBounds(ReadOwnWrites readOwnWrites) const {
+/// on in-flight writes of the current transaction. for read-only transactions
+/// it is only necessary to check bounds if we have local changes in the
+/// WriteBatch.
+bool RocksDBTrxMethods::iteratorMustCheckBounds(
+    ReadOwnWrites readOwnWrites) const {
   // If we have a non-empty _readWriteBatch we always need to check the bounds,
   // because we need to consider the WriteBatch for read operations, even if
   // we don't need to read own writes.
-  return readOwnWrites == ReadOwnWrites::yes || (_readWriteBatch != nullptr && _readWriteBatch->GetWriteBatch()->GetDataSize() > 0);
+  return readOwnWrites == ReadOwnWrites::yes ||
+         (_readWriteBatch != nullptr &&
+          _readWriteBatch->GetWriteBatch()->GetDataSize() > 0);
 }
 
 void RocksDBTrxMethods::beginQuery(bool isModificationQuery) {
@@ -265,15 +279,19 @@ void RocksDBTrxMethods::beginQuery(bool isModificationQuery) {
   }
 
   if (isModificationQuery) {
-    TRI_ASSERT(_hasActiveModificationQuery.load() == false && _numActiveReadOnlyQueries.load() == 0);
+    TRI_ASSERT(_hasActiveModificationQuery.load() == false &&
+               _numActiveReadOnlyQueries.load() == 0);
     if (_numActiveReadOnlyQueries.load(std::memory_order_relaxed) > 0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-        "cannot run modification query and read-only query concurrently on the same transaction");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          "cannot run modification query and read-only query concurrently on "
+          "the same transaction");
     }
     if (_hasActiveModificationQuery.load(std::memory_order_relaxed) ||
         _hasActiveModificationQuery.exchange(true, std::memory_order_relaxed)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-        "cannot run concurrent modification queries in the same transaction");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          "cannot run concurrent modification queries in the same transaction");
     }
     TRI_ASSERT(_hasActiveModificationQuery.load());
     TRI_ASSERT(_ownsReadWriteBatch == false);
@@ -282,8 +300,10 @@ void RocksDBTrxMethods::beginQuery(bool isModificationQuery) {
     TRI_ASSERT(_ownsReadWriteBatch == false);
     TRI_ASSERT(_hasActiveModificationQuery.load() == false);
     if (_hasActiveModificationQuery.load(std::memory_order_relaxed)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-        "cannot run modification query and read-only query concurrently on the same transaction");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          "cannot run modification query and read-only query concurrently on "
+          "the same transaction");
     }
     _numActiveReadOnlyQueries.fetch_add(1, std::memory_order_relaxed);
   }
@@ -313,65 +333,70 @@ void RocksDBTrxMethods::endQuery(bool isModificationQuery) noexcept {
 
 void RocksDBTrxMethods::initializeReadWriteBatch() {
   TRI_ASSERT(_ownsReadWriteBatch == false);
-  _readWriteBatch = new rocksdb::WriteBatchWithIndex(rocksdb::BytewiseComparator(), 0, true, 0);
+  _readWriteBatch = new rocksdb::WriteBatchWithIndex(
+      rocksdb::BytewiseComparator(), 0, true, 0);
   _ownsReadWriteBatch = true;
 
   struct WBCloner final : public rocksdb::WriteBatch::Handler {
-    explicit WBCloner(rocksdb::WriteBatchWithIndex& target)
-        : wbwi(target) {}
+    explicit WBCloner(rocksdb::WriteBatchWithIndex& target) : wbwi(target) {}
 
     rocksdb::Status PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
                           const rocksdb::Slice& value) override {
       return wbwi.Put(familyId(column_family_id), key, value);
     }
 
-    rocksdb::Status DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
+    rocksdb::Status DeleteCF(uint32_t column_family_id,
+                             const rocksdb::Slice& key) override {
       return wbwi.Delete(familyId(column_family_id), key);
     }
 
-    rocksdb::Status SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
+    rocksdb::Status SingleDeleteCF(uint32_t column_family_id,
+                                   const rocksdb::Slice& key) override {
       return wbwi.SingleDelete(familyId(column_family_id), key);
     }
 
-    rocksdb::Status DeleteRangeCF(uint32_t column_family_id, const rocksdb::Slice& begin_key,
+    rocksdb::Status DeleteRangeCF(uint32_t column_family_id,
+                                  const rocksdb::Slice& begin_key,
                                   const rocksdb::Slice& end_key) override {
       return wbwi.DeleteRange(familyId(column_family_id), begin_key, end_key);
     }
 
-    rocksdb::Status MergeCF(uint32_t column_family_id, const rocksdb::Slice& key,
+    rocksdb::Status MergeCF(uint32_t column_family_id,
+                            const rocksdb::Slice& key,
                             const rocksdb::Slice& value) override {
       // should never be used by our code
       TRI_ASSERT(false);
       return wbwi.Merge(familyId(column_family_id), key, value);
     }
 
-    void LogData(const rocksdb::Slice& blob) override {
-      wbwi.PutLogData(blob);
-    }
-  
+    void LogData(const rocksdb::Slice& blob) override { wbwi.PutLogData(blob); }
+
     rocksdb::Status MarkBeginPrepare(bool = false) override {
       TRI_ASSERT(false);
-      return rocksdb::Status::InvalidArgument("MarkBeginPrepare() handler not defined.");
+      return rocksdb::Status::InvalidArgument(
+          "MarkBeginPrepare() handler not defined.");
     }
-  
+
     rocksdb::Status MarkEndPrepare(rocksdb::Slice const& /*xid*/) override {
       TRI_ASSERT(false);
-      return rocksdb::Status::InvalidArgument("MarkEndPrepare() handler not defined.");
+      return rocksdb::Status::InvalidArgument(
+          "MarkEndPrepare() handler not defined.");
     }
-    
+
     rocksdb::Status MarkNoop(bool /*empty_batch*/) override {
       return rocksdb::Status::OK();
     }
-    
+
     rocksdb::Status MarkRollback(rocksdb::Slice const& /*xid*/) override {
       TRI_ASSERT(false);
       return rocksdb::Status::InvalidArgument(
           "MarkRollbackPrepare() handler not defined.");
     }
-    
+
     rocksdb::Status MarkCommit(rocksdb::Slice const& /*xid*/) override {
       TRI_ASSERT(false);
-      return rocksdb::Status::InvalidArgument("MarkCommit() handler not defined.");
+      return rocksdb::Status::InvalidArgument(
+          "MarkCommit() handler not defined.");
     }
 
     rocksdb::ColumnFamilyHandle* familyId(uint32_t id) {
@@ -380,7 +405,8 @@ void RocksDBTrxMethods::initializeReadWriteBatch() {
           return it;
         }
       }
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unknown column family id");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unknown column family id");
     }
 
     rocksdb::WriteBatchWithIndex& wbwi;

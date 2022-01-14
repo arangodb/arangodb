@@ -39,9 +39,10 @@ class SharedAqlItemBlockPtr;
  */
 class AqlItemMatrix {
  public:
-  // uint32_t in this vector is a reasonable trade-off between performance and amount of data.
-  // With this values we can sort up to ~ 4.000.000.000 times 1000 elements in memory.
-  // Anything beyond that has a questionable runtime on nowadays hardware anyways.
+  // uint32_t in this vector is a reasonable trade-off between performance and
+  // amount of data. With this values we can sort up to ~ 4.000.000.000 times
+  // 1000 elements in memory. Anything beyond that has a questionable runtime on
+  // nowadays hardware anyways.
   using RowIndex = std::pair<uint32_t, uint32_t>;
 
   explicit AqlItemMatrix(RegisterCount nrRegs);
@@ -93,8 +94,10 @@ class AqlItemMatrix {
 
   size_t numberOfBlocks() const noexcept;
 
-  std::pair<SharedAqlItemBlockPtr, size_t> getBlock(size_t index) const noexcept;
-  std::pair<AqlItemBlock const*, size_t> getBlockRef(size_t index) const noexcept;
+  std::pair<SharedAqlItemBlockPtr, size_t> getBlock(
+      size_t index) const noexcept;
+  std::pair<AqlItemBlock const*, size_t> getBlockRef(
+      size_t index) const noexcept;
 
   bool stoppedOnShadowRow() const noexcept;
 
@@ -112,18 +115,20 @@ class AqlItemMatrix {
    * @brief Skip over all shadowRows with a Subquery-depth <= depth
    *
    * @return firstValue: The number of ShadowRows in depth Skipped
-   *         secondValue: The first shadowRow of Subquery-depth > depth, or not-initialize if no such row exists.
-   * Invariant: secondValue.initialized() <=> this.numberBlocks() > 0
+   *         secondValue: The first shadowRow of Subquery-depth > depth, or
+   * not-initialize if no such row exists. Invariant: secondValue.initialized()
+   * <=> this.numberBlocks() > 0
    */
   [[nodiscard]] auto skipAllShadowRowsOfDepth(size_t depth)
       -> std::tuple<size_t, ShadowAqlItemRow>;
 
   class RowIterator {
    public:
-    using value_type        = InputAqlItemRow;
+    using value_type = InputAqlItemRow;
 
     RowIterator() = default;
-    RowIterator(AqlItemMatrix const* matrix, size_t blockIndex, size_t rowIndex);
+    RowIterator(AqlItemMatrix const* matrix, size_t blockIndex,
+                size_t rowIndex);
 
     // Returns the current value, and move the iterator to the next value
     value_type next() noexcept;
@@ -171,7 +176,9 @@ class AqlItemMatrix {
   size_t _stopIndexInLastBlock;
 };
 
-bool operator==(AqlItemMatrix::RowIterator const& a, AqlItemMatrix::RowIterator const& b);
-bool operator!=(AqlItemMatrix::RowIterator const& a, AqlItemMatrix::RowIterator const& b);
+bool operator==(AqlItemMatrix::RowIterator const& a,
+                AqlItemMatrix::RowIterator const& b);
+bool operator!=(AqlItemMatrix::RowIterator const& a,
+                AqlItemMatrix::RowIterator const& b);
 
 }  // namespace arangodb::aql

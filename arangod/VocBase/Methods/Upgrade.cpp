@@ -41,9 +41,10 @@ namespace {
 
 void addTask(arangodb::UpgradeFeature& feature, std::string&& name,
              std::string&& desc, uint32_t systemFlag, uint32_t clusterFlag,
-             uint32_t dbFlag, arangodb::methods::Upgrade::TaskFunction&& action) {
-  feature.addTask(arangodb::methods::Upgrade::Task{name, desc, systemFlag,
-                                                   clusterFlag, dbFlag, action});
+             uint32_t dbFlag,
+             arangodb::methods::Upgrade::TaskFunction&& action) {
+  feature.addTask(arangodb::methods::Upgrade::Task{
+      name, desc, systemFlag, clusterFlag, dbFlag, action});
 }
 
 }  // namespace
@@ -62,7 +63,8 @@ UpgradeResult Upgrade::clusterBootstrap(TRI_vocbase_t& system) {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
 
   VPackSlice params = VPackSlice::emptyObjectSlice();
-  return runTasks(system, vinfo, params, clusterFlag, Upgrade::Flags::DATABASE_INIT);
+  return runTasks(system, vinfo, params, clusterFlag,
+                  Upgrade::Flags::DATABASE_INIT);
 }
 
 /// corresponding to local-database.js
@@ -97,15 +99,18 @@ UpgradeResult Upgrade::createDB(TRI_vocbase_t& vocbase,
   // to create a DB we use an empty version result because we want
   // to execute all tasks not needed for an upgrade
   VersionResult vinfo = {VersionResult::VERSION_MATCH, cc, cc, {}};
-  return runTasks(vocbase, vinfo, params.slice(), clusterFlag, Upgrade::Flags::DATABASE_INIT);
+  return runTasks(vocbase, vinfo, params.slice(), clusterFlag,
+                  Upgrade::Flags::DATABASE_INIT);
 }
 
-UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool ignoreFileErrors) {
+UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade,
+                               bool ignoreFileErrors) {
   if (ServerState::instance()->isCoordinator()) {
     // coordinators do not have any persistent data, so there is no VERSION file
     // available. We don't know the previous version we are upgrading from, so
     // we need to pretend no upgrade is necessary
-    return UpgradeResult(TRI_ERROR_NO_ERROR, methods::VersionResult::VERSION_MATCH);
+    return UpgradeResult(TRI_ERROR_NO_ERROR,
+                         methods::VersionResult::VERSION_MATCH);
   }
 
   uint32_t clusterFlag = 0;
@@ -123,7 +128,8 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
       vinfo.status == methods::VersionResult::CANNOT_READ_VERSION_FILE) {
     if (ignoreFileErrors) {
       // try to install a fresh new, empty VERSION file instead
-      if (methods::Version::write(&vocbase, std::map<std::string, bool>(), true).ok()) {
+      if (methods::Version::write(&vocbase, std::map<std::string, bool>(), true)
+              .ok()) {
         // give it another try
         LOG_TOPIC("2feaa", WARN, Logger::STARTUP)
             << "overwriting unparsable VERSION file with default value "
@@ -144,8 +150,9 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
       break;
     case VersionResult::VERSION_MATCH:
       if (isUpgrade) {
-        dbflag = Flags::DATABASE_UPGRADE;  // forcing the upgrade as server is in
-                                           // upgrade state with some features disabled
+        dbflag = Flags::DATABASE_UPGRADE;  // forcing the upgrade as server is
+                                           // in upgrade state with some
+                                           // features disabled
       }
       break;  // just run tasks that weren't run yet
     case VersionResult::UPGRADE_NEEDED: {
@@ -153,7 +160,8 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
         // we do not perform upgrades without being told so during startup
         LOG_TOPIC("3bc7f", ERR, Logger::STARTUP)
             << "Database directory version (" << vinfo.databaseVersion
-            << ") is lower than current version (" << vinfo.serverVersion << ").";
+            << ") is lower than current version (" << vinfo.serverVersion
+            << ").";
 
         LOG_TOPIC("ebca0", ERR, Logger::STARTUP)
             << "---------------------------------------------------------------"
@@ -179,7 +187,8 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
       // we do not support downgrades, just error out
       LOG_TOPIC("fdbd9", ERR, Logger::STARTUP)
           << "Database directory version (" << vinfo.databaseVersion
-          << ") is higher than current version (" << vinfo.serverVersion << ").";
+          << ") is higher than current version (" << vinfo.serverVersion
+          << ").";
       LOG_TOPIC("b99ca", ERR, Logger::STARTUP)
           << "It seems like you are running ArangoDB on a database directory"
           << " that was created with a newer version of ArangoDB. Maybe this"
@@ -191,7 +200,8 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
     case VersionResult::NO_SERVER_VERSION: {
       LOG_TOPIC("bb6ba", DEBUG, Logger::STARTUP)
           << "Error reading version file";
-      std::string msg = std::string("error during ") + (isUpgrade ? "upgrade" : "startup");
+      std::string msg =
+          std::string("error during ") + (isUpgrade ? "upgrade" : "startup");
       return UpgradeResult(TRI_ERROR_INTERNAL, msg, vinfo.status);
     }
     case VersionResult::NO_VERSION_FILE:
@@ -267,10 +277,12 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
 #endif
 }
 
-UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& vinfo,
-                                         arangodb::velocypack::Slice const& params,
-                                         uint32_t clusterFlag, uint32_t dbFlag) {
-  auto& upgradeFeature = vocbase.server().getFeature<arangodb::UpgradeFeature>();
+UpgradeResult methods::Upgrade::runTasks(
+    TRI_vocbase_t& vocbase, VersionResult& vinfo,
+    arangodb::velocypack::Slice const& params, uint32_t clusterFlag,
+    uint32_t dbFlag) {
+  auto& upgradeFeature =
+      vocbase.server().getFeature<arangodb::UpgradeFeature>();
   auto& tasks = upgradeFeature._tasks;
 
   TRI_ASSERT(clusterFlag != 0 && dbFlag != 0);
@@ -317,7 +329,8 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& 
     if (!(t.databaseFlags & dbFlag)) {
       // special optimization: for local server and new database,
       // an one-shot task can be viewed as executed.
-      if (isLocal && dbFlag == DATABASE_INIT && (t.databaseFlags & DATABASE_ONLY_ONCE)) {
+      if (isLocal && dbFlag == DATABASE_INIT &&
+          (t.databaseFlags & DATABASE_ONLY_ONCE)) {
         vinfo.tasks.try_emplace(t.name, true);
       }
       LOG_TOPIC("346ba", DEBUG, Logger::STARTUP)
@@ -325,19 +338,22 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& 
       continue;
     }
 
-    LOG_TOPIC("15144", DEBUG, Logger::STARTUP) << "Upgrade: executing " << t.name;
+    LOG_TOPIC("15144", DEBUG, Logger::STARTUP)
+        << "Upgrade: executing " << t.name;
     try {
       bool ranTask = t.action(vocbase, params);
       if (!ranTask) {
         std::string msg =
             "executing " + t.name + " (" + t.description + ") failed.";
-        LOG_TOPIC("0a886", ERR, Logger::STARTUP) << msg << " aborting upgrade procedure.";
+        LOG_TOPIC("0a886", ERR, Logger::STARTUP)
+            << msg << " aborting upgrade procedure.";
         return UpgradeResult(TRI_ERROR_INTERNAL, msg, vinfo.status);
       }
     } catch (std::exception const& e) {
       LOG_TOPIC("022fe", ERR, Logger::STARTUP)
           << "executing " << t.name << " (" << t.description
-          << ") failed with error: " << e.what() << ". aborting upgrade procedure.";
+          << ") failed with error: " << e.what()
+          << ". aborting upgrade procedure.";
       return UpgradeResult(TRI_ERROR_FAILED, e.what(), vinfo.status);
     }
 
@@ -348,7 +364,8 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& 
       auto res = methods::Version::write(&vocbase, vinfo.tasks, /*sync*/ false);
 
       if (res.fail()) {
-        return UpgradeResult(res.errorNumber(), res.errorMessage(), vinfo.status);
+        return UpgradeResult(res.errorNumber(), res.errorMessage(),
+                             vinfo.status);
       }
 
       ranOnce = true;

@@ -60,7 +60,8 @@ TEST(ComparingServerListsTest, comparing_same_server_lists_returns_true) {
   ASSERT_TRUE(ClusterHelpers::compareServerLists(a, b));
 }
 
-TEST(ComparingServerListsTest, comparing_same_server_lists_with_multiple_entries_returns_true) {
+TEST(ComparingServerListsTest,
+     comparing_same_server_lists_with_multiple_entries_returns_true) {
   std::vector<std::string> a{"test", "test1", "test2"};
   std::vector<std::string> b{"test", "test1", "test2"};
 
@@ -83,16 +84,18 @@ TEST(ComparingServerListsTest,
   ASSERT_FALSE(ClusterHelpers::compareServerLists(a, b));
 }
 
-TEST(ComparingServerListsTest,
-     comparing_different_server_lists_with_multiple_entries_but_same_contents_returns_true) {
+TEST(
+    ComparingServerListsTest,
+    comparing_different_server_lists_with_multiple_entries_but_same_contents_returns_true) {
   std::vector<std::string> a{"test", "test1", "test2"};
   std::vector<std::string> b{"test", "test2", "test1"};
 
   ASSERT_TRUE(ClusterHelpers::compareServerLists(a, b));
 }
 
-TEST(ComparingServerListsTest,
-     comparing_different_server_lists_with_multiple_entries_but_different_leader_returns_false) {
+TEST(
+    ComparingServerListsTest,
+    comparing_different_server_lists_with_multiple_entries_but_different_leader_returns_false) {
   std::vector<std::string> a{"test", "test1", "test2"};
   std::vector<std::string> b{"test2", "test", "test1"};
 
@@ -103,7 +106,8 @@ TEST(ClusterHelpersTest, isCoordinatorNameTest) {
   ASSERT_TRUE(ClusterHelpers::isCoordinatorName("CRDN-"));
   ASSERT_TRUE(ClusterHelpers::isCoordinatorName("CRDN-1234"));
   ASSERT_TRUE(ClusterHelpers::isCoordinatorName("CRDN-123400000000000000"));
-  ASSERT_TRUE(ClusterHelpers::isCoordinatorName("CRDN-3c7af843-80dc-4892-a38c-ac7f24ea7ebd"));
+  ASSERT_TRUE(ClusterHelpers::isCoordinatorName(
+      "CRDN-3c7af843-80dc-4892-a38c-ac7f24ea7ebd"));
 
   ASSERT_FALSE(ClusterHelpers::isCoordinatorName("crdn"));
   ASSERT_FALSE(ClusterHelpers::isCoordinatorName("CrDN"));
@@ -112,7 +116,8 @@ TEST(ClusterHelpersTest, isCoordinatorNameTest) {
   ASSERT_FALSE(ClusterHelpers::isCoordinatorName("CRDN6666666666"));
   ASSERT_FALSE(ClusterHelpers::isCoordinatorName("AGNT-1234"));
   ASSERT_FALSE(ClusterHelpers::isCoordinatorName("PRMR-988855"));
-  ASSERT_FALSE(ClusterHelpers::isCoordinatorName("PRMR-3c7af843-80dc-4892-a38c-ac7f24ea7ebd"));
+  ASSERT_FALSE(ClusterHelpers::isCoordinatorName(
+      "PRMR-3c7af843-80dc-4892-a38c-ac7f24ea7ebd"));
   ASSERT_FALSE(ClusterHelpers::isCoordinatorName(""));
   ASSERT_FALSE(ClusterHelpers::isCoordinatorName(" "));
 }
@@ -121,7 +126,8 @@ TEST(ClusterHelpersTest, isDBServerNameTest) {
   ASSERT_TRUE(ClusterHelpers::isDBServerName("PRMR-"));
   ASSERT_TRUE(ClusterHelpers::isDBServerName("PRMR-1234"));
   ASSERT_TRUE(ClusterHelpers::isDBServerName("PRMR-123400000000000000"));
-  ASSERT_TRUE(ClusterHelpers::isDBServerName("PRMR-3c7af843-80dc-4892-a38c-ac7f24ea7ebd"));
+  ASSERT_TRUE(ClusterHelpers::isDBServerName(
+      "PRMR-3c7af843-80dc-4892-a38c-ac7f24ea7ebd"));
 
   ASSERT_FALSE(ClusterHelpers::isDBServerName("prmr"));
   ASSERT_FALSE(ClusterHelpers::isDBServerName("PrMr"));

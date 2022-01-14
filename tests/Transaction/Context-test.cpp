@@ -100,7 +100,8 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(vocbase);
   transaction::Options trxOpts;
-  transaction::Methods trx{ctx, {}, std::vector<std::string>{cname}, {}, trxOpts};
+  transaction::Methods trx{
+      ctx, {}, std::vector<std::string>{cname}, {}, trxOpts};
 
   Result res = trx.begin();
   ASSERT_TRUE(res.ok());

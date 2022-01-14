@@ -52,4 +52,3 @@ class FlushTransaction {
 };
 
 }  // namespace arangodb
-

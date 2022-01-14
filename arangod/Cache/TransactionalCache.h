@@ -120,16 +120,18 @@ class TransactionalCache final : public Cache {
  private:
   static uint64_t allocationSize(bool enableWindowedStats);
   static std::shared_ptr<Cache> create(Manager* manager, std::uint64_t id,
-                                       Metadata&& metadata, std::shared_ptr<Table> table,
+                                       Metadata&& metadata,
+                                       std::shared_ptr<Table> table,
                                        bool enableWindowedStats);
 
   virtual uint64_t freeMemoryFrom(std::uint32_t hash) override;
-  virtual void migrateBucket(void* sourcePtr, std::unique_ptr<Table::Subtable> targets,
+  virtual void migrateBucket(void* sourcePtr,
+                             std::unique_ptr<Table::Subtable> targets,
                              std::shared_ptr<Table> newTable) override;
 
   // helpers
-  std::tuple<Result, Table::BucketLocker> getBucket(std::uint32_t hash, std::uint64_t maxTries,
-                                                    bool singleOperation = true);
+  std::tuple<Result, Table::BucketLocker> getBucket(
+      std::uint32_t hash, std::uint64_t maxTries, bool singleOperation = true);
   std::uint32_t getIndex(uint32_t hash, bool useAuxiliary) const;
 
   static Table::BucketClearer bucketClearer(Metadata* metadata);
@@ -137,4 +139,3 @@ class TransactionalCache final : public Cache {
 
 };  // end namespace cache
 };  // end namespace arangodb
-

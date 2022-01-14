@@ -69,4 +69,3 @@ class NeighborsEnumerator final : public arangodb::traverser::PathEnumerator {
 
 }  // namespace graph
 }  // namespace arangodb
-

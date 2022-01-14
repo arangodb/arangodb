@@ -41,15 +41,16 @@ class ClusterHelpers {
 
   // values are passed by value intentionally, as they will be sorted inside the
   // function
-  static bool compareServerLists(std::vector<std::string>, std::vector<std::string>);
-  
-  /// @brief whether or not the passed in name is a coordinator server name, i.e. "CRDN-..."
+  static bool compareServerLists(std::vector<std::string>,
+                                 std::vector<std::string>);
+
+  /// @brief whether or not the passed in name is a coordinator server name,
+  /// i.e. "CRDN-..."
   static bool isCoordinatorName(ServerID const& serverId);
-     
-  /// @brief whether or not the passed in name is a DB server name, i.e. "PRMR-..."
+
+  /// @brief whether or not the passed in name is a DB server name, i.e.
+  /// "PRMR-..."
   static bool isDBServerName(ServerID const& serverId);
-  
 };
 
 }  // namespace arangodb
-

@@ -96,4 +96,3 @@ class Mutex {
 #endif
 };
 }  // namespace arangodb
-

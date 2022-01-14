@@ -43,9 +43,9 @@ class CreateCollection : public ActionBase, public ShardDefinition {
   void setState(ActionState state) override final;
 
  private:
-  bool _doNotIncrement = false;   // indicate that `setState` shall not increment the version
+  bool _doNotIncrement =
+      false;  // indicate that `setState` shall not increment the version
 };
 
 }  // namespace maintenance
 }  // namespace arangodb
-

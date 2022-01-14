@@ -46,9 +46,8 @@ struct QueryProfile {
   ~QueryProfile();
 
  public:
-  
   void registerInQueryList();
-  
+
   /// @brief unregister the query from the list of queries, if entered
   void unregisterFromQueryList() noexcept;
 
@@ -67,18 +66,21 @@ struct QueryProfile {
 
  private:
   Query* _query;
-  std::array<double, static_cast<size_t>(QueryExecutionState::ValueType::INVALID_STATE)> _timers;
+  std::array<double,
+             static_cast<size_t>(QueryExecutionState::ValueType::INVALID_STATE)>
+      _timers;
   double _lastStamp;
   bool _tracked;
 };
 
 // we want the number of execution states to be quite low
 // as we reserve a statically sized array for it
-static_assert(static_cast<int>(QueryExecutionState::ValueType::INITIALIZATION) == 0,
-              "unexpected min QueryExecutionState enum value");
-static_assert(static_cast<int>(QueryExecutionState::ValueType::INVALID_STATE) < 11,
+static_assert(
+    static_cast<int>(QueryExecutionState::ValueType::INITIALIZATION) == 0,
+    "unexpected min QueryExecutionState enum value");
+static_assert(static_cast<int>(QueryExecutionState::ValueType::INVALID_STATE) <
+                  11,
               "unexpected max QueryExecutionState enum value");
 
 }  // namespace aql
 }  // namespace arangodb
-

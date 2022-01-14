@@ -33,7 +33,8 @@ namespace aql {
 class DocumentExpressionContext final : public QueryExpressionContext {
  public:
   DocumentExpressionContext(transaction::Methods& trx, QueryContext& query,
-                            AqlFunctionsInternalCache& cache, arangodb::velocypack::Slice document) noexcept;
+                            AqlFunctionsInternalCache& cache,
+                            arangodb::velocypack::Slice document) noexcept;
 
   ~DocumentExpressionContext() = default;
 

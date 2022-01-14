@@ -40,7 +40,9 @@ class Builder;
 }
 namespace aql {
 
-typedef std::unordered_map<std::string, std::pair<arangodb::velocypack::Slice, bool>> BindParametersType;
+typedef std::unordered_map<std::string,
+                           std::pair<arangodb::velocypack::Slice, bool>>
+    BindParametersType;
 
 class BindParameters {
  public:
@@ -50,7 +52,9 @@ class BindParameters {
   explicit BindParameters(ResourceMonitor& resourceMonitor);
 
   /// @brief create the parameters
-  explicit BindParameters(ResourceMonitor& resourceMonitor, std::shared_ptr<arangodb::velocypack::Builder> builder);
+  explicit BindParameters(
+      ResourceMonitor& resourceMonitor,
+      std::shared_ptr<arangodb::velocypack::Builder> builder);
 
   /// @brief destroy the parameters
   ~BindParameters();
@@ -58,9 +62,11 @@ class BindParameters {
   /// @brief mark a bind parameter as "used", and return its value.
   /// will return VPackSlice::noneSlice() if the bind parameter does not exist!
   arangodb::velocypack::Slice markUsed(std::string const& name) noexcept;
- 
+
   /// @brief run a visitor function on all bind parameters
-  void visit(std::function<void(std::string const& key, arangodb::velocypack::Slice value, bool used)> const& visitor) const;
+  void visit(std::function<void(std::string const& key,
+                                arangodb::velocypack::Slice value,
+                                bool used)> const& visitor) const;
 
   /// @brief return the bind parameters as passed by the user
   std::shared_ptr<arangodb::velocypack::Builder> builder() const;
@@ -79,7 +85,8 @@ class BindParameters {
   void process();
 
   /// @brief calculates memory usage for a bind parameter
-  std::size_t memoryUsage(std::string const& key, arangodb::velocypack::Slice value) const noexcept;
+  std::size_t memoryUsage(std::string const& key,
+                          arangodb::velocypack::Slice value) const noexcept;
 
  private:
   arangodb::ResourceMonitor& _resourceMonitor;
@@ -95,4 +102,3 @@ class BindParameters {
 };
 }  // namespace aql
 }  // namespace arangodb
-

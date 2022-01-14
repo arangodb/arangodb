@@ -36,7 +36,8 @@ class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   std::string _sourceDocumentId, _resultField = "result";
 
  public:
-  explicit SSSPAlgorithm(application_features::ApplicationServer& server, VPackSlice userParams)
+  explicit SSSPAlgorithm(application_features::ApplicationServer& server,
+                         VPackSlice userParams)
       : Algorithm(server, "SSSP") {
     if (!userParams.isObject() || !userParams.hasKey("source")) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -63,10 +64,13 @@ class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
     return new MinCombiner<int64_t>();
   }
 
-  VertexComputation<int64_t, int64_t, int64_t>* createComputation(WorkerConfig const*) const override;
-  VertexCompensation<int64_t, int64_t, int64_t>* createCompensation(WorkerConfig const*) const override;
+  VertexComputation<int64_t, int64_t, int64_t>* createComputation(
+      WorkerConfig const*) const override;
+  VertexCompensation<int64_t, int64_t, int64_t>* createCompensation(
+      WorkerConfig const*) const override;
 
-  uint32_t messageBatchSize(WorkerConfig const& config, MessageStats const& stats) const override;
+  uint32_t messageBatchSize(WorkerConfig const& config,
+                            MessageStats const& stats) const override;
 };
 }  // namespace algos
 }  // namespace pregel

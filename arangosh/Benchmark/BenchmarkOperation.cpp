@@ -26,20 +26,21 @@
 namespace arangodb::arangobench {
 
 BenchmarkOperation::RequestData::RequestData()
-    : type(arangodb::rest::RequestType::ILLEGAL),
-      payload(&options) {
-
+    : type(arangodb::rest::RequestType::ILLEGAL), payload(&options) {
   options.buildUnindexedObjects = true;
-  options.paddingBehavior = arangodb::velocypack::Options::PaddingBehavior::UsePadding;
+  options.paddingBehavior =
+      arangodb::velocypack::Options::PaddingBehavior::UsePadding;
 }
 
-std::map<std::string, BenchmarkOperation::BenchmarkFactory>& BenchmarkOperation::allBenchmarks() {
+std::map<std::string, BenchmarkOperation::BenchmarkFactory>&
+BenchmarkOperation::allBenchmarks() {
   // this is a static inline variable to avoid issues with initialization order.
   static std::map<std::string, BenchmarkFactory> benchmarks;
   return benchmarks;
 }
 
-std::unique_ptr<BenchmarkOperation> BenchmarkOperation::createBenchmark(std::string const& name, BenchFeature& arangobench) {
+std::unique_ptr<BenchmarkOperation> BenchmarkOperation::createBenchmark(
+    std::string const& name, BenchFeature& arangobench) {
   auto it = allBenchmarks().find(name);
   if (it != allBenchmarks().end()) {
     return it->second.operator()(arangobench);
@@ -47,7 +48,8 @@ std::unique_ptr<BenchmarkOperation> BenchmarkOperation::createBenchmark(std::str
   return nullptr;
 }
 
-void BenchmarkOperation::registerBenchmark(std::string name, BenchmarkFactory factory) {
+void BenchmarkOperation::registerBenchmark(std::string name,
+                                           BenchmarkFactory factory) {
   allBenchmarks().emplace(std::move(name), std::move(factory));
 }
 

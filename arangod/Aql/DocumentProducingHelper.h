@@ -46,7 +46,7 @@ class Methods;
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 namespace aql {
 struct AqlValue;
 class Expression;
@@ -54,16 +54,15 @@ class ExpressionContext;
 class InputAqlItemRow;
 class OutputAqlItemRow;
 class QueryContext;
-  
+
 struct DocumentProducingFunctionContext {
  public:
-  DocumentProducingFunctionContext(InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
-                                   RegisterId outputRegister, bool produceResult,
-                                   aql::QueryContext& query,
-                                   transaction::Methods& trx, Expression* filter,
-                                   arangodb::aql::Projections const& projections,
-                                   bool allowCoveringIndexOptimization,
-                                   bool checkUniqueness);
+  DocumentProducingFunctionContext(
+      InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
+      RegisterId outputRegister, bool produceResult, aql::QueryContext& query,
+      transaction::Methods& trx, Expression* filter,
+      arangodb::aql::Projections const& projections,
+      bool allowCoveringIndexOptimization, bool checkUniqueness);
 
   DocumentProducingFunctionContext() = delete;
 
@@ -77,20 +76,22 @@ struct DocumentProducingFunctionContext {
 
   transaction::Methods* getTrxPtr() const noexcept;
 
-  std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept;
+  std::vector<size_t> const& getCoveringIndexAttributePositions()
+      const noexcept;
 
   bool getAllowCoveringIndexOptimization() const noexcept;
 
-  void setAllowCoveringIndexOptimization(bool allowCoveringIndexOptimization) noexcept;
+  void setAllowCoveringIndexOptimization(
+      bool allowCoveringIndexOptimization) noexcept;
 
   void incrScanned() noexcept;
 
   void incrFiltered() noexcept;
 
   size_t getAndResetNumScanned() noexcept;
-  
+
   size_t getAndResetNumFiltered() noexcept;
-  
+
   InputAqlItemRow const& getInputRow() const noexcept;
 
   OutputAqlItemRow& getOutputRow() const noexcept;
@@ -101,16 +102,19 @@ struct DocumentProducingFunctionContext {
 
   bool checkFilter(velocypack::Slice slice);
 
-  bool checkFilter(AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
+  bool checkFilter(AqlValue (*getValue)(void const* ctx, Variable const* var,
+                                        bool doCopy),
                    void const* filterContext);
 
   void reset();
 
   void setIsLastIndex(bool val);
-  
+
   bool hasFilter() const noexcept;
-  
-  aql::AqlFunctionsInternalCache& aqlFunctionsInternalCache() { return _aqlFunctionsInternalCache; }
+
+  aql::AqlFunctionsInternalCache& aqlFunctionsInternalCache() {
+    return _aqlFunctionsInternalCache;
+  }
 
   arangodb::velocypack::Builder& getBuilder() noexcept;
 
@@ -128,7 +132,7 @@ struct DocumentProducingFunctionContext {
   size_t _numFiltered;
   uint_fast16_t _killCheckCounter = 0;
 
-  /// @brief Builder that is reused to generate projection results 
+  /// @brief Builder that is reused to generate projection results
   arangodb::velocypack::Builder _objectBuilder;
 
   /// @brief set of already returned documents. Used to make the result distinct
@@ -151,24 +155,28 @@ struct WithProjectionsNotCoveredByIndex {};
 struct DocumentCopy {};
 }  // namespace DocumentProducingCallbackVariant
 
-template <bool checkUniqueness, bool skip>
-IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
-                                            DocumentProducingFunctionContext& context);
+template<bool checkUniqueness, bool skip>
+IndexIterator::DocumentCallback getCallback(
+    DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
+    DocumentProducingFunctionContext& context);
 
-template <bool checkUniqueness, bool skip>
-IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex,
-                                            DocumentProducingFunctionContext& context);
+template<bool checkUniqueness, bool skip>
+IndexIterator::DocumentCallback getCallback(
+    DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex,
+    DocumentProducingFunctionContext& context);
 
-template <bool checkUniqueness, bool skip>
-IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::DocumentCopy,
-                                            DocumentProducingFunctionContext& context);
+template<bool checkUniqueness, bool skip>
+IndexIterator::DocumentCallback getCallback(
+    DocumentProducingCallbackVariant::DocumentCopy,
+    DocumentProducingFunctionContext& context);
 
-template <bool checkUniqueness>
-IndexIterator::LocalDocumentIdCallback getNullCallback(DocumentProducingFunctionContext& context);
+template<bool checkUniqueness>
+IndexIterator::LocalDocumentIdCallback getNullCallback(
+    DocumentProducingFunctionContext& context);
 
-template <bool checkUniqueness, bool skip>
-IndexIterator::DocumentCallback buildDocumentCallback(DocumentProducingFunctionContext& context);
+template<bool checkUniqueness, bool skip>
+IndexIterator::DocumentCallback buildDocumentCallback(
+    DocumentProducingFunctionContext& context);
 
 }  // namespace aql
 }  // namespace arangodb
-

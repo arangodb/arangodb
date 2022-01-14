@@ -43,11 +43,10 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
   void waitForHealthEntry();
   /// @brief wait for databases to appear in Plan and Current
   void waitForDatabases() const;
- 
+
  private:
   bool _isReady;
   bool _bark;
 };
 
 }  // namespace arangodb
-

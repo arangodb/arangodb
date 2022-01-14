@@ -45,7 +45,8 @@ using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
-UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescription const& desc)
+UpdateCollection::UpdateCollection(MaintenanceFeature& feature,
+                                   ActionDescription const& desc)
     : ActionBase(feature, desc),
       ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
   std::stringstream error;
@@ -56,7 +57,7 @@ UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescriptio
     error << "collection must be specified. ";
   }
   TRI_ASSERT(desc.has(COLLECTION));
-  
+
   if (!ShardDefinition::isValid()) {
     error << "database and shard must be specified. ";
   }
@@ -88,7 +89,7 @@ bool UpdateCollection::first() {
     auto& df = _feature.server().getFeature<DatabaseFeature>();
     DatabaseGuard guard(df, database);
     auto& vocbase = guard.database();
-    
+
     std::shared_ptr<LogicalCollection> coll;
     Result found = methods::Collections::lookup(vocbase, shard, coll);
     if (found.ok()) {
@@ -126,10 +127,11 @@ bool UpdateCollection::first() {
                " of collection "
             << shard << ": " << res.errorMessage();
       }
-      
+
     } else {
       std::stringstream error;
-      error << "failed to lookup local collection " << shard << "in database " + database;
+      error << "failed to lookup local collection " << shard
+            << "in database " + database;
       LOG_TOPIC("620fb", ERR, Logger::MAINTENANCE) << error.str();
       res = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       result(res);

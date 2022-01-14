@@ -31,36 +31,48 @@
 #include "RestServer/Metrics.h"
 #include "Statistics/ServerStatistics.h"
 
-#define DECLARE_COUNTER(x, help)                \
+#define DECLARE_COUNTER(x, help)                    \
   struct x : arangodb::metrics::CounterBuilder<x> { \
-    x() { _name = #x; _help = help; } \
-    }
+    x() {                                           \
+      _name = #x;                                   \
+      _help = help;                                 \
+    }                                               \
+  }
 
-#define DECLARE_GAUGE(x, type, help)    \
+#define DECLARE_GAUGE(x, type, help)                    \
   struct x : arangodb::metrics::GaugeBuilder<x, type> { \
-    x() { _name = #x; _help = help; } \
-    }
-    
+    x() {                                               \
+      _name = #x;                                       \
+      _help = help;                                     \
+    }                                                   \
+  }
+
 #define DECLARE_LEGACY_GAUGE(x, type, help) DECLARE_GAUGE(x, type, help)
 
-#define DECLARE_HISTOGRAM(x, scale, help)                   \
+#define DECLARE_HISTOGRAM(x, scale, help)                    \
   struct x : arangodb::metrics::HistogramBuilder<x, scale> { \
-    x() { _name = #x; _help = help; } \
-    }
+    x() {                                                    \
+      _name = #x;                                            \
+      _help = help;                                          \
+    }                                                        \
+  }
 
 // The following is only needed in 3.8 for the case of duplicate
 // metrics which will be removed in a future version:
-#define DECLARE_LEGACY_COUNTER(x, help)                \
+#define DECLARE_LEGACY_COUNTER(x, help)             \
   struct x : arangodb::metrics::CounterBuilder<x> { \
-    x() { _name = #x; _help = help; } \
-    }
+    x() {                                           \
+      _name = #x;                                   \
+      _help = help;                                 \
+    }                                               \
+  }
 
 namespace arangodb {
 struct metrics_key;
 }
 
 namespace std {
-template <>
+template<>
 struct hash<arangodb::metrics_key> {
   typedef arangodb::metrics_key argument_t;
   typedef std::size_t result_t;
@@ -78,7 +90,8 @@ struct metrics_key {
   metrics_key(std::string const& name);
   metrics_key(std::string const& name, std::string const& labels);
   metrics_key(std::initializer_list<std::string> const& il);
-  metrics_key(std::string const& name, std::initializer_list<std::string> const& il);
+  metrics_key(std::string const& name,
+              std::initializer_list<std::string> const& il);
   bool operator<(metrics_key const& other) const;
 };
 
@@ -105,7 +118,7 @@ struct Builder {
   std::string _labels;
 };
 
-template <class Derived>
+template<class Derived>
 struct GenericBuilder : Builder {
   Derived&& self() { return static_cast<Derived&&>(std::move(*this)); }
 
@@ -115,34 +128,37 @@ struct GenericBuilder : Builder {
   }
 };
 
-template <class Derived>
+template<class Derived>
 struct CounterBuilder : GenericBuilder<Derived> {
   using metric_t = ::Counter;
 
   std::shared_ptr<::Metric> build() const override {
-    return std::make_shared<::Counter>(0, this->name(), this->_help, this->_labels);
+    return std::make_shared<::Counter>(0, this->name(), this->_help,
+                                       this->_labels);
   }
 
   char const* type() const override { return "counter"; }
 };
 
-template <class Derived, typename T>
+template<class Derived, typename T>
 struct GaugeBuilder : GenericBuilder<Derived> {
   using metric_t = ::Gauge<T>;
 
   std::shared_ptr<::Metric> build() const override {
-    return std::make_shared<::Gauge<T>>(T{}, this->name(), this->_help, this->_labels);
+    return std::make_shared<::Gauge<T>>(T{}, this->name(), this->_help,
+                                        this->_labels);
   }
 
   char const* type() const override { return "gauge"; }
 };
 
-template <class Derived, class Scale>
+template<class Derived, class Scale>
 struct HistogramBuilder : GenericBuilder<Derived> {
   using metric_t = ::Histogram<decltype(Scale::scale())>;
 
   std::shared_ptr<::Metric> build() const override {
-    return std::make_shared<metric_t>(Scale::scale(), this->name(), this->_help, this->_labels);
+    return std::make_shared<metric_t>(Scale::scale(), this->name(), this->_help,
+                                      this->_labels);
   }
 
   char const* type() const override { return "histogram"; }
@@ -163,15 +179,16 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
-  template <typename MetricBuilder>
+  template<typename MetricBuilder>
   auto add(MetricBuilder&& builder) -> typename MetricBuilder::metric_t& {
     return static_cast<typename MetricBuilder::metric_t&>(*doAdd(builder));
   }
 
-  template <typename MetricBuilder>
+  template<typename MetricBuilder>
   auto addShared(MetricBuilder&& builder)
       -> std::shared_ptr<typename MetricBuilder::metric_t> {
-    return std::static_pointer_cast<typename MetricBuilder::metric_t>(doAdd(builder));
+    return std::static_pointer_cast<typename MetricBuilder::metric_t>(
+        doAdd(builder));
   }
 
   void toPrometheus(std::string& result, bool V2) const;
@@ -181,10 +198,9 @@ class MetricsFeature final : public application_features::ApplicationFeature {
  private:
   auto doAdd(metrics::Builder& builder) -> std::shared_ptr<::Metric>;
 
-
   registry_type _registry;
 
-  mutable std::unordered_map<std::string,std::string> _globalLabels;
+  mutable std::unordered_map<std::string, std::string> _globalLabels;
   mutable std::string _globalLabelsStr;
 
   mutable std::recursive_mutex _lock;
@@ -200,4 +216,3 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

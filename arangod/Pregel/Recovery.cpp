@@ -43,9 +43,7 @@ using namespace arangodb::pregel;
 RecoveryManager::RecoveryManager(ClusterInfo& ci)
     : _ci(ci), _agency(ci.server()) {}
 
-RecoveryManager::~RecoveryManager() {
-  _listeners.clear();
-}
+RecoveryManager::~RecoveryManager() { _listeners.clear(); }
 
 void RecoveryManager::stopMonitoring(Conductor* listener) {
   MUTEX_LOCKER(guard, _lock);
@@ -57,16 +55,17 @@ void RecoveryManager::stopMonitoring(Conductor* listener) {
   }
 }
 
-void RecoveryManager::monitorCollections(DatabaseID const& database,
-                                         std::vector<CollectionID> const& collections,
-                                         Conductor* listener) {
+void RecoveryManager::monitorCollections(
+    DatabaseID const& database, std::vector<CollectionID> const& collections,
+    Conductor* listener) {
   MUTEX_LOCKER(guard, _lock);
   if (ServerState::instance()->isCoordinator() == false) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
   }
 
   for (CollectionID const& collname : collections) {
-    std::shared_ptr<LogicalCollection> coll = _ci.getCollection(database, collname);
+    std::shared_ptr<LogicalCollection> coll =
+        _ci.getCollection(database, collname);
     CollectionID cid = std::to_string(coll->id().id());
     std::shared_ptr<std::vector<ShardID>> shards = _ci.getShardList(cid);
 
@@ -82,7 +81,8 @@ void RecoveryManager::monitorCollections(DatabaseID const& database,
       conductors.insert(listener);
       //_monitorShard(coll->dbName(), cid, shard);
 
-      std::shared_ptr<std::vector<ServerID> const> servers = _ci.getResponsibleServer(shard);
+      std::shared_ptr<std::vector<ServerID> const> servers =
+          _ci.getResponsibleServer(shard);
       if (servers->size() > 0) {
         // _lock is already held
         _primaryServers[shard] = servers->at(0);
@@ -91,15 +91,17 @@ void RecoveryManager::monitorCollections(DatabaseID const& database,
   }
 }
 
-ErrorCode RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers,
-                                             std::vector<ServerID>& goodServers) {
+ErrorCode RecoveryManager::filterGoodServers(
+    std::vector<ServerID> const& servers, std::vector<ServerID>& goodServers) {
   // TODO I could also use ClusterInfo::failedServers
   AgencyCommResult result = _agency.getValues("Supervision/Health");
   if (result.successful()) {
-    VPackSlice serversRegistered = result.slice()[0].get(std::vector<std::string>(
-        {AgencyCommHelper::path(), "Supervision", "Health"}));
+    VPackSlice serversRegistered =
+        result.slice()[0].get(std::vector<std::string>(
+            {AgencyCommHelper::path(), "Supervision", "Health"}));
 
-    LOG_TOPIC("68f55", INFO, Logger::PREGEL) << "Server Status: " << serversRegistered.toJson();
+    LOG_TOPIC("68f55", INFO, Logger::PREGEL)
+        << "Server Status: " << serversRegistered.toJson();
 
     if (serversRegistered.isObject()) {
       for (auto const& res : VPackObjectIterator(serversRegistered)) {
@@ -107,9 +109,11 @@ ErrorCode RecoveryManager::filterGoodServers(std::vector<ServerID> const& server
         VPackSlice slice = res.value;
         if (slice.isObject() && slice.hasKey("Status")) {
           VPackSlice status = slice.get("Status");
-          if (status.compareString(consensus::Supervision::HEALTH_STATUS_GOOD) == 0) {
+          if (status.compareString(
+                  consensus::Supervision::HEALTH_STATUS_GOOD) == 0) {
             ServerID name = serverId.copyString();
-            if (std::find(servers.begin(), servers.end(), name) != servers.end()) {
+            if (std::find(servers.begin(), servers.end(), name) !=
+                servers.end()) {
               goodServers.push_back(name);
             }
           }
@@ -122,7 +126,8 @@ ErrorCode RecoveryManager::filterGoodServers(std::vector<ServerID> const& server
   return TRI_ERROR_NO_ERROR;
 }
 
-void RecoveryManager::updatedFailedServers(std::vector<ServerID> const& failed) {
+void RecoveryManager::updatedFailedServers(
+    std::vector<ServerID> const& failed) {
   MUTEX_LOCKER(guard, _lock);  // we are accessing _primaryServers
 
   for (auto const& pair : _primaryServers) {
@@ -133,9 +138,8 @@ void RecoveryManager::updatedFailedServers(std::vector<ServerID> const& failed) 
 
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      scheduler->queue(RequestLane::INTERNAL_LOW, [this, shard] {
-        _renewPrimaryServer(shard);
-      });
+      scheduler->queue(RequestLane::INTERNAL_LOW,
+                       [this, shard] { _renewPrimaryServer(shard); });
     }
   }
 }
@@ -149,14 +153,17 @@ void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
 
   auto const& conductors = _listeners.find(shard);
   auto const& currentPrimary = _primaryServers.find(shard);
-  if (conductors == _listeners.end() || currentPrimary == _primaryServers.end()) {
-    LOG_TOPIC("30077", ERR, Logger::PREGEL) << "Shard is not properly registered";
+  if (conductors == _listeners.end() ||
+      currentPrimary == _primaryServers.end()) {
+    LOG_TOPIC("30077", ERR, Logger::PREGEL)
+        << "Shard is not properly registered";
     return;
   }
 
   int tries = 0;
   do {
-    std::shared_ptr<std::vector<ServerID> const> servers = _ci.getResponsibleServer(shard);
+    std::shared_ptr<std::vector<ServerID> const> servers =
+        _ci.getResponsibleServer(shard);
     if (servers && !servers->empty()) {
       ServerID const& nextPrimary = servers->front();
       if (currentPrimary->second != nextPrimary) {
@@ -164,7 +171,8 @@ void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
         for (Conductor* cc : conductors->second) {
           cc->startRecovery();
         }
-        LOG_TOPIC("e9429", INFO, Logger::PREGEL) << "Recovery action was initiated";
+        LOG_TOPIC("e9429", INFO, Logger::PREGEL)
+            << "Recovery action was initiated";
         break;
       }
     }

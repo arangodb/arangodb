@@ -51,7 +51,7 @@ class InputAqlItemRow;
 class OutputAqlItemRow;
 class NoStats;
 class RegisterInfos;
-template <BlockPassthrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 
 class DistinctCollectExecutorInfos {
@@ -66,7 +66,8 @@ class DistinctCollectExecutorInfos {
   ~DistinctCollectExecutorInfos() = default;
 
  public:
-  [[nodiscard]] std::pair<RegisterId, RegisterId> const& getGroupRegister() const;
+  [[nodiscard]] std::pair<RegisterId, RegisterId> const& getGroupRegister()
+      const;
   velocypack::Options const* vpackOptions() const;
   arangodb::ResourceMonitor& getResourceMonitor() const;
 
@@ -88,7 +89,8 @@ class DistinctCollectExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = false;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -106,16 +108,20 @@ class DistinctCollectExecutor {
   /**
    * @brief produce the next Rows of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
-  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input,
+                                 OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
 
-  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                   AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
-  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                             AqlCall const& call) const noexcept -> size_t;
+  [[nodiscard]] auto expectedNumberOfRowsNew(
+      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+      -> size_t;
 
  private:
   Infos const& infos() const noexcept;
@@ -124,9 +130,9 @@ class DistinctCollectExecutor {
 
  private:
   Infos const& _infos;
-  containers::FlatHashSet<AqlValue, AqlValueGroupHash, AqlValueGroupEqual> _seen;
+  containers::FlatHashSet<AqlValue, AqlValueGroupHash, AqlValueGroupEqual>
+      _seen;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-

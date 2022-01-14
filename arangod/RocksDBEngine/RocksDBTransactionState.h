@@ -81,10 +81,10 @@ class RocksDBTransactionState final : public TransactionState {
   /// @note the value is guaranteed to be valid only after
   ///       transaction is committed
   TRI_voc_tick_t lastOperationTick() const noexcept override;
-  
+
   /// @brief number of commits, including intermediate commits
   uint64_t numCommits() const override;
-  
+
   bool hasOperations() const noexcept;
 
   uint64_t numOperations() const noexcept;
@@ -116,11 +116,12 @@ class RocksDBTransactionState final : public TransactionState {
     TRI_ASSERT(_rocksMethods);
     return _rocksMethods.get();
   }
-  
+
   /// @brief acquire a database snapshot if we do not yet have one.
-  /// Returns true if a snapshot was acquired, otherwise false (i.e., if we already had a snapshot)
+  /// Returns true if a snapshot was acquired, otherwise false (i.e., if we
+  /// already had a snapshot)
   bool ensureSnapshot();
-  
+
   static RocksDBTransactionState* toState(transaction::Methods* trx) {
     TRI_ASSERT(trx != nullptr);
     TransactionState* state = trx->state();
@@ -141,7 +142,8 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief in parallel mode. READ-ONLY transactions
   bool inParallelMode() const { return _parallel; }
 
-  RocksDBTransactionCollection::TrackedOperations& trackedOperations(DataSourceId cid);
+  RocksDBTransactionCollection::TrackedOperations& trackedOperations(
+      DataSourceId cid);
 
   /// @brief Track documents inserted to the collection
   ///        Used to update the revision tree for replication after commit
@@ -173,7 +175,7 @@ class RocksDBTransactionState final : public TransactionState {
   rocksdb::SequenceNumber prepareCollections();
   void commitCollections(rocksdb::SequenceNumber lastWritten);
   void cleanupCollections();
-  
+
   void maybeDisableIndexing();
 
   /// @brief delete transaction, snapshot and cache trx
@@ -198,12 +200,14 @@ class RocksDBTransactionState final : public TransactionState {
 /// something in maintainer mode, and do nothing in release mode!
 struct RocksDBTransactionStateGuard {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  explicit RocksDBTransactionStateGuard(RocksDBTransactionState* state) noexcept;
+  explicit RocksDBTransactionStateGuard(
+      RocksDBTransactionState* state) noexcept;
   ~RocksDBTransactionStateGuard();
-  
+
   RocksDBTransactionState* _state;
 #else
-  explicit RocksDBTransactionStateGuard(RocksDBTransactionState* /*state*/) noexcept {}
+  explicit RocksDBTransactionStateGuard(
+      RocksDBTransactionState* /*state*/) noexcept {}
   ~RocksDBTransactionStateGuard() = default;
 #endif
 };
@@ -226,4 +230,3 @@ class RocksDBKeyLeaser {
 };
 
 }  // namespace arangodb
-

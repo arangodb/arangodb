@@ -66,4 +66,3 @@ class CpuUsageFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

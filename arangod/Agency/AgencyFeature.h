@@ -72,4 +72,3 @@ class AgencyFeature : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

@@ -38,8 +38,10 @@ class BackupFeature : public application_features::ApplicationFeature {
   BackupFeature(application_features::ApplicationServer& server, int& exitCode);
 
   // for documentation of virtual methods, see `ApplicationFeature`
-  virtual void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  virtual void validateOptions(std::shared_ptr<options::ProgramOptions> options) override final;
+  virtual void collectOptions(
+      std::shared_ptr<options::ProgramOptions>) override final;
+  virtual void validateOptions(
+      std::shared_ptr<options::ProgramOptions> options) override final;
   virtual void start() override final;
 
   /**
@@ -77,4 +79,3 @@ class BackupFeature : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

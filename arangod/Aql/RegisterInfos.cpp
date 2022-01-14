@@ -27,7 +27,8 @@
 
 using namespace arangodb::aql;
 
-auto setStackToFlatSetStack(RegIdSetStack const& setStack) -> RegIdFlatSetStack {
+auto setStackToFlatSetStack(RegIdSetStack const& setStack)
+    -> RegIdFlatSetStack {
   auto flatSetStack = RegIdFlatSetStack{};
   flatSetStack.reserve(setStack.size());
 
@@ -48,21 +49,25 @@ RegisterInfos::RegisterInfos(
     RegIdSet const& registersToClear,
     // cppcheck-suppress passedByValue
     RegIdSetStack const& registersToKeep)
-    : RegisterInfos(std::move(readableInputRegisters),
-                    std::move(writeableOutputRegisters), nrInputRegisters, nrOutputRegisters,
-                    RegIdFlatSet{registersToClear.begin(), registersToClear.end()},
-                    setStackToFlatSetStack(registersToKeep)) {}
+    : RegisterInfos(
+          std::move(readableInputRegisters),
+          std::move(writeableOutputRegisters), nrInputRegisters,
+          nrOutputRegisters,
+          RegIdFlatSet{registersToClear.begin(), registersToClear.end()},
+          setStackToFlatSetStack(registersToKeep)) {}
 
-RegisterInfos::RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeableOutputRegisters,
-                             RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
-                             RegIdFlatSet registersToClear, RegIdFlatSetStack registersToKeep)
+RegisterInfos::RegisterInfos(RegIdSet readableInputRegisters,
+                             RegIdSet writeableOutputRegisters,
+                             RegisterCount nrInputRegisters,
+                             RegisterCount nrOutputRegisters,
+                             RegIdFlatSet registersToClear,
+                             RegIdFlatSetStack registersToKeep)
     : _inRegs(std::move(readableInputRegisters)),
       _outRegs(std::move(writeableOutputRegisters)),
       _numInRegs(nrInputRegisters),
       _numOutRegs(nrOutputRegisters),
       _registersToKeep(std::move(registersToKeep)),
       _registersToClear(std::move(registersToClear)) {
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   for (RegisterId const inReg : _inRegs) {
     TRI_ASSERT(inReg.isConstRegister() || inReg < nrInputRegisters);
@@ -85,15 +90,13 @@ RegisterInfos::RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeable
 #endif
 }
 
-RegIdSet const& RegisterInfos::getInputRegisters() const {
-  return _inRegs;
-}
+RegIdSet const& RegisterInfos::getInputRegisters() const { return _inRegs; }
 
-RegIdSet const& RegisterInfos::getOutputRegisters() const {
-  return _outRegs;
-}
+RegIdSet const& RegisterInfos::getOutputRegisters() const { return _outRegs; }
 
-RegisterCount RegisterInfos::numberOfInputRegisters() const { return _numInRegs; }
+RegisterCount RegisterInfos::numberOfInputRegisters() const {
+  return _numInRegs;
+}
 
 RegisterCount RegisterInfos::numberOfOutputRegisters() const {
   return _numOutRegs;

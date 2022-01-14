@@ -96,4 +96,3 @@ class TransactionManager {
 
 };  // end namespace cache
 };  // end namespace arangodb
-

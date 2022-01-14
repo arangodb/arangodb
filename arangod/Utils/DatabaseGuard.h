@@ -61,4 +61,3 @@ class DatabaseGuard {
 };
 
 }  // namespace arangodb
-

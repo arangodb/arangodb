@@ -70,44 +70,48 @@ using Path = std::vector<std::string>;
 using PathSequence = std::vector<Path>;
 namespace {
 Vertex const constSource("vertex/source"), constTarget("vertex/target"),
-    regSource(RegisterId(0)), regTarget(1), brokenSource{"IwillBreakYourSearch"},
+    regSource(RegisterId(0)),
+    regTarget(1), brokenSource{"IwillBreakYourSearch"},
     brokenTarget{"I will also break your search"};
 
-  MatrixBuilder<2> const noneRow{{{{}}}};
-  MatrixBuilder<2> const oneRow{{{{R"("vertex/source")"}, {R"("vertex/target")"}}}};
-  MatrixBuilder<2> const twoRows{{{{R"("vertex/source")"}, {R"("vertex/target")"}}},
-                                 {{{R"("vertex/a")"}, {R"("vertex/b")"}}}};
-  MatrixBuilder<2> const threeRows{{{{R"("vertex/source")"}, {R"("vertex/target")"}}},
-                                   {{{R"("vertex/a")"}, {R"("vertex/b")"}}},
-                                   {{{R"("vertex/a")"}, {R"("vertex/target")"}}}};
-  MatrixBuilder<2> const someRows{{{{R"("vertex/c")"}, {R"("vertex/target")"}}},
-                                  {{{R"("vertex/b")"}, {R"("vertex/target")"}}},
-                                  {{{R"("vertex/e")"}, {R"("vertex/target")"}}},
-                                  {{{R"("vertex/a")"}, {R"("vertex/target")"}}}};
+MatrixBuilder<2> const noneRow{{{{}}}};
+MatrixBuilder<2> const oneRow{
+    {{{R"("vertex/source")"}, {R"("vertex/target")"}}}};
+MatrixBuilder<2> const twoRows{
+    {{{R"("vertex/source")"}, {R"("vertex/target")"}}},
+    {{{R"("vertex/a")"}, {R"("vertex/b")"}}}};
+MatrixBuilder<2> const threeRows{
+    {{{R"("vertex/source")"}, {R"("vertex/target")"}}},
+    {{{R"("vertex/a")"}, {R"("vertex/b")"}}},
+    {{{R"("vertex/a")"}, {R"("vertex/target")"}}}};
+MatrixBuilder<2> const someRows{{{{R"("vertex/c")"}, {R"("vertex/target")"}}},
+                                {{{R"("vertex/b")"}, {R"("vertex/target")"}}},
+                                {{{R"("vertex/e")"}, {R"("vertex/target")"}}},
+                                {{{R"("vertex/a")"}, {R"("vertex/target")"}}}};
 
-  PathSequence const noPath = {};
-  PathSequence const onePath = {
-      {"vertex/source", "vertex/intermed", "vertex/target"}};
+PathSequence const noPath = {};
+PathSequence const onePath = {
+    {"vertex/source", "vertex/intermed", "vertex/target"}};
 
-  PathSequence const threePaths = {
-      {"vertex/source", "vertex/intermed", "vertex/target"},
-      {"vertex/a", "vertex/b", "vertex/c", "vertex/d"},
-      {"vertex/source", "vertex/b", "vertex/c", "vertex/d"},
-      {"vertex/a", "vertex/b", "vertex/target"}};
+PathSequence const threePaths = {
+    {"vertex/source", "vertex/intermed", "vertex/target"},
+    {"vertex/a", "vertex/b", "vertex/c", "vertex/d"},
+    {"vertex/source", "vertex/b", "vertex/c", "vertex/d"},
+    {"vertex/a", "vertex/b", "vertex/target"}};
 
-  PathSequence const somePaths = {
-      {"vertex/source", "vertex/intermed0", "vertex/target"},
-      {"vertex/a", "vertex/b", "vertex/c", "vertex/d"},
-      {"vertex/source", "vertex/intermed1", "vertex/target"},
-      {"vertex/source", "vertex/intermed2", "vertex/target"},
-      {"vertex/a", "vertex/b", "vertex/c", "vertex/d"},
-      {"vertex/source", "vertex/intermed3", "vertex/target"},
-      {"vertex/source", "vertex/intermed4", "vertex/target"},
-      {"vertex/a", "vertex/b", "vertex/c", "vertex/d"},
-      {"vertex/source", "vertex/intermed5", "vertex/target"},
-  };
+PathSequence const somePaths = {
+    {"vertex/source", "vertex/intermed0", "vertex/target"},
+    {"vertex/a", "vertex/b", "vertex/c", "vertex/d"},
+    {"vertex/source", "vertex/intermed1", "vertex/target"},
+    {"vertex/source", "vertex/intermed2", "vertex/target"},
+    {"vertex/a", "vertex/b", "vertex/c", "vertex/d"},
+    {"vertex/source", "vertex/intermed3", "vertex/target"},
+    {"vertex/source", "vertex/intermed4", "vertex/target"},
+    {"vertex/a", "vertex/b", "vertex/c", "vertex/d"},
+    {"vertex/source", "vertex/intermed5", "vertex/target"},
+};
 
-  }  // namespace  // namespace
+}  // namespace
 
 // The FakeShortestPathsFinder does not do any real k shortest paths search; it
 // is merely initialized with a set of "paths" and then outputs them, keeping a
@@ -115,7 +119,8 @@ Vertex const constSource("vertex/source"), constTarget("vertex/target"),
 // whether the executor output the correct sequence of rows.
 class FakeKShortestPathsFinder : public KShortestPathsFinder {
  public:
-  FakeKShortestPathsFinder(ShortestPathOptions& options, PathSequence const& kpaths)
+  FakeKShortestPathsFinder(ShortestPathOptions& options,
+                           PathSequence const& kpaths)
       : KShortestPathsFinder(options), _kpaths(kpaths), _traversalDone(true) {}
   ~FakeKShortestPathsFinder() = default;
 
@@ -133,7 +138,8 @@ class FakeKShortestPathsFinder : public KShortestPathsFinder {
     return false;
   }
 
-  bool startKShortestPathsTraversal(Slice const& start, Slice const& end) override {
+  bool startKShortestPathsTraversal(Slice const& start,
+                                    Slice const& end) override {
     _source = std::string{start.copyString()};
     _target = std::string{end.copyString()};
 
@@ -201,7 +207,8 @@ struct KShortestPathsTestParameters {
         _call(AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, true}),
         _blockSize(1000) {}
 
-  KShortestPathsTestParameters(std::tuple<MatrixBuilder<2>, PathSequence, AqlCall, size_t> params)
+  KShortestPathsTestParameters(
+      std::tuple<MatrixBuilder<2>, PathSequence, AqlCall, size_t> params)
       : _source(constSource),
         _target(constTarget),
         // TODO: Make output registers configurable?
@@ -221,10 +228,8 @@ struct KShortestPathsTestParameters {
   size_t _blockSize{1000};
 };
 
-class KShortestPathsExecutorTest
-    : public ::testing::Test {
+class KShortestPathsExecutorTest : public ::testing::Test {
  protected:
-
   // parameters are copied because they are const otherwise
   // and that doesn't mix with std::move
   KShortestPathsTestParameters parameters;
@@ -262,17 +267,20 @@ class KShortestPathsExecutorTest
         registerInfos(parameters._inputRegisters, parameters._outputRegisters,
                       2, 3, RegIdFlatSet{}, RegIdFlatSetStack{{}}),
         executorInfos(0, *fakedQuery.get(),
-                      std::make_unique<FakeKShortestPathsFinder>(options,
-                                                                 parameters._paths),
-                      std::move(parameters._source), std::move(parameters._target)),
+                      std::make_unique<FakeKShortestPathsFinder>(
+                          options, parameters._paths),
+                      std::move(parameters._source),
+                      std::move(parameters._target)),
         finder(static_cast<FakeKShortestPathsFinder&>(executorInfos.finder())),
-        inputBlock(buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix))),
+        inputBlock(buildBlock<2>(itemBlockManager,
+                                 std::move(parameters._inputMatrix))),
         input(AqlItemBlockInputRange(ExecutorState::DONE, 0, inputBlock, 0)),
         fakeUnusedBlock(VPackParser::fromJson("[]")),
         fetcher(itemBlockManager, fakeUnusedBlock->steal(), false),
         testee(fetcher, executorInfos),
         output(std::move(block), registerInfos.getOutputRegisters(),
-               registerInfos.registersToKeep(), registerInfos.registersToClear()) {}
+               registerInfos.registersToKeep(),
+               registerInfos.registersToClear()) {}
 
   size_t ExpectedNumberOfRowsProduced(size_t expectedFound) {
     if (parameters._call.getOffset() >= expectedFound) {
@@ -285,7 +293,8 @@ class KShortestPathsExecutorTest
 
   void ValidateCalledWith() {
     auto calledWith = finder.getCalledWith();
-    auto block = buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix));
+    auto block =
+        buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix));
 
     // We should always only call the finder at most for all input rows
     ASSERT_LE(calledWith.size(), block->numRows());
@@ -330,12 +339,14 @@ class KShortestPathsExecutorTest
         std::min(parameters._call.getOffset(), pathsFound.size());
     EXPECT_EQ(skippedInitial, expectedNrRowsSkippedInitial);
 
-    auto expectedNrRowsProduced = ExpectedNumberOfRowsProduced(pathsFound.size());
+    auto expectedNrRowsProduced =
+        ExpectedNumberOfRowsProduced(pathsFound.size());
 
     auto expectedRowsIndex = size_t{skippedInitial};
     for (auto const& block : results) {
       if (block != nullptr) {
-        for (size_t blockIndex = 0; blockIndex < block->numRows(); ++blockIndex, ++expectedRowsIndex) {
+        for (size_t blockIndex = 0; blockIndex < block->numRows();
+             ++blockIndex, ++expectedRowsIndex) {
           AqlValue value =
               block->getValue(blockIndex, executorInfos.getOutputRegister());
           EXPECT_TRUE(value.isArray());
@@ -365,13 +376,16 @@ class KShortestPathsExecutorTest
     // If a fullCount was requested, the sum (skippedInitial + produced +
     // skippedFullCount) should be exactly the number of rows we produced.
     if (parameters._call.fullCount) {
-      ASSERT_EQ(skippedInitial + (expectedRowsIndex - skippedInitial) + skippedFullCount,
+      ASSERT_EQ(skippedInitial + (expectedRowsIndex - skippedInitial) +
+                    skippedFullCount,
                 pathsFound.size());
     }
   }
 
-  void TestExecutor(RegisterInfos& registerInfos, KShortestPathsExecutorInfos<KShortestPathsFinder>& executorInfos,
-                    AqlItemBlockInputRange& input) {
+  void TestExecutor(
+      RegisterInfos& registerInfos,
+      KShortestPathsExecutorInfos<KShortestPathsFinder>& executorInfos,
+      AqlItemBlockInputRange& input) {
     // This will fetch everything now, unless we give a small enough atMost
 
     auto stats = TraversalStats{};
@@ -391,12 +405,13 @@ class KShortestPathsExecutorTest
       SharedAqlItemBlockPtr block =
           itemBlockManager.requestBlock(parameters._blockSize, 4);
 
-      OutputAqlItemRow output(std::move(block), registerInfos.getOutputRegisters(),
-                              registerInfos.registersToKeep(),
-                              registerInfos.registersToClear());
+      OutputAqlItemRow output(
+          std::move(block), registerInfos.getOutputRegisters(),
+          registerInfos.registersToKeep(), registerInfos.registersToClear());
       output.setCall(std::move(ourCall));
 
-      std::tie(state, std::ignore, std::ignore) = testee.produceRows(input, output);
+      std::tie(state, std::ignore, std::ignore) =
+          testee.produceRows(input, output);
 
       outputs.emplace_back(output.stealBlock());
       ourCall = output.stealClientCall();
@@ -426,7 +441,8 @@ TEST_P(KShortestPathsExecutorInputsTest, the_test) {
 
 class KShortestPathsExecutorPathsTest
     : public KShortestPathsExecutorTest,
-      public ::testing::WithParamInterface<std::tuple<MatrixBuilder<2>, PathSequence, AqlCall, size_t>> {
+      public ::testing::WithParamInterface<
+          std::tuple<MatrixBuilder<2>, PathSequence, AqlCall, size_t>> {
  protected:
   KShortestPathsExecutorPathsTest() : KShortestPathsExecutorTest(GetParam()) {}
 };
@@ -438,7 +454,8 @@ TEST_P(KShortestPathsExecutorPathsTest, the_test) {
 // Conflict with the other shortest path finder
 namespace {
 
-// Some of the bigger test cases we should generate and not write out like a caveperson
+// Some of the bigger test cases we should generate and not write out like a
+// caveperson
 PathSequence generateSomeBiggerCase(size_t n) {
   auto paths = PathSequence{};
 
@@ -456,17 +473,19 @@ auto paths =
     testing::Values(noPath, onePath, threePaths, somePaths,
                     generateSomeBiggerCase(100), generateSomeBiggerCase(999),
                     generateSomeBiggerCase(1000), generateSomeBiggerCase(2000));
-auto calls =
-    testing::Values(AqlCall{}, AqlCall{0, 0u, 0u, false}, AqlCall{0, 1u, 0u, false},
-                    AqlCall{0, 0u, 1u, false}, AqlCall{0, 1u, 1u, false},
-                    AqlCall{1, 1u, 1u}, AqlCall{100, 1u, 1u}, AqlCall{1000},
-                    AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, true});
+auto calls = testing::Values(
+    AqlCall{}, AqlCall{0, 0u, 0u, false}, AqlCall{0, 1u, 0u, false},
+    AqlCall{0, 0u, 1u, false}, AqlCall{0, 1u, 1u, false}, AqlCall{1, 1u, 1u},
+    AqlCall{100, 1u, 1u}, AqlCall{1000},
+    AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, true});
 auto blockSizes = testing::Values(5, 1000);
 
-INSTANTIATE_TEST_CASE_P(KShortestPathExecutorInputTestInstance, KShortestPathsExecutorInputsTest,
+INSTANTIATE_TEST_CASE_P(KShortestPathExecutorInputTestInstance,
+                        KShortestPathsExecutorInputsTest,
                         testing::Combine(sources, targets));
 
-INSTANTIATE_TEST_CASE_P(KShortestPathExecutorPathsTestInstance, KShortestPathsExecutorPathsTest,
+INSTANTIATE_TEST_CASE_P(KShortestPathExecutorPathsTestInstance,
+                        KShortestPathsExecutorPathsTest,
                         testing::Combine(inputs, paths, calls, blockSizes));
 }  // namespace
 

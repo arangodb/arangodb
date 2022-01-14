@@ -47,8 +47,9 @@
 
 namespace {
 
-bool equalAnalyzers(std::vector<arangodb::iresearch::FieldMeta::Analyzer> const& lhs,
-                    std::vector<arangodb::iresearch::FieldMeta::Analyzer> const& rhs) noexcept {
+bool equalAnalyzers(
+    std::vector<arangodb::iresearch::FieldMeta::Analyzer> const& lhs,
+    std::vector<arangodb::iresearch::FieldMeta::Analyzer> const& rhs) noexcept {
   if (lhs.size() != rhs.size()) {
     return false;
   }
@@ -56,13 +57,13 @@ bool equalAnalyzers(std::vector<arangodb::iresearch::FieldMeta::Analyzer> const&
   std::unordered_multiset<irs::string_ref> expected;
 
   for (auto& entry : lhs) {
-    expected.emplace(
-      entry._pool ? irs::string_ref(entry._pool->name()) : irs::string_ref::NIL);
+    expected.emplace(entry._pool ? irs::string_ref(entry._pool->name())
+                                 : irs::string_ref::NIL);
   }
 
   for (auto& entry : rhs) {
-    auto itr = expected.find(
-      entry._pool ? irs::string_ref(entry._pool->name()) : irs::string_ref::NIL);
+    auto itr = expected.find(entry._pool ? irs::string_ref(entry._pool->name())
+                                         : irs::string_ref::NIL);
 
     if (itr == expected.end()) {
       return false;  // values do not match
@@ -94,9 +95,8 @@ namespace iresearch {
 // -----------------------------------------------------------------------------
 
 FieldMeta::Analyzer::Analyzer()
-  : _pool(IResearchAnalyzerFeature::identity()),
-    _shortName(_pool ? _pool->name() : arangodb::StaticStrings::Empty) {
-}
+    : _pool(IResearchAnalyzerFeature::identity()),
+      _shortName(_pool ? _pool->name() : arangodb::StaticStrings::Empty) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      IResearchLinkMeta::FieldMeta
@@ -109,9 +109,8 @@ FieldMeta::Analyzer::Analyzer()
 }
 
 FieldMeta::FieldMeta()
-  : _analyzers{Analyzer()}, // identity analyzer
-    _primitiveOffset{1} {
-}
+    : _analyzers{Analyzer()},  // identity analyzer
+      _primitiveOffset{1} {}
 
 bool FieldMeta::operator==(FieldMeta const& rhs) const noexcept {
   if (!equalAnalyzers(_analyzers, rhs._analyzers)) {
@@ -147,12 +146,12 @@ bool FieldMeta::operator==(FieldMeta const& rhs) const noexcept {
 }
 
 bool FieldMeta::init(application_features::ApplicationServer& server,
-                     velocypack::Slice const& slice,
-                     std::string& errorField,
+                     velocypack::Slice const& slice, std::string& errorField,
                      irs::string_ref const defaultVocbase,
                      FieldMeta const& defaults /*= DEFAULT()*/,
                      Mask* mask /*= nullptr*/,
-                     std::set<AnalyzerPool::ptr, AnalyzerComparer>* referencedAnalyzers /*= nullptr*/) {
+                     std::set<AnalyzerPool::ptr, AnalyzerComparer>*
+                         referencedAnalyzers /*= nullptr*/) {
   if (!slice.isObject()) {
     return false;
   }
@@ -184,7 +183,7 @@ bool FieldMeta::init(application_features::ApplicationServer& server,
       }
 
       _analyzers.clear();  // reset to match read values exactly
-      std::unordered_set<irs::string_ref> uniqueGuard; // deduplicate analyzers
+      std::unordered_set<irs::string_ref> uniqueGuard;  // deduplicate analyzers
 
       for (velocypack::ArrayIterator itr(field); itr.valid(); ++itr) {
         auto value = *itr;
@@ -200,7 +199,8 @@ bool FieldMeta::init(application_features::ApplicationServer& server,
 
         if (!defaultVocbase.null()) {
           name = IResearchAnalyzerFeature::normalize(name, defaultVocbase);
-          shortName = IResearchAnalyzerFeature::normalize(name, defaultVocbase, false);
+          shortName =
+              IResearchAnalyzerFeature::normalize(name, defaultVocbase, false);
         }
 
         AnalyzerPool::ptr analyzer;
@@ -214,8 +214,8 @@ bool FieldMeta::init(application_features::ApplicationServer& server,
             found = static_cast<bool>(analyzer);
 
             if (ADB_UNLIKELY(!found)) {
-              TRI_ASSERT(false); // should not happen
-              referencedAnalyzers->erase(it); // remove null analyzer
+              TRI_ASSERT(false);               // should not happen
+              referencedAnalyzers->erase(it);  // remove null analyzer
             }
           }
         }
@@ -223,11 +223,14 @@ bool FieldMeta::init(application_features::ApplicationServer& server,
         if (!found) {
           // for cluster only check cache to avoid ClusterInfo locking issues
           // analyzer should have been populated via 'analyzerDefinitions' above
-          analyzer = analyzers.get(name, QueryAnalyzerRevisions::QUERY_LATEST, ServerState::instance()->isClusterRole());
+          analyzer = analyzers.get(name, QueryAnalyzerRevisions::QUERY_LATEST,
+                                   ServerState::instance()->isClusterRole());
         }
 
         if (!analyzer) {
-          errorField = fieldName + "." + value.copyString(); // original (non-normalized) 'name' value
+          errorField =
+              fieldName + "." +
+              value.copyString();  // original (non-normalized) 'name' value
 
           return false;
         }
@@ -248,17 +251,16 @@ bool FieldMeta::init(application_features::ApplicationServer& server,
       auto* begin = _analyzers.data();
       auto* end = _analyzers.data() + _analyzers.size();
 
-      std::sort(begin, end,
-                [](auto const& lhs, auto const& rhs) {
+      std::sort(begin, end, [](auto const& lhs, auto const& rhs) {
         return lhs._pool->inputType() < rhs._pool->inputType();
       });
 
       // find offset of the first non-primitive analyzer
-      auto* primitiveEnd = std::find_if(
-        begin, end,
-        [](auto const& analyzer) noexcept {
-          return analyzer._pool->accepts(AnalyzerValueType::Array | AnalyzerValueType::Object);
-      });
+      auto* primitiveEnd =
+          std::find_if(begin, end, [](auto const& analyzer) noexcept {
+            return analyzer._pool->accepts(AnalyzerValueType::Array |
+                                           AnalyzerValueType::Object);
+          });
 
       _primitiveOffset = std::distance(begin, primitiveEnd);
     }
@@ -324,10 +326,9 @@ bool FieldMeta::init(application_features::ApplicationServer& server,
       }
 
       static const std::unordered_map<std::string, ValueStorage> policies = {
-        {"none", ValueStorage::NONE},
-        {"id", ValueStorage::ID},
-        {"value", ValueStorage::VALUE}
-      };
+          {"none", ValueStorage::NONE},
+          {"id", ValueStorage::ID},
+          {"value", ValueStorage::VALUE}};
 
       auto name = field.copyString();
       auto itr = policies.find(name);
@@ -365,7 +366,8 @@ bool FieldMeta::init(application_features::ApplicationServer& server,
 
       auto subDefaults = *this;
 
-      subDefaults._fields.clear();  // do not inherit fields and overrides from this field
+      subDefaults._fields
+          .clear();     // do not inherit fields and overrides from this field
       _fields.clear();  // reset to match either defaults or read values exactly
 
       for (velocypack::ObjectIterator itr(field); itr.valid(); ++itr) {
@@ -373,8 +375,8 @@ bool FieldMeta::init(application_features::ApplicationServer& server,
         auto value = itr.value();
 
         if (!key.isString()) {
-          errorField = fieldName + "[" +
-                       basics::StringUtils::itoa(itr.index()) + "]";
+          errorField =
+              fieldName + "[" + basics::StringUtils::itoa(itr.index()) + "]";
 
           return false;
         }
@@ -421,7 +423,7 @@ bool FieldMeta::json(application_features::ApplicationServer& server,
 
     for (auto& entry : _analyzers) {
       if (!entry._pool) {
-        continue; // skip null analyzers
+        continue;  // skip null analyzers
       }
 
       std::string name;
@@ -439,11 +441,9 @@ bool FieldMeta::json(application_features::ApplicationServer& server,
         //        'expandVocbasePrefix==false' so that dump/restore can restore
         //        definitions into differently named databases
         name = IResearchAnalyzerFeature::normalize(
-          entry._pool->name(),
-          defaultVocbase->name(),
-          false);
+            entry._pool->name(), defaultVocbase->name(), false);
       } else {
-        name = entry._pool->name(); // verbatim (assume already normalized)
+        name = entry._pool->name();  // verbatim (assume already normalized)
       }
 
       analyzers.emplace(name, entry._pool);
@@ -456,24 +456,29 @@ bool FieldMeta::json(application_features::ApplicationServer& server,
 
   if (!mask || mask->_fields) {  // fields are not inherited from parent
     velocypack::Builder fieldsBuilder;
-    Mask fieldMask(true); // output all non-matching fields
-    auto subDefaults = *this; // make modifable copy
+    Mask fieldMask(true);      // output all non-matching fields
+    auto subDefaults = *this;  // make modifable copy
 
-    subDefaults._fields.clear(); // do not inherit fields and overrides from this field
+    subDefaults._fields
+        .clear();  // do not inherit fields and overrides from this field
     fieldsBuilder.openObject();
 
-      for (auto& entry : _fields) {
-        fieldMask._fields = !entry.value()->_fields.empty(); // do not output empty fields on subobjects
-        fieldsBuilder.add( // add sub-object
-          VPackStringRef(entry.key().c_str(), entry.key().size()), // field name
+    for (auto& entry : _fields) {
+      fieldMask._fields =
+          !entry.value()
+               ->_fields.empty();  // do not output empty fields on subobjects
+      fieldsBuilder.add(           // add sub-object
+          VPackStringRef(entry.key().c_str(),
+                         entry.key().size()),  // field name
           VPackValue(velocypack::ValueType::Object));
 
-        if (!entry.value()->json(server, fieldsBuilder, &subDefaults, defaultVocbase, &fieldMask)) {
-          return false;
-        }
-
-        fieldsBuilder.close();
+      if (!entry.value()->json(server, fieldsBuilder, &subDefaults,
+                               defaultVocbase, &fieldMask)) {
+        return false;
       }
+
+      fieldsBuilder.close();
+    }
 
     fieldsBuilder.close();
     builder.add("fields", fieldsBuilder.slice());
@@ -484,20 +489,23 @@ bool FieldMeta::json(application_features::ApplicationServer& server,
     builder.add("includeAllFields", velocypack::Value(_includeAllFields));
   }
 
-  if ((!ignoreEqual || _trackListPositions != ignoreEqual->_trackListPositions) &&
+  if ((!ignoreEqual ||
+       _trackListPositions != ignoreEqual->_trackListPositions) &&
       (!mask || mask->_trackListPositions)) {
     builder.add("trackListPositions", velocypack::Value(_trackListPositions));
   }
 
   if ((!ignoreEqual || _storeValues != ignoreEqual->_storeValues) &&
       (!mask || mask->_storeValues)) {
-    static_assert(adjacencyChecker<ValueStorage>::checkAdjacency<ValueStorage::VALUE, ValueStorage::ID, ValueStorage::NONE>(),
-                  "Values are not adjacent");
+    static_assert(
+        adjacencyChecker<ValueStorage>::checkAdjacency<
+            ValueStorage::VALUE, ValueStorage::ID, ValueStorage::NONE>(),
+        "Values are not adjacent");
 
     static const std::string policies[]{
-      "none",  // ValueStorage::NONE
-      "id",    // ValueStorage::ID
-      "value"   // ValueStorage::VALUE
+        "none",  // ValueStorage::NONE
+        "id",    // ValueStorage::ID
+        "value"  // ValueStorage::VALUE
     };
 
     auto const policyIdx =
@@ -532,14 +540,15 @@ size_t FieldMeta::memory() const noexcept {
 // -----------------------------------------------------------------------------
 
 IResearchLinkMeta::IResearchLinkMeta()
-  : _version{static_cast<uint32_t>(LinkVersion::MAX)} {
+    : _version{static_cast<uint32_t>(LinkVersion::MAX)} {
   // add default analyzers
   for (auto& analyzer : _analyzers) {
     _analyzerDefinitions.emplace(analyzer._pool);
   }
 }
 
-bool IResearchLinkMeta::operator==(IResearchLinkMeta const& other) const noexcept {
+bool IResearchLinkMeta::operator==(
+    IResearchLinkMeta const& other) const noexcept {
   if (FieldMeta::operator!=(other)) {
     return false;
   }
@@ -574,13 +583,12 @@ bool IResearchLinkMeta::operator==(IResearchLinkMeta const& other) const noexcep
   return meta;
 }
 
-bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
-                             VPackSlice slice,
-                             bool readAnalyzerDefinition,
-                             std::string& errorField,
-                             irs::string_ref const defaultVocbase /*= irs::string_ref::NIL*/,
-                             IResearchLinkMeta const& defaults /*= DEFAULT()*/,
-                             Mask* mask /*= nullptr*/) {
+bool IResearchLinkMeta::init(
+    application_features::ApplicationServer& server, VPackSlice slice,
+    bool readAnalyzerDefinition, std::string& errorField,
+    irs::string_ref const defaultVocbase /*= irs::string_ref::NIL*/,
+    IResearchLinkMeta const& defaults /*= DEFAULT()*/,
+    Mask* mask /*= nullptr*/) {
   if (!slice.isObject()) {
     return false;
   }
@@ -596,7 +604,8 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
     auto const field = slice.get(StaticStrings::PrimarySortField);
     mask->_sort = field.isArray();
 
-    if (readAnalyzerDefinition && mask->_sort && !_sort.fromVelocyPack(field, errorField)) {
+    if (readAnalyzerDefinition && mask->_sort &&
+        !_sort.fromVelocyPack(field, errorField)) {
       return false;
     }
   }
@@ -606,8 +615,7 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
     auto const field = slice.get(StaticStrings::StoredValuesField);
     mask->_storedValues = field.isArray();
 
-    if (readAnalyzerDefinition &&
-        mask->_storedValues &&
+    if (readAnalyzerDefinition && mask->_storedValues &&
         !_storedValues.fromVelocyPack(field, errorField)) {
       return false;
     }
@@ -617,9 +625,9 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
     auto const field = slice.get(StaticStrings::PrimarySortCompressionField);
     mask->_sortCompression = field.isString();
 
-    if (readAnalyzerDefinition &&
-        mask->_sortCompression &&
-        (_sortCompression = columnCompressionFromString(getStringRef(field))) == nullptr) {
+    if (readAnalyzerDefinition && mask->_sortCompression &&
+        (_sortCompression = columnCompressionFromString(getStringRef(field))) ==
+            nullptr) {
       return false;
     }
   }
@@ -639,7 +647,8 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
           return false;
         }
       } else if (field.isNone()) {
-        _version = static_cast<uint32_t>(LinkVersion::MIN); // not present -> old version
+        _version = static_cast<uint32_t>(
+            LinkVersion::MIN);  // not present -> old version
       } else {
         errorField = fieldName;
         return false;
@@ -682,16 +691,18 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
           // required string value
           static const std::string subFieldName("name");
 
-          if (!value.hasKey(subFieldName) // missing required filed
+          if (!value.hasKey(subFieldName)  // missing required filed
               || !value.get(subFieldName).isString()) {
-            errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName;
+            errorField = fieldName + "[" + std::to_string(itr.index()) + "]." +
+                         subFieldName;
 
             return false;
           }
 
           name = value.get(subFieldName).copyString();
           if (!defaultVocbase.null()) {
-            name = IResearchAnalyzerFeature::normalize(name, defaultVocbase, true);
+            name =
+                IResearchAnalyzerFeature::normalize(name, defaultVocbase, true);
           }
         }
         irs::string_ref type;
@@ -700,9 +711,10 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
           // required string value
           static const std::string subFieldName("type");
 
-          if (!value.hasKey(subFieldName) // missing required filed
+          if (!value.hasKey(subFieldName)  // missing required filed
               || !value.get(subFieldName).isString()) {
-            errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName;
+            errorField = fieldName + "[" + std::to_string(itr.index()) + "]." +
+                         subFieldName;
 
             return false;
           }
@@ -720,7 +732,8 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
             auto subField = value.get(subFieldName);
 
             if (!subField.isObject() && !subField.isNull()) {
-              errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName;
+              errorField = fieldName + "[" + std::to_string(itr.index()) +
+                           "]." + subFieldName;
 
               return false;
             }
@@ -739,25 +752,29 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
             auto subField = value.get(subFieldName);
 
             if (!subField.isArray()) {
-              errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName;
+              errorField = fieldName + "[" + std::to_string(itr.index()) +
+                           "]." + subFieldName;
 
               return false;
             }
 
-            for (velocypack::ArrayIterator subItr(subField);
-                 subItr.valid();
+            for (velocypack::ArrayIterator subItr(subField); subItr.valid();
                  ++subItr) {
               auto subValue = *subItr;
 
               if (!subValue.isString() && !subValue.isNull()) {
-                errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName + "[" + std::to_string(subItr.index()) +  + "]";
+                errorField = fieldName + "[" + std::to_string(itr.index()) +
+                             "]." + subFieldName + "[" +
+                             std::to_string(subItr.index()) + +"]";
 
                 return false;
               }
 
               const auto featureName = getStringRef(subValue);
               if (!features.add(featureName)) {
-                errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName + "." + std::string(featureName);
+                errorField = fieldName + "[" + std::to_string(itr.index()) +
+                             "]." + subFieldName + "." +
+                             std::string(featureName);
 
                 return false;
               }
@@ -765,8 +782,9 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
           }
         }
 
-        AnalyzersRevision::Revision revision{ AnalyzersRevision::MIN };
-        auto const revisionSlice = value.get(arangodb::StaticStrings::AnalyzersRevision);
+        AnalyzersRevision::Revision revision{AnalyzersRevision::MIN};
+        auto const revisionSlice =
+            value.get(arangodb::StaticStrings::AnalyzersRevision);
         if (!revisionSlice.isNone()) {
           if (revisionSlice.isNumber()) {
             revision = revisionSlice.getNumber<AnalyzersRevision::Revision>();
@@ -776,10 +794,12 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
           }
         }
 
-        bool extendedNames = server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
+        bool extendedNames =
+            server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
         AnalyzerPool::ptr analyzer;
         auto const res = IResearchAnalyzerFeature::createAnalyzerPool(
-          analyzer, name, type, properties, revision, features, LinkVersion{_version}, extendedNames);
+            analyzer, name, type, properties, revision, features,
+            LinkVersion{_version}, extendedNames);
 
         if (res.fail() || !analyzer) {
           errorField = fieldName + "[" + std::to_string(itr.index()) + "]";
@@ -805,8 +825,8 @@ bool IResearchLinkMeta::init(application_features::ApplicationServer& server,
     _collectionName = field.copyString();
   }
 
-  return FieldMeta::init(server, slice, errorField, defaultVocbase,
-                         defaults, mask, &_analyzerDefinitions);
+  return FieldMeta::init(server, slice, errorField, defaultVocbase, defaults,
+                         mask, &_analyzerDefinitions);
 }
 
 bool IResearchLinkMeta::json(application_features::ApplicationServer& server,
@@ -819,25 +839,26 @@ bool IResearchLinkMeta::json(application_features::ApplicationServer& server,
     return false;
   }
 
-  if (writeAnalyzerDefinition
-      && (!ignoreEqual || _sort != ignoreEqual->_sort)
-      && (!mask || mask->_sort)) {
-    velocypack::ArrayBuilder arrayScope(&builder, StaticStrings::PrimarySortField);
+  if (writeAnalyzerDefinition &&
+      (!ignoreEqual || _sort != ignoreEqual->_sort) && (!mask || mask->_sort)) {
+    velocypack::ArrayBuilder arrayScope(&builder,
+                                        StaticStrings::PrimarySortField);
     if (!_sort.toVelocyPack(builder)) {
       return false;
     }
   }
 
-  if (writeAnalyzerDefinition
-      && (!mask || mask->_storedValues)) {
-    velocypack::ArrayBuilder arrayScope(&builder, StaticStrings::StoredValuesField);
+  if (writeAnalyzerDefinition && (!mask || mask->_storedValues)) {
+    velocypack::ArrayBuilder arrayScope(&builder,
+                                        StaticStrings::StoredValuesField);
     if (!_storedValues.toVelocyPack(builder)) {
       return false;
     }
   }
 
-  if (writeAnalyzerDefinition && (!mask || mask->_sortCompression) && _sortCompression
-      && (!ignoreEqual || _sortCompression != ignoreEqual->_sortCompression)) {
+  if (writeAnalyzerDefinition && (!mask || mask->_sortCompression) &&
+      _sortCompression &&
+      (!ignoreEqual || _sortCompression != ignoreEqual->_sortCompression)) {
     addStringRef(builder, StaticStrings::PrimarySortCompressionField,
                  columnCompressionToString(_sortCompression));
   }
@@ -849,18 +870,20 @@ bool IResearchLinkMeta::json(application_features::ApplicationServer& server,
   // output definitions if 'writeAnalyzerDefinition' requested and not maked
   // this should be the case for the default top-most call
   if (writeAnalyzerDefinition && (!mask || mask->_analyzerDefinitions)) {
-    VPackArrayBuilder arrayScope(&builder, StaticStrings::AnalyzerDefinitionsField);
+    VPackArrayBuilder arrayScope(&builder,
+                                 StaticStrings::AnalyzerDefinitionsField);
 
     for (auto& entry : _analyzerDefinitions) {
-      TRI_ASSERT(entry); // ensured by emplace into 'analyzers' above
+      TRI_ASSERT(entry);  // ensured by emplace into 'analyzers' above
       entry->toVelocyPack(builder, defaultVocbase);
     }
   }
 
-  if (writeAnalyzerDefinition && ServerState::instance()->isClusterRole()
-      && (!mask || mask->_collectionName)
-      && !_collectionName.empty()) { // for old-style link meta do not emit empty value to match stored definition
-     addStringRef(builder, StaticStrings::CollectionNameField, _collectionName);
+  if (writeAnalyzerDefinition && ServerState::instance()->isClusterRole() &&
+      (!mask || mask->_collectionName) &&
+      !_collectionName.empty()) {  // for old-style link meta do not emit empty
+                                   // value to match stored definition
+    addStringRef(builder, StaticStrings::CollectionNameField, _collectionName);
   }
 
   return FieldMeta::json(server, builder, ignoreEqual, defaultVocbase, mask);

@@ -29,6 +29,7 @@ using namespace arangodb;
 using namespace arangodb::cluster;
 using namespace arangodb::cluster::paths;
 
-std::ostream& arangodb::cluster::paths::operator<<(std::ostream& stream, Path const& path) {
+std::ostream& arangodb::cluster::paths::operator<<(std::ostream& stream,
+                                                   Path const& path) {
   return path.toStream(stream);
 }

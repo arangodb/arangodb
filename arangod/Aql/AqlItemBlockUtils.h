@@ -43,4 +43,3 @@ SharedAqlItemBlockPtr concatenate(AqlItemBlockManager&,
 
 }  // namespace aql
 }  // namespace arangodb
-

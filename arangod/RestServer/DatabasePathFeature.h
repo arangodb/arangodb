@@ -27,7 +27,8 @@
 
 namespace arangodb {
 
-class DatabasePathFeature final : public application_features::ApplicationFeature {
+class DatabasePathFeature final
+    : public application_features::ApplicationFeature {
  public:
   explicit DatabasePathFeature(application_features::ApplicationServer& server);
 
@@ -53,4 +54,3 @@ class DatabasePathFeature final : public application_features::ApplicationFeatur
 };
 
 }  // namespace arangodb
-

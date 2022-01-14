@@ -54,4 +54,3 @@ struct EdgeData {
 }  // namespace algos
 }  // namespace pregel
 }  // namespace arangodb
-

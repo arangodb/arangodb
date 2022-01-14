@@ -42,9 +42,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminServerHandler::RestAdminServerHandler(application_features::ApplicationServer& server,
-                                               GeneralRequest* request,
-                                               GeneralResponse* response)
+RestAdminServerHandler::RestAdminServerHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAdminServerHandler::execute() {
@@ -82,14 +82,16 @@ void RestAdminServerHandler::writeModeResult(bool readOnly) {
 
 void RestAdminServerHandler::handleId() {
   if (_request->requestType() != rest::RequestType::GET) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return;
   }
 
   auto instance = ServerState::instance();
   if (!instance->isRunningInCluster()) {
     // old behavior...klingt komisch, is aber so
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
+    generateError(rest::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_HTTP_SERVER_ERROR);
     return;
   }
 
@@ -103,7 +105,8 @@ void RestAdminServerHandler::handleId() {
 
 void RestAdminServerHandler::handleRole() {
   if (_request->requestType() != rest::RequestType::GET) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return;
   }
   auto state = ServerState::instance();
@@ -116,7 +119,8 @@ void RestAdminServerHandler::handleRole() {
   {
     VPackObjectBuilder b(&builder);
     builder.add("role", VPackValue(state->roleToString(state->getRole())));
-    builder.add("mode", hasFailover ? VPackValue("resilient") : VPackValue("default"));
+    builder.add("mode",
+                hasFailover ? VPackValue("resilient") : VPackValue("default"));
   }
   generateOk(rest::ResponseCode::OK, builder);
 }
@@ -129,7 +133,8 @@ void RestAdminServerHandler::handleRole() {
 /// to read-only or a follower in case of active failover
 void RestAdminServerHandler::handleAvailability() {
   if (_request->requestType() != rest::RequestType::GET) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return;
   }
 
@@ -141,7 +146,8 @@ void RestAdminServerHandler::handleAvailability() {
       if (available && scheduler) {
         // if the scheduler's queue is more than x% full, render
         // the server unavailable
-        double unavailabilityFillGrade = scheduler->unavailabilityQueueFillGrade();
+        double unavailabilityFillGrade =
+            scheduler->unavailabilityQueueFillGrade();
         if (unavailabilityFillGrade > 0.0) {
           double fillGrade = scheduler->approximateQueueFillGrade();
           if (fillGrade >= unavailabilityFillGrade) {
@@ -152,7 +158,8 @@ void RestAdminServerHandler::handleAvailability() {
       }
       if (available) {
         // also ask storage engine for its health
-        StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+        StorageEngine& engine =
+            server().getFeature<EngineSelectorFeature>().engine();
         available = engine.healthCheck().res.ok();
       }
       break;
@@ -167,7 +174,8 @@ void RestAdminServerHandler::handleAvailability() {
 
   if (!available) {
     // this will produce an HTTP 503 result
-    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                  TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
   } else {
     // this will produce an HTTP 200 result
     writeModeResult(ServerState::readOnly());
@@ -183,8 +191,9 @@ void RestAdminServerHandler::handleMode() {
     if (af->isActive() && !_request->user().empty()) {
       auth::Level lvl;
       if (af->userManager() != nullptr) {
-        lvl = af->userManager()->databaseAuthLevel(_request->user(), StaticStrings::SystemDatabase,
-                                                   /*configured*/ true);
+        lvl = af->userManager()->databaseAuthLevel(
+            _request->user(), StaticStrings::SystemDatabase,
+            /*configured*/ true);
       } else {
         lvl = auth::Level::RW;
       }
@@ -236,7 +245,8 @@ void RestAdminServerHandler::handleMode() {
     writeModeResult(ServerState::readOnly());
 
   } else {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
 }
 
@@ -259,10 +269,8 @@ void RestAdminServerHandler::handleTLS() {
     sslServerFeature.dumpTLSData(builder);
     generateOk(rest::ResponseCode::OK, builder.slice());
   } else if (requestType == rest::RequestType::POST) {
-
     // Only the superuser may reload TLS data:
-    if (ExecContext::isAuthEnabled() &&
-        !ExecContext::current().isSuperuser()) {
+    if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                     "only superusers may reload TLS data");
       return;
@@ -271,7 +279,8 @@ void RestAdminServerHandler::handleTLS() {
     auto& gs = server().getFeature<GeneralServerFeature>();
     Result res = gs.reloadTLS();
     if (res.fail()) {
-      generateError(rest::ResponseCode::BAD, res.errorNumber(), res.errorMessage());
+      generateError(rest::ResponseCode::BAD, res.errorNumber(),
+                    res.errorMessage());
       return;
     }
     sslServerFeature.dumpTLSData(builder);

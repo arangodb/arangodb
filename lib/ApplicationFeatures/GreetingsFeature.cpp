@@ -34,7 +34,8 @@
 
 namespace arangodb {
 
-GreetingsFeature::GreetingsFeature(application_features::ApplicationServer& server)
+GreetingsFeature::GreetingsFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Greetings") {
   setOptional(false);
   startsAfter<LoggerFeature>();
@@ -44,8 +45,8 @@ void GreetingsFeature::prepare() {
   LOG_TOPIC("e52b0", INFO, arangodb::Logger::FIXME)
       << "" << rest::Version::getVerboseVersionString();
 
-  // building in maintainer mode or enabling catch test code will incur runtime overhead,
-  // so warn users about this
+  // building in maintainer mode or enabling catch test code will incur runtime
+  // overhead, so warn users about this
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // maintainer mode
   constexpr bool warn = true;
@@ -61,14 +62,17 @@ void GreetingsFeature::prepare() {
   // cppcheck-suppress knownConditionTrueFalse
   if (warn) {
     LOG_TOPIC("0458b", WARN, arangodb::Logger::FIXME)
-      << "🥑 This is a maintainer version intended for debugging. DO NOT USE IN PRODUCTION! 🔥";
+        << "🥑 This is a maintainer version intended for debugging. DO NOT "
+           "USE IN PRODUCTION! 🔥";
     LOG_TOPIC("bd666", WARN, arangodb::Logger::FIXME)
-      << "===================================================================================";
+        << "==================================================================="
+           "================";
   }
 }
 
 void GreetingsFeature::unprepare() {
-  LOG_TOPIC("4bcb9", INFO, arangodb::Logger::FIXME) << "ArangoDB has been shut down";
+  LOG_TOPIC("4bcb9", INFO, arangodb::Logger::FIXME)
+      << "ArangoDB has been shut down";
 }
 
 }  // namespace arangodb

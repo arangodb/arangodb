@@ -33,7 +33,8 @@ using namespace arangodb::consensus;
 AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
                          std::string const& jobId, std::string const& creator,
                          std::string const& database,
-                         std::string const& collection, std::string const& shard)
+                         std::string const& collection,
+                         std::string const& shard)
     : Job(NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
@@ -49,8 +50,7 @@ AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
   auto tmp_shard = _snapshot.hasAsString(path + "shard");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
 
-  if (tmp_database && tmp_collection && tmp_shard &&
-      tmp_creator) {
+  if (tmp_database && tmp_collection && tmp_shard && tmp_creator) {
     _database = tmp_database.value();
     _collection = tmp_collection.value();
     _shard = tmp_shard.value();
@@ -59,7 +59,8 @@ AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency.";
     LOG_TOPIC("4d260", ERR, Logger::SUPERVISION) << err.str();
-    // TODO this call to finish is invokes a virtual member function within a constructor
+    // TODO this call to finish is invokes a virtual member function within a
+    // constructor
     finish("", tmp_shard.value_or(""), false, err.str());
     _status = FAILED;
   }
@@ -118,7 +119,8 @@ bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
 
   _status = NOTFOUND;
 
-  LOG_TOPIC("02cef", INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
+  LOG_TOPIC("02cef", INFO, Logger::SUPERVISION)
+      << "Failed to insert job " + _jobId;
   return false;
 }
 
@@ -158,7 +160,8 @@ bool AddFollower::start(bool&) {
     if (replFact2 && replFact2.value() == StaticStrings::Satellite) {
       // satellites => distribute to every server
       auto available = Job::availableServers(_snapshot);
-      desiredReplFactor = Job::countGoodOrBadServersInList(_snapshot, available);
+      desiredReplFactor =
+          Job::countGoodOrBadServersInList(_snapshot, available);
     }
   }
 
@@ -173,9 +176,9 @@ bool AddFollower::start(bool&) {
       first = false;
     }
   }
-  size_t actualReplFactor
-      = 1 + Job::countGoodOrBadServersInList(_snapshot, onlyFollowers.slice());
-      // Leader plus good followers in plan
+  size_t actualReplFactor =
+      1 + Job::countGoodOrBadServersInList(_snapshot, onlyFollowers.slice());
+  // Leader plus good followers in plan
   if (actualReplFactor >= desiredReplFactor) {
     finish("", "", true, "job no longer necessary, have enough replicas");
     return true;
@@ -193,8 +196,9 @@ bool AddFollower::start(bool&) {
   auto available = Job::availableServers(_snapshot);
   // Remove those already in Plan:
   for (VPackSlice server : VPackArrayIterator(planned)) {
-    available.erase(std::remove(available.begin(), available.end(), server.copyString()),
-                    available.end());
+    available.erase(
+        std::remove(available.begin(), available.end(), server.copyString()),
+        available.end());
   }
   // Remove those that are not in state "GOOD":
   auto it = available.begin();
@@ -208,8 +212,8 @@ bool AddFollower::start(bool&) {
 
   // Exclude servers in failoverCandidates for some clone and those in Plan:
   auto shardsLikeMe = clones(_snapshot, _database, _collection, _shard);
-  auto failoverCands = Job::findAllFailoverCandidates(
-      _snapshot, _database, shardsLikeMe);
+  auto failoverCands =
+      Job::findAllFailoverCandidates(_snapshot, _database, shardsLikeMe);
   it = available.begin();
   while (it != available.end()) {
     if (failoverCands.find(*it) != failoverCands.end()) {
@@ -223,7 +227,8 @@ bool AddFollower::start(bool&) {
   if (available.size() < desiredReplFactor - actualReplFactor) {
     LOG_TOPIC("50086", DEBUG, Logger::SUPERVISION)
         << "shard " << _shard
-        << " does not have enough candidates to add followers, waiting, jobId=" << _jobId;
+        << " does not have enough candidates to add followers, waiting, jobId="
+        << _jobId;
     return false;
   }
 
@@ -255,8 +260,9 @@ bool AddFollower::start(bool&) {
       if (!tmp_todo) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
-        LOG_TOPIC("24c50", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
-                                                    " from agency snapshot";
+        LOG_TOPIC("24c50", INFO, Logger::SUPERVISION)
+            << "Failed to get key " + toDoPrefix + _jobId +
+                   " from agency snapshot";
         return false;
       }
     } else {
@@ -283,19 +289,21 @@ bool AddFollower::start(bool&) {
       addRemoveJobFromSomewhere(trx, "ToDo", _jobId);
 
       // --- Plan changes
-      doForAllShards(_snapshot, _database, shardsLikeMe,
-                     [&trx, &chosen](Slice plan, Slice current, std::string& planPath, std::string& curPath) {
-                       trx.add(VPackValue(planPath));
-                       {
-                         VPackArrayBuilder serverList(&trx);
-                         for (VPackSlice srv : VPackArrayIterator(plan)) {
-                           trx.add(srv);
-                         }
-                         for (auto const& srv : chosen) {
-                           trx.add(VPackValue(srv));
-                         }
-                       }
-                     });
+      doForAllShards(
+          _snapshot, _database, shardsLikeMe,
+          [&trx, &chosen](Slice plan, Slice current, std::string& planPath,
+                          std::string& curPath) {
+            trx.add(VPackValue(planPath));
+            {
+              VPackArrayBuilder serverList(&trx);
+              for (VPackSlice srv : VPackArrayIterator(plan)) {
+                trx.add(srv);
+              }
+              for (auto const& srv : chosen) {
+                trx.add(VPackValue(srv));
+              }
+            }
+          });
 
       addIncreasePlanVersion(trx);
     }  // mutation part of transaction done
@@ -305,10 +313,10 @@ bool AddFollower::start(bool&) {
       // --- Check that Planned servers are still as we expect
       addPreconditionUnchanged(trx, planPath, planned);
       // Check that failoverCandidates are still as we inspected them:
-      doForAllShards(_snapshot, _database, shardsLikeMe,
-          [this, &trx](Slice plan, Slice current,
-                           std::string& planPath,
-                           std::string& curPath) {
+      doForAllShards(
+          _snapshot, _database, shardsLikeMe,
+          [this, &trx](Slice plan, Slice current, std::string& planPath,
+                       std::string& curPath) {
             // take off "servers" from curPath and add
             // "failoverCandidates":
             std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
@@ -330,8 +338,9 @@ bool AddFollower::start(bool&) {
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     _status = FINISHED;
-    LOG_TOPIC("961a4", INFO, Logger::SUPERVISION) << "Finished: Addfollower(s) to shard "
-                                         << _shard << " in collection " << _collection;
+    LOG_TOPIC("961a4", INFO, Logger::SUPERVISION)
+        << "Finished: Addfollower(s) to shard " << _shard << " in collection "
+        << _collection;
     return true;
   }
 

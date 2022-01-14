@@ -73,10 +73,10 @@ class CollectionAccess {
 
   /// @brief Get the CollectionAccess of which *this* collection access is a
   /// satellite of, if any.
-  /// This will make a recursive lookup, so if A isSatelliteOf B, and B isSatelliteOf C,
-  /// A.getSatelliteOf() will return C.
-  auto getSatelliteOf(std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById) const
-      -> ExecutionNode*;
+  /// This will make a recursive lookup, so if A isSatelliteOf B, and B
+  /// isSatelliteOf C, A.getSatelliteOf() will return C.
+  auto getSatelliteOf(std::unordered_map<ExecutionNodeId, ExecutionNode*> const&
+                          nodesById) const -> ExecutionNode*;
 
   auto getRawSatelliteOf() const -> std::optional<ExecutionNodeId>;
 
@@ -93,4 +93,3 @@ class CollectionAccess {
 };
 
 }  // namespace arangodb::aql
-

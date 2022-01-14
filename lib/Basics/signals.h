@@ -26,15 +26,7 @@
 namespace arangodb {
 namespace signals {
 
-enum class SignalType {
-  term,
-  core,
-  cont,
-  ign,
-  logrotate,
-  stop,
-  user
-};
+enum class SignalType { term, core, cont, ign, logrotate, stop, user };
 
 /// @brief find out what impact a signal will have to the process we send it.
 #ifndef _WIN32
@@ -48,8 +40,9 @@ bool isDeadly(int signal);
 char const* name(int signal);
 
 void maskAllSignals();
+void maskAllSignalsServer();
+void maskAllSignalsClient();
 void unmaskAllSignals();
-  
+
 }  // namespace signals
 }  // namespace arangodb
-

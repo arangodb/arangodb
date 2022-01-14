@@ -32,10 +32,11 @@
 
 namespace arangodb {
 
-template <typename T>
+template<typename T>
 class FixedSizeAllocator {
  private:
-  // sizeof(T) is always a multiple of alignof(T) unless T is packed (which should never be the case here)!
+  // sizeof(T) is always a multiple of alignof(T) unless T is packed (which
+  // should never be the case here)!
   static_assert((sizeof(T) % alignof(T)) == 0);
 
   class MemoryBlock {
@@ -52,22 +53,18 @@ class FixedSizeAllocator {
       TRI_ASSERT(reinterpret_cast<uintptr_t>(_data) % 64u == 0);
     }
 
-    ~MemoryBlock() noexcept { 
+    ~MemoryBlock() noexcept {
       // destroy all items
       for (size_t i = 0; i < _numUsed; ++i) {
-        T* p =  _data + i;
+        T* p = _data + i;
         // call destructor for each item
         p->~T();
       }
     }
 
-    MemoryBlock* getNextBlock() const noexcept {
-      return _next;
-    }
+    MemoryBlock* getNextBlock() const noexcept { return _next; }
 
-    void setNextBlock(MemoryBlock* next) noexcept {
-      _next = next;
-    }
+    void setNextBlock(MemoryBlock* next) noexcept { _next = next; }
 
     /// @brief return memory address for next in-place object construction.
     T* nextSlot() noexcept {
@@ -80,7 +77,7 @@ class FixedSizeAllocator {
       TRI_ASSERT(_numUsed > 0);
       --_numUsed;
     }
-    
+
     bool full() const noexcept { return _numUsed == _numAllocated; }
 
     size_t numUsed() const noexcept { return _numUsed; }
@@ -97,18 +94,16 @@ class FixedSizeAllocator {
   FixedSizeAllocator& operator=(FixedSizeAllocator const&) = delete;
 
   FixedSizeAllocator() = default;
-  ~FixedSizeAllocator() noexcept {
-    clear();
-  }
+  ~FixedSizeAllocator() noexcept { clear(); }
 
-  template <typename... Args>
+  template<typename... Args>
   T* allocate(Args&&... args) {
     if (_head == nullptr || _head->full()) {
       allocateBlock();
     }
     TRI_ASSERT(_head != nullptr);
     TRI_ASSERT(!_head->full());
-   
+
     try {
       T* p = _head->nextSlot();
       return new (p) T(std::forward<Args>(args)...);
@@ -153,10 +148,11 @@ class FixedSizeAllocator {
 
     // adjust memory address to cache line offset (assumed to be 64 bytes)
     auto* data = reinterpret_cast<T*>(
-      (reinterpret_cast<uintptr_t>(p) + sizeof(MemoryBlock) + 63u) & ~(uintptr_t(63u)));
+        (reinterpret_cast<uintptr_t>(p) + sizeof(MemoryBlock) + 63u) &
+        ~(uintptr_t(63u)));
 
     // creating a MemoryBlock is noexcept, it should not fail
-    new (p)MemoryBlock(numItems, data);
+    new (p) MemoryBlock(numItems, data);
 
     MemoryBlock* block = static_cast<MemoryBlock*>(p);
     block->setNextBlock(_head);
@@ -169,4 +165,3 @@ class FixedSizeAllocator {
 };
 
 }  // namespace arangodb
-

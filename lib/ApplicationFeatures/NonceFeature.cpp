@@ -41,7 +41,8 @@ NonceFeature::NonceFeature(application_features::ApplicationServer& server)
 
 void NonceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("nonce", "nonces", "", true, true);
-  options->addObsoleteOption("--nonce.size", "the size of the hash array for nonces", true);
+  options->addObsoleteOption("--nonce.size",
+                             "the size of the hash array for nonces", true);
 }
 
 void NonceFeature::prepare() {

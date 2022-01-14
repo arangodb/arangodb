@@ -36,12 +36,14 @@ struct ModificationExecutorInfos;
 
 class RemoveModifierCompletion {
  public:
-  explicit RemoveModifierCompletion(ModificationExecutorInfos& infos) : _infos(infos) {}
+  explicit RemoveModifierCompletion(ModificationExecutorInfos& infos)
+      : _infos(infos) {}
   ~RemoveModifierCompletion() = default;
 
   ModifierOperationType accumulate(ModificationExecutorAccumulator& accu,
                                    InputAqlItemRow& row);
-  futures::Future<OperationResult> transact(transaction::Methods& trx, VPackSlice const& data);
+  futures::Future<OperationResult> transact(transaction::Methods& trx,
+                                            VPackSlice const& data);
 
  private:
   ModificationExecutorInfos& _infos;

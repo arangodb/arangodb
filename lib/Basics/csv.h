@@ -84,8 +84,10 @@ typedef struct TRI_csv_parser_s {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitCsvParser(TRI_csv_parser_t*, void (*)(TRI_csv_parser_t*, size_t),
-                       void (*)(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool),
-                       void (*)(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool),
+                       void (*)(TRI_csv_parser_t*, char const*, size_t, size_t,
+                                size_t, bool),
+                       void (*)(TRI_csv_parser_t*, char const*, size_t, size_t,
+                                size_t, bool),
                        void* vData);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,5 +120,5 @@ void TRI_UseBackslashCsvParser(TRI_csv_parser_t* parser, bool value);
 /// @brief parses a CSV line
 ////////////////////////////////////////////////////////////////////////////////
 
-ErrorCode TRI_ParseCsvString(TRI_csv_parser_t* parser, char const* line, size_t length);
-
+ErrorCode TRI_ParseCsvString(TRI_csv_parser_t* parser, char const* line,
+                             size_t length);

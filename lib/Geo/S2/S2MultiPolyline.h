@@ -78,4 +78,3 @@ class S2MultiPolyline : public S2Region {
   // would be relatively expensive (due to division by sizeof(S2Point) == 24).
   std::vector<S2Polyline> lines_;
 };
-

@@ -37,7 +37,8 @@ namespace consensus {
 class JobContext {
  public:
   /// @brief Contextualize arbitrary Job
-  JobContext(JOB_STATUS status, std::string id, Node const& snapshot, AgentInterface* agent);
+  JobContext(JOB_STATUS status, std::string id, Node const& snapshot,
+             AgentInterface* agent);
 
   /// @brief Create job
   void create(std::shared_ptr<VPackBuilder> b = nullptr);
@@ -58,4 +59,3 @@ class JobContext {
 
 }  // namespace consensus
 }  // namespace arangodb
-

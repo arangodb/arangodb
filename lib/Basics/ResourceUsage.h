@@ -33,7 +33,7 @@ namespace arangodb {
 class GlobalResourceMonitor;
 
 struct alignas(64) ResourceMonitor final {
-  /// @brief: granularity of allocations that we track. this should be a 
+  /// @brief: granularity of allocations that we track. this should be a
   /// power of 2, so dividing by it is efficient!
   /// note: whatever this value is, it will also dictate the minimum granularity
   /// of the global memory usage counter, plus the granularity for each query's
@@ -53,10 +53,10 @@ struct alignas(64) ResourceMonitor final {
 
   /// @brief sets a memory limit
   void memoryLimit(std::uint64_t value) noexcept;
-  
+
   /// @brief returns the current memory limit
   std::uint64_t memoryLimit() const noexcept;
-  
+
   /// @brief increase memory usage by <value> bytes. may throw!
   void increaseMemoryUsage(std::uint64_t value);
 
@@ -65,11 +65,11 @@ struct alignas(64) ResourceMonitor final {
 
   /// @brief return the current memory usage of the instance
   std::uint64_t current() const noexcept;
-  
+
   /// @brief return the peak memory usage of the instance
   std::uint64_t peak() const noexcept;
 
-  /// @brief reset counters for the local instance  
+  /// @brief reset counters for the local instance
   void clear() noexcept;
 
   /// @brief calculate the "number of chunks" used by an allocation size.
@@ -77,9 +77,9 @@ struct alignas(64) ResourceMonitor final {
   /// enough so that many subsequent small allocations mostly fall into the
   /// same chunk.
   static constexpr std::int64_t numChunks(std::uint64_t value) noexcept {
-    // this is intentionally an integer division, which truncates any remainders.
-    // we want this to be fast, so chunkSize should be a power of 2 and the div
-    // operation can be substituted by a bit shift operation.
+    // this is intentionally an integer division, which truncates any
+    // remainders. we want this to be fast, so chunkSize should be a power of 2
+    // and the div operation can be substituted by a bit shift operation.
     static_assert(chunkSize != 0);
     static_assert(NumberUtils::isPowerOfTwo(chunkSize));
     return static_cast<std::int64_t>(value / chunkSize);
@@ -104,20 +104,21 @@ class ResourceUsageScope {
   explicit ResourceUsageScope(ResourceMonitor& resourceMonitor) noexcept;
 
   /// @brief track <value> bytes of memory, may throw!
-  explicit ResourceUsageScope(ResourceMonitor& resourceMonitor, std::uint64_t value);
+  explicit ResourceUsageScope(ResourceMonitor& resourceMonitor,
+                              std::uint64_t value);
 
   ~ResourceUsageScope();
-  
-  /// @brief steal responsibility for decreasing the memory 
+
+  /// @brief steal responsibility for decreasing the memory
   /// usage on destruction
   void steal() noexcept;
 
   /// @brief revert all memory usage tracking operations in this scope
   void revert() noexcept;
-  
+
   /// @brief track <value> bytes of memory, may throw!
   void increase(std::uint64_t value);
-  
+
   void decrease(std::uint64_t value) noexcept;
 
  private:
@@ -126,4 +127,3 @@ class ResourceUsageScope {
 };
 
 }  // namespace arangodb
-

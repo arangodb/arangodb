@@ -100,4 +100,3 @@ class DistributeClientBlock {
 
 }  // namespace aql
 }  // namespace arangodb
-

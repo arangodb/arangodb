@@ -36,4 +36,3 @@ struct CollectionCreationInfo {
   velocypack::Slice const properties;
 };
 }  // namespace arangodb
-

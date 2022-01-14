@@ -46,4 +46,3 @@ class RocksDBRestWalHandler : public RestBaseHandler {
   void properties();
 };
 }  // namespace arangodb
-

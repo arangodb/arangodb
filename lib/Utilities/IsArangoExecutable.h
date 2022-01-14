@@ -27,4 +27,3 @@
 /// @brief tell whether str contains a string matching one of our executables
 //////////////////////////////////////////////////////////////////////////////
 std::string extractShellExecutableName(std::string const& input);
-

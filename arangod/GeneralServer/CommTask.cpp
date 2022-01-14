@@ -61,16 +61,15 @@ std::string const Open("/_open/");
 inline bool startsWith(std::string const& path, char const* other) {
   size_t const size = std::char_traits<char>::length(other);
 
-  return (size <= path.size() &&
-          path.compare(0, size, other, size) == 0);
+  return (size <= path.size() && path.compare(0, size, other, size) == 0);
 }
 
-TRI_vocbase_t* lookupDatabaseFromRequest(application_features::ApplicationServer& server,
-                                         GeneralRequest& req) {
+TRI_vocbase_t* lookupDatabaseFromRequest(
+    application_features::ApplicationServer& server, GeneralRequest& req) {
   // get database name from request
   if (req.databaseName().empty()) {
-    // if no database name was specified in the request, use system database name
-    // as a fallback
+    // if no database name was specified in the request, use system database
+    // name as a fallback
     req.setDatabaseName(StaticStrings::SystemDatabase);
   }
 
@@ -106,26 +105,33 @@ bool resolveRequestContext(application_features::ApplicationServer& server,
 bool queueTimeViolated(GeneralRequest const& req) {
   // check if the client sent the "x-arango-queue-time-seconds" header
   bool found = false;
-  std::string const& queueTimeValue = req.header(StaticStrings::XArangoQueueTimeSeconds, found);
+  std::string const& queueTimeValue =
+      req.header(StaticStrings::XArangoQueueTimeSeconds, found);
   if (found) {
     // yes, now parse the sent time value. if the value sent by client cannot be
-    // parsed as a double, then it will be handled as if "0.0" was sent - i.e. no
-    // queuing time restriction
+    // parsed as a double, then it will be handled as if "0.0" was sent - i.e.
+    // no queuing time restriction
     double requestedQueueTime = StringUtils::doubleDecimal(queueTimeValue);
     if (requestedQueueTime > 0.0) {
-      // value is > 0.0, so now check the last dequeue time that the scheduler reported
-      double lastDequeueTime = static_cast<double>(
-          SchedulerFeature::SCHEDULER->getLastLowPriorityDequeueTime()) / 1000.0;
+      // value is > 0.0, so now check the last dequeue time that the scheduler
+      // reported
+      double lastDequeueTime =
+          static_cast<double>(
+              SchedulerFeature::SCHEDULER->getLastLowPriorityDequeueTime()) /
+          1000.0;
 
       if (lastDequeueTime > requestedQueueTime) {
-        // the log topic should actually be REQUESTS here, but the default log level
-        // for the REQUESTS log topic is FATAL, so if we logged here in INFO level,
-        // it would effectively be suppressed. thus we are using the Scheduler's
-        // log topic here, which is somewhat related.
+        // the log topic should actually be REQUESTS here, but the default log
+        // level for the REQUESTS log topic is FATAL, so if we logged here in
+        // INFO level, it would effectively be suppressed. thus we are using the
+        // Scheduler's log topic here, which is somewhat related.
         SchedulerFeature::SCHEDULER->trackQueueTimeViolation();
         LOG_TOPIC("1bbcc", WARN, Logger::THREADS)
-            << "dropping incoming request because the client-specified maximum queue time requirement ("
-            << requestedQueueTime << "s) would be violated by current queue time (" << lastDequeueTime << "s)";
+            << "dropping incoming request because the client-specified maximum "
+               "queue time requirement ("
+            << requestedQueueTime
+            << "s) would be violated by current queue time (" << lastDequeueTime
+            << "s)";
         return true;
       }
     }
@@ -135,8 +141,7 @@ bool queueTimeViolated(GeneralRequest const& req) {
 
 }  // namespace
 
-CommTask::CommTask(GeneralServer& server,
-                   ConnectionInfo info)
+CommTask::CommTask(GeneralServer& server, ConnectionInfo info)
     : _server(server),
       _connectionInfo(std::move(info)),
       _connectionStatistics(ConnectionStatistics::acquire()),
@@ -145,30 +150,31 @@ CommTask::CommTask(GeneralServer& server,
   _connectionStatistics.SET_START();
 }
 
-CommTask::~CommTask() {
-  _connectionStatistics.SET_END();
-}
+CommTask::~CommTask() { _connectionStatistics.SET_END(); }
 
 /// Must be called before calling executeRequest, will send an error
 /// response if execution is supposed to be aborted
 
-CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authToken,
-                                          GeneralRequest& req) {
+CommTask::Flow CommTask::prepareExecution(
+    auth::TokenCache::Entry const& authToken, GeneralRequest& req) {
   DTRACE_PROBE1(arangod, CommTaskPrepareExecution, this);
 
   // Step 1: In the shutdown phase we simply return 503:
   if (_server.server().isStopping()) {
-    sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
-                     req.messageId(), TRI_ERROR_SHUTTING_DOWN);
+    sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE,
+                      req.contentTypeResponse(), req.messageId(),
+                      TRI_ERROR_SHUTTING_DOWN);
     return Flow::Abort;
   }
 
   if (Logger::isEnabled(arangodb::LogLevel::DEBUG, Logger::REQUESTS)) {
     bool found;
-    std::string const& source = req.header(StaticStrings::ClusterCommSource, found);
+    std::string const& source =
+        req.header(StaticStrings::ClusterCommSource, found);
     if (found) {  // log request source in cluster for debugging
       LOG_TOPIC("e5db9", DEBUG, Logger::REQUESTS)
-      << "\"request-source\",\"" << (void*)this << "\",\"" << source << "\"";
+          << "\"request-source\",\"" << (void*)this << "\",\"" << source
+          << "\"";
     }
   }
 
@@ -186,21 +192,23 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
            !::startsWith(path, "/_api/aql"))) {
         LOG_TOPIC("63f47", TRACE, arangodb::Logger::FIXME)
             << "Maintenance mode: refused path: " << path;
-        sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
-                          req.messageId(), TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
-                         "service unavailable due to startup or maintenance mode");
+        sendErrorResponse(
+            ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
+            req.messageId(), TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+            "service unavailable due to startup or maintenance mode");
         return Flow::Abort;
       }
       break;
     }
     case ServerState::Mode::REDIRECT: {
       bool found = false;
-      std::string const& val = req.header(StaticStrings::AllowDirtyReads, found);
+      std::string const& val =
+          req.header(StaticStrings::AllowDirtyReads, found);
       if (found && StringUtils::boolean(val)) {
         break;  // continue with auth check
       }
     }
-    [[fallthrough]];
+      [[fallthrough]];
     case ServerState::Mode::TRYAGAIN: {
       // the following paths are allowed on followers
       if (!::startsWith(path, "/_admin/shutdown") &&
@@ -214,7 +222,8 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
           !::startsWith(path, "/_admin/statistics") &&
           !::startsWith(path, "/_admin/support-info") &&
           !::startsWith(path, "/_api/agency/agency-callbacks") &&
-          !(req.requestType() == RequestType::GET && ::startsWith(path, "/_api/collection")) &&
+          !(req.requestType() == RequestType::GET &&
+            ::startsWith(path, "/_api/collection")) &&
           !::startsWith(path, "/_api/cluster/") &&
           !::startsWith(path, "/_api/engine/stats") &&
           !::startsWith(path, "/_api/replication") &&
@@ -240,7 +249,8 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
   }
 
   // Step 3: Try to resolve vocbase and use
-  if (!::resolveRequestContext(_server.server(), req)) {  // false if db not found
+  if (!::resolveRequestContext(_server.server(),
+                               req)) {  // false if db not found
     if (_auth->isActive()) {
       // prevent guessing database names (issue #5030)
       auth::Level lvl = auth::Level::NONE;
@@ -249,14 +259,16 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
         // have been authenticated with a superuser JWT token. In this case,
         // we must not check the databaseAuthLevel here.
         if (_auth->userManager() != nullptr && !req.user().empty()) {
-          lvl = _auth->userManager()->databaseAuthLevel(req.user(), req.databaseName());
+          lvl = _auth->userManager()->databaseAuthLevel(req.user(),
+                                                        req.databaseName());
         } else {
           lvl = auth::Level::RW;
         }
       }
       if (lvl == auth::Level::NONE) {
-        sendErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),
-                          req.messageId(), TRI_ERROR_FORBIDDEN);
+        sendErrorResponse(rest::ResponseCode::UNAUTHORIZED,
+                          req.contentTypeResponse(), req.messageId(),
+                          TRI_ERROR_FORBIDDEN);
         return Flow::Abort;
       }
     }
@@ -271,8 +283,9 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
   // users API to allow logins
   if (CommTask::canAccessPath(authToken, req) != Flow::Continue) {
     events::NotAuthorized(req);
-    sendErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),
-                      req.messageId(), TRI_ERROR_FORBIDDEN,
+    sendErrorResponse(rest::ResponseCode::UNAUTHORIZED,
+                      req.contentTypeResponse(), req.messageId(),
+                      TRI_ERROR_FORBIDDEN,
                       "not authorized to execute this request");
     return Flow::Abort;
   }
@@ -294,9 +307,11 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
 }
 
 /// Must be called from sendResponse, before response is rendered
-void CommTask::finishExecution(GeneralResponse& res, std::string const& origin) const {
+void CommTask::finishExecution(GeneralResponse& res,
+                               std::string const& origin) const {
   ServerState::Mode mode = ServerState::mode();
-  if (mode == ServerState::Mode::REDIRECT || mode == ServerState::Mode::TRYAGAIN) {
+  if (mode == ServerState::Mode::REDIRECT ||
+      mode == ServerState::Mode::TRYAGAIN) {
     auto& rf = _server.server().getFeature<ReplicationFeature>();
     rf.setEndpointHeader(&res, mode);
   }
@@ -305,7 +320,6 @@ void CommTask::finishExecution(GeneralResponse& res, std::string const& origin) 
   }
   if (res.transportType() == Endpoint::TransportType::HTTP &&
       !ServerState::instance()->isDBServer()) {
-  
     // CORS response handling
     if (!origin.empty()) {
       // the request contained an Origin header. We have to send back the
@@ -317,10 +331,9 @@ void CommTask::finishExecution(GeneralResponse& res, std::string const& origin) 
       res.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowOrigin, origin);
 
       // send back "Access-Control-Allow-Credentials" header
-      res.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowCredentials,
-                                   (allowCorsCredentials(origin)
-                                        ? "true"
-                                        : "false"));
+      res.setHeaderNCIfNotSet(
+          StaticStrings::AccessControlAllowCredentials,
+          (allowCorsCredentials(origin) ? "true" : "false"));
 
       // use "IfNotSet" here because we should not override HTTP headers set
       // by Foxx applications
@@ -330,13 +343,20 @@ void CommTask::finishExecution(GeneralResponse& res, std::string const& origin) 
 
     // DB server is not user-facing, and does not need to set this header
     // use "IfNotSet" to not overwrite an existing response header
-    res.setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions, StaticStrings::NoSniff);
+    res.setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions,
+                            StaticStrings::NoSniff);
   }
 
   // add "x-arango-queue-time-seconds" header
-  if (_server.server().getFeature<GeneralServerFeature>().returnQueueTimeHeader()) {
-    res.setHeaderNC(StaticStrings::XArangoQueueTimeSeconds, 
-                    std::to_string(static_cast<double>(SchedulerFeature::SCHEDULER->getLastLowPriorityDequeueTime()) / 1000.0));
+  if (_server.server()
+          .getFeature<GeneralServerFeature>()
+          .returnQueueTimeHeader()) {
+    res.setHeaderNC(
+        StaticStrings::XArangoQueueTimeSeconds,
+        std::to_string(
+            static_cast<double>(
+                SchedulerFeature::SCHEDULER->getLastLowPriorityDequeueTime()) /
+            1000.0));
   }
 }
 
@@ -363,21 +383,22 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     LOG_TOPIC("2cece", WARN, Logger::REQUESTS)
         << "could not find corresponding request/response";
   }
-  
+
   rest::ContentType const respType = request->contentTypeResponse();
 
   // check if "x-arango-queue-time-seconds" header was set, and its value
   // is above the current dequeing time
   if (::queueTimeViolated(*request)) {
-    sendErrorResponse(rest::ResponseCode::PRECONDITION_FAILED,
-                      respType, messageId, TRI_ERROR_QUEUE_TIME_REQUIREMENT_VIOLATED);
+    sendErrorResponse(rest::ResponseCode::PRECONDITION_FAILED, respType,
+                      messageId, TRI_ERROR_QUEUE_TIME_REQUIREMENT_VIOLATED);
     return;
   }
 
   // create a handler, this takes ownership of request and response
   auto& server = _server.server();
   auto& factory = server.getFeature<GeneralServerFeature>().handlerFactory();
-  auto handler = factory.createHandler(server, std::move(request), std::move(response));
+  auto handler =
+      factory.createHandler(server, std::move(request), std::move(response));
 
   // give up, if we cannot find a handler
   if (handler == nullptr) {
@@ -392,13 +413,15 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   auto res = handler->forwardRequest(forwarded);
   if (forwarded) {
     statistics(messageId).SET_SUPERUSER();
-    std::move(res).thenFinal([self(shared_from_this()), handler(std::move(handler)), messageId](
-                                 futures::Try<Result> && /*ignored*/) -> void {
-      self->sendResponse(handler->stealResponse(), self->stealStatistics(messageId));
-    });
+    std::move(res).thenFinal(
+        [self(shared_from_this()), handler(std::move(handler)),
+         messageId](futures::Try<Result>&& /*ignored*/) -> void {
+          self->sendResponse(handler->stealResponse(),
+                             self->stealStatistics(messageId));
+        });
     return;
   }
-  
+
   SchedulerFeature::SCHEDULER->trackCreateHandlerTask();
 
   // asynchronous request
@@ -432,8 +455,8 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
       }
       sendResponse(std::move(resp), RequestStatistics::Item());
     } else {
-      sendErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                        respType, messageId, TRI_ERROR_QUEUE_FULL);
+      sendErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE, respType,
+                        messageId, TRI_ERROR_QUEUE_FULL);
     }
   } else {
     // synchronous request
@@ -449,7 +472,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
 RequestStatistics::Item const& CommTask::acquireStatistics(uint64_t id) {
   RequestStatistics::Item stat = RequestStatistics::acquire();
- 
+
   std::lock_guard<std::mutex> guard(_statisticsMutex);
   return _statisticsMap.insert_or_assign(id, std::move(stat)).first->second;
 }
@@ -491,8 +514,9 @@ void CommTask::sendSimpleResponse(rest::ResponseCode code,
 }
 
 /// @brief send response including error response body
-void CommTask::sendErrorResponse(rest::ResponseCode code, rest::ContentType respType,
-                                 uint64_t messageId, ErrorCode errorNum,
+void CommTask::sendErrorResponse(rest::ResponseCode code,
+                                 rest::ContentType respType, uint64_t messageId,
+                                 ErrorCode errorNum,
                                  std::string_view errorMessage /* = {} */) {
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
@@ -528,7 +552,8 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   uint64_t mid = handler->messageId();
 
   // queue the operation for execution in the scheduler
-  auto cb = [self = shared_from_this(), handler = std::move(handler)]() mutable {
+  auto cb = [self = shared_from_this(),
+             handler = std::move(handler)]() mutable {
     handler->trackQueueEnd();
     handler->trackTaskStart();
 
@@ -536,7 +561,8 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
       handler->trackTaskEnd();
       try {
         // Pass the response to the io context
-        self->sendResponse(handler->stealResponse(), handler->stealStatistics());
+        self->sendResponse(handler->stealResponse(),
+                           handler->stealStatistics());
       } catch (...) {
         LOG_TOPIC("fc834", WARN, Logger::REQUESTS)
             << "got an exception while sending response, closing connection";
@@ -547,8 +573,8 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   bool ok = SchedulerFeature::SCHEDULER->tryBoundedQueue(lane, std::move(cb));
 
   if (!ok) {
-    sendErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                      respType, mid, TRI_ERROR_QUEUE_FULL);
+    sendErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE, respType, mid,
+                      TRI_ERROR_QUEUE_FULL);
   }
 
   return ok;
@@ -560,44 +586,45 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   if (_server.server().isStopping()) {
     return false;
   }
- 
+
   RequestLane lane = handler->determineRequestLane();
   handler->trackQueueStart();
 
   if (jobId != nullptr) {
-    auto& jobManager = _server.server().getFeature<GeneralServerFeature>().jobManager();
+    auto& jobManager =
+        _server.server().getFeature<GeneralServerFeature>().jobManager();
     try {
       // This will throw if a soft shutdown is already going on on a
       // coordinator. But this can also throw if we have an
       // out of memory situation, so we better handle this anyway.
       jobManager.initAsyncJob(handler);
-    } catch(std::exception const& exc) {
+    } catch (std::exception const& exc) {
       LOG_TOPIC("fee34", INFO, Logger::STARTUP)
-        << "Async job rejected, exception: " << exc.what();
+          << "Async job rejected, exception: " << exc.what();
       return false;
     }
     *jobId = handler->handlerId();
 
     // callback will persist the response with the AsyncJobManager
-    return SchedulerFeature::SCHEDULER->tryBoundedQueue(lane, [handler = std::move(handler), manager(&jobManager)] {
-      handler->trackQueueEnd();
-      handler->trackTaskStart();
+    return SchedulerFeature::SCHEDULER->tryBoundedQueue(
+        lane, [handler = std::move(handler), manager(&jobManager)] {
+          handler->trackQueueEnd();
+          handler->trackTaskStart();
 
-      handler->runHandler([manager](RestHandler* h) { 
-        h->trackTaskEnd();
-        manager->finishAsyncJob(h); 
-      });
-    });
+          handler->runHandler([manager](RestHandler* h) {
+            h->trackTaskEnd();
+            manager->finishAsyncJob(h);
+          });
+        });
   } else {
     // here the response will just be ignored
-    return SchedulerFeature::SCHEDULER->tryBoundedQueue(lane, [handler = std::move(handler)] {
-      handler->trackQueueEnd();
-      handler->trackTaskStart();
-      
-      handler->runHandler([](RestHandler* h) {
-        h->trackTaskEnd();
-      });
-    });
+    return SchedulerFeature::SCHEDULER->tryBoundedQueue(
+        lane, [handler = std::move(handler)] {
+          handler->trackQueueEnd();
+          handler->trackTaskStart();
+
+          handler->runHandler([](RestHandler* h) { h->trackTaskEnd(); });
+        });
   }
 }
 
@@ -610,14 +637,14 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
   }
 
   std::string const& path = req.requestPath();
-  
+
   auto const& ap = token.allowedPaths();
   if (!ap.empty()) {
     if (std::find(ap.begin(), ap.end(), path) == ap.end()) {
       return Flow::Abort;
     }
   }
-  
+
   bool userAuthenticated = req.authenticated();
   Flow result = userAuthenticated ? Flow::Continue : Flow::Abort;
 
@@ -627,7 +654,8 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
   if (result == Flow::Continue &&
       vc->databaseAuthLevel() == auth::Level::NONE) {
     result = Flow::Abort;
-    LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
+    LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION)
+        << "Access forbidden to " << path;
   }
 
   // we need to check for some special cases, where users may be allowed
@@ -654,7 +682,8 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
           // simon: upgrade rights for Foxx apps. FIXME
           result = Flow::Continue;
           vc->forceSuperuser();
-          LOG_TOPIC("e2880", TRACE, Logger::AUTHORIZATION) << "Upgrading rights for " << path;
+          LOG_TOPIC("e2880", TRACE, Logger::AUTHORIZATION)
+              << "Upgrading rights for " << path;
         }
       }
     }
@@ -729,15 +758,14 @@ bool CommTask::allowCorsCredentials(std::string const& origin) const {
 /// handle an OPTIONS request
 void CommTask::processCorsOptions(std::unique_ptr<GeneralRequest> req,
                                   std::string const& origin) {
-  
   auto resp = createResponse(rest::ResponseCode::OK, req->messageId());
   resp->setHeaderNCIfNotSet(StaticStrings::Allow, StaticStrings::CorsMethods);
-  
+
   if (!origin.empty()) {
     LOG_TOPIC("e1cfa", DEBUG, arangodb::Logger::REQUESTS)
         << "got CORS preflight request";
-    std::string const allowHeaders =
-        StringUtils::trim(req->header(StaticStrings::AccessControlRequestHeaders));
+    std::string const allowHeaders = StringUtils::trim(
+        req->header(StaticStrings::AccessControlRequestHeaders));
 
     // send back which HTTP methods are allowed for the resource
     // we'll allow all
@@ -749,14 +777,17 @@ void CommTask::processCorsOptions(std::unique_ptr<GeneralRequest> req,
       // we don't verify them here. the worst that can happen is that the
       // client sends some broken headers and then later cannot access the data
       // on the server. that's a client problem.
-      resp->setHeaderNCIfNotSet(StaticStrings::AccessControlAllowHeaders, allowHeaders);
+      resp->setHeaderNCIfNotSet(StaticStrings::AccessControlAllowHeaders,
+                                allowHeaders);
 
       LOG_TOPIC("55413", TRACE, arangodb::Logger::REQUESTS)
-          << "client requested validation of the following headers: " << allowHeaders;
+          << "client requested validation of the following headers: "
+          << allowHeaders;
     }
 
     // set caching time (hard-coded value)
-    resp->setHeaderNCIfNotSet(StaticStrings::AccessControlMaxAge, StaticStrings::N1800);
+    resp->setHeaderNCIfNotSet(StaticStrings::AccessControlMaxAge,
+                              StaticStrings::N1800);
   }
 
   // discard request and send response
@@ -789,7 +820,8 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req) {
 
   LOG_TOPIC_IF("c4536", DEBUG, arangodb::Logger::REQUESTS,
                Logger::logRequestParameters())
-      << "\"authorization-header\",\"" << (void*)this << "\",SENSITIVE_DETAILS_HIDDEN";
+      << "\"authorization-header\",\"" << (void*)this
+      << "\",SENSITIVE_DETAILS_HIDDEN";
 
   AuthenticationMethod authMethod = AuthenticationMethod::NONE;
   if (authStr.size() >= 6) {
@@ -806,10 +838,12 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req) {
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
-  auto authToken = this->_auth->tokenCache().checkAuthentication(authMethod, auth);
+  auto authToken =
+      this->_auth->tokenCache().checkAuthentication(authMethod, auth);
   req.setAuthenticated(authToken.authenticated());
   req.setTokenExpiry(authToken.expiry());
-  req.setUser(authToken.username());  // do copy here, so that we do not invalidate the member
+  req.setUser(authToken.username());  // do copy here, so that we do not
+                                      // invalidate the member
   if (authToken.authenticated()) {
     events::Authenticated(req, authMethod);
   } else {

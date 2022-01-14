@@ -122,7 +122,7 @@ CachedValue* TransactionalBucket::remove(std::uint32_t hash, void const* key,
 }
 
 CachedValue* TransactionalBucket::banish(std::uint32_t hash, void const* key,
-                                            std::size_t keySize) {
+                                         std::size_t keySize) {
   TRI_ASSERT(isLocked());
   if (!haveOpenTransaction()) {
     return nullptr;
@@ -251,4 +251,4 @@ bool TransactionalBucket::haveOpenTransaction() const {
   // only have open transactions if term is odd
   return ((_banishTerm & static_cast<uint64_t>(1)) > 0);
 }
-}
+}  // namespace arangodb::cache

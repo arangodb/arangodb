@@ -43,8 +43,8 @@ bool addFunction(arangodb::aql::AqlFunctionFeature& functions,
   return true;
 }
 
-arangodb::aql::Function const* getFunction(arangodb::aql::AqlFunctionFeature& functions,
-                                           std::string const& name) {
+arangodb::aql::Function const* getFunction(
+    arangodb::aql::AqlFunctionFeature& functions, std::string const& name) {
   // if a function cannot be found then return nullptr instead of throwing
   // exception
   try {

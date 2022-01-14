@@ -27,19 +27,10 @@
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
 
-
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
-
-namespace replication2 {
-namespace replicated_log {
-struct LogStatus;
-}
-class LogId;
-}
-
 
 class HeartbeatThread;
 
@@ -49,14 +40,14 @@ struct DBServerAgencySyncResult {
   uint64_t planIndex;
   uint64_t currentIndex;
 
-  DBServerAgencySyncResult()
-    : success(false), planIndex(0), currentIndex(0) {}
+  DBServerAgencySyncResult() : success(false), planIndex(0), currentIndex(0) {}
 
   DBServerAgencySyncResult(bool s, uint64_t pi, uint64_t ci)
-    : success(s), planIndex(pi), currentIndex(ci) {}
+      : success(s), planIndex(pi), currentIndex(ci) {}
 
-  DBServerAgencySyncResult(bool s, std::string const& e, uint64_t pi, uint64_t ci)
-    : success(s), errorMessage(e), planIndex(pi), currentIndex(ci) {}
+  DBServerAgencySyncResult(bool s, std::string const& e, uint64_t pi,
+                           uint64_t ci)
+      : success(s), errorMessage(e), planIndex(pi), currentIndex(ci) {}
 };
 
 class DBServerAgencySync {
@@ -70,16 +61,14 @@ class DBServerAgencySync {
  public:
   void work();
 
-  using LocalLogsMap = std::unordered_map<std::string, std::unordered_map<arangodb::replication2::LogId, arangodb::replication2::replicated_log::LogStatus>>;
-
   /**
    * @brief Get copy of current local state
    * @param  collections  Builder to fill to
    */
   arangodb::Result getLocalCollections(
-    std::unordered_set<std::string> const& dirty,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>>& collections,
-    LocalLogsMap& replLogs);
+      std::unordered_set<std::string> const& dirty,
+      std::unordered_map<std::string, std::shared_ptr<VPackBuilder>>&
+          collections);
 
  private:
   DBServerAgencySyncResult execute();
@@ -87,7 +76,5 @@ class DBServerAgencySync {
  private:
   application_features::ApplicationServer& _server;
   HeartbeatThread* _heartbeat;
-
 };
 }  // namespace arangodb
-

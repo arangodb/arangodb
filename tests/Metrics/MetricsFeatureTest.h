@@ -26,19 +26,25 @@
 #define METRICS_FEATURE_TEST_H
 #include <RestServer/MetricsFeature.h>
 struct HISTOGRAMLOGSCALE {
-  static log_scale_t<double> scale() { return { 10.0, 0, 1000.0, 8 }; }
+  static log_scale_t<double> scale() { return {10.0, 0, 1000.0, 8}; }
 };
 struct HISTOGRAMLINSCALE {
-  static lin_scale_t<double> scale() { return { 0., 1., 10 }; }
+  static lin_scale_t<double> scale() { return {0., 1., 10}; }
 };
 struct COUNTER : arangodb::metrics::CounterBuilder<COUNTER> {
   COUNTER() { _name = "COUNTER", _help = "one counter"; }
 };
-struct HISTOGRAMLOG : arangodb::metrics::HistogramBuilder<HISTOGRAMLOG, HISTOGRAMLOGSCALE> {
-  HISTOGRAMLOG() { _name = "HISTOGRAMLOG", _help = "one histogram with log scale"; }
+struct HISTOGRAMLOG
+    : arangodb::metrics::HistogramBuilder<HISTOGRAMLOG, HISTOGRAMLOGSCALE> {
+  HISTOGRAMLOG() {
+    _name = "HISTOGRAMLOG", _help = "one histogram with log scale";
+  }
 };
-struct HISTOGRAMLIN : arangodb::metrics::HistogramBuilder<HISTOGRAMLIN, HISTOGRAMLINSCALE> {
-  HISTOGRAMLIN() { _name = "HISTOGRAMLIN", _help = "one histogram with lin scale"; }
+struct HISTOGRAMLIN
+    : arangodb::metrics::HistogramBuilder<HISTOGRAMLIN, HISTOGRAMLINSCALE> {
+  HISTOGRAMLIN() {
+    _name = "HISTOGRAMLIN", _help = "one histogram with lin scale";
+  }
 };
 struct GAUGE : arangodb::metrics::GaugeBuilder<GAUGE, uint64_t> {
   GAUGE() { _name = "GAUGE", _help = "one gauge"; }

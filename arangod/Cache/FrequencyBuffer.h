@@ -45,7 +45,8 @@ namespace cache {
 /// occurrences of each within a certain time-frame. Will write to randomized
 /// memory location inside the frequency buffer
 ////////////////////////////////////////////////////////////////////////////////
-template <class T, class Comparator = std::equal_to<T>, class Hasher = std::hash<T>>
+template<class T, class Comparator = std::equal_to<T>,
+         class Hasher = std::hash<T>>
 class FrequencyBuffer {
  public:
   typedef std::vector<std::pair<T, uint64_t>> stats_t;
@@ -104,7 +105,8 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   void insertRecord(T record) {
     // we do not care about the order in which threads insert their values
-    _buffer[_sharedPRNG.rand() & _mask].store(record, std::memory_order_relaxed);
+    _buffer[_sharedPRNG.rand() & _mask].store(record,
+                                              std::memory_order_relaxed);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -114,7 +116,8 @@ class FrequencyBuffer {
     for (std::size_t i = 0; i < _capacity; i++) {
       auto tmp = _buffer[i].load(std::memory_order_relaxed);
       if (_cmp(tmp, record)) {
-        _buffer[i].compare_exchange_strong(tmp, _empty, std::memory_order_relaxed);
+        _buffer[i].compare_exchange_strong(tmp, _empty,
+                                           std::memory_order_relaxed);
       }
     }
   }
@@ -140,7 +143,8 @@ class FrequencyBuffer {
       data.emplace_back(std::pair<T, std::size_t>(f.first, f.second));
     }
     std::sort(data.begin(), data.end(),
-              [](std::pair<T, std::uint64_t> const& left, std::pair<T, std::size_t> const& right) {
+              [](std::pair<T, std::uint64_t> const& left,
+                 std::pair<T, std::size_t> const& right) {
                 return left.second < right.second;
               });
 
@@ -159,4 +163,3 @@ class FrequencyBuffer {
 
 };  // end namespace cache
 };  // end namespace arangodb
-

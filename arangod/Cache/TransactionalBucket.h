@@ -198,4 +198,3 @@ static_assert(sizeof(TransactionalBucket) == BUCKET_SIZE,
 
 };  // end namespace cache
 };  // end namespace arangodb
-

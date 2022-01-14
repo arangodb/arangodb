@@ -54,4 +54,3 @@ class EndpointFeature final : public HttpEndpointProvider {
 };
 
 }  // namespace arangodb
-

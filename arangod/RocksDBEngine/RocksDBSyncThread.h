@@ -42,8 +42,7 @@ class RocksDBEngine;
 
 class RocksDBSyncThread final : public Thread {
  public:
-  RocksDBSyncThread(RocksDBEngine& engine, 
-                    std::chrono::milliseconds interval,
+  RocksDBSyncThread(RocksDBEngine& engine, std::chrono::milliseconds interval,
                     std::chrono::milliseconds delayThreshold);
 
   ~RocksDBSyncThread();
@@ -83,4 +82,3 @@ class RocksDBSyncThread final : public Thread {
   arangodb::basics::ConditionVariable _condition;
 };
 }  // namespace arangodb
-

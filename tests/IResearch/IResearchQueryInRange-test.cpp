@@ -46,10 +46,11 @@ namespace {
 
 class IResearchQueryInRangeTest : public IResearchQueryTest {};
 
-}
+}  // namespace
 
 TEST_P(IResearchQueryInRangeTest, test) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   std::shared_ptr<arangodb::LogicalCollection> collection0;
   std::shared_ptr<arangodb::LogicalCollection> collection1;
@@ -57,32 +58,27 @@ TEST_P(IResearchQueryInRangeTest, test) {
 
   // create collection0
   {
-    auto createJson = VPackParser::fromJson(
-        "{ \"name\": \"testCollection0\" }");
+    auto createJson =
+        VPackParser::fromJson("{ \"name\": \"testCollection0\" }");
     auto collection = vocbase.createCollection(createJson->slice());
     ASSERT_NE(nullptr, collection);
     collection0 = collection;
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
-        VPackParser::fromJson(
-            "{ \"seq\": -6, \"value\": null }"),
-        VPackParser::fromJson(
-            "{ \"seq\": -5, \"value\": true }"),
-        VPackParser::fromJson(
-            "{ \"seq\": -4, \"value\": \"abc\" }"),
-        VPackParser::fromJson(
-            "{ \"seq\": -3, \"value\": [ 3.14, -3.14 ] }"),
-        VPackParser::fromJson(
-            "{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
+        VPackParser::fromJson("{ \"seq\": -6, \"value\": null }"),
+        VPackParser::fromJson("{ \"seq\": -5, \"value\": true }"),
+        VPackParser::fromJson("{ \"seq\": -4, \"value\": \"abc\" }"),
+        VPackParser::fromJson("{ \"seq\": -3, \"value\": [ 3.14, -3.14 ] }"),
+        VPackParser::fromJson("{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
         VPackParser::fromJson(
             "{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
     };
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -96,8 +92,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
 
   // create collection1
   {
-    auto createJson = VPackParser::fromJson(
-        "{ \"name\": \"testCollection1\" }");
+    auto createJson =
+        VPackParser::fromJson("{ \"name\": \"testCollection1\" }");
     auto collection = vocbase.createCollection(createJson->slice());
     ASSERT_NE(nullptr, collection);
     collection1 = collection;
@@ -106,16 +102,16 @@ TEST_P(IResearchQueryInRangeTest, test) {
     resource /= std::string_view(arangodb::tests::testResourceDir);
     resource /= std::string_view("simple_sequential.json");
 
-    auto builder =
-        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.u8string());
+    auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(
+        resource.u8string());
     auto slice = builder.slice();
     ASSERT_TRUE(slice.isArray());
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -138,7 +134,7 @@ TEST_P(IResearchQueryInRangeTest, test) {
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
     ASSERT_FALSE(!impl);
 
-    auto viewDefinitionTemplate =  R"({
+    auto viewDefinitionTemplate = R"({
       "links": {
         "testCollection0": {
           "analyzers": [ "test_analyzer", "identity" ],
@@ -154,9 +150,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
     }})";
 
     auto viewDefinition = irs::string_utils::to_string(
-      viewDefinitionTemplate,
-      static_cast<uint32_t>(linkVersion()),
-      static_cast<uint32_t>(linkVersion()));
+        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()),
+        static_cast<uint32_t>(linkVersion()));
 
     auto updateJson = VPackParser::fromJson(viewDefinition);
 
@@ -167,12 +162,14 @@ TEST_P(IResearchQueryInRangeTest, test) {
       return true;
     });
     EXPECT_EQ(2, cids.size());
-    EXPECT_TRUE((arangodb::iresearch::IResearchLinkHelper::find(*collection0, *view)
-                     ->commit()
-                     .ok()));
-    EXPECT_TRUE((arangodb::iresearch::IResearchLinkHelper::find(*collection1, *view)
-                     ->commit()
-                     .ok()));
+    EXPECT_TRUE(
+        (arangodb::iresearch::IResearchLinkHelper::find(*collection0, *view)
+             ->commit()
+             .ok()));
+    EXPECT_TRUE(
+        (arangodb::iresearch::IResearchLinkHelper::find(*collection1, *view)
+             ->commit()
+             .ok()));
   }
 
   // d.value > false && d.value <= true
@@ -183,7 +180,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH IN_RANGE(d.value, false, true, false, true) "
+          "FOR d IN testView SEARCH IN_RANGE(d.value, false, true, false, "
+          "true) "
           "SORT d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -194,16 +192,17 @@ TEST_P(IResearchQueryInRangeTest, test) {
         auto const resolved = itr.value().resolveExternals();
 
         EXPECT_LT(i, expected.size());
-        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                 resolved, true));
+        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
+                         expected[i++], resolved, true));
       }
       EXPECT_EQ(i, expected.size());
     }
-    //NOT
+    // NOT
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH NOT(IN_RANGE(d.value, false, true, false, true)) "
+          "FOR d IN testView SEARCH NOT(IN_RANGE(d.value, false, true, false, "
+          "true)) "
           "SORT d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -212,7 +211,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         for (const auto& u : expected) {
-          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved, true));
+          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved,
+                                                                   true));
         }
         ++i;
       }
@@ -238,16 +238,17 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         EXPECT_LT(i, expected.size());
-        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                 resolved, true));
+        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
+                         expected[i++], resolved, true));
       }
       EXPECT_EQ(i, expected.size());
     }
-    //NOT
+    // NOT
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH NOT(IN_RANGE(d.value, null, null, true, true)) "
+          "FOR d IN testView SEARCH NOT(IN_RANGE(d.value, null, null, true, "
+          "true)) "
           "SORT d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -256,7 +257,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         for (const auto& u : expected) {
-          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved, true));
+          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved,
+                                                                   true));
         }
         ++i;
       }
@@ -269,9 +271,9 @@ TEST_P(IResearchQueryInRangeTest, test) {
     std::vector<arangodb::velocypack::Slice> expected = {};
     {
       auto result = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH IN_RANGE(d.value, null, null, false, true) "
-        "SORT d.seq RETURN d");
+          vocbase,
+          "FOR d IN testView SEARCH IN_RANGE(d.value, null, null, false, true) "
+          "SORT d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
@@ -280,16 +282,17 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         EXPECT_LT(i, expected.size());
-        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                 resolved, true));
+        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
+                         expected[i++], resolved, true));
       }
       EXPECT_EQ(i, expected.size());
     }
-    //NOT
+    // NOT
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH NOT(IN_RANGE(d.value, null, null, false, true)) "
+          "FOR d IN testView SEARCH NOT(IN_RANGE(d.value, null, null, false, "
+          "true)) "
           "SORT d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -298,7 +301,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         for (const auto& u : expected) {
-          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved, true));
+          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved,
+                                                                   true));
         }
         ++i;
       }
@@ -314,7 +318,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'A', true, true) SORT "
+          "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'A', true, true) "
+          "SORT "
           "d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -324,16 +329,17 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         EXPECT_LT(i, expected.size());
-        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                 resolved, true));
+        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
+                         expected[i++], resolved, true));
       }
       EXPECT_EQ(i, expected.size());
     }
-    //NOT
+    // NOT
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH NOT(IN_RANGE(d.name, 'A', 'A', true, true)) SORT "
+          "FOR d IN testView SEARCH NOT(IN_RANGE(d.name, 'A', 'A', true, "
+          "true)) SORT "
           "d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -342,7 +348,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         for (const auto& u : expected) {
-          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved, true));
+          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved,
+                                                                   true));
         }
         ++i;
       }
@@ -356,7 +363,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH IN_RANGE(d.name, 'B', 'A', true, true) SORT "
+          "FOR d IN testView SEARCH IN_RANGE(d.name, 'B', 'A', true, true) "
+          "SORT "
           "d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -366,16 +374,17 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         EXPECT_LT(i, expected.size());
-        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                 resolved, true));
+        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
+                         expected[i++], resolved, true));
       }
       EXPECT_EQ(i, expected.size());
     }
-    //NOT
+    // NOT
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH NOT(IN_RANGE(d.name, 'B', 'A', true, true)) SORT "
+          "FOR d IN testView SEARCH NOT(IN_RANGE(d.name, 'B', 'A', true, "
+          "true)) SORT "
           "d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -384,7 +393,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         for (const auto& u : expected) {
-          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved, true));
+          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved,
+                                                                   true));
         }
         ++i;
       }
@@ -402,7 +412,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'E', true, true) SORT "
+          "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'E', true, true) "
+          "SORT "
           "d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -412,16 +423,17 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         EXPECT_LT(i, expected.size());
-        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                 resolved, true));
+        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
+                         expected[i++], resolved, true));
       }
       EXPECT_EQ(i, expected.size());
     }
-    //NOT
+    // NOT
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH NOT(IN_RANGE(d.name, 'A', 'E', true, true)) SORT "
+          "FOR d IN testView SEARCH NOT(IN_RANGE(d.name, 'A', 'E', true, "
+          "true)) SORT "
           "d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -430,7 +442,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         for (const auto& u : expected) {
-          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved, true));
+          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved,
+                                                                   true));
         }
         ++i;
       }
@@ -449,7 +462,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'E', true, false) SORT "
+          "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'E', true, false) "
+          "SORT "
           "d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -459,16 +473,17 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         EXPECT_LT(i, expected.size());
-        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                 resolved, true));
+        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
+                         expected[i++], resolved, true));
       }
       EXPECT_EQ(i, expected.size());
     }
-    //NOT
+    // NOT
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH NOT(IN_RANGE(d.name, 'A', 'E', true, false)) SORT "
+          "FOR d IN testView SEARCH NOT(IN_RANGE(d.name, 'A', 'E', true, "
+          "false)) SORT "
           "d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -477,7 +492,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         for (const auto& u : expected) {
-          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved, true));
+          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved,
+                                                                   true));
         }
         ++i;
       }
@@ -496,7 +512,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'E', false, true) SORT "
+          "FOR d IN testView SEARCH IN_RANGE(d.name, 'A', 'E', false, true) "
+          "SORT "
           "d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -506,16 +523,17 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         EXPECT_LT(i, expected.size());
-        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                 resolved, true));
+        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
+                         expected[i++], resolved, true));
       }
       EXPECT_EQ(i, expected.size());
     }
-    //NOT
+    // NOT
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH NOT(IN_RANGE(d.name, 'A', 'E', false, true)) SORT "
+          "FOR d IN testView SEARCH NOT(IN_RANGE(d.name, 'A', 'E', false, "
+          "true)) SORT "
           "d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -524,7 +542,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         for (const auto& u : expected) {
-          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved, true));
+          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved,
+                                                                   true));
         }
         ++i;
       }
@@ -552,16 +571,17 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         EXPECT_LT(i, expected.size());
-        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                 resolved, true));
+        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
+                         expected[i++], resolved, true));
       }
       EXPECT_EQ(i, expected.size());
     }
-    //NOT
+    // NOT
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH NOT(IN_RANGE(d.name, 'A', 'E', false, false)) "
+          "FOR d IN testView SEARCH NOT(IN_RANGE(d.name, 'A', 'E', false, "
+          "false)) "
           "SORT d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -570,7 +590,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         for (const auto& u : expected) {
-          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved, true));
+          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved,
+                                                                   true));
         }
         ++i;
       }
@@ -594,16 +615,17 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         EXPECT_LT(i, expected.size());
-        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                 resolved, true));
+        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
+                         expected[i++], resolved, true));
       }
       EXPECT_EQ(i, expected.size());
     }
-    //NOT
+    // NOT
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH NOT(IN_RANGE(d.seq, 5, -1, true, true)) SORT "
+          "FOR d IN testView SEARCH NOT(IN_RANGE(d.seq, 5, -1, true, true)) "
+          "SORT "
           "d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -612,7 +634,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         for (const auto& u : expected) {
-          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved, true));
+          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved,
+                                                                   true));
         }
         ++i;
       }
@@ -630,7 +653,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH IN_RANGE(d.seq, 1, 5, true, true) SORT d.seq "
+          "FOR d IN testView SEARCH IN_RANGE(d.seq, 1, 5, true, true) SORT "
+          "d.seq "
           "RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -640,16 +664,17 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         EXPECT_LT(i, expected.size());
-        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                 resolved, true));
+        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
+                         expected[i++], resolved, true));
       }
       EXPECT_EQ(i, expected.size());
     }
-    //NOT
+    // NOT
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH NOT(IN_RANGE(d.seq, 1, 5, true, true)) SORT d.seq "
+          "FOR d IN testView SEARCH NOT(IN_RANGE(d.seq, 1, 5, true, true)) "
+          "SORT d.seq "
           "RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -658,7 +683,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         for (const auto& u : expected) {
-          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved, true));
+          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved,
+                                                                   true));
         }
         ++i;
       }
@@ -687,16 +713,17 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         EXPECT_LT(i, expected.size());
-        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                 resolved, true));
+        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
+                         expected[i++], resolved, true));
       }
       EXPECT_EQ(i, expected.size());
     }
-    //NOT
+    // NOT
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH NOT(IN_RANGE(d.seq, -2, 5, false, true)) SORT "
+          "FOR d IN testView SEARCH NOT(IN_RANGE(d.seq, -2, 5, false, true)) "
+          "SORT "
           "d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -705,7 +732,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         for (const auto& u : expected) {
-          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved, true));
+          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved,
+                                                                   true));
         }
         ++i;
       }
@@ -733,16 +761,17 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         EXPECT_LT(i, expected.size());
-        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                 resolved, true));
+        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
+                         expected[i++], resolved, true));
       }
       EXPECT_EQ(i, expected.size());
     }
-    //NOT
+    // NOT
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH NOT(IN_RANGE(d.seq, 1, 5, false, false)) SORT "
+          "FOR d IN testView SEARCH NOT(IN_RANGE(d.seq, 1, 5, false, false)) "
+          "SORT "
           "d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -751,7 +780,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         for (const auto& u : expected) {
-          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved, true));
+          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved,
+                                                                   true));
         }
         ++i;
       }
@@ -780,16 +810,17 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         EXPECT_LT(i, expected.size());
-        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                 resolved, true));
+        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
+                         expected[i++], resolved, true));
       }
       EXPECT_EQ(i, expected.size());
     }
-    //NOT
+    // NOT
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH NOT(IN_RANGE(d.seq, 1, 5, true, false)) SORT "
+          "FOR d IN testView SEARCH NOT(IN_RANGE(d.seq, 1, 5, true, false)) "
+          "SORT "
           "d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -798,7 +829,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         for (const auto& u : expected) {
-          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved, true));
+          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved,
+                                                                   true));
         }
         ++i;
       }
@@ -824,16 +856,17 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         EXPECT_LT(i, expected.size());
-        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                 resolved, true));
+        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
+                         expected[i++], resolved, true));
       }
       EXPECT_EQ(i, expected.size());
     }
-    //NOT
+    // NOT
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH NOT(IN_RANGE(d.value, 3, 4, false, false)) SORT "
+          "FOR d IN testView SEARCH NOT(IN_RANGE(d.value, 3, 4, false, false)) "
+          "SORT "
           "d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -842,7 +875,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         for (const auto& u : expected) {
-          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved, true));
+          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved,
+                                                                   true));
         }
         ++i;
       }
@@ -858,7 +892,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH IN_RANGE(d.value, -4, -3, false, false) SORT "
+          "FOR d IN testView SEARCH IN_RANGE(d.value, -4, -3, false, false) "
+          "SORT "
           "d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -868,16 +903,17 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         EXPECT_LT(i, expected.size());
-        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                 resolved, true));
+        EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
+                         expected[i++], resolved, true));
       }
       EXPECT_EQ(i, expected.size());
     }
-    //NOT
+    // NOT
     {
       auto result = arangodb::tests::executeQuery(
           vocbase,
-          "FOR d IN testView SEARCH NOT(IN_RANGE(d.value, -4, -3, false, false)) SORT "
+          "FOR d IN testView SEARCH NOT(IN_RANGE(d.value, -4, -3, false, "
+          "false)) SORT "
           "d.seq RETURN d");
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
@@ -886,7 +922,8 @@ TEST_P(IResearchQueryInRangeTest, test) {
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
         for (const auto& u : expected) {
-          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved, true));
+          EXPECT_NE(0, arangodb::basics::VelocyPackHelper::compare(u, resolved,
+                                                                   true));
         }
         ++i;
       }
@@ -895,7 +932,5 @@ TEST_P(IResearchQueryInRangeTest, test) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(
-  IResearchQueryInRangeTest,
-  IResearchQueryInRangeTest,
-  GetLinkVersions());
+INSTANTIATE_TEST_CASE_P(IResearchQueryInRangeTest, IResearchQueryInRangeTest,
+                        GetLinkVersions());

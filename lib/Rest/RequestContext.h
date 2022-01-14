@@ -33,4 +33,3 @@ class RequestContext {
   virtual ~RequestContext() = default;
 };
 }  // namespace arangodb
-

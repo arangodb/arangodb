@@ -155,4 +155,3 @@ class Version {
 };
 }  // namespace rest
 }  // namespace arangodb
-

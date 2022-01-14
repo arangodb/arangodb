@@ -35,7 +35,7 @@ struct ResourceMonitor;
 namespace aql {
 struct AqlValue;
 class PruneExpressionEvaluator;
-}
+}  // namespace aql
 
 namespace velocypack {
 class Builder;
@@ -67,10 +67,10 @@ class EnumeratedPath {
   graph::EdgeDocumentToken const& lastEdge() const noexcept;
 
  private:
-  template <typename T>
+  template<typename T>
   void growStorage(std::vector<T>& data);
 
- private: 
+ private:
   arangodb::ResourceMonitor& _resourceMonitor;
   std::vector<graph::EdgeDocumentToken> _edges;
   std::vector<arangodb::velocypack::StringRef> _vertices;
@@ -103,7 +103,7 @@ class PathEnumerator {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t _httpRequests;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Indicates if we issue next() the first time.
   ///        It shall return an empty path in this case.
@@ -112,7 +112,8 @@ class PathEnumerator {
   bool _isFirst;
 
   bool keepEdge(graph::EdgeDocumentToken& eid, velocypack::Slice edge,
-                velocypack::StringRef sourceVertex, size_t depth, size_t cursorId);
+                velocypack::StringRef sourceVertex, size_t depth,
+                size_t cursorId);
 
  public:
   PathEnumerator(Traverser* traverser, TraverserOptions* opts);
@@ -138,7 +139,6 @@ class PathEnumerator {
   virtual aql::AqlValue lastEdgeToAqlValue() = 0;
   virtual aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder&) = 0;
 
-
   /// @brief validate post filter statement
   /// returns true if the path should be returned
   /// returns false if the path should not be returned
@@ -154,7 +154,8 @@ class PathEnumerator {
   void incHttpRequests(size_t requests) { _httpRequests += requests; }
 
  protected:
-  graph::EdgeCursor* getCursor(arangodb::velocypack::StringRef nextVertex, uint64_t currentDepth);
+  graph::EdgeCursor* getCursor(arangodb::velocypack::StringRef nextVertex,
+                               uint64_t currentDepth);
 
   /// @brief The vector of EdgeCursors to walk through.
   std::vector<std::unique_ptr<graph::EdgeCursor>> _cursors;
@@ -193,8 +194,8 @@ class DepthFirstEnumerator final : public PathEnumerator {
   bool shouldPrune();
   bool validDisjointPath() const;
 
-  velocypack::Slice pathToSlice(arangodb::velocypack::Builder& result, bool fromPrune);
+  velocypack::Slice pathToSlice(arangodb::velocypack::Builder& result,
+                                bool fromPrune);
 };
 }  // namespace traverser
 }  // namespace arangodb
-

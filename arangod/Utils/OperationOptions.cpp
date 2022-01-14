@@ -63,7 +63,7 @@ const char* indexOpModeString(IndexOperationMode mode) {
   TRI_ASSERT(false);
   return "invalid";
 }
-}
+}  // namespace
 
 // The following code does not work with VisualStudio 2019's `cl`
 // Lets keep it for debugging on linux.
@@ -99,19 +99,26 @@ ExecContext const& OperationOptions::context() const {
 }
 
 /// @brief stringifies the overwrite mode
-char const* OperationOptions::stringifyOverwriteMode(OperationOptions::OverwriteMode mode) {
+char const* OperationOptions::stringifyOverwriteMode(
+    OperationOptions::OverwriteMode mode) {
   switch (mode) {
-    case OverwriteMode::Unknown: return "unknown";
-    case OverwriteMode::Conflict: return "conflict";
-    case OverwriteMode::Replace: return "replace";
-    case OverwriteMode::Update: return "update";
-    case OverwriteMode::Ignore: return "ignore";
+    case OverwriteMode::Unknown:
+      return "unknown";
+    case OverwriteMode::Conflict:
+      return "conflict";
+    case OverwriteMode::Replace:
+      return "replace";
+    case OverwriteMode::Update:
+      return "update";
+    case OverwriteMode::Ignore:
+      return "ignore";
   }
   TRI_ASSERT(false);
   return "unknown";
 }
-  
-OperationOptions::OverwriteMode OperationOptions::determineOverwriteMode(velocypack::StringRef value) {
+
+OperationOptions::OverwriteMode OperationOptions::determineOverwriteMode(
+    velocypack::StringRef value) {
   if (value == "conflict") {
     return OverwriteMode::Conflict;
   }

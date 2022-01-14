@@ -38,10 +38,10 @@ class InputAqlItemRow;
 
 class ExecutorExpressionContext final : public QueryExpressionContext {
  public:
-  ExecutorExpressionContext(transaction::Methods& trx,
-                            QueryContext& context,
-                            AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
-                            std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister);
+  ExecutorExpressionContext(
+      transaction::Methods& trx, QueryContext& context,
+      AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
+      std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister);
 
   ~ExecutorExpressionContext() override = default;
 

@@ -113,4 +113,3 @@ struct xoroshiro128plus {
 
 }  // namespace basics
 }  // namespace arangodb
-

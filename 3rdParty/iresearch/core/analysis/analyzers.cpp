@@ -149,7 +149,8 @@ namespace analysis {
 
     return normalizer ? normalizer(args, out) : false;
   } catch (...) {
-    IR_FRMT_ERROR("Caught exception while normalizing analyzer '%s' arguments", name.c_str());
+    IR_FRMT_ERROR("Caught exception while normalizing analyzer '%s' arguments",
+                  static_cast<std::string>(name).c_str());
   }
 
   return false;

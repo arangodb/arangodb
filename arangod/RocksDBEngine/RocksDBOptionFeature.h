@@ -48,9 +48,11 @@ class ProgramOptions;
 // that are never activated at the same time take options set
 // in this feature
 
-class RocksDBOptionFeature final : public application_features::ApplicationFeature {
+class RocksDBOptionFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit RocksDBOptionFeature(application_features::ApplicationServer& server);
+  explicit RocksDBOptionFeature(
+      application_features::ApplicationServer& server);
   ~RocksDBOptionFeature() = default;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -76,7 +78,7 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   uint64_t _maxBytesForLevelBase;
   double _maxBytesForLevelMultiplier;
   int32_t _maxBackgroundJobs;
-  uint64_t _maxSubcompactions;
+  uint32_t _maxSubcompactions;
   uint32_t _numThreadsHigh;
   uint32_t _numThreadsLow;
   uint64_t _targetFileSizeBase;
@@ -88,6 +90,8 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   int64_t _level0CompactionTrigger;
   int64_t _level0SlowdownTrigger;
   int64_t _level0StopTrigger;
+  uint64_t _pendingCompactionBytesSlowdownTrigger;
+  uint64_t _pendingCompactionBytesStopTrigger;
   bool _recycleLogFileNum;
   bool _enforceBlockCacheSizeLimit;
   bool _cacheIndexAndFilterBlocks;
@@ -113,10 +117,10 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   std::unique_ptr<RocksDBVPackComparator> _vpackCmp;
 
   /// per column family write buffer limits
-  std::array<uint64_t, RocksDBColumnFamilyManager::numberOfColumnFamilies> _maxWriteBufferNumberCf;
+  std::array<uint64_t, RocksDBColumnFamilyManager::numberOfColumnFamilies>
+      _maxWriteBufferNumberCf;
 
   bool _minWriteBufferNumberToMergeTouched;
 };
 
 }  // namespace arangodb
-

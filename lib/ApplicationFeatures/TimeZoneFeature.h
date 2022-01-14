@@ -53,4 +53,3 @@ class TimeZoneFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

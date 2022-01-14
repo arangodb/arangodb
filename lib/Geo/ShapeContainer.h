@@ -146,4 +146,3 @@ class ShapeContainer final {
 };
 }  // namespace geo
 }  // namespace arangodb
-

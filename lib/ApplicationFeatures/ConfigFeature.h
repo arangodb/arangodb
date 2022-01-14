@@ -39,7 +39,8 @@ class ProgramOptions;
 
 class ConfigFeature final : public application_features::ApplicationFeature {
  public:
-  ConfigFeature(application_features::ApplicationServer& server, std::string const& progname,
+  ConfigFeature(application_features::ApplicationServer& server,
+                std::string const& progname,
                 std::string const& configFilename = "");
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -58,4 +59,3 @@ class ConfigFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

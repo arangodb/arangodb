@@ -31,7 +31,8 @@ using namespace arangodb::tests::aql;
 
 namespace {
 // NOTE copy pasted from Waiting ExecutionBlock mock
-static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks) -> RegisterInfos {
+static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks)
+    -> RegisterInfos {
   // If there are no blocks injected, we have nothing to analyze.
   // This Mock does only work with predefined data output.
   TRI_ASSERT(!blocks.empty());
@@ -56,30 +57,35 @@ static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks) -> Re
 }
 }  // namespace
 
-FixedOutputExecutionBlockMock::FixedOutputExecutionBlockMock(ExecutionEngine* engine,
-                                                             ExecutionNode const* node,
-                                                             std::deque<SharedAqlItemBlockPtr>&& data)
-    : ExecutionBlock(engine, node), _infos{::blocksToInfos(data)}, _blockData{std::move(data)} {}
+FixedOutputExecutionBlockMock::FixedOutputExecutionBlockMock(
+    ExecutionEngine* engine, ExecutionNode const* node,
+    std::deque<SharedAqlItemBlockPtr>&& data)
+    : ExecutionBlock(engine, node),
+      _infos{::blocksToInfos(data)},
+      _blockData{std::move(data)} {}
 
-std::pair<ExecutionState, arangodb::Result> FixedOutputExecutionBlockMock::initializeCursor(
-    InputAqlItemRow const& input) {
+std::pair<ExecutionState, arangodb::Result>
+FixedOutputExecutionBlockMock::initializeCursor(InputAqlItemRow const& input) {
   // Nothing to do
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> FixedOutputExecutionBlockMock::execute(
-    AqlCallStack const& stack) {
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
+FixedOutputExecutionBlockMock::execute(AqlCallStack const& stack) {
   SkipResult skipped{};
   for (size_t i = 1; i < stack.subqueryLevel(); ++i) {
-    // For every additional subquery level we need to increase the skipped subquery level
+    // For every additional subquery level we need to increase the skipped
+    // subquery level
     skipped.incrementSubquery();
   }
   if (_blockData.empty()) {
     return {ExecutionState::DONE, skipped, nullptr};
   }
-  // This Block is very dump, it does NOT care what you ask it for. it will just deliver what it has in the queue
+  // This Block is very dump, it does NOT care what you ask it for. it will just
+  // deliver what it has in the queue
   auto block = _blockData.front();
   _blockData.pop_front();
-  ExecutionState state = _blockData.empty() ? ExecutionState::DONE : ExecutionState::HASMORE;
+  ExecutionState state =
+      _blockData.empty() ? ExecutionState::DONE : ExecutionState::HASMORE;
   return {state, skipped, block};
 }

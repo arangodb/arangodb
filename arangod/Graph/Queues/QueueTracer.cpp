@@ -40,11 +40,11 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-template <class QueueImpl>
+template<class QueueImpl>
 QueueTracer<QueueImpl>::QueueTracer(arangodb::ResourceMonitor& resourceMonitor)
     : _impl{resourceMonitor} {}
 
-template <class QueueImpl>
+template<class QueueImpl>
 QueueTracer<QueueImpl>::~QueueTracer() {
   LOG_TOPIC("4773a", INFO, Logger::GRAPHS) << "Queue Trace report:";
   for (auto const& [name, trace] : _stats) {
@@ -52,74 +52,98 @@ QueueTracer<QueueImpl>::~QueueTracer() {
   }
 }
 
-template <class QueueImpl>
+template<class QueueImpl>
 void QueueTracer<QueueImpl>::clear() {
   double start = TRI_microtime();
-  // umpfh, this can extend _stats, thus requires mutability, may allocate dynamic memory and can throw
-  auto sg = arangodb::scopeGuard([&]() noexcept { _stats["clear"].addTiming(TRI_microtime() - start); });
+  // umpfh, this can extend _stats, thus requires mutability, may allocate
+  // dynamic memory and can throw
+  auto sg = arangodb::scopeGuard(
+      [&]() noexcept { _stats["clear"].addTiming(TRI_microtime() - start); });
   return _impl.clear();
 }
 
-template <class QueueImpl>
+template<class QueueImpl>
 void QueueTracer<QueueImpl>::append(typename QueueImpl::Step step) {
   double start = TRI_microtime();
-  // umpfh, this can extend _stats, thus requires mutability, may allocate dynamic memory and can throw
-  auto sg = arangodb::scopeGuard([&]() noexcept { _stats["append"].addTiming(TRI_microtime() - start); });
+  // umpfh, this can extend _stats, thus requires mutability, may allocate
+  // dynamic memory and can throw
+  auto sg = arangodb::scopeGuard(
+      [&]() noexcept { _stats["append"].addTiming(TRI_microtime() - start); });
   return _impl.append(std::move(step));
 }
 
-template <class QueueImpl>
+template<class QueueImpl>
 bool QueueTracer<QueueImpl>::hasProcessableElement() const {
   double start = TRI_microtime();
-  // umpfh, this can extend _stats, thus requires mutability, may allocate dynamic memory and can throw
-  auto sg = arangodb::scopeGuard([&]() noexcept { _stats["hasProcessableElement"].addTiming(TRI_microtime() - start); });
+  // umpfh, this can extend _stats, thus requires mutability, may allocate
+  // dynamic memory and can throw
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["hasProcessableElement"].addTiming(TRI_microtime() - start);
+  });
   return _impl.hasProcessableElement();
 }
 
-template <class QueueImpl>
+template<class QueueImpl>
 size_t QueueTracer<QueueImpl>::size() const {
   double start = TRI_microtime();
-  // umpfh, this can extend _stats, thus requires mutability, may allocate dynamic memory and can throw
-  auto sg = arangodb::scopeGuard([&]() noexcept { _stats["size"].addTiming(TRI_microtime() - start); });
+  // umpfh, this can extend _stats, thus requires mutability, may allocate
+  // dynamic memory and can throw
+  auto sg = arangodb::scopeGuard(
+      [&]() noexcept { _stats["size"].addTiming(TRI_microtime() - start); });
   return _impl.size();
 }
 
-template <class QueueImpl>
+template<class QueueImpl>
 bool QueueTracer<QueueImpl>::isEmpty() const {
   double start = TRI_microtime();
-  // umpfh, this can extend _stats, thus requires mutability, may allocate dynamic memory and can throw
-  auto sg = arangodb::scopeGuard([&]() noexcept { _stats["isEmpty"].addTiming(TRI_microtime() - start); });
+  // umpfh, this can extend _stats, thus requires mutability, may allocate
+  // dynamic memory and can throw
+  auto sg = arangodb::scopeGuard(
+      [&]() noexcept { _stats["isEmpty"].addTiming(TRI_microtime() - start); });
   return _impl.isEmpty();
 }
 
-template <class QueueImpl>
-auto QueueTracer<QueueImpl>::getLooseEnds() -> std::vector<typename QueueImpl::Step*> {
+template<class QueueImpl>
+auto QueueTracer<QueueImpl>::getLooseEnds()
+    -> std::vector<typename QueueImpl::Step*> {
   double start = TRI_microtime();
-  // umpfh, this can extend _stats, thus requires mutability, may allocate dynamic memory and can throw
-  auto sg = arangodb::scopeGuard([&]() noexcept { _stats["getLooseEnds"].addTiming(TRI_microtime() - start); });
+  // umpfh, this can extend _stats, thus requires mutability, may allocate
+  // dynamic memory and can throw
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["getLooseEnds"].addTiming(TRI_microtime() - start);
+  });
   return _impl.getLooseEnds();
 }
 
-template <class QueueImpl>
+template<class QueueImpl>
 auto QueueTracer<QueueImpl>::pop() -> typename QueueImpl::Step {
   double start = TRI_microtime();
-  // umpfh, this can extend _stats, thus requires mutability, may allocate dynamic memory and can throw
-  auto sg = arangodb::scopeGuard([&]() noexcept { _stats["pop"].addTiming(TRI_microtime() - start); });
+  // umpfh, this can extend _stats, thus requires mutability, may allocate
+  // dynamic memory and can throw
+  auto sg = arangodb::scopeGuard(
+      [&]() noexcept { _stats["pop"].addTiming(TRI_microtime() - start); });
   return _impl.pop();
 }
 
 /* SingleServerProvider Section */
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
-template class ::arangodb::graph::QueueTracer<arangodb::graph::FifoQueue<SingleServerProviderStep>>;
-template class ::arangodb::graph::QueueTracer<arangodb::graph::LifoQueue<SingleServerProviderStep>>;
-template class ::arangodb::graph::QueueTracer<arangodb::graph::WeightedQueue<SingleServerProviderStep>>;
+template class ::arangodb::graph::QueueTracer<
+    arangodb::graph::FifoQueue<SingleServerProviderStep>>;
+template class ::arangodb::graph::QueueTracer<
+    arangodb::graph::LifoQueue<SingleServerProviderStep>>;
+template class ::arangodb::graph::QueueTracer<
+    arangodb::graph::WeightedQueue<SingleServerProviderStep>>;
 
 #ifdef USE_ENTERPRISE
-template class ::arangodb::graph::QueueTracer<arangodb::graph::FifoQueue<enterprise::SmartGraphStep>>;
-template class ::arangodb::graph::QueueTracer<arangodb::graph::LifoQueue<enterprise::SmartGraphStep>>;
-template class ::arangodb::graph::QueueTracer<arangodb::graph::WeightedQueue<enterprise::SmartGraphStep>>;
+template class ::arangodb::graph::QueueTracer<
+    arangodb::graph::FifoQueue<enterprise::SmartGraphStep>>;
+template class ::arangodb::graph::QueueTracer<
+    arangodb::graph::LifoQueue<enterprise::SmartGraphStep>>;
+template class ::arangodb::graph::QueueTracer<
+    arangodb::graph::WeightedQueue<enterprise::SmartGraphStep>>;
 #endif
 
 /* ClusterServerProvider Section */
-template class ::arangodb::graph::QueueTracer<arangodb::graph::FifoQueue<arangodb::graph::ClusterProvider::Step>>;
+template class ::arangodb::graph::QueueTracer<
+    arangodb::graph::FifoQueue<arangodb::graph::ClusterProvider::Step>>;

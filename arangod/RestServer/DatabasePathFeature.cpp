@@ -46,7 +46,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-DatabasePathFeature::DatabasePathFeature(application_features::ApplicationServer& server)
+DatabasePathFeature::DatabasePathFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, DatabasePathFeature::name()),
       _requiredDirectoryState("any") {
   setOptional(false);
@@ -59,7 +60,8 @@ DatabasePathFeature::DatabasePathFeature(application_features::ApplicationServer
   startsAfter<TempFeature>();
 }
 
-void DatabasePathFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void DatabasePathFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
   options->addOption("--database.directory", "path to the database directory",
                      new StringParameter(&_directory));
 
@@ -78,7 +80,8 @@ void DatabasePathFeature::collectOptions(std::shared_ptr<ProgramOptions> options
                                           "empty", "populated"}));
 }
 
-void DatabasePathFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void DatabasePathFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> options) {
   auto const& positionals = options->processingResult()._positionals;
 
   if (1 == positionals.size()) {
@@ -103,7 +106,8 @@ void DatabasePathFeature::validateOptions(std::shared_ptr<ProgramOptions> option
   auto ctx = ArangoGlobalContext::CONTEXT;
 
   if (ctx == nullptr) {
-    LOG_TOPIC("19066", FATAL, arangodb::Logger::FIXME) << "failed to get global context.";
+    LOG_TOPIC("19066", FATAL, arangodb::Logger::FIXME)
+        << "failed to get global context.";
     FATAL_ERROR_EXIT();
   }
 
@@ -122,12 +126,15 @@ void DatabasePathFeature::prepare() {
       // on whether the feature is available
       std::string tempPathCopy = tf.path();
       basics::FileUtils::makePathAbsolute(tempPathCopy);
-      tempPathCopy = basics::StringUtils::rTrim(tempPathCopy, TRI_DIR_SEPARATOR_STR);
+      tempPathCopy =
+          basics::StringUtils::rTrim(tempPathCopy, TRI_DIR_SEPARATOR_STR);
 
       if (directoryCopy == tempPathCopy) {
-        LOG_TOPIC("fd70b", FATAL, arangodb::Logger::FIXME) 
-          << "database directory '" << directoryCopy << "' is identical to the temporary directory. "
-          << "This can cause follow-up problems, including data loss. Please review your setup!";
+        LOG_TOPIC("fd70b", FATAL, arangodb::Logger::FIXME)
+            << "database directory '" << directoryCopy
+            << "' is identical to the temporary directory. "
+            << "This can cause follow-up problems, including data loss. Please "
+               "review your setup!";
         FATAL_ERROR_EXIT();
       }
     }
@@ -203,7 +210,8 @@ void DatabasePathFeature::start() {
     std::string systemErrorStr;
     long errorNo;
 
-    auto const res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo, systemErrorStr);
+    auto const res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo,
+                                                  systemErrorStr);
 
     if (res == TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("24783", INFO, arangodb::Logger::FIXME)
@@ -217,7 +225,8 @@ void DatabasePathFeature::start() {
   }
 }
 
-std::string DatabasePathFeature::subdirectoryName(std::string const& subDirectory) const {
+std::string DatabasePathFeature::subdirectoryName(
+    std::string const& subDirectory) const {
   TRI_ASSERT(!_directory.empty());
   return basics::FileUtils::buildFilename(_directory, subDirectory);
 }

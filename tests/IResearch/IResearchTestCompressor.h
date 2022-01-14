@@ -29,34 +29,42 @@
 #include <functional>
 
 namespace {
-// to avoid adding new file to both arangodbtests and arangod 
+// to avoid adding new file to both arangodbtests and arangod
 // we create here a header-only static by using this holder
 struct function_holder {
-  std::function<irs::bytes_ref(irs::byte_type* src, size_t size, irs::bstring& out)> compress_mock;
+  std::function<irs::bytes_ref(irs::byte_type* src, size_t size,
+                               irs::bstring& out)>
+      compress_mock;
   std::function<irs::bytes_ref(const irs::byte_type* src, size_t src_size,
-    irs::byte_type* dst, size_t dst_size)> decompress_mock;
+                               irs::byte_type* dst, size_t dst_size)>
+      decompress_mock;
 };
-}
+}  // namespace
 
 namespace iresearch {
 namespace compression {
 namespace mock {
 struct test_compressor {
-  class test_compressor_compressor final : public ::iresearch::compression::compressor {
+  class test_compressor_compressor final
+      : public ::iresearch::compression::compressor {
    public:
-    virtual bytes_ref compress(byte_type* src, size_t size, bstring& out) override {
-      return test_compressor::functions().compress_mock ?
-                              test_compressor::functions().compress_mock(src, size, out) : bytes_ref::EMPTY;
+    virtual bytes_ref compress(byte_type* src, size_t size,
+                               bstring& out) override {
+      return test_compressor::functions().compress_mock
+                 ? test_compressor::functions().compress_mock(src, size, out)
+                 : bytes_ref::EMPTY;
     }
   };
 
-  class test_compressor_decompressor final : public ::iresearch::compression::decompressor {
+  class test_compressor_decompressor final
+      : public ::iresearch::compression::decompressor {
    public:
     virtual bytes_ref decompress(const byte_type* src, size_t src_size,
                                  byte_type* dst, size_t dst_size) override {
-      return test_compressor::functions().decompress_mock ?
-                              test_compressor::functions().decompress_mock(src, src_size, dst, dst_size) :
-                              bytes_ref::EMPTY;
+      return test_compressor::functions().decompress_mock
+                 ? test_compressor::functions().decompress_mock(src, src_size,
+                                                                dst, dst_size)
+                 : bytes_ref::EMPTY;
     }
   };
 
@@ -78,42 +86,33 @@ struct test_compressor {
     return "iresearch::compression::mock::test_compressor";
   }
 };
-} // mock
-} // compression
+}  // namespace mock
+}  // namespace compression
 
 namespace mock {
 
 class test_encryption final : public ctr_encryption {
-public:
+ public:
   static std::unique_ptr<test_encryption> make(
-    size_t block_size,
-    size_t header_length = DEFAULT_HEADER_LENGTH) {
+      size_t block_size, size_t header_length = DEFAULT_HEADER_LENGTH) {
     return std::make_unique<test_encryption>(block_size, header_length);
   }
 
   explicit test_encryption(
-    size_t block_size,
-    size_t header_length = DEFAULT_HEADER_LENGTH
-    ) noexcept
-    : irs::ctr_encryption(cipher_),
-    cipher_(block_size),
-    header_length_(header_length) {
-  }
+      size_t block_size, size_t header_length = DEFAULT_HEADER_LENGTH) noexcept
+      : irs::ctr_encryption(cipher_),
+        cipher_(block_size),
+        header_length_(header_length) {}
 
-  virtual size_t header_length() noexcept override {
-    return header_length_;
-  }
+  virtual size_t header_length() noexcept override { return header_length_; }
 
-private:
+ private:
   class test_cipher final : public irs::cipher {
-  public:
+   public:
     explicit test_cipher(size_t block_size) noexcept
-      : block_size_(block_size) {
-    }
+        : block_size_(block_size) {}
 
-    virtual size_t block_size() const noexcept override {
-      return block_size_;
-    }
+    virtual size_t block_size() const noexcept override { return block_size_; }
 
     virtual bool decrypt(irs::byte_type* data) const override {
       for (size_t i = 0; i < block_size_; ++i) {
@@ -129,14 +128,14 @@ private:
       return true;
     }
 
-  private:
+   private:
     size_t block_size_;
-  }; // rot13_cipher
+  };  // rot13_cipher
 
   test_cipher cipher_;
   size_t header_length_;
-}; // rot13_encryption
-} // mock
+};  // rot13_encryption
+}  // namespace mock
 
-} // iresearch
-#endif //ARANGODB_IRESEARCH__TEST_COMPRESSOR_H
+}  // namespace iresearch
+#endif  // ARANGODB_IRESEARCH__TEST_COMPRESSOR_H

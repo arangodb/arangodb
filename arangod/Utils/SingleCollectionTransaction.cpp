@@ -55,7 +55,8 @@ SingleCollectionTransaction::SingleCollectionTransaction(
 /// @brief create the transaction, using a collection name
 SingleCollectionTransaction::SingleCollectionTransaction(
     std::shared_ptr<transaction::Context> const& transactionContext,
-    std::string const& name, AccessMode::Type accessType, transaction::Options const& options)
+    std::string const& name, AccessMode::Type accessType,
+    transaction::Options const& options)
     : transaction::Methods(transactionContext, options),
       _cid(0),
       _trxCollection(nullptr),
@@ -97,21 +98,26 @@ LogicalCollection* SingleCollectionTransaction::documentCollection() {
   return _documentCollection;
 }
 
-DataSourceId SingleCollectionTransaction::addCollectionAtRuntime(std::string const& name,
-                                                                 AccessMode::Type type) {
+DataSourceId SingleCollectionTransaction::addCollectionAtRuntime(
+    std::string const& name, AccessMode::Type type) {
   TRI_ASSERT(!name.empty());
-  if ((name[0] < '0' || name[0] > '9') && 
+  if ((name[0] < '0' || name[0] > '9') &&
       name != resolveTrxCollection()->collectionName()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, 
-                                   std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + name);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+        std::string(
+            TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
+            ": " + name);
   }
-  
+
   if (AccessMode::isWriteOrExclusive(type) &&
       !AccessMode::isWriteOrExclusive(_accessType)) {
     // trying to write access a collection that is marked read-access
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-                                   std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + name +
-                                   " [" + AccessMode::typeString(type) + "]");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+        std::string(
+            TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
+            ": " + name + " [" + AccessMode::typeString(type) + "]");
   }
 
   return _cid;

@@ -73,17 +73,17 @@ struct NodeExpressionWithAttrs : NodeWithAttrs<AstAndFieldData> {
   Expression* expression;
 };
 
-using NodeWithAttrsColumn = latematerialized::NodeWithAttrs<latematerialized::AstAndColumnFieldData>;
+using NodeWithAttrsColumn =
+    latematerialized::NodeWithAttrs<latematerialized::AstAndColumnFieldData>;
 
 template<typename T>
-bool getReferencedAttributes(AstNode* node, Variable const* variable, T& nodeAttrs);
+bool getReferencedAttributes(AstNode* node, Variable const* variable,
+                             T& nodeAttrs);
 
 bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
               std::vector<arangodb::basics::AttributeName> const& attrs,
-              bool ignoreExpansionInLast,
-              std::vector<std::string>& postfix);
+              bool ignoreExpansionInLast, std::vector<std::string>& postfix);
 
 }  // namespace latematerialized
 }  // namespace aql
 }  // namespace arangodb
-

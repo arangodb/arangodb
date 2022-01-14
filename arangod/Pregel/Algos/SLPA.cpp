@@ -98,7 +98,8 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
     // which is not really well parallizable. Additionally I figure
     // since a speaker only speaks to neighbours and the speaker order is random
     // we can get away with letting some nodes listen in turn
-    SLPAWorkerContext const* ctx = reinterpret_cast<SLPAWorkerContext const*>(context());
+    SLPAWorkerContext const* ctx =
+        reinterpret_cast<SLPAWorkerContext const*>(context());
     bool shouldListen = (ctx->mod + val->nodeId) % 2 == globalSuperstep() % 2;
     if (messages.size() > 0 && shouldListen) {
       // listen to our neighbours
@@ -126,7 +127,8 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
   }
 };
 
-VertexComputation<SLPAValue, int8_t, uint64_t>* SLPA::createComputation(WorkerConfig const* config) const {
+VertexComputation<SLPAValue, int8_t, uint64_t>* SLPA::createComputation(
+    WorkerConfig const* config) const {
   return new SLPAComputation();
 }
 
@@ -146,13 +148,15 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
   size_t estimatedVertexSize() const override { return sizeof(LPValue); }
   size_t estimatedEdgeSize() const override { return 0; }
 
-  void copyVertexData(arangodb::velocypack::Options const&, std::string const& /*documentId*/,
+  void copyVertexData(arangodb::velocypack::Options const&,
+                      std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/,
                       SLPAValue& value, uint64_t& vertexIdRange) override {
     value.nodeId = (uint32_t)vertexIdRange++;
   }
 
-  bool buildVertexDocument(arangodb::velocypack::Builder& b, SLPAValue const* ptr) const override {
+  bool buildVertexDocument(arangodb::velocypack::Builder& b,
+                           SLPAValue const* ptr) const override {
     if (ptr->memory.empty()) {
       return false;
     } else {
@@ -163,10 +167,11 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
           vec.emplace_back(pair.first, t);
         }
       }
-      std::sort(vec.begin(), vec.end(),
-                [](std::pair<uint64_t, double> a, std::pair<uint64_t, double> b) {
-                  return a.second > b.second;
-                });
+      std::sort(
+          vec.begin(), vec.end(),
+          [](std::pair<uint64_t, double> a, std::pair<uint64_t, double> b) {
+            return a.second > b.second;
+          });
 
       if (vec.empty()) {
         b.add(resField, VPackSlice::nullSlice());
@@ -195,7 +200,8 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
 };
 
 GraphFormat<SLPAValue, int8_t>* SLPA::inputFormat() const {
-  return new SLPAGraphFormat(_server, _resultField, _threshold, _maxCommunities);
+  return new SLPAGraphFormat(_server, _resultField, _threshold,
+                             _maxCommunities);
 }
 
 WorkerContext* SLPA::workerContext(velocypack::Slice userParams) const {

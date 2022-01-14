@@ -31,29 +31,18 @@ std::string extractShellExecutableName(std::string const& input) {
       // is it a variable name assignment?
       if (input.find('=', pos) == std::string::npos) {
         str = input.substr(0, pos);
-      }
-      else {
+      } else {
         str = input;
       }
     } else {
       str = input;
     }
-    if (str == "arangobackup" ||
-        str == "arangobench" ||
-        str == "arangod" ||
-        str == "arangodb" ||
-        str == "arangodbtests" ||
-        str == "arangodump" ||
-        str == "arangoexport" ||
-        str == "arangoimp" ||
-        str == "arangoimport" ||
-        str == "arango-init-database" ||
-        str == "arangoinspect" ||
-        str == "arangorestore" ||
-        str == "arango-secure-installation" ||
-        str == "arangosh" ||
-        str == "arangovpack"
-      ) {
+    if (str == "arangobackup" || str == "arangobench" || str == "arangod" ||
+        str == "arangodb" || str == "arangodbtests" || str == "arangodump" ||
+        str == "arangoexport" || str == "arangoimp" || str == "arangoimport" ||
+        str == "arango-init-database" || str == "arangoinspect" ||
+        str == "arangorestore" || str == "arango-secure-installation" ||
+        str == "arangosh" || str == "arangovpack") {
       return str;
     }
   }

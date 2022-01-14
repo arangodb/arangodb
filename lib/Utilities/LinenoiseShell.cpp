@@ -51,7 +51,8 @@ static Completer* COMPLETER = nullptr;
 /// @brief completer generator
 ////////////////////////////////////////////////////////////////////////////////
 
-static void LinenoiseCompletionGenerator(char const* text, linenoiseCompletions* lc) {
+static void LinenoiseCompletionGenerator(char const* text,
+                                         linenoiseCompletions* lc) {
   if (COMPLETER && text != nullptr) {
     std::vector<std::string> alternatives = COMPLETER->alternatives(text);
     ShellBase::sortAlternatives(alternatives);

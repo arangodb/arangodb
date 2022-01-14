@@ -45,8 +45,8 @@ class ApplicationServer;
 
 class RocksDBShaCalculatorThread : public arangodb::Thread {
  public:
-  explicit RocksDBShaCalculatorThread(application_features::ApplicationServer& server,
-                                      std::string const& name);
+  explicit RocksDBShaCalculatorThread(
+      application_features::ApplicationServer& server, std::string const& name);
 
   ~RocksDBShaCalculatorThread();
 
@@ -60,17 +60,17 @@ class RocksDBShaCalculatorThread : public arangodb::Thread {
   static std::pair<bool, std::string> shaCalcFile(std::string const& filename);
 
   void checkMissingShaFiles(std::string const& pathname, int64_t requireAge);
-  
+
   void signalLoop();
 
  protected:
   void run() override;
-  
+
   void deleteObsoleteFiles();
 
-  template <typename T>
+  template<typename T>
   bool isSstFilename(T const& filename) const;
-  
+
   /// @brief The following wrapper routine simplifies unit testing
   TEST_VIRTUAL std::string getRocksDBPath();
 
@@ -94,15 +94,19 @@ class RocksDBShaCalculatorThread : public arangodb::Thread {
 
 class RocksDBShaCalculator : public rocksdb::EventListener {
  public:
-  explicit RocksDBShaCalculator(application_features::ApplicationServer&, bool startThread);
+  explicit RocksDBShaCalculator(application_features::ApplicationServer&,
+                                bool startThread);
   virtual ~RocksDBShaCalculator();
 
-  void OnFlushCompleted(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) override;
+  void OnFlushCompleted(rocksdb::DB* db,
+                        const rocksdb::FlushJobInfo& flush_job_info) override;
 
-  void OnTableFileDeleted(const rocksdb::TableFileDeletionInfo& /*info*/) override;
+  void OnTableFileDeleted(
+      const rocksdb::TableFileDeletionInfo& /*info*/) override;
 
-  void OnCompactionCompleted(rocksdb::DB* db, const rocksdb::CompactionJobInfo& ci) override;
-  
+  void OnCompactionCompleted(rocksdb::DB* db,
+                             const rocksdb::CompactionJobInfo& ci) override;
+
   void checkMissingShaFiles(std::string const& pathname, int64_t requireAge);
 
   void beginShutdown() { _shaThread.beginShutdown(); }
@@ -116,4 +120,3 @@ class RocksDBShaCalculator : public rocksdb::EventListener {
 };
 
 }  // namespace arangodb
-

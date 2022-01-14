@@ -114,14 +114,10 @@ struct PhysicalMemoryCache {
 
 PhysicalMemoryCache const cache;
 
-} // namespace
+}  // namespace
 
 /// @brief return physical memory size from cache
-uint64_t arangodb::PhysicalMemory::getValue() {
-  return ::cache.cachedValue;
-}
+uint64_t arangodb::PhysicalMemory::getValue() { return ::cache.cachedValue; }
 
 /// @brief return if physical memory size was overridden
-bool arangodb::PhysicalMemory::overridden() {
-  return ::cache.overridden;
-}
+bool arangodb::PhysicalMemory::overridden() { return ::cache.overridden; }

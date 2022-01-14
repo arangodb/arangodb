@@ -30,4 +30,3 @@ namespace maskings {
 class CollectionFilter {};
 }  // namespace maskings
 }  // namespace arangodb
-

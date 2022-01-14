@@ -62,13 +62,12 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
   void replaceProperties();
 
   ResultT<std::pair<std::string, bool>> forwardingTarget() override;
-  
+
  private:
   /// @brief interrupts a named query
   void killQuery(std::string const& id);
-  
+
   /// @brief parses a query
   void parseQuery();
 };
 }  // namespace arangodb
-

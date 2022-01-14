@@ -39,4 +39,3 @@ class RestShutdownHandler : public RestBaseHandler {
   RestStatus execute() override;
 };
 }  // namespace arangodb
-

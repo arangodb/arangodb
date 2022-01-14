@@ -116,7 +116,8 @@ char* TRI_SHA256String(char const* source, size_t sourceLen, size_t* dstLen);
 /// sequence by unicode characters and representing them as UTF-8 sequences.
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UnescapeUtf8String(char const* in, size_t inLength, size_t* outLength, bool normalize);
+char* TRI_UnescapeUtf8String(char const* in, size_t inLength, size_t* outLength,
+                             bool normalize);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unescapes unicode escape sequences into buffer "buffer".
@@ -125,7 +126,8 @@ char* TRI_UnescapeUtf8String(char const* in, size_t inLength, size_t* outLength,
 /// byte
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_UnescapeUtf8StringInPlace(char* buffer, char const* in, size_t inLength);
+size_t TRI_UnescapeUtf8StringInPlace(char* buffer, char const* in,
+                                     size_t inLength);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the number of characters in a UTF-8 string
@@ -141,4 +143,3 @@ size_t TRI_CharLengthUtf8String(char const*, size_t);
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_PrefixUtf8String(char const*, const uint32_t);
-

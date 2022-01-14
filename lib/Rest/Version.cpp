@@ -38,7 +38,6 @@
 #include <velocypack/Version.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/FeatureFlags.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/asio_ns.h"
@@ -107,7 +106,7 @@ void Version::initialize() {
 #else
   Values["debug"] = "false";
 #endif
-#ifdef ARANGODB_USE_IPO 
+#ifdef ARANGODB_USE_IPO
   Values["ipo"] = "true";
 #else
   Values["ipo"] = "false";
@@ -259,12 +258,6 @@ void Version::initialize() {
 #else
   Values["libunwind"] = "false";
 #endif
-
-  if (::arangodb::replication2::EnableReplication2) {
-    Values["replication2-enabled"] = "true";
-  } else {
-    Values["replication2-enabled"] = "false";
-  }
 
   for (auto& it : Values) {
     arangodb::basics::StringUtils::trimInPlace(it.second);
@@ -433,10 +426,8 @@ std::string Version::getEndianness() {
   }
   return "unknown";
 }
-  
-std::string Version::getPlatform() {
-  return TRI_PLATFORM;
-}
+
+std::string Version::getPlatform() { return TRI_PLATFORM; }
 
 // get build date
 std::string Version::getBuildDate() {

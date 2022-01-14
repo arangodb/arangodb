@@ -40,8 +40,9 @@ namespace arangodb {
 
 class InitialSyncer : public Syncer {
  public:
-  explicit InitialSyncer(ReplicationApplierConfiguration const&,
-                         replutils::ProgressInfo::Setter s = [](std::string const&) -> void {});
+  explicit InitialSyncer(
+      ReplicationApplierConfiguration const&,
+      replutils::ProgressInfo::Setter s = [](std::string const&) -> void {});
 
   ~InitialSyncer();
 
@@ -65,10 +66,9 @@ class InitialSyncer : public Syncer {
  protected:
   replutils::BatchInfo _batch;
   replutils::ProgressInfo _progress;
-  
+
   /// recurring task to keep the batch alive
   std::mutex _batchPingMutex;
   Scheduler::WorkHandle _batchPingTimer;
 };
 }  // namespace arangodb
-

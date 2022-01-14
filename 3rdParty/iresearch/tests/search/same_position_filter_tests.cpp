@@ -208,11 +208,9 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
     ASSERT_EQ(1, index.size());
     auto& segment = *(index.begin());
 
-    irs::bytes_ref actual_value;
     irs::bytes_ref_input in;
-    auto column = segment.column_reader("_id");
+    auto column = segment.column("_id");
     ASSERT_NE(nullptr, column);
-    auto values = column->values();
 
     // empty query
     {
@@ -281,16 +279,23 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
 
       // next
       {
+        auto values = column->iterator(false);
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docs = prepared->execute(segment);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value()));
+        in.reset(actual_value->value);
         ASSERT_EQ(6, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value()));
+        in.reset(actual_value->value);
         ASSERT_EQ(27, irs::read_zvlong(in));
         ASSERT_FALSE(docs->next());
         ASSERT_EQ(irs::doc_limits::eof(), docs->value());
@@ -298,16 +303,23 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
 
       // seek
       {
+        auto values = column->iterator(false);
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docs = prepared->execute(segment);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
         ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 6, docs->seek((irs::type_limits<irs::type_t::doc_id_t>::min)()));
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value()));
+        in.reset(actual_value->value);
         ASSERT_EQ(6, irs::read_zvlong(in));
         ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 27, docs->seek(27));
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value()));
+        in.reset(actual_value->value);
         ASSERT_EQ(27, irs::read_zvlong(in));
         ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 27, docs->seek(8)); // seek backwards
         ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 27, docs->seek(27)); // seek to same position
@@ -327,16 +339,23 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
 
       // next
       {
+        auto values = column->iterator(false);
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docs = prepared->execute(segment);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value()));
+        in.reset(actual_value->value);
         ASSERT_EQ(14, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value()));
+        in.reset(actual_value->value);
         ASSERT_EQ(91, irs::read_zvlong(in));
         ASSERT_FALSE(docs->next());
         ASSERT_EQ(irs::doc_limits::eof(), docs->value());
@@ -344,13 +363,19 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
 
       // seek
       {
+        auto values = column->iterator(false);
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docs = prepared->execute(segment);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
         ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 91, docs->seek(27));
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value()));
+        in.reset(actual_value->value);
         ASSERT_EQ(91, irs::read_zvlong(in));
         ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 91, docs->seek(8)); // seek backwards
         ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 91, docs->seek(27)); // seek to same position
@@ -369,49 +394,54 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
 
       // next
       {
+        auto values = column->iterator(false);
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docs = prepared->execute(segment);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value()));  in.reset(actual_value->value);
         ASSERT_EQ(1, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value()));  in.reset(actual_value->value);
         ASSERT_EQ(6, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value()));  in.reset(actual_value->value);
         ASSERT_EQ(11, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value()));  in.reset(actual_value->value);
         ASSERT_EQ(17, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value()));  in.reset(actual_value->value);
         ASSERT_EQ(18, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(23, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(24, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(28, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(38, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(51, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(66, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(79, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(89, irs::read_zvlong(in));
         ASSERT_FALSE(docs->next());
         ASSERT_EQ(irs::doc_limits::eof(), docs->value());
@@ -419,31 +449,36 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
 
       // seek + next
       {
+        auto values = column->iterator(false);
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+
         auto docs = prepared->execute(segment);
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
+        ASSERT_EQ(irs::doc_limits::invalid(), docs->value());
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(1, irs::read_zvlong(in));
-        ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 28, docs->seek((irs::type_limits<irs::type_t::doc_id_t>::min)() + 28));
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ((irs::doc_limits::min)() + 28, docs->seek((irs::doc_limits::min)() + 28));
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(28, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(38, irs::read_zvlong(in));
-        ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 51, docs->seek(45));
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ((irs::doc_limits::min)() + 51, docs->seek(45));
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(51, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(66, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(79, irs::read_zvlong(in));
         ASSERT_TRUE(docs->next());
-        ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
+        ASSERT_EQ(docs->value(), values->seek(docs->value())); in.reset(actual_value->value);
         ASSERT_EQ(89, irs::read_zvlong(in));
         ASSERT_FALSE(docs->next());
         ASSERT_EQ(irs::doc_limits::eof(), docs->value());
@@ -455,7 +490,7 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
+        ASSERT_EQ(irs::doc_limits::invalid(), docs->value());
         ASSERT_EQ(irs::doc_limits::eof(), docs->seek(irs::doc_limits::eof()));
         ASSERT_FALSE(docs->next());
         ASSERT_EQ(irs::doc_limits::eof(), docs->value());

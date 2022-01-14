@@ -76,7 +76,8 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
                 arangodb::Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
   overw.close();
 
-  VPackBuilder newDesc = VPackCollection::merge(oldDesc.slice(), overw.slice(), false);
+  VPackBuilder newDesc =
+      VPackCollection::merge(oldDesc.slice(), overw.slice(), false);
   bool dropped = collection.dropIndex(iid);
 
   if (!dropped) {
@@ -86,8 +87,8 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
   }
 
   bool created = false;
-  auto newIndex =
-      collection.getPhysical()->createIndex(newDesc.slice(), /*restore*/ true, created);
+  auto newIndex = collection.getPhysical()->createIndex(
+      newDesc.slice(), /*restore*/ true, created);
 
   if (!created) {
     res.reset(TRI_ERROR_INTERNAL);
@@ -130,15 +131,19 @@ Result upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
   return {};
 }
 
-Result createSystemCollections(TRI_vocbase_t& vocbase,
-                               std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
-  typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> FuncCallback;
-  FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&) -> void {};
+Result createSystemCollections(
+    TRI_vocbase_t& vocbase,
+    std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
+  typedef std::function<void(std::shared_ptr<LogicalCollection> const&)>
+      FuncCallback;
+  FuncCallback const noop =
+      [](std::shared_ptr<LogicalCollection> const&) -> void {};
   OperationOptions options(ExecContext::current());
 
   std::vector<CollectionCreationInfo> systemCollectionsToCreate;
   // the order of systemCollections is important. If we're in _system db, the
-  // UsersCollection needs to be first, otherwise, the GraphsCollection must be first.
+  // UsersCollection needs to be first, otherwise, the GraphsCollection must be
+  // first.
   std::vector<std::string> systemCollections;
   systemCollections.reserve(10);
   std::shared_ptr<LogicalCollection> colToDistributeShardsLike;
@@ -147,20 +152,22 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
   if (vocbase.isSystem()) {
     // check for legacy sharding, could still be graphs.
     std::shared_ptr<LogicalCollection> coll;
-    res = methods::Collections::lookup(vocbase, StaticStrings::GraphsCollection, coll);
+    res = methods::Collections::lookup(vocbase, StaticStrings::GraphsCollection,
+                                       coll);
     if (res.ok()) {
       TRI_ASSERT(coll);
       if (coll && coll.get()->distributeShardsLike().empty()) {
-        // We have a graphs collection, and this is not sharded by something else.
+        // We have a graphs collection, and this is not sharded by something
+        // else.
         colToDistributeShardsLike = std::move(coll);
       }
     }
-    
+
     if (colToDistributeShardsLike == nullptr) {
       // otherwise, we will use UsersCollection for distributeShardsLike
-      res = methods::Collections::createSystem(vocbase, options, StaticStrings::UsersCollection,
-                                               /*isNewDatabase*/ true,
-                                               colToDistributeShardsLike);
+      res = methods::Collections::createSystem(
+          vocbase, options, StaticStrings::UsersCollection,
+          /*isNewDatabase*/ true, colToDistributeShardsLike);
       if (!res.ok()) {
         return res;
       }
@@ -176,9 +183,9 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
   } else {
     // we will use GraphsCollection for distributeShardsLike
     // this is equal to older versions
-    res = methods::Collections::createSystem(vocbase, options, StaticStrings::GraphsCollection,
-                                             /*isNewDatabase*/ true,
-                                             colToDistributeShardsLike);
+    res = methods::Collections::createSystem(
+        vocbase, options, StaticStrings::GraphsCollection,
+        /*isNewDatabase*/ true, colToDistributeShardsLike);
     if (!res.ok()) {
       return res;
     }
@@ -199,43 +206,45 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
     VPackBuilder testOptions;
     std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> testBuffers;
     std::vector<CollectionCreationInfo> testSystemCollectionsToCreate;
-    std::vector<std::string> testSystemCollections = {StaticStrings::GraphsCollection,
-                                                      StaticStrings::AqlFunctionsCollection};
+    std::vector<std::string> testSystemCollections = {
+        StaticStrings::GraphsCollection, StaticStrings::AqlFunctionsCollection};
 
     for (auto const& collection : testSystemCollections) {
       VPackBuilder options;
-      methods::Collections::createSystemCollectionProperties(collection, options,
-                                                             vocbase);
+      methods::Collections::createSystemCollectionProperties(collection,
+                                                             options, vocbase);
 
-      testSystemCollectionsToCreate.emplace_back(
-          CollectionCreationInfo{collection, TRI_COL_TYPE_DOCUMENT, options.slice()});
+      testSystemCollectionsToCreate.emplace_back(CollectionCreationInfo{
+          collection, TRI_COL_TYPE_DOCUMENT, options.slice()});
       testBuffers.emplace_back(options.steal());
     }
 
     std::vector<std::shared_ptr<LogicalCollection>> cols;
-    auto res = methods::Collections::create(vocbase, options,
-                                            testSystemCollectionsToCreate, true, true,
-                                            true, colToDistributeShardsLike, cols);
+    auto res = methods::Collections::create(
+        vocbase, options, testSystemCollectionsToCreate, true, true, true,
+        colToDistributeShardsLike, cols);
     // capture created collection vector
-    createdCollections.insert(std::end(createdCollections), std::begin(cols), std::end(cols));
+    createdCollections.insert(std::end(createdCollections), std::begin(cols),
+                              std::end(cols));
   }
 
   std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> buffers;
-  
+
   for (auto const& cname : systemCollections) {
     std::shared_ptr<LogicalCollection> col;
     res = methods::Collections::lookup(vocbase, cname, col);
     if (col) {
       createdCollections.emplace_back(col);
     }
-    
+
     if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       // if not found, create it
       VPackBuilder options;
-      methods::Collections::createSystemCollectionProperties(cname, options, vocbase);
+      methods::Collections::createSystemCollectionProperties(cname, options,
+                                                             vocbase);
 
-      systemCollectionsToCreate.emplace_back(
-          CollectionCreationInfo{cname, TRI_COL_TYPE_DOCUMENT, options.slice()});
+      systemCollectionsToCreate.emplace_back(CollectionCreationInfo{
+          cname, TRI_COL_TYPE_DOCUMENT, options.slice()});
       buffers.emplace_back(options.steal());
     }
   }
@@ -245,27 +254,32 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
   if (systemCollectionsToCreate.size() > 0) {
     std::vector<std::shared_ptr<LogicalCollection>> cols;
 
-    res = methods::Collections::create(vocbase, options, systemCollectionsToCreate, true,
-                                       true, true, colToDistributeShardsLike, cols);
+    res = methods::Collections::create(vocbase, options,
+                                       systemCollectionsToCreate, true, true,
+                                       true, colToDistributeShardsLike, cols);
     if (res.fail()) {
       return res;
     }
-    createdCollections.insert(std::end(createdCollections),
-                              std::begin(cols), std::end(cols));
+    createdCollections.insert(std::end(createdCollections), std::begin(cols),
+                              std::end(cols));
   }
 
   return {TRI_ERROR_NO_ERROR};
 }
 
-Result createSystemStatisticsCollections(TRI_vocbase_t& vocbase,
-                                         std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
+Result createSystemStatisticsCollections(
+    TRI_vocbase_t& vocbase,
+    std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
   if (vocbase.isSystem()) {
-    typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> FuncCallback;
-    FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&) -> void {};
+    typedef std::function<void(std::shared_ptr<LogicalCollection> const&)>
+        FuncCallback;
+    FuncCallback const noop =
+        [](std::shared_ptr<LogicalCollection> const&) -> void {};
 
     std::vector<CollectionCreationInfo> systemCollectionsToCreate;
     // the order of systemCollections is important. If we're in _system db, the
-    // UsersCollection needs to be first, otherwise, the GraphsCollection must be first.
+    // UsersCollection needs to be first, otherwise, the GraphsCollection must
+    // be first.
     std::vector<std::string> systemCollections;
 
     Result res;
@@ -289,8 +303,8 @@ Result createSystemStatisticsCollections(TRI_vocbase_t& vocbase,
         options.add(StaticStrings::WaitForSyncString, VPackSlice::falseSlice());
         options.close();
 
-        systemCollectionsToCreate.emplace_back(
-            CollectionCreationInfo{collection, TRI_COL_TYPE_DOCUMENT, options.slice()});
+        systemCollectionsToCreate.emplace_back(CollectionCreationInfo{
+            collection, TRI_COL_TYPE_DOCUMENT, options.slice()});
         buffers.emplace_back(options.steal());
       }
     }
@@ -300,39 +314,44 @@ Result createSystemStatisticsCollections(TRI_vocbase_t& vocbase,
     if (systemCollectionsToCreate.size() > 0) {
       std::vector<std::shared_ptr<LogicalCollection>> cols;
       OperationOptions options(ExecContext::current());
-      res = methods::Collections::create(vocbase, options, systemCollectionsToCreate,
-                                         true, false, false, nullptr, cols);
+      res = methods::Collections::create(vocbase, options,
+                                         systemCollectionsToCreate, true, false,
+                                         false, nullptr, cols);
       if (res.fail()) {
         return res;
       }
       // capture created collection vector
-      createdCollections.insert(std::end(createdCollections),
-                                std::begin(cols), std::end(cols));
+      createdCollections.insert(std::end(createdCollections), std::begin(cols),
+                                std::end(cols));
     }
   }
   return {TRI_ERROR_NO_ERROR};
 }
 
-static Result createIndex(std::string const& name, Index::IndexType type,
-                          std::vector<std::string> const& fields, bool unique, bool sparse,
-                          std::vector<std::shared_ptr<LogicalCollection>>& collections) {
+static Result createIndex(
+    std::string const& name, Index::IndexType type,
+    std::vector<std::string> const& fields, bool unique, bool sparse,
+    std::vector<std::shared_ptr<LogicalCollection>>& collections) {
   // Static helper function that wraps creating an index. If we fail to
   // create an index with some indices created, we clean up by removing all
   // collections later on. Find the collection by name
-  auto colIt = std::find_if(collections.begin(), collections.end(),
-                            [&name](std::shared_ptr<LogicalCollection> const& col) {
-                              TRI_ASSERT(col != nullptr);
-                              return col->name() == name;
-                            });
+  auto colIt =
+      std::find_if(collections.begin(), collections.end(),
+                   [&name](std::shared_ptr<LogicalCollection> const& col) {
+                     TRI_ASSERT(col != nullptr);
+                     return col->name() == name;
+                   });
   if (colIt == collections.end()) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "Collection " + name + " not found");
   }
-  return methods::Indexes::createIndex(colIt->get(), type, fields, unique, sparse, false /*estimates*/);
+  return methods::Indexes::createIndex(colIt->get(), type, fields, unique,
+                                       sparse, false /*estimates*/);
 }
 
-Result createSystemStatisticsIndices(TRI_vocbase_t& vocbase,
-                                     std::vector<std::shared_ptr<LogicalCollection>>& collections) {
+Result createSystemStatisticsIndices(
+    TRI_vocbase_t& vocbase,
+    std::vector<std::shared_ptr<LogicalCollection>>& collections) {
   Result res;
   if (vocbase.isSystem()) {
     res = ::createIndex(StaticStrings::StatisticsCollection,
@@ -357,12 +376,14 @@ Result createSystemStatisticsIndices(TRI_vocbase_t& vocbase,
   return res;
 }
 
-Result createSystemCollectionsIndices(TRI_vocbase_t& vocbase,
-                                      std::vector<std::shared_ptr<LogicalCollection>>& collections) {
+Result createSystemCollectionsIndices(
+    TRI_vocbase_t& vocbase,
+    std::vector<std::shared_ptr<LogicalCollection>>& collections) {
   Result res;
   if (vocbase.isSystem()) {
-    res = ::createIndex(StaticStrings::UsersCollection, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,
-                        {"user"}, true, true, collections);
+    res = ::createIndex(StaticStrings::UsersCollection,
+                        arangodb::Index::TRI_IDX_TYPE_HASH_INDEX, {"user"},
+                        true, true, collections);
     if (!res.ok()) {
       return res;
     }
@@ -378,18 +399,23 @@ Result createSystemCollectionsIndices(TRI_vocbase_t& vocbase,
     return res;
   }
 
-  res = ::createIndex(StaticStrings::AppsCollection, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,
-                      {"mount"}, true, true, collections);
+  res = ::createIndex(StaticStrings::AppsCollection,
+                      arangodb::Index::TRI_IDX_TYPE_HASH_INDEX, {"mount"}, true,
+                      true, collections);
   if (!res.ok()) {
     return res;
   }
-  res = ::createIndex(StaticStrings::JobsCollection, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
-                      {"queue", "status", "delayUntil"}, false, false, collections);
+  res = ::createIndex(StaticStrings::JobsCollection,
+                      arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+                      {"queue", "status", "delayUntil"}, false, false,
+                      collections);
   if (!res.ok()) {
     return res;
   }
-  res = ::createIndex(StaticStrings::JobsCollection, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
-                      {"status", "queue", "delayUntil"}, false, false, collections);
+  res = ::createIndex(StaticStrings::JobsCollection,
+                      arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+                      {"status", "queue", "delayUntil"}, false, false,
+                      collections);
   if (!res.ok()) {
     return res;
   }
@@ -399,8 +425,8 @@ Result createSystemCollectionsIndices(TRI_vocbase_t& vocbase,
 
 }  // namespace
 
-bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
-                                                     arangodb::velocypack::Slice const& slice) {
+bool UpgradeTasks::createSystemCollectionsAndIndices(
+    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
   // after the call to ::createSystemCollections this vector should contain
   // a LogicalCollection for *every* (required) system collection.
   std::vector<std::shared_ptr<LogicalCollection>> presentSystemCollections;
@@ -438,8 +464,8 @@ bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
   return true;
 }
 
-bool UpgradeTasks::createStatisticsCollectionsAndIndices(TRI_vocbase_t& vocbase,
-                                                         arangodb::velocypack::Slice const& slice) {
+bool UpgradeTasks::createStatisticsCollectionsAndIndices(
+    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
   // This vector should after the call to ::createSystemCollections contain
   // a LogicalCollection for *every* (required) system collection.
   std::vector<std::shared_ptr<LogicalCollection>> presentSystemCollections;
@@ -468,8 +494,9 @@ bool UpgradeTasks::createStatisticsCollectionsAndIndices(TRI_vocbase_t& vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops '_iresearch_analyzers' collection
 ////////////////////////////////////////////////////////////////////////////////
-bool UpgradeTasks::dropLegacyAnalyzersCollection(TRI_vocbase_t& vocbase,
-                                                 arangodb::velocypack::Slice const& /*upgradeParams*/) {
+bool UpgradeTasks::dropLegacyAnalyzersCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& /*upgradeParams*/) {
   // drop legacy collection if upgrading the system vocbase and collection found
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (!vocbase.server().hasFeature<arangodb::SystemDatabaseFeature>()) {
@@ -481,23 +508,27 @@ bool UpgradeTasks::dropLegacyAnalyzersCollection(TRI_vocbase_t& vocbase,
 
     return false;  // internal error
   }
-  auto& sysDatabase = vocbase.server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto& sysDatabase =
+      vocbase.server().getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
-  TRI_ASSERT(sysVocbase.get() == &vocbase || sysVocbase->name() == vocbase.name());
+  TRI_ASSERT(sysVocbase.get() == &vocbase ||
+             sysVocbase->name() == vocbase.name());
 #endif
 
   // find legacy analyzer collection
   std::shared_ptr<arangodb::LogicalCollection> col;
-  auto res = arangodb::methods::Collections::lookup(vocbase, StaticStrings::LegacyAnalyzersCollection, col);
+  auto res = arangodb::methods::Collections::lookup(
+      vocbase, StaticStrings::LegacyAnalyzersCollection, col);
   if (col) {
-    res = arangodb::methods::Collections::drop(*col, true, -1.0);  // -1.0 same as in RestCollectionHandler
+    res = arangodb::methods::Collections::drop(
+        *col, true, -1.0);  // -1.0 same as in RestCollectionHandler
     return res.ok();
   }
   return res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
-bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
-                                       arangodb::velocypack::Slice const& params) {
+bool UpgradeTasks::addDefaultUserOther(
+    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& params) {
   TRI_ASSERT(!vocbase.isSystem());
   TRI_ASSERT(params.isObject());
 
@@ -516,18 +547,20 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
   }
 
   for (VPackSlice slice : VPackArrayIterator(users)) {
-    std::string user =
-        VelocyPackHelper::getStringValue(slice, "username", StaticStrings::Empty);
+    std::string user = VelocyPackHelper::getStringValue(slice, "username",
+                                                        StaticStrings::Empty);
     if (user.empty()) {
       continue;
     }
     std::string passwd = VelocyPackHelper::getStringValue(slice, "passwd", "");
     bool active = VelocyPackHelper::getBooleanValue(slice, "active", true);
     VPackSlice extra = slice.get("extra");
-    Result res = um->storeUser(false, user, passwd, active, VPackSlice::noneSlice());
+    Result res =
+        um->storeUser(false, user, passwd, active, VPackSlice::noneSlice());
     if (res.fail() && !res.is(TRI_ERROR_USER_DUPLICATE)) {
       LOG_TOPIC("b5b8a", WARN, Logger::STARTUP)
-          << "could not add database user " << user << ": " << res.errorMessage();
+          << "could not add database user " << user << ": "
+          << res.errorMessage();
     } else if (extra.isObject() && !extra.isEmptyObject()) {
       um->updateUser(user, [&](auth::User& user) {
         user.setUserData(VPackBuilder(extra));
@@ -549,16 +582,16 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
   return true;
 }
 
-bool UpgradeTasks::renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,
-                                                      arangodb::velocypack::Slice const& slice) {
+bool UpgradeTasks::renameReplicationApplierStateFiles(
+    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
   TRI_ASSERT(vocbase.server().getFeature<EngineSelectorFeature>().isRocksDB());
 
-  StorageEngine& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine =
+      vocbase.server().getFeature<EngineSelectorFeature>().engine();
   std::string const path = engine.databasePath(&vocbase);
 
-  std::string const source =
-      arangodb::basics::FileUtils::buildFilename(path,
-                                                 "REPLICATION-APPLIER-STATE");
+  std::string const source = arangodb::basics::FileUtils::buildFilename(
+      path, "REPLICATION-APPLIER-STATE");
 
   if (!basics::FileUtils::isRegularFile(source)) {
     // source file does not exist
@@ -568,22 +601,24 @@ bool UpgradeTasks::renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,
   bool result = true;
 
   // copy file REPLICATION-APPLIER-STATE to REPLICATION-APPLIER-STATE-<id>
-  Result res = basics::catchToResult([&vocbase, &path, &source, &result]() -> Result {
-    std::string const dest = arangodb::basics::FileUtils::buildFilename(
-        path, "REPLICATION-APPLIER-STATE-" + std::to_string(vocbase.id()));
+  Result res =
+      basics::catchToResult([&vocbase, &path, &source, &result]() -> Result {
+        std::string const dest = arangodb::basics::FileUtils::buildFilename(
+            path, "REPLICATION-APPLIER-STATE-" + std::to_string(vocbase.id()));
 
-    LOG_TOPIC("75337", TRACE, Logger::STARTUP)
-        << "copying replication applier file '" << source << "' to '" << dest << "'";
+        LOG_TOPIC("75337", TRACE, Logger::STARTUP)
+            << "copying replication applier file '" << source << "' to '"
+            << dest << "'";
 
-    std::string error;
-    if (!TRI_CopyFile(source, dest, error)) {
-      LOG_TOPIC("6c90c", WARN, Logger::STARTUP)
-          << "could not copy replication applier file '" << source << "' to '"
-          << dest << "'";
-      result = false;
-    }
-    return Result();
-  });
+        std::string error;
+        if (!TRI_CopyFile(source, dest, error)) {
+          LOG_TOPIC("6c90c", WARN, Logger::STARTUP)
+              << "could not copy replication applier file '" << source
+              << "' to '" << dest << "'";
+          result = false;
+        }
+        return Result();
+      });
   if (res.fail()) {
     return false;
   }

@@ -47,4 +47,3 @@ arangodb::TRI_replication_operation_e convertLogType(RocksDBLogType t);
 
 }  // namespace rocksutils
 }  // namespace arangodb
-

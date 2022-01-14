@@ -56,7 +56,7 @@ class EdgeDefinition {
 
  public:
   EdgeDefinition(std::string edgeCollection_, std::set<std::string>&& from_,
-                 std::set<std::string>&& to_) 
+                 std::set<std::string>&& to_)
       : _edgeCollection(std::move(edgeCollection_)),
         _from(std::move(from_)),
         _to(std::move(to_)) {}
@@ -78,7 +78,8 @@ class EdgeDefinition {
   /// types of values.
   static Result validateEdgeDefinition(const velocypack::Slice& edgeDefinition);
 
-  static ResultT<EdgeDefinition> createFromVelocypack(velocypack::Slice edgeDefinition);
+  static ResultT<EdgeDefinition> createFromVelocypack(
+      velocypack::Slice edgeDefinition);
 
   void toVelocyPack(velocypack::Builder&) const;
 
@@ -96,7 +97,8 @@ class EdgeDefinition {
    *
    * @param type Type to be set
    *
-   * @return True if type has been set, returns false in case type has not been set.
+   * @return True if type has been set, returns false in case type has not been
+   * set.
    */
   auto setType(EdgeDefinitionType type) -> bool;
 
@@ -129,15 +131,14 @@ class Graph {
    *
    * @return A graph object corresponding to the user input
    */
-  static std::unique_ptr<Graph> fromUserInput(TRI_vocbase_t& vocbase, std::string&& name,
-                                              velocypack::Slice collectionInformation,
-                                              velocypack::Slice options);
+  static std::unique_ptr<Graph> fromUserInput(
+      TRI_vocbase_t& vocbase, std::string&& name,
+      velocypack::Slice collectionInformation, velocypack::Slice options);
 
   // Wrapper for Move constructor
-  static std::unique_ptr<Graph> fromUserInput(TRI_vocbase_t& vocbase,
-                                              std::string const& name,
-                                              velocypack::Slice collectionInformation,
-                                              velocypack::Slice options);
+  static std::unique_ptr<Graph> fromUserInput(
+      TRI_vocbase_t& vocbase, std::string const& name,
+      velocypack::Slice collectionInformation, velocypack::Slice options);
 
  protected:
   /**
@@ -145,7 +146,8 @@ class Graph {
    *
    * @param slice The stored document
    */
-  explicit Graph(velocypack::Slice const& slice, ServerDefaults const& serverDefaults);
+  explicit Graph(velocypack::Slice const& slice,
+                 ServerDefaults const& serverDefaults);
 
   /**
    * @brief Create graph from user input.
@@ -165,11 +167,14 @@ class Graph {
  public:
   virtual ~Graph() = default;
 
-  [[nodiscard]] static Result validateOrphanCollection(velocypack::Slice const& orphanDefinition);
+  [[nodiscard]] static Result validateOrphanCollection(
+      velocypack::Slice const& orphanDefinition);
 
-  virtual void createCollectionOptions(VPackBuilder& builder, bool waitForSync) const;
+  virtual void createCollectionOptions(VPackBuilder& builder,
+                                       bool waitForSync) const;
 
-  virtual void createSatelliteCollectionOptions(VPackBuilder& builder, bool waitForSync) const;
+  virtual void createSatelliteCollectionOptions(VPackBuilder& builder,
+                                                bool waitForSync) const;
 
  public:
   /// @brief get the cids of all vertexCollections
@@ -193,7 +198,8 @@ class Graph {
   bool hasEdgeCollection(std::string const& collectionName) const;
   bool hasVertexCollection(std::string const& collectionName) const;
   bool hasOrphanCollection(std::string const& collectionName) const;
-  bool renameCollections(std::string const& oldName, std::string const& newName);
+  bool renameCollections(std::string const& oldName,
+                         std::string const& newName);
 
   std::optional<std::reference_wrapper<EdgeDefinition const>> getEdgeDefinition(
       std::string const& collectionName) const;
@@ -249,11 +255,13 @@ class Graph {
 
   /// @brief adds one edge definition. Returns an error if the edgeDefinition
   ///        is already added to this graph.
-  ResultT<EdgeDefinition const*> addEdgeDefinition(velocypack::Slice const& edgeDefinitionSlice);
+  ResultT<EdgeDefinition const*> addEdgeDefinition(
+      velocypack::Slice const& edgeDefinitionSlice);
 
   /// @brief adds one edge definition. Returns an error if the edgeDefinition
   ///        is already added to this graph.
-  ResultT<EdgeDefinition const*> addEdgeDefinition(EdgeDefinition const& edgeDefinition);
+  ResultT<EdgeDefinition const*> addEdgeDefinition(
+      EdgeDefinition const& edgeDefinition);
 
   /// @brief removes one edge definition. Returns an error if the edgeDefinition
   ///        is not included in this graph.
@@ -342,7 +350,7 @@ class Graph {
 };
 
 // helper functions
-template <class T, class C>
+template<class T, class C>
 void setUnion(std::set<T>& set, C const& container) {
   for (auto const& it : container) {
     set.insert(it);
@@ -351,4 +359,3 @@ void setUnion(std::set<T>& set, C const& container) {
 
 }  // namespace graph
 }  // namespace arangodb
-

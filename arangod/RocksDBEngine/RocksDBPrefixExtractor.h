@@ -75,4 +75,3 @@ class RocksDBPrefixExtractor final : public rocksdb::SliceTransform {
 };
 
 }  // namespace arangodb
-

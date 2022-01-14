@@ -43,4 +43,3 @@ class DropIndex : public ActionBase {
 
 }  // namespace maintenance
 }  // namespace arangodb
-

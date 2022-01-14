@@ -34,8 +34,9 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-template <class RowType, class>
-std::ostream& arangodb::aql::operator<<(std::ostream& stream, RowType const& row) {
+template<class RowType, class>
+std::ostream& arangodb::aql::operator<<(std::ostream& stream,
+                                        RowType const& row) {
   constexpr bool isInputRow = std::is_same<RowType, InputAqlItemRow>::value;
   static_assert(isInputRow || std::is_same<RowType, ShadowAqlItemRow>::value,
                 "RowType must be one of InputAqlItemRow or ShadowAqlItemRow");
@@ -74,7 +75,7 @@ std::ostream& arangodb::aql::operator<<(std::ostream& stream, RowType const& row
   return stream;
 }
 
-template std::ostream& arangodb::aql::operator<<<InputAqlItemRow>(std::ostream& stream,
-                                                                  InputAqlItemRow const& row);
-template std::ostream& arangodb::aql::operator<<<ShadowAqlItemRow>(std::ostream& stream,
-                                                                   ShadowAqlItemRow const& row);
+template std::ostream& arangodb::aql::operator<<<InputAqlItemRow>(
+    std::ostream& stream, InputAqlItemRow const& row);
+template std::ostream& arangodb::aql::operator<<<ShadowAqlItemRow>(
+    std::ostream& stream, ShadowAqlItemRow const& row);

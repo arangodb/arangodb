@@ -53,7 +53,8 @@ struct GraphFormat final : public graph_format {
   size_t estimatedEdgeSize() const override;
 
   void copyVertexData(arangodb::velocypack::Options const& vpackOptions,
-                      std::string const& documentId, arangodb::velocypack::Slice rawDocument,
+                      std::string const& documentId,
+                      arangodb::velocypack::Slice rawDocument,
                       ProgrammablePregelAlgorithm::vertex_type& targetPtr,
                       uint64_t& vertexIdRange) override;
 
@@ -62,7 +63,8 @@ struct GraphFormat final : public graph_format {
                     ProgrammablePregelAlgorithm::edge_type& targetPtr) override;
 
   greenspun::EvalResult buildVertexDocumentWithResult(
-      arangodb::velocypack::Builder& b, const ProgrammablePregelAlgorithm::vertex_type* ptr) const override;
+      arangodb::velocypack::Builder& b,
+      const ProgrammablePregelAlgorithm::vertex_type* ptr) const override;
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            VertexData const* targetPtr) const override {

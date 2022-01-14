@@ -85,7 +85,6 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   void adjustQuickKeysNumDocsLimit();
-#endif  
+#endif
 };
 }  // namespace arangodb
-

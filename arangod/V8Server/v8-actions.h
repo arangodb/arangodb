@@ -42,4 +42,3 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
 void TRI_InitV8Actions(v8::Isolate* isolate);
 
 void TRI_InitV8ServerUtils(v8::Isolate* isolate);
-

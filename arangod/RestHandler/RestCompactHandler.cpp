@@ -36,34 +36,39 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestCompactHandler::RestCompactHandler(application_features::ApplicationServer& server,
-                                       GeneralRequest* request,
-                                       GeneralResponse* response)
+RestCompactHandler::RestCompactHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestCompactHandler::execute() {
   if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
-    generateError(
-        rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN, "compaction is only allowed for superusers");
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "compaction is only allowed for superusers");
     return RestStatus::DONE;
   }
-  
+
   if (_request->requestType() != rest::RequestType::PUT) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 
   bool changeLevel = _request->parsedValue("changeLevel", false);
-  bool compactBottomMostLevel = _request->parsedValue("compactBottomMostLevel", false);
+  bool compactBottomMostLevel =
+      _request->parsedValue("compactBottomMostLevel", false);
 
   TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
   Result res = engine.compactAll(changeLevel, compactBottomMostLevel);
   if (res.fail()) {
-    generateError(GeneralResponse::responseCode(res.errorNumber()), res.errorNumber(),
-                  StringUtils::concatT("database compaction failed: ", res.errorMessage()));
+    generateError(GeneralResponse::responseCode(res.errorNumber()),
+                  res.errorNumber(),
+                  StringUtils::concatT("database compaction failed: ",
+                                       res.errorMessage()));
   } else {
-    generateResult(rest::ResponseCode::OK, arangodb::velocypack::Slice::emptyObjectSlice());
+    generateResult(rest::ResponseCode::OK,
+                   arangodb::velocypack::Slice::emptyObjectSlice());
   }
   return RestStatus::DONE;
 }

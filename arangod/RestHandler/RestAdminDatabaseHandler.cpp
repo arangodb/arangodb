@@ -33,18 +33,20 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAdminDatabaseHandler::RestAdminDatabaseHandler(application_features::ApplicationServer& server,
-                                                   GeneralRequest* request,
-                                                   GeneralResponse* response)
+RestAdminDatabaseHandler::RestAdminDatabaseHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAdminDatabaseHandler::execute() {
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
-  result.add("version", VPackValue(std::to_string(Version::getNumericServerVersion())));
+  result.add("version",
+             VPackValue(std::to_string(Version::getNumericServerVersion())));
   result.add(StaticStrings::Error, VPackValue(false));
-  result.add(StaticStrings::Code,
-             VPackValue(static_cast<int>(rest::ResponseCode::OK)));  // hard-coded
+  result.add(
+      StaticStrings::Code,
+      VPackValue(static_cast<int>(rest::ResponseCode::OK)));  // hard-coded
   result.close();
 
   generateResult(rest::ResponseCode::OK, result.slice());

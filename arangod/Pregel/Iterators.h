@@ -28,7 +28,7 @@
 namespace arangodb {
 namespace pregel {
 
-template <typename M>
+template<typename M>
 class MessageIterator {
   M const* _data;
   const size_t _size;
@@ -41,9 +41,9 @@ class MessageIterator {
   typedef const MessageIterator<M> const_iterator;
 
   explicit MessageIterator(M const* data)
-    : _data(data), _size(data ? 1 : 0), _current(0) {}
+      : _data(data), _size(data ? 1 : 0), _current(0) {}
   explicit MessageIterator(M const* data, size_t s)
-    : _data(data), _size(s), _current(0) {}
+      : _data(data), _size(s), _current(0) {}
 
   iterator begin() { return MessageIterator(_data, _size); }
   const_iterator begin() const { return MessageIterator(_data, _size); }
@@ -82,7 +82,7 @@ class MessageIterator {
   size_t size() const { return _size; }
 };
 
-template <typename T>
+template<typename T>
 class RangeIterator {
  private:
   std::vector<std::unique_ptr<TypedBuffer<T>>>& _buffers;
@@ -96,23 +96,22 @@ class RangeIterator {
   typedef const RangeIterator<T> const_iterator;
 
   RangeIterator(std::vector<std::unique_ptr<TypedBuffer<T>>>& bufs,
-                size_t beginBuffer, T* beginPtr,
-                size_t size) noexcept
-    : _buffers(bufs),
-      _beginBuffer(beginBuffer),
-      _beginPtr(beginPtr),
-      _currentBufferEnd(bufs.empty() ? beginPtr : bufs[_beginBuffer]->end()),
-      _size(size) {}
+                size_t beginBuffer, T* beginPtr, size_t size) noexcept
+      : _buffers(bufs),
+        _beginBuffer(beginBuffer),
+        _beginPtr(beginPtr),
+        _currentBufferEnd(bufs.empty() ? beginPtr : bufs[_beginBuffer]->end()),
+        _size(size) {}
 
   RangeIterator(RangeIterator const&) = delete;
   RangeIterator& operator=(RangeIterator const&) = delete;
 
   RangeIterator(RangeIterator&& other) noexcept
-    : _buffers(other._buffers),
-      _beginBuffer(other._beginBuffer),
-      _beginPtr(other._beginPtr),
-      _currentBufferEnd(other._currentBufferEnd),
-      _size(other._size) {
+      : _buffers(other._buffers),
+        _beginBuffer(other._beginBuffer),
+        _beginPtr(other._beginPtr),
+        _currentBufferEnd(other._currentBufferEnd),
+        _size(other._size) {
     other._beginBuffer = 0;
     other._beginPtr = nullptr;
     other._currentBufferEnd = nullptr;
@@ -132,13 +131,9 @@ class RangeIterator {
     return *this;
   }
 
-  size_t size() const noexcept {
-    return _size;
-  }
+  size_t size() const noexcept { return _size; }
 
-  bool hasMore() const noexcept {
-    return _size > 0;
-  }
+  bool hasMore() const noexcept { return _size > 0; }
 
   // prefix ++
   RangeIterator& operator++() noexcept {

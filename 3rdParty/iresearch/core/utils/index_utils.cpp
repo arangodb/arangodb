@@ -478,7 +478,7 @@ void read_document_mask(
     irs::document_mask& docs_mask,
     const irs::directory& dir,
     const irs::segment_meta& meta) {
-  if (!segment_reader::has<document_mask_reader>(meta)) {
+  if (!irs::has_removals(meta)) {
     return; // nothing to read
   }
 

@@ -61,9 +61,8 @@ Options::Options()
   if (ServerState::instance()->isCoordinator()) {
     // cluster transactions always originate on a coordinator
     origin = arangodb::cluster::RebootTracker::PeerState(
-        ServerState::instance()->getId(), 
-        ServerState::instance()->getRebootId()
-    );
+        ServerState::instance()->getId(),
+        ServerState::instance()->getRebootId());
   }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -71,7 +70,7 @@ Options::Options()
   adjustIntermediateCommitCount(*this);
 #endif
 }
-  
+
 Options Options::replicationDefaults() {
   Options options;
   // this is important, because when we get a "transaction begin" marker
@@ -81,7 +80,8 @@ Options Options::replicationDefaults() {
   return options;
 }
 
-void Options::setLimits(uint64_t maxTransactionSize, uint64_t intermediateCommitSize,
+void Options::setLimits(uint64_t maxTransactionSize,
+                        uint64_t intermediateCommitSize,
                         uint64_t intermediateCommitCount) {
   defaultMaxTransactionSize = maxTransactionSize;
   defaultIntermediateCommitSize = intermediateCommitSize;
@@ -89,7 +89,8 @@ void Options::setLimits(uint64_t maxTransactionSize, uint64_t intermediateCommit
 }
 
 bool Options::isIntermediateCommitEnabled() const noexcept {
-  return intermediateCommitSize != UINT64_MAX || intermediateCommitCount != UINT64_MAX;
+  return intermediateCommitSize != UINT64_MAX ||
+         intermediateCommitCount != UINT64_MAX;
 }
 
 void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
@@ -130,7 +131,7 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
   if (value.isBool()) {
     fillBlockCache = value.getBool();
   }
-  
+
   if (!ServerState::instance()->isSingleServer()) {
     value = slice.get("isFollowerTransaction");
     if (value.isBool()) {
@@ -146,7 +147,7 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
   }
   // we are intentionally *not* reading allowImplicitCollectionForWrite here.
   // this is an internal option only used in replication
-  
+
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // patch intermediateCommitCount for testing
   adjustIntermediateCommitCount(*this);
@@ -163,7 +164,8 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("intermediateCommitCount", VPackValue(intermediateCommitCount));
   builder.add("allowImplicit", VPackValue(allowImplicitCollectionsForRead));
 #ifdef USE_ENTERPRISE
-  builder.add("skipInaccessibleCollections", VPackValue(skipInaccessibleCollections));
+  builder.add("skipInaccessibleCollections",
+              VPackValue(skipInaccessibleCollections));
 #endif
   builder.add("waitForSync", VPackValue(waitForSync));
   builder.add("fillBlockCache", VPackValue(fillBlockCache));
@@ -173,7 +175,7 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   // serialize data for cluster-wide collections
   if (!ServerState::instance()->isSingleServer()) {
     builder.add("isFollowerTransaction", VPackValue(isFollowerTransaction));
-    
+
     // serialize the server id/reboot id of the originating server (which must
     // be a coordinator id if set)
     if (!origin.serverId().empty()) {

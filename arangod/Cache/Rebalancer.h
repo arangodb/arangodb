@@ -45,4 +45,3 @@ class Rebalancer {
 
 };  // end namespace cache
 };  // end namespace arangodb
-

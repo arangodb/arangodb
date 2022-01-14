@@ -82,7 +82,7 @@ TakeoverShardLeadership::TakeoverShardLeadership(MaintenanceFeature& feature,
     error << "collection must be specified. ";
   }
   TRI_ASSERT(desc.has(COLLECTION));
-  
+
   if (!ShardDefinition::isValid()) {
     error << "database and shard must be specified. ";
   }
@@ -104,11 +104,11 @@ TakeoverShardLeadership::TakeoverShardLeadership(MaintenanceFeature& feature,
 
 TakeoverShardLeadership::~TakeoverShardLeadership() = default;
 
-static void sendLeaderChangeRequests(network::ConnectionPool* pool,
-                                     std::vector<ServerID> const& currentServers,
-                                     std::shared_ptr<std::vector<ServerID>>& realInsyncFollowers,
-                                     std::string const& databaseName,
-                                     LogicalCollection& shard, std::string const& oldLeader) {
+static void sendLeaderChangeRequests(
+    network::ConnectionPool* pool, std::vector<ServerID> const& currentServers,
+    std::shared_ptr<std::vector<ServerID>>& realInsyncFollowers,
+    std::string const& databaseName, LogicalCollection& shard,
+    std::string const& oldLeader) {
   if (pool == nullptr) {
     // nullptr happens only during controlled shutdown
     return;
@@ -138,7 +138,8 @@ static void sendLeaderChangeRequests(network::ConnectionPool* pool,
       bodyBuilder.add("leaderId", VPackValue(sid));
       bodyBuilder.add("oldLeaderId", VPackValue(oldLeader));
       bodyBuilder.add("shard", VPackValue(shard.name()));
-      bodyBuilder.add(StaticStrings::FollowingTermId, VPackValue(followingTermId));
+      bodyBuilder.add(StaticStrings::FollowingTermId,
+                      VPackValue(followingTermId));
     }
 
     LOG_TOPIC("42516", DEBUG, Logger::MAINTENANCE)
@@ -170,10 +171,11 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
 
   if (!localLeader.empty()) {  // We were not leader, assume leadership
     LOG_TOPIC("5632f", DEBUG, Logger::MAINTENANCE)
-    << "handling leadership of shard '" << databaseName << "/"
-    << collection.name() << ": becoming leader";
+        << "handling leadership of shard '" << databaseName << "/"
+        << collection.name() << ": becoming leader";
 
-    auto& clusterFeature = collection.vocbase().server().getFeature<ClusterFeature>();
+    auto& clusterFeature =
+        collection.vocbase().server().getFeature<ClusterFeature>();
     auto& ci = clusterFeature.clusterInfo();
     auto& agencyCache = clusterFeature.agencyCache();
 
@@ -207,15 +209,15 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
         << "Waiting until ClusterInfo has version " << currVersion;
     ci.waitForCurrentVersion(currVersion).get();
 
-    auto currentInfo =
-        ci.getCollectionCurrent(databaseName,
-                                std::to_string(collection.planId().id()));
+    auto currentInfo = ci.getCollectionCurrent(
+        databaseName, std::to_string(collection.planId().id()));
     if (currentInfo == nullptr) {
       // Collection has been dropped. we cannot continue here.
       return;
     }
     TRI_ASSERT(currentInfo != nullptr);
-    std::vector<ServerID> currentServers = currentInfo->servers(collection.name());
+    std::vector<ServerID> currentServers =
+        currentInfo->servers(collection.name());
     std::shared_ptr<std::vector<ServerID>> realInsyncFollowers;
 
     if (!currentServers.empty()) {

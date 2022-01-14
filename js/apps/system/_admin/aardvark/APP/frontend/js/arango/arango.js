@@ -581,6 +581,10 @@
       if (!frontendConfig.foxxStoreEnabled) {
         delete menus.Store;
       }
+      
+      if (!frontendConfig.foxxAllowInstallFromRemote) {
+        delete menus.Remote;
+      }
 
       menus[activeKey].active = true;
       if (disabled) {

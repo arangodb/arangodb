@@ -93,7 +93,8 @@ struct term {
 struct field : public irs::field_meta {
   struct feature_info {
     irs::field_id id;
-    irs::feature_handler_f handler;
+    irs::feature_writer_factory_t factory;
+    irs::feature_writer::ptr writer;
   };
 
   struct field_stats : irs::field_stats {
@@ -126,7 +127,24 @@ struct field : public irs::field_meta {
 
 class column_values {
  public:
+  explicit column_values(irs::field_id id,
+                         irs::feature_writer_factory_t factory,
+                         irs::feature_writer* writer)
+    : id_{id}, factory_{factory}, writer_{writer} {
+  }
+
+  column_values(std::string name, irs::field_id id)
+    : id_{id}, name_{std::move(name)} {
+  }
+
   void insert(irs::doc_id_t key, irs::bytes_ref value);
+
+  irs::field_id id() const noexcept { return id_; }
+  irs::string_ref name() const noexcept {
+    return name_.has_value() ? name_.value() : irs::string_ref::NIL;
+  }
+
+  irs::bstring payload() const;
 
   auto begin() const { return values_.begin(); }
   auto end() const { return values_.end(); }
@@ -134,18 +152,24 @@ class column_values {
   auto empty() const { return values_.empty(); }
 
   void sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs);
+  void rewrite();
 
  private:
+  irs::field_id id_;
+  std::optional<std::string> name_;
+  mutable std::optional<irs::bstring> payload_;
   std::map<irs::doc_id_t, irs::bstring> values_;
+  irs::feature_writer_factory_t factory_;
+  irs::feature_writer* writer_{};
 };
 
 class index_segment: irs::util::noncopyable {
  public:
   using field_map_t = std::map<irs::string_ref, field>;
   using columns_t = std::deque<column_values>; // pointers remain valid
-  using columns_meta_t = std::map<std::string, irs::field_id>;
+  using named_columns_t = std::map<std::string, column_values*>;
 
-  explicit index_segment(const irs::field_features_t& features)
+  explicit index_segment(const irs::feature_info_provider_t& features)
     : field_features_{features} {
   }
   index_segment(index_segment&& rhs) = default;
@@ -157,8 +181,8 @@ class index_segment: irs::util::noncopyable {
   auto& fields() const noexcept { return fields_; }
   auto& columns() noexcept { return columns_; }
   auto& columns() const noexcept { return columns_; }
-  auto& columns_meta() const noexcept { return columns_meta_; }
-  auto& columns_meta() noexcept { return columns_meta_; }
+  auto& named_columns() const noexcept { return named_columns_; }
+  auto& named_columns() noexcept { return named_columns_; }
   auto& pk() const noexcept { return sort_; };
 
   template<typename IndexedFieldIterator, typename StoredFieldIterator>
@@ -193,8 +217,8 @@ class index_segment: irs::util::noncopyable {
   void insert_sorted(const ifield& field);
   void compute_features();
 
-  irs::field_features_t field_features_;
-  columns_meta_t columns_meta_;
+  irs::feature_info_provider_t field_features_;
+  named_columns_t named_columns_;
   std::vector<std::pair<irs::bstring, irs::doc_id_t>> sort_;
   std::vector<const field*> id_to_field_;
   std::set<field*> doc_fields_;

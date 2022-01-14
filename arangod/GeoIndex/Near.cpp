@@ -44,7 +44,7 @@
 namespace arangodb {
 namespace geo_index {
 
-template <typename CMP>
+template<typename CMP>
 NearUtils<CMP>::NearUtils(geo::QueryParams&& qp) noexcept
     : _params(std::move(qp)),
       _origin(_params.origin.ToPoint()),
@@ -74,13 +74,13 @@ NearUtils<CMP>::NearUtils(geo::QueryParams&& qp) noexcept
         << "  sorted " << (_params.ascending ? "asc" : "desc");*/
 }
 
-template <typename CMP>
+template<typename CMP>
 NearUtils<CMP>::~NearUtils() {
-  // LOG_TOPIC("5d2f1", ERR, Logger::FIXME) << "Scans: " << _numScans << " Found: " <<
-  // _found << " Rejections: " << _rejection;
+  // LOG_TOPIC("5d2f1", ERR, Logger::FIXME) << "Scans: " << _numScans << "
+  // Found: " << _found << " Rejections: " << _rejection;
 }
 
-template <typename CMP>
+template<typename CMP>
 void NearUtils<CMP>::reset() {
   _seenDocs.clear();
   while (!_buffer.empty()) {
@@ -92,7 +92,8 @@ void NearUtils<CMP>::reset() {
   _numScans = 0;
   // this initial interval is never used like that, see intervals()
   _outerAngle = _innerAngle = isAscending() ? _minAngle : _maxAngle;
-  const int level = S2::kAvgDiag.GetClosestLevel(8000 / geo::kEarthRadiusInMeters);
+  const int level =
+      S2::kAvgDiag.GetClosestLevel(8000 / geo::kEarthRadiusInMeters);
   _deltaAngle = S1ChordAngle::Radians(S2::kAvgDiag.GetValue(level));
   TRI_ASSERT(!_deltaAngle.is_zero());
   TRI_ASSERT(_deltaAngle.radians() * geo::kEarthRadiusInMeters >= 400);
@@ -104,9 +105,10 @@ void NearUtils<CMP>::reset() {
 
 /// aid density estimation by reporting a result close
 /// to the target coordinates
-template <typename CMP>
+template<typename CMP>
 void NearUtils<CMP>::estimateDensity(S2Point const& found) {
-  S1ChordAngle minAngle = S1ChordAngle::Radians(250 / geo::kEarthRadiusInMeters);
+  S1ChordAngle minAngle =
+      S1ChordAngle::Radians(250 / geo::kEarthRadiusInMeters);
   S1ChordAngle delta(_origin, found);
   if (minAngle < delta) {
     // overestimating the delta initially seems cheaper than doing more
@@ -115,7 +117,8 @@ void NearUtils<CMP>::estimateDensity(S2Point const& found) {
     _deltaAngle = S1ChordAngle::FromLength2(delta.length2() * fac);
     // only call after reset
     TRI_ASSERT(!isAscending() || (_innerAngle == _minAngle && _buffer.empty()));
-    TRI_ASSERT(!isDescending() || (_innerAngle == _maxAngle && _buffer.empty()));
+    TRI_ASSERT(!isDescending() ||
+               (_innerAngle == _maxAngle && _buffer.empty()));
     /*LOG_TOPIC("42584", ERR, Logger::ENGINES)
     << "Estimating density with " << _deltaAngle.radians() *
     geo::kEarthRadiusInMeters
@@ -133,8 +136,9 @@ static void GetDifference(std::vector<S2CellId> const& cell_ids, S2CellId id,
   std::vector<S2CellId>::const_iterator i =
       std::lower_bound(cell_ids.begin(), cell_ids.end(), id);
   auto j = i;
-  bool intersects = (i != cell_ids.end() && i->range_min() <= id.range_max()) ||
-                    (i != cell_ids.begin() && (--i)->range_max() >= id.range_min());
+  bool intersects =
+      (i != cell_ids.end() && i->range_min() <= id.range_max()) ||
+      (i != cell_ids.begin() && (--i)->range_max() >= id.range_min());
 
   if (!intersects) {  // does not intersect cell_ids, just add to result
     result->push_back(id);
@@ -153,26 +157,27 @@ static void GetDifference(std::vector<S2CellId> const& cell_ids, S2CellId id,
   }
 }
 
-template <typename CMP>
+template<typename CMP>
 std::vector<geo::Interval> NearUtils<CMP>::intervals() {
   TRI_ASSERT(!hasNearest());
   TRI_ASSERT(!isDone());
   // TRI_ASSERT(!_params.ascending || _innerAngle != _maxAngle);
-  TRI_ASSERT(_deltaAngle >=
-             S1ChordAngle::Radians(S2::kMaxEdge.GetValue(S2::kMaxCellLevel - 2)));
-  
+  TRI_ASSERT(_deltaAngle >= S1ChordAngle::Radians(
+                                S2::kMaxEdge.GetValue(S2::kMaxCellLevel - 2)));
+
   std::vector<geo::Interval> intervals;
 
   if (_numScans == 0) {
     calculateBounds();
     TRI_ASSERT(_innerAngle <= _outerAngle && _outerAngle <= _maxAngle);
   } /* else {
-     LOG_TOPIC("a298e", WARN, Logger::FIXME) << "Found ("<<_numScans<<"): " << _found;
+     LOG_TOPIC("a298e", WARN, Logger::FIXME) << "Found ("<<_numScans<<"): " <<
+   _found;
    }*/
   _numScans++;
 
   TRI_ASSERT(_innerAngle <= _outerAngle && _outerAngle <= _maxAngle);
-  
+
   TRI_ASSERT(_innerAngle != _outerAngle);
   std::vector<S2CellId> cover;
   if (_innerAngle == _minAngle) {
@@ -242,18 +247,18 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
   return intervals;
 }
 
-template <typename CMP>
+template<typename CMP>
 void NearUtils<CMP>::reportFound(LocalDocumentId lid, S2Point const& center) {
   S1ChordAngle angle(_origin, center);
 
   // cheap rejections based on distance to target
   if (!isFilterIntersects()) {
-    if ((isAscending() && angle < _innerAngle) || (isDescending() && angle > _outerAngle) ||
-        angle > _maxAngle || angle < _minAngle) {
-      /*LOG_TOPIC("8cc01", ERR, Logger::FIXME) << "Rejecting doc with center " <<
-      center.toString();
-      LOG_TOPIC("38f63", ERR, Logger::FIXME) << "Dist: " << (rad *
-      geo::kEarthRadiusInMeters);*/
+    if ((isAscending() && angle < _innerAngle) ||
+        (isDescending() && angle > _outerAngle) || angle > _maxAngle ||
+        angle < _minAngle) {
+      /*LOG_TOPIC("8cc01", ERR, Logger::FIXME) << "Rejecting doc with center "
+      << center.toString(); LOG_TOPIC("38f63", ERR, Logger::FIXME) << "Dist: "
+      << (rad * geo::kEarthRadiusInMeters);*/
       _rejection++;
       return;
     }
@@ -281,7 +286,7 @@ void NearUtils<CMP>::reportFound(LocalDocumentId lid, S2Point const& center) {
 }
 
 /// called after current intervals were scanned
-template <typename CMP>
+template<typename CMP>
 void NearUtils<CMP>::didScanIntervals() {
   if (!_allIntervalsCovered) {
     estimateDelta();
@@ -290,7 +295,7 @@ void NearUtils<CMP>::didScanIntervals() {
 }
 
 /// @brief adjust the bounds delta
-template <typename CMP>
+template<typename CMP>
 void NearUtils<CMP>::estimateDelta() {
   S1ChordAngle minBound =
       S1ChordAngle::Radians(S2::kMaxDiag.GetValue(S2::kMaxCellLevel - 3));
@@ -306,7 +311,7 @@ void NearUtils<CMP>::estimateDelta() {
 }
 
 /// @brief estimate the scan bounds
-template <typename CMP>
+template<typename CMP>
 void NearUtils<CMP>::calculateBounds() {
   TRI_ASSERT(!_deltaAngle.is_zero() && _deltaAngle.is_valid());
   if (isAscending()) {

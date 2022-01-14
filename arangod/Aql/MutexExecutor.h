@@ -57,17 +57,19 @@ class MutexExecutor {
   /**
    * @brief Distribute the rows of the given block into the blockMap
    *        NOTE: Has SideEffects
-   *        If the input value does not contain an object, it is modified inplace with
-   *        a new Object containing a key value!
-   *        Hence this method is not const ;(
+   *        If the input value does not contain an object, it is modified
+   * inplace with a new Object containing a key value! Hence this method is not
+   * const ;(
    *
    * @param block The block to be distributed
    * @param skipped The rows that have been skipped from upstream
-   * @param blockMap Map client => Data. Will provide the required data to the correct client.
+   * @param blockMap Map client => Data. Will provide the required data to the
+   * correct client.
    */
-  auto distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
-                       std::unordered_map<std::string, ClientBlockData>& blockMap) -> void;
-  
+  auto distributeBlock(
+      SharedAqlItemBlockPtr const& block, SkipResult skipped,
+      std::unordered_map<std::string, ClientBlockData>& blockMap) -> void;
+
   void acquireLock() noexcept {
     // don't continue if locking fails
     _mutex.lock();
@@ -97,16 +99,16 @@ class MutexExecutor {
 /**
  * @brief See ExecutionBlockImpl.h for documentation.
  */
-template <>
+template<>
 class ExecutionBlockImpl<MutexExecutor>
     : public BlocksWithClientsImpl<MutexExecutor> {
  public:
   ExecutionBlockImpl(ExecutionEngine* engine, MutexNode const* node,
-                     RegisterInfos registerInfos, MutexExecutorInfos&& executorInfos);
+                     RegisterInfos registerInfos,
+                     MutexExecutorInfos&& executorInfos);
 
   ~ExecutionBlockImpl() override = default;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-

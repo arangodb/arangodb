@@ -89,7 +89,9 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 
  public:
   bool allowAdminExecute() const { return _allowAdminExecute; }
-  bool allowJavaScriptTransactions() const { return _allowJavaScriptTransactions; }
+  bool allowJavaScriptTransactions() const {
+    return _allowJavaScriptTransactions;
+  }
   bool allowJavaScriptTasks() const { return _allowJavaScriptTasks; }
 
   bool addGlobalContextMethod(std::string const&);
@@ -104,7 +106,8 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 
   /// @brief enter a V8 context
   /// currently returns a nullptr if no context can be acquired in time
-  V8Context* enterContext(TRI_vocbase_t*, JavaScriptSecurityContext const& securityContext);
+  V8Context* enterContext(TRI_vocbase_t*,
+                          JavaScriptSecurityContext const& securityContext);
   void exitContext(V8Context*);
 
   void setMinimumContexts(size_t nr) {
@@ -130,7 +133,8 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 
   std::string const& appPath() const { return _appPath; }
 
-  static bool javascriptRequestedViaOptions(std::shared_ptr<options::ProgramOptions> const& options);
+  static bool javascriptRequestedViaOptions(
+      std::shared_ptr<options::ProgramOptions> const& options);
 
  private:
   uint64_t nextId() { return _nextId++; }
@@ -145,7 +149,8 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
                                   VPackBuilder* builder);
   bool loadJavaScriptFileInContext(TRI_vocbase_t*, std::string const& file,
                                    V8Context* context, VPackBuilder* builder);
-  void prepareLockedContext(TRI_vocbase_t*, V8Context*, JavaScriptSecurityContext const&);
+  void prepareLockedContext(TRI_vocbase_t*, V8Context*,
+                            JavaScriptSecurityContext const&);
   void exitContextInternal(V8Context*);
   void cleanupLockedContext(V8Context*);
   void applyContextUpdate(V8Context* context);
@@ -200,9 +205,11 @@ class V8ContextGuard {
 // in case the passed in isolate is a nullptr
 class V8ConditionalContextGuard {
  public:
-  explicit V8ConditionalContextGuard(Result&, v8::Isolate*&, TRI_vocbase_t*, JavaScriptSecurityContext const&);
+  explicit V8ConditionalContextGuard(Result&, v8::Isolate*&, TRI_vocbase_t*,
+                                     JavaScriptSecurityContext const&);
   V8ConditionalContextGuard(V8ConditionalContextGuard const&) = delete;
-  V8ConditionalContextGuard& operator=(V8ConditionalContextGuard const&) = delete;
+  V8ConditionalContextGuard& operator=(V8ConditionalContextGuard const&) =
+      delete;
   ~V8ConditionalContextGuard();
 
  private:
@@ -213,4 +220,3 @@ class V8ConditionalContextGuard {
 };
 
 }  // namespace arangodb
-

@@ -31,42 +31,43 @@
 namespace arangodb::containers {
 
 struct Helpers {
-/// @brief calculate capacity for the container for at least one more 
-/// element.
-/// if this would exceed the container's capacity, use a factor-of-2
-/// growth strategy to calculate the capacity.
-template<typename T>
-static std::size_t nextCapacity(T const& container, std::size_t initialCapacity) {
-  std::size_t capacity;
-  if (container.empty()) {
-    // reserve some initial space
-    capacity = std::max(std::size_t(1), initialCapacity);
-  } else {
-    capacity = container.size() + 1;
-    // allocate with power of 2 growth
+  /// @brief calculate capacity for the container for at least one more
+  /// element.
+  /// if this would exceed the container's capacity, use a factor-of-2
+  /// growth strategy to calculate the capacity.
+  template<typename T>
+  static std::size_t nextCapacity(T const& container,
+                                  std::size_t initialCapacity) {
+    std::size_t capacity;
+    if (container.empty()) {
+      // reserve some initial space
+      capacity = std::max(std::size_t(1), initialCapacity);
+    } else {
+      capacity = container.size() + 1;
+      // allocate with power of 2 growth
+      if (capacity > container.capacity()) {
+        capacity *= 2;
+      }
+    }
+    TRI_ASSERT(capacity > container.size());
+    return capacity;
+  }
+
+  /// @brief reserve space for at least one more element in the container.
+  /// if this would exceed the container's capacity, use a factor-of-2
+  /// growth strategy to grow the container's memory.
+  template<typename T>
+  static void reserveSpace(T& container, std::size_t initialCapacity) {
+    std::size_t capacity = nextCapacity(container, initialCapacity);
+
+    // reserve space
     if (capacity > container.capacity()) {
-      capacity *= 2;
+      // if this fails, it will simply throw a bad_alloc exception,
+      // and no harm has been done to the container
+      container.reserve(capacity);
     }
   }
-  TRI_ASSERT(capacity > container.size());
-  return capacity;
-}
 
-/// @brief reserve space for at least one more element in the container.
-/// if this would exceed the container's capacity, use a factor-of-2
-/// growth strategy to grow the container's memory.
-template<typename T>
-static void reserveSpace(T& container, std::size_t initialCapacity) {
-  std::size_t capacity = nextCapacity(container, initialCapacity);
+};  // Helpers
 
-  // reserve space
-  if (capacity > container.capacity()) {
-    // if this fails, it will simply throw a bad_alloc exception,
-    // and no harm has been done to the container
-    container.reserve(capacity);
-  }
-}
-
-}; // Helpers
-
-} // namespace
+}  // namespace arangodb::containers

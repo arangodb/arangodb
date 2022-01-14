@@ -49,15 +49,15 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestTransactionHandler::RestTransactionHandler(application_features::ApplicationServer& server,
-                                               GeneralRequest* request,
-                                               GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response), _v8Context(nullptr), _lock() {}
+RestTransactionHandler::RestTransactionHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response),
+      _v8Context(nullptr),
+      _lock() {}
 
 RestStatus RestTransactionHandler::execute() {
-    
   switch (_request->requestType()) {
-
     case rest::RequestType::POST:
       if (_request->suffixes().size() == 1 &&
           _request->suffixes()[0] == "begin") {
@@ -80,9 +80,10 @@ RestStatus RestTransactionHandler::execute() {
     case rest::RequestType::GET:
       executeGetState();
       break;
-      
+
     default:
-      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                    TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
       break;
   }
   return RestStatus::DONE;
@@ -96,19 +97,20 @@ void RestTransactionHandler::executeGetState() {
     VPackBuilder builder;
     builder.openObject();
     builder.add("transactions", VPackValue(VPackValueType::Array));
-    
-    bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
+
+    bool const fanout = ServerState::instance()->isCoordinator() &&
+                        !_request->parsedValue("local", false);
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
     mgr->toVelocyPack(builder, _vocbase.name(), exec.user(), fanout);
- 
-    builder.close(); // array
-    builder.close(); // object
-  
+
+    builder.close();  // array
+    builder.close();  // object
+
     generateResult(rest::ResponseCode::OK, builder.slice());
     return;
   }
-  
+
   if (_request->suffixes().size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "expecting GET /_api/transaction/<transaction-ID>");
@@ -126,7 +128,8 @@ void RestTransactionHandler::executeGetState() {
   transaction::Status status = mgr->getManagedTrxStatus(tid, _vocbase.name());
 
   if (status == transaction::Status::UNDEFINED) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_TRANSACTION_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_TRANSACTION_NOT_FOUND);
   } else {
     generateTransactionResult(rest::ResponseCode::OK, tid, status);
   }
@@ -147,7 +150,8 @@ void RestTransactionHandler::executeBegin() {
   TRI_ASSERT(mgr != nullptr);
 
   bool found = false;
-  std::string const& value = _request->header(StaticStrings::TransactionId, found);
+  std::string const& value =
+      _request->header(StaticStrings::TransactionId, found);
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
   if (found) {
@@ -175,7 +179,8 @@ void RestTransactionHandler::executeBegin() {
                                 transaction::Status::RUNNING);
     }
   } else {
-    if (!ServerState::isCoordinator(role) && !ServerState::isSingleServer(role)) {
+    if (!ServerState::isCoordinator(role) &&
+        !ServerState::isSingleServer(role)) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
                     "Not supported on this server type");
       return;
@@ -212,7 +217,8 @@ void RestTransactionHandler::executeCommit() {
   if (res.fail()) {
     generateError(res);
   } else {
-    generateTransactionResult(rest::ResponseCode::OK, tid, transaction::Status::COMMITTED);
+    generateTransactionResult(rest::ResponseCode::OK, tid,
+                              transaction::Status::COMMITTED);
   }
 }
 
@@ -221,16 +227,17 @@ void RestTransactionHandler::executeAbort() {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     return;
   }
-  
+
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
   if (_request->suffixes()[0] == "write") {
     // abort all write transactions
-    bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
+    bool const fanout = ServerState::instance()->isCoordinator() &&
+                        !_request->parsedValue("local", false);
     ExecContext const& exec = ExecContext::current();
     Result res = mgr->abortAllManagedWriteTrx(exec.user(), fanout);
-        
+
     if (res.ok()) {
       generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
     } else {
@@ -249,14 +256,14 @@ void RestTransactionHandler::executeAbort() {
     if (res.fail()) {
       generateError(res);
     } else {
-      generateTransactionResult(rest::ResponseCode::OK, tid, transaction::Status::ABORTED);
+      generateTransactionResult(rest::ResponseCode::OK, tid,
+                                transaction::Status::ABORTED);
     }
   }
 }
 
-void RestTransactionHandler::generateTransactionResult(rest::ResponseCode code,
-                                                       TransactionId tid,
-                                                       transaction::Status status) {
+void RestTransactionHandler::generateTransactionResult(
+    rest::ResponseCode code, TransactionId tid, transaction::Status status) {
   VPackBuffer<uint8_t> buffer;
   VPackBuilder tmp(buffer);
   tmp.add(VPackValue(VPackValueType::Object, true));
@@ -267,7 +274,7 @@ void RestTransactionHandler::generateTransactionResult(rest::ResponseCode code,
   tmp.add("status", VPackValue(transaction::statusString(status)));
   tmp.close();
   tmp.close();
-  
+
   generateResult(code, std::move(buffer));
 }
 
@@ -276,7 +283,9 @@ void RestTransactionHandler::generateTransactionResult(rest::ResponseCode code,
 /// start a legacy JS transaction
 void RestTransactionHandler::executeJSTransaction() {
   if (!server().isEnabled<V8DealerFeature>()) {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED, "JavaScript operations are disabled");
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                  TRI_ERROR_NOT_IMPLEMENTED,
+                  "JavaScript operations are disabled");
     return;
   }
 
@@ -289,36 +298,41 @@ void RestTransactionHandler::executeJSTransaction() {
 
   std::string portType = _request->connectionInfo().portType();
 
-  bool allowUseDatabase = server().getFeature<ActionFeature>().allowUseDatabase();
-  JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestActionContext(allowUseDatabase);
-  V8Context* v8Context =
-      server().getFeature<V8DealerFeature>().enterContext(&_vocbase, securityContext);
+  bool allowUseDatabase =
+      server().getFeature<ActionFeature>().allowUseDatabase();
+  JavaScriptSecurityContext securityContext =
+      JavaScriptSecurityContext::createRestActionContext(allowUseDatabase);
+  V8Context* v8Context = server().getFeature<V8DealerFeature>().enterContext(
+      &_vocbase, securityContext);
 
   if (!v8Context) {
     generateError(Result(TRI_ERROR_INTERNAL, "could not acquire v8 context"));
     return;
   }
 
-  // register a function to release the V8Context whenever we exit from this scope
+  // register a function to release the V8Context whenever we exit from this
+  // scope
   auto guard = scopeGuard([this]() noexcept {
     try {
-        WRITE_LOCKER(lock, _lock);
-        if (_v8Context != nullptr) {
-          server().getFeature<V8DealerFeature>().exitContext(_v8Context);
-          _v8Context = nullptr;
-        }
-    } catch(std::exception const& ex) {
+      WRITE_LOCKER(lock, _lock);
+      if (_v8Context != nullptr) {
+        server().getFeature<V8DealerFeature>().exitContext(_v8Context);
+        _v8Context = nullptr;
+      }
+    } catch (std::exception const& ex) {
       LOG_TOPIC("1b20f", ERR, Logger::V8)
-          << "Failed to exit V8 context while executing JS transaction: " << ex.what();
+          << "Failed to exit V8 context while executing JS transaction: "
+          << ex.what();
     }
   });
-     
+
   {
     // make our V8Context available to the cancel function
     WRITE_LOCKER(lock, _lock);
     _v8Context = v8Context;
     if (_canceled) {
-      // if we cancel here, the shutdown function above will perform the necessary cleanup
+      // if we cancel here, the shutdown function above will perform the
+      // necessary cleanup
       lock.unlock();
       generateCanceled();
       return;
@@ -361,7 +375,8 @@ void RestTransactionHandler::cancel() {
 }
 
 /// @brief returns the short id of the server which should handle this request
-ResultT<std::pair<std::string, bool>> RestTransactionHandler::forwardingTarget() {
+ResultT<std::pair<std::string, bool>>
+RestTransactionHandler::forwardingTarget() {
   auto base = RestVocbaseBaseHandler::forwardingTarget();
   if (base.ok() && !std::get<0>(base.get()).empty()) {
     return base;

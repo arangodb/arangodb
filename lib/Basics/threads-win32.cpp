@@ -112,7 +112,8 @@ ErrorCode TRI_JoinThread(TRI_thread_t* thread) {
 /// @brief waits for a thread to finish within the specified timeout (in ms).
 ////////////////////////////////////////////////////////////////////////////////
 
-ErrorCode TRI_JoinThreadWithTimeout(TRI_thread_t* thread, std::uint32_t timeout) {
+ErrorCode TRI_JoinThreadWithTimeout(TRI_thread_t* thread,
+                                    std::uint32_t timeout) {
   TRI_ASSERT(thread != nullptr);
   DWORD result = WaitForSingleObject(*thread, timeout);
 
@@ -155,7 +156,8 @@ bool TRI_DetachThread(TRI_thread_t* thread) {
 
   if (res == 0) {
     DWORD result = GetLastError();
-    LOG_TOPIC("333c2", ERR, arangodb::Logger::THREADS) << "cannot detach thread: " << result;
+    LOG_TOPIC("333c2", ERR, arangodb::Logger::THREADS)
+        << "cannot detach thread: " << result;
     return false;
   }
 

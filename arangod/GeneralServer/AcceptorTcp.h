@@ -31,10 +31,11 @@
 namespace arangodb {
 namespace rest {
 
-template <SocketType T>
+template<SocketType T>
 class AcceptorTcp final : public Acceptor {
  public:
-  AcceptorTcp(rest::GeneralServer& server, rest::IoContext& ctx, Endpoint* endpoint)
+  AcceptorTcp(rest::GeneralServer& server, rest::IoContext& ctx,
+              Endpoint* endpoint)
       : Acceptor(server, ctx, endpoint), _acceptor(ctx.io_context) {}
 
  public:
@@ -51,4 +52,3 @@ class AcceptorTcp final : public Acceptor {
 };
 }  // namespace rest
 }  // namespace arangodb
-

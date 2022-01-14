@@ -32,7 +32,7 @@
 namespace arangodb {
 namespace graph {
 
-template <class QueueImpl>
+template<class QueueImpl>
 class QueueTracer {
   using Step = typename QueueImpl::Step;
 
@@ -59,4 +59,3 @@ class QueueTracer {
 
 }  // namespace graph
 }  // namespace arangodb
-

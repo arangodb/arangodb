@@ -36,7 +36,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace aql {
 
@@ -53,10 +53,11 @@ class VariableGenerator {
 
  public:
   /// @brief visit all variables
-  void visit(std::function<void(Variable*)> const&); 
+  void visit(std::function<void(Variable*)> const&);
 
   /// @brief return a map of all variable ids with their names
-  std::unordered_map<VariableId, std::string const> variables(bool includeTemporaries) const;
+  std::unordered_map<VariableId, std::string const> variables(
+      bool includeTemporaries) const;
 
   /// @brief generate a variable
   Variable* createVariable(std::string name, bool isUserDefined);
@@ -104,4 +105,3 @@ class VariableGenerator {
 };
 }  // namespace aql
 }  // namespace arangodb
-

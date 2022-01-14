@@ -66,8 +66,8 @@ bool Quantifier::IsAllOrNone(AstNode const* quantifier) {
 }
 
 /// @brief determine the min/max number of matches for an array comparison
-std::pair<size_t, size_t> Quantifier::RequiredMatches(size_t inputSize,
-                                                      AstNode const* quantifier) {
+std::pair<size_t, size_t> Quantifier::RequiredMatches(
+    size_t inputSize, AstNode const* quantifier) {
   TRI_ASSERT(quantifier != nullptr);
 
   if (quantifier->type == NODE_TYPE_QUANTIFIER) {

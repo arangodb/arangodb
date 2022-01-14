@@ -40,9 +40,9 @@ struct RequestOptions;
 
 class NetworkFeature final : public application_features::ApplicationFeature {
  public:
-  using RequestCallback =
-      std::function<void(fuerte::Error err, std::unique_ptr<fuerte::Request> req,
-                         std::unique_ptr<fuerte::Response> res, bool isFromPool)>;
+  using RequestCallback = std::function<void(
+      fuerte::Error err, std::unique_ptr<fuerte::Request> req,
+      std::unique_ptr<fuerte::Response> res, bool isFromPool)>;
 
   explicit NetworkFeature(application_features::ApplicationServer& server);
   explicit NetworkFeature(application_features::ApplicationServer& server,
@@ -72,8 +72,10 @@ class NetworkFeature final : public application_features::ApplicationFeature {
   bool isCongested() const;  // in-flight above low-water mark
   bool isSaturated() const;  // in-flight above high-water mark
   void sendRequest(network::ConnectionPool& pool,
-                   network::RequestOptions const& options, std::string const& endpoint,
-                   std::unique_ptr<fuerte::Request>&& req, RequestCallback&& cb);
+                   network::RequestOptions const& options,
+                   std::string const& endpoint,
+                   std::unique_ptr<fuerte::Request>&& req,
+                   RequestCallback&& cb);
 
  protected:
   void prepareRequest(network::ConnectionPool const& pool,
@@ -111,4 +113,3 @@ class NetworkFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

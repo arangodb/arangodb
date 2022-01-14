@@ -35,4 +35,3 @@ class ApplicationServer;
 void rocksdbStartupVersionCheck(application_features::ApplicationServer& server,
                                 rocksdb::TransactionDB*, bool dbExisted);
 }  // namespace arangodb
-

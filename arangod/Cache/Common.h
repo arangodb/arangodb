@@ -46,4 +46,3 @@ enum class Stat : std::uint8_t { findHit = 1, findMiss = 2 };
 
 };  // end namespace cache
 };  // end namespace arangodb
-

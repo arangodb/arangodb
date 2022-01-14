@@ -34,19 +34,20 @@ namespace arangodb::result {
 
 class Error final {
  public:
-  explicit Error(ErrorCode errorNumber) noexcept(noexcept(std::string::allocator_type()));
+  explicit Error(ErrorCode errorNumber) noexcept(
+      noexcept(std::string::allocator_type()));
 
   Error(ErrorCode errorNumber, std::string_view errorMessage);
   [[nodiscard]] auto errorNumber() const noexcept -> ErrorCode;
   [[nodiscard]] auto errorMessage() const& noexcept -> std::string_view;
   [[nodiscard]] auto errorMessage() && noexcept -> std::string;
 
-  template <typename S>
+  template<typename S>
   void resetErrorMessage(S&& msg) {
     _errorMessage = std::forward<S>(msg);
   }
 
-  template <typename S>
+  template<typename S>
   void appendErrorMessage(S&& msg) {
     if (_errorMessage.empty()) {
       _errorMessage += errorMessage();

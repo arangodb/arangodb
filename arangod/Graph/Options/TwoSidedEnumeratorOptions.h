@@ -46,4 +46,3 @@ struct TwoSidedEnumeratorOptions {
 };
 }  // namespace graph
 }  // namespace arangodb
-

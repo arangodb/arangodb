@@ -56,7 +56,8 @@ struct LineRank : public SimpleAlgorithm<float, float, float> {
   WorkerContext* workerContext(velocypack::Slice params) const override;
   MasterContext* masterContext(velocypack::Slice) const override;
 
-  VertexComputation<float, float, float>* createComputation(WorkerConfig const*) const override;
+  VertexComputation<float, float, float>* createComputation(
+      WorkerConfig const*) const override;
 
   IAggregator* aggregator(std::string const& name) const override;
 };

@@ -85,4 +85,3 @@ class RocksDBSettingsManager {
   TRI_voc_tick_t _initialReleasedTick;
 };
 }  // namespace arangodb
-

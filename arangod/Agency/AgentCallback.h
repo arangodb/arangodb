@@ -54,4 +54,3 @@ class AgentCallback final {
 };
 }  // namespace consensus
 }  // namespace arangodb
-

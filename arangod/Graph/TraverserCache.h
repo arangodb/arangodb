@@ -59,7 +59,6 @@ struct EdgeDocumentToken;
 /// document tokens and retrieve documents as needed
 struct BaseOptions;
 
-
 class TraverserCache {
  public:
   explicit TraverserCache(aql::QueryContext& query, BaseOptions* opts);
@@ -86,8 +85,10 @@ class TraverserCache {
   /// @brief Append the vertex for the given id
   ///        The document will be looked up in the StorageEngine
   //////////////////////////////////////////////////////////////////////////////
-  virtual bool appendVertex(arangodb::velocypack::StringRef idString, arangodb::velocypack::Builder& result);
-  virtual bool appendVertex(arangodb::velocypack::StringRef idString, arangodb::aql::AqlValue& result);
+  virtual bool appendVertex(arangodb::velocypack::StringRef idString,
+                            arangodb::velocypack::Builder& result);
+  virtual bool appendVertex(arangodb::velocypack::StringRef idString,
+                            arangodb::aql::AqlValue& result);
 
   size_t getAndResetInsertedDocuments() {
     size_t tmp = _insertedDocuments;
@@ -105,9 +106,11 @@ class TraverserCache {
   /// @brief Persist the given id string. The return value is guaranteed to
   ///        stay valid as long as this cache is valid
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::velocypack::StringRef persistString(arangodb::velocypack::StringRef idString);
-  
-  arangodb::velocypack::HashedStringRef persistString(arangodb::velocypack::HashedStringRef idString);
+  arangodb::velocypack::StringRef persistString(
+      arangodb::velocypack::StringRef idString);
+
+  arangodb::velocypack::HashedStringRef persistString(
+      arangodb::velocypack::HashedStringRef idString);
 
   void increaseFilterCounter() { _filteredDocuments++; }
 
@@ -164,4 +167,3 @@ class TraverserCache {
 
 }  // namespace graph
 }  // namespace arangodb
-

@@ -38,15 +38,16 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
 
-ModifierOperationType RemoveModifierCompletion::accumulate(ModificationExecutorAccumulator& accu,
-                                                           InputAqlItemRow& row) {
+ModifierOperationType RemoveModifierCompletion::accumulate(
+    ModificationExecutorAccumulator& accu, InputAqlItemRow& row) {
   RegisterId const inDocReg = _infos._input1RegisterId;
 
   // The document to be REMOVEd
   AqlValue const& inDoc = row.getValue(inDocReg);
 
   if (writeRequired(_infos, inDoc.slice(), StaticStrings::Empty)) {
-    CollectionNameResolver const& collectionNameResolver{_infos._query.resolver()};
+    CollectionNameResolver const& collectionNameResolver{
+        _infos._query.resolver()};
 
     std::string key{}, rev{};
     Result result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev);
@@ -71,6 +72,7 @@ ModifierOperationType RemoveModifierCompletion::accumulate(ModificationExecutorA
   }
 }
 
-futures::Future<OperationResult> RemoveModifierCompletion::transact(transaction::Methods& trx, VPackSlice const& data) {
+futures::Future<OperationResult> RemoveModifierCompletion::transact(
+    transaction::Methods& trx, VPackSlice const& data) {
   return trx.removeAsync(_infos._aqlCollection->name(), data, _infos._options);
 }

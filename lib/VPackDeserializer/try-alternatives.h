@@ -31,12 +31,12 @@ namespace deserializer {
 namespace try_alternatives {
 
 namespace detail {
-template <std::size_t I, typename T, typename E>
+template<std::size_t I, typename T, typename E>
 struct try_alternatives_deserializer_executor_visitor {
   std::optional<T>& value_store;
   E& error_store;
-  explicit try_alternatives_deserializer_executor_visitor(std::optional<T>& value_store,
-                                                          E& error_store)
+  explicit try_alternatives_deserializer_executor_visitor(
+      std::optional<T>& value_store, E& error_store)
       : value_store(value_store), error_store(error_store) {}
 
   bool operator()(T t) {
@@ -52,7 +52,7 @@ struct try_alternatives_deserializer_executor_visitor {
 };
 }  // namespace detail
 
-template <typename... Ds>
+template<typename... Ds>
 struct try_alternatives_deserializer {
   using plan = try_alternatives_deserializer<Ds...>;
   using constructed_type = std::variant<typename Ds::constructed_type...>;
@@ -62,16 +62,18 @@ struct try_alternatives_deserializer {
 }  // namespace try_alternatives
 
 namespace executor {
-template <typename... Ds, typename H>
-struct deserialize_plan_executor<try_alternatives::try_alternatives_deserializer<Ds...>, H> {
-  using value_type =
-      typename try_alternatives::try_alternatives_deserializer<Ds...>::constructed_type;
+template<typename... Ds, typename H>
+struct deserialize_plan_executor<
+    try_alternatives::try_alternatives_deserializer<Ds...>, H> {
+  using value_type = typename try_alternatives::try_alternatives_deserializer<
+      Ds...>::constructed_type;
   using tuple_type = std::tuple<value_type>;
   using result_type = result<tuple_type, deserialize_error>;
   static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
                      typename H::state_type hints) -> result_type {
     /*
-     * Try one alternative after the other. Take the first that does not fail. If all fail, fail.
+     * Try one alternative after the other. Take the first that does not fail.
+     * If all fail, fail.
      */
     return unpack_internal(s, std::index_sequence_for<Ds...>{});
   }
@@ -79,17 +81,19 @@ struct deserialize_plan_executor<try_alternatives::try_alternatives_deserializer
  private:
   constexpr auto static number_of_alternatives = sizeof...(Ds);
 
-  template <std::size_t... Is>
-  static auto unpack_internal(::arangodb::velocypack::deserializer::slice_type s,
-                              std::index_sequence<Is...>) -> result_type {
+  template<std::size_t... Is>
+  static auto unpack_internal(
+      ::arangodb::velocypack::deserializer::slice_type s,
+      std::index_sequence<Is...>) -> result_type {
     std::optional<value_type> result_variant;
     std::array<deserialize_error, number_of_alternatives> errors;
 
-    bool result =
-        (deserialize_with<Ds>(s).visit(
-             try_alternatives::detail::try_alternatives_deserializer_executor_visitor<Is, value_type, deserialize_error>{
-                 result_variant, std::get<Is>(errors)}) ||
-         ...);
+    bool result = (deserialize_with<Ds>(s).visit(
+                       try_alternatives::detail::
+                           try_alternatives_deserializer_executor_visitor<
+                               Is, value_type, deserialize_error>{
+                               result_variant, std::get<Is>(errors)}) ||
+                   ...);
 
     if (result) {
       return result_type{result_variant.value()};
@@ -104,7 +108,7 @@ struct deserialize_plan_executor<try_alternatives::try_alternatives_deserializer
           join(errors) + ']'}};
     }
   }
-  template <typename T>
+  template<typename T>
   static std::string join(T const& t) {
     using namespace std::string_literals;
     std::string ss;

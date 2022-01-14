@@ -40,7 +40,8 @@ namespace graph {
 struct EdgeDocumentToken {
   EdgeDocumentToken() noexcept
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      : _data(DataSourceId::none(), LocalDocumentId::none()), _type(TokenType::NONE) {
+      : _data(DataSourceId::none(), LocalDocumentId::none()),
+        _type(TokenType::NONE) {
   }
 #else
       : _data(DataSourceId::none(), LocalDocumentId::none()) {
@@ -60,7 +61,8 @@ struct EdgeDocumentToken {
 #endif
   }
 
-  EdgeDocumentToken(DataSourceId const cid, LocalDocumentId const localDocumentId) noexcept
+  EdgeDocumentToken(DataSourceId const cid,
+                    LocalDocumentId const localDocumentId) noexcept
       : _data(cid, localDocumentId) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _type = EdgeDocumentToken::TokenType::LOCAL;
@@ -202,17 +204,19 @@ struct EdgeDocumentToken {
 }  // namespace arangodb
 
 namespace std {
-template <>
+template<>
 struct hash<arangodb::graph::EdgeDocumentToken> {
-  size_t operator()(arangodb::graph::EdgeDocumentToken const& value) const noexcept {
+  size_t operator()(
+      arangodb::graph::EdgeDocumentToken const& value) const noexcept {
     return value.hash();
   }
 };
 
-template <>
+template<>
 struct equal_to<arangodb::graph::EdgeDocumentToken> {
-  bool operator()(arangodb::graph::EdgeDocumentToken const& lhs,
-                  arangodb::graph::EdgeDocumentToken const& rhs) const noexcept {
+  bool operator()(
+      arangodb::graph::EdgeDocumentToken const& lhs,
+      arangodb::graph::EdgeDocumentToken const& rhs) const noexcept {
     return lhs.equals(rhs);
   }
 };

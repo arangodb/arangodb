@@ -39,7 +39,7 @@ class Builder;
 namespace aql {
 class Query;
 struct QueryResult;
-}
+}  // namespace aql
 
 class CursorRepository {
  public:
@@ -60,7 +60,7 @@ class CursorRepository {
   /// the repository will take ownership of the cursor
   ////////////////////////////////////////////////////////////////////////////////
 
- private:   // currently only used from the create... methods below
+ private:  // currently only used from the create... methods below
   Cursor* addCursor(std::unique_ptr<Cursor> cursor);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -153,4 +153,3 @@ class CursorRepository {
 };
 
 }  // namespace arangodb
-

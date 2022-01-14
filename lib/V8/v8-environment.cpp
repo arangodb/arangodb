@@ -88,14 +88,18 @@ static void EnvGetter(v8::Local<v8::Name> property,
   // If result >= sizeof buffer the buffer was too small. That should never
   // happen. If result == 0 and result != ERROR_SUCCESS the variable was not
   // not found.
-  if ((result > 0 || GetLastError() == ERROR_SUCCESS) && result < sizeof(buffer)) {
+  if ((result > 0 || GetLastError() == ERROR_SUCCESS) &&
+      result < sizeof(buffer)) {
     uint16_t const* two_byte_buffer = reinterpret_cast<uint16_t const*>(buffer);
     TRI_V8_RETURN(TRI_V8_STRING_UTF16(isolate, two_byte_buffer, result));
   }
 #endif
   auto context = TRI_IGETC;
   // Not found.  Fetch from prototype.
-  TRI_V8_RETURN(args.Data().As<v8::Object>()->Get(context, property).FromMaybe(v8::Local<v8::Value>()));
+  TRI_V8_RETURN(args.Data()
+                    .As<v8::Object>()
+                    ->Get(context, property)
+                    .FromMaybe(v8::Local<v8::Value>()));
 }
 
 static void EnvSetter(v8::Local<v8::Name> property, v8::Local<v8::Value> value,
@@ -142,12 +146,14 @@ static void EnvQuery(v8::Local<v8::Name> property,
   WCHAR* key_ptr = reinterpret_cast<WCHAR*>(*key);
   SetLastError(ERROR_SUCCESS);
 
-  if (GetEnvironmentVariableW(key_ptr, nullptr, 0) > 0 || GetLastError() == ERROR_SUCCESS) {
+  if (GetEnvironmentVariableW(key_ptr, nullptr, 0) > 0 ||
+      GetLastError() == ERROR_SUCCESS) {
     rc = 0;
     if (key_ptr[0] == L'=') {
       // Environment variables that start with '=' are hidden and read-only.
       rc = static_cast<int32_t>(v8::ReadOnly) |
-           static_cast<int32_t>(v8::DontDelete) | static_cast<int32_t>(v8::DontEnum);
+           static_cast<int32_t>(v8::DontDelete) |
+           static_cast<int32_t>(v8::DontEnum);
     }
   }
 #endif
@@ -176,7 +182,8 @@ static void EnvDeleter(v8::Local<v8::Name> property,
   if (key_ptr[0] == L'=' || !SetEnvironmentVariableW(key_ptr, nullptr)) {
     // Deletion failed. Return true if the key wasn't there in the first place,
     // false if it is still there.
-    rc = GetEnvironmentVariableW(key_ptr, nullptr, 0) == 0 && GetLastError() != ERROR_SUCCESS;
+    rc = GetEnvironmentVariableW(key_ptr, nullptr, 0) == 0 &&
+         GetLastError() != ERROR_SUCCESS;
   }
 #endif
   if (rc) {
@@ -226,7 +233,8 @@ static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
     }
     uint16_t const* two_byte_buffer = reinterpret_cast<uint16_t const*>(p);
     size_t const two_byte_buffer_len = s - p;
-    auto value = TRI_V8_STRING_UTF16(isolate, two_byte_buffer, (int)two_byte_buffer_len);
+    auto value =
+        TRI_V8_STRING_UTF16(isolate, two_byte_buffer, (int)two_byte_buffer_len);
 
     if (canExpose(isolate, value)) {
       envarr->Set(context, i, value).FromMaybe(false);
@@ -256,11 +264,12 @@ void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   rt = ft->InstanceTemplate();
   // rt->SetInternalFieldCount(3);
 
-  rt->SetHandler(v8::NamedPropertyHandlerConfiguration(EnvGetter, EnvSetter, EnvQuery,
-                                                       EnvDeleter, EnvEnumerator,
-                                                       v8::Object::New(isolate)));
+  rt->SetHandler(v8::NamedPropertyHandlerConfiguration(
+      EnvGetter, EnvSetter, EnvQuery, EnvDeleter, EnvEnumerator,
+      v8::Object::New(isolate)));
 
   v8g->EnvTempl.Reset(isolate, rt);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "ENV"),
-                               ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()));
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "ENV"),
+      ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()));
 }

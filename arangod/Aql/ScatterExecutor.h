@@ -69,23 +69,24 @@ class ScatterExecutor {
   explicit ScatterExecutor(Infos const&);
   ~ScatterExecutor() = default;
 
-  auto distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
-                       std::unordered_map<std::string, ClientBlockData>& blockMap) const
-      -> void;
+  auto distributeBlock(
+      SharedAqlItemBlockPtr const& block, SkipResult skipped,
+      std::unordered_map<std::string, ClientBlockData>& blockMap) const -> void;
 };
 
 /**
  * @brief See ExecutionBlockImpl.h for documentation.
  */
-template <>
-class ExecutionBlockImpl<ScatterExecutor> : public BlocksWithClientsImpl<ScatterExecutor> {
+template<>
+class ExecutionBlockImpl<ScatterExecutor>
+    : public BlocksWithClientsImpl<ScatterExecutor> {
  public:
   ExecutionBlockImpl(ExecutionEngine* engine, ScatterNode const* node,
-                     RegisterInfos registerInfos, ScatterExecutor::Infos&& infos);
+                     RegisterInfos registerInfos,
+                     ScatterExecutor::Infos&& infos);
 
   ~ExecutionBlockImpl() override = default;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-

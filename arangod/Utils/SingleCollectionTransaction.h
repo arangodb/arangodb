@@ -39,14 +39,16 @@ class Context;
 class SingleCollectionTransaction final : public transaction::Methods {
  public:
   /// @brief create the transaction, using a data-source
-  SingleCollectionTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
-                              LogicalDataSource const& collection, AccessMode::Type accessType,
-                              transaction::Options const& options = transaction::Options());
+  SingleCollectionTransaction(
+      std::shared_ptr<transaction::Context> const& transactionContext,
+      LogicalDataSource const& collection, AccessMode::Type accessType,
+      transaction::Options const& options = transaction::Options());
 
   /// @brief create the transaction, using a collection name
-  SingleCollectionTransaction(std::shared_ptr<transaction::Context> const&,
-                              std::string const&, AccessMode::Type,
-                              transaction::Options const& options = transaction::Options());
+  SingleCollectionTransaction(
+      std::shared_ptr<transaction::Context> const&, std::string const&,
+      AccessMode::Type,
+      transaction::Options const& options = transaction::Options());
 
   /// @brief end the transaction
   ~SingleCollectionTransaction() = default;
@@ -88,4 +90,3 @@ class SingleCollectionTransaction final : public transaction::Methods {
 };
 
 }  // namespace arangodb
-

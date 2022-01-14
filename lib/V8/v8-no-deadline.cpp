@@ -22,21 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "v8-deadline.h"
 // arangod dummy implementation doing nothing
-void setExecutionDeadlineInMS(uint64_t timeout) {
-}
+void setExecutionDeadlineInMS(uint64_t timeout) {}
 
-bool isExecutionDeadlineReached(v8::Isolate* isolate) {
-  return false;
-}
+bool isExecutionDeadlineReached(v8::Isolate* isolate) { return false; }
 
 double correctTimeoutToExecutionDeadlineS(double timeoutSeconds) {
   return timeoutSeconds;
 }
 
-std::chrono::milliseconds correctTimeoutToExecutionDeadline(std::chrono::milliseconds timeout) {
+std::chrono::milliseconds correctTimeoutToExecutionDeadline(
+    std::chrono::milliseconds timeout) {
   return timeout;
 }
 
-void TRI_InitV8Deadline(v8::Isolate* isolate)
-{
-}
+void TRI_InitV8Deadline(v8::Isolate* isolate) {}

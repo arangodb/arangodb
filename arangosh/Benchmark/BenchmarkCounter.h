@@ -30,7 +30,7 @@
 namespace arangodb {
 namespace arangobench {
 
-template <class T>
+template<class T>
 class BenchmarkCounter {
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -149,7 +149,7 @@ class BenchmarkCounter {
     _incompleteFailures += value;
   }
 
-private:
+ private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief mutex protecting the counter
   //////////////////////////////////////////////////////////////////////////////
@@ -190,4 +190,3 @@ private:
 };
 }  // namespace arangobench
 }  // namespace arangodb
-

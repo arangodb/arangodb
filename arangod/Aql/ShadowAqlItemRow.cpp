@@ -30,7 +30,8 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-ShadowAqlItemRow::ShadowAqlItemRow(SharedAqlItemBlockPtr block, size_t baseIndex)
+ShadowAqlItemRow::ShadowAqlItemRow(SharedAqlItemBlockPtr block,
+                                   size_t baseIndex)
     : _block(std::move(block)), _baseIndex(baseIndex) {
   TRI_ASSERT(isInitialized());
   TRI_ASSERT(_baseIndex < _block->numRows());
@@ -43,12 +44,11 @@ RegisterCount ShadowAqlItemRow::getNumRegisters() const noexcept {
 
 bool ShadowAqlItemRow::isRelevant() const noexcept { return getDepth() == 0; }
 
-bool ShadowAqlItemRow::isInitialized() const {
-  return _block != nullptr;
-}
+bool ShadowAqlItemRow::isInitialized() const { return _block != nullptr; }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-bool ShadowAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other, size_t index) const {
+bool ShadowAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other,
+                                       size_t index) const {
   return _block == other && _baseIndex == index;
 }
 #endif
@@ -87,13 +87,15 @@ AqlItemBlock const& ShadowAqlItemRow::block() const noexcept {
   return *_block;
 }
 
-bool ShadowAqlItemRow::isSameBlockAndIndex(ShadowAqlItemRow const& other) const noexcept {
-    return this->_block == other._block && this->_baseIndex == other._baseIndex;
+bool ShadowAqlItemRow::isSameBlockAndIndex(
+    ShadowAqlItemRow const& other) const noexcept {
+  return this->_block == other._block && this->_baseIndex == other._baseIndex;
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-bool ShadowAqlItemRow::equates(ShadowAqlItemRow const& other,
-                               velocypack::Options const* options) const noexcept {
+bool ShadowAqlItemRow::equates(
+    ShadowAqlItemRow const& other,
+    velocypack::Options const* options) const noexcept {
   if (!isInitialized() || !other.isInitialized()) {
     return isInitialized() == other.isInitialized();
   }

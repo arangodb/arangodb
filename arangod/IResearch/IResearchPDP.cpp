@@ -44,17 +44,16 @@ irs::parametric_description readParametricDescription(
   auto const rawSize = args.second;
   const auto& data = args.first;
 
-  if (data.size() >= LZ4_MAX_INPUT_SIZE
-      || rawSize >= std::numeric_limits<int>::max()) {
+  if (data.size() >= LZ4_MAX_INPUT_SIZE ||
+      rawSize >= std::numeric_limits<int>::max()) {
     return {};
   }
 
   irs::bstring dst(rawSize, 0);
   const auto lz4_size = ::LZ4_decompress_safe(
-    reinterpret_cast<char const*>(data.begin()),
-    reinterpret_cast<char*>(&dst[0]),
-    static_cast<int>(data.size()),
-    static_cast<int>(rawSize));
+      reinterpret_cast<char const*>(data.begin()),
+      reinterpret_cast<char*>(&dst[0]), static_cast<int>(data.size()),
+      static_cast<int>(rawSize));
 
   if (lz4_size < 0 || static_cast<size_t>(lz4_size) != rawSize) {
     return {};
@@ -65,43 +64,41 @@ irs::parametric_description readParametricDescription(
 }
 
 irs::parametric_description const DESCRIPTIONS[] = {
-  // distance 0
-  irs::make_parametric_description(0, false),
-  irs::make_parametric_description(0, true),
+    // distance 0
+    irs::make_parametric_description(0, false),
+    irs::make_parametric_description(0, true),
 
-  // distance 1
-  irs::make_parametric_description(1, false),
-  irs::make_parametric_description(1, true),
+    // distance 1
+    irs::make_parametric_description(1, false),
+    irs::make_parametric_description(1, true),
 
-  // distance 2
-  irs::make_parametric_description(2, false),
-  irs::make_parametric_description(2, true),
+    // distance 2
+    irs::make_parametric_description(2, false),
+    irs::make_parametric_description(2, true),
 
-  // distance 3
-  readParametricDescription(
-    { { pdd30::PDD, pdd30::PDD_COMPRESSED_LEN }, pdd30::PDD_RAW_LEN }),
+    // distance 3
+    readParametricDescription(
+        {{pdd30::PDD, pdd30::PDD_COMPRESSED_LEN}, pdd30::PDD_RAW_LEN}),
 
-  readParametricDescription(
-    { { pdd31::PDD, pdd31::PDD_COMPRESSED_LEN }, pdd31::PDD_RAW_LEN }),
+    readParametricDescription(
+        {{pdd31::PDD, pdd31::PDD_COMPRESSED_LEN}, pdd31::PDD_RAW_LEN}),
 
-  // distance 4
-  readParametricDescription(
-    { { pdd40::PDD, pdd40::PDD_COMPRESSED_LEN }, pdd40::PDD_RAW_LEN }),
+    // distance 4
+    readParametricDescription(
+        {{pdd40::PDD, pdd40::PDD_COMPRESSED_LEN}, pdd40::PDD_RAW_LEN}),
 };
 
-size_t args2index(irs::byte_type distance,
-                  bool with_transpositions) noexcept {
-  return 2*size_t(distance) + size_t(with_transpositions);
+size_t args2index(irs::byte_type distance, bool with_transpositions) noexcept {
+  return 2 * size_t(distance) + size_t(with_transpositions);
 }
 
-}
+}  // namespace
 
 namespace arangodb {
 namespace iresearch {
 
 const irs::parametric_description& getParametricDescription(
-    irs::byte_type distance,
-    bool with_transpositions) {
+    irs::byte_type distance, bool with_transpositions) {
   const size_t idx = args2index(distance, with_transpositions);
 
   if (idx < IRESEARCH_COUNTOF(DESCRIPTIONS)) {
@@ -112,6 +109,5 @@ const irs::parametric_description& getParametricDescription(
   return INVALID;
 }
 
-} // iresearch
-} // arangodb
-
+}  // namespace iresearch
+}  // namespace arangodb

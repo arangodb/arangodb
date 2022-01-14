@@ -35,8 +35,8 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
 
-ModifierOperationType InsertModifierCompletion::accumulate(ModificationExecutorAccumulator& accu,
-                                                           InputAqlItemRow& row) {
+ModifierOperationType InsertModifierCompletion::accumulate(
+    ModificationExecutorAccumulator& accu, InputAqlItemRow& row) {
   RegisterId const inDocReg = _infos._input1RegisterId;
 
   // The document to be INSERTed
@@ -50,6 +50,7 @@ ModifierOperationType InsertModifierCompletion::accumulate(ModificationExecutorA
   }
 }
 
-futures::Future<OperationResult> InsertModifierCompletion::transact(transaction::Methods& trx, VPackSlice const& data) {
+futures::Future<OperationResult> InsertModifierCompletion::transact(
+    transaction::Methods& trx, VPackSlice const& data) {
   return trx.insertAsync(_infos._aqlCollection->name(), data, _infos._options);
 }

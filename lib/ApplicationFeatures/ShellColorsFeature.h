@@ -27,7 +27,8 @@
 
 namespace arangodb {
 
-class ShellColorsFeature final : public application_features::ApplicationFeature {
+class ShellColorsFeature final
+    : public application_features::ApplicationFeature {
  public:
   explicit ShellColorsFeature(application_features::ApplicationServer& server);
 
@@ -69,4 +70,3 @@ class ShellColorsFeature final : public application_features::ApplicationFeature
 };
 
 }  // namespace arangodb
-

@@ -55,28 +55,41 @@
 
 class FlushFeatureTest
     : public ::testing::Test,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::WARN>,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL>,
-      public arangodb::tests::LogSuppressor<arangodb::Logger::ENGINES, arangodb::LogLevel::FATAL> {
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+                                            arangodb::LogLevel::WARN>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER,
+                                            arangodb::LogLevel::FATAL>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::ENGINES,
+                                            arangodb::LogLevel::FATAL> {
  protected:
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
+  std::vector<
+      std::pair<arangodb::application_features::ApplicationFeature&, bool>>
+      features;
 
   FlushFeatureTest() : engine(server), server(nullptr, nullptr) {
-    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false); 
+    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(),
                           false);  // required for ClusterFeature::prepare()
-    features.emplace_back(server.addFeature<arangodb::ClusterFeature>(), false);  // required for V8DealerFeature::prepare()
-    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);  // required for MMFilesWalRecoverState constructor
+    features.emplace_back(server.addFeature<arangodb::ClusterFeature>(),
+                          false);  // required for V8DealerFeature::prepare()
+    features.emplace_back(
+        server.addFeature<arangodb::DatabaseFeature>(),
+        false);  // required for MMFilesWalRecoverState constructor
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector, false);
     selector.setEngineTesting(&engine);
-    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
-    features.emplace_back(server.addFeature<arangodb::V8DealerFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
+                          false);  // required for TRI_vocbase_t
+    features.emplace_back(
+        server.addFeature<arangodb::V8DealerFeature>(),
+        false);  // required for DatabaseFeature::createDatabase(...)
 
 #if USE_ENTERPRISE
-    features.emplace_back(server.addFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
+    features.emplace_back(
+        server.addFeature<arangodb::LdapFeature>(),
+        false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
     for (auto& f : features) {
@@ -91,7 +104,8 @@ class FlushFeatureTest
   }
 
   ~FlushFeatureTest() {
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(nullptr);
+    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
+        nullptr);
 
     // destroy application features
     for (auto& f : features) {

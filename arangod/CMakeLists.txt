@@ -551,28 +551,6 @@ set(LIB_ARANGO_REPLICATION_SOURCES
   Replication/utilities.cpp
   )
 
-set(LIB_ARANGO_REPLICATION2_SOURCES
-  Replication2/AgencyCollectionSpecification.cpp
-  Replication2/AgencyMethods.cpp
-  Replication2/ReplicatedLog/AgencyLogSpecification.cpp
-  Replication2/ReplicatedLog/Algorithms.cpp
-  Replication2/ReplicatedLog/InMemoryLog.cpp
-  Replication2/ReplicatedLog/LogCommon.cpp
-  Replication2/ReplicatedLog/LogCore.cpp
-  Replication2/ReplicatedLog/LogFollower.cpp
-  Replication2/ReplicatedLog/LogLeader.cpp
-  Replication2/ReplicatedLog/ILogParticipant.cpp
-  Replication2/ReplicatedLog/LogStatus.cpp
-  Replication2/ReplicatedLog/NetworkAttachedFollower.cpp
-  Replication2/ReplicatedLog/NetworkMessages.cpp
-  Replication2/ReplicatedLog/ReplicatedLog.cpp
-  Replication2/ReplicatedLog/ReplicatedLogFeature.cpp
-  Replication2/ReplicatedLog/ReplicatedLogMetrics.cpp
-  Replication2/ReplicatedLog/types.cpp
-  Replication2/Version.cpp
-  RestHandler/RestLogHandler.cpp
-)
-
 set (LIB_ARANGO_METRICS_SOURCES
   RestServer/Metrics.cpp
   RestServer/MetricsFeature.cpp
@@ -689,8 +667,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/SynchronizeShard.cpp
   Cluster/TakeoverShardLeadership.cpp
   Cluster/UpdateCollection.cpp
-  Cluster/UpdateReplicatedLogAction.cpp
-  FeaturePhases/AgencyFeaturePhase.cpp
+        FeaturePhases/AgencyFeaturePhase.cpp
   FeaturePhases/AqlFeaturePhase.cpp
   FeaturePhases/BasicFeaturePhaseServer.cpp
   FeaturePhases/ClusterFeaturePhase.cpp
@@ -899,10 +876,6 @@ add_library(arango_replication STATIC
   ${LIB_ARANGO_REPLICATION_SOURCES}
 )
 
-add_library(arango_replication2 STATIC
-  ${LIB_ARANGO_REPLICATION2_SOURCES}
-)
-
 add_library(arango_metrics STATIC
   ${LIB_ARANGO_METRICS_SOURCES}
 )
@@ -1007,7 +980,6 @@ target_link_libraries(arango_graph boost_boost)
 target_link_libraries(arango_indexes arango_geo)
 target_link_libraries(arango_indexes boost_boost)
 target_link_libraries(arango_indexes arango::validation)
-target_link_libraries(arango_indexes arango_replication2)
 target_link_libraries(arango_indexes immer)
 
 target_link_libraries(arango_iresearch arango_indexes)
@@ -1015,7 +987,6 @@ target_link_libraries(arango_iresearch arango_cluster_engine)
 
 target_link_libraries(arango_metrics arango)
 target_link_libraries(arango_metrics arango::validation)
-target_link_libraries(arango_metrics arango_replication2)
 target_link_libraries(arango_metrics immer)
 
 target_link_libraries(arango_network boost_boost)
@@ -1023,7 +994,6 @@ target_link_libraries(arango_network fuerte)
 target_link_libraries(arango_network llhttp)
 target_link_libraries(arango_network nghttp2)
 target_link_libraries(arango_network arango::validation)
-target_link_libraries(arango_network arango_replication2)
 target_link_libraries(arango_network immer)
 
 target_link_libraries(arango_pregel arango)
@@ -1035,10 +1005,6 @@ target_link_libraries(arango_pregel boost_system)
 target_link_libraries(arango_replication arango_storage_engine)
 target_link_libraries(arango_replication arango_utils)
 target_link_libraries(arango_replication arango_vocbase)
-
-target_link_libraries(arango_replication2 arango)
-target_link_libraries(arango_replication2 immer)
-target_link_libraries(arango_replication2 arango_network)
 
 target_link_libraries(arango_rocksdb ${ROCKSDB_LIBS})
 target_link_libraries(arango_rocksdb arango_cache)
@@ -1052,7 +1018,6 @@ target_link_libraries(arango_rocksdb arango::validation)
 target_link_libraries(arango_rocksdb arango_restart_action)
 
 target_link_libraries(arango_storage_engine_common arango::validation)
-target_link_libraries(arango_storage_engine_common arango_replication2)
 target_link_libraries(arango_storage_engine_common immer)
 
 if (USE_ENTERPRISE)
@@ -1066,12 +1031,10 @@ target_link_libraries(arango_storage_engine arango_cluster_engine)
 target_link_libraries(arango_storage_engine arango_cluster_methods)
 target_link_libraries(arango_storage_engine arango_rocksdb)
 target_link_libraries(arango_storage_engine arango::validation)
-target_link_libraries(arango_storage_engine arango_replication2)
 target_link_libraries(arango_storage_engine immer)
 
 target_link_libraries(arango_utils boost_boost)
 target_link_libraries(arango_utils arango::validation)
-target_link_libraries(arango_utils arango_replication2)
 target_link_libraries(arango_utils immer)
 
 target_link_libraries(arango_v8server arango_agency)
@@ -1085,7 +1048,6 @@ target_link_libraries(arango_vocbase arango_agency)
 target_link_libraries(arango_vocbase arango_cluster_methods)
 target_link_libraries(arango_vocbase arango_indexes)
 target_link_libraries(arango_vocbase arango_replication)
-target_link_libraries(arango_vocbase arango_replication2)
 target_link_libraries(arango_vocbase boost_system)
 target_link_libraries(arango_vocbase arango::validation)
 
@@ -1185,7 +1147,6 @@ foreach(TARGET
   arango_metrics
   arango_pregel
   arango_replication
-  arango_replication2
   arango_rocksdb
   arango_storage_engine
   arango_storage_engine_common
