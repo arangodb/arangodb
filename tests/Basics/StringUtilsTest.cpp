@@ -436,7 +436,7 @@ TEST_F(StringUtilsTest, concatT) {
   EXPECT_EQ("42", StringUtils::concatT(42));
   EXPECT_EQ("2.500000", StringUtils::concatT(2.5));
   EXPECT_EQ("hello, world", StringUtils::concatT("hello", ", ", "world"));
-  EXPECT_EQ("45", StringUtils::concatT(static_cast<int>('/')));
+  EXPECT_EQ("47", StringUtils::concatT(static_cast<int>('/')));
   EXPECT_EQ("cstr 42 stdstr view",
             StringUtils::concatT("cstr ", 42, " stdstr "s, "view"sv));
 }
