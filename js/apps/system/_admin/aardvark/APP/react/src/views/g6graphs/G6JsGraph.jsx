@@ -19,10 +19,13 @@ const G6JsGraph = () => {
     type: 'delegate',
   });
 
+  // Instantiate grid
+  const grid = new G6.Grid();
+
   useEffect(() => {
     if (!graph) {
         graph = new G6.Graph({
-          plugins: [minimap], // Configure minimap to the graph
+          plugins: [minimap, grid], // Configure minimap to the graph
           container: ReactDOM.findDOMNode(ref.current),
           width: 1200,
           height: 800,
