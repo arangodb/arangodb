@@ -145,8 +145,6 @@ class PathValidatorOptions {
   std::shared_ptr<aql::PruneExpressionEvaluator> _pruneEvaluator;
   std::shared_ptr<aql::PruneExpressionEvaluator> _postFilterEvaluator;
 
-  // TODO [GraphRefactor]: Post filter section - to be implemented
-
   aql::Variable const* _tmpVar;
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
 };

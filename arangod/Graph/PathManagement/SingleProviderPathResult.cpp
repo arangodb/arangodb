@@ -113,8 +113,8 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::
     builder.add(VPackValue(StaticStrings::GraphQueryVertices));
     VPackArrayBuilder vertices{&builder};
     // Write first part of the Path
-    for (size_t i = 0; i < _vertices.size(); i++) {
-      _provider.addVertexToBuilder(_vertices[i], builder);
+    for (auto const& v : _vertices) {
+      _provider.addVertexToBuilder(v, builder);
     }
   }
 }
@@ -127,8 +127,8 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::
     builder.add(VPackValue(StaticStrings::GraphQueryEdges));
     VPackArrayBuilder edges(&builder);
     // Write first part of the Path
-    for (size_t i = 0; i < _edges.size(); i++) {
-      _provider.addEdgeToBuilder(_edges[i], builder);
+    for (auto const& e : _edges) {
+      _provider.addEdgeToBuilder(e, builder);
     }
   }
 }
@@ -141,8 +141,8 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::
     builder.add(VPackValue(StaticStrings::GraphQueryWeights));
     VPackArrayBuilder weights(&builder);
     // Write first part of the Path
-    for (size_t i = 0; i < _weights.size(); i++) {
-      builder.add(VPackValue(_weights[i]));
+    for (auto const& weight : _weights) {
+      builder.add(VPackValue(weight));
     }
   }
 }
@@ -162,34 +162,18 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::toVelocyPack(
 template<class ProviderType, class PathStoreType, class Step>
 auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::
     lastVertexToVelocyPack(arangodb::velocypack::Builder& builder) -> void {
-  if (_vertices.empty()) {
-    populatePath();
-  }
-
-  // TODO [GraphRefactor]: Check for a more elegant solution here
-  if (_vertices.empty()) {
-    // We can never hand out invalid ids.
-    // For production just be sure to add something sensible.
-    builder.add(VPackSlice::nullSlice());
-  } else {
-    _provider.addVertexToBuilder(_vertices[_vertices.size() - 1], builder);
-  }
+  TRI_ASSERT(!_step.getVertex().getID().empty());
+  _provider.addVertexToBuilder(_step.getVertex(), builder);
 }
 
 template<class ProviderType, class PathStoreType, class Step>
 auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::
     lastEdgeToVelocyPack(arangodb::velocypack::Builder& builder) -> void {
-  if (_edges.empty() && !_step.isFirst()) {
-    populatePath();
-  }
-
-  // TODO [GraphRefactor]: Check for a more elegant solution here
-  if (_edges.empty()) {
-    // We can never hand out invalid ids.
-    // For production just be sure to add something sensible.
+  if (_step.isFirst()) {
     builder.add(VPackSlice::nullSlice());
   } else {
-    _provider.addEdgeToBuilder(_edges[_edges.size() - 1], builder);
+    TRI_ASSERT(_step.getEdge().isValid());
+    _provider.addEdgeToBuilder(_step.getEdge(), builder);
   }
 }
 

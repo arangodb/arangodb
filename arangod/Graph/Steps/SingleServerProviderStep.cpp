@@ -80,8 +80,6 @@ void SingleServerProviderStep::Edge::addToBuilder(
   provider.insertEdgeIntoResult(getID(), builder);
 }
 
-#ifndef USE_ENTERPRISE
-bool SingleServerProviderStep::isResponsible(transaction::Methods* trx) const {
+bool SingleServerProviderStep::isResponsible(transaction::Methods*) const {
   return true;
 };
-#endif

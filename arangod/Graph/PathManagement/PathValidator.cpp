@@ -108,9 +108,9 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   }
   if constexpr (vertexUniqueness == VertexUniquenessLevel::NONE &&
                 edgeUniqueness == EdgeUniquenessLevel::PATH) {
-    _uniqueEdges.clear();
+    if (step.getDepth() > 1) {
+      _uniqueEdges.clear();
 
-    if (!step.isFirst()) {
       bool edgeSuccess = _store.visitReversePath(
           step, [&](typename PathStore::Step const& step) -> bool {
             auto const& [unusedE, addedEdge] =

@@ -93,10 +93,13 @@ void PathValidatorOptions::setVertexExpression(
 
 aql::Expression* PathValidatorOptions::getVertexExpression(
     uint64_t depth) const {
-  auto const& it = _vertexExpressionOnDepth.find(depth);
-  if (it != _vertexExpressionOnDepth.end()) {
-    return it->second.get();
+  if (!_vertexExpressionOnDepth.empty()) {
+    auto const& it = _vertexExpressionOnDepth.find(depth);
+    if (it != _vertexExpressionOnDepth.end()) {
+      return it->second.get();
+    }
   }
+
   return _allVerticesExpression.get();
 }
 
