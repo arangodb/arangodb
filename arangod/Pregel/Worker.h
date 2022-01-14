@@ -122,9 +122,9 @@ class Worker : public IWorker {
   InCache<M>* _writeCache = nullptr;
   // intended for the next superstep phase
   InCache<M>* _writeCacheNextGSS = nullptr;
-  // preallocated incoming caches
+  // preallocated incoming caches, one per thread
   std::vector<InCache<M>*> _inCaches;
-  // preallocated outgoing caches
+  // preallocated outgoing caches, one per thread
   std::vector<OutCache<M>*> _outCaches;
 
   /// Stats about the CURRENT gss
@@ -150,12 +150,12 @@ class Worker : public IWorker {
   void _callConductor(std::string const& path, VPackBuilder const& message);
   void _callConductorWithResponse(std::string const& path,
                                   VPackBuilder const& message,
-                                  std::function<void(VPackSlice slice)> handle);
+                                  const std::function<void(VPackSlice slice)>& handle);
 
  public:
   Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm,
          VPackSlice params, PregelFeature& feature);
-  ~Worker();
+  ~Worker() override;
 
   // ====== called by rest handler =====
   void setupWorker() override;

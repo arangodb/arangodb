@@ -33,8 +33,7 @@
 #include "Pregel/Graph.h"
 
 struct TRI_vocbase_t;
-namespace arangodb {
-namespace pregel {
+namespace arangodb::pregel {
 
 template<typename V, typename E, typename M>
 class Worker;
@@ -163,5 +162,4 @@ class WorkerConfig {
   std::set<PregelShard> _localPregelShardIDs;
   std::unordered_set<PregelShard> _localPShardIDs_hash;
 };
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel

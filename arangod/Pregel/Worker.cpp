@@ -45,13 +45,15 @@ using namespace arangodb::pregel;
   LOG_TOPIC(logId, level, Logger::PREGEL) \
       << "[job " << _config.executionNumber() << "] "
 
-#define MY_READ_LOCKER(obj, lock)                                              \
-  ReadLocker<ReadWriteLock> obj(&(lock), arangodb::basics::LockerType::BLOCKING, \
-                                true, __FILE__, __LINE__)
+#define MY_READ_LOCKER(obj, lock)                                             \
+  ReadLocker<ReadWriteLock> obj(&(lock),                                      \
+                                arangodb::basics::LockerType::BLOCKING, true, \
+                                __FILE__, __LINE__)
 
-#define MY_WRITE_LOCKER(obj, lock) \
-  WriteLocker<ReadWriteLock> obj(  \
-      &(lock), arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
+#define MY_WRITE_LOCKER(obj, lock)                                             \
+  WriteLocker<ReadWriteLock> obj(&(lock),                                      \
+                                 arangodb::basics::LockerType::BLOCKING, true, \
+                                 __FILE__, __LINE__)
 
 template<typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
@@ -335,7 +337,7 @@ void Worker<V, E, M>::_startProcessing() {
   size_t total = _graphStore->localVertexCount();
   size_t numSegments = _graphStore->numberVertexSegments();
 
-  if (total > 100000) { // todo (Roman) magic number
+  if (total > 100000) {  // todo (Roman) magic number
     _runningThreads = std::min<size_t>(_config.parallelism(), numSegments);
   } else {
     _runningThreads = 1;
@@ -800,9 +802,9 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::_callConductorWithResponse(
     std::string const& path, VPackBuilder const& message,
-    std::function<void(VPackSlice slice)> handle) {
+    const std::function<void(VPackSlice slice)>& handle) {
   LOG_PREGEL("6d349", TRACE) << "Calling the conductor";
-  if (ServerState::instance()->isRunningInCluster() == false) {
+  if (!ServerState::instance()->isRunningInCluster()) {
     VPackBuilder response;
     _feature.handleConductorRequest(*_config.vocbase(), path, message.slice(),
                                     response);
