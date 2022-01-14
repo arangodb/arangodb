@@ -47,9 +47,7 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
       std::underlying_type<Index::Serialize>::type flags) const override;
 
   size_t memory() const override {
-    // FIXME return in memory size
-    // return stats().indexSize;
-    return 0;
+    return statsSynced().indexSize;
   }
 
   bool isHidden() const override { return false; }
