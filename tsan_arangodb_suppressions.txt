@@ -21,3 +21,14 @@ race:3rdParty/velocypack/src/asm-functions.cpp
 # a false positive race warning. I have created an according GitHub issue:
 # https://github.com/google/sanitizers/issues/1398
 race:VersionSet::SetLastSequence
+
+# TODO - this should be removed once BTS-685 is fixed
+race:AllowImplicitCollectionsSwitcher
+
+# TODO - these should be removed once BTS-735 is fixed
+deadlock:IResearchLink::remove
+deadlock:IResearchLink::insert
+
+# TODO - these should be removed once BTS-736 is fixed
+deadlock:IResearchView::init
+deadlock:IResearchView::snapshot
