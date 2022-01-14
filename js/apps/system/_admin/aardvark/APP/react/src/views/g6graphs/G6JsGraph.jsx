@@ -12,9 +12,17 @@ const G6JsGraph = () => {
   const ref = React.useRef(null);
   let graph = null;
 
+  // Instantiate the Minimap
+  const minimap = new G6.Minimap({
+    size: [100, 100],
+    className: 'minimap',
+    type: 'delegate',
+  });
+
   useEffect(() => {
     if (!graph) {
         graph = new G6.Graph({
+          plugins: [minimap], // Configure minimap to the graph
           container: ReactDOM.findDOMNode(ref.current),
           width: 1200,
           height: 800,
