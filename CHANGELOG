@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed a bug that hotbackup upload could miss files.
+
 * Added agency push-queue operation
 
 * Fixed issue #15476: FATAL {crash} occurs on a simple query.
