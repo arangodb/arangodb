@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,6 +47,7 @@
 #include "Replication2/AgencyMethods.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
@@ -1147,8 +1148,7 @@ void Supervision::run() {
                   LOG_TOPIC("675fc", TRACE, Logger::SUPERVISION)
                       << "Finished doChecks";
                 } catch (std::exception const& e) {
-                  LOG_TOPIC("e0869", ERR, Logger::SUPERVISION)
-                      << e.what() << " " << __FILE__ << " " << __LINE__;
+                  LOG_TOPIC("e0869", ERR, Logger::SUPERVISION) << e.what();
                 } catch (...) {
                   LOG_TOPIC("ac4c4", ERR, Logger::SUPERVISION)
                       << "Supervision::doChecks() generated an uncaught "
@@ -2391,7 +2391,7 @@ void Supervision::restoreBrokenAnalyzersRevision(
 
 void Supervision::resourceCreatorLost(
     std::shared_ptr<Node> const& resource,
-    std::function<void(const ResourceCreatorLostEvent&)> const& action) {
+    std::function<void(ResourceCreatorLostEvent const&)> const& action) {
   //  check if the coordinator exists and its reboot is the same as specified
   auto rebootID = resource->hasAsUInt(StaticStrings::AttrCoordinatorRebootId);
   auto coordinatorID = resource->hasAsString(StaticStrings::AttrCoordinator);
@@ -2418,7 +2418,7 @@ void Supervision::resourceCreatorLost(
 
 void Supervision::ifResourceCreatorLost(
     std::shared_ptr<Node> const& resource,
-    std::function<void(const ResourceCreatorLostEvent&)> const& action) {
+    std::function<void(ResourceCreatorLostEvent const&)> const& action) {
   // check if isBuilding is set and it is true
   auto isBuilding = resource->hasAsBool(StaticStrings::AttrIsBuilding);
   if (isBuilding && isBuilding.value()) {
@@ -2665,8 +2665,8 @@ void Supervision::checkReplicatedLogs() {
   auto envelope = arangodb::agency::envelope::into_builder(*builder);
   for (auto const& [dbName, db] : planNode->get().children()) {
     for (auto const& [idString, node] : db->children()) {
-      auto spec = readPlanSpecification(*node);
-      auto
+      auto const spec = readPlanSpecification(*node);
+      auto const
           current =
               std::invoke(
                   [&, &dbName = dbName, &idString = idString]() -> LogCurrent {
@@ -2685,7 +2685,26 @@ void Supervision::checkReplicatedLogs() {
                     return {};
                   });
 
-      auto checkResult = checkReplicatedLog(dbName, spec, current, info);
+      auto checkParticipantsResult =
+          checkReplicatedLogParticipants(dbName, spec, info);
+
+      auto const checkResult = checkReplicatedLog(dbName, spec, current, info);
+      TRI_ASSERT(  // holds(LogPlanTermSpecification) =>
+                   // !participantsConfig.participants.empty()
+          !std::holds_alternative<LogPlanTermSpecification>(checkResult) ||
+          !spec.participantsConfig.participants.empty());
+      envelope = std::visit(
+          overload{
+              [&, &dbName = dbName](
+                  replication2::ParticipantsConfig const& participantsConfig) {
+                return arangodb::replication2::agency::methods::
+                    updateParticipantsConfigTrx(std::move(envelope), dbName,
+                                                spec.id, participantsConfig,
+                                                spec.participantsConfig);
+              },
+              [&](std::monostate) { return std::move(envelope); },
+          },
+          std::move(checkParticipantsResult));
       envelope = std::visit(
           overload{
               [&, &dbName = dbName](LogPlanTermSpecification const& newSpec) {
@@ -3144,8 +3163,7 @@ void Supervision::getUniqueIds() {
       _jobId = _jobIdMax - n;
     } catch (std::exception const& e) {
       LOG_TOPIC("4da4b", ERR, Logger::SUPERVISION)
-          << "Failed to acquire job IDs from agency: " << e.what() << __FILE__
-          << " " << __LINE__;
+          << "Failed to acquire job IDs from agency: " << e.what();
     }
   }
 }

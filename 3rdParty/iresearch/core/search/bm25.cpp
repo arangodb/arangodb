@@ -330,22 +330,27 @@ struct score_ctx : public irs::score_ctx {
   float_t norm_const_; // 'k' factor
 }; // score_ctx
 
-template<typename Norm>
-struct norm_adapter;
-
-template<>
-struct norm_adapter<norm> : norm {
-  FORCE_INLINE float_t read() const {
-    return 1.f/norm::read();
+template<typename Reader, bool IsNorm2>
+struct NormAdapter {
+  explicit NormAdapter(Reader&& reader)
+    : reader{std::move(reader)} {
   }
-}; // norm_adapter<norm>
 
-template<>
-struct norm_adapter<norm2> : norm2 {
-  FORCE_INLINE float_t read() const {
-    return SQRT(norm2::read());
-  }
-}; // norm_adapter<norm2>
+  FORCE_INLINE float_t operator()() {
+    if constexpr (IsNorm2) {
+      return SQRT(reader());
+    }
+
+    return 1.f/reader();
+   }
+
+  Reader reader;
+};
+
+template<bool IsNorm2, typename Reader>
+auto MakeNormAdapter(Reader&& reader) {
+  return NormAdapter<Reader, IsNorm2>(std::move(reader));
+}
 
 template<typename Norm>
 struct norm_score_ctx final : public score_ctx {
@@ -358,15 +363,15 @@ struct norm_score_ctx final : public score_ctx {
       Norm&& norm,
       const filter_boost* fb = nullptr) noexcept
     : score_ctx{score_buf, k, boost, stats, freq, fb},
-      norm_{std::forward<Norm>(norm)} {
+      norm_{std::move(norm)} {
     // if there is no norms, assume that b==0
-    if (!norm_.empty()) {
+//    if (!norm_.empty()) {
       norm_const_ = stats.norm_const;
       norm_length_ = stats.norm_length;
-    }
+ //   }
   }
 
-  norm_adapter<Norm> norm_;
+  Norm norm_;
   float_t norm_length_{ 0.f }; // precomputed 'k*b/avgD' if norms present, '0' otherwise
 }; // norm_score_ctx
 
@@ -464,60 +469,62 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
         return { nullptr, nullptr };
       }
 
-      auto prepare_norm_scorer = [&](auto norm_factory) -> std::optional<score_function> {
-        using norm_type = std::invoke_result_t<decltype(norm_factory)>;
+      auto prepare_norm_scorer = [&](auto&& norm) -> score_function {
+        using norm_type = std::remove_reference_t<decltype(norm)>;
 
-        const auto it = field.meta().features.find(irs::type<norm_type>::id());
+        if (filter_boost) {
+          return score_function{
+            memory::make_unique<bm25::norm_score_ctx<norm_type>>(
+                score_buf, k_, boost, stats, freq,
+                std::move(norm), filter_boost),
+            [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+              auto& state = *static_cast<bm25::norm_score_ctx<norm_type>*>(ctx);
+              assert(state.filter_boost_);
 
-        if (it != field.meta().features.end()) {
-          norm_type norm = norm_factory();
-          if (norm.reset(segment, it->second, *doc)) {
-            if (filter_boost) {
-              return score_function{
-                memory::make_unique<bm25::norm_score_ctx<norm_type>>(score_buf, k_, boost, stats, freq, std::move(norm), filter_boost),
-                [](irs::score_ctx* ctx) noexcept -> const byte_type* {
-                  auto& state = *static_cast<bm25::norm_score_ctx<norm_type>*>(ctx);
-                  assert(state.filter_boost_);
+              const float_t tf = ::SQRT(state.freq_->value);
 
-                  const float_t tf = ::SQRT(state.freq_->value);
+              // FIXME(gnusi) optimize for norm2
+              // at least we can cache "state.norm_const_ + state.norm_length_ * state.norm_()"
+              irs::sort::score_cast<score_t>(state.score_buf)
+                  = state.filter_boost_->value * state.num_ * tf / (state.norm_const_ + state.norm_length_ * state.norm_() + tf);
 
-                  // FIXME optimize for norm2
-                  // at least we can cache "state.norm_const_ + state.norm_length_ * state.norm_.read()"
-                  irs::sort::score_cast<score_t>(state.score_buf)
-                    = state.filter_boost_->value * state.num_ * tf / (state.norm_const_ + state.norm_length_ * state.norm_.read() + tf);
-
-                  return state.score_buf;
-                }
-              };
-            } else {
-              return score_function{
-                memory::make_unique<bm25::norm_score_ctx<norm_type>>(score_buf, k_, boost, stats, freq, std::move(norm)),
-                [](irs::score_ctx* ctx) noexcept -> const byte_type* {
-                  auto& state = *static_cast<bm25::norm_score_ctx<norm_type>*>(ctx);
-
-                  const float_t tf = ::SQRT(state.freq_->value);
-
-                  // FIXME optimize for norm2
-                  // at least we can cache "state.norm_const_ + state.norm_length_ * state.norm_.read()"
-                  irs::sort::score_cast<score_t>(state.score_buf)
-                    = state.num_ * tf / (state.norm_const_ + state.norm_length_ * state.norm_.read() + tf);
-
-                  return state.score_buf;
-                }
-              };
+              return state.score_buf;
             }
-          }
-        }
+          };
+        } else {
+          return score_function{
+            memory::make_unique<bm25::norm_score_ctx<norm_type>>(
+                score_buf, k_, boost, stats, freq, std::move(norm)),
+            [](irs::score_ctx* ctx) noexcept -> const byte_type* {
+              auto& state = *static_cast<bm25::norm_score_ctx<norm_type>*>(ctx);
 
-        return std::nullopt;
+              const float_t tf = ::SQRT(state.freq_->value);
+
+              // FIXME(gnusi) optimize for norm2
+              // at least we can cache "state.norm_const_ + state.norm_length_ * state.norm_()"
+              irs::sort::score_cast<score_t>(state.score_buf)
+                  = state.num_ * tf / (state.norm_const_ + state.norm_length_ * state.norm_() + tf);
+
+              return state.score_buf;
+            }
+          };
+        }
       };
 
-      if (auto func = prepare_norm_scorer([](){ return irs::norm2(); }); func) {
-        return std::move(func).value();
+      const auto& features = field.meta().features;
+
+
+      if (auto it = features.find(irs::type<Norm2>::id()); it != features.end()) {
+        if (Norm2ReaderContext ctx; ctx.Reset(segment, it->second, *doc)) {
+          return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
+              return prepare_norm_scorer(MakeNormAdapter<true>(std::move(reader))); });
+        }
       }
 
-      if (auto func = prepare_norm_scorer([](){ return irs::norm(); }); func) {
-        return std::move(func).value();
+      if (auto it = features.find(irs::type<Norm>::id()); it != features.end()) {
+        if (NormReaderContext ctx; ctx.Reset(segment, it->second, *doc)) {
+          return prepare_norm_scorer(MakeNormAdapter<false>(Norm::MakeReader(std::move(ctx))));
+        }
       }
     }
 

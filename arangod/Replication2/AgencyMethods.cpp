@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,9 +36,13 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/TransactionBuilder.h"
 #include "Agency/AgencyPaths.h"
+#include "Basics/StringUtils.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "VocBase/vocbase.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
 class Result;
@@ -91,6 +96,24 @@ auto methods::updateTermSpecificationTrx(arangodb::agency::envelope envelope,
               return std::move(precs).isEqual(
                   path->currentTerm()->term()->str(), prevTerm->value);
             })
+      .end();
+}
+
+auto methods::updateParticipantsConfigTrx(
+    arangodb::agency::envelope envelope, DatabaseID const& database, LogId id,
+    ParticipantsConfig const& participantsConfig,
+    ParticipantsConfig const& prevConfig) -> arangodb::agency::envelope {
+  auto const logPath =
+      paths::plan()->replicatedLogs()->database(database)->log(to_string(id));
+
+  return envelope.write()
+      .emplace_object(logPath->participantsConfig()->str(),
+                      [&](VPackBuilder& builder) {
+                        participantsConfig.toVelocyPack(builder);
+                      })
+      .inc(paths::plan()->version()->str())
+      .precs()
+      .isNotEmpty(logPath->str())
       .end();
 }
 
@@ -197,4 +220,15 @@ auto methods::updateElectionResult(arangodb::agency::envelope envelope,
           [&](VPackBuilder& builder) { result.toVelocyPack(builder); })
       .inc(paths::current()->version()->str())
       .end();
+}
+
+auto methods::getCurrentSupervision(TRI_vocbase_t& vocbase, LogId id)
+    -> LogCurrentSupervision {
+  auto& agencyCache =
+      vocbase.server().getFeature<ClusterFeature>().agencyCache();
+  VPackBuilder builder;
+  agencyCache.get(builder, basics::StringUtils::concatT(
+                               "Current/ReplicatedLogs/", vocbase.name(), "/",
+                               id, "/supervision"));
+  return LogCurrentSupervision{from_velocypack, builder.slice()};
 }

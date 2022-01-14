@@ -70,7 +70,7 @@ find_path(ICU_INCLUDE_DIR
 )
 
 find_path(ICU_SRC_DIR_UCONV
-  ucnv.c
+  NAMES ucnv.cpp ucnv.c
   PATHS ${ICU_SEARCH_SRC_PATHS}
   PATH_SUFFIXES common
   NO_DEFAULT_PATH # make sure we don't accidentally pick up a different version
@@ -119,27 +119,11 @@ if (ICU_INCLUDE_DIR AND ICU_SRC_DIR_UCONV AND ICU_SRC_DIR_CONFIGURE)
     WORKING_DIRECTORY "${ICU_WORK_PATH}"
     VERBATIM
   )
-
-  # directory required to exist before using INTERFACE_INCLUDE_DIRECTORIES
-  file(MAKE_DIRECTORY "${ICU_INCLUDE_PATH}")
-
-  set(ICU_SHARED_LIBRARY_DT "$<TARGET_FILE:icudata-shared>")
-  set(ICU_STATIC_LIBRARY_DT "$<TARGET_FILE:icudata-static>")
-  set(ICU_SHARED_LIBRARY_IN "$<TARGET_FILE:icui18n-shared>")
-  set(ICU_STATIC_LIBRARY_IN "$<TARGET_FILE:icui18n-static>")
-  set(ICU_SHARED_LIBRARY_UC "$<TARGET_FILE:icuuc-shared>")
-  set(ICU_STATIC_LIBRARY_UC "$<TARGET_FILE:icuuc-static>")
-
-  list(APPEND ICU_SHARED_LIBS ${ICU_SHARED_LIBRARY_DT} ${ICU_SHARED_LIBRARY_IN} ${ICU_SHARED_LIBRARY_UC})
-
-  if (MSVC)
-    # ${ICU_STATIC_LIBRARY_DT} produces duplicate symbols if linked with MSVC
-    list(APPEND ICU_STATIC_LIBS ${ICU_STATIC_LIBRARY_IN} ${ICU_STATIC_LIBRARY_UC})
-  else()
-    list(APPEND ICU_STATIC_LIBS ${ICU_STATIC_LIBRARY_DT} ${ICU_STATIC_LIBRARY_IN} ${ICU_STATIC_LIBRARY_UC})
-  endif()
-
-  return()
+  # Uncomment this return statement to create an icu build target: icu-build
+  # Then run build icu-build
+  # Then comment out this statement
+  # return()
+  list(APPEND ICU_SEARCH_LIB_PATHS ${ICU_LIBRARY_PATH})
 endif()
 
 include(Utils)
@@ -274,6 +258,10 @@ else ()
 endif()
 
 include(FindPackageHandleStandardArgs)
+# If have error here you should install package with static and dynamic icu: libicu-dev for example
+# Or you can clone icu https://github.com/unicode-org/icu
+# And specify cmake variable ICU_ROOT=git src repo/icu4c
+# Then check line 122 this file
 find_package_handle_standard_args(ICU
   DEFAULT_MSG
   ICU_INCLUDE_DIR

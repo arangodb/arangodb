@@ -1608,11 +1608,13 @@ YY_DECL {
           }
           YY_BREAK
         case 68:
-          YY_RULE_SETUP { /* character escaped by backslash */ }
+          YY_RULE_SETUP { /* character escaped by backslash */
+          }
           YY_BREAK
         case 69:
           /* rule 69 can match eol */
-          YY_RULE_SETUP { /* newline character inside backtick */ }
+          YY_RULE_SETUP { /* newline character inside backtick */
+          }
           YY_BREAK
         case YY_STATE_EOF(BACKTICK): {
           auto parser = yyextra;
@@ -1622,7 +1624,8 @@ YY_DECL {
         }
           YY_BREAK
         case 70:
-          YY_RULE_SETUP { /* any character (except newline) inside backtick */ }
+          YY_RULE_SETUP { /* any character (except newline) inside backtick */
+          }
           YY_BREAK
         case 71:
           YY_RULE_SETUP {
@@ -1647,11 +1650,13 @@ YY_DECL {
           }
           YY_BREAK
         case 73:
-          YY_RULE_SETUP { /* character escaped by backslash */ }
+          YY_RULE_SETUP { /* character escaped by backslash */
+          }
           YY_BREAK
         case 74:
           /* rule 74 can match eol */
-          YY_RULE_SETUP { /* newline character inside forwardtick */ }
+          YY_RULE_SETUP { /* newline character inside forwardtick */
+          }
           YY_BREAK
         case YY_STATE_EOF(FORWARDTICK): {
           auto parser = yyextra;
@@ -1691,11 +1696,13 @@ YY_DECL {
           }
           YY_BREAK
         case 78:
-          YY_RULE_SETUP { /* character escaped by backslash */ }
+          YY_RULE_SETUP { /* character escaped by backslash */
+          }
           YY_BREAK
         case 79:
           /* rule 79 can match eol */
-          YY_RULE_SETUP { /* newline character inside quote */ }
+          YY_RULE_SETUP { /* newline character inside quote */
+          }
           YY_BREAK
         case YY_STATE_EOF(DOUBLE_QUOTE): {
           auto parser = yyextra;
@@ -1705,7 +1712,8 @@ YY_DECL {
         }
           YY_BREAK
         case 80:
-          YY_RULE_SETUP { /* any character (except newline) inside quote */ }
+          YY_RULE_SETUP { /* any character (except newline) inside quote */
+          }
           YY_BREAK
         case 81:
           YY_RULE_SETUP {
@@ -1729,11 +1737,13 @@ YY_DECL {
           }
           YY_BREAK
         case 83:
-          YY_RULE_SETUP { /* character escaped by backslash */ }
+          YY_RULE_SETUP { /* character escaped by backslash */
+          }
           YY_BREAK
         case 84:
           /* rule 84 can match eol */
-          YY_RULE_SETUP { /* newline character inside quote */ }
+          YY_RULE_SETUP { /* newline character inside quote */
+          }
           YY_BREAK
         case YY_STATE_EOF(SINGLE_QUOTE): {
           auto parser = yyextra;
@@ -1743,7 +1753,8 @@ YY_DECL {
         }
           YY_BREAK
         case 85:
-          YY_RULE_SETUP { /* any character (except newline) inside quote */ }
+          YY_RULE_SETUP { /* any character (except newline) inside quote */
+          }
           YY_BREAK
         /* ---------------------------------------------------------------------------
          * number literals
@@ -1926,7 +1937,8 @@ YY_DECL {
          * ---------------------------------------------------------------------------
          */
         case 92:
-          YY_RULE_SETUP { /* whitespace is ignored */ }
+          YY_RULE_SETUP { /* whitespace is ignored */
+          }
           YY_BREAK
         case 93:
           /* rule 93 can match eol */
@@ -1948,7 +1960,8 @@ YY_DECL {
           }
           YY_BREAK
         case 96:
-          YY_RULE_SETUP { /* everything else */ }
+          YY_RULE_SETUP { /* everything else */
+          }
           YY_BREAK
         case 97:
           YY_RULE_SETUP { BEGIN(COMMENT_MULTI); }

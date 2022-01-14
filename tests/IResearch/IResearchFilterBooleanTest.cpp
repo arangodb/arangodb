@@ -1437,8 +1437,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
       auto& root = expected.add<irs::Not>().filter<irs::And>();
       root.add<arangodb::iresearch::ByExpression>().init(
           *dummyPlan, *ast,
-          *filterNode->getMember(0)->getMember(0)  // d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')]
-                                                   // == '1'
+          *filterNode->getMember(0)->getMember(
+              0)  // d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')]
+                  // == '1'
       );
 
       ExpressionContextMock exprCtx;

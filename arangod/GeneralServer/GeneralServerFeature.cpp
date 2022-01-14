@@ -1,7 +1,7 @@
-/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -148,7 +148,7 @@ GeneralServerFeature::GeneralServerFeature(
       _returnQueueTimeHeader(true),
       _permanentRootRedirect(true),
       _redirectRootTo("/_admin/aardvark/index.html"),
-      _supportInfoApiPolicy("hardened"),
+      _supportInfoApiPolicy("admin"),
       _numIoThreads(0),
       _requestBodySizeHttp1(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_request_body_size_http1{})),
@@ -195,7 +195,7 @@ void GeneralServerFeature::collectOptions(
                   new DiscreteValuesParameter<StringParameter>(
                       &_supportInfoApiPolicy,
                       std::unordered_set<std::string>{"disabled", "jwt",
-                                                      "hardened", "public"}))
+                                                      "admin", "public"}))
       .setIntroducedIn(30900);
 
   options->addSection("http", "HTTP server features");

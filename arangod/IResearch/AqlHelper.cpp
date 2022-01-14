@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,18 +42,24 @@
 namespace {
 
 arangodb::aql::AstNodeType const CmpMap[]{
-    arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ,  // NODE_TYPE_OPERATOR_BINARY_EQ:
-                                                  // 3 == a <==> a == 3
-    arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE,  // NODE_TYPE_OPERATOR_BINARY_NE:
-                                                  // 3 != a <==> a != 3
-    arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT,  // NODE_TYPE_OPERATOR_BINARY_LT:
-                                                  // 3 < a  <==> a > 3
-    arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE,  // NODE_TYPE_OPERATOR_BINARY_LE:
-                                                  // 3 <= a <==> a >= 3
-    arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT,  // NODE_TYPE_OPERATOR_BINARY_GT:
-                                                  // 3 > a  <==> a < 3
-    arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE  // NODE_TYPE_OPERATOR_BINARY_GE:
-                                                 // 3 >= a <==> a <= 3
+    arangodb::aql::
+        NODE_TYPE_OPERATOR_BINARY_EQ,  // NODE_TYPE_OPERATOR_BINARY_EQ:
+                                       // 3 == a <==> a == 3
+    arangodb::aql::
+        NODE_TYPE_OPERATOR_BINARY_NE,  // NODE_TYPE_OPERATOR_BINARY_NE:
+                                       // 3 != a <==> a != 3
+    arangodb::aql::
+        NODE_TYPE_OPERATOR_BINARY_GT,  // NODE_TYPE_OPERATOR_BINARY_LT:
+                                       // 3 < a  <==> a > 3
+    arangodb::aql::
+        NODE_TYPE_OPERATOR_BINARY_GE,  // NODE_TYPE_OPERATOR_BINARY_LE:
+                                       // 3 <= a <==> a >= 3
+    arangodb::aql::
+        NODE_TYPE_OPERATOR_BINARY_LT,  // NODE_TYPE_OPERATOR_BINARY_GT:
+                                       // 3 > a  <==> a < 3
+    arangodb::aql::
+        NODE_TYPE_OPERATOR_BINARY_LE  // NODE_TYPE_OPERATOR_BINARY_GE:
+                                      // 3 >= a <==> a <= 3
 };
 
 }

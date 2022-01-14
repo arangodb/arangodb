@@ -167,8 +167,9 @@ TEST(LogStatusTest, leader_status) {
   leaderStatus.local = statistics;
   leaderStatus.term = LogTerm{2};
   leaderStatus.largestCommonIndex = LogIndex{1};
-  leaderStatus.activeParticipantConfig.generation = 14;
-  leaderStatus.committedParticipantConfig.generation = 18;
+  leaderStatus.activeParticipantsConfig.generation = 14;
+  leaderStatus.committedParticipantsConfig = ParticipantsConfig{};
+  leaderStatus.committedParticipantsConfig->generation = 18;
   std::unordered_map<ParticipantId, FollowerStatistics> follower(
       {{"PRMR-45c56239-6a83-4ab0-961e-9adea5078286",
         FollowerStatistics::fromVelocyPack(velocypack::Slice(R"({
@@ -250,4 +251,58 @@ TEST(LogStatusTest, follower_status) {
   EXPECT_TRUE(VelocyPackHelper::equal(followerSlice, builderSlice, true))
       << "expected " << followerSlice.toJson() << " found "
       << builderSlice.toJson();
+}
+
+TEST(LogStatusTest, global_status) {
+  auto election = agency::LogCurrentSupervisionElection{};
+  election.term = LogTerm{1};
+  election.participantsRequired = 2;
+  election.participantsAvailable = 0;
+
+  auto supervision = agency::LogCurrentSupervision{};
+  supervision.election = std::move(election);
+
+  auto participants = std::unordered_map<ParticipantId, LogStatus>{
+      {"LeaderId", LogStatus{UnconfiguredStatus{}}}};
+  auto status = GlobalStatus{
+      supervision, {{"LeaderId", LogStatus{UnconfiguredStatus{}}}}, "LeaderId"};
+
+  VPackBuilder builder;
+  status.toVelocyPack(builder);
+  auto slice = builder.slice();
+
+  auto jsonBuffer = R"({
+    "supervision": {
+      "election": {
+        "term": 1,
+        "participantsRequired": 2,
+        "participantsAvailable": 0,
+        "details": {}
+      }
+    },
+    "participants": {
+      "LeaderId": {
+        "role": "unconfigured"
+      }
+    },
+    "leaderId": "LeaderId"
+  })"_vpack;
+  auto statusSlice = velocypack::Slice(jsonBuffer->data());
+  EXPECT_TRUE(VelocyPackHelper::equal(slice, statusSlice, true))
+      << "expected " << slice.toJson() << " found " << statusSlice.toJson();
+
+  builder.clear();
+  status.participants.clear();
+  status.leaderId = std::nullopt;
+  status.toVelocyPack(builder);
+  status = GlobalStatus::fromVelocyPack(builder.slice());
+  EXPECT_EQ(status.participants.size(), 0);
+  EXPECT_EQ(status.leaderId, std::nullopt);
+
+  builder.clear();
+  status = GlobalStatus::fromVelocyPack(statusSlice);
+  EXPECT_EQ(status.leaderId, "LeaderId");
+  EXPECT_EQ(status.participants.size(), 1);
+  EXPECT_NE(status.participants.find(*status.leaderId),
+            status.participants.end());
 }

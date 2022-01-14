@@ -163,9 +163,9 @@ TEST_P(IResearchQueryComplexBooleanTest, test) {
   // (prefix || phrase || exists || !field)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[0].slice(),  insertedDocs[1].slice(),
-        insertedDocs[2].slice(),  insertedDocs[4].slice(),
-        insertedDocs[5].slice(),  insertedDocs[10].slice(),
+        insertedDocs[0].slice(), insertedDocs[1].slice(),
+        insertedDocs[2].slice(), insertedDocs[4].slice(),
+        insertedDocs[5].slice(), insertedDocs[10].slice(),
         insertedDocs[11].slice(), insertedDocs[12].slice(),
         insertedDocs[14].slice(), insertedDocs[15].slice(),
         insertedDocs[16].slice(), insertedDocs[17].slice(),
@@ -316,8 +316,8 @@ TEST_P(IResearchQueryComplexBooleanTest, test) {
   // (field || exists) && (starts_with || phrase || range)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[3].slice(),  insertedDocs[4].slice(),
-        insertedDocs[5].slice(),  insertedDocs[10].slice(),
+        insertedDocs[3].slice(), insertedDocs[4].slice(),
+        insertedDocs[5].slice(), insertedDocs[10].slice(),
         insertedDocs[11].slice(), insertedDocs[12].slice(),
         insertedDocs[14].slice(), insertedDocs[15].slice(),
         insertedDocs[16].slice(), insertedDocs[17].slice(),

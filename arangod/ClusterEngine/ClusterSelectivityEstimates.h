@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,7 +57,7 @@ class ClusterSelectivityEstimates {
   // whether or not a thread is currently updating the estimates
   std::atomic<bool> _updating;
 
-  static constexpr double defaultTtl = 90.0;
+  static constexpr double defaultTtl = 180.0;
   static constexpr double systemCollectionTtl = 900.0;
 };
 

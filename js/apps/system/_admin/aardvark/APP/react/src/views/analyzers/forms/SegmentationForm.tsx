@@ -1,10 +1,11 @@
-import React, { ChangeEvent } from "react";
-import { FormProps, SegmentationState } from "../constants";
+import React, { ChangeEvent, Dispatch } from "react";
+import { CaseProperty, SegmentationState } from "../constants";
+import { DispatchArgs, FormProps } from '../../../utils/constants';
 import CaseInput from "./inputs/CaseInput";
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import Select from "../../../components/pure-css/form/Select";
 
-const SegmentationForm = ({ formState, dispatch, disabled }: FormProps) => {
+const SegmentationForm = ({ formState, dispatch, disabled }: FormProps<SegmentationState>) => {
   const updateBreak = (event: ChangeEvent<HTMLSelectElement>) => {
     dispatch({
       type: 'setField',
@@ -15,11 +16,10 @@ const SegmentationForm = ({ formState, dispatch, disabled }: FormProps) => {
     });
   };
 
-  const breakProperty = (formState as SegmentationState).properties.break;
-
   return <Grid>
     <Cell size={'1-8'}>
-      <Select label={'Break'} value={breakProperty || 'alpha'} onChange={updateBreak} disabled={disabled}>
+      <Select label={'Break'} value={formState.properties.break || 'alpha'} onChange={updateBreak}
+              disabled={disabled}>
         <option value={'all'}>All</option>
         <option value={'alpha'}>Alpha</option>
         <option value={'graphic'}>Graphic</option>
@@ -27,7 +27,8 @@ const SegmentationForm = ({ formState, dispatch, disabled }: FormProps) => {
     </Cell>
 
     <Cell size={'1-8'}>
-      <CaseInput formState={formState} dispatch={dispatch} disabled={disabled} defaultValue={'lower'}/>
+      <CaseInput formState={formState} dispatch={dispatch as Dispatch<DispatchArgs<CaseProperty>>}
+                 disabled={disabled} defaultValue={'lower'}/>
     </Cell>
   </Grid>;
 };

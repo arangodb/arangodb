@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -94,9 +94,9 @@ template<typename D, typename V>
 struct validate {
   using plan = validate<D, V>;  // forwarding_plan<D>;
   using constructed_type = typename D::constructed_type;
-  using factory =
-      utilities::identity_factory<constructed_type>;  // validating_factory<typename
-                                                      // D::factory, V>;
+  using factory = utilities::identity_factory<
+      constructed_type>;  // validating_factory<typename
+                          // D::factory, V>;
 };
 
 }  // namespace validator

@@ -606,7 +606,7 @@ void write_field_features_legacy(
     write_feature(feature.first);
   }
 
-  const auto norm = features.find(irs::type<irs::norm>::id());
+  const auto norm = features.find(irs::type<irs::Norm>::id());
   write_zvlong(out, norm == features.end() ? field_limits::invalid() : norm->second);
 }
 
@@ -643,7 +643,7 @@ void read_field_features_legacy(
   const field_id norm = static_cast<field_id>(read_zvlong(in));
 
   if (field_limits::valid(norm)) {
-    const auto it = features.find(irs::type<irs::norm>::id());
+    const auto it = features.find(irs::type<irs::Norm>::id());
     if (IRS_LIKELY(it != features.end())) {
       it->second = norm;
     } else {
@@ -3593,8 +3593,7 @@ irs::field_iterator::ptr field_reader::iterator() const {
       using reader_type = typename std::remove_reference_t<decltype(fields)>::value_type;
 
       using iterator_t = iterator_adaptor<
-        string_ref, reader_type,
-        irs::field_iterator, less>;
+          string_ref, reader_type, decltype(fields.data()), irs::field_iterator, less>;
 
       return memory::make_managed<iterator_t>(
           fields.data(), fields.data() + fields.size());

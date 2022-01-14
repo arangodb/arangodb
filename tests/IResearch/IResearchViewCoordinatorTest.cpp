@@ -137,7 +137,7 @@ TEST_F(IResearchViewCoordinatorTest, test_rename) {
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(1 == view->id().id());
   EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
+  EXPECT_TRUE(arangodb::LogicalDataSource::Category::kView == view->category());
   EXPECT_TRUE(&vocbase == &view->vocbase());
 
   auto const res = view->rename("otherName");
@@ -200,7 +200,7 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(1 == view->id().id());
   EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
+  EXPECT_TRUE(arangodb::LogicalDataSource::Category::kView == view->category());
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   std::shared_ptr<arangodb::Index> link;
@@ -250,7 +250,8 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     EXPECT_TRUE((false == view->deleted()));
     EXPECT_TRUE((1 == view->id().id()));
     EXPECT_TRUE((arangodb::iresearch::DATA_SOURCE_TYPE == view->type()));
-    EXPECT_TRUE((arangodb::LogicalView::category() == view->category()));
+    EXPECT_TRUE(
+        (arangodb::LogicalDataSource::Category::kView == view->category()));
     EXPECT_TRUE((&vocbase == &view->vocbase()));
 
     // visit default view
@@ -569,7 +570,8 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
     EXPECT_TRUE(false == view->deleted());
     EXPECT_TRUE(viewId == std::to_string(view->id().id()));
     EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-    EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
+    EXPECT_TRUE(arangodb::LogicalDataSource::Category::kView ==
+                view->category());
     EXPECT_TRUE(vocbase == &view->vocbase());
 
     // create duplicate view
@@ -616,7 +618,8 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
     EXPECT_TRUE(false == view->deleted());
     EXPECT_TRUE(42 == view->id().id());
     EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-    EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
+    EXPECT_TRUE(arangodb::LogicalDataSource::Category::kView ==
+                view->category());
     EXPECT_TRUE(vocbase == &view->vocbase());
 
     // create duplicate view
@@ -911,7 +914,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
     EXPECT_TRUE(false == view->deleted());
     EXPECT_TRUE(viewId == std::to_string(view->id().id()));
     EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-    EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
+    EXPECT_TRUE(arangodb::LogicalDataSource::Category::kView ==
+                view->category());
     EXPECT_TRUE(vocbase == &view->vocbase());
 
     // check default properties
@@ -951,7 +955,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
       EXPECT_TRUE(viewId == std::to_string(fullyUpdatedView->id().id()));
       EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE ==
                   fullyUpdatedView->type());
-      EXPECT_TRUE(arangodb::LogicalView::category() ==
+      EXPECT_TRUE(arangodb::LogicalDataSource::Category::kView ==
                   fullyUpdatedView->category());
       EXPECT_TRUE(vocbase == &fullyUpdatedView->vocbase());
 
@@ -1010,7 +1014,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
       EXPECT_TRUE(viewId == std::to_string(partiallyUpdatedView->id().id()));
       EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE ==
                   partiallyUpdatedView->type());
-      EXPECT_TRUE(arangodb::LogicalView::category() ==
+      EXPECT_TRUE(arangodb::LogicalDataSource::Category::kView ==
                   partiallyUpdatedView->category());
       EXPECT_TRUE(vocbase == &partiallyUpdatedView->vocbase());
 
@@ -2825,7 +2829,7 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
   EXPECT_FALSE(view->deleted());
   EXPECT_EQ(viewId, std::to_string(view->id().id()));
   EXPECT_EQ(arangodb::iresearch::DATA_SOURCE_TYPE, view->type());
-  EXPECT_EQ(arangodb::LogicalView::category(), view->category());
+  EXPECT_EQ(arangodb::LogicalDataSource::Category::kView, view->category());
   EXPECT_EQ(vocbase, &view->vocbase());
 
   // check immutable properties after creation
@@ -2929,7 +2933,8 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
     EXPECT_FALSE(fullyUpdatedView->deleted());
     EXPECT_EQ(viewId, std::to_string(fullyUpdatedView->id().id()));
     EXPECT_EQ(arangodb::iresearch::DATA_SOURCE_TYPE, fullyUpdatedView->type());
-    EXPECT_EQ(arangodb::LogicalView::category(), fullyUpdatedView->category());
+    EXPECT_EQ(arangodb::LogicalDataSource::Category::kView,
+              fullyUpdatedView->category());
     EXPECT_EQ(vocbase, &fullyUpdatedView->vocbase());
 
     // check immutable properties after update
@@ -3114,7 +3119,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id().id());
   EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
+  EXPECT_TRUE(arangodb::LogicalDataSource::Category::kView == view->category());
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   // visit collections
@@ -3426,7 +3431,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id().id());
   EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
+  EXPECT_TRUE(arangodb::LogicalDataSource::Category::kView == view->category());
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   // visit collections
@@ -3804,7 +3809,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id().id());
   EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
+  EXPECT_TRUE(arangodb::LogicalDataSource::Category::kView == view->category());
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   // visit collections
@@ -4036,7 +4041,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id().id());
   EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
+  EXPECT_TRUE(arangodb::LogicalDataSource::Category::kView == view->category());
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   // visit collections
@@ -4561,7 +4566,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id().id());
   EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
+  EXPECT_TRUE(arangodb::LogicalDataSource::Category::kView == view->category());
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   // visit collections
@@ -4813,7 +4818,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id().id());
   EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
+  EXPECT_TRUE(arangodb::LogicalDataSource::Category::kView == view->category());
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   // visit collections
@@ -4969,7 +4974,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id().id());
   EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
+  EXPECT_TRUE(arangodb::LogicalDataSource::Category::kView == view->category());
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   // visit collections
@@ -5269,7 +5274,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id().id());
   EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
+  EXPECT_TRUE(arangodb::LogicalDataSource::Category::kView == view->category());
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   // visit collections
@@ -5600,7 +5605,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(42 == view->id().id());
   EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
+  EXPECT_TRUE(arangodb::LogicalDataSource::Category::kView == view->category());
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   // visit collections
@@ -5748,7 +5753,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     EXPECT_TRUE(false == view->deleted());
     EXPECT_TRUE(42 == view->id().id());
     EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-    EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
+    EXPECT_TRUE(arangodb::LogicalDataSource::Category::kView ==
+                view->category());
     EXPECT_TRUE(vocbase == &view->vocbase());
 
     // visit collections
@@ -5906,7 +5912,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     EXPECT_TRUE(false == view->deleted());
     EXPECT_TRUE(42 == view->id().id());
     EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-    EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
+    EXPECT_TRUE(arangodb::LogicalDataSource::Category::kView ==
+                view->category());
     EXPECT_TRUE(vocbase == &view->vocbase());
 
     // visit collections
@@ -7776,7 +7783,8 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     EXPECT_TRUE(false == view->deleted());
     EXPECT_TRUE(viewId == std::to_string(view->id().id()));
     EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-    EXPECT_TRUE(arangodb::LogicalView::category() == view->category());
+    EXPECT_TRUE(arangodb::LogicalDataSource::Category::kView ==
+                view->category());
     EXPECT_TRUE(vocbase == &view->vocbase());
 
     // dummy query

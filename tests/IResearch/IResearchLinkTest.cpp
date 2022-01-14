@@ -2406,13 +2406,11 @@ TEST_F(IResearchLinkMetricsTest, TimeCommit) {
     timeMs = insert(1, 10000, 0);
     auto [commitTime1, cleanupTime1, consolidationTime1] = l->avgTime();
     EXPECT_LT(0, commitTime1);
-    EXPECT_EQ(0, cleanupTime1);
-    EXPECT_LE(commitTime1, timeMs);
+    EXPECT_LE(commitTime1 + cleanupTime1, timeMs);
     timeMs += insert(10000, 10100, 1);
     auto [commitTime2, cleanupTime2, consolidationTime2] = l->avgTime();
     EXPECT_LT(0, commitTime2);
-    EXPECT_EQ(0, cleanupTime1);
-    EXPECT_LE(commitTime2, timeMs / 2.0);
+    EXPECT_LE(commitTime2 + cleanupTime2, timeMs / 2.0);
   }
   {
     auto [numFiles0, indexSize0] = numFiles();

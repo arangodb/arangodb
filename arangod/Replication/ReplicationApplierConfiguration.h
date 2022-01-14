@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,7 +70,7 @@ class ReplicationApplierConfiguration {
   bool _includeFoxxQueues;   /// sync the _jobs and _queues collection
   bool _requireFromPresent;  /// while tailing WAL: leader must have the
                              /// client's requested tick
-  bool _incremental;  /// use incremental sync if we got local data
+  bool _incremental;         /// use incremental sync if we got local data
   bool _verbose;
   RestrictType _restrictType;
   std::set<std::string> _restrictCollections;

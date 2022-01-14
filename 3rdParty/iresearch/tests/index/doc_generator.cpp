@@ -776,7 +776,7 @@ void normalized_string_json_field_factory(
         name,
         data.str,
         irs::IndexFeatures::NONE,
-        std::vector<irs::type_info::type_id>{ irs::type<irs::norm>::id() }));;
+        std::vector<irs::type_info::type_id>{ irs::type<irs::Norm>::id() }));;
   } else {
     generic_json_field_factory(doc, name, data);
   }
