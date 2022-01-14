@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -277,15 +277,12 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
             options->setParallelism(Ast::validatedParallelism(value));
           }
         } else if (name == StaticStrings::GraphRefactorFlag &&
-                   value->isTrue()) {
+                   value->isBoolValue()) {
           options->setRefactor(value);
         } else {
           ExecutionPlan::invalidOptionAttribute(
               ast->query(), "unknown", "TRAVERSAL", name.data(), name.size());
         }
-
-        // TODO [GraphRefactor]: Remove me!
-        options->setRefactor(true);
       }
     }
   }

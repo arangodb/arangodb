@@ -67,7 +67,7 @@ SmallVector<AqlValue> createArgVec(const VPackSlice slice) {
 }
 
 void expectEqSlices(const VPackSlice actualSlice,
-                    const VPackSlice expectedSlice) {
+                    const VPackSlice expectedSlice, char const* args) {
   ASSERT_TRUE((actualSlice.isNumber() && expectedSlice.isNumber()) ||
               (actualSlice.isArray() && expectedSlice.isArray()));
 
@@ -76,16 +76,16 @@ void expectEqSlices(const VPackSlice actualSlice,
     VPackValueLength expectedSize = expectedSlice.length();
     ASSERT_EQ(actualSize, expectedSize);
 
-    double lhs, rhs;
     for (VPackValueLength i = 0; i < actualSize; ++i) {
-      lhs = actualSlice.at(i).getNumber<decltype(lhs)>();
-      rhs = expectedSlice.at(i).getNumber<decltype(rhs)>();
-      ASSERT_DOUBLE_EQ(lhs, rhs);
+      double actual = actualSlice.at(i).getNumber<double>();
+      double expected = expectedSlice.at(i).getNumber<double>();
+      EXPECT_DOUBLE_EQ(expected, actual)
+          << "index: " << i << "; args: " << args;
     }
   } else {
-    double lhs = actualSlice.getNumber<decltype(lhs)>();
-    double rhs = expectedSlice.getNumber<decltype(rhs)>();
-    ASSERT_DOUBLE_EQ(lhs, rhs);
+    double actual = actualSlice.getNumber<double>();
+    double expected = expectedSlice.getNumber<double>();
+    EXPECT_DOUBLE_EQ(expected, actual) << "args: " << args;
   }
 
   return;
@@ -135,7 +135,7 @@ void assertDecayFunction(char const* expected, char const* args,
   auto actual_value = evaluateDecayFunction(params, node);
 
   // check equality
-  expectEqSlices(actual_value.slice(), expectedSlice);
+  expectEqSlices(actual_value.slice(), expectedSlice, args);
 
   // destroy AqlValues
   for (auto& p : params) {
@@ -173,6 +173,26 @@ TEST(GaussDecayFunctionTest, test) {
   assertDecayFunction("1", "[41, 40, 5, 5, 0.7]", node);
   assertDecayFunction("1.0", "[40, 40, 5, 5, 0.5]", node);
   assertDecayFunction("1.0", "[49.987, 49.987, 0.001, 0.001, 0.2]", node);
+
+  // expecting <decay>
+  assertDecayFunction("0.7", "[50, 40, 5, 5, 0.7]", node);
+  assertDecayFunction("0.7", "[50, 40, 6, 4, 0.7]", node);
+  assertDecayFunction("0.7", "[50, 40, 4, 6, 0.7]", node);
+  assertDecayFunction("0.7", "[50, 40, 7, 3, 0.7]", node);
+  assertDecayFunction("0.7", "[50, 40, 3, 7, 0.7]", node);
+  assertDecayFunction("0.7", "[46, 40, 5, 1, 0.7]", node);
+  assertDecayFunction("0.7", "[46, 40, 1, 5, 0.7]", node);
+  assertDecayFunction("0.7", "[34, 40, 5, 1, 0.7]", node);
+  assertDecayFunction("0.7", "[34, 40, 1, 5, 0.7]", node);
+  assertDecayFunction("0.5", "[10, 0, 5, 5, 0.5]", node);
+  assertDecayFunction("0.5", "[-10, 0, 5, 5, 0.5]", node);
+  assertDecayFunction("0.4", "[-5, 0, 4, 1, 0.4]", node);
+  assertDecayFunction("0.4", "[5, 0, 1, 4, 0.4]", node);
+  assertDecayFunction("0.4", "[-5, 0, 4, 1, 0.4]", node);
+  assertDecayFunction("0.4", "[5, 0, 1, 4, 0.4]", node);
+  assertDecayFunction("0.2", "[2.5, 2.0, 0.25, 0.25, 0.2]", node);
+  assertDecayFunction("0.2", "[2.5, 2.0, 0.4, 0.1, 0.2]", node);
+  assertDecayFunction("0.20000000000000023", "[2.5, 2.0, 0.1, 0.4, 0.2]", node);
 
   // test range input
   assertDecayFunction(
@@ -224,6 +244,26 @@ TEST(ExpDecayFunctionTest, test) {
   assertDecayFunction("1.0", "[40, 40, 5, 5, 0.5]", node);
   assertDecayFunction("1.0", "[49.987, 49.987, 0.001, 0.001, 0.2]", node);
 
+  // expecting <decay>
+  assertDecayFunction("0.7", "[50, 40, 5, 5, 0.7]", node);
+  assertDecayFunction("0.7", "[50, 40, 6, 4, 0.7]", node);
+  assertDecayFunction("0.7", "[50, 40, 4, 6, 0.7]", node);
+  assertDecayFunction("0.7", "[50, 40, 7, 3, 0.7]", node);
+  assertDecayFunction("0.7", "[50, 40, 3, 7, 0.7]", node);
+  assertDecayFunction("0.7", "[46, 40, 5, 1, 0.7]", node);
+  assertDecayFunction("0.7", "[46, 40, 1, 5, 0.7]", node);
+  assertDecayFunction("0.7", "[34, 40, 5, 1, 0.7]", node);
+  assertDecayFunction("0.7", "[34, 40, 1, 5, 0.7]", node);
+  assertDecayFunction("0.5", "[10, 0, 5, 5, 0.5]", node);
+  assertDecayFunction("0.5", "[-10, 0, 5, 5, 0.5]", node);
+  assertDecayFunction("0.4", "[-5, 0, 4, 1, 0.4]", node);
+  assertDecayFunction("0.4", "[5, 0, 1, 4, 0.4]", node);
+  assertDecayFunction("0.4", "[-5, 0, 4, 1, 0.4]", node);
+  assertDecayFunction("0.4", "[5, 0, 1, 4, 0.4]", node);
+  assertDecayFunction("0.2", "[2.5, 2.0, 0.25, 0.25, 0.2]", node);
+  assertDecayFunction("0.2", "[2.5, 2.0, 0.4, 0.1, 0.2]", node);
+  assertDecayFunction("0.2", "[2.5, 2.0, 0.1, 0.4, 0.2]", node);
+
   // with offset=0
   assertDecayFunction("0.8513399225207846", "[1, 0, 10, 0, 0.2]", node);
   assertDecayFunction("0.7247796636776955", "[2, 0, 10, 0, 0.2]", node);
@@ -269,6 +309,26 @@ TEST(LinDecayFunctionTest, test) {
   assertDecayFunction("1", "[41, 40, 5, 5, 0.5]", node);
   assertDecayFunction("1.0", "[40, 40, 5, 5, 0.5]", node);
   assertDecayFunction("1.0", "[49.987, 49.987, 0.001, 0.001, 0.2]", node);
+
+  // expecting <decay>
+  assertDecayFunction("0.7", "[50, 40, 5, 5, 0.7]", node);
+  assertDecayFunction("0.7", "[50, 40, 6, 4, 0.7]", node);
+  assertDecayFunction("0.7", "[50, 40, 4, 6, 0.7]", node);
+  assertDecayFunction("0.7", "[50, 40, 7, 3, 0.7]", node);
+  assertDecayFunction("0.7", "[50, 40, 3, 7, 0.7]", node);
+  assertDecayFunction("0.7", "[46, 40, 5, 1, 0.7]", node);
+  assertDecayFunction("0.7", "[46, 40, 1, 5, 0.7]", node);
+  assertDecayFunction("0.7", "[34, 40, 5, 1, 0.7]", node);
+  assertDecayFunction("0.7", "[34, 40, 1, 5, 0.7]", node);
+  assertDecayFunction("0.5", "[10, 0, 5, 5, 0.5]", node);
+  assertDecayFunction("0.5", "[-10, 0, 5, 5, 0.5]", node);
+  assertDecayFunction("0.4", "[-5, 0, 4, 1, 0.4]", node);
+  assertDecayFunction("0.4", "[5, 0, 1, 4, 0.4]", node);
+  assertDecayFunction("0.4", "[-5, 0, 4, 1, 0.4]", node);
+  assertDecayFunction("0.4", "[5, 0, 1, 4, 0.4]", node);
+  assertDecayFunction("0.2", "[2.5, 2.0, 0.25, 0.25, 0.2]", node);
+  assertDecayFunction("0.2", "[2.5, 2.0, 0.4, 0.1, 0.2]", node);
+  assertDecayFunction("0.20000000000000018", "[2.5, 2.0, 0.1, 0.4, 0.2]", node);
 
   // with offset=0
   assertDecayFunction("0.92", "[1, 0, 10, 0, 0.2]", node);

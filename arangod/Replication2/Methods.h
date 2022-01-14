@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,6 +24,8 @@
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
+#include <variant>
+
 namespace arangodb {
 class Result;
 namespace futures {
@@ -37,8 +40,10 @@ namespace agency {
 struct LogPlanSpecification;
 struct LogPlanTermSpecification;
 }  // namespace agency
+
 namespace replicated_log {
 struct LogStatus;
+struct GlobalStatus;
 struct AppendEntriesRequest;
 struct AppendEntriesResult;
 struct WaitForResult;
@@ -53,6 +58,10 @@ struct WaitForResult;
 struct ReplicatedLogMethods {
   static constexpr auto kDefaultLimit = std::size_t{10};
 
+  using GenericLogStatus =
+      std::variant<replication2::replicated_log::LogStatus,
+                   replication2::replicated_log::GlobalStatus>;
+
   virtual ~ReplicatedLogMethods() = default;
   virtual auto createReplicatedLog(agency::LogPlanSpecification const& spec)
       const -> futures::Future<Result> = 0;
@@ -61,8 +70,11 @@ struct ReplicatedLogMethods {
   virtual auto getReplicatedLogs() const
       -> futures::Future<std::unordered_map<arangodb::replication2::LogId,
                                             replicated_log::LogStatus>> = 0;
-  virtual auto getLogStatus(LogId) const
+  virtual auto getLocalStatus(LogId) const
       -> futures::Future<replication2::replicated_log::LogStatus> = 0;
+  virtual auto getGlobalStatus(LogId) const
+      -> futures::Future<replication2::replicated_log::GlobalStatus> = 0;
+  virtual auto getStatus(LogId) const -> futures::Future<GenericLogStatus> = 0;
 
   virtual auto getLogEntryByIndex(LogId, LogIndex) const
       -> futures::Future<std::optional<PersistingLogEntry>> = 0;

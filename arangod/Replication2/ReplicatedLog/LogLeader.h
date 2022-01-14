@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -252,7 +253,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
         std::chrono::steady_clock::duration executionDelay);
 
     std::weak_ptr<LogLeader> _parentLog;
-    std::shared_ptr<FollowerInfo> _follower;
+    std::weak_ptr<FollowerInfo> _follower;
     std::chrono::steady_clock::duration _executionDelay;
   };
 
