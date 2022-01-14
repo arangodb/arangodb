@@ -63,22 +63,26 @@ function ComplexQueriesTestSuite() {
       const res = db._query(q, {}, {}).toArray();
       assertEqual(res[0], cnt - 1);
     },
+
     testLargeQuery4: function () {
       let q = "";
       const cnt = 250;
       for (let i = 1; i < cnt; ++i) {
-        q += ` LET mySub${i} = (FOR doc in ${collectionName} FILTER CHECK_DOCUMENT(doc) FILTER doc.name == "test50" RETURN doc.name)`;
+        q += ` LET mySub${i} = (FOR doc in ${collectionName} FILTER CHECK_DOCUMENT(doc) FILTER doc.name == "test50"
+                RETURN doc.name)`;
         q += ` LET v${i} = 1`;
       }
       q += ` RETURN mySub${cnt - 1}`;
       const res = db._query(q, {}, {}).toArray();
       assertEqual(res[0], []);
     },
+
     testLargeQuery5: function () {
       let q = "";
       const cnt = 400;
       for (let i = 1; i < cnt; ++i) {
-        q += ` LET mySub${i} = (FOR doc in ${collectionName} FILTER CHECK_DOCUMENT(doc) FILTER doc.name == "test1" RETURN doc.name)`;
+        q += ` LET mySub${i} = (FOR doc in ${collectionName} FILTER CHECK_DOCUMENT(doc) FILTER doc.name == "test1"
+                RETURN doc.name)`;
       }
       q += ` RETURN mySub${cnt - 1}`;
       const res = db._query(q, {}, {}).toArray();
@@ -114,22 +118,25 @@ function ComplexQueriesSmartGraphTestSuite() {
     tearDownAll: function () {
       smartGraphs._drop(graph, true);
     },
+
     testSmartQuery1: function () {
       let q = `WITH ${vertex}`;
       const cnt = 500;
       for (let i = 1; i < cnt; ++i) {
-        q += ` LET mySub${i} = (FOR v, e in 1..10 OUTBOUND "${vertex}/test0:test0" ${edges} FILTER CHECK_DOCUMENT(e) RETURN e.testi)`;
+        q += ` LET mySub${i} = (FOR v, e in 1..10 OUTBOUND "${vertex}/test0:test0" ${edges} FILTER CHECK_DOCUMENT(e)
+                RETURN e.testi)`;
       }
       q += ` RETURN mySub${cnt - 1}`;
       const res = db._query(q).toArray();
       assertEqual(res[0], [0]);
     },
+
     testSmartQuery2: function () {
       let q = `WITH ${vertex}`;
       const cnt = 100;
       for (let i = 1; i < cnt; ++i) {
-        q += ` LET mySub${i} = (FOR v1, e1 in 1..10 OUTBOUND "${vertex}/test0:test0" ${edges} FOR v2, e2 in 1..10 
-                              OUTBOUND e1._from ${edges} FILTER CHECK_DOCUMENT(e1) RETURN e1.testi)`;
+        q += ` LET mySub${i} = (FOR v1, e1 in 1..10 OUTBOUND "${vertex}/test0:test0" ${edges} FOR v2, e2 in 1..10
+                OUTBOUND e1._from ${edges} FILTER CHECK_DOCUMENT(e1) RETURN e1.testi)`;
       }
       q += ` RETURN mySub${cnt - 1}`;
       const res = db._query(q).toArray();
