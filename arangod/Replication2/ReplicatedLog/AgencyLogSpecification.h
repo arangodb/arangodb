@@ -46,18 +46,12 @@ struct LogPlanTermSpecification {
   };
   std::optional<Leader> leader;
 
-  // TODO remove the participants map here in favour of
-  //      LogPlanSpecification::participantsConfig::participants.
-  struct Participant {};
-  std::unordered_map<ParticipantId, Participant> participants;
-
   auto toVelocyPack(VPackBuilder&) const -> void;
   LogPlanTermSpecification(from_velocypack_t, VPackSlice);
   LogPlanTermSpecification() = default;
 
-  LogPlanTermSpecification(
-      LogTerm term, LogConfig config, std::optional<Leader>,
-      std::unordered_map<ParticipantId, Participant> participants);
+  LogPlanTermSpecification(LogTerm term, LogConfig config,
+                           std::optional<Leader>);
 };
 
 struct LogPlanSpecification {

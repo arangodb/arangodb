@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added agency push-queue operation
+
 * Fixed issue #15476: FATAL {crash} occurs on a simple query.
 
 * Added `disableIndex` index hint for AQL FOR loops. This index hint disables
