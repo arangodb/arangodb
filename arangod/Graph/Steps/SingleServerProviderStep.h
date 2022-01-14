@@ -38,7 +38,8 @@ class SingleServerProvider;
 class SingleServerProviderStep
     : public arangodb::graph::BaseStep<SingleServerProviderStep> {
  public:
-  using StepType = EdgeDocumentToken; // TODO [GraphRefactor]: Rename that to EdgeType
+  using StepType =
+      EdgeDocumentToken;  // TODO [GraphRefactor]: Rename that to EdgeType
 
  public:
   class Vertex {
