@@ -142,7 +142,6 @@ auto CreateInitialTermAction::execute(std::string dbName,
 
   VPackBuilder b;
   _term.toVelocyPack(b);
-  LOG_DEVEL << " TERM TO WRITE: " << b.toJson();
 
   return envelope.write()
       .emplace_object(
