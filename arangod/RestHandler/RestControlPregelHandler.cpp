@@ -34,7 +34,9 @@
 #include "Pregel/PregelFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "V8/v8-vpack.h"
-#include "VocBase/Methods/Tasks.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/LogScale.h"
+#include "Metrics/MetricsFeature.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>

@@ -1,0 +1,15 @@
+name: arangodb_pregel_computation_duration_hist
+#renamedFrom: arangodb_agency_write_ok
+introducedIn: "3.10.0"
+help: |
+  The histogram of computation times of Pregel.
+unit: s
+type: histogram
+category: Pregel
+complexity: medium
+exposedBy:
+  - coordinator
+description: |
+  Pregel compuation times histogram. This histogram provides the distribution
+  of the times spent by a Pregel compuation in seconds. It includes neither
+  loading nor storing time. 

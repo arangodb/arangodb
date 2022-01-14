@@ -157,7 +157,10 @@ void Conductor::start() {
   updateState(ExecutionState::RUNNING);
 
   LOG_PREGEL("3a255", DEBUG) << "Telling workers to load the data";
+  auto start = now();
   auto res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
+  _workerStartupDuration = seconds_from(start);
+  _feature.setStartupDuration(_workerStartupDuration);  // setting metric
   if (res != TRI_ERROR_NO_ERROR) {
     updateState(ExecutionState::CANCELED);
     LOG_PREGEL("30171", ERR) << "Not all DBServers started the execution";
@@ -297,6 +300,7 @@ bool Conductor::_startGlobalStep() {
   LOG_PREGEL("d98de", DEBUG) << b.slice().toJson();
 
   _stepStartTimeSecs = TRI_microtime();
+  _gssStartTime = now();
 
   // start vertex level operations, does not get a response
   auto res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
@@ -340,6 +344,7 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   }
 
   _computationStartTimeSecs = TRI_microtime();
+  _computationStartTime = now();
   _startGlobalStep();
 }
 
@@ -372,7 +377,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
     if (_respondedServers.size() != _dbServers.size()) {
       return {};
     }
-   } else if (_statistics.clientCount() < _dbServers.size() ||  // no messages
+  } else if (_statistics.clientCount() < _dbServers.size() ||  // no messages
              !_statistics.allMessagesProcessed()) {  // haven't received msgs
     VPackBuilder response;
     _aggregators->aggregateValues(data);
@@ -390,6 +395,9 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
 
   LOG_PREGEL("39385", DEBUG) << "Finished gss " << _globalSuperstep << " in "
                              << (TRI_microtime() - _stepStartTimeSecs) << "s";
+  _gssDuration = seconds_from(_gssStartTime);
+  _feature.setGssDuration(_gssDuration);
+
   //_statistics.debugOutput();
   _globalSuperstep++;
 
@@ -432,7 +440,7 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
 
   // only compensations supported
   bool proceed = false;
-  if (_masterContext) { // todo (Roman): proceed is false?!
+  if (_masterContext) {  // todo (Roman): proceed is false?!
     proceed = proceed || _masterContext->postCompensation();
   }
 
@@ -779,7 +787,7 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
 ErrorCode Conductor::_finalizeWorkers() {
   _callbackMutex.assertLockedByCurrentThread();
   _finalizationStartTimeSecs = TRI_microtime();
-
+  _finalizationStartTime = now();
   bool store = _state == ExecutionState::STORING;
   if (_masterContext) {
     _masterContext->postApplication();
@@ -802,6 +810,9 @@ ErrorCode Conductor::_finalizeWorkers() {
 }
 
 void Conductor::finishedWorkerFinalize(VPackSlice data) {
+  _computationDuration = seconds_from(_computationStartTime);
+  _feature.setComputationDuration(_computationDuration);
+
   MUTEX_LOCKER(guard, _callbackMutex);
   {
     auto reports = data.get(Utils::reportsKey);
@@ -811,7 +822,8 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   }
 
   _ensureUniqueResponse(data);
-  if (_respondedServers.size() != _dbServers.size()) { // still waiting for workers
+  if (_respondedServers.size() !=
+      _dbServers.size()) {  // still waiting for workers
     return;
   }
 
@@ -841,6 +853,8 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   TRI_ASSERT(compTime >= 0);
   if (didStore) {
     _storeTimeSecs = TRI_microtime() - _finalizationStartTimeSecs;
+    _storageDuration = seconds_from(_finalizationStartTime);
+    _feature.setStorageDuration(_storageDuration);
   }
 
   LOG_PREGEL("063b5", INFO)
@@ -928,12 +942,10 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   result.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
   result.add("gss", VPackValue(_globalSuperstep));
   result.add("totalRuntime", VPackValue(totalRuntimeSecs()));
-  result.add("startupTime",
-             VPackValue(_computationStartTimeSecs - _startTimeSecs));
-  result.add("computationTime", VPackValue(_finalizationStartTimeSecs -
-                                           _computationStartTimeSecs));
-  if (_storeTimeSecs > 0.0) {
-    result.add("storageTime", VPackValue(_storeTimeSecs));
+  result.add("startupTime", VPackValue(_workerStartupDuration));
+  result.add("computationTime", VPackValue(_computationDuration));
+  if (_storageDuration > 0.0) {
+    result.add("storageTime", VPackValue(_storageDuration));
   }
   _aggregators->serializeValues(result);
   _statistics.serializeValues(result);
@@ -1069,6 +1081,7 @@ void Conductor::updateState(ExecutionState state) {
   if (_state == ExecutionState::CANCELED || _state == ExecutionState::DONE ||
       _state == ExecutionState::IN_ERROR ||
       _state == ExecutionState::FATAL_ERROR) {
-    _expires = std::chrono::system_clock::now() + _ttl;
+    _expires =
+        std::chrono::system_clock::now() + _ttl;  // todo (Roman) update ttl?
   }
 }

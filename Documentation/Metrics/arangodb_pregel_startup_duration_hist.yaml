@@ -1,0 +1,14 @@
+name: arangodb_pregel_startup_duration_hist
+#renamedFrom: arangodb_agency_write_ok
+introducedIn: "3.10.0"
+help: |
+  The histogram of startup times of Pregel.
+unit: s
+type: histogram
+category: Pregel
+complexity: medium
+exposedBy:
+  - coordinator
+description: |
+  Pregel startup times histogram. This histogram provides the distribution
+  of the times spent by DB-Servers loading the Pregel graph, in seconds.

@@ -1,0 +1,14 @@
+name: arangodb_pregel_num_runs_total
+#renamedFrom: arangodb_agency_write_ok
+introducedIn: "3.10.0"
+help: |
+  Number of runs on the conductor.
+unit: number
+type: counter
+category: Pregel
+complexity: simple
+exposedBy:
+  - coordinator
+  #- single
+description: |
+  Number of runs on the conductor.

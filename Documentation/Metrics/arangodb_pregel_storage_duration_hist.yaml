@@ -1,0 +1,14 @@
+name: arangodb_pregel_storage_duration_hist
+#renamedFrom: arangodb_agency_write_ok
+introducedIn: "3.10.0"
+help: |
+  The histogram of storage duration times of Pregel.
+unit: s
+type: histogram
+category: Pregel
+complexity: medium
+exposedBy:
+  - coordinator
+description: |
+  Pregel storage duration histogram. This histogram provides the distribution
+  of the times spent by DB-Servers storing the results of a Pregel run, in seconds.

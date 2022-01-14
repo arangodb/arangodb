@@ -38,6 +38,10 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Scheduler/Scheduler.h"
+#include "Metrics/Counter.h"
+#include "Metrics/Gauge.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/LinScale.h"
 
 struct TRI_vocbase_t;
 
@@ -128,6 +132,14 @@ class PregelFeature final : public application_features::ApplicationFeature {
                       arangodb::velocypack::Builder& result, bool allDatabases,
                       bool fanout) const;
 
+  void setStartupDuration(double time) { _workersStartupDuration.count(time); }
+
+  void setComputationDuration(double time) { _computationDuration.count(time); }
+
+  void setStorageDuration(double time) { _storageDuration.count(time); }
+
+  void setGssDuration(double time) { _gssDuration.count(time); }
+
  private:
   void scheduleGarbageCollection();
 
@@ -152,9 +164,16 @@ class PregelFeature final : public application_features::ApplicationFeature {
 
   std::unordered_map<uint64_t, ConductorEntry> _conductors;
   std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<IWorker>>>
-      _workers; // executionNumber -> (user -> worker)
+      _workers;  // executionNumber -> (user -> worker)
 
   std::atomic<bool> _softShutdownOngoing;
+
+  // metrics for conductor
+  metrics::Counter& _num_runs;
+  metrics::Histogram<metrics::LinScale<double>>& _workersStartupDuration;
+  metrics::Histogram<metrics::LinScale<double>>& _computationDuration;
+  metrics::Histogram<metrics::LinScale<double>>& _storageDuration;
+  metrics::Histogram<metrics::LinScale<double>>& _gssDuration;
 };
 
 }  // namespace arangodb::pregel

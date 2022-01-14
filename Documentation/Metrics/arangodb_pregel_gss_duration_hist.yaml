@@ -1,0 +1,16 @@
+name: arangodb_pregel_gss_duration_hist
+#renamedFrom: arangodb_agency_write_ok
+introducedIn: "3.10.0"
+help: |
+  The histogram of gss duration times of Pregel.
+unit: s
+type: histogram
+category: Pregel
+complexity: medium
+exposedBy:
+  - coordinator
+description: |
+  Pregel gss duration histogram. This histogram provides the distribution
+  of the times spent during a global super-step in a Pregel run, in seconds. 
+  This time should approximately correspond to the maximum time a DB-server
+  spends in a global super-step.

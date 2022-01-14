@@ -99,20 +99,46 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   bool _storeResults = false;
   bool _inErrorAbort = false;
 
-  /// persistent tracking of active vertices, sent messages, runtimes
+  /// persistent tracking of active vertices, sent messages, runtimes and Pregel
+  /// metrics
   StatsManager _statistics;
   ReportManager _reports;
   /// Current number of vertices
   uint64_t _totalVerticesCount = 0;
   uint64_t _totalEdgesCount = 0;
   /// some tracking info
+  using Secs = std::chrono::seconds;
+  using MicroSecs = std::chrono::microseconds;
+  using NanoSecs = std::chrono::nanoseconds;
+  using Clock = std::chrono::steady_clock;
+  using TimePoint = std::chrono::time_point<Clock, MicroSecs>;
+  static TimePoint now() {
+    //  std::chrono::steady_clock::now() returns in nanoseconds
+    return std::chrono::time_point_cast<MicroSecs>(
+        std::chrono::steady_clock::now());
+  }
+
+  static double seconds_from(const TimePoint& start) {
+    std::chrono::duration<double> dur = now() - start;
+    return dur.count();
+  }
+
   double _startTimeSecs = 0.0;
   double _computationStartTimeSecs = 0.0;
+  TimePoint _computationStartTime;
   double _finalizationStartTimeSecs = 0.0;
+  TimePoint _finalizationStartTime;
   double _storeTimeSecs = 0.0;
   double _endTimeSecs = 0.0;
   double _stepStartTimeSecs = 0.0;  // start time of current gss
+  TimePoint _gssStartTime;
   Scheduler::WorkHandle _workHandle;
+
+  // in seconds
+  double _workerStartupDuration;
+  double _computationDuration;
+  double _storageDuration;
+  double _gssDuration;
 
   bool _startGlobalStep();
   ErrorCode _initializeWorkers(std::string const& suffix,
@@ -167,7 +193,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   ~Conductor();
 
   /**
- * Set initial time, gss, set state to RUNNING, initialize workers.
+   * Set initial time, gss, set state to RUNNING, initialize workers.
    */
   void start();
   void cancel();

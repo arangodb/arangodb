@@ -46,6 +46,10 @@
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/MetricsFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -216,7 +220,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
     } else {
       return std::make_pair(Result{TRI_ERROR_INTERNAL}, 0);
     }
-  } // end filling edgeColls
+  }  // end filling edgeColls
 
   // create a conductor and register it in PregelFeature
   uint64_t en = createExecutionNumber();
@@ -234,9 +238,39 @@ uint64_t PregelFeature::createExecutionNumber() {
   return TRI_NewServerSpecificTick();
 }
 
+struct StartupScale {
+  static arangodb::metrics::LinScale<double> scale() {
+    return {10.0, 600.0, 10};
+  }
+};
+
+DECLARE_COUNTER(arangodb_pregel_num_runs_total, "Pregel total number of runs");
+DECLARE_HISTOGRAM(arangodb_pregel_startup_duration_hist, StartupScale,
+                  "Pregel startup durations histogram [s]");
+DECLARE_HISTOGRAM(arangodb_pregel_computation_duration_hist, StartupScale,
+                  "Pregel computation durations histogram [s]");
+DECLARE_HISTOGRAM(arangodb_pregel_storage_duration_hist, StartupScale,
+                  "Pregel computation durations histogram [s]");
+DECLARE_HISTOGRAM(arangodb_pregel_gss_duration_hist, StartupScale,
+                  "Pregel gss durations histogram [s]");
+
 PregelFeature::PregelFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "Pregel"),
-      _softShutdownOngoing(false) {
+      _softShutdownOngoing(false),
+      _num_runs(server.getFeature<arangodb::metrics::MetricsFeature>().add(
+          arangodb_pregel_num_runs_total{})),
+      _workersStartupDuration(
+          server.getFeature<arangodb::metrics::MetricsFeature>().add(
+              arangodb_pregel_startup_duration_hist{})),
+      _computationDuration(
+          server.getFeature<arangodb::metrics::MetricsFeature>().add(
+              arangodb_pregel_computation_duration_hist{})),
+      _storageDuration(
+          server.getFeature<arangodb::metrics::MetricsFeature>().add(
+              arangodb_pregel_storage_duration_hist{})),
+      _gssDuration(
+          server.getFeature<arangodb::metrics::MetricsFeature>().add(
+              arangodb_pregel_gss_duration_hist{})) {
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
 }
@@ -447,8 +481,10 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
             std::to_string(exeNum));
   }
 
+  ++_num_runs;
+
   if (path == Utils::finishedStartupPath) {
-    co->finishedWorkerStartup(body); // checks only
+    co->finishedWorkerStartup(body);  // checks only
   } else if (path == Utils::finishedWorkerStepPath) {
     outBuilder = co->finishedWorkerStep(body);
   } else if (path == Utils::finishedWorkerFinalizationPath) {
