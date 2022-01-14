@@ -11,7 +11,9 @@ adb_path="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )/../.." &> /dev/null && p
 echo "ArangoDB directory: $adb_path"
 cd "$adb_path"
 
-community_diff=$(git diff HEAD --diff-filter=ACMRT --name-only -- '*.cpp' '*.hpp' '*.cc' '*.c' '*.h')
+# some .h files are currently misinterpreted as Objective-C files by clang-format
+# TODO: rename .h files to .hpp, and remove .h file ending from the grep here
+community_diff=$(git diff HEAD --diff-filter=ACMRT --name-only -- arangod/ client-tools/ lib/ tests/ | grep -e '\.ipp$' -e '\.tpp$' -e '\.cpp$' -e '\.hpp$' -e '\.cc$' -e '\.c$' -e '\.h$')
 if ! [[ -z "${community_diff// }" ]]; then
   docker run --rm --mount type=bind,source="$adb_path",target=/usr/src/arangodb arangodb/clang-format:1.0 "$community_diff"
 fi
