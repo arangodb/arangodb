@@ -102,7 +102,7 @@ struct Leader : ParticipantBase {
       std::vector<std::shared_ptr<replicated_log::AbstractFollower>> const&
           follower)
       : ParticipantBase(log),
-        log(log->becomeLeader(config, std::move(id), term, follower)) {}
+        log(log->becomeLeader(config, std::move(id), term, follower, {})) {}
 
   std::shared_ptr<replicated_log::LogLeader> log;
 };

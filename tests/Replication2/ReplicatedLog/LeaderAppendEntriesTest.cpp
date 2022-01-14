@@ -138,12 +138,7 @@ TEST_F(LeaderAppendEntriesTest, response_exception) {
 TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_set_by_config) {
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto follower = std::make_shared<FakeAbstractFollower>("follower");
-
-  auto config = LogConfig{};
-  config.waitForSync = true;
-  config.writeConcern = 2;
-  auto leader =
-      leaderLog->becomeLeader(config, "leader", LogTerm{4}, {follower});
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2, true);
 
   auto const firstIdx =
       leader->insert(LogPayload::createFromString("first entry"), false,
@@ -172,12 +167,7 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_set_by_config) {
 TEST_F(LeaderAppendEntriesTest, DISABLED_test_wait_for_sync_flag_set_by_param) {
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto follower = std::make_shared<FakeAbstractFollower>("follower");
-
-  auto config = LogConfig{};
-  config.waitForSync = false;
-  config.writeConcern = 2;
-  auto leader =
-      leaderLog->becomeLeader(config, "leader", LogTerm{4}, {follower});
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2);
 
   auto const firstIdx =
       leader->insert(LogPayload::createFromString("first entry"), true,

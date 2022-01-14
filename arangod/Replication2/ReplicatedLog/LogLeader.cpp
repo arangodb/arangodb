@@ -369,6 +369,19 @@ auto replicated_log::LogLeader::construct(
       commonLogContext.with<logContextKeyLogComponent>("local-follower"),
       std::move(logCore), lastIndex);
 
+  if (!participantsConfig) {
+    auto newParticipantsConfig = std::make_shared<ParticipantsConfig>();
+    newParticipantsConfig->generation = 0;
+    std::transform(followers.begin(), followers.end(),
+                   std::inserter(newParticipantsConfig->participants,
+                                 newParticipantsConfig->participants.end()),
+                   [](auto& f) {
+                     return std::make_pair(f->getParticipantId(),
+                                           ParticipantFlags{});
+                   });
+    participantsConfig = newParticipantsConfig;
+  }
+
   {
     auto leaderDataGuard = leader->acquireMutex();
 

@@ -38,11 +38,12 @@ auto TestReplicatedLog::becomeLeader(
     ParticipantId const& id, LogTerm term,
     std::vector<std::shared_ptr<replicated_log::AbstractFollower>> const&
         follower,
-    std::size_t writeConcern) -> std::shared_ptr<replicated_log::LogLeader> {
+    std::size_t writeConcern, bool waitForSync)
+    -> std::shared_ptr<replicated_log::LogLeader> {
   LogConfig config;
   config.writeConcern = writeConcern;
-  config.waitForSync = false;
+  config.waitForSync = waitForSync;
   config.softWriteConcern = writeConcern;
   config.replicationFactor = follower.size();
-  return becomeLeader(config, id, term, follower);
+  return becomeLeader(config, id, term, follower, {});
 }

@@ -120,7 +120,7 @@ TEST_F(LogMultiplexerConcurrencyTest, test) {
   auto asyncFollower = std::make_shared<AsyncFollower>(follower);
 
   auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
-                                        LogTerm{1}, {asyncFollower});
+                                        LogTerm{1}, {asyncFollower}, {});
   auto asyncLeader = std::make_shared<AsyncLeader>(leader);
 
   auto followerInstance = std::make_shared<FollowerInstance>(follower);
