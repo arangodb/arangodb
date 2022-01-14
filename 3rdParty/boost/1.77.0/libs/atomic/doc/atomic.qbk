@@ -1,0 +1,1600 @@
+[/
+ / Copyright (c) 2009 Helge Bahmann
+ / Copyright (c) 2014, 2017, 2018, 2020, 2021 Andrey Semashev
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[library Boost.Atomic
+    [quickbook 1.4]
+    [authors [Bahmann, Helge][Semashev, Andrey]]
+    [copyright 2011 Helge Bahmann]
+    [copyright 2012 Tim Blechmann]
+    [copyright 2013, 2017, 2018, 2020, 2021 Andrey Semashev]
+    [id atomic]
+    [dirname atomic]
+    [purpose Atomic operations]
+    [license
+        Distributed under the Boost Software License, Version 1.0.
+        (See accompanying file LICENSE_1_0.txt or copy at
+        [@http://www.boost.org/LICENSE_1_0.txt])
+    ]
+]
+
+[section:introduction Introduction]
+
+[section:introduction_presenting Presenting Boost.Atomic]
+
+[*Boost.Atomic] is a library that provides [^atomic]
+data types and operations on these data types, as well as memory
+ordering constraints required for coordinating multiple threads through
+atomic variables. It implements the interface as defined by the C++11
+standard, but makes this feature available for platforms lacking
+system/compiler support for this particular C++11 feature.
+
+Users of this library should already be familiar with concurrency
+in general, as well as elementary concepts such as "mutual exclusion".
+
+The implementation makes use of processor-specific instructions where
+possible (via inline assembler, platform libraries or compiler
+intrinsics), and falls back to "emulating" atomic operations through
+locking.
+
+[endsect]
+
+[section:introduction_purpose Purpose]
+
+Operations on "ordinary" variables are not guaranteed to be atomic.
+This means that with [^int n=0] initially, two threads concurrently
+executing
+
+[c++]
+
+  void function()
+  {
+    n ++;
+  }
+
+might result in [^n==1] instead of 2: Each thread will read the
+old value into a processor register, increment it and write the result
+back. Both threads may therefore write [^1], unaware that the other thread
+is doing likewise.
+
+Declaring [^atomic<int> n=0] instead, the same operation on
+this variable will always result in [^n==2] as each operation on this
+variable is ['atomic]: This means that each operation behaves as if it
+were strictly sequentialized with respect to the other.
+
+Atomic variables are useful for two purposes:
+
+* as a means for coordinating multiple threads via custom
+  coordination protocols
+* as faster alternatives to "locked" access to simple variables
+
+Take a look at the [link atomic.usage_examples examples] section
+for common patterns.
+
+[endsect]
+
+[endsect]
+
+[section:thread_coordination Thread coordination using Boost.Atomic]
+
+The most common use of [*Boost.Atomic] is to realize custom
+thread synchronization protocols: The goal is to coordinate
+accesses of threads to shared variables in order to avoid
+"conflicts". The
+programmer must be aware of the fact that
+compilers, CPUs and the cache
+hierarchies may generally reorder memory references at will.
+As a consequence a program such as:
+
+[c++]
+
+  int x = 0, int y = 0;
+
+  thread1:
+    x = 1;
+    y = 1;
+
+  thread2:
+    if (y == 1) {
+      assert(x == 1);
+    }
+
+might indeed fail as there is no guarantee that the read of `x`
+by thread2 "sees" the write by thread1.
+
+[*Boost.Atomic] uses a synchronisation concept based on the
+['happens-before] relation to describe the guarantees under
+which situations such as the above one cannot occur.
+
+The remainder of this section will discuss ['happens-before] in
+a "hands-on" way instead of giving a fully formalized definition.
+The reader is encouraged to additionally have a
+look at the discussion of the correctness of a few of the
+[link atomic.usage_examples examples] afterwards.
+
+[section:mutex Enforcing ['happens-before] through mutual exclusion]
+
+As an introductory example to understand how arguing using
+['happens-before] works, consider two threads synchronizing
+using a common mutex:
+
+[c++]
+
+  mutex m;
+
+  thread1:
+    m.lock();
+    ... /* A */
+    m.unlock();
+
+  thread2:
+    m.lock();
+    ... /* B */
+    m.unlock();
+
+The "lockset-based intuition" would be to argue that A and B
+cannot be executed concurrently as the code paths require a
+common lock to be held.
+
+One can however also arrive at the same conclusion using
+['happens-before]: Either thread1 or thread2 will succeed first
+at [^m.lock()]. If this is be thread1, then as a consequence,
+thread2 cannot succeed at [^m.lock()] before thread1 has executed
+[^m.unlock()], consequently A ['happens-before] B in this case.
+By symmetry, if thread2 succeeds at [^m.lock()] first, we can
+conclude B ['happens-before] A.
+
+Since this already exhausts all options, we can conclude that
+either A ['happens-before] B or B ['happens-before] A must
+always hold. Obviously cannot state ['which] of the two relationships
+holds, but either one is sufficient to conclude that A and B
+cannot conflict.
+
+Compare the [link boost_atomic.usage_examples.example_spinlock spinlock]
+implementation to see how the mutual exclusion concept can be
+mapped to [*Boost.Atomic].
+
+[endsect]
+
+[section:release_acquire ['happens-before] through [^release] and [^acquire]]
+
+The most basic pattern for coordinating threads via [*Boost.Atomic]
+uses [^release] and [^acquire] on an atomic variable for coordination: If ...
+
+* ... thread1 performs an operation A,
+* ... thread1 subsequently writes (or atomically
+  modifies) an atomic variable with [^release] semantic,
+* ... thread2 reads (or atomically reads-and-modifies)
+  the value this value from the same atomic variable with
+  [^acquire] semantic and
+* ... thread2 subsequently performs an operation B,
+
+... then A ['happens-before] B.
+
+Consider the following example
+
+[c++]
+
+  atomic<int> a(0);
+
+  thread1:
+    ... /* A */
+    a.fetch_add(1, memory_order_release);
+
+  thread2:
+    int tmp = a.load(memory_order_acquire);
+    if (tmp == 1) {
+      ... /* B */
+    } else {
+      ... /* C */
+    }
+
+In this example, two avenues for execution are possible:
+
+* The [^store] operation by thread1 precedes the [^load] by thread2:
+  In this case thread2 will execute B and "A ['happens-before] B"
+  holds as all of the criteria above are satisfied.
+* The [^load] operation by thread2 precedes the [^store] by thread1:
+  In this case, thread2 will execute C, but "A ['happens-before] C"
+  does ['not] hold: thread2 does not read the value written by
+  thread1 through [^a].
+
+Therefore, A and B cannot conflict, but A and C ['can] conflict.
+
+[endsect]
+
+[section:fences Fences]
+
+Ordering constraints are generally specified together with an access to
+an atomic variable. It is however also possible to issue "fence"
+operations in isolation, in this case the fence operates in
+conjunction with preceding (for `acquire`, `consume` or `seq_cst`
+operations) or succeeding (for `release` or `seq_cst`) atomic
+operations.
+
+The example from the previous section could also be written in
+the following way:
+
+[c++]
+
+  atomic<int> a(0);
+
+  thread1:
+    ... /* A */
+    atomic_thread_fence(memory_order_release);
+    a.fetch_add(1, memory_order_relaxed);
+
+  thread2:
+    int tmp = a.load(memory_order_relaxed);
+    if (tmp == 1) {
+      atomic_thread_fence(memory_order_acquire);
+      ... /* B */
+    } else {
+      ... /* C */
+    }
+
+This provides the same ordering guarantees as previously, but
+elides a (possibly expensive) memory ordering operation in
+the case C is executed.
+
+[note Atomic fences are only indended to constraint ordering of
+regular and atomic loads and stores for the purpose of thread
+synchronization. `atomic_thread_fence` is not intended to be used
+to order some architecture-specific memory accesses, such as
+non-temporal loads and stores on x86 or write combining memory
+accesses. Use specialized instructions for these purposes.]
+
+[endsect]
+
+[section:release_consume ['happens-before] through [^release] and [^consume]]
+
+The second pattern for coordinating threads via [*Boost.Atomic]
+uses [^release] and [^consume] on an atomic variable for coordination: If ...
+
+* ... thread1 performs an operation A,
+* ... thread1 subsequently writes (or atomically modifies) an
+  atomic variable with [^release] semantic,
+* ... thread2 reads (or atomically reads-and-modifies)
+  the value this value from the same atomic variable with [^consume] semantic and
+* ... thread2 subsequently performs an operation B that is ['computationally
+  dependent on the value of the atomic variable],
+
+... then A ['happens-before] B.
+
+Consider the following example
+
+[c++]
+
+  atomic<int> a(0);
+  complex_data_structure data[2];
+
+  thread1:
+    data[1] = ...; /* A */
+    a.store(1, memory_order_release);
+
+  thread2:
+    int index = a.load(memory_order_consume);
+    complex_data_structure tmp = data[index]; /* B */
+
+In this example, two avenues for execution are possible:
+
+* The [^store] operation by thread1 precedes the [^load] by thread2:
+  In this case thread2 will read [^data\[1\]] and "A ['happens-before] B"
+  holds as all of the criteria above are satisfied.
+* The [^load] operation by thread2 precedes the [^store] by thread1:
+  In this case thread2 will read [^data\[0\]] and "A ['happens-before] B"
+  does ['not] hold: thread2 does not read the value written by
+  thread1 through [^a].
+
+Here, the ['happens-before] relationship helps ensure that any
+accesses (presumable writes) to [^data\[1\]] by thread1 happen before
+before the accesses (presumably reads) to [^data\[1\]] by thread2:
+Lacking this relationship, thread2 might see stale/inconsistent
+data.
+
+Note that in this example, the fact that operation B is computationally
+dependent on the atomic variable, therefore the following program would
+be erroneous:
+
+[c++]
+
+  atomic<int> a(0);
+  complex_data_structure data[2];
+
+  thread1:
+    data[1] = ...; /* A */
+    a.store(1, memory_order_release);
+
+  thread2:
+    int index = a.load(memory_order_consume);
+    complex_data_structure tmp;
+    if (index == 0)
+      tmp = data[0];
+    else
+      tmp = data[1];
+
+[^consume] is most commonly (and most safely! see
+[link atomic.limitations limitations]) used with
+pointers, compare for example the
+[link boost_atomic.usage_examples.singleton singleton with double-checked locking].
+
+[endsect]
+
+[section:seq_cst Sequential consistency]
+
+The third pattern for coordinating threads via [*Boost.Atomic]
+uses [^seq_cst] for coordination: If ...
+
+* ... thread1 performs an operation A,
+* ... thread1 subsequently performs any operation with [^seq_cst],
+* ... thread1 subsequently performs an operation B,
+* ... thread2 performs an operation C,
+* ... thread2 subsequently performs any operation with [^seq_cst],
+* ... thread2 subsequently performs an operation D,
+
+then either "A ['happens-before] D" or "C ['happens-before] B" holds.
+
+In this case it does not matter whether thread1 and thread2 operate
+on the same or different atomic variables, or use a "stand-alone"
+[^atomic_thread_fence] operation.
+
+[endsect]
+
+[endsect]
+
+[section:interface Programming interfaces]
+
+[section:configuration Configuration and building]
+
+The library contains header-only and compiled parts. The library is
+header-only for lock-free cases but requires a separate binary to
+implement the lock-based emulation and waiting and notifying operations
+on some platforms. Users are able to detect whether linking to the compiled
+part is required by checking the [link atomic.interface.feature_macros feature macros].
+
+The following macros affect library behavior:
+
+[table
+    [[Macro] [Description]]
+    [[`BOOST_ATOMIC_LOCK_POOL_SIZE_LOG2`] [Binary logarithm of the number of locks in the internal
+      lock pool used by [*Boost.Atomic] to implement lock-based atomic operations and waiting and notifying
+      operations on some platforms. Must be an integer in range from 0 to 16, the default value is 8.
+      Only has effect when building [*Boost.Atomic].]]
+    [[`BOOST_ATOMIC_NO_CMPXCHG8B`] [Affects 32-bit x86 Oracle Studio builds. When defined,
+      the library assumes the target CPU does not support `cmpxchg8b` instruction used
+      to support 64-bit atomic operations. This is the case with very old CPUs (pre-Pentium).
+      The library does not perform runtime detection of this instruction, so running the code
+      that uses 64-bit atomics on such CPUs will result in crashes, unless this macro is defined.
+      Note that the macro does not affect MSVC, GCC and compatible compilers because the library infers
+      this information from the compiler-defined macros.]]
+    [[`BOOST_ATOMIC_NO_CMPXCHG16B`] [Affects 64-bit x86 MSVC and Oracle Studio builds. When defined,
+      the library assumes the target CPU does not support `cmpxchg16b` instruction used
+      to support 128-bit atomic operations. This is the case with some early 64-bit AMD CPUs,
+      all Intel CPUs and current AMD CPUs support this instruction. The library does not
+      perform runtime detection of this instruction, so running the code that uses 128-bit
+      atomics on such CPUs will result in crashes, unless this macro is defined. Note that
+      the macro does not affect GCC and compatible compilers because the library infers
+      this information from the compiler-defined macros.]]
+    [[`BOOST_ATOMIC_NO_FLOATING_POINT`] [When defined, support for floating point operations is disabled.
+      Floating point types shall be treated similar to trivially copyable structs and no capability macros
+      will be defined.]]
+    [[`BOOST_ATOMIC_FORCE_FALLBACK`] [When defined, all operations are implemented with locks.
+      This is mostly used for testing and should not be used in real world projects.]]
+    [[`BOOST_ATOMIC_DYN_LINK` and `BOOST_ALL_DYN_LINK`] [Control library linking. If defined,
+      the library assumes dynamic linking, otherwise static. The latter macro affects all Boost
+      libraries, not just [*Boost.Atomic].]]
+    [[`BOOST_ATOMIC_NO_LIB` and `BOOST_ALL_NO_LIB`] [Control library auto-linking on Windows.
+      When defined, disables auto-linking. The latter macro affects all Boost libraries,
+      not just [*Boost.Atomic].]]
+]
+
+Besides macros, it is important to specify the correct compiler options for the target CPU.
+With GCC and compatible compilers this affects whether particular atomic operations are
+lock-free or not.
+
+Boost building process is described in the [@http://www.boost.org/doc/libs/release/more/getting_started/ Getting Started guide].
+For example, you can build [*Boost.Atomic] with the following command line:
+
+[pre
+    bjam --with-atomic variant=release instruction-set=core2 stage
+]
+
+[endsect]
+
+[section:interface_memory_order Memory order]
+
+    #include <boost/memory_order.hpp>
+
+The enumeration [^boost::memory_order] defines the following
+values to represent memory ordering constraints:
+
+[table
+    [[Constant] [Description]]
+    [[`memory_order_relaxed`] [No ordering constraint.
+      Informally speaking, following operations may be reordered before,
+      preceding operations may be reordered after the atomic
+      operation. This constraint is suitable only when
+      either a) further operations do not depend on the outcome
+      of the atomic operation or b) ordering is enforced through
+      stand-alone `atomic_thread_fence` operations. The operation on
+      the atomic value itself is still atomic though.
+    ]]
+    [[`memory_order_release`] [
+      Perform `release` operation. Informally speaking,
+      prevents all preceding memory operations to be reordered
+      past this point.
+    ]]
+    [[`memory_order_acquire`] [
+      Perform `acquire` operation. Informally speaking,
+      prevents succeeding memory operations to be reordered
+      before this point.
+    ]]
+    [[`memory_order_consume`] [
+      Perform `consume` operation. More relaxed (and
+      on some architectures potentially more efficient) than `memory_order_acquire`
+      as it only affects succeeding operations that are
+      computationally-dependent on the value retrieved from
+      an atomic variable. Currently equivalent to `memory_order_acquire`
+      on all supported architectures (see [link atomic.limitations Limitations] section for an explanation).
+    ]]
+    [[`memory_order_acq_rel`] [Perform both `release` and `acquire` operation]]
+    [[`memory_order_seq_cst`] [
+      Enforce sequential consistency. Implies `memory_order_acq_rel`, but
+      additionally enforces total order for all operations such qualified.
+    ]]
+]
+
+For compilers that support C++11 scoped enums, the library also defines scoped synonyms
+that are preferred in modern programs:
+
+[table
+    [[Pre-C++11 constant] [C++11 equivalent]]
+    [[`memory_order_relaxed`] [`memory_order::relaxed`]]
+    [[`memory_order_release`] [`memory_order::release`]]
+    [[`memory_order_acquire`] [`memory_order::acquire`]]
+    [[`memory_order_consume`] [`memory_order::consume`]]
+    [[`memory_order_acq_rel`] [`memory_order::acq_rel`]]
+    [[`memory_order_seq_cst`] [`memory_order::seq_cst`]]
+]
+
+See section [link atomic.thread_coordination ['happens-before]] for explanation
+of the various ordering constraints.
+
+[endsect]
+
+[section:interface_atomic_flag Atomic flags]
+
+    #include <boost/atomic/atomic_flag.hpp>
+
+The `boost::atomic_flag` type provides the most basic set of atomic operations
+suitable for implementing mutually exclusive access to thread-shared data. The flag
+can have one of the two possible states: set and clear. The class implements the
+following operations:
+
+[table
+    [[Syntax] [Description]]
+    [
+      [`atomic_flag()`]
+      [Initialize to the clear state. See the discussion below.]
+    ]
+    [
+      [`bool is_lock_free()`]
+      [Checks if the atomic flag is lock-free; the returned value is consistent with the `is_always_lock_free` static constant, see below.]
+    ]
+    [
+      [`bool has_native_wait_notify()`]
+      [Indicates if the target platform natively supports waiting and notifying operations for this object. Returns `true` if `always_has_native_wait_notify` is `true`.]
+    ]
+    [
+      [`bool test(memory_order order)`]
+      [Returns `true` if the flag is in the set state and `false` otherwise.]
+    ]
+    [
+      [`bool test_and_set(memory_order order)`]
+      [Sets the atomic flag to the set state; returns `true` if the flag had been set prior to the operation.]
+    ]
+    [
+      [`void clear(memory_order order)`]
+      [Sets the atomic flag to the clear state.]
+    ]
+    [
+      [`bool wait(bool old_val, memory_order order)`]
+      [Potentially blocks the calling thread until unblocked by a notifying operation and `test(order)` returns value other than `old_val`. Returns the result of `test(order)`.]
+    ]
+    [
+      [`void notify_one()`]
+      [Unblocks at least one thread blocked in a waiting operation on this atomic object.]
+    ]
+    [
+      [`void notify_all()`]
+      [Unblocks all threads blocked in waiting operations on this atomic object.]
+    ]
+    [
+      [`static constexpr bool is_always_lock_free`]
+      [This static boolean constant indicates if any atomic flag is lock-free]
+    ]
+    [
+      [`static constexpr bool always_has_native_wait_notify`]
+      [Indicates if the target platform always natively supports waiting and notifying operations.]
+    ]
+]
+
+`order` always has `memory_order_seq_cst` as default parameter.
+
+Waiting and notifying operations are described in detail in [link atomic.interface.interface_wait_notify_ops this] section.
+
+Note that the default constructor `atomic_flag()` is unlike `std::atomic_flag`, which
+leaves the default-constructed object uninitialized. This potentially requires dynamic
+initialization during the program startup to perform the object initialization, which
+makes it unsafe to create global `boost::atomic_flag` objects that can be used before
+entring `main()`. Some compilers though (especially those supporting C++11 `constexpr`)
+may be smart enough to perform flag initialization statically (which is, in C++11 terms,
+a constant initialization).
+
+This difference is deliberate and is done to support C++03 compilers. C++11 defines the
+`ATOMIC_FLAG_INIT` macro which can be used to statically initialize `std::atomic_flag`
+to a clear state like this:
+
+    std::atomic_flag flag = ATOMIC_FLAG_INIT; // constant initialization
+
+This macro cannot be implemented in C++03 because for that `atomic_flag` would have to be
+an aggregate type, which it cannot be because it has to prohibit copying and consequently
+define the default constructor. Thus the closest equivalent C++03 code using [*Boost.Atomic]
+would be:
+
+    boost::atomic_flag flag; // possibly, dynamic initialization in C++03;
+                             // constant initialization in C++11
+
+The same code is also valid in C++11, so this code can be used universally. However, for
+interface parity with `std::atomic_flag`, if possible, the library also defines the
+`BOOST_ATOMIC_FLAG_INIT` macro, which is equivalent to `ATOMIC_FLAG_INIT`:
+
+    boost::atomic_flag flag = BOOST_ATOMIC_FLAG_INIT; // constant initialization
+
+This macro will only be implemented on a C++11 compiler. When this macro is not available,
+the library defines `BOOST_ATOMIC_NO_ATOMIC_FLAG_INIT`.
+
+[endsect]
+
+[section:interface_atomic_object Atomic objects]
+
+    #include <boost/atomic/atomic.hpp>
+
+[^boost::atomic<['T]>] provides methods for atomically accessing
+variables of a suitable type [^['T]]. The type is suitable if
+it is [@https://en.cppreference.com/w/cpp/named_req/TriviallyCopyable ['trivially copyable]] (3.9/9 \[basic.types\]). Following are
+examples of the types compatible with this requirement:
+
+* a scalar type (e.g. integer, boolean, enum or pointer type)
+* a [^class] or [^struct] that has no non-trivial copy or move
+  constructors or assignment operators, has a trivial destructor,
+  and that is comparable via [^memcmp].
+
+Note that classes with virtual functions or virtual base classes
+do not satisfy the requirements. Also be warned
+that structures with padding bits may compare
+non-equal via [^memcmp] even though all members are equal. This may also be
+the case with some floating point types, which include padding bits themselves.
+
+[note Although types with padding bits are generally not supported by the library,
+[*Boost.Atomic] attempts to support operations on floating point types on some
+platforms, where the location of the padding bits is known. In particular,
+80-bit `long double` type on x86 targets is supported.]
+
+[section:interface_atomic_generic [^boost::atomic<['T]>] template class]
+
+All atomic objects support the following operations and properties:
+
+[table
+    [[Syntax] [Description]]
+    [
+      [`atomic()`]
+      [Initialize to an unspecified value]
+    ]
+    [
+      [`atomic(T initial_value)`]
+      [Initialize to [^initial_value]]
+    ]
+    [
+      [`bool is_lock_free()`]
+      [Checks if the atomic object is lock-free; the returned value is consistent with the `is_always_lock_free` static constant, see below.]
+    ]
+    [
+      [`bool has_native_wait_notify()`]
+      [Indicates if the target platform natively supports waiting and notifying operations for this object. Returns `true` if `always_has_native_wait_notify` is `true`.]
+    ]
+    [
+      [`T& value()`]
+      [Returns a reference to the value stored in the atomic object.]
+    ]
+    [
+      [`T load(memory_order order)`]
+      [Return current value]
+    ]
+    [
+      [`void store(T value, memory_order order)`]
+      [Write new value to atomic variable]
+    ]
+    [
+      [`T exchange(T new_value, memory_order order)`]
+      [Exchange current value with `new_value`, returning current value]
+    ]
+    [
+      [`bool compare_exchange_weak(T & expected, T desired, memory_order order)`]
+      [Compare current value with `expected`, change it to `desired` if matches.
+      Returns `true` if an exchange has been performed, and always writes the
+      previous value back in `expected`. May fail spuriously, so must generally be
+      retried in a loop.]
+    ]
+    [
+      [`bool compare_exchange_weak(T & expected, T desired, memory_order success_order, memory_order failure_order)`]
+      [Compare current value with `expected`, change it to `desired` if matches.
+      Returns `true` if an exchange has been performed, and always writes the
+      previous value back in `expected`. May fail spuriously, so must generally be
+      retried in a loop.]
+    ]
+    [
+      [`bool compare_exchange_strong(T & expected, T desired, memory_order order)`]
+      [Compare current value with `expected`, change it to `desired` if matches.
+      Returns `true` if an exchange has been performed, and always writes the
+      previous value back in `expected`.]
+    ]
+    [
+      [`bool compare_exchange_strong(T & expected, T desired, memory_order success_order, memory_order failure_order))`]
+      [Compare current value with `expected`, change it to `desired` if matches.
+      Returns `true` if an exchange has been performed, and always writes the
+      previous value back in `expected`.]
+    ]
+    [
+      [`T wait(T old_val, memory_order order)`]
+      [Potentially blocks the calling thread until unblocked by a notifying operation and `load(order)` returns value other than `old_val`. Returns the result of `load(order)`.]
+    ]
+    [
+      [`void notify_one()`]
+      [Unblocks at least one thread blocked in a waiting operation on this atomic object.]
+    ]
+    [
+      [`void notify_all()`]
+      [Unblocks all threads blocked in waiting operations on this atomic object.]
+    ]
+    [
+      [`static constexpr bool is_always_lock_free`]
+      [This static boolean constant indicates if any atomic object of this type is lock-free]
+    ]
+    [
+      [`static constexpr bool always_has_native_wait_notify`]
+      [Indicates if the target platform always natively supports waiting and notifying operations.]
+    ]
+]
+
+`order` always has `memory_order_seq_cst` as default parameter.
+
+Waiting and notifying operations are described in detail in [link atomic.interface.interface_wait_notify_ops this] section.
+
+The `value` operation is a [*Boost.Atomic] extension. The returned reference can be used to invoke external operations
+on the atomic value, which are not part of [*Boost.Atomic] but are compatible with it on the target architecture. The primary
+example of such is `futex` and similar operations available on some systems. The returned reference must not be used for reading
+or modifying the value of the atomic object in non-atomic manner, or to construct [link atomic.interface.interface_atomic_ref
+atomic references]. Doing so does not guarantee atomicity or memory ordering.
+
+[note Even if `boost::atomic` for a given type is lock-free, an atomic reference for that type may not be. Therefore, `boost::atomic`
+and `boost::atomic_ref` operating on the same object may use different thread synchronization primitives incompatible with each other.]
+
+The `compare_exchange_weak`/`compare_exchange_strong` variants
+taking four parameters differ from the three parameter variants
+in that they allow a different memory ordering constraint to
+be specified in case the operation fails.
+
+In addition to these explicit operations, each
+[^atomic<['T]>] object also supports
+implicit [^store] and [^load] through the use of "assignment"
+and "conversion to [^T]" operators. Avoid using these operators,
+as they do not allow to specify a memory ordering
+constraint which always defaults to `memory_order_seq_cst`.
+
+[endsect]
+
+[section:interface_atomic_integral [^boost::atomic<['integral]>] template class]
+
+In addition to the operations listed in the previous section,
+[^boost::atomic<['I]>] for integral
+types [^['I]], except `bool`, supports the following operations,
+which correspond to [^std::atomic<['I]>]:
+
+[table
+    [[Syntax] [Description]]
+    [
+      [`I fetch_add(I v, memory_order order)`]
+      [Add `v` to variable, returning previous value]
+    ]
+    [
+      [`I fetch_sub(I v, memory_order order)`]
+      [Subtract `v` from variable, returning previous value]
+    ]
+    [
+      [`I fetch_and(I v, memory_order order)`]
+      [Apply bit-wise "and" with `v` to variable, returning previous value]
+    ]
+    [
+      [`I fetch_or(I v, memory_order order)`]
+      [Apply bit-wise "or" with `v` to variable, returning previous value]
+    ]
+    [
+      [`I fetch_xor(I v, memory_order order)`]
+      [Apply bit-wise "xor" with `v` to variable, returning previous value]
+    ]
+]
+
+Additionally, as a [*Boost.Atomic] extension, the following operations are also provided:
+
+[table
+    [[Syntax] [Description]]
+    [
+      [`I fetch_negate(memory_order order)`]
+      [Change the sign of the value stored in the variable, returning previous value]
+    ]
+    [
+      [`I fetch_complement(memory_order order)`]
+      [Set the variable to the one\'s complement of the current value, returning previous value]
+    ]
+    [
+      [`I negate(memory_order order)`]
+      [Change the sign of the value stored in the variable, returning the result]
+    ]
+    [
+      [`I add(I v, memory_order order)`]
+      [Add `v` to variable, returning the result]
+    ]
+    [
+      [`I sub(I v, memory_order order)`]
+      [Subtract `v` from variable, returning the result]
+    ]
+    [
+      [`I bitwise_and(I v, memory_order order)`]
+      [Apply bit-wise "and" with `v` to variable, returning the result]
+    ]
+    [
+      [`I bitwise_or(I v, memory_order order)`]
+      [Apply bit-wise "or" with `v` to variable, returning the result]
+    ]
+    [
+      [`I bitwise_xor(I v, memory_order order)`]
+      [Apply bit-wise "xor" with `v` to variable, returning the result]
+    ]
+    [
+      [`I bitwise_complement(memory_order order)`]
+      [Set the variable to the one\'s complement of the current value, returning the result]
+    ]
+    [
+      [`void opaque_negate(memory_order order)`]
+      [Change the sign of the value stored in the variable, returning nothing]
+    ]
+    [
+      [`void opaque_add(I v, memory_order order)`]
+      [Add `v` to variable, returning nothing]
+    ]
+    [
+      [`void opaque_sub(I v, memory_order order)`]
+      [Subtract `v` from variable, returning nothing]
+    ]
+    [
+      [`void opaque_and(I v, memory_order order)`]
+      [Apply bit-wise "and" with `v` to variable, returning nothing]
+    ]
+    [
+      [`void opaque_or(I v, memory_order order)`]
+      [Apply bit-wise "or" with `v` to variable, returning nothing]
+    ]
+    [
+      [`void opaque_xor(I v, memory_order order)`]
+      [Apply bit-wise "xor" with `v` to variable, returning nothing]
+    ]
+    [
+      [`void opaque_complement(memory_order order)`]
+      [Set the variable to the one\'s complement of the current value, returning nothing]
+    ]
+    [
+      [`bool negate_and_test(memory_order order)`]
+      [Change the sign of the value stored in the variable, returning `true` if the result is non-zero and `false` otherwise]
+    ]
+    [
+      [`bool add_and_test(I v, memory_order order)`]
+      [Add `v` to variable, returning `true` if the result is non-zero and `false` otherwise]
+    ]
+    [
+      [`bool sub_and_test(I v, memory_order order)`]
+      [Subtract `v` from variable, returning `true` if the result is non-zero and `false` otherwise]
+    ]
+    [
+      [`bool and_and_test(I v, memory_order order)`]
+      [Apply bit-wise "and" with `v` to variable, returning `true` if the result is non-zero and `false` otherwise]
+    ]
+    [
+      [`bool or_and_test(I v, memory_order order)`]
+      [Apply bit-wise "or" with `v` to variable, returning `true` if the result is non-zero and `false` otherwise]
+    ]
+    [
+      [`bool xor_and_test(I v, memory_order order)`]
+      [Apply bit-wise "xor" with `v` to variable, returning `true` if the result is non-zero and `false` otherwise]
+    ]
+    [
+      [`bool complement_and_test(memory_order order)`]
+      [Set the variable to the one\'s complement of the current value, returning `true` if the result is non-zero and `false` otherwise]
+    ]
+    [
+      [`bool bit_test_and_set(unsigned int n, memory_order order)`]
+      [Set bit number `n` in the variable to 1, returning `true` if the bit was previously set to 1 and `false` otherwise]
+    ]
+    [
+      [`bool bit_test_and_reset(unsigned int n, memory_order order)`]
+      [Set bit number `n` in the variable to 0, returning `true` if the bit was previously set to 1 and `false` otherwise]
+    ]
+    [
+      [`bool bit_test_and_complement(unsigned int n, memory_order order)`]
+      [Change bit number `n` in the variable to the opposite value, returning `true` if the bit was previously set to 1 and `false` otherwise]
+    ]
+]
+
+[note In [*Boost.Atomic] 1.66 the [^['op]_and_test] operations returned the opposite value (i.e. `true` if the result is zero). This was changed
+to the current behavior in 1.67 for consistency with other operations in [*Boost.Atomic], as well as with conventions taken in the C++ standard library.
+[*Boost.Atomic] 1.66 was the only release shipped with the old behavior.]
+
+`order` always has `memory_order_seq_cst` as default parameter.
+
+The [^opaque_['op]] and [^['op]_and_test] variants of the operations
+may result in a more efficient code on some architectures because
+the original value of the atomic variable is not preserved. In the
+[^bit_test_and_['op]] operations, the bit number `n` starts from 0, which
+means the least significand bit, and must not exceed
+[^std::numeric_limits<['I]>::digits - 1].
+
+In addition to these explicit operations, each
+[^boost::atomic<['I]>] object also
+supports implicit pre-/post- increment/decrement, as well
+as the operators `+=`, `-=`, `&=`, `|=` and `^=`.
+Avoid using these operators, as they do not allow to specify a memory ordering
+constraint which always defaults to `memory_order_seq_cst`.
+
+[endsect]
+
+[section:interface_atomic_floating_point [^boost::atomic<['floating-point]>] template class]
+
+[note The support for floating point types is optional and can be disabled by defining `BOOST_ATOMIC_NO_FLOATING_POINT`.]
+
+In addition to the operations applicable to all atomic objects,
+[^boost::atomic<['F]>] for floating point
+types [^['F]] supports the following operations,
+which correspond to [^std::atomic<['F]>]:
+
+[table
+    [[Syntax] [Description]]
+    [
+      [`F fetch_add(F v, memory_order order)`]
+      [Add `v` to variable, returning previous value]
+    ]
+    [
+      [`F fetch_sub(F v, memory_order order)`]
+      [Subtract `v` from variable, returning previous value]
+    ]
+]
+
+Additionally, as a [*Boost.Atomic] extension, the following operations are also provided:
+
+[table
+    [[Syntax] [Description]]
+    [
+      [`F fetch_negate(memory_order order)`]
+      [Change the sign of the value stored in the variable, returning previous value]
+    ]
+    [
+      [`F negate(memory_order order)`]
+      [Change the sign of the value stored in the variable, returning the result]
+    ]
+    [
+      [`F add(F v, memory_order order)`]
+      [Add `v` to variable, returning the result]
+    ]
+    [
+      [`F sub(F v, memory_order order)`]
+      [Subtract `v` from variable, returning the result]
+    ]
+    [
+      [`void opaque_negate(memory_order order)`]
+      [Change the sign of the value stored in the variable, returning nothing]
+    ]
+    [
+      [`void opaque_add(F v, memory_order order)`]
+      [Add `v` to variable, returning nothing]
+    ]
+    [
+      [`void opaque_sub(F v, memory_order order)`]
+      [Subtract `v` from variable, returning nothing]
+    ]
+]
+
+`order` always has `memory_order_seq_cst` as default parameter.
+
+The [^opaque_['op]] variants of the operations
+may result in a more efficient code on some architectures because
+the original value of the atomic variable is not preserved.
+
+In addition to these explicit operations, each
+[^boost::atomic<['F]>] object also supports operators `+=` and `-=`.
+Avoid using these operators, as they do not allow to specify a memory ordering
+constraint which always defaults to `memory_order_seq_cst`.
+
+When using atomic operations with floating point types, bear in mind that [*Boost.Atomic]
+always performs bitwise comparison of the stored values. This means that operations like
+`compare_exchange*` may fail if the stored value and comparand have different binary representation,
+even if they would normally compare equal. This is typically the case when either of the numbers
+is [@https://en.wikipedia.org/wiki/Denormal_number denormalized]. This also means that the behavior
+with regard to special floating point values like NaN and signed zero is also different from normal C++.
+
+Another source of the problem is padding bits that are added to some floating point types for alignment.
+One widespread example of that is Intel x87 extended double format, which is typically stored as 80 bits
+of value padded with 16 or 48 unused bits. These padding bits are often uninitialized and contain garbage,
+which makes two equal numbers have different binary representation. The library attempts to account for
+the known such cases, but in general it is possible that some platforms are not covered. Note that the C++
+standard makes no guarantees about reliability of `compare_exchange*` operations in the face of padding or
+trap bits.
+
+[endsect]
+
+[section:interface_atomic_pointer [^boost::atomic<['pointer]>] template class]
+
+In addition to the operations applicable to all atomic objects,
+[^boost::atomic<['P]>] for pointer
+types [^['P]] (other than pointers to [^void], function or member pointers) support
+the following operations, which correspond to [^std::atomic<['P]>]:
+
+[table
+    [[Syntax] [Description]]
+    [
+      [`T fetch_add(ptrdiff_t v, memory_order order)`]
+      [Add `v` to variable, returning previous value]
+    ]
+    [
+      [`T fetch_sub(ptrdiff_t v, memory_order order)`]
+      [Subtract `v` from variable, returning previous value]
+    ]
+]
+
+Similarly to integers, the following [*Boost.Atomic] extensions are also provided:
+
+[table
+    [[Syntax] [Description]]
+    [
+      [`void add(ptrdiff_t v, memory_order order)`]
+      [Add `v` to variable, returning the result]
+    ]
+    [
+      [`void sub(ptrdiff_t v, memory_order order)`]
+      [Subtract `v` from variable, returning the result]
+    ]
+    [
+      [`void opaque_add(ptrdiff_t v, memory_order order)`]
+      [Add `v` to variable, returning nothing]
+    ]
+    [
+      [`void opaque_sub(ptrdiff_t v, memory_order order)`]
+      [Subtract `v` from variable, returning nothing]
+    ]
+    [
+      [`bool add_and_test(ptrdiff_t v, memory_order order)`]
+      [Add `v` to variable, returning `true` if the result is non-null and `false` otherwise]
+    ]
+    [
+      [`bool sub_and_test(ptrdiff_t v, memory_order order)`]
+      [Subtract `v` from variable, returning `true` if the result is non-null and `false` otherwise]
+    ]
+]
+
+`order` always has `memory_order_seq_cst` as default parameter.
+
+In addition to these explicit operations, each
+[^boost::atomic<['P]>] object also
+supports implicit pre-/post- increment/decrement, as well
+as the operators `+=`, `-=`. Avoid using these operators,
+as they do not allow explicit specification of a memory ordering
+constraint which always defaults to `memory_order_seq_cst`.
+
+[endsect]
+
+[section:interface_atomic_convenience_typedefs [^boost::atomic<['T]>] convenience typedefs]
+
+For convenience, the following shorthand typedefs of [^boost::atomic<['T]>] are provided:
+
+[c++]
+
+    typedef atomic< char > atomic_char;
+    typedef atomic< unsigned char > atomic_uchar;
+    typedef atomic< signed char > atomic_schar;
+    typedef atomic< unsigned short > atomic_ushort;
+    typedef atomic< short > atomic_short;
+    typedef atomic< unsigned int > atomic_uint;
+    typedef atomic< int > atomic_int;
+    typedef atomic< unsigned long > atomic_ulong;
+    typedef atomic< long > atomic_long;
+    typedef atomic< unsigned long long > atomic_ullong;
+    typedef atomic< long long > atomic_llong;
+
+    typedef atomic< void* > atomic_address;
+    typedef atomic< bool > atomic_bool;
+    typedef atomic< wchar_t > atomic_wchar_t;
+    typedef atomic< char8_t > atomic_char8_t;
+    typedef atomic< char16_t > atomic_char16_t;
+    typedef atomic< char32_t > atomic_char32_t;
+
+    typedef atomic< uint8_t > atomic_uint8_t;
+    typedef atomic< int8_t > atomic_int8_t;
+    typedef atomic< uint16_t > atomic_uint16_t;
+    typedef atomic< int16_t > atomic_int16_t;
+    typedef atomic< uint32_t > atomic_uint32_t;
+    typedef atomic< int32_t > atomic_int32_t;
+    typedef atomic< uint64_t > atomic_uint64_t;
+    typedef atomic< int64_t > atomic_int64_t;
+
+    typedef atomic< int_least8_t > atomic_int_least8_t;
+    typedef atomic< uint_least8_t > atomic_uint_least8_t;
+    typedef atomic< int_least16_t > atomic_int_least16_t;
+    typedef atomic< uint_least16_t > atomic_uint_least16_t;
+    typedef atomic< int_least32_t > atomic_int_least32_t;
+    typedef atomic< uint_least32_t > atomic_uint_least32_t;
+    typedef atomic< int_least64_t > atomic_int_least64_t;
+    typedef atomic< uint_least64_t > atomic_uint_least64_t;
+    typedef atomic< int_fast8_t > atomic_int_fast8_t;
+    typedef atomic< uint_fast8_t > atomic_uint_fast8_t;
+    typedef atomic< int_fast16_t > atomic_int_fast16_t;
+    typedef atomic< uint_fast16_t > atomic_uint_fast16_t;
+    typedef atomic< int_fast32_t > atomic_int_fast32_t;
+    typedef atomic< uint_fast32_t > atomic_uint_fast32_t;
+    typedef atomic< int_fast64_t > atomic_int_fast64_t;
+    typedef atomic< uint_fast64_t > atomic_uint_fast64_t;
+    typedef atomic< intmax_t > atomic_intmax_t;
+    typedef atomic< uintmax_t > atomic_uintmax_t;
+
+    typedef atomic< std::size_t > atomic_size_t;
+    typedef atomic< std::ptrdiff_t > atomic_ptrdiff_t;
+
+    typedef atomic< intptr_t > atomic_intptr_t;
+    typedef atomic< uintptr_t > atomic_uintptr_t;
+
+    typedef atomic< unsigned integral > atomic_unsigned_lock_free;
+    typedef atomic< signed integral > atomic_signed_lock_free;
+
+The typedefs are provided only if the corresponding value type is available.
+
+The `atomic_unsigned_lock_free` and `atomic_signed_lock_free` types, if defined, indicate
+the atomic object type for an unsigned or signed integer, respectively, that is
+lock-free and that preferably has native support for
+[link atomic.interface.interface_wait_notify_ops waiting and notifying operations].
+
+[endsect]
+
+[endsect]
+
+[section:interface_atomic_ref Atomic references]
+
+    #include <boost/atomic/atomic_ref.hpp>
+
+[^boost::atomic_ref<['T]>] also provides methods for atomically accessing
+external variables of type [^['T]]. The requirements on the type [^['T]]
+are the same as those imposed by [link atomic.interface.interface_atomic_object `boost::atomic`].
+Unlike `boost::atomic`, `boost::atomic_ref` does not store the value internally
+and only refers to an external object of type [^['T]].
+
+There are certain requirements on the objects compatible with `boost::atomic_ref`:
+
+* The referenced object lifetime must not end before the last `boost::atomic_ref`
+  referencing the object is destroyed.
+* The referenced object must have alignment not less than indicated by the
+  [^boost::atomic_ref<['T]>::required_alignment] constant. That constant may be larger
+  than the natural alignment of type [^['T]]. In [*Boost.Atomic], `required_alignment` indicates
+  the alignment at which operations on the object are lock-free; otherwise, if lock-free
+  operations are not possible, `required_alignment` shall not be less than the natural
+  alignment of [^['T]].
+* The referenced object must not be a [@https://en.cppreference.com/w/cpp/language/object#Subobjects ['potentially overlapping object]].
+  It must be the ['most derived object] (that is it must not be a base class subobject of
+  an object of a derived class) and it must not be marked with the `[[no_unique_address]]`
+  attribute.
+  ```
+  struct Base
+  {
+      short a;
+      char b;
+  };
+
+  struct Derived : public Base
+  {
+      char c;
+  };
+
+  Derived x;
+  boost::atomic_ref<Base> ref(x); // bad
+  ```
+  In the above example, `ref` may silently corrupt the value of `x.c` because it
+  resides in the trailing padding of the `Base` base class subobject of `x`.
+* The referenced object must not reside in read-only memory. Even for non-modifying
+  operations, like `load()`, `boost::atomic_ref` may issue read-modify-write CPU instructions
+  that require write access.
+* While at least one `boost::atomic_ref` referencing an object exists, that object must not
+  be accessed by any other means, other than through `boost::atomic_ref`.
+
+Multiple `boost::atomic_ref` referencing the same object are allowed, and operations
+through any such reference are atomic and ordered with regard to each other, according to
+the memory order arguments. [^boost::atomic_ref<['T]>] supports the same set of properties and
+operations as [^boost::atomic<['T]>], depending on the type [^['T]], with the following exceptions:
+
+[table
+    [[Syntax] [Description]]
+    [
+      [`atomic_ref() = delete`]
+      [`atomic_ref` is not default-constructible.]
+    ]
+    [
+      [`atomic_ref(T& object)`]
+      [Creates an atomic reference, referring to `object`. May modify the object representation (see caveats below).]
+    ]
+    [
+      [`atomic_ref(atomic_ref const& that) noexcept`]
+      [Creates an atomic reference, referencing the object referred to by `that`.]
+    ]
+    [
+      [`static constexpr std::size_t required_alignment`]
+      [A constant, indicating required alignment of objects of type [^['T]] so that they are compatible with `atomic_ref`.
+      Shall not be less than [^alignof(['T])]. In [*Boost.Atomic], indicates the alignment required by lock-free operations
+      on the referenced object, if lock-free operations are possible.]
+    ]
+]
+
+Note that `boost::atomic_ref` cannot be changed to refer to a different object after construction.
+Assigning to `boost::atomic_ref` will invoke an atomic operation of storing the new value to the
+referenced object.
+
+For convenience, a factory function `make_atomic_ref(T& object)` is provided, which returns an `atomic_ref<T>`
+referencing `object`. Additionally, for C++17 and later compilers, template deduction guides are provided so that
+the template parameter ['T] can be deduced from the constructor argument:
+
+```
+int object = 0;
+atomic_ref ref(object); // C++17: ref is atomic_ref<int>
+```
+
+[section:caveats Caveats]
+
+There are a several disadvantages of using `boost::atomic_ref` compared to `boost::atomic`.
+
+First, the user is required to maintain proper alignment of the referenced objects. This means that the user
+has to plan beforehand which variables will require atomic access in the program. In C++11 and later,
+the user can ensure the required alignment by applying `alignas` specifier:
+
+    alignas(boost::atomic_ref<int>::required_alignment)
+    int atomic_int;
+
+On compilers that don't support `alignas` users have to use compiler-specific attributes or manual padding
+to achieve the required alignment. [@https://www.boost.org/doc/libs/release/libs/config/doc/html/boost_config/boost_macro_reference.html#boost_config.boost_macro_reference.macros_that_allow_use_of_c__11_features_with_c__03_compilers `BOOST_ALIGNMENT`]
+macro from [*Boost.Config] may be useful.
+
+[note Do not rely on compilers to enforce the natural alignment for fundamental types, and that the default
+alignment will satisfy the `atomic_ref<T>::required_alignment` constraint. There are real world cases when the
+default alignment is below the required alignment for atomic references. For example, on 32-bit x86 targets it
+is common that 64-bit integers and floating point numbers have alignment of 4, which is not high enough for `atomic_ref`.
+Users must always explicitly ensure the referenced objects are aligned to `atomic_ref<T>::required_alignment`.]
+
+Next, some types may have padding bits, which are the bits of object representation that do not contribute to
+the object value. Typically, padding bits are used for alignment purposes. [*Boost.Atomic] does not support
+types with padding bits, with an exception of floating point types on platforms where the location of the
+padding bits is known at compile time. One notable example is `long double` on x86, where the value is represented
+by an [@https://en.wikipedia.org/wiki/Extended_precision#x86_extended_precision_format 80-bit extended precision]
+floating point number complemented by 2 to 6 bytes of padding, depending on the target ABI.
+
+Padding bits pose a problem for [*Boost.Atomic] because they can break binary comparison of object (as if
+by `memcmp`), which is used in `compare_exchange_weak`/`compare_exchange_strong` operations. `boost::atomic`
+manages the internal object representation and in some cases, like the mentioned `long double` example,
+it is able to initialize the padding bits so that binary comparison yields the expected result. This is not
+possible with `boost::atomic_ref` because the referenced object is initialized by external means and any
+particular content in the padding bits cannot be guaranteed. This requires `boost::atomic_ref` to initialize
+padding bits on construction. Since there may be other atomic references referring to the same object, this
+initialization must be atomic. As a result, `boost::atomic_ref` construction can be relatively expensive
+and may potentially disrupt atomic operations that are being performed on the same object through other
+atomic references. It is recommended to avoid constructing `boost::atomic_ref` in tight loops or hot paths.
+
+Finally, target platform may not have the necessary means to implement atomic operations on objects of some
+sizes. For example, on many hardware architectures atomic operations on the following structure are not possible:
+
+    struct rgb
+    {
+        unsigned char r, g, b; // 3 bytes
+    };
+
+`boost::atomic<rgb>` is able to implement lock-free operations if the target CPU supports 32-bit atomic instructions
+by padding `rgb` structure internally to the size of 4 bytes. This is not possible for `boost::atomic_ref<rgb>`, as it
+has to operate on external objects. Thus, `boost::atomic_ref<rgb>` will not provide lock-free operations and will resort
+to locking.
+
+In general, it is advised to use `boost::atomic` wherever possible, as it is easier to use and is more efficient. Use
+`boost::atomic_ref` only when you absolutely have to.
+
+[endsect]
+
+[endsect]
+
+[section:interface_wait_notify_ops Waiting and notifying operations]
+
+`boost::atomic_flag`, [^boost::atomic<['T]>] and [^boost::atomic_ref<['T]>] support ['waiting] and ['notifying] operations that were introduced in C++20. Waiting operations have the following forms:
+
+* [^['T] wait(['T] old_val, memory_order order)] (where ['T] is `bool` for `boost::atomic_flag`)
+
+Here, `order` must not be `memory_order_release` or `memory_order_acq_rel`. Note that unlike C++20, the `wait` operation returns ['T] instead of `void`. This is a [*Boost.Atomic] extension.
+
+The waiting operation performs the following steps repeatedly:
+
+* Loads the current value `new_val` of the atomic object using the memory ordering constraint `order`.
+* If the `new_val` representation is different from `old_val` (i.e. when compared as if by `memcmp`), returns `new_val`.
+* Blocks the calling thread until unblocked by a notifying operation or spuriously.
+
+Note that a waiting operation is allowed to return spuriously, i.e. without a corresponding notifying operation. It is also allowed to ['not] return if the atomic object value is different from `old_val` only momentarily (this is known as [@https://en.wikipedia.org/wiki/ABA_problem ABA problem]).
+
+Notifying operations have the following forms:
+
+* `void notify_one()`
+* `void notify_all()`
+
+The `notify_one` operation unblocks at least one thread blocked in the waiting operation on the same atomic object, and `notify_all` unblocks all such threads. Notifying operations do not enforce memory ordering and should normally be preceeded with a store operation or a fence with the appropriate memory ordering constraint.
+
+Waiting and notifying operations require special support from the operating system, which may not be universally available. Whether the operating system natively supports these operations is indicated by the `always_has_native_wait_notify` static constant and `has_native_wait_notify()` member function of a given atomic type.
+
+Even for atomic objects that support lock-free operations (as indicated by the `is_always_lock_free` property or the corresponding [link atomic.interface.feature_macros macro]), the waiting and notifying operations may involve locking and require linking with [*Boost.Atomic] compiled library.
+
+Waiting and notifying operations are not address-free, meaning that the implementation may use process-local state and process-local addresses of the atomic objects to implement the operations. In particular, this means these operations cannot be used for communication between processes (when the atomic object is located in shared memory) or when the atomic object is mapped at different memory addresses in the same process.
+
+[endsect]
+
+[section:interface_ipc Atomic types for inter-process communication]
+
+    #include <boost/atomic/ipc_atomic.hpp>
+    #include <boost/atomic/ipc_atomic_ref.hpp>
+    #include <boost/atomic/ipc_atomic_flag.hpp>
+
+[*Boost.Atomic] provides a dedicated set of types for inter-process communication: `boost::ipc_atomic_flag`, [^boost::ipc_atomic<['T]>] and [^boost::ipc_atomic_ref<['T]>]. Collectively, these types are called inter-process communication atomic types or IPC atomic types, and their counterparts without the `ipc_` prefix - non-IPC atomic types.
+
+Each of the IPC atomic types have the same requirements on their value types and provide the same set of operations and properties as its non-IPC counterpart. All operations have the same signature, requirements and effects, with the following amendments:
+
+* All operations, except constructors, destructors, `is_lock_free()` and `has_native_wait_notify()` have an additional precondition that `is_lock_free()` returns `true` for this atomic object. (Implementation note: The current implementation detects availability of atomic instructions at compile time, and the code that does not fulfill this requirement will fail to compile.)
+* The `has_native_wait_notify()` method and `always_has_native_wait_notify` static constant indicate whether the operating system has native support for inter-process waiting and notifying operations. This may be different from non-IPC atomic types as the OS may have different capabilities for inter-thread and inter-process communication.
+* All operations on objects of IPC atomic types are address-free, which allows to place such objects (in case of [^boost::ipc_atomic_ref<['T]>] - objects referenced by `ipc_atomic_ref`) in memory regions shared between processes or mapped at different addresses in the same process.
+
+[note Operations on lock-free non-IPC atomic objects, except [link atomic.interface.interface_wait_notify_ops waiting and notifying operations], are also address-free, so `boost::atomic_flag`, [^boost::atomic<['T]>] and [^boost::atomic_ref<['T]>] could also be used for inter-process communication. However, the user must ensure that the given atomic object indeed supports lock-free operations. Failing to do this could result in a misbehaving program. IPC atomic types enforce this requirement and add support for address-free waiting and notifying operations.]
+
+It should be noted that some operations on IPC atomic types may be more expensive than the non-IPC ones. This primarily concerns waiting and notifying operations, as the operating system may have to perform conversion of the process-mapped addresses of atomic objects to physical addresses. Also, when native support for inter-process waiting and notifying operations is not present (as indicated by `has_native_wait_notify()`), waiting operations are emulated with a busy loop, which can affect performance and power consumption of the system. Native support for waiting and notifying operations can also be detected using [link atomic.interface.feature_macros capability macros].
+
+Users must not create and use IPC and non-IPC atomic references on the same referenced object at the same time. IPC and non-IPC atomic references are not required to communicate with each other. For example, a waiting operation on a non-IPC atomic reference may not be interrupted by a notifying operation on an IPC atomic reference referencing the same object.
+
+[endsect]
+
+[section:interface_fences Fences]
+
+    #include <boost/atomic/fences.hpp>
+
+[link atomic.thread_coordination.fences Fences] are implemented with the following operations:
+
+[table
+    [[Syntax] [Description]]
+    [
+      [`void atomic_thread_fence(memory_order order)`]
+      [Issue fence for coordination with other threads.]
+    ]
+    [
+      [`void atomic_signal_fence(memory_order order)`]
+      [Issue fence for coordination with a signal handler (only in the same thread).]
+    ]
+]
+
+Note that `atomic_signal_fence` does not implement thread synchronization
+and only acts as a barrier to prevent code reordering by the compiler (but not by CPU).
+The `order` argument here specifies the direction, in which the fence prevents the
+compiler to reorder code.
+
+[endsect]
+
+[section:feature_macros Feature testing macros]
+
+    #include <boost/atomic/capabilities.hpp>
+
+[*Boost.Atomic] defines a number of macros to allow compile-time
+detection whether an atomic data type is implemented using
+"true" atomic operations, or whether an internal "lock" is
+used to provide atomicity. The following macros will be
+defined to `0` if operations on the data type always
+require a lock, to `1` if operations on the data type may
+sometimes require a lock, and to `2` if they are always lock-free:
+
+[table
+    [[Macro] [Description]]
+    [
+      [`BOOST_ATOMIC_FLAG_LOCK_FREE`]
+      [Indicate whether `atomic_flag` is lock-free]
+    ]
+    [
+      [`BOOST_ATOMIC_BOOL_LOCK_FREE`]
+      [Indicate whether `atomic<bool>` is lock-free]
+    ]
+    [
+      [`BOOST_ATOMIC_CHAR_LOCK_FREE`]
+      [Indicate whether `atomic<char>` (including signed/unsigned variants) is lock-free]
+    ]
+    [
+      [`BOOST_ATOMIC_CHAR8_T_LOCK_FREE`]
+      [Indicate whether `atomic<char8_t>` (including signed/unsigned variants) is lock-free]
+    ]
+    [
+      [`BOOST_ATOMIC_CHAR16_T_LOCK_FREE`]
+      [Indicate whether `atomic<char16_t>` (including signed/unsigned variants) is lock-free]
+    ]
+    [
+      [`BOOST_ATOMIC_CHAR32_T_LOCK_FREE`]
+      [Indicate whether `atomic<char32_t>` (including signed/unsigned variants) is lock-free]
+    ]
+    [
+      [`BOOST_ATOMIC_WCHAR_T_LOCK_FREE`]
+      [Indicate whether `atomic<wchar_t>` (including signed/unsigned variants) is lock-free]
+    ]
+    [
+      [`BOOST_ATOMIC_SHORT_LOCK_FREE`]
+      [Indicate whether `atomic<short>` (including signed/unsigned variants) is lock-free]
+    ]
+    [
+      [`BOOST_ATOMIC_INT_LOCK_FREE`]
+      [Indicate whether `atomic<int>` (including signed/unsigned variants) is lock-free]
+    ]
+    [
+      [`BOOST_ATOMIC_LONG_LOCK_FREE`]
+      [Indicate whether `atomic<long>` (including signed/unsigned variants) is lock-free]
+    ]
+    [
+      [`BOOST_ATOMIC_LLONG_LOCK_FREE`]
+      [Indicate whether `atomic<long long>` (including signed/unsigned variants) is lock-free]
+    ]
+    [
+      [`BOOST_ATOMIC_ADDRESS_LOCK_FREE` or `BOOST_ATOMIC_POINTER_LOCK_FREE`]
+      [Indicate whether `atomic<T *>` is lock-free]
+    ]
+    [
+      [`BOOST_ATOMIC_THREAD_FENCE`]
+      [Indicate whether `atomic_thread_fence` function is lock-free]
+    ]
+    [
+      [`BOOST_ATOMIC_SIGNAL_FENCE`]
+      [Indicate whether `atomic_signal_fence` function is lock-free]
+    ]
+]
+
+In addition to these standard macros, [*Boost.Atomic] also defines a number of extension macros,
+which can also be useful. Like the standard ones, these macros are defined to values `0`, `1` and `2`
+to indicate whether the corresponding operations are lock-free or not.
+
+[table
+    [[Macro] [Description]]
+    [
+      [`BOOST_ATOMIC_INT8_LOCK_FREE`]
+      [Indicate whether `atomic<int8_type>` is lock-free.]
+    ]
+    [
+      [`BOOST_ATOMIC_INT16_LOCK_FREE`]
+      [Indicate whether `atomic<int16_type>` is lock-free.]
+    ]
+    [
+      [`BOOST_ATOMIC_INT32_LOCK_FREE`]
+      [Indicate whether `atomic<int32_type>` is lock-free.]
+    ]
+    [
+      [`BOOST_ATOMIC_INT64_LOCK_FREE`]
+      [Indicate whether `atomic<int64_type>` is lock-free.]
+    ]
+    [
+      [`BOOST_ATOMIC_INT128_LOCK_FREE`]
+      [Indicate whether `atomic<int128_type>` is lock-free.]
+    ]
+    [
+      [`BOOST_ATOMIC_NO_ATOMIC_FLAG_INIT`]
+      [Defined after including `atomic_flag.hpp`, if the implementation
+      does not support the `BOOST_ATOMIC_FLAG_INIT` macro for static
+      initialization of `atomic_flag`. This macro is typically defined
+      for pre-C++11 compilers.]
+    ]
+]
+
+In the table above, [^int['N]_type] is a type that fits storage of contiguous ['N] bits, suitably aligned for atomic operations.
+
+For floating-point types the following macros are similarly defined:
+
+[table
+    [[Macro] [Description]]
+    [
+      [`BOOST_ATOMIC_FLOAT_LOCK_FREE`]
+      [Indicate whether `atomic<float>` is lock-free.]
+    ]
+    [
+      [`BOOST_ATOMIC_DOUBLE_LOCK_FREE`]
+      [Indicate whether `atomic<double>` is lock-free.]
+    ]
+    [
+      [`BOOST_ATOMIC_LONG_DOUBLE_LOCK_FREE`]
+      [Indicate whether `atomic<long double>` is lock-free.]
+    ]
+]
+
+These macros are not defined when support for floating point types is disabled by user.
+
+For any of the [^BOOST_ATOMIC_['X]_LOCK_FREE] macro described above, two additional macros named [^BOOST_ATOMIC_HAS_NATIVE_['X]_WAIT_NOTIFY] and [^BOOST_ATOMIC_HAS_NATIVE_['X]_IPC_WAIT_NOTIFY] are defined. The former indicates whether [link atomic.interface.interface_wait_notify_ops waiting and notifying operations] are supported natively for non-IPC atomic types of a given type, and the latter does the same for [link atomic.interface.interface_ipc IPC atomic types]. The macros take values of `0`, `1` or `2`, where `0` indicates that native operations are not available, `1` means the operations may be available (which is determined at run time) and `2` means always available. Note that the lock-free and native waiting/notifying operations macros for a given type may have different values.
+
+[endsect]
+
+[endsect]
+
+[section:usage_examples Usage examples]
+
+[include examples.qbk]
+
+[endsect]
+
+[/
+[section:platform_support Implementing support for additional platforms]
+
+[include platform.qbk]
+
+[endsect]
+]
+
+[/ [xinclude autodoc.xml] ]
+
+[section:limitations Limitations]
+
+While [*Boost.Atomic] strives to implement the atomic operations
+from C++11 and later as faithfully as possible, there are a few
+limitations that cannot be lifted without compiler support:
+
+* [*Aggregate initialization syntax is not supported]: Since [*Boost.Atomic]
+  sometimes uses storage type that is different from the value type,
+  the `atomic<>` template needs an initialization constructor that
+  performs the necessary conversion. This makes `atomic<>` a non-aggregate
+  type and prohibits aggregate initialization syntax (`atomic<int> a = {10}`).
+  [*Boost.Atomic] does support direct and unified initialization syntax though.
+  [*Advice]: Always use direct initialization (`atomic<int> a(10)`) or unified
+  initialization (`atomic<int> a{10}`) syntax.
+* [*Initializing constructor is not `constexpr` for some types]: For value types
+  other than integral types and `bool`, `atomic<>` initializing constructor needs
+  to perform runtime conversion to the storage type. This limitation may be
+  lifted for more categories of types in the future.
+* [*Default constructor is not trivial in C++03]: Because the initializing
+  constructor has to be defined in `atomic<>`, the default constructor
+  must also be defined. In C++03 the constructor cannot be defined as defaulted
+  and therefore it is not trivial. In C++11 the constructor is defaulted (and trivial,
+  if the default constructor of the value type is). In any case, the default
+  constructor of `atomic<>` performs default initialization of the atomic value,
+  as required in C++11. [*Advice]: In C++03, do not use [*Boost.Atomic] in contexts
+  where trivial default constructor is important (e.g. as a global variable which
+  is required to be statically initialized).
+* [*C++03 compilers may transform computation dependency to control dependency]:
+  Crucially, `memory_order_consume` only affects computationally-dependent
+  operations, but in general there is nothing preventing a compiler
+  from transforming a computation dependency into a control dependency.
+  A fully compliant C++11 compiler would be forbidden from such a transformation,
+  but in practice most if not all compilers have chosen to promote
+  `memory_order_consume` to `memory_order_acquire` instead
+  (see [@https://gcc.gnu.org/bugzilla/show_bug.cgi?id=59448 this] gcc bug
+  for example). In the current implementation [*Boost.Atomic] follows that trend,
+  but this may change in the future.
+  [*Advice]: In general, avoid `memory_order_consume` and use `memory_order_acquire`
+  instead. Use `memory_order_consume` only in conjunction with
+  pointer values, and only if you can ensure that the compiler cannot
+  speculate and transform these into control dependencies.
+* [*Fence operations may enforce "too strong" compiler ordering]:
+  Semantically, `memory_order_acquire`/`memory_order_consume`
+  and `memory_order_release` need to restrain reordering of
+  memory operations only in one direction. Since in C++03 there is no
+  way to express this constraint to the compiler, these act
+  as "full compiler barriers" in C++03 implementation. In corner
+  cases this may result in a slightly less efficient code than a C++11 compiler
+  could generate. [*Boost.Atomic] will use compiler intrinsics, if possible,
+  to express the proper ordering constraints.
+* [*Atomic operations may enforce "too strong" memory ordering in debug mode]:
+  On some compilers, disabling optimizations makes it impossible to provide
+  memory ordering constraints as compile-time constants to the compiler intrinsics.
+  This causes the compiler to silently ignore the provided constraints and choose
+  the "strongest" memory order (`memory_order_seq_cst`) to generate code. Not only
+  this reduces performance, this may hide bugs in the user's code (e.g. if the user
+  used a wrong memory order constraint, which caused a data race).
+  [*Advice]: Always test your code with optimizations enabled.
+* [*No interprocess fallback]: using `atomic<T>` in shared memory only works
+  correctly, if `atomic<T>::is_lock_free() == true`. Same with `atomic_ref<T>`.
+* [*Signed integers must use [@https://en.wikipedia.org/wiki/Two%27s_complement two's complement]
+  representation]: [*Boost.Atomic] makes this requirement in order to implement
+  conversions between signed and unsigned integers internally. C++11 requires all
+  atomic arithmetic operations on integers to be well defined according to two's complement
+  arithmetics, which means that [*Boost.Atomic] has to operate on unsigned integers internally
+  to avoid undefined behavior that results from signed integer overflows. Platforms
+  with other signed integer representations are not supported. Note that C++20 makes
+  two's complement representation of signed integers mandatory.
+* [*Types with padding bits are not supported]: As discussed in [link atomic.interface.interface_atomic_ref.caveats
+  this section], [*Boost.Atomic] cannot support types with padding bits because their content
+  is undefined, and there is no portable way to initialize them to a predefined value. This makes
+  operations like `compare_exchange_strong`/`compare_exchange_weak` fail, and given that in some
+  cases other operations are built upon these, potentially all operations become unreliable. [*Boost.Atomic]
+  does support padding bits for floating point types on platforms where the location of the
+  padding bits is known at compile time.
+
+[endsect]
+
+[section:porting Porting]
+
+[section:unit_tests Unit tests]
+
+[*Boost.Atomic] provides a unit test suite to verify that the
+implementation behaves as expected:
+
+* [*atomic_api.cpp] and [*atomic_ref_api.cpp] verifies that all atomic
+  operations have correct value semantics (e.g. "fetch_add" really adds
+  the desired value, returning the previous). The latter tests `atomic_ref`
+  rather than `atomic` and `atomic_flag`. It is a rough "smoke-test"
+  to help weed out the most obvious mistakes (for example width overflow,
+  signed/unsigned extension, ...). These tests are also run with
+  `BOOST_ATOMIC_FORCE_FALLBACK` macro defined to test the lock pool
+  based implementation.
+* [*lockfree.cpp] verifies that the [*BOOST_ATOMIC_*_LOCKFREE] macros
+  are set properly according to the expectations for a given
+  platform, and that they match up with the [*is_always_lock_free] and
+  [*is_lock_free] members of the [*atomic] object instances.
+* [*atomicity.cpp] and [*atomicity_ref.cpp] lets two threads race against
+  each other modifying a shared variable, verifying that the operations
+  behave atomic as appropriate. By nature, this test is necessarily
+  stochastic, and the test self-calibrates to yield 99% confidence that a
+  positive result indicates absence of an error. This test is
+  very useful on uni-processor systems with preemption already.
+* [*ordering.cpp] and [*ordering_ref.cpp] lets two threads race against
+  each other accessing multiple shared variables, verifying that the
+  operations exhibit the expected ordering behavior. By nature, this test
+  is necessarily stochastic, and the test attempts to self-calibrate to
+  yield 99% confidence that a positive result indicates absence
+  of an error. This only works on true multi-processor (or multi-core)
+  systems. It does not yield any result on uni-processor systems
+  or emulators (due to there being no observable reordering even
+  the order=relaxed case) and will report that fact.
+* [*wait_api.cpp] and [*wait_ref_api.cpp] are used to verify waiting
+  and notifying operations behavior. Due to the possibility of spurious
+  wakeups, these tests may fail if a waiting operation returns early
+  a number of times. The test retries for a few times in this case,
+  but a failure is still possible.
+* [*wait_fuzz.cpp] is a fuzzing test for waiting and notifying operations,
+  that creates a number of threads that block on the same atomic object
+  and then wake up one or all of them for a number of times. This test
+  is intended as a smoke test in case if the implementation has long-term
+  instabilities or races (primarily, in the lock pool implementation).
+* [*ipc_atomic_api.cpp], [*ipc_atomic_ref_api.cpp], [*ipc_wait_api.cpp]
+  and [*ipc_wait_ref_api.cpp] are similar to the tests without the [*ipc_]
+  prefix, but test IPC atomic types.
+
+[endsect]
+
+[section:tested_compilers Tested compilers]
+
+[*Boost.Atomic] has been tested on and is known to work on
+the following compilers/platforms:
+
+* gcc 4.4 and newer: i386, x86_64, ppc32, ppc64, sparcv9, armv6, alpha
+* clang 3.5 and newer: i386, x86_64
+* Visual Studio Express 2008 and newer on Windows XP and later: x86, x64, ARM
+
+[endsect]
+
+[section:acknowledgements Acknowledgements]
+
+* Adam Wulkiewicz created the logo used on the [@https://github.com/boostorg/atomic GitHub project page]. The logo was taken from his [@https://github.com/awulkiew/boost-logos collection] of Boost logos.
+
+[endsect]
+
+[endsect]

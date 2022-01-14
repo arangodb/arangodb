@@ -1,0 +1,45 @@
+/*
+Copyright 2018-2019 Rene Rivera
+Distributed under the Boost Software License, Version 1.0.
+(See accompanying file LICENSE_1_0.txt or http://www.boost.org/LICENSE_1_0.txt)
+*/
+.admonitionblock .icon .title {
+	font-size: 2.5em;
+	text-shadow: 1px 1px 2px rgba(0, 0, 0, .5);
+}
+.caution .icon .title {
+	color: rgba(192, 51, 0, 1);
+}
+.important .icon .title {
+	color: rgba(192, 0, 0, 1);
+}
+.note .icon .title {
+	color: rgba(26, 64, 128, 1);
+}
+.tip .icon .title {
+	color: rgba(255, 192, 0, 1);
+}
+.warning .icon .title {
+	color: rgba(192, 102, 0, 1);
+}
+p,blockquote,dt,td.content,span.alt {
+    font-size: 1.1rem
+}
+h1, h2, h3, h4, h5, h6 {
+    font-weight: bold;
+}
+h1 {
+    font-size: 2.25em;
+}
+h2 {
+    font-size: 1.5em;
+}
+h3,#toctitle,.sidebarblock>.content>.title {
+    font-size: 1.3em;
+}
+h4, h5 {
+    font-size: 1.2em;
+}
+h6 {
+    font-size: 1.1em;
+}

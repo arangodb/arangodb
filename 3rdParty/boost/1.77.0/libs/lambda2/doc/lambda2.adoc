@@ -1,0 +1,20 @@
+////
+Copyright 2020 Peter Dimov
+Distributed under the Boost Software License, Version 1.0.
+https://www.boost.org/LICENSE_1_0.txt
+////
+
+# Lambda2: A {cpp}14 Lambda Library
+Peter Dimov
+:toc: left
+:toclevels: 4
+:idprefix:
+:docinfo: private-footer
+
+:leveloffset: +1
+
+include::lambda2/overview.adoc[]
+include::lambda2/reference.adoc[]
+include::lambda2/copyright.adoc[]
+
+:leveloffset: -1

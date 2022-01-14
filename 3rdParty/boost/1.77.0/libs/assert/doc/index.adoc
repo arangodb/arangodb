@@ -1,0 +1,36 @@
+﻿////
+Copyright 2017 Peter Dimov
+
+Distributed under the Boost Software License, Version 1.0.
+
+See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt
+////
+
+# Boost.Assert
+Peter Dimov
+:toc: left
+:idprefix:
+:docinfo: private-footer
+
+The Boost.Assert library provides several configurable diagnostic macros
+similar in behavior and purpose to the standard macro `assert` from `<cassert>`.
+
+:leveloffset: +1
+
+include::assert.adoc[]
+include::current_function.adoc[]
+include::source_location.adoc[]
+include::changes.adoc[]
+
+:leveloffset: -1
+
+[appendix]
+## Copyright and License
+
+This documentation is
+
+* Copyright 2002, 2007, 2014, 2017, 2019, 2020 Peter Dimov
+* Copyright 2011 Beman Dawes
+* Copyright 2015 Ion Gaztañaga
+* Distributed under the http://www.boost.org/LICENSE_1_0.txt[Boost Software License, Version 1.0].

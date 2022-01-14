@@ -1,0 +1,38 @@
+#|
+Copyright Rene Rivera 2011-2019
+Distributed under the Boost Software License, Version 1.0.
+(See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt)
+|#
+
+import asciidoctor ;
+import modules ;
+import path ;
+
+project predefdoc ;
+
+path-constant PYGMENTS_DIR : . ;
+
+doc-dir = [ MATCH "--doc-dir=(.*)" : [ modules.peek : ARGV ] ] ;
+doc-dir ?= . ;
+
+local headers = [ glob-tree-ex $(BOOST_PREDEF_INCLUDE) : *.h ] ;
+
+html index : predef.adoc :
+    :
+        <flags>--require=$(PYGMENTS_DIR)/pygments_init.rb
+        <flags>--trace
+        <flags>--verbose
+        <dependency>$(PYGMENTS_DIR)/pygments_init.rb
+        <dependency>$(headers)
+    ;
+explicit index ;
+
+install html : index : <location>$(doc-dir) ;
+explicit html ;
+
+alias boostdoc ;
+explicit boostdoc ;
+
+alias boostrelease : html ;
+explicit boostrelease ;

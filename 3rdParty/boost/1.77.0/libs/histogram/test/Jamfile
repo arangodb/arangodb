@@ -1,0 +1,177 @@
+# Copyright 2016-2017 Klemens David Morgenstern
+# Copyright 2018 Mateusz Loskot <mateusz@loskot.net>
+# Copyright 2018-2021 Hans Dembinski
+#
+# Use, modification and distribution is subject to the Boost Software License,
+# Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+import python ;
+import os ;
+import regex ;
+import testing ;
+import ../../config/checks/config : requires ;
+
+if ! [ python.configured ]
+{
+    using python ;
+}
+
+path-constant THIS_PATH : . ;
+
+project
+    : requirements
+    [ requires
+      cxx14_constexpr cxx14_decltype_auto cxx14_generic_lambdas cxx14_return_type_deduction cxx11_user_defined_literals
+      # list could go on...
+    ]
+    ;
+
+# Check consistency of build systems
+testing.make-test run-pyd : check_build_system.py :
+    <dependency>Jamfile <dependency>CMakeLists.txt ;
+
+# Verify One Definition Rule by linking two object files which include everything
+testing.make-test run-pyd : check_odr_test.py : <dependency>odr_test.cpp ;
+alias odr :
+    [ link odr_main_test.cpp odr_test.cpp ]
+    : <warnings>off
+    ;
+
+alias cxx14 :
+    [ run accumulators_count_test.cpp ]
+    [ run accumulators_mean_test.cpp ]
+    [ run accumulators_sum_test.cpp : : :
+      # make sure sum accumulator works even with -ffast-math and optimizations
+      <toolset>gcc:<cxxflags>"-O3 -ffast-math"
+      <toolset>clang:<cxxflags>"-O3 -ffast-math" ]
+    [ run accumulators_weighted_mean_test.cpp ]
+    [ run accumulators_weighted_sum_test.cpp ]
+    [ run algorithm_project_test.cpp ]
+    [ run algorithm_reduce_test.cpp ]
+    [ run algorithm_sum_test.cpp ]
+    [ run algorithm_empty_test.cpp ]
+    [ run axis_boolean_test.cpp ]
+    [ run axis_category_test.cpp ]
+    [ run axis_integer_test.cpp ]
+    [ run axis_option_test.cpp ]
+    [ run axis_regular_test.cpp ]
+    [ run axis_traits_test.cpp ]
+    [ run axis_variable_test.cpp ]
+    [ run axis_variant_test.cpp ]
+    [ run detail_accumulator_traits_test.cpp ]
+    [ run detail_argument_traits_test.cpp ]
+    [ run detail_args_type_test.cpp ]
+    [ run detail_axes_test.cpp ]
+    [ run detail_convert_integer_test.cpp ]
+    [ run detail_detect_test.cpp ]
+    [ run detail_limits_test.cpp ]
+    [ run detail_make_default_test.cpp ]
+    [ run detail_misc_test.cpp ]
+    [ run detail_iterator_adaptor_test.cpp ]
+    [ run detail_large_int_test.cpp ]
+    [ run detail_operators_test.cpp ]
+    [ run detail_relaxed_equal_test.cpp ]
+    [ run detail_replace_type_test.cpp ]
+    [ run detail_safe_comparison_test.cpp ]
+    [ run detail_static_if_test.cpp ]
+    [ run detail_tuple_slice_test.cpp ]
+    [ run histogram_custom_axis_test.cpp ]
+    [ run histogram_dynamic_test.cpp ]
+    [ run histogram_fill_test.cpp ]
+    [ run histogram_growing_test.cpp ]
+    [ run histogram_mixed_test.cpp ]
+    [ run histogram_operators_test.cpp ]
+    [ run histogram_test.cpp ]
+    [ run indexed_test.cpp ]
+    [ run storage_adaptor_test.cpp ]
+    [ run unlimited_storage_test.cpp ]
+    [ run utility_test.cpp ]
+    ;
+
+alias cxx17 :
+    [ run deduction_guides_test.cpp ]
+    [ compile issue_290_test.cpp ]
+    : [ requires cpp_deduction_guides ]
+    ;
+
+# check that useful error messages are produced when library is used incorrectly
+alias failure :
+    [ compile-fail axis_category_fail0.cpp ]
+    [ compile-fail axis_category_fail1.cpp ]
+    [ compile-fail axis_category_fail2.cpp ]
+    [ compile-fail axis_integer_fail0.cpp ]
+    [ compile-fail axis_integer_fail1.cpp ]
+    [ compile-fail axis_integer_fail2.cpp ]
+    [ compile-fail axis_integer_fail3.cpp ]
+    [ compile-fail axis_integer_fail4.cpp ]
+    [ compile-fail axis_regular_fail0.cpp ]
+    [ compile-fail axis_regular_fail1.cpp ]
+    [ compile-fail axis_variable_fail0.cpp ]
+    [ compile-fail axis_variable_fail1.cpp ]
+    [ compile-fail make_histogram_fail0.cpp ]
+    [ compile-fail make_histogram_fail1.cpp ]
+    [ compile-fail histogram_fail0.cpp ]
+    [ compile-fail histogram_fail1.cpp ]
+    [ compile-fail histogram_fail2.cpp ]
+    [ compile-fail histogram_fail3.cpp ]
+    [ compile-fail histogram_fail4.cpp ]
+    ;
+
+alias threading :
+    [ run histogram_threaded_test.cpp ]
+    [ run storage_adaptor_threaded_test.cpp ]
+    [ run accumulators_count_thread_safe_test.cpp ]
+    [ run accumulators_thread_safe_test.cpp ]
+    :
+    <threading>multi
+    ;
+
+# tests do not work on windows, because environment variables cannot be set
+alias not_windows :
+    [ run histogram_ostream_test.cpp : : : <testing.launcher>"LANG=UTF" ]
+    [ run histogram_ostream_ascii_test.cpp : : : <testing.launcher>"LANG=FOO COLUMNS=20" ]
+    ;
+
+# warnings are off for these other boost libraries, which tend to be not warning-free
+alias accumulators : [ run boost_accumulators_support_test.cpp ] : <warnings>off ;
+alias range : [ run boost_range_support_test.cpp ] : <warnings>off ;
+alias units : [ run boost_units_support_test.cpp ] : <warnings>off ;
+alias serialization :
+    [ run accumulators_serialization_test.cpp libserial : $(THIS_PATH) ]
+    [ run detail_array_wrapper_serialization_test.cpp libserial ]
+    [ run axis_variant_serialization_test.cpp libserial : $(THIS_PATH) ]
+    [ run histogram_serialization_test.cpp libserial : $(THIS_PATH) ]
+    [ run storage_adaptor_serialization_test.cpp libserial : $(THIS_PATH) ]
+    [ run unlimited_storage_serialization_test.cpp libserial : $(THIS_PATH) ]
+    : <warnings>off
+    ;
+
+alias libserial :
+    /boost/serialization//boost_serialization
+    :
+    <link>static <warnings>off <rtti>on
+    ;
+
+# for builds without optional boost dependencies
+alias minimal : cxx14 cxx17 failure threading ;
+
+# all tests
+alias all : minimal not_windows odr accumulators range units serialization ;
+
+# all except "failure", because it is distracting during development
+alias develop : cxx14 cxx17 threading not_windows odr accumulators range units serialization ;
+
+explicit minimal ;
+explicit all ;
+explicit odr ;
+explicit cxx14 ;
+explicit cxx17 ;
+explicit failure ;
+explicit threading ;
+explicit not_windows ;
+explicit accumulators ;
+explicit range ;
+explicit units ;
+explicit serialization ;
+explicit libserial ;

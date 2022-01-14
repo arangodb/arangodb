@@ -1,0 +1,48 @@
+[/
+    Copyright (c) 2021 Dmitry Arkhipov (grisumbras@gmail.com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section Release Notes]
+
+[/-----------------------------------------------------------------------------]
+
+[heading Boost 1.77.0]
+
+[*New Features]
+
+* [issue 538] [link json.ref.boost__json__string.operator_std__string_view
+  Implicit conversion operator from `string` to `std::string_view`].
+* [issue 521] __std_hash__ specializations for json types.
+
+[*Fixes]
+
+* __object__ deallocates the correct size.
+* Fixed crash when constructing __array__ from a pair of iterators that form an
+  empty range.
+* __key_value_pair__ allocates with the correct alignment.
+
+[*Improvements]
+
+* __value_to__ supports `TupleLike` types.
+* __value_to__ and __value_from__ support __std_array__ and similar types.
+
+[heading Boost 1.76.0]
+
+[*Fixes]
+
+* [issue 481] Refactored __value_from__ implementation; user customizations are
+  now always preferred over library-provided overloads.
+* [issue 484] Fixed imprecise parsing for some floating point numbers.
+* [issue 485] Fixed link errors in standalone mode, when used alongside Boost.
+* [issue 497] Fix Boost.Build builds on GCC 4.8.
+
+[heading Boost 1.75.0]
+
+* Initial release.
+
+[endsect]

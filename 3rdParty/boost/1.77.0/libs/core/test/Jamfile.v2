@@ -1,0 +1,248 @@
+#  Boost.Core Library test Jamfile
+#
+#  Copyright (c) 2014, 2017 Peter Dimov
+#
+#  Distributed under the Boost Software License, Version 1.0.
+#  See accompanying file LICENSE_1_0.txt or copy at
+#  http://www.boost.org/LICENSE_1_0.txt
+
+import modules ;
+import testing ;
+
+# quick test (for CI)
+run quick.cpp ;
+
+# full test suite
+run addressof_test.cpp ;
+run addressof_test2.cpp ;
+run addressof_np_test.cpp ;
+run addressof_fn_test.cpp ;
+compile addressof_constexpr_test.cpp ;
+compile-fail addressof_fail_rvalue.cpp ;
+
+run checked_delete_test.cpp ;
+compile-fail checked_delete_fail.cpp ;
+compile-fail checked_delete_fail2.cpp ;
+
+compile ref_ct_test.cpp ;
+run ref_test.cpp ;
+run ref_ref_test.cpp ;
+run ref_fn_test.cpp ;
+compile-fail ref_rv_fail1.cpp ;
+compile-fail ref_rv_fail2.cpp ;
+compile-fail ref_rv_fail3.cpp ;
+compile-fail ref_rv_fail4.cpp ;
+compile-fail ref_rv_fail5.cpp ;
+compile-fail ref_implicit_fail.cpp ;
+compile-fail ref_implicit_fail2.cpp ;
+compile-fail ref_implicit_fail3.cpp ;
+compile-fail ref_implicit_fail4.cpp ;
+run ref_cv_test.cpp ;
+run ref_conversion_test.cpp ;
+
+run eif_constructors.cpp ;
+run eif_dummy_arg_disambiguation.cpp ;
+run eif_lazy.cpp ;
+run eif_lazy_test.cpp ;
+run eif_member_templates.cpp ;
+run eif_namespace_disambiguation.cpp ;
+run eif_no_disambiguation.cpp ;
+run eif_partial_specializations.cpp ;
+
+compile-fail noncopyable_compile_fail.cpp ;
+
+run explicit_operator_bool.cpp ;
+run explicit_operator_bool_noexcept.cpp ;
+compile-fail explicit_operator_bool_compile_fail_conv_int.cpp ;
+compile-fail explicit_operator_bool_compile_fail_conv_pvoid.cpp ;
+compile-fail explicit_operator_bool_compile_fail_delete.cpp ;
+compile-fail explicit_operator_bool_compile_fail_shift.cpp ;
+
+compile ignore_unused_test.cpp
+  : <warnings>extra
+    <toolset>gcc:<warnings-as-errors>on
+    <toolset>clang:<warnings-as-errors>on
+    <toolset>msvc:<warnings-as-errors>on ;
+
+run sp_typeinfo_test.cpp ;
+run sp_typeinfo_test.cpp : : : <rtti>off : sp_typeinfo_test_no_rtti ;
+
+run visit_each_test.cpp ;
+
+run get_pointer_test.cpp ;
+
+local pedantic-errors = <warnings>pedantic
+    <toolset>msvc:<warnings-as-errors>on
+    <toolset>gcc:<warnings-as-errors>on
+    <toolset>clang:<warnings-as-errors>on ;
+
+run lightweight_test_test.cpp
+  : : : $(pedantic-errors) ;
+run lightweight_test_test.cpp : : :
+  <exception-handling>off $(pedantic-errors) : lightweight_test_test_no_except ;
+run lightweight_test_test2.cpp
+  : : : $(pedantic-errors) ;
+run lightweight_test_all_with_test.cpp
+  : : : $(pedantic-errors) ;
+run lightweight_test_lt_le_test.cpp
+  : : : $(pedantic-errors) ;
+run lightweight_test_gt_ge_test.cpp
+  : : : $(pedantic-errors) ;
+run lightweight_test_eq_nullptr.cpp
+  : : : $(pedantic-errors) ;
+run lightweight_test_test3.cpp
+  : : : $(pedantic-errors) ;
+run lightweight_test_test4.cpp
+  : : : $(pedantic-errors) ;
+run lightweight_test_test5.cpp
+  : : : $(pedantic-errors)
+    <toolset>gcc-4.4.7:<cxxflags>-Wno-sign-compare
+    <toolset>gcc-4.4:<cxxflags>-Wno-sign-compare
+  ;
+run lightweight_test_test6.cpp
+  : : : $(pedantic-errors) ;
+
+run-fail lightweight_test_all_eq_test.cpp ;
+run-fail lightweight_test_all_with_fail.cpp ;
+
+run-fail lightweight_test_fail.cpp ;
+run-fail lightweight_test_fail2.cpp ;
+run-fail lightweight_test_fail3.cpp ;
+run-fail lightweight_test_fail4.cpp ;
+run-fail lightweight_test_fail5.cpp ;
+run-fail lightweight_test_fail6.cpp ;
+run-fail lightweight_test_fail7.cpp ;
+run-fail lightweight_test_fail7.cpp : : : <rtti>off : lightweight_test_fail7_no_rtti ;
+run-fail lightweight_test_fail8.cpp ;
+run-fail lightweight_test_fail8.cpp : : : <rtti>off : lightweight_test_fail8_no_rtti ;
+run-fail lightweight_test_fail9.cpp ;
+run-fail lightweight_test_fail10.cpp ;
+run-fail lightweight_test_fail11.cpp : ;
+run-fail lightweight_test_fail12.cpp ;
+run-fail lightweight_test_fail13.cpp ;
+run-fail lightweight_test_fail14.cpp ;
+run-fail lightweight_test_fail15.cpp ;
+run-fail lightweight_test_lt_fail.cpp ;
+run-fail lightweight_test_le_fail.cpp ;
+run-fail lightweight_test_gt_fail.cpp ;
+run-fail lightweight_test_ge_fail.cpp ;
+
+run lightweight_test_bool.cpp
+  : : : $(pedantic-errors) ;
+
+run lightweight_test_with_test.cpp
+  : : : $(pedantic-errors) ;
+run-fail lightweight_test_with_fail.cpp ;
+
+run is_same_test.cpp ;
+
+run typeinfo_test.cpp ;
+run typeinfo_test.cpp : : : <rtti>off : typeinfo_test_no_rtti ;
+
+run iterator_test.cpp ;
+run detail_iterator_test.cpp ;
+
+run demangle_test.cpp
+  : : : <test-info>always_show_run_output ;
+
+run demangled_name_test.cpp
+  : : : <test-info>always_show_run_output ;
+
+run demangled_name_test.cpp  : : : <rtti>off <test-info>always_show_run_output : demangled_name_test_no_rtti ;
+
+run scoped_enum.cpp ;
+compile-fail scoped_enum_compile_fail_conv_from_int.cpp ;
+compile-fail scoped_enum_compile_fail_conv_to_int.cpp ;
+
+run underlying_type.cpp ;
+
+run pointer_traits_pointer_test.cpp ;
+run pointer_traits_element_type_test.cpp ;
+run pointer_traits_difference_type_test.cpp ;
+run pointer_traits_rebind_test.cpp ;
+run pointer_traits_pointer_to_test.cpp ;
+run to_address_test.cpp ;
+
+run exchange_test.cpp ;
+run exchange_move_test.cpp ;
+
+run first_scalar_test.cpp ;
+compile first_scalar_constexpr_test.cpp ;
+
+run empty_value_test.cpp ;
+run empty_value_size_test.cpp ;
+run empty_value_final_test.cpp ;
+
+run quick_exit_test.cpp ;
+run-fail quick_exit_fail.cpp ;
+
+compile use_default_test.cpp ;
+
+run default_allocator_test.cpp
+  : : : <warnings>pedantic
+        <toolset>msvc:<warnings-as-errors>on
+        <toolset>gcc:<warnings-as-errors>on
+        <toolset>clang:<warnings-as-errors>on ;
+
+run noinit_adaptor_test.cpp ;
+run alloc_construct_test.cpp ;
+run alloc_construct_throws_test.cpp ;
+run alloc_construct_cxx11_test.cpp ;
+
+run nvp_test.cpp ;
+
+run allocator_value_type_test.cpp ;
+run allocator_pointer_test.cpp ;
+run allocator_const_pointer_test.cpp ;
+run allocator_void_pointer_test.cpp ;
+run allocator_const_void_pointer_test.cpp ;
+run allocator_difference_type_test.cpp ;
+run allocator_size_type_test.cpp ;
+run allocator_pocca_test.cpp ;
+run allocator_pocma_test.cpp ;
+run allocator_pocs_test.cpp ;
+run allocator_is_always_equal_test.cpp ;
+run allocator_rebind_test.cpp ;
+run allocator_allocate_test.cpp ;
+run allocator_allocate_hint_test.cpp ;
+run allocator_deallocate_test.cpp ;
+run allocator_max_size_test.cpp ;
+run allocator_soccc_test.cpp ;
+
+lib lib_typeid : lib_typeid.cpp : <link>shared:<define>LIB_TYPEID_DYN_LINK=1 ;
+
+run test_lib_typeid.cpp lib_typeid : : : <link>shared : test_lib_typeid_shared ;
+run test_lib_typeid.cpp lib_typeid : : : <link>static : test_lib_typeid_static ;
+
+run test_lib_typeid.cpp lib_typeid : : : <link>shared <rtti>off : test_lib_typeid_shared_no_rtti ;
+run test_lib_typeid.cpp lib_typeid : : : <link>static <rtti>off : test_lib_typeid_static_no_rtti ;
+
+run test_lib_typeid2.cpp lib_typeid : : : <link>shared : test_lib_typeid2_shared ;
+run test_lib_typeid2.cpp lib_typeid : : : <link>static : test_lib_typeid2_static ;
+
+run test_lib_typeid2.cpp lib_typeid : : : <link>shared <rtti>off : test_lib_typeid2_shared_no_rtti ;
+run test_lib_typeid2.cpp lib_typeid : : : <link>static <rtti>off : test_lib_typeid2_static_no_rtti ;
+
+run uncaught_exceptions.cpp
+  : : : <exception-handling>on ;
+run uncaught_exceptions_np.cpp
+  : : : <exception-handling>on ;
+
+run no_exceptions_support_test.cpp ;
+run no_exceptions_support_test.cpp : : : <exception-handling>off : no_exceptions_support_test_nx ;
+
+run cmath_test.cpp ;
+
+run bit_cast_test.cpp ;
+run bit_rotate_test.cpp ;
+run bit_countr_test.cpp ;
+run bit_countl_test.cpp ;
+run bit_width_test.cpp ;
+run has_single_bit_test.cpp ;
+run bit_floor_test.cpp ;
+run bit_ceil_test.cpp ;
+run bit_popcount_test.cpp ;
+run bit_endian_test.cpp ;
+
+use-project /boost/core/swap : ./swap ;
+build-project ./swap ;

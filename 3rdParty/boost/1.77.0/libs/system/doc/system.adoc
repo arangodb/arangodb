@@ -1,0 +1,27 @@
+////
+Copyright 2018 Peter Dimov
+
+Distributed under the Boost Software License, Version 1.0.
+
+See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt
+////
+
+# Boost.System: Extensible Error Reporting
+Beman Dawes, Christopher Kohlhoff, Peter Dimov
+:toc: left
+:toclevels: 4
+:idprefix:
+:docinfo: private-footer
+
+:leveloffset: +1
+
+include::system/introduction.adoc[]
+include::system/changes.adoc[]
+include::system/rationale.adoc[]
+include::system/reference.adoc[]
+include::system/history.adoc[]
+include::system/acknowledgements.adoc[]
+include::system/copyright.adoc[]
+
+:leveloffset: -1
