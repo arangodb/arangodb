@@ -395,12 +395,63 @@ ExecutionNode* PlanSnippet::GatherOutput::eventuallyCreateCollectNode(
   }
   switch (_collect->aggregationMethod()) {
     case CollectOptions::CollectMethod::DISTINCT: {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-      break;
+      // clone a COLLECT DISTINCT operation from the coordinator to the
+      // DB server(s), and leave an aggregate COLLECT node on the
+      // coordinator for total aggregation
+
+      // create a new result variable
+      auto const& groupVars = _collect->groupVariables();
+      TRI_ASSERT(!groupVars.empty());
+      auto out = plan->getAst()->variables()->createTemporaryVariable();
+
+      std::vector<GroupVarInfo> const groupVariables{
+          GroupVarInfo{out, groupVars[0].inVar}};
+
+      auto dbCollectNode = plan->createNode<CollectNode>(
+          plan, plan->nextId(), _collect->getOptions(), groupVariables,
+          _collect->aggregateVariables(), nullptr, nullptr,
+          std::vector<Variable const*>(), _collect->variableMap(), true);
+
+      dbCollectNode->aggregationMethod(_collect->aggregationMethod());
+      dbCollectNode->specialized();
+
+      // will set the input of the coordinator's collect node to the new
+      // variable produced on the DB servers
+      auto copy = _collect->groupVariables();
+      TRI_ASSERT(!copy.empty());
+      std::unordered_map<Variable const*, Variable const*> replacements;
+      replacements.try_emplace(copy[0].inVar, out);
+      copy[0].inVar = out;
+      _collect->groupVariables(copy);
+      return dbCollectNode;
     }
     case CollectOptions::CollectMethod::COUNT: {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-      break;
+      TRI_ASSERT(_collect->aggregateVariables().size() == 1);
+      TRI_ASSERT(!_collect->hasOutVariable());
+      // clone a COLLECT AGGREGATE var=LENGTH(_) operation from the
+      // coordinator to the DB server(s), and leave an aggregate COLLECT
+      // node on the coordinator for total aggregation
+
+      // add a new CollectNode on the DB server to do the actual counting
+      auto outVariable = plan->getAst()->variables()->createTemporaryVariable();
+      std::vector<AggregateVarInfo> aggregateVariables;
+      aggregateVariables.emplace_back(AggregateVarInfo{
+          outVariable, _collect->aggregateVariables()[0].inVar, "LENGTH"});
+      auto dbCollectNode = plan->createNode<CollectNode>(
+          plan, plan->nextId(), _collect->getOptions(),
+          _collect->groupVariables(), aggregateVariables, nullptr, nullptr,
+          std::vector<Variable const*>(), _collect->variableMap(), false);
+
+      dbCollectNode->aggregationMethod(_collect->aggregationMethod());
+      dbCollectNode->specialized();
+
+      // re-use the existing CollectNode on the coordinator to aggregate
+      // the counts of the DB servers
+      _collect->aggregateVariables()[0].type = "SUM";
+      _collect->aggregateVariables()[0].inVar = outVariable;
+      _collect->aggregationMethod(CollectOptions::CollectMethod::SORTED);
+
+      return dbCollectNode;
     }
     case CollectOptions::CollectMethod::UNDEFINED:
     case CollectOptions::CollectMethod::HASH:

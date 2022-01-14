@@ -293,6 +293,48 @@ class DistributeQueryRuleTest : public ::testing::Test {
 #endif
   }
 
+  std::vector<Variable const*> assertRemoteCollect(
+      ExecutionPlan* plan, CollectOptions::CollectMethod method,
+      bool isDistinct) {
+    bool hasSeenCoordinator = false;
+    VarSet coordinatorIn;
+    std::vector<Variable const*> coordinatorOut;
+
+    matchNodesOfType<CollectNode>(
+        plan, ExecutionNode::NodeType::COLLECT,
+        [&](CollectNode const* collect) {
+          if (!hasSeenCoordinator) {
+#if useOptimize
+            EXPECT_TRUE(collect->getPlanSnippet()->isOnCoordinator());
+#endif
+            // We visit bottom to top, so first we see
+            // the coordinator one.
+            hasSeenCoordinator = true;
+            collect->getVariablesUsedHere(coordinatorIn);
+            coordinatorOut = collect->getVariablesSetHere();
+            if (method == CollectOptions::CollectMethod::COUNT) {
+              EXPECT_EQ(collect->aggregationMethod(),
+                        CollectOptions::CollectMethod::SORTED);
+            } else {
+              EXPECT_EQ(collect->aggregationMethod(), method);
+            }
+          } else {
+#if useOptimize
+            EXPECT_FALSE(collect->getPlanSnippet()->isOnCoordinator());
+#endif
+            for (auto const v : collect->getVariablesSetHere()) {
+              // The coordinator needs to collect on all DBServers out Variables
+              EXPECT_NE(coordinatorIn.find(v), coordinatorIn.end())
+                  << "Did not collect on variable: " << v->name;
+            }
+            EXPECT_EQ(collect->aggregationMethod(), method);
+          }
+          EXPECT_EQ(collect->isDistinctCommand(), isDistinct);
+          EXPECT_TRUE(collect->isSpecialized());
+        });
+    return coordinatorOut;
+  }
+
   DistributeQueryRuleTest() {}
 
   static void SetUpTestCase() {
@@ -699,42 +741,12 @@ TEST_F(DistributeQueryRuleTest, distributed_sort_then_collect) {
         //  Gather is not sorting
         ASSERT_EQ(sortBy.size(), 0);
       });
+  auto coordinatorOut = assertRemoteCollect(
+      plan.get(), CollectOptions::CollectMethod::HASH, false);
+  // We can only have One output variable for this query (val)
+  ASSERT_EQ(coordinatorOut.size(), 1);
 
   bool hasSeenCoordinator = false;
-  VarSet coordinatorIn;
-  std::vector<Variable const*> coordinatorOut;
-
-  matchNodesOfType<CollectNode>(
-      plan.get(), ExecutionNode::NodeType::COLLECT,
-      [&](CollectNode const* collect) {
-        if (!hasSeenCoordinator) {
-#if useOptimize
-          EXPECT_TRUE(collect->getPlanSnippet()->isOnCoordinator());
-#endif
-          // We visit bottom to top, so first we see
-          // the coordinator one.
-          hasSeenCoordinator = true;
-          collect->getVariablesUsedHere(coordinatorIn);
-          coordinatorOut = collect->getVariablesSetHere();
-          // We can only have One output variable for this query (val)
-          ASSERT_EQ(coordinatorOut.size(), 1);
-        } else {
-#if useOptimize
-          EXPECT_FALSE(collect->getPlanSnippet()->isOnCoordinator());
-#endif
-          for (auto const v : collect->getVariablesSetHere()) {
-            // The coordinator needs to collect on all DBServers out Variables
-            EXPECT_NE(coordinatorIn.find(v), coordinatorIn.end())
-                << "Did not collect on variable: " << v->name;
-          }
-        }
-        EXPECT_FALSE(collect->isDistinctCommand());
-        EXPECT_TRUE(collect->isSpecialized());
-        EXPECT_EQ(collect->aggregationMethod(),
-                  CollectOptions::CollectMethod::HASH);
-      });
-
-  hasSeenCoordinator = false;
   matchNodesOfType<SortNode>(
       plan.get(), ExecutionNode::NodeType::SORT,
       [&coordinatorOut, &hasSeenCoordinator](SortNode const* sort) {
@@ -863,6 +875,83 @@ TEST_F(DistributeQueryRuleTest, enumerate_remove_key) {
   assertNodesMatch(
       *plan, {"SingletonNode", "EnumerateCollectionNode", "CalculationNode",
               "RemoveNode", "RemoteNode", "GatherNode"});
+}
+
+TEST_F(DistributeQueryRuleTest, collect_with_count) {
+  auto queryString = R"aql(
+    FOR doc IN collection
+      COLLECT WITH COUNT INTO c
+      RETURN c)aql";
+  auto plan = optimizeQuery(queryString);
+  assertNodesMatch(*plan,
+                   {"SingletonNode", "EnumerateCollectionNode", "CollectNode",
+                    "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"});
+  assertRemoteCollect(plan.get(), CollectOptions::CollectMethod::COUNT, false);
+}
+
+TEST_F(DistributeQueryRuleTest, collect_var_with_count) {
+  auto queryString = R"aql(
+    FOR doc IN collection
+      COLLECT val = doc.val WITH COUNT INTO c
+      RETURN {val, c})aql";
+  auto plan = optimizeQuery(queryString);
+  assertNodesMatch(
+      *plan, {"SingletonNode", "EnumerateCollectionNode", "CalculationNode",
+              "CollectNode", "RemoteNode", "GatherNode", "CollectNode",
+              "SortNode", "CalculationNode", "ReturnNode"});
+  assertRemoteCollect(plan.get(), CollectOptions::CollectMethod::HASH, false);
+}
+
+TEST_F(DistributeQueryRuleTest, collect_with_count_in_subquery) {
+  auto queryString = R"aql(
+    FOR doc IN collection
+      LET sub = (
+        FOR d IN collection
+          COLLECT val = d.val WITH COUNT INTO c
+          RETURN {val, c}
+      )
+      RETURN {doc, sub})aql";
+  auto plan = optimizeQuery(queryString);
+  assertNodesMatch(*plan, {"SingletonNode",
+                           "SubqueryStartNode",
+                           "ScatterNode",
+                           "RemoteNode",
+                           "EnumerateCollectionNode",
+                           "CalculationNode",
+                           "CollectNode",
+                           "RemoteNode",
+                           "GatherNode",
+                           "CollectNode",
+                           "SortNode",
+                           "CalculationNode",
+                           "SubqueryEndNode",
+                           "ScatterNode",
+                           "RemoteNode",
+                           "EnumerateCollectionNode",
+                           "CalculationNode",
+                           "RemoteNode",
+                           "GatherNode",
+                           "ReturnNode"});
+  assertRemoteCollect(plan.get(), CollectOptions::CollectMethod::HASH, false);
+}
+
+TEST_F(DistributeQueryRuleTest, return_distinct_subquery) {
+  auto queryString = R"aql(
+    FOR doc IN collection
+      LET sub = (
+        FOR d IN collection
+          RETURN DISTINCT d.val
+      )
+      RETURN {doc, sub})aql";
+  auto plan = optimizeQuery(queryString);
+  assertNodesMatch(
+      *plan, {"SingletonNode", "SubqueryStartNode", "ScatterNode", "RemoteNode",
+              "EnumerateCollectionNode", "CalculationNode", "CollectNode",
+              "RemoteNode", "GatherNode", "CollectNode", "SubqueryEndNode",
+              "ScatterNode", "RemoteNode", "EnumerateCollectionNode",
+              "CalculationNode", "RemoteNode", "GatherNode", "ReturnNode"});
+  assertRemoteCollect(plan.get(), CollectOptions::CollectMethod::DISTINCT,
+                      true);
 }
 
 }  // namespace aql
