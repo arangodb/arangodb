@@ -1,0 +1,194 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>http::write_some (1 of 2 overloads)</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter 1. Boost.Beast">
+<link rel="up" href="../boost__beast__http__write_some.html" title="http::write_some">
+<link rel="prev" href="../boost__beast__http__write_some.html" title="http::write_some">
+<link rel="next" href="overload2.html" title="http::write_some (2 of 2 overloads)">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../boost__beast__http__write_some.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__beast__http__write_some.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="overload2.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="beast.ref.boost__beast__http__write_some.overload1"></a><a class="link" href="overload1.html" title="http::write_some (1 of 2 overloads)">http::write_some
+        (1 of 2 overloads)</a>
+</h5></div></div></div>
+<p>
+          Write part of a message to a stream using a serializer.
+        </p>
+<h6>
+<a name="beast.ref.boost__beast__http__write_some.overload1.h0"></a>
+          <span class="phrase"><a name="beast.ref.boost__beast__http__write_some.overload1.synopsis"></a></span><a class="link" href="overload1.html#beast.ref.boost__beast__http__write_some.overload1.synopsis">Synopsis</a>
+        </h6>
+<p>
+          Defined in header <code class="literal">&lt;<a href="../../../../../../../boost/beast/http/write.hpp" target="_top">boost/beast/http/write.hpp</a>&gt;</code>
+        </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <a href="../../../../../../../doc/html/boost_asio/reference/SyncWriteStream.html" target="_top"><span class="emphasis"><em>SyncWriteStream</em></span></a><span class="special">,</span>
+    <span class="keyword">bool</span> <span class="identifier">isRequest</span><span class="special">,</span>
+    <span class="keyword">class</span> <a class="link" href="../../concepts/Body.html" title="Body"><span class="emphasis"><em>Body</em></span></a><span class="special">,</span>
+    <span class="keyword">class</span> <a class="link" href="../../concepts/Fields.html" title="Fields"><span class="emphasis"><em>Fields</em></span></a><span class="special">&gt;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+<span class="identifier">write_some</span><span class="special">(</span>
+    <span class="identifier">SyncWriteStream</span><span class="special">&amp;</span> <span class="identifier">stream</span><span class="special">,</span>
+    <span class="identifier">serializer</span><span class="special">&lt;</span> <span class="identifier">isRequest</span><span class="special">,</span> <span class="identifier">Body</span><span class="special">,</span> <span class="identifier">Fields</span> <span class="special">&gt;&amp;</span> <span class="identifier">sr</span><span class="special">);</span>
+</pre>
+<h6>
+<a name="beast.ref.boost__beast__http__write_some.overload1.h1"></a>
+          <span class="phrase"><a name="beast.ref.boost__beast__http__write_some.overload1.description"></a></span><a class="link" href="overload1.html#beast.ref.boost__beast__http__write_some.overload1.description">Description</a>
+        </h6>
+<p>
+          This function is used to write part of a message to a stream using a caller-provided
+          HTTP/1 serializer. The call will block until one of the following conditions
+          is true:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              One or more bytes have been transferred.
+            </li>
+<li class="listitem">
+              The function <a class="link" href="../boost__beast__http__serializer/is_done.html" title="http::serializer::is_done"><code class="computeroutput"><span class="identifier">serializer</span><span class="special">::</span><span class="identifier">is_done</span></code></a> returns <code class="computeroutput"><span class="keyword">true</span></code>
+            </li>
+<li class="listitem">
+              An error occurs on the stream.
+            </li>
+</ul></div>
+<p>
+          This operation is implemented in terms of one or more calls to the stream's
+          <code class="computeroutput"><span class="identifier">write_some</span></code> function. The
+          amount of data actually transferred is controlled by the behavior of the
+          underlying stream, subject to the buffer size limit of the serializer obtained
+          or set through a call to <a class="link" href="../boost__beast__http__serializer/limit.html" title="http::serializer::limit"><code class="computeroutput"><span class="identifier">serializer</span><span class="special">::</span><span class="identifier">limit</span></code></a>. Setting a limit and performing
+          bounded work helps applications set reasonable timeouts. It also allows
+          application-level flow control to function correctly. For example when
+          using a TCP/IP based stream.
+        </p>
+<h6>
+<a name="beast.ref.boost__beast__http__write_some.overload1.h2"></a>
+          <span class="phrase"><a name="beast.ref.boost__beast__http__write_some.overload1.parameters"></a></span><a class="link" href="overload1.html#beast.ref.boost__beast__http__write_some.overload1.parameters">Parameters</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Name
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">stream</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The stream to which the data is to be written. The type must
+                    support the <span class="emphasis"><em>SyncWriteStream</em></span> concept.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">sr</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The serializer to use.
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<h6>
+<a name="beast.ref.boost__beast__http__write_some.overload1.h3"></a>
+          <span class="phrase"><a name="beast.ref.boost__beast__http__write_some.overload1.return_value"></a></span><a class="link" href="overload1.html#beast.ref.boost__beast__http__write_some.overload1.return_value">Return
+          Value</a>
+        </h6>
+<p>
+          The number of bytes written to the stream.
+        </p>
+<h6>
+<a name="beast.ref.boost__beast__http__write_some.overload1.h4"></a>
+          <span class="phrase"><a name="beast.ref.boost__beast__http__write_some.overload1.exceptions"></a></span><a class="link" href="overload1.html#beast.ref.boost__beast__http__write_some.overload1.exceptions">Exceptions</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Type
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Thrown On
+                  </p>
+                </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">system_error</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Thrown on failure.
+                  </p>
+                </td>
+</tr></tbody>
+</table></div>
+<h6>
+<a name="beast.ref.boost__beast__http__write_some.overload1.h5"></a>
+          <span class="phrase"><a name="beast.ref.boost__beast__http__write_some.overload1.see_also"></a></span><a class="link" href="overload1.html#beast.ref.boost__beast__http__write_some.overload1.see_also">See
+          Also</a>
+        </h6>
+<p>
+          <a class="link" href="../boost__beast__http__serializer.html" title="http::serializer"><code class="computeroutput"><span class="identifier">serializer</span></code></a>
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../boost__beast__http__write_some.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__beast__http__write_some.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="overload2.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

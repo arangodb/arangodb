@@ -1,0 +1,265 @@
+[/==============================================================================
+    Copyright (C) 2001-2015 Joel de Guzman
+    Copyright (C) 2001-2011 Hartmut Kaiser
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+===============================================================================/]
+
+[article Spirit X3
+    [quickbook 1.5]
+    [version 3.10]
+    [authors [de Guzman, Joel], [Kaiser, Hartmut]]
+    [copyright 2001-2018 Joel de Guzman, Hartmut Kaiser]
+    [/ purpose Parser Library]
+    [license
+        Distributed under the Boost Software License, Version 1.0.
+        (See accompanying file LICENSE_1_0.txt or copy at
+        [@http://www.boost.org/LICENSE_1_0.txt])
+    ]
+]
+
+[/ Nov 29, 2021 ]
+
+[/=============================================================================
+    Some links and defines
+=============================================================================/]
+
+[def __version__                V3.10]
+
+[/ external]
+
+[def __gmane__                  [@http://www.gmane.org Gmane]]
+[def __mlist_archive__          [@http://news.gmane.org/gmane.comp.parsers.spirit.general]]
+[def __boost_tools__            [@http://www.boost.org/tools/index.html Boost Tools]]
+[def __fusion__                 [@boost:/libs/fusion/doc/html/index.html Boost.Fusion]]
+[def __boost_variant__          [@http://www.boost.org/doc/html/variant.html Boost.Variant]]
+[def __stl__                    [@https://en.wikipedia.org/wiki/Standard_Template_Library STL]]
+[def __fwditer__                [@http://en.cppreference.com/w/cpp/named_req/ForwardIterator `ForwardIterator`]]
+[def __outputiter__             [@http://en.cppreference.com/w/cpp/named_req/OutputIterator `OutputIterator`]]
+[def __concepts__               [@http://www.boost.org/community/generic_programming.html#concept concepts]]
+[def __endianness__             [@http://en.wikipedia.org/wiki/Endianness endianness]]
+[def __iomanip__                [@http://www.cppreference.com/wiki/io/io_flags#manipulators Manipulators]]
+[def __boost_iterator_range__   [@boost:/libs/range/doc/html/range/reference/utilities/iterator_range.html `boost::iterator_range`]]
+
+[template trac[number]'''<ulink url="https://svn.boost.org/trac/boost/ticket/'''[number]'''">TRAC#'''[number]'''</ulink>''']
+[template gh[number]'''<ulink url="https://github.com/boostorg/spirit/issues/'''[number]'''">GH#'''[number]'''</ulink>''']
+[template gh_pr[number]'''<ulink url="https://github.com/boostorg/spirit/pull/'''[number]'''">GH#'''[number]'''</ulink>''']
+
+[/ Some images ]
+
+[def __note__                   [$./images/note.png]]
+[def __tip__                    [$./images/tip.png]]
+[def __important__              [$./images/important.png]]
+[def __caution__                [$./images/caution.png]]
+[def __danger__                 [$./images/alert.png]]
+
+[def __x3__                     /Spirit.X3/]
+
+[def __sd_start_stop__          [$./images/start_stop.png]]
+[def __sd_terminals__           [$./images/terminal.png]]
+[def __sd_non_terminals__       [$./images/non-terminal.png]]
+[def __sd_sequence__            [$./images/sequence.png]]
+[def __sd_choice__              [$./images/alternative.png]]
+[def __sd_optional__            [$./images/optional.png]]
+[def __sd_plus__                [$./images/plus.png]]
+[def __sd_kleene__              [$./images/kleene.png]]
+[def __sd_predicate__           [$./images/predicate.png]]
+[def __sd_and_predicate__       [$./images/and_predicate.png]]
+[def __sd_not_predicate__       [$./images/not_predicate.png]]
+[def __pascal_string__          [$./images/pascal_string.png]]
+
+[def __syntax_diagrams__        [link spirit.abstracts.syntax_diagrams Syntax Diagram]]
+[def __peg__                    [link spirit.abstracts.parsing_expression_grammar Parsing Expression Grammar]]
+[def __ast__                    Abstract Syntax Tree] [/$$$ TODO: link me $$$]
+
+[def __sec_x3_reference__       [/ link spirit_x3.reference] X3 Reference]
+[def __sec_x3_primitive__       [/ link spirit_x3.quick_reference.x3_parsers] X3 Parsers]
+[def __sec_x3_compound__        [/ link spirit_x3.quick_reference.compound_attribute_rules] Parser Compound Attribute Rules]
+
+[/ support]
+[def __info__                   `info`] [/ TODO Link Me]
+[def __unused_type__            `unused_type`] [/$$$ TODO: link me $$$]
+[def __unused__                 `unused`] [/$$$ TODO: link me $$$]
+[def __char_class_types__       Character Class Types] [/$$$ TODO: link me $$$]
+
+[/ quick-ref]
+[def __x3_quickref__                [link spirit_x3.quick_reference X3 Quick Reference]]
+[def __x3_comp_attr_notation__      [link spirit_x3.quick_reference.compound_attribute_rules.notation Compound Attribute Notation]]
+
+[/ concepts]
+[def __parser_concept__             [/ link spirit_x3.reference.parser_concepts.parser] `Parser`]
+[def __primitive_parser_concept__   [/ link spirit_x3.reference.parser_concepts.primitiveparser] `PrimitiveParser`]
+[def __unary_parser_concept__       [/ link spirit_x3.reference.parser_concepts.unaryparser] `UnaryParser`]
+[def __binary_parser_concept__      [/ link spirit_x3.reference.parser_concepts.binaryparser] `BinaryParser`]
+[def __nary_parser_concept__        [/ link spirit_x3.reference.parser_concepts.naryparser] `NaryParser`]
+[def __x3_nonterminal__             [/ link spirit_x3.reference.parser_concepts.nonterminal] `Nonterminal`]
+[def __x3_nonterminal_attribute__   [/ link spirit_x3.reference.parser_concepts.nonterminal.attributes] `Attribute`]
+
+[/ basics]
+[def __x3_lazy_argument__           [/ link spirit_x3.reference.basics.lazy_argument] Lazy Argument]
+[def __x3_lazy_arguments__          [/ link spirit_x3.reference.basics.lazy_argument] Lazy Arguments]
+[def __char_encoding_namespace__    [/ link spirit_x3.reference.basics.character_encoding_namespace] Character Encoding Namespace]
+[def __x3_basics_examples__         [/ link spirit_x3.reference.basics.examples] Basics Examples]
+
+[/ string]
+[template x3_lit_string[str]        [[/ link spirit_x3.reference.string.string] str]]
+[def __string__                     [/ link spirit_x3.reference.basics.string] String]
+[def __x3_symbols__                 [/ link spirit_x3.reference.string.symbols] `symbols<T>`]
+
+[/ action]
+[def __x3_semantic_actions__        Semantic Actions] [/ TODO Link Me]
+
+[/ char]
+[template x3_char[str]              [/ link spirit_x3.reference.char.char] [str]]
+[template x3_char_class[str]        [/ link spirit_x3.reference.char.char_class] [str]]
+[template x3_lit_char[char]         [/ link spirit_x3.reference.char.char] [char]]
+
+[/ numerics]
+[template x3_signed_int[str]        [/ link spirit_x3.reference.numeric.int] [str]]
+[template x3_unsigned_int[str]      [/ link spirit_x3.reference.numeric.uint] [str]]
+[template x3_real_number[str]       [/ link spirit_x3.reference.numeric.real] [str]]
+[template x3_boolean[str]           [/ link spirit_x3.reference.numeric.boolean] [str]]
+
+[/ binary]
+[template x3_native_binary[str]     [/ link spirit_x3.reference.binary.binary_native] [str]]
+[template x3_little_binary[str]     [/ link spirit_x3.reference.binary.binary_little] [str]]
+[template x3_big_binary[str]        [/ link spirit_x3.reference.binary.binary_big] [str]]
+
+[/ auxiliary]
+[def __x3_attr__                    [/ link spirit_x3.reference.auxiliary.attr] `attr(attrib)`]
+[def __x3_eol__                     [/ link spirit_x3.reference.auxiliary.eol] `eol`]
+[def __x3_eoi__                     [/ link spirit_x3.reference.auxiliary.eoi] `eoi`]
+[def __x3_eps__                     [/ link spirit_x3.reference.auxiliary.eps] `eps`]
+[def __x3_lazy__                    [/ link spirit_x3.reference.auxiliary.lazy] `lazy`]
+
+[/ directives]
+[def __x3_lexeme__                  [/ link spirit_x3.reference.directive.lexeme] `lexeme`]
+[def __x3_no_case__                 [/ link spirit_x3.reference.directive.no_case] `no_case`]
+[def __x3_omit__                    [/ link spirit_x3.reference.directive.omit] `omit`]
+[def __x3_matches__                 [/ link spirit_x3.reference.directive.matches] `matches`]
+[def __x3_raw__                     [/ link spirit_x3.reference.directive.raw] `raw`]
+[def __x3_expectd__                 [/ link spirit_x3.reference.directive.expect] `expect`]
+[def __x3_repeat__                  [/ link spirit_x3.reference.directive.repeat] `repeat`]
+[template x3_repeat[str]            [[/ link spirit_x3.reference.directive.repeat] str]]
+[def __x3_skip__                    [/ link spirit_x3.reference.directive.skip] `skip`]
+[template x3_no_skip[str]           [[/ link spirit_x3.reference.directive.no_skip] str]]
+[def __x3_hold__                    [/ link spirit_x3.reference.directive.hold] `hold`]
+
+[/ operator]
+[def __x3_alternative__             [/ link spirit_x3.reference.operator.alternative] Alternative]
+[def __x3_and_predicate__           [/ link spirit_x3.reference.operator.and_predicate] And Predicate]
+[def __x3_difference__              [/ link spirit_x3.reference.operator.difference] Difference]
+[def __x3_expect__                  [/ link spirit_x3.reference.operator.expect] Expectation operator]
+[def __x3_expectation_failure__     [/ link spirit_x3.reference.operator.expect.expectation_failure] `expectation_failure`]
+[def __x3_kleene__                  [/ link spirit_x3.reference.operator.kleene] Kleene]
+[def __x3_list__                    [/ link spirit_x3.reference.operator.list] List]
+[def __x3_not_predicate__           [/ link spirit_x3.reference.operator.not_predicate] Not Predicate]
+[def __x3_optional__                [/ link spirit_x3.reference.operator.optional] Optional]
+[def __x3_plus__                    [/ link spirit_x3.reference.operator.plus] Plus]
+[def __x3_sequence__                [/ link spirit_x3.reference.operator.sequence] Sequence]
+
+[def __x3_stream__                  [/ link spirit_x3.reference.stream.stream] `stream`]
+
+[/ nonterminal]
+[def __x3_rule__                    [/ link spirit_x3.reference.nonterminal.rule] rule]
+[def __x3_rules__                   [/ link spirit_x3.reference.nonterminal.rule] rules]
+[def __x3_grammar__                 [/ link spirit_x3.reference.nonterminal.grammar] grammar]
+[def __x3_grammars__                [/ link spirit_x3.reference.nonterminal.grammar] grammars]
+
+[/ stream]
+[template x3_match[str]             [/ link spirit_x3.reference.parse_api.stream_api] str]
+[template x3_auto[str]              [/ link spirit_x3.reference.auto] str]
+[def __create_parser__              [/ link spirit_x3.reference.parse_api.create_parser] `create_parser`]
+
+[def __parse_api__                  [/ link spirit_x3.reference.parse_api] The Parse API]
+
+[/=============================================================================
+    Better Links (March 7, 2018)
+=============================================================================/]
+
+[/ external ------------------------------------------------------------------]
+
+[def __boost__                      [@http://www.boost.org/ Boost]]
+[def __spirit__                     [@http://boost-spirit.com Spirit]]
+[def __spirit_list__                [@https://lists.sourceforge.net/lists/listinfo/spirit-general Spirit Mailing List]]
+[def __spirit_general__             [@news://news.gmane.org/gmane.comp.spirit.general Spirit General NNTP news portal]]
+[def __clang__                      [@https://clang.llvm.org/ Clang]]
+[def __rd__                         [@https://en.wikipedia.org/wiki/Recursive_descent_parser Recursive Descent]]
+
+[/ Sections ------------------------------------------------------------------]
+
+[/ Tutorials -----------------------------------------------------------------]
+
+[template tutorial_roman[str]           [link spirit_x3.tutorials.roman [str]]]
+[template tutorial_employee[str]        [link spirit_x3.tutorials.employee [str]]]
+[template tutorial_annotation[str]      [link spirit_x3.tutorials.annotation [str]]]
+[template tutorial_error_handling[str]  [link spirit_x3.tutorials.error_handling [str]]]
+[template tutorial_minimal[str]         [link spirit_x3.tutorials.minimal [str]]]
+
+[/ support -------------------------------------------------------------------]
+
+[def __x3_error_handler__               [/ link fix.me] error_handler]
+
+[/=============================================================================
+    Documentation Start
+=============================================================================/]
+
+This is the documentation of the newest version of __spirit__ (currently,
+__version__).
+
+[include preface.qbk]
+[include introduction.qbk]
+[include include.qbk]s
+[include abstracts.qbk]
+
+[section    Tutorials]
+[include        tutorial/tutorial_intro.qbk]
+[include        tutorial/warming_up.qbk]
+[include        tutorial/actions.qbk]
+[include        tutorial/complex.qbk]
+[include        tutorial/sum_tutorial.qbk]
+[include        tutorial/num_list2.qbk]
+[include        tutorial/num_list3.qbk]
+[include        tutorial/num_list4.qbk]
+[include        tutorial/roman.qbk]
+[include        tutorial/employee.qbk]
+[include        tutorial/minimal.qbk]
+[include        tutorial/annotation.qbk]
+[include        tutorial/rexpr.qbk]
+[include        tutorial/error_handling.qbk]
+[endsect]
+
+[section    Quick Reference]
+[include        quick_reference.qbk]
+[endsect]
+
+[/ section    Reference]
+[/ include        concepts.qbk]
+[/ include        basics.qbk]
+[/ include        parse_api.qbk]
+[/ include        action.qbk]
+[/ include        auto.qbk]
+[/ include        auxiliary.qbk]
+[/ include        binary.qbk]
+[/ include        char.qbk]
+[/ include        directive.qbk]
+[/ include        nonterminal.qbk]
+[/ include        numeric.qbk]
+[/ include        operator.qbk]
+[/ include        stream.qbk]
+[/ include        string.qbk]
+[/ endsect]
+
+[/ include x3.qbk]
+[/ include karma.qbk]
+[/ include lex.qbk]
+[/ include advanced.qbk]
+[/ include support.qbk]
+[/ include faq.qbk]
+[/ include notes.qbk]
+[/ include rationale.qbk]
+[/ include repository.qbk]
+[include changelog.qbk]
+[/ include acknowledgments.qbk]
+[/ include references.qbk]
