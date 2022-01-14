@@ -784,6 +784,13 @@ std::string slurpProgram(std::string const& program) {
       output.append(buf, nRead);
     }
   }
+  while (true) {
+    auto nRead = TRI_ReadPipe(process, buf, sizeof(buf));
+    if (nRead <= 0) {
+      break;
+    }
+    output.append(buf, nRead);
+  }
   return output;
 }
 
