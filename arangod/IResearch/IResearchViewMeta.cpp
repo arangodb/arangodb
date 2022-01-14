@@ -233,56 +233,64 @@ IResearchViewMeta::IResearchViewMeta()
   assert(_consolidationPolicy.policy());  // ensure above syntax is correct
 }
 
-IResearchViewMeta::IResearchViewMeta(IResearchViewMeta const& defaults)
-    : _consolidationPolicy(
-          DEFAULT()
-              ._consolidationPolicy) {  // arbitrary value overwritten below
-  *this = defaults;
+IResearchViewMeta::IResearchViewMeta(IResearchViewMeta const& other)
+    : _consolidationPolicy(DEFAULT()._consolidationPolicy) {
+  // arbitrary value overwritten below
+  storeSafe(other);
 }
 
-IResearchViewMeta::IResearchViewMeta(IResearchViewMeta&& other) noexcept
-    : _consolidationPolicy(
-          DEFAULT()
-              ._consolidationPolicy) {  // arbitrary value overwritten below
-  *this = std::move(other);
+IResearchViewMeta::IResearchViewMeta(SafeTag,
+                                     IResearchViewMeta&& other) noexcept {
+  storeSafe(std::move(other));
 }
 
-IResearchViewMeta& IResearchViewMeta::operator=(
-    IResearchViewMeta&& other) noexcept {
-  if (this != &other) {
-    _cleanupIntervalStep = std::move(other._cleanupIntervalStep);
-    _commitIntervalMsec = std::move(other._commitIntervalMsec);
-    _consolidationIntervalMsec = std::move(other._consolidationIntervalMsec);
-    _consolidationPolicy = std::move(other._consolidationPolicy);
-    _version = std::move(other._version);
-    _writebufferActive = std::move(other._writebufferActive);
-    _writebufferIdle = std::move(other._writebufferIdle);
-    _writebufferSizeMax = std::move(other._writebufferSizeMax);
-    _primarySort = std::move(other._primarySort);
-    _storedValues = std::move(other._storedValues);
-    _primarySortCompression = std::move(other._primarySortCompression);
+IResearchViewMeta::IResearchViewMeta(PartialTag,
+                                     IResearchViewMeta&& other) noexcept {
+  storePartial(std::move(other));
+}
+
+void IResearchViewMeta::storeSafe(IResearchViewMeta const& other) {
+  if (this == &other) {
+    return;
   }
-
-  return *this;
+  _cleanupIntervalStep = other._cleanupIntervalStep;
+  _commitIntervalMsec = other._commitIntervalMsec;
+  _consolidationIntervalMsec = other._consolidationIntervalMsec;
+  _consolidationPolicy = other._consolidationPolicy;
+  _version = other._version;
+  _writebufferActive = other._writebufferActive;
+  _writebufferIdle = other._writebufferIdle;
+  _writebufferSizeMax = other._writebufferSizeMax;
+  _primarySort = other._primarySort;
+  _storedValues = other._storedValues;
+  _primarySortCompression = other._primarySortCompression;
 }
 
-IResearchViewMeta& IResearchViewMeta::operator=(
-    IResearchViewMeta const& other) {
-  if (this != &other) {
-    _cleanupIntervalStep = other._cleanupIntervalStep;
-    _commitIntervalMsec = other._commitIntervalMsec;
-    _consolidationIntervalMsec = other._consolidationIntervalMsec;
-    _consolidationPolicy = other._consolidationPolicy;
-    _version = other._version;
-    _writebufferActive = other._writebufferActive;
-    _writebufferIdle = other._writebufferIdle;
-    _writebufferSizeMax = other._writebufferSizeMax;
-    _primarySort = other._primarySort;
-    _storedValues = other._storedValues;
-    _primarySortCompression = other._primarySortCompression;
+void IResearchViewMeta::storeSafe(IResearchViewMeta&& other) noexcept {
+  if (this == &other) {
+    return;
   }
+  _cleanupIntervalStep = other._cleanupIntervalStep;
+  _commitIntervalMsec = other._commitIntervalMsec;
+  _consolidationIntervalMsec = other._consolidationIntervalMsec;
+  _consolidationPolicy = std::move(other._consolidationPolicy);
+  _version = other._version;
+  _writebufferActive = other._writebufferActive;
+  _writebufferIdle = other._writebufferIdle;
+  _writebufferSizeMax = other._writebufferSizeMax;
+  _primarySort = std::move(other._primarySort);
+  _storedValues = std::move(other._storedValues);
+  _primarySortCompression = other._primarySortCompression;
+}
 
-  return *this;
+void IResearchViewMeta::storePartial(IResearchViewMeta&& other) noexcept {
+  if (this == &other) {
+    return;
+  }
+  _cleanupIntervalStep = other._cleanupIntervalStep;
+  _commitIntervalMsec = other._commitIntervalMsec;
+  _consolidationIntervalMsec = other._consolidationIntervalMsec;
+  _consolidationPolicy = std::move(other._consolidationPolicy);
 }
 
 bool IResearchViewMeta::operator==(

@@ -252,7 +252,7 @@ struct State {
 template<typename ViewType>
 Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
                    velocypack::Slice links, LinkVersion defaultVersion,
-                   std::unordered_set<DataSourceId> const& stale = {}) {
+                   std::unordered_set<DataSourceId> const& stale) {
   LOG_TOPIC("4bdd2", DEBUG, arangodb::iresearch::TOPIC)
       << "link modification request for view '" << view.name()
       << "', original definition:" << links.toString();
