@@ -1,0 +1,308 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Models of ResultConverter</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Python Reference Manual">
+<link rel="up" href="../function_invocation_and_creation.html" title="Chapter 4. Function Invocation and Creation">
+<link rel="prev" href="models_of_callpolicies.html" title="Models of CallPolicies">
+<link rel="next" href="models_of_resultconvertergenerat.html" title="Models of ResultConverterGenerator">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="models_of_callpolicies.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../function_invocation_and_creation.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="models_of_resultconvertergenerat.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="function_invocation_and_creation.models_of_resultconverter"></a><a class="link" href="models_of_resultconverter.html" title="Models of ResultConverter">Models
+      of ResultConverter</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="models_of_resultconverter.html#function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_indirect_">boost/python/to_python_indirect.hpp</a></span></dt>
+<dt><span class="section"><a href="models_of_resultconverter.html#function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_value_hpp">boost/python/to_python_value.hpp</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_indirect_"></a><a class="link" href="models_of_resultconverter.html#function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_indirect_" title="boost/python/to_python_indirect.hpp">boost/python/to_python_indirect.hpp</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="models_of_resultconverter.html#function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_indirect_.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="models_of_resultconverter.html#function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_indirect_.example">Example</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_indirect_.introduction"></a><a class="link" href="models_of_resultconverter.html#function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_indirect_.introduction" title="Introduction">Introduction</a>
+</h4></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="models_of_resultconverter.html#function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_indirect_.introduction.class_to_python_indirect">Class
+            <code class="computeroutput"><span class="identifier">to_python_indirect</span></code></a></span></dt>
+<dt><span class="section"><a href="models_of_resultconverter.html#function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_indirect_.introduction.class_to_python_indirect_observe">Class
+            <code class="computeroutput"><span class="identifier">to_python_indirect</span></code> observers</a></span></dt>
+<dt><span class="section"><a href="models_of_resultconverter.html#function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_indirect_.introduction.class_to_python_indirect_statics">Class
+            <code class="computeroutput"><span class="identifier">to_python_indirect</span></code> statics</a></span></dt>
+</dl></div>
+<pre class="programlisting"><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">to_python_indirect</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span> <span class="identifier">supplies</span> <span class="identifier">a</span> <span class="identifier">way</span> <span class="identifier">to</span> <span class="identifier">construct</span> <span class="keyword">new</span> <span class="identifier">Python</span> <span class="identifier">objects</span> <span class="identifier">that</span> <span class="identifier">hold</span> <span class="identifier">wrapped</span> <span class="identifier">C</span><span class="special">++</span> <span class="keyword">class</span> <span class="identifier">instances</span> <span class="identifier">via</span> <span class="identifier">a</span> <span class="identifier">pointer</span> <span class="keyword">or</span> <span class="identifier">smart</span> <span class="identifier">pointer</span><span class="special">.</span>
+<span class="special">[</span><span class="identifier">endsect</span><span class="special">]</span>
+</pre>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_indirect_.introduction.class_to_python_indirect"></a><a class="link" href="models_of_resultconverter.html#function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_indirect_.introduction.class_to_python_indirect" title="Class to_python_indirect">Class
+            <code class="computeroutput"><span class="identifier">to_python_indirect</span></code></a>
+</h5></div></div></div>
+<p>
+              Class template <code class="computeroutput"><span class="identifier">to_python_indirect</span></code>
+              converts objects of its first argument type to python as extension
+              class instances, using the ownership policy provided by its 2nd argument.
+            </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                      <p>
+                        Parameter
+                      </p>
+                    </th>
+<th>
+                      <p>
+                        Requirements
+                      </p>
+                    </th>
+<th>
+                      <p>
+                        Description
+                      </p>
+                    </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                      <p>
+                        T
+                      </p>
+                    </td>
+<td>
+                      <p>
+                        Either <code class="computeroutput"><span class="identifier">U</span> <span class="identifier">cv</span><span class="special">&amp;</span></code>
+                        (where cv is any optional cv-qualification) or a <a class="link" href="../concepts/dereferenceable.html" title="Dereferenceable">Dereferenceable</a>
+                        type such that <code class="computeroutput"><span class="special">*</span><span class="identifier">x</span></code> is convertible to <code class="computeroutput"><span class="identifier">U</span> <span class="keyword">const</span><span class="special">&amp;</span></code>, where <code class="computeroutput"><span class="identifier">U</span></code> is a class type.
+                      </p>
+                    </td>
+<td>
+                      <p>
+                        <code class="computeroutput"><span class="identifier">A</span></code> type deferencing
+                        a C++ class exposed to Python using class template <a class="link" href="../high_level_components.html#high_level_components.boost_python_class_hpp.class_template_class_t_bases_hel" title="Class template class_&lt;T, Bases, HeldType, NonCopyable&gt;"><code class="computeroutput"><span class="identifier">class_</span></code></a>.
+                      </p>
+                    </td>
+</tr>
+<tr>
+<td>
+                      <p>
+                        MakeHolder
+                      </p>
+                    </td>
+<td>
+                      <p>
+                        <code class="computeroutput"><span class="identifier">h</span> <span class="special">=</span>
+                        <span class="identifier">MakeHolder</span><span class="special">::</span><span class="identifier">execute</span><span class="special">(</span><span class="identifier">p</span><span class="special">);</span></code>
+                      </p>
+                    </td>
+<td>
+                      <p>
+                        A class whose static <code class="computeroutput"><span class="identifier">execute</span><span class="special">()</span></code> creates an <code class="computeroutput"><span class="identifier">instance_holder</span></code>.
+                      </p>
+                    </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+              Instantiations of to_python_indirect are models of <a class="link" href="../concepts/resultconverter.html" title="ResultConverter"><code class="computeroutput"><span class="identifier">ResultConverter</span></code></a>.
+            </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">python</span>
+<span class="special">{</span>
+  <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">MakeHolder</span><span class="special">&gt;</span>
+  <span class="keyword">struct</span> <span class="identifier">to_python_indirect</span>
+  <span class="special">{</span>
+     <span class="keyword">static</span> <span class="keyword">bool</span> <span class="identifier">convertible</span><span class="special">();</span>
+     <span class="identifier">PyObject</span><span class="special">*</span> <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">T</span> <span class="identifier">ptr_or_reference</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+   <span class="keyword">private</span><span class="special">:</span>
+     <span class="keyword">static</span> <span class="identifier">PyTypeObject</span><span class="special">*</span> <span class="identifier">type</span><span class="special">();</span>
+  <span class="special">};</span>
+<span class="special">}}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_indirect_.introduction.class_to_python_indirect_observe"></a><a class="link" href="models_of_resultconverter.html#function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_indirect_.introduction.class_to_python_indirect_observe" title="Class to_python_indirect observers">Class
+            <code class="computeroutput"><span class="identifier">to_python_indirect</span></code> observers</a>
+</h5></div></div></div>
+<pre class="programlisting"><span class="identifier">PyObject</span><span class="special">*</span> <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">T</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                    <code class="computeroutput"><span class="identifier">x</span></code> refers to an
+                    object (if it is a pointer type, it is non-null). <code class="computeroutput"><span class="identifier">convertible</span><span class="special">()</span>
+                    <span class="special">==</span> <span class="keyword">true</span></code>.
+                  </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                    Creates an appropriately-typed Boost.Python extension class instance,
+                    uses MakeHolder to create an instance_holder from x, installs
+                    the instance_holder in the new extension class instance, and
+                    returns a pointer to it.
+                  </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_indirect_.introduction.class_to_python_indirect_statics"></a><a class="link" href="models_of_resultconverter.html#function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_indirect_.introduction.class_to_python_indirect_statics" title="Class to_python_indirect statics">Class
+            <code class="computeroutput"><span class="identifier">to_python_indirect</span></code> statics</a>
+</h5></div></div></div>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="identifier">convertible</span><span class="special">()</span></pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                    Returns true iff any module has registered a Python type corresponding
+                    to U.
+                  </p></dd>
+</dl>
+</div>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_indirect_.example"></a><a class="link" href="models_of_resultconverter.html#function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_indirect_.example" title="Example">Example</a>
+</h4></div></div></div>
+<p>
+            This example replicates the functionality of <a class="link" href="models_of_resultconvertergenerat.html#function_invocation_and_creation.models_of_resultconvertergenerat.boost_python_reference_existing_.class_reference_existing_object" title="Class reference_existing_object"><code class="computeroutput"><span class="identifier">reference_existing_object</span></code></a>, but
+            without some of the compile-time error checking.
+          </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">make_reference_holder</span>
+<span class="special">{</span>
+   <span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span><span class="special">::</span><span class="identifier">objects</span><span class="special">::</span><span class="identifier">instance_holder</span><span class="special">*</span> <span class="identifier">result_type</span><span class="special">;</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+   <span class="keyword">static</span> <span class="identifier">result_type</span> <span class="identifier">execute</span><span class="special">(</span><span class="identifier">T</span><span class="special">*</span> <span class="identifier">p</span><span class="special">)</span>
+   <span class="special">{</span>
+      <span class="keyword">return</span> <span class="keyword">new</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span><span class="special">::</span><span class="identifier">objects</span><span class="special">::</span><span class="identifier">pointer_holder</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">*,</span> <span class="identifier">T</span><span class="special">&gt;(</span><span class="identifier">p</span><span class="special">);</span>
+   <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="keyword">struct</span> <span class="identifier">reference_existing_object</span>
+<span class="special">{</span>
+   <span class="comment">// metafunction returning the ResultConverter</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+   <span class="keyword">struct</span> <span class="identifier">apply</span>
+   <span class="special">{</span>
+      <span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span><span class="special">::</span><span class="identifier">to_python_indirect</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span><span class="identifier">make_reference_holder</span><span class="special">&gt;</span> <span class="identifier">type</span><span class="special">;</span>
+   <span class="special">};</span>
+<span class="special">};</span>
+</pre>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_value_hpp"></a><a class="link" href="models_of_resultconverter.html#function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_value_hpp" title="boost/python/to_python_value.hpp">boost/python/to_python_value.hpp</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="models_of_resultconverter.html#function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_value_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="models_of_resultconverter.html#function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_value_hpp.class_template_to_python_value">Class
+          template <code class="computeroutput"><span class="identifier">to_python_value</span></code></a></span></dt>
+<dt><span class="section"><a href="models_of_resultconverter.html#function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_value_hpp.class_to_python_value_observers">Class
+          <code class="computeroutput"><span class="identifier">to_python_value</span></code> observers</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_value_hpp.introduction"></a><a class="link" href="models_of_resultconverter.html#function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_value_hpp.introduction" title="Introduction">Introduction</a>
+</h4></div></div></div>
+<p>
+            <code class="computeroutput"><span class="identifier">to_python_value</span></code> is a
+            model of <a class="link" href="../concepts/resultconverter.html" title="ResultConverter">ResultConverter</a>
+            which copies its argument into a new Python object.
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_value_hpp.class_template_to_python_value"></a><a class="link" href="models_of_resultconverter.html#function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_value_hpp.class_template_to_python_value" title="Class template to_python_value">Class
+          template <code class="computeroutput"><span class="identifier">to_python_value</span></code></a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">python</span>
+<span class="special">{</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+   <span class="keyword">struct</span> <span class="identifier">to_python_value</span>
+   <span class="special">{</span>
+      <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">add_reference</span><span class="special">&lt;</span>
+         <span class="keyword">typename</span> <span class="identifier">add_const</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">type</span>
+      <span class="special">&gt;::</span><span class="identifier">type</span> <span class="identifier">argument_type</span><span class="special">;</span>
+
+      <span class="keyword">static</span> <span class="keyword">bool</span> <span class="identifier">convertible</span><span class="special">();</span>
+      <span class="identifier">PyObject</span><span class="special">*</span> <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">argument_type</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+   <span class="special">};</span>
+<span class="special">}}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_value_hpp.class_to_python_value_observers"></a><a class="link" href="models_of_resultconverter.html#function_invocation_and_creation.models_of_resultconverter.boost_python_to_python_value_hpp.class_to_python_value_observers" title="Class to_python_value observers">Class
+          <code class="computeroutput"><span class="identifier">to_python_value</span></code> observers</a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="keyword">static</span> <span class="keyword">bool</span> <span class="identifier">convertible</span><span class="special">();</span></pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="keyword">true</span></code> iff a converter
+                  has been registered which can convert <code class="computeroutput"><span class="identifier">T</span></code>
+                  to python by-value.
+                </p></dd>
+</dl>
+</div>
+<pre class="programlisting"><span class="identifier">PyObject</span><span class="special">*</span> <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">argument_type</span> <span class="identifier">x</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="identifier">convertible</span><span class="special">()</span>
+                  <span class="special">==</span> <span class="keyword">true</span></code>
+                </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                  converts <code class="computeroutput"><span class="identifier">x</span></code> to python
+                </p></dd>
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                  the resulting Python object iff a converter for <code class="computeroutput"><span class="identifier">T</span></code>
+                  has been registered, <code class="computeroutput"><span class="number">0</span></code>
+                  otherwise.
+                </p></dd>
+</dl>
+</div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2002-2005, 2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="models_of_callpolicies.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../function_invocation_and_creation.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="models_of_resultconvertergenerat.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

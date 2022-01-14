@@ -1,0 +1,163 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>detect_ssl</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Beast">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__beast__system_category.html" title="system_category">
+<link rel="next" href="boost__beast__async_detect_ssl.html" title="async_detect_ssl">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__system_category.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__async_detect_ssl.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="beast.ref.boost__beast__detect_ssl"></a><a class="link" href="boost__beast__detect_ssl.html" title="detect_ssl">detect_ssl</a>
+</h4></div></div></div>
+<p>
+        <a class="indexterm" name="idm72908"></a>
+      </p>
+<p>
+        Detect a TLS client handshake on a stream.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__detect_ssl.h0"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__detect_ssl.synopsis"></a></span><a class="link" href="boost__beast__detect_ssl.html#beast.ref.boost__beast__detect_ssl.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="../../../../../../boost/beast/core/detect_ssl.hpp" target="_top">boost/beast/core/detect_ssl.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <a href="../../../../../../doc/html/boost_asio/reference/SyncReadStream.html" target="_top"><span class="emphasis"><em>SyncReadStream</em></span></a><span class="special">,</span>
+    <span class="keyword">class</span> <a class="link" href="../concepts/DynamicBuffer.html" title="DynamicBuffer"><span class="emphasis"><em>DynamicBuffer</em></span></a><span class="special">&gt;</span>
+<span class="keyword">bool</span>
+<span class="identifier">detect_ssl</span><span class="special">(</span>
+    <span class="identifier">SyncReadStream</span><span class="special">&amp;</span> <span class="identifier">stream</span><span class="special">,</span>
+    <span class="identifier">DynamicBuffer</span><span class="special">&amp;</span> <span class="identifier">buffer</span><span class="special">,</span>
+    <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+</pre>
+<h5>
+<a name="beast.ref.boost__beast__detect_ssl.h1"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__detect_ssl.description"></a></span><a class="link" href="boost__beast__detect_ssl.html#beast.ref.boost__beast__detect_ssl.description">Description</a>
+      </h5>
+<p>
+        This function reads from a stream to determine if a client handshake message
+        is being received. The call blocks until one of the following is true:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            A TLS client opening handshake is detected,
+          </li>
+<li class="listitem">
+            The received data is invalid for a TLS client handshake, or
+          </li>
+<li class="listitem">
+            An error occurs.
+          </li>
+</ul></div>
+<p>
+        The algorithm, known as a <span class="emphasis"><em>composed operation</em></span>, is implemented
+        in terms of calls to the next layer's <code class="computeroutput"><span class="identifier">read_some</span></code>
+        function. Bytes read from the stream will be stored in the passed dynamic
+        buffer, which may be used to perform the TLS handshake if the detector returns
+        true, or be otherwise consumed by the caller based on the expected protocol.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__detect_ssl.h2"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__detect_ssl.parameters"></a></span><a class="link" href="boost__beast__detect_ssl.html#beast.ref.boost__beast__detect_ssl.parameters">Parameters</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">stream</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  The stream to read from. This type must meet the requirements of
+                  <span class="emphasis"><em>SyncReadStream</em></span>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">buffer</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  The dynamic buffer to use. This type must meet the requirements
+                  of <span class="emphasis"><em>DynamicBuffer</em></span>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">ec</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Set to the error if any occurred.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__detect_ssl.h3"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__detect_ssl.return_value"></a></span><a class="link" href="boost__beast__detect_ssl.html#beast.ref.boost__beast__detect_ssl.return_value">Return
+        Value</a>
+      </h5>
+<p>
+        <code class="computeroutput"><span class="keyword">true</span></code> if the buffer contains
+        a TLS client handshake and no error occurred, otherwise <code class="computeroutput"><span class="keyword">false</span></code>.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__system_category.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__async_detect_ssl.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>
