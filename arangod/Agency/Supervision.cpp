@@ -2550,12 +2550,19 @@ void Supervision::checkReplicatedLogs() {
   using namespace replication2::replicated_log;
 
   ParticipantsHealth info = std::invoke([&] {
+    LOG_DEVEL << " nother invoke";
     std::unordered_map<replication2::ParticipantId, ParticipantHealth> info;
     auto& dbservers = snapshot().hasAsChildren(plannedServers).value().get();
     for (auto const& [serverId, node] : dbservers) {
+      LOG_DEVEL << " server id " << serverId;
       bool const isHealthy = serverHealth(serverId) == HEALTH_STATUS_GOOD;
       auto rebootID = snapshot().hasAsUInt(basics::StringUtils::concatT(
           curServersKnown, serverId, '/', StaticStrings::RebootId));
+      if (rebootID) {
+        LOG_DEVEL << " rebootId " << *rebootID;
+      } else {
+        LOG_DEVEL << " rebootID not found";
+      }
       if (rebootID) {
         info.emplace(serverId,
                      ParticipantHealth{RebootId{*rebootID}, isHealthy});
@@ -2583,6 +2590,11 @@ void Supervision::checkReplicatedLogs() {
                                                     ->log(idString)
                                                     ->str(SkipComponents(1)));
 
+      LOG_DEVEL << " health rec: ";
+      for (auto const& [h, _] : info._health) {
+        LOG_DEVEL << h;
+      }
+      LOG_DEVEL << " health rec done: ";
       auto action = checkReplicatedLog(Log{target, plan, current}, info);
       if (action != nullptr) {
         if (target.supervision.has_value() &&
@@ -2607,9 +2619,8 @@ void Supervision::checkReplicatedLogs() {
                       target.supervision->maxActionsTraceLength)
                   .end();
         }
-        envelope = action->execute(
-            dbName,
-            std::move(envelope));
+        LOG_DEVEL << " action to execute: " << *action;
+        envelope = action->execute(dbName, std::move(envelope));
       }
     }
   }

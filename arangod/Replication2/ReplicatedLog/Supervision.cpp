@@ -52,7 +52,9 @@ auto checkLogAdded(const Log& log) -> std::unique_ptr<Action> {
 auto checkTermPresent(LogPlanSpecification const& plan)
     -> std::unique_ptr<Action> {
   if (!plan.currentTerm) {
-    return std::make_unique<CreateInitialTermAction>();
+    return std::make_unique<CreateInitialTermAction>(
+        plan.id,
+        LogPlanTermSpecification(LogTerm(1), plan.targetConfig, std::nullopt));
   }
   return std::make_unique<EmptyAction>();
 }
@@ -128,20 +130,11 @@ auto tryLeadershipElection(LogPlanSpecification const& plan,
 
   auto const numElectible = campaign.electibleLeaderSet.size();
 
-  // Something went really wrong: we have enough ok participants, but none
-  // of them is electible, or too many of them are (we only support
-  // uint16_t::max participants at the moment)
-  //
-  // TODO: should this really be throwing or just erroring?
-  if (ADB_UNLIKELY(numElectible == 0 ||
-                   numElectible > std::numeric_limits<uint16_t>::max())) {
-    abortOrThrow(TRI_ERROR_NUMERIC_OVERFLOW,
-                 basics::StringUtils::concatT(
-                     "Number of participants electible for leadership out "
-                     "of range, should be between ",
-                     1, " and ", std::numeric_limits<uint16_t>::max(),
-                     ", but is ", numElectible),
-                 ADB_HERE);
+  if (numElectible == 0 ||
+      numElectible > std::numeric_limits<uint16_t>::max()) {
+    auto action = std::make_unique<FailedLeaderElectionAction>();
+    action->_campaign = campaign;
+    return action;
   }
 
   if (campaign.numberOKParticipants >= requiredNumberOfOKParticipants) {
@@ -268,11 +261,6 @@ auto checkReplicatedLog(Log const& log, ParticipantsHealth const& health)
   // TODO: maybe we should report an error here; we won't make any progress,
   // but also don't implode
   TRI_ASSERT(log.plan.has_value());
-
-  /*
-  if (!log.current.has_value()) {
-    return std::make_unique<EmptyAction>();
-  }*/
 
   if (auto action = checkTermPresent(*log.plan); !isEmptyAction(action)) {
     return action;
