@@ -4468,7 +4468,6 @@ TEST_F(IResearchViewTest, test_register_link) {
     ASSERT_TRUE((false == !view));
 
     {
-      std::unordered_set<arangodb::DataSourceId> cids;
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());

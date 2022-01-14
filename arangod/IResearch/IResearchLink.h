@@ -75,9 +75,11 @@ class AsyncLinkHandle final {
   void reset();
 
   AsyncValue<IResearchLink> _link;
-  std::atomic_bool _asyncTerminate{
-      false};  // trigger termination of long-running async jobs
+  std::atomic_bool _asyncTerminate{false};
+  // trigger termination of long-running async jobs
 };
+
+using LinkLock = AsyncValue<IResearchLink>::Value;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief common base class for functionality required to link an ArangoDB
@@ -104,8 +106,7 @@ class IResearchLink {
     Snapshot& operator=(Snapshot const&) = delete;
     Snapshot() = default;
     ~Snapshot() = default;
-    Snapshot(AsyncValue<IResearchLink>::Value&& lock,
-             irs::directory_reader&& reader) noexcept
+    Snapshot(LinkLock&& lock, irs::directory_reader&& reader) noexcept
         : _lock{std::move(lock)}, _reader{std::move(reader)} {
       TRI_ASSERT(_lock.ownsLock());
     }
@@ -117,8 +118,8 @@ class IResearchLink {
       if (this != &rhs) {
         _lock = std::move(rhs._lock);
         _reader = std::move(rhs._reader);
+        TRI_ASSERT(_lock.ownsLock());
       }
-      TRI_ASSERT(_lock.ownsLock());
       return *this;
     }
     irs::directory_reader const& getDirectoryReader() const noexcept {
@@ -126,8 +127,8 @@ class IResearchLink {
     }
 
    private:
-    AsyncValue<IResearchLink>::Value
-        _lock;  // lock preventing data store deallocation
+    LinkLock _lock;
+    // lock preventing data store deallocation
     irs::directory_reader _reader;
   };
 
@@ -155,7 +156,7 @@ class IResearchLink {
   static bool canBeDropped() {
     // valid for a link to be dropped from an ArangoSearch view
     return true;
-  };
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return the associated collection
@@ -168,6 +169,7 @@ class IResearchLink {
   /// @param wait even if other thread is committing
   //////////////////////////////////////////////////////////////////////////////
   Result commit(bool wait = true);
+  static Result commit(LinkLock linkLock, bool wait);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is dropped
@@ -224,12 +226,7 @@ class IResearchLink {
   /// @return success
   //////////////////////////////////////////////////////////////////////////////
   Result properties(IResearchViewMeta const& meta);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief update runtime data processing properties (not persisted)
-  /// @return success
-  //////////////////////////////////////////////////////////////////////////////
-  Result propertiesUnsafe(IResearchViewMeta const& meta);
+  static void properties(LinkLock linkLock, IResearchViewMeta const& meta);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an ArangoDB document from an iResearch View
@@ -250,6 +247,7 @@ class IResearchLink {
   ///         (nullptr == no data store snapshot available, e.g. error)
   //////////////////////////////////////////////////////////////////////////////
   Snapshot snapshot() const;
+  static Snapshot snapshot(LinkLock linkLock);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief ArangoSearch Link index type enum value
@@ -524,7 +522,7 @@ class IResearchLink {
 };
 
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
-                                iresearch::IResearchLink const& link);
+                                IResearchLink const& link);
 
 }  // namespace iresearch
 }  // namespace arangodb
