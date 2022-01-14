@@ -6,39 +6,29 @@ let jsunity = require("jsunity");
 const isCluster = require("@arangodb/cluster").isCluster();
 const isEnterprise = require("internal").isEnterprise();
 
-function testLargeQuery4() {
-  let q = "NOOPT(1)";
-  const cnt = 3800;
-  for (let i = 1; i < cnt; ++i) {
-    q += `NOOPT(${i})`;
-  }
-  q += ` RETURN NOOPT(${cnt} - 1)`;
-  return q;
-}
-
-function testLargeQuery5() {
-  let q = "";
-  const cnt = 200;
-  for (let i = 1; i < cnt; ++i) {
-    q +=  ` LET mySub${i} = (FOR doc in testCollection FILTER CHECK_DOCUMENT(doc) FILTER doc.name == "test50" RETURN doc.name)`;
-    q += ` LET v${i} = 1`;
-  }
-  q += ` RETURN v${cnt - 1}`;
-  return q;
-}
+// The numbers hardcoded in the "cnt" values come from AQL not running properly
+// because of too many nodes or too much nesting in the queries, so the values
+// are around the limit for which the query would execute without internal AQL
+// error. The tests seem strange because they were made with the goal of
+// producing many nodes in the execution plan, without optimizations.
+// For some of the queries, they would crash the server without the default
+// value for the "maxNodesPerCallstack" query option. If a number bigger than the
+// default value for this option is provided, some of the queries below would
+// crash the server when running.
 
 function ComplexQueriesTestSuite() {
-
+  const collectionName = "testCollection";
   return {
     setUpAll: function () {
-      db._create("testCollection");
+      print(db._collections());
+      db._create(collectionName);
       for (let i = 0; i < 50; ++i) {
-        db.testCollection.insert({"name": "test" + i, "age": i});
+        db[collectionName].insert({"name": "test" + i});
       }
     },
 
     tearDownAll: function () {
-      db._drop("testCollection");
+      db._drop(collectionName);
     },
 
     testLargeQuery1: function () {
@@ -56,7 +46,7 @@ function ComplexQueriesTestSuite() {
       let q = "";
       const cnt = 500;
       for (let i = 1; i < cnt; ++i) {
-        q +=  ` LET mySub${i} = (FOR doc in testCollection FILTER CHECK_DOCUMENT(doc) RETURN doc.name)`;
+        q += ` LET mySub${i} = (FOR doc in ${collectionName} FILTER CHECK_DOCUMENT(doc) RETURN doc.name)`;
         q += ` LET v${i} = 1`;
       }
       q += ` RETURN v${cnt - 1}`;
@@ -64,7 +54,7 @@ function ComplexQueriesTestSuite() {
       assertEqual(res[0], 1);
     },
 
-    testLargeQuery3: function() { //this crashes without default maxNodesPerCallstack
+    testLargeQuery3: function () { //this crashes without default maxNodesPerCallstack
       let q = "LET v0 = NOOPT(1)";
       const cnt = 3900;
       for (let i = 1; i < cnt; ++i) {
@@ -72,11 +62,29 @@ function ComplexQueriesTestSuite() {
       }
       q += ` RETURN v${cnt - 1}`;
       const res = db._query(q, {}, {}).toArray();
-      assertEqual(res[0], cnt -1);
+      assertEqual(res[0], cnt - 1);
     },
-    testLargeQuery4: function() {
-
-    }
+    testLargeQuery4: function () {
+      let q = "";
+      const cnt = 250;
+      for (let i = 1; i < cnt; ++i) {
+        q += ` LET mySub${i} = (FOR doc in ${collectionName} FILTER CHECK_DOCUMENT(doc) FILTER doc.name == "test50" RETURN doc.name)`;
+        q += ` LET v${i} = 1`;
+      }
+      q += ` RETURN mySub${cnt - 1}`;
+      const res = db._query(q, {}, {}).toArray();
+      assertEqual(res[0], []);
+    },
+    testLargeQuery5: function () {
+      let q = "";
+      const cnt = 400;
+      for (let i = 1; i < cnt; ++i) {
+        q += ` LET mySub${i} = (FOR doc in ${collectionName} FILTER CHECK_DOCUMENT(doc) FILTER doc.name == "test1" RETURN doc.name)`;
+      }
+      q += ` RETURN mySub${cnt - 1}`;
+      const res = db._query(q, {}, {}).toArray();
+      assertEqual(res[0], ["test1"]);
+    },
   };
 }
 
@@ -108,21 +116,21 @@ function ComplexQueriesSmartGraphTestSuite() {
       smartGraphs._drop(graph, true);
     },
     testSmartQuery1: function () {
-      let q = "WITH SmartVertices";
+      let q = `WITH ${vertex}`;
       const cnt = 500;
       for (let i = 1; i < cnt; ++i) {
-        q +=  ` LET mySub${i} = (FOR v, e in 1..10 OUTBOUND "SmartVertices/test0:test0" SmartEdges FILTER CHECK_DOCUMENT(e) RETURN e.testi)`;
+        q += ` LET mySub${i} = (FOR v, e in 1..10 OUTBOUND "${vertex}/test0:test0" ${edges} FILTER CHECK_DOCUMENT(e) RETURN e.testi)`;
       }
       q += ` RETURN mySub${cnt - 1}`;
       const res = db._query(q).toArray();
       assertEqual(res[0], [0]);
     },
     testSmartQuery2: function () {
-      let q = "WITH SmartVertices";
+      let q = `WITH ${vertex}`;
       const cnt = 100;
       for (let i = 1; i < cnt; ++i) {
-        q +=  ` LET mySub${i} = (FOR v1, e1 in 1..10 OUTBOUND "SmartVertices/test0:test0" SmartEdges FOR v2, e2 in 1..10 
-                              OUTBOUND e1._from SmartEdges FILTER CHECK_DOCUMENT(e1) RETURN e1.testi)`;
+        q += ` LET mySub${i} = (FOR v1, e1 in 1..10 OUTBOUND "${vertex}/test0:test0" ${edges} FOR v2, e2 in 1..10 
+                              OUTBOUND e1._from ${edges} FILTER CHECK_DOCUMENT(e1) RETURN e1.testi)`;
       }
       q += ` RETURN mySub${cnt - 1}`;
       const res = db._query(q).toArray();
@@ -132,7 +140,7 @@ function ComplexQueriesSmartGraphTestSuite() {
   };
 }
 
-//jsunity.run(ComplexQueriesTestSuite);
+jsunity.run(ComplexQueriesTestSuite);
 if (isCluster && isEnterprise) {
   jsunity.run(ComplexQueriesSmartGraphTestSuite);
 }
