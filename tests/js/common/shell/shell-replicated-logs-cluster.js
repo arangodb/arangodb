@@ -49,24 +49,6 @@ const getLeaderStatus = function(id) {
   return status.participants[leaderId];
 };
 
-const getLeaderStatus = function(id) {
-  let status = db._replicatedLog(id).status();
-  const leaderId = status.leaderId;
-  if (leaderId === undefined) {
-    console.info(`leader not available for replicated log ${id}`);
-    return null;
-  }
-  if (status.participants === undefined || status.participants[leaderId] === undefined) {
-    console.info(`participants status not available for replicated log ${id}`);
-    return null;
-  }
-  if (status.participants[leaderId].role !== "leader") {
-    console.info(`leader not available for replicated log ${id}`);
-    return null;
-  }
-  return status.participants[leaderId];
-};
-
 const waitForLeader = function (id) {
   while (true) {
     try {
