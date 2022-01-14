@@ -1,7 +1,7 @@
 devel
 -----
 
-* Fixed a bug that hotbackup upload could miss files.
+* Fixed a bug that hotbackup upload could miss files (fixes BTS-734).
 
 * Added agency push-queue operation
 
