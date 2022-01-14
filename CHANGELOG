@@ -1,6 +1,10 @@
 v3.9.0 (XXXX-XX-XX)
 -------------------
 
+* Updated Enterprise license behavior: now there will be a 48 hour period for
+  a new deployment and upgrade to provide the license. After that period, the
+  read-only mode will be enforced.
+
 * BTS-590: When creating a new database in Web UI the value of the write concern
   has to be smaller or equal to the replication factor. Otherwise an error
   message will be displayed and no database will be created.
