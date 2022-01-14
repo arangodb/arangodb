@@ -777,19 +777,20 @@ std::string slurpProgram(std::string const& program) {
         "process gone? '", program, "': ", TRI_last_error());
     THROW_ARANGO_EXCEPTION(res);
   }
-  while (res = TRI_CheckExternalProcess(external, false, 0),
-         (res._status == TRI_EXT_RUNNING)) {
-    auto nRead = TRI_ReadPipe(process, buf, sizeof(buf));
-    if (nRead > 0) {
-      output.append(buf, nRead);
-    }
-  }
+  bool error = false;
   while (true) {
     auto nRead = TRI_ReadPipe(process, buf, sizeof(buf));
     if (nRead <= 0) {
+      if (nRead < 0) {
+        error = true;
+      }
       break;
     }
     output.append(buf, nRead);
+  }
+  res = TRI_CheckExternalProcess(external, true, 0);
+  if (error) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
   }
   return output;
 }
