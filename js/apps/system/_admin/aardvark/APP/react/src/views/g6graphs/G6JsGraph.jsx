@@ -150,6 +150,44 @@ const G6JsGraph = () => {
     graph.updateItem(item, model);
   }
 
+  const updateEdgeModel = () => {
+    const model = {
+      id: '2',
+      label: 'node2',
+      population: '2,950,000',
+      type: 'diamond',
+      style: {
+        fill: 'red',
+      },
+    };
+    
+    // Find the item instance by id
+    const item = graph.findById('2');
+    graph.updateItem(item, model);
+  }
+
+  const changeNodeStyle = () => {
+    graph.node((node) => {
+      return {
+        id: node.id,
+        type: 'rect',
+        style: {
+          fill: 'red',
+        },
+        labelCfg: {
+          position: 'bottom',
+          offset: 5,
+          style: {
+            // ... The style of the label
+          },
+        },
+      };
+    });
+    
+    graph.data(data);
+    graph.render();
+  }
+
   return (
     <div>
         <button onClick={() => getNodes()}>Get nodes</button>
@@ -158,6 +196,7 @@ const G6JsGraph = () => {
         <button onClick={() => addNode()}>Add node</button>
         <button onClick={() => addEdge()}>Add edge</button>
         <button onClick={() => updateNodeModel()}>Update node2</button>
+        <button onClick={() => changeNodeStyle()}>Change node style</button>
         <Card
           title="Pure JS G6 Graph"
         >
