@@ -20,7 +20,6 @@ function ComplexQueriesTestSuite() {
   const collectionName = "testCollection";
   return {
     setUpAll: function () {
-      print(db._collections());
       db._create(collectionName);
       for (let i = 0; i < 50; ++i) {
         db[collectionName].insert({"name": "test" + i});
