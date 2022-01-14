@@ -231,4 +231,7 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery_error_DeathTest) {
             Result{TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT});
       },
       ".*");
+  // this is here to resolve the promise in MyHelperLeaderState, which otherwise
+  // will hold a reference to the MyHelperLeaderState and asan will be very sad
+  leaderState->runRecovery(Result{TRI_ERROR_NO_ERROR});
 }

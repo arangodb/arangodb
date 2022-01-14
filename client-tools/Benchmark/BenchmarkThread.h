@@ -27,6 +27,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <shared_mutex>
 
 #include "Basics/Common.h"
 
@@ -95,8 +96,8 @@ class BenchmarkThread : public arangodb::Thread {
   ~BenchmarkThread() { shutdown(); }
 
   void trackTime(double time) {
+    std::lock_guard lock{_mutex};
     _stats.track(time);
-
     if (_generateHistogram) {
       if (_histogramScope == 0.0) {
         _histogramScope = time * 20;
@@ -118,6 +119,7 @@ class BenchmarkThread : public arangodb::Thread {
     std::vector<double> res(which.size(), 0.0);
     std::vector<size_t> counts(which.size());
     size_t i = 0;
+    std::shared_lock lock{_mutex};
     histogramIntervalSize = _histogramIntervalSize;
     uint64_t divisor = std::max(std::uint64_t(1), _batchSize);
     while (i < which.size()) {
@@ -148,7 +150,10 @@ class BenchmarkThread : public arangodb::Thread {
   void setOffset(size_t offset) { _offset = offset; }
 
   // return a copy of the thread's stats
-  BenchmarkStats stats() const { return _stats; }
+  BenchmarkStats stats() const {
+    std::shared_lock lock{_mutex};
+    return _stats;
+  }
 
  protected:
   void run() override {
@@ -481,6 +486,8 @@ class BenchmarkThread : public arangodb::Thread {
   double _histogramIntervalSize;
   double _histogramScope;
   std::vector<size_t> _histogram;
+
+  mutable std::shared_mutex _mutex;
 };
 }  // namespace arangobench
 }  // namespace arangodb
