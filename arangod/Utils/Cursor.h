@@ -74,7 +74,10 @@ class Cursor {
     return _expires.load(std::memory_order_relaxed);
   }
 
-  inline bool isUsed() const { return _isUsed; }
+  inline bool isUsed() const {
+    // (1) - this release-store synchronizes-with the acquire-load (2)
+    return _isUsed.load(std::memory_order_acquire);
+  }
 
   inline bool isDeleted() const { return _isDeleted; }
 
@@ -90,6 +93,7 @@ class Cursor {
   void release() noexcept {
     TRI_ASSERT(_isUsed);
     _expires.store(TRI_microtime() + _ttl, std::memory_order_relaxed);
+    // (2) - this release-store synchronizes-with the acquire-load (1)
     _isUsed.store(false, std::memory_order_release);
   }
 
