@@ -1,0 +1,119 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Index modifiers</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. The Variadic Macro Data Library 1.10">
+<link rel="up" href="../vmd_modifiers.html" title="Macros with modifiers">
+<link rel="prev" href="vmd_modifiers_splitting.html" title="Splitting modifiers">
+<link rel="next" href="vmd_modifiers_single.html" title="Modifiers and the single-element sequence">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_modifiers_splitting.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../vmd_modifiers.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="vmd_modifiers_single.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="variadic_macro_data.vmd_modifiers.vmd_modifiers_index"></a><a class="link" href="vmd_modifiers_index.html" title="Index modifiers">Index
+      modifiers</a>
+</h3></div></div></div>
+<p>
+        Index modifiers can be used with the BOOST_VMD_ELEM macro when identifier
+        modifiers are being used. Index modifiers take two values:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            BOOST_VMD_RETURN_INDEX, return an index as a number, starting with 0,
+            of the particular identifier modifier which matched, as part of the output
+            of the BOOST_VMD_ELEM macro. If no particular identifier modifier matches,
+            return emptiness as part of the output. The index number is determined
+            purely by the order in which identifier modifiers are specified as optional
+            parameters to BOOST_VMD_ELEM, whether singly as individual optional parameters
+            or as a tuple of identifier modifiers.
+          </li>
+<li class="listitem">
+            BOOST_VMD_RETURN_NO_INDEX, do not return an index as part of the output.
+            This is the default value and need only be used to override the BOOST_VMD_RETURN_INDEX
+            value if it is specified.
+          </li>
+</ul></div>
+<p>
+        The BOOST_VMD_RETURN_INDEX tells the programmer which one of the identifier
+        modifiers matched the element's data as an index. Some macro programmers
+        find this more useful for the purposes of macro branching logic than branching
+        using the actual name of the identifier itself.
+      </p>
+<p>
+        When the index modifier BOOST_VMD_RETURN_INDEX is specified, and identifier
+        modifiers are specified along with the BOOST_VMD_TYPE_IDENTIFIER filter modifier,
+        the output of BOOST_VMD_ELEM becomes a tuple of two elements. The first tuple
+        element is the element matched and the last tuple element is the index, starting
+        with 0, of the identifier modifier which matched. If an element is not matched
+        both tuple elements are empty.
+      </p>
+<p>
+        If the splitting modifier BOOST_VMD_RETURN_AFTER is also specified then the
+        output is a tuple of three elements. The first tuple element is the element
+        matched, the second tuple element is the rest of the sequence after the matching
+        element, and the last tuple element is the numeric index. If an element is
+        not matched then all three tuple elements are empty.
+      </p>
+<p>
+        If identifier modifiers and the BOOST_VMD_TYPE_IDENTIFIER filter modifier
+        are not specified as optional parameters, then if BOOST_VMD_RETURN_INDEX
+        is specified it is ignored. If the splitting modifier BOOST_VMD_RETURN_ONLY_AFTER
+        is specified, if BOOST_VMD_RETURN_INDEX is also specified it is ignored.
+      </p>
+<p>
+        Let's see how this works:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">elem</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_REGISTER_ANAME</span> <span class="special">(</span><span class="identifier">ANAME</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_REGISTER_APLACE</span> <span class="special">(</span><span class="identifier">APLACE</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_REGISTER_ACOUNTRY</span> <span class="special">(</span><span class="identifier">ACOUNTRY</span><span class="special">)</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_DETECT_ANAME_ANAME</span>
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_VMD_DETECT_APLACE_APLACE</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">A_SEQUENCE</span> <span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="number">2</span><span class="special">,</span><span class="number">3</span><span class="special">)</span> <span class="identifier">ANAME</span> <span class="special">(</span><span class="number">1</span><span class="special">)(</span><span class="number">2</span><span class="special">)</span> <span class="number">46</span>
+
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_IDENTIFIER</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="char">'ANAME'</span>
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_IDENTIFIER</span><span class="special">,</span><span class="identifier">APLACE</span><span class="special">,</span><span class="identifier">ACOUNTRY</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="identifier">emptiness</span>
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_IDENTIFIER</span><span class="special">,</span><span class="identifier">BOOST_VMD_RETURN_INDEX</span><span class="special">,</span><span class="identifier">APLACE</span><span class="special">,</span><span class="identifier">ACOUNTRY</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="special">(,)</span>
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_IDENTIFIER</span><span class="special">,</span><span class="identifier">BOOST_VMD_RETURN_INDEX</span><span class="special">,</span><span class="identifier">ANAME</span><span class="special">,</span><span class="identifier">APLACE</span><span class="special">,</span><span class="identifier">ACOUNTRY</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="char">'(ANAME,0)'</span>
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_IDENTIFIER</span><span class="special">,</span><span class="identifier">BOOST_VMD_RETURN_INDEX</span><span class="special">,(</span><span class="identifier">APLACE</span><span class="special">,</span><span class="identifier">ACOUNTRY</span><span class="special">,</span><span class="identifier">ANAME</span><span class="special">))</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="char">'(ANAME,2)'</span>
+</pre>
+<p>
+        Used with splitting modifiers:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">vmd</span><span class="special">/</span><span class="identifier">elem</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_IDENTIFIER</span><span class="special">,</span><span class="identifier">BOOST_VMD_RETURN_INDEX</span><span class="special">,</span><span class="identifier">APLACE</span><span class="special">,</span><span class="identifier">ACOUNTRY</span><span class="special">,</span><span class="identifier">BOOST_VMD_RETURN_AFTER</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="special">(,,)</span>
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_IDENTIFIER</span><span class="special">,</span><span class="identifier">BOOST_VMD_RETURN_INDEX</span><span class="special">,</span><span class="identifier">ANAME</span><span class="special">,</span><span class="identifier">APLACE</span><span class="special">,</span><span class="identifier">ACOUNTRY</span><span class="special">,</span><span class="identifier">BOOST_VMD_RETURN_AFTER</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="char">'(ANAME,(1)(2) 46,0)'</span>
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_IDENTIFIER</span><span class="special">,</span><span class="identifier">BOOST_VMD_RETURN_INDEX</span><span class="special">,(</span><span class="identifier">APLACE</span><span class="special">,</span><span class="identifier">ACOUNTRY</span><span class="special">,</span><span class="identifier">ANAME</span><span class="special">),</span><span class="identifier">BOOST_VMD_RETURN_AFTER</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="char">'(ANAME,(1)(2) 46,2)'</span>
+
+<span class="identifier">BOOST_VMD_ELEM</span><span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="identifier">A_SEQUENCE</span><span class="special">,</span><span class="identifier">BOOST_VMD_TYPE_IDENTIFIER</span><span class="special">,</span><span class="identifier">BOOST_VMD_RETURN_INDEX</span><span class="special">,(</span><span class="identifier">APLACE</span><span class="special">,</span><span class="identifier">ACOUNTRY</span><span class="special">,</span><span class="identifier">ANAME</span><span class="special">),</span><span class="identifier">BOOST_VMD_RETURN_ONLY_AFTER</span><span class="special">)</span> <span class="identifier">will</span> <span class="keyword">return</span> <span class="char">'(1)(2) 46'</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2010-2017 Tropic Software
+      East Inc</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="vmd_modifiers_splitting.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../vmd_modifiers.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="vmd_modifiers_single.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

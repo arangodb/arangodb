@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -379,14 +380,36 @@ struct CommitFailReason {
                            ForcedParticipantNotInQuorum const& right) noexcept
         -> bool = default;
   };
+  struct NonEligibleServerRequiredForQuorum {
+    enum Why {
+      kExcluded,
+      kFailed,
+    };
+    static auto to_string(Why) noexcept -> std::string_view;
+
+    using CandidateMap = std::unordered_map<ParticipantId, Why>;
+
+    CandidateMap candidates;
+
+    static auto fromVelocyPack(velocypack::Slice)
+        -> NonEligibleServerRequiredForQuorum;
+    void toVelocyPack(velocypack::Builder& builder) const;
+    friend auto operator==(
+        NonEligibleServerRequiredForQuorum const& left,
+        NonEligibleServerRequiredForQuorum const& right) noexcept
+        -> bool = default;
+  };
   std::variant<NothingToCommit, QuorumSizeNotReached,
-               ForcedParticipantNotInQuorum>
+               ForcedParticipantNotInQuorum, NonEligibleServerRequiredForQuorum>
       value;
 
   static auto withNothingToCommit() noexcept -> CommitFailReason;
   static auto withQuorumSizeNotReached(ParticipantId who) noexcept
       -> CommitFailReason;
   static auto withForcedParticipantNotInQuorum(ParticipantId who) noexcept
+      -> CommitFailReason;
+  static auto withNonEligibleServerRequiredForQuorum(
+      NonEligibleServerRequiredForQuorum::CandidateMap) noexcept
       -> CommitFailReason;
 
   static auto fromVelocyPack(velocypack::Slice) -> CommitFailReason;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1479,7 +1479,7 @@ NtResumeProcess pfnNtResumeProcess = (NtResumeProcess)GetProcAddress(
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stops an external process, only on Unix
+/// @brief stops an external process
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_SuspendExternalProcess(ExternalId pid) {
@@ -1505,7 +1505,7 @@ bool TRI_SuspendExternalProcess(ExternalId pid) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief continues an external process, only on Unix
+/// @brief continues an external process
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ContinueExternalProcess(ExternalId pid) {
