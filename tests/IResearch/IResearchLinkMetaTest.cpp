@@ -1621,11 +1621,10 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 
   // missing analyzer (full) single-server (ignore analyzer definition)
   {
-    auto json = VPackParser::fromJson(
-        "{ \
-      \"analyzerDefinitions\": [ { \"name\": \"missing0\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } ], \
-      \"analyzers\": [ \"missing0\" ] \
-    }");
+    auto json = VPackParser::fromJson(R"({
+      "analyzerDefinitions": [ ],
+      "analyzers": [ "missing0" ]
+    })");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_FALSE(
@@ -1672,9 +1671,12 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ(2, meta._analyzerDefinitions.size());
     EXPECT_EQ(1, meta._analyzers.size());
     {
+      auto identity = arangodb::iresearch::IResearchAnalyzerFeature::identity();
       auto& analyzer = meta._analyzers[0];
-      EXPECT_EQ(arangodb::iresearch::IResearchAnalyzerFeature::identity(),
-                analyzer._pool);
+      ASSERT_NE(nullptr, identity);
+      ASSERT_NE(nullptr, analyzer._pool);
+      ASSERT_NE(identity, analyzer._pool);  // different pointers
+      ASSERT_EQ(*identity, *analyzer._pool);
     }
     ASSERT_EQ(1, meta._fields.size());
     ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
@@ -1720,9 +1722,12 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ(2, meta._analyzerDefinitions.size());
     EXPECT_EQ(1, meta._analyzers.size());
     {
+      auto identity = arangodb::iresearch::IResearchAnalyzerFeature::identity();
       auto& analyzer = meta._analyzers[0];
-      EXPECT_EQ(arangodb::iresearch::IResearchAnalyzerFeature::identity(),
-                analyzer._pool);
+      ASSERT_NE(nullptr, identity);
+      ASSERT_NE(nullptr, analyzer._pool);
+      ASSERT_NE(identity, analyzer._pool);  // different pointers
+      ASSERT_EQ(*identity, *analyzer._pool);
     }
     ASSERT_EQ(1, meta._fields.size());
     ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
@@ -1830,11 +1835,10 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       arangodb::ServerState::instance()->setRole(before);
     });
 
-    auto json = VPackParser::fromJson(
-        "{ \
-      \"analyzerDefinitions\": [ { \"name\": \"missing1\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } ], \
-      \"analyzers\": [ \"missing1\" ] \
-    }");
+    auto json = VPackParser::fromJson(R"({
+      "analyzerDefinitions": [ ],
+      "analyzers": [ "missing1" ]
+    })");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_FALSE(
@@ -1866,9 +1870,12 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ(2, meta._analyzerDefinitions.size());
     EXPECT_EQ(1, meta._analyzers.size());
     {
+      auto identity = arangodb::iresearch::IResearchAnalyzerFeature::identity();
       auto& analyzer = meta._analyzers[0];
-      EXPECT_EQ(arangodb::iresearch::IResearchAnalyzerFeature::identity(),
-                analyzer._pool);
+      ASSERT_NE(nullptr, identity);
+      ASSERT_NE(nullptr, analyzer._pool);
+      ASSERT_NE(identity, analyzer._pool);  // different pointers
+      ASSERT_EQ(*identity, *analyzer._pool);
     }
 
     ASSERT_EQ(1, meta._fields.size());
@@ -1922,9 +1929,12 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ(2, meta._analyzerDefinitions.size());
     EXPECT_EQ(1, meta._analyzers.size());
     {
+      auto identity = arangodb::iresearch::IResearchAnalyzerFeature::identity();
       auto& analyzer = meta._analyzers[0];
-      EXPECT_EQ(arangodb::iresearch::IResearchAnalyzerFeature::identity(),
-                analyzer._pool);
+      ASSERT_NE(nullptr, identity);
+      ASSERT_NE(nullptr, analyzer._pool);
+      ASSERT_NE(identity, analyzer._pool);  // different pointers
+      ASSERT_EQ(*identity, *analyzer._pool);
     }
 
     ASSERT_EQ(1, meta._fields.size());
@@ -1994,11 +2004,10 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       arangodb::ServerState::instance()->setRole(before);
     });
 
-    auto json = VPackParser::fromJson(
-        "{ \
-      \"analyzerDefinitions\": [ { \"name\": \"missing2\", \"type\": \"empty\", \"properties\": { \"args\": \"ru\" }, \"features\": [ \"frequency\" ] } ], \
-      \"analyzers\": [ \"missing2\" ] \
-    }");
+    auto json = VPackParser::fromJson(R"({
+      "analyzerDefinitions": [ ],
+      "analyzers": [ "missing2" ]
+    })");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_FALSE(
@@ -2050,9 +2059,12 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ(2, meta._analyzerDefinitions.size());
     EXPECT_EQ(1, meta._analyzers.size());
     {
+      auto identity = arangodb::iresearch::IResearchAnalyzerFeature::identity();
       auto& analyzer = meta._analyzers[0];
-      EXPECT_EQ(arangodb::iresearch::IResearchAnalyzerFeature::identity(),
-                analyzer._pool);
+      ASSERT_NE(nullptr, identity);
+      ASSERT_NE(nullptr, analyzer._pool);
+      ASSERT_NE(identity, analyzer._pool);  // different pointers
+      ASSERT_EQ(*identity, *analyzer._pool);
     }
 
     ASSERT_EQ(1, meta._fields.size());
@@ -2106,9 +2118,12 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ(2, meta._analyzerDefinitions.size());
     EXPECT_EQ(1, meta._analyzers.size());
     {
+      auto identity = arangodb::iresearch::IResearchAnalyzerFeature::identity();
       auto& analyzer = meta._analyzers[0];
-      EXPECT_EQ(arangodb::iresearch::IResearchAnalyzerFeature::identity(),
-                analyzer._pool);
+      ASSERT_NE(nullptr, identity);
+      ASSERT_NE(nullptr, analyzer._pool);
+      ASSERT_NE(identity, analyzer._pool);  // different pointers
+      ASSERT_EQ(*identity, *analyzer._pool);
     }
 
     ASSERT_EQ(1, meta._fields.size());
@@ -2169,11 +2184,10 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 
   // missing analyzer (full) inRecovery (ignore analyzer definition)
   {
-    auto json = VPackParser::fromJson(
-        "{ \
-      \"analyzerDefinitions\": [ { \"name\": \"missing3\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } ], \
-      \"analyzers\": [ \"missing3\" ] \
-    }");
+    auto json = VPackParser::fromJson(R"({
+      "analyzerDefinitions": [ ],
+      "analyzers": [ "missing3" ]
+    })");
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
@@ -2278,9 +2292,12 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ(2, meta._analyzerDefinitions.size());
     EXPECT_EQ(1, meta._analyzers.size());
     {
+      auto identity = arangodb::iresearch::IResearchAnalyzerFeature::identity();
       auto& analyzer = meta._analyzers[0];
-      EXPECT_EQ(arangodb::iresearch::IResearchAnalyzerFeature::identity(),
-                analyzer._pool);
+      ASSERT_NE(nullptr, identity);
+      ASSERT_NE(nullptr, analyzer._pool);
+      ASSERT_NE(identity, analyzer._pool);  // different pointers
+      ASSERT_EQ(*identity, *analyzer._pool);
     }
 
     ASSERT_EQ(1, meta._fields.size());
@@ -2334,9 +2351,12 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ(2, meta._analyzerDefinitions.size());
     EXPECT_EQ(1, meta._analyzers.size());
     {
+      auto identity = arangodb::iresearch::IResearchAnalyzerFeature::identity();
       auto& analyzer = meta._analyzers[0];
-      EXPECT_EQ(arangodb::iresearch::IResearchAnalyzerFeature::identity(),
-                analyzer._pool);
+      ASSERT_NE(nullptr, identity);
+      ASSERT_NE(nullptr, analyzer._pool);
+      ASSERT_NE(identity, analyzer._pool);  // different pointers
+      ASSERT_EQ(*identity, *analyzer._pool);
     }
 
     ASSERT_EQ(1, meta._fields.size());
@@ -2474,28 +2494,6 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 
-  // existing analyzer (definition mismatch), don't read definitions
-  {
-    auto json = VPackParser::fromJson(
-        "{ \
-      \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } ], \
-      \"analyzers\": [ \"empty\" ] \
-    }");
-    arangodb::iresearch::IResearchLinkMeta meta;
-    std::string errorField;
-    EXPECT_TRUE(
-        meta.init(server.server(), json->slice(), errorField, vocbase.name()));
-    EXPECT_EQ(1, meta._analyzers.size());
-    EXPECT_EQ("testVocbase::empty", meta._analyzers[0]._pool->name());
-    EXPECT_EQ("empty", meta._analyzers[0]._pool->type());
-    // read definition from cache since we ignore "analyzerDefinitions"
-    EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
-                        meta._analyzers[0]._pool->properties());
-    EXPECT_EQ(arangodb::iresearch::Features(irs::IndexFeatures::FREQ),
-              meta._analyzers[0]._pool->features());
-    EXPECT_EQ("empty", meta._analyzers[0]._shortName);
-  }
-
   // existing analyzer (definition mismatch) inRecovery
   {
     auto json = VPackParser::fromJson(
@@ -2524,7 +2522,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 
-  // existing analyzer (definition mismatch) inRecovery, don't read definitions
+  // existing analyzer (definition mismatch) inRecovery
   {
     auto json = VPackParser::fromJson(
         "{ \
@@ -2545,7 +2543,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_EQ("testVocbase::empty", meta._analyzers[0]._pool->name());
     EXPECT_EQ("empty", meta._analyzers[0]._pool->type());
     // read definition from cache since we ignore "analyzerDefinitions"
-    EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
+    EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
                         meta._analyzers[0]._pool->properties());
     EXPECT_EQ(arangodb::iresearch::Features(irs::IndexFeatures::FREQ),
               meta._analyzers[0]._pool->features());
