@@ -180,10 +180,9 @@ Result createLink(LogicalCollection& collection,
     return TRI_ERROR_NO_ERROR;
   }
   std::function<bool(irs::string_ref key)> const acceptor =
-      [](irs::string_ref key) -> bool {
-    return std::string_view{key} != arangodb::StaticStrings::IndexType &&
-           std::string_view{key} !=
-               arangodb::iresearch::StaticStrings::ViewIdField;
+      [](std::string_view key) -> bool {
+    return key != arangodb::StaticStrings::IndexType &&
+           key != arangodb::iresearch::StaticStrings::ViewIdField;
   };
   velocypack::Builder builder;
 
