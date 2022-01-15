@@ -1001,11 +1001,6 @@ bool AnalyzerPool::init(irs::string_ref const& type,
       _fieldFeatures = features.fieldFeatures(version);
       _features = features;  // store only requested features
 
-      if (!_fieldFeatures.empty()) {
-        [[maybe_unused]] auto l = (*_fieldFeatures.front())().name();
-        [[maybe_unused]] int i = 5;
-      }
-
       _revision = revision;
       return true;
     }

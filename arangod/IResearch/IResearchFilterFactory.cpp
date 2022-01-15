@@ -28,8 +28,6 @@
 #include "date/date.h"
 #endif
 
-#include <span>
-
 #include "IResearch/IResearchFilterFactory.h"
 
 #include "s2/s2latlng.h"
