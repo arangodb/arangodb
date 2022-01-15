@@ -882,10 +882,6 @@ bool IResearchLinkMeta::json(application_features::ApplicationServer& server,
                                  StaticStrings::AnalyzerDefinitionsField);
 
     for (auto& entry : _analyzerDefinitions) {
-      if (entry->name() == "identity") {
-        continue;
-      }
-
       TRI_ASSERT(entry);  // ensured by emplace into 'analyzers' above
       entry->toVelocyPack(builder, defaultVocbase);
     }
